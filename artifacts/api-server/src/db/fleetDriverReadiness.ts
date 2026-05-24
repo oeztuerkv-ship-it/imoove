@@ -1,4 +1,5 @@
 import { getCompanyGovernanceGate, type CompanyGovernanceGate, companyMeetsTaxiFleetProvisioningReadiness } from "./companyGovernanceData";
+import { findCompanyById } from "./adminData";
 import {
   findFleetDriverInCompany,
   type FleetDriverListRow,
@@ -7,6 +8,7 @@ import {
 import { listAssignmentsForCompany } from "./fleetAssignmentsData";
 import { listFleetVehiclesForCompany, type FleetVehicleRow } from "./fleetVehiclesData";
 import { listFleetDriversForCompany } from "./fleetDriversData";
+import { medicalTransportAuthorizationFromRows } from "../lib/medical/medicalTransportAuthorization";
 
 export type DriverReadinessBlockCode =
   | "company_not_ready"
@@ -324,21 +326,54 @@ export type AdminTaxiFleetDriverRow = PanelFleetDriverView & {
   pScheinDocPresent: boolean;
   suspensionReason: string;
   adminInternalNote: string;
+  medicalTransportCompanyEnabled: boolean;
+  medicalTransportAuthorized: boolean;
 };
 
+async function medicalTransportFieldsForDriver(
+  companyId: string,
+  listRow: FleetDriverListRow,
+): Promise<{ medicalTransportCompanyEnabled: boolean; medicalTransportAuthorized: boolean }> {
+  const company = await findCompanyById(companyId);
+  const auth = medicalTransportAuthorizationFromRows(
+    {
+      medical_transport_enabled: listRow.medicalTransportEnabled,
+      medical_transport_inherit_from_company: listRow.medicalTransportInheritFromCompany,
+    },
+    { medical_transport_enabled: Boolean(company?.medical_transport_enabled) },
+  );
+  return {
+    medicalTransportCompanyEnabled: auth.companyEnabled,
+    medicalTransportAuthorized: auth.authorized,
+  };
+}
+
 export async function listAdminTaxiFleetDriverRows(companyId: string): Promise<AdminTaxiFleetDriverRow[]> {
-  const [views, ass, veh] = await Promise.all([
+  const [views, ass, veh, company] = await Promise.all([
     getPanelFleetDriverViews(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
+    findCompanyById(companyId),
   ]);
-  return views.map((v) => ({
-    ...v,
-    assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
-    pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
-    suspensionReason: v.suspensionReason,
-    adminInternalNote: v.adminInternalNote,
-  }));
+  const companyEnabled = Boolean(company?.medical_transport_enabled);
+  return views.map((v) => {
+    const auth = medicalTransportAuthorizationFromRows(
+      {
+        medical_transport_enabled: v.medicalTransportEnabled,
+        medical_transport_inherit_from_company: v.medicalTransportInheritFromCompany,
+      },
+      { medical_transport_enabled: companyEnabled },
+    );
+    return {
+      ...v,
+      assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
+      pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
+      suspensionReason: v.suspensionReason,
+      adminInternalNote: v.adminInternalNote,
+      medicalTransportCompanyEnabled: auth.companyEnabled,
+      medicalTransportAuthorized: auth.authorized,
+    };
+  });
 }
 
 export async function getAdminTaxiFleetDriverDetail(
@@ -348,10 +383,11 @@ export async function getAdminTaxiFleetDriverDetail(
   const r = await findFleetDriverInCompany(driverId, companyId);
   if (!r) return null;
   const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh] = await Promise.all([
+  const [gate, ass, veh, medical] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
+    medicalTransportFieldsForDriver(companyId, listRow),
   ]);
   const av = assignedVehicleForDriver(listRow.id, ass, veh);
   const view: PanelFleetDriverView = {
@@ -365,5 +401,7 @@ export async function getAdminTaxiFleetDriverDetail(
     pScheinDocPresent: !pScheinDocMissing(listRow.pScheinDocStorageKey),
     suspensionReason: listRow.suspensionReason,
     adminInternalNote: listRow.adminInternalNote,
+    medicalTransportCompanyEnabled: medical.medicalTransportCompanyEnabled,
+    medicalTransportAuthorized: medical.medicalTransportAuthorized,
   };
 }

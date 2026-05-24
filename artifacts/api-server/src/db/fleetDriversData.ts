@@ -55,6 +55,10 @@ export interface FleetDriverListRow {
   reservationSuspendedUntil: string | null;
   /** Auftragsmarkt ONLINE (Fleet-App). */
   isMarketOnline: boolean;
+  /** ONRODA-Admin: Fahrer-Override Krankenfahrten (wirksam wenn inherit=false). */
+  medicalTransportEnabled: boolean;
+  /** true = medicalTransportEnabled vom Unternehmen erben. */
+  medicalTransportInheritFromCompany: boolean;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -116,6 +120,8 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     readinessOverrideSystem: Boolean((r as { readiness_override_system?: boolean | null }).readiness_override_system),
     reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
     isMarketOnline: Boolean(r.is_market_online),
+    medicalTransportEnabled: Boolean(r.medical_transport_enabled),
+    medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company),
   };
 }
 
@@ -539,6 +545,34 @@ export async function setFleetDriverReadinessOverrideSystem(
   const r = await db
     .update(fleetDriversTable)
     .set({ readiness_override_system: enabled, updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+
+/** Plattform-Admin: Krankenfahrt-Freigabe pro Fahrer (Override + Erbe vom Unternehmen). */
+export async function setFleetDriverMedicalTransport(
+  companyId: string,
+  driverId: string,
+  patch: { enabled?: boolean; inheritFromCompany?: boolean },
+): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const set: {
+    updated_at: Date;
+    medical_transport_enabled?: boolean;
+    medical_transport_inherit_from_company?: boolean;
+  } = { updated_at: new Date() };
+  if (typeof patch.enabled === "boolean") set.medical_transport_enabled = patch.enabled;
+  if (typeof patch.inheritFromCompany === "boolean") {
+    set.medical_transport_inherit_from_company = patch.inheritFromCompany;
+  }
+  if (set.medical_transport_enabled === undefined && set.medical_transport_inherit_from_company === undefined) {
+    return false;
+  }
+  const r = await db
+    .update(fleetDriversTable)
+    .set(set)
     .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
     .returning({ id: fleetDriversTable.id });
   return r.length > 0;

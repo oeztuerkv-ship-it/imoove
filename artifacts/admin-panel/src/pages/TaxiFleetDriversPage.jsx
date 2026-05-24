@@ -229,6 +229,30 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
     }
   }
 
+  async function patchMedicalTransport(patch) {
+    if (!companyId || !sel) return;
+    setActBusy("medical-transport");
+    try {
+      const r = await fetch(
+        `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(sel.id)}/medical-transport`,
+        {
+          method: "PATCH",
+          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        },
+      );
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        window.alert(j.error || r.status);
+        return;
+      }
+      loadDrivers(companyId);
+      loadDetailAndAudit(companyId, sel.id);
+    } finally {
+      setActBusy("");
+    }
+  }
+
   return (
     <div className="admin-page" style={{ padding: "20px", fontFamily: "sans-serif", maxWidth: 1280 }}>
       <h1 style={{ marginTop: 0, color: "#0f172a" }}>Taxi · Fahrer (Plattform)</h1>
@@ -478,6 +502,54 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                     Unterlagen/Fahrzeug/Mandanten-Gate (nicht: Sperre / keine Plattform-Freigabe).
                   </p>
                 ) : null}
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 8,
+                    maxWidth: 560,
+                    background: detail.medicalTransportAuthorized ? "#ecfdf5" : "#f8fafc",
+                  }}
+                >
+                  <h3 style={{ fontSize: 14, margin: "0 0 8px" }}>Krankenfahrten</h3>
+                  <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                    Unternehmen:{" "}
+                    <strong>{detail.medicalTransportCompanyEnabled ? "freigegeben" : "nicht freigegeben"}</strong>
+                    {" · "}
+                    Effektiv für Fahrer:{" "}
+                    <strong>{detail.medicalTransportAuthorized ? "Ja" : "Nein"}</strong>
+                  </p>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(detail.medicalTransportInheritFromCompany)}
+                      disabled={actBusy === "medical-transport"}
+                      onChange={(e) => {
+                        patchMedicalTransport({ inheritFromCompany: e.target.checked });
+                      }}
+                    />
+                    Vom Unternehmen erben
+                  </label>
+                  {!detail.medicalTransportInheritFromCompany ? (
+                    <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(detail.medicalTransportEnabled)}
+                        disabled={actBusy === "medical-transport" || !detail.medicalTransportCompanyEnabled}
+                        onChange={(e) => {
+                          patchMedicalTransport({ enabled: e.target.checked });
+                        }}
+                      />
+                      Krankenfahrten freigegeben (Fahrer-Override)
+                    </label>
+                  ) : null}
+                  {!detail.medicalTransportCompanyEnabled ? (
+                    <p style={{ margin: "8px 0 0", fontSize: 12, color: "#b45309" }}>
+                      Mandant hat keine Krankenfahrt-Freigabe — zuerst in der Mandantenzentrale aktivieren.
+                    </p>
+                  ) : null}
+                </div>
                 <div style={{ marginTop: 8 }}>
                   <label>
                     Sperrgrund (editierbar)

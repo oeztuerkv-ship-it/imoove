@@ -116,7 +116,7 @@ var require_package = __commonJS({
 var require_main = __commonJS({
   "../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js"(exports, module) {
     var fs3 = __require("fs");
-    var path11 = __require("path");
+    var path12 = __require("path");
     var os = __require("os");
     var crypto2 = __require("crypto");
     var packageJson = require_package();
@@ -230,7 +230,7 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path11.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path12.resolve(process.cwd(), ".env.vault");
       }
       if (fs3.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
@@ -238,7 +238,7 @@ var require_main = __commonJS({
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path11.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path12.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       _log("Loading env from encrypted .env.vault");
@@ -251,7 +251,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path11.resolve(process.cwd(), ".env");
+      const dotenvPath = path12.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       const debug = Boolean(options && options.debug);
       if (options && options.encoding) {
@@ -274,13 +274,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path12 of optionPaths) {
+      for (const path13 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs3.readFileSync(path12, { encoding }));
+          const parsed = DotenvModule.parse(fs3.readFileSync(path13, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug) {
-            _debug(`Failed to load ${path12} ${e.message}`);
+            _debug(`Failed to load ${path13} ${e.message}`);
           }
           lastError = e;
         }
@@ -19267,11 +19267,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path11) {
-      if (!path11 || typeof path11 !== "string") {
+    function lookup(path12) {
+      if (!path12 || typeof path12 !== "string") {
         return false;
       }
-      var extension3 = extname("x." + path11).toLowerCase().slice(1);
+      var extension3 = extname("x." + path12).toLowerCase().slice(1);
       if (!extension3) {
         return false;
       }
@@ -22743,13 +22743,13 @@ var require_view = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/view.js"(exports, module) {
     "use strict";
     var debug = require_src()("express:view");
-    var path11 = __require("node:path");
+    var path12 = __require("node:path");
     var fs3 = __require("node:fs");
-    var dirname = path11.dirname;
-    var basename = path11.basename;
-    var extname = path11.extname;
-    var join = path11.join;
-    var resolve = path11.resolve;
+    var dirname = path12.dirname;
+    var basename = path12.basename;
+    var extname = path12.extname;
+    var join = path12.join;
+    var resolve = path12.resolve;
     module.exports = View2;
     function View2(name2, options) {
       var opts = options || {};
@@ -22778,17 +22778,17 @@ var require_view = __commonJS({
       this.path = this.lookup(fileName);
     }
     View2.prototype.lookup = function lookup(name2) {
-      var path12;
+      var path13;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name2);
-      for (var i = 0; i < roots.length && !path12; i++) {
+      for (var i = 0; i < roots.length && !path13; i++) {
         var root = roots[i];
         var loc = resolve(root, name2);
         var dir = dirname(loc);
         var file = basename(loc);
-        path12 = this.resolve(dir, file);
+        path13 = this.resolve(dir, file);
       }
-      return path12;
+      return path13;
     };
     View2.prototype.render = function render(options, callback) {
       var sync = true;
@@ -22810,21 +22810,21 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file) {
       var ext = this.ext;
-      var path12 = join(dir, file);
-      var stat = tryStat(path12);
+      var path13 = join(dir, file);
+      var stat = tryStat(path13);
       if (stat && stat.isFile()) {
-        return path12;
+        return path13;
       }
-      path12 = join(dir, basename(file, ext), "index" + ext);
-      stat = tryStat(path12);
+      path13 = join(dir, basename(file, ext), "index" + ext);
+      stat = tryStat(path13);
       if (stat && stat.isFile()) {
-        return path12;
+        return path13;
       }
     };
-    function tryStat(path12) {
-      debug('stat "%s"', path12);
+    function tryStat(path13) {
+      debug('stat "%s"', path13);
       try {
-        return fs3.statSync(path12);
+        return fs3.statSync(path13);
       } catch (e) {
         return void 0;
       }
@@ -23960,15 +23960,15 @@ var require_dist = __commonJS({
       let index = 0;
       function consumeUntil(end) {
         const output = [];
-        let path11 = "";
+        let path12 = "";
         function writePath() {
-          if (!path11)
+          if (!path12)
             return;
           output.push({
             type: "text",
-            value: encodePath(path11)
+            value: encodePath(path12)
           });
-          path11 = "";
+          path12 = "";
         }
         while (index < chars.length) {
           const value = chars[index++];
@@ -23980,7 +23980,7 @@ var require_dist = __commonJS({
             if (index === chars.length) {
               throw new PathError(`Unexpected end after \\ at index ${index}`, str2);
             }
-            path11 += chars[index++];
+            path12 += chars[index++];
             continue;
           }
           if (value === ":" || value === "*") {
@@ -24024,7 +24024,7 @@ var require_dist = __commonJS({
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
             throw new PathError(`Unexpected ${value} at index ${index - 1}`, str2);
           }
-          path11 += value;
+          path12 += value;
         }
         if (end) {
           throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str2);
@@ -24034,17 +24034,17 @@ var require_dist = __commonJS({
       }
       return new TokenData(consumeUntil(""), str2);
     }
-    function compile(path11, options = {}) {
+    function compile(path12, options = {}) {
       const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const data = typeof path11 === "object" ? path11 : parse(path11, options);
+      const data = typeof path12 === "object" ? path12 : parse(path12, options);
       const fn = tokensToFunction(data.tokens, delimiter, encode3);
-      return function path12(params = {}) {
+      return function path13(params = {}) {
         const missing = [];
-        const path13 = fn(params, missing);
+        const path14 = fn(params, missing);
         if (missing.length) {
           throw new TypeError(`Missing parameters: ${missing.join(", ")}`);
         }
-        return path13;
+        return path14;
       };
     }
     function tokensToFunction(tokens, delimiter, encode3) {
@@ -24106,9 +24106,9 @@ var require_dist = __commonJS({
         return encodeValue(value);
       };
     }
-    function match(path11, options = {}) {
+    function match(path12, options = {}) {
       const { decode: decode2 = decodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const { regexp, keys } = pathToRegexp(path11, options);
+      const { regexp, keys } = pathToRegexp(path12, options);
       const decoders = keys.map((key) => {
         if (decode2 === false)
           return NOOP_VALUE;
@@ -24120,7 +24120,7 @@ var require_dist = __commonJS({
         const m = regexp.exec(input);
         if (!m)
           return false;
-        const path12 = m[0];
+        const path13 = m[0];
         const params = /* @__PURE__ */ Object.create(null);
         for (let i = 1; i < m.length; i++) {
           if (m[i] === void 0)
@@ -24129,21 +24129,21 @@ var require_dist = __commonJS({
           const decoder2 = decoders[i - 1];
           params[key.name] = decoder2(m[i]);
         }
-        return { path: path12, params };
+        return { path: path13, params };
       };
     }
-    function pathToRegexp(path11, options = {}) {
+    function pathToRegexp(path12, options = {}) {
       const { delimiter = DEFAULT_DELIMITER, end = true, sensitive = false, trailing = true } = options;
       const keys = [];
       let source = "";
       let combinations = 0;
-      function process2(path12) {
-        if (Array.isArray(path12)) {
-          for (const p of path12)
+      function process2(path13) {
+        if (Array.isArray(path13)) {
+          for (const p of path13)
             process2(p);
           return;
         }
-        const data = typeof path12 === "object" ? path12 : parse(path12, options);
+        const data = typeof path13 === "object" ? path13 : parse(path13, options);
         flatten(data.tokens, 0, [], (tokens) => {
           if (combinations >= 256) {
             throw new PathError("Too many path combinations", data.originalPath);
@@ -24154,7 +24154,7 @@ var require_dist = __commonJS({
           combinations++;
         });
       }
-      process2(path11);
+      process2(path12);
       let pattern = `^(?:${source})`;
       if (trailing)
         pattern += "(?:" + escape2(delimiter) + "$)?";
@@ -24294,18 +24294,18 @@ var require_layer = __commonJS({
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
     module.exports = Layer;
-    function Layer(path11, options, fn) {
+    function Layer(path12, options, fn) {
       if (!(this instanceof Layer)) {
-        return new Layer(path11, options, fn);
+        return new Layer(path12, options, fn);
       }
-      debug("new %o", path11);
+      debug("new %o", path12);
       const opts = options || {};
       this.handle = fn;
       this.keys = [];
       this.name = fn.name || "<anonymous>";
       this.params = void 0;
       this.path = void 0;
-      this.slash = path11 === "/" && opts.end === false;
+      this.slash = path12 === "/" && opts.end === false;
       function matcher(_path) {
         if (_path instanceof RegExp) {
           const keys = [];
@@ -24344,7 +24344,7 @@ var require_layer = __commonJS({
           decode: decodeParam
         });
       }
-      this.matchers = Array.isArray(path11) ? path11.map(matcher) : [matcher(path11)];
+      this.matchers = Array.isArray(path12) ? path12.map(matcher) : [matcher(path12)];
     }
     Layer.prototype.handleError = function handleError(error, req, res, next) {
       const fn = this.handle;
@@ -24384,9 +24384,9 @@ var require_layer = __commonJS({
         next(err);
       }
     };
-    Layer.prototype.match = function match(path11) {
+    Layer.prototype.match = function match(path12) {
       let match2;
-      if (path11 != null) {
+      if (path12 != null) {
         if (this.slash) {
           this.params = {};
           this.path = "";
@@ -24394,7 +24394,7 @@ var require_layer = __commonJS({
         }
         let i = 0;
         while (!match2 && i < this.matchers.length) {
-          match2 = this.matchers[i](path11);
+          match2 = this.matchers[i](path12);
           i++;
         }
       }
@@ -24422,13 +24422,13 @@ var require_layer = __commonJS({
         throw err;
       }
     }
-    function loosen(path11) {
-      if (path11 instanceof RegExp || path11 === "/") {
-        return path11;
+    function loosen(path12) {
+      if (path12 instanceof RegExp || path12 === "/") {
+        return path12;
       }
-      return Array.isArray(path11) ? path11.map(function(p) {
+      return Array.isArray(path12) ? path12.map(function(p) {
         return loosen(p);
-      }) : String(path11).replace(TRAILING_SLASH_REGEXP, "");
+      }) : String(path12).replace(TRAILING_SLASH_REGEXP, "");
     }
   }
 });
@@ -24444,9 +24444,9 @@ var require_route = __commonJS({
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
     module.exports = Route;
-    function Route(path11) {
-      debug("new %o", path11);
-      this.path = path11;
+    function Route(path12) {
+      debug("new %o", path12);
+      this.path = path12;
       this.stack = [];
       this.methods = /* @__PURE__ */ Object.create(null);
     }
@@ -24654,8 +24654,8 @@ var require_router = __commonJS({
         if (++sync > 100) {
           return setImmediate(next, err);
         }
-        const path11 = getPathname(req);
-        if (path11 == null) {
+        const path12 = getPathname(req);
+        if (path12 == null) {
           return done(layerError);
         }
         let layer;
@@ -24663,7 +24663,7 @@ var require_router = __commonJS({
         let route;
         while (match !== true && idx < stack.length) {
           layer = stack[idx++];
-          match = matchLayer(layer, path11);
+          match = matchLayer(layer, path12);
           route = layer.route;
           if (typeof match !== "boolean") {
             layerError = layerError || match;
@@ -24701,18 +24701,18 @@ var require_router = __commonJS({
           } else if (route) {
             layer.handleRequest(req, res, next);
           } else {
-            trimPrefix(layer, layerError, layerPath, path11);
+            trimPrefix(layer, layerError, layerPath, path12);
           }
           sync = 0;
         });
       }
-      function trimPrefix(layer, layerError, layerPath, path11) {
+      function trimPrefix(layer, layerError, layerPath, path12) {
         if (layerPath.length !== 0) {
-          if (layerPath !== path11.substring(0, layerPath.length)) {
+          if (layerPath !== path12.substring(0, layerPath.length)) {
             next(layerError);
             return;
           }
-          const c = path11[layerPath.length];
+          const c = path12[layerPath.length];
           if (c && c !== "/") {
             next(layerError);
             return;
@@ -24736,7 +24736,7 @@ var require_router = __commonJS({
     };
     Router24.prototype.use = function use(handler) {
       let offset = 0;
-      let path11 = "/";
+      let path12 = "/";
       if (typeof handler !== "function") {
         let arg = handler;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -24744,7 +24744,7 @@ var require_router = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path11 = handler;
+          path12 = handler;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -24756,8 +24756,8 @@ var require_router = __commonJS({
         if (typeof fn !== "function") {
           throw new TypeError("argument handler must be a function");
         }
-        debug("use %o %s", path11, fn.name || "<anonymous>");
-        const layer = new Layer(path11, {
+        debug("use %o %s", path12, fn.name || "<anonymous>");
+        const layer = new Layer(path12, {
           sensitive: this.caseSensitive,
           strict: false,
           end: false
@@ -24767,9 +24767,9 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router24.prototype.route = function route(path11) {
-      const route2 = new Route(path11);
-      const layer = new Layer(path11, {
+    Router24.prototype.route = function route(path12) {
+      const route2 = new Route(path12);
+      const layer = new Layer(path12, {
         sensitive: this.caseSensitive,
         strict: this.strict,
         end: true
@@ -24782,8 +24782,8 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router24.prototype[method] = function(path11) {
-        const route = this.route(path11);
+      Router24.prototype[method] = function(path12) {
+        const route = this.route(path12);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
@@ -24812,9 +24812,9 @@ var require_router = __commonJS({
       const fqdnIndex = url.substring(0, pathLength).indexOf("://");
       return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
-    function matchLayer(layer, path11) {
+    function matchLayer(layer, path12) {
       try {
-        return layer.match(path11);
+        return layer.match(path12);
       } catch (err) {
         return err;
       }
@@ -25042,7 +25042,7 @@ var require_application = __commonJS({
     };
     app2.use = function use(fn) {
       var offset = 0;
-      var path11 = "/";
+      var path12 = "/";
       if (typeof fn !== "function") {
         var arg = fn;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -25050,7 +25050,7 @@ var require_application = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path11 = fn;
+          path12 = fn;
         }
       }
       var fns = flatten.call(slice.call(arguments, offset), Infinity);
@@ -25060,12 +25060,12 @@ var require_application = __commonJS({
       var router24 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router24.use(path11, fn2);
+          return router24.use(path12, fn2);
         }
-        debug(".use app under %s", path11);
-        fn2.mountpath = path11;
+        debug(".use app under %s", path12);
+        fn2.mountpath = path12;
         fn2.parent = this;
-        router24.use(path11, function mounted_app(req, res, next) {
+        router24.use(path12, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -25077,8 +25077,8 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app2.route = function route(path11) {
-      return this.router.route(path11);
+    app2.route = function route(path12) {
+      return this.router.route(path12);
     };
     app2.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
@@ -25121,7 +25121,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app2.path = function path11() {
+    app2.path = function path12() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
     app2.enabled = function enabled(setting) {
@@ -25137,17 +25137,17 @@ var require_application = __commonJS({
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app2[method] = function(path11) {
+      app2[method] = function(path12) {
         if (method === "get" && arguments.length === 1) {
-          return this.set(path11);
+          return this.set(path12);
         }
-        var route = this.route(path11);
+        var route = this.route(path12);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
     });
-    app2.all = function all(path11) {
-      var route = this.route(path11);
+    app2.all = function all(path12) {
+      var route = this.route(path12);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
         route[methods[i]].apply(route, args);
@@ -26057,7 +26057,7 @@ var require_request = __commonJS({
       var subdomains2 = !isIP(hostname2) ? hostname2.split(".").reverse() : [hostname2];
       return subdomains2.slice(offset);
     });
-    defineGetter(req, "path", function path11() {
+    defineGetter(req, "path", function path12() {
       return parse(this).pathname;
     });
     defineGetter(req, "host", function host() {
@@ -26469,27 +26469,27 @@ var require_send = __commonJS({
     var ms = require_ms();
     var onFinished = require_on_finished();
     var parseRange = require_range_parser();
-    var path11 = __require("path");
+    var path12 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
     var util2 = __require("util");
-    var extname = path11.extname;
-    var join = path11.join;
-    var normalize = path11.normalize;
-    var resolve = path11.resolve;
-    var sep = path11.sep;
+    var extname = path12.extname;
+    var join = path12.join;
+    var normalize = path12.normalize;
+    var resolve = path12.resolve;
+    var sep = path12.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
     module.exports = send;
-    function send(req, path12, options) {
-      return new SendStream(req, path12, options);
+    function send(req, path13, options) {
+      return new SendStream(req, path13, options);
     }
-    function SendStream(req, path12, options) {
+    function SendStream(req, path13, options) {
       Stream.call(this);
       var opts = options || {};
       this.options = opts;
-      this.path = path12;
+      this.path = path13;
       this.req = req;
       this._acceptRanges = opts.acceptRanges !== void 0 ? Boolean(opts.acceptRanges) : true;
       this._cacheControl = opts.cacheControl !== void 0 ? Boolean(opts.cacheControl) : true;
@@ -26603,10 +26603,10 @@ var require_send = __commonJS({
       var lastModified = this.res.getHeader("Last-Modified");
       return parseHttpDate(lastModified) <= parseHttpDate(ifRange);
     };
-    SendStream.prototype.redirect = function redirect(path12) {
+    SendStream.prototype.redirect = function redirect(path13) {
       var res = this.res;
       if (hasListeners(this, "directory")) {
-        this.emit("directory", res, path12);
+        this.emit("directory", res, path13);
         return;
       }
       if (this.hasTrailingSlash()) {
@@ -26626,38 +26626,38 @@ var require_send = __commonJS({
     SendStream.prototype.pipe = function pipe(res) {
       var root = this._root;
       this.res = res;
-      var path12 = decode2(this.path);
-      if (path12 === -1) {
+      var path13 = decode2(this.path);
+      if (path13 === -1) {
         this.error(400);
         return res;
       }
-      if (~path12.indexOf("\0")) {
+      if (~path13.indexOf("\0")) {
         this.error(400);
         return res;
       }
       var parts;
       if (root !== null) {
-        if (path12) {
-          path12 = normalize("." + sep + path12);
+        if (path13) {
+          path13 = normalize("." + sep + path13);
         }
-        if (UP_PATH_REGEXP.test(path12)) {
-          debug('malicious path "%s"', path12);
+        if (UP_PATH_REGEXP.test(path13)) {
+          debug('malicious path "%s"', path13);
           this.error(403);
           return res;
         }
-        parts = path12.split(sep);
-        path12 = normalize(join(root, path12));
+        parts = path13.split(sep);
+        path13 = normalize(join(root, path13));
       } else {
-        if (UP_PATH_REGEXP.test(path12)) {
-          debug('malicious path "%s"', path12);
+        if (UP_PATH_REGEXP.test(path13)) {
+          debug('malicious path "%s"', path13);
           this.error(403);
           return res;
         }
-        parts = normalize(path12).split(sep);
-        path12 = resolve(path12);
+        parts = normalize(path13).split(sep);
+        path13 = resolve(path13);
       }
       if (containsDotFile(parts)) {
-        debug('%s dotfile "%s"', this._dotfiles, path12);
+        debug('%s dotfile "%s"', this._dotfiles, path13);
         switch (this._dotfiles) {
           case "allow":
             break;
@@ -26671,13 +26671,13 @@ var require_send = __commonJS({
         }
       }
       if (this._index.length && this.hasTrailingSlash()) {
-        this.sendIndex(path12);
+        this.sendIndex(path13);
         return res;
       }
-      this.sendFile(path12);
+      this.sendFile(path13);
       return res;
     };
-    SendStream.prototype.send = function send2(path12, stat) {
+    SendStream.prototype.send = function send2(path13, stat) {
       var len = stat.size;
       var options = this.options;
       var opts = {};
@@ -26689,9 +26689,9 @@ var require_send = __commonJS({
         this.headersAlreadySent();
         return;
       }
-      debug('pipe "%s"', path12);
-      this.setHeader(path12, stat);
-      this.type(path12);
+      debug('pipe "%s"', path13);
+      this.setHeader(path13, stat);
+      this.type(path13);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
           this.error(412);
@@ -26740,28 +26740,28 @@ var require_send = __commonJS({
         res.end();
         return;
       }
-      this.stream(path12, opts);
+      this.stream(path13, opts);
     };
-    SendStream.prototype.sendFile = function sendFile(path12) {
+    SendStream.prototype.sendFile = function sendFile(path13) {
       var i = 0;
       var self = this;
-      debug('stat "%s"', path12);
-      fs3.stat(path12, function onstat(err, stat) {
-        var pathEndsWithSep = path12[path12.length - 1] === sep;
-        if (err && err.code === "ENOENT" && !extname(path12) && !pathEndsWithSep) {
+      debug('stat "%s"', path13);
+      fs3.stat(path13, function onstat(err, stat) {
+        var pathEndsWithSep = path13[path13.length - 1] === sep;
+        if (err && err.code === "ENOENT" && !extname(path13) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path12);
+        if (stat.isDirectory()) return self.redirect(path13);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path12, stat);
-        self.send(path12, stat);
+        self.emit("file", path13, stat);
+        self.send(path13, stat);
       });
       function next(err) {
         if (self._extensions.length <= i) {
           return err ? self.onStatError(err) : self.error(404);
         }
-        var p = path12 + "." + self._extensions[i++];
+        var p = path13 + "." + self._extensions[i++];
         debug('stat "%s"', p);
         fs3.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -26771,7 +26771,7 @@ var require_send = __commonJS({
         });
       }
     };
-    SendStream.prototype.sendIndex = function sendIndex(path12) {
+    SendStream.prototype.sendIndex = function sendIndex(path13) {
       var i = -1;
       var self = this;
       function next(err) {
@@ -26779,7 +26779,7 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path12, self._index[i]);
+        var p = join(path13, self._index[i]);
         debug('stat "%s"', p);
         fs3.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -26790,10 +26790,10 @@ var require_send = __commonJS({
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path12, options) {
+    SendStream.prototype.stream = function stream(path13, options) {
       var self = this;
       var res = this.res;
-      var stream2 = fs3.createReadStream(path12, options);
+      var stream2 = fs3.createReadStream(path13, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -26808,17 +26808,17 @@ var require_send = __commonJS({
         self.emit("end");
       });
     };
-    SendStream.prototype.type = function type(path12) {
+    SendStream.prototype.type = function type(path13) {
       var res = this.res;
       if (res.getHeader("Content-Type")) return;
-      var ext = extname(path12);
+      var ext = extname(path13);
       var type2 = mime.contentType(ext) || "application/octet-stream";
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path12, stat) {
+    SendStream.prototype.setHeader = function setHeader(path13, stat) {
       var res = this.res;
-      this.emit("headers", res, path12, stat);
+      this.emit("headers", res, path13, stat);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -26876,9 +26876,9 @@ var require_send = __commonJS({
       }
       return err instanceof Error ? createError(status, err, { expose: false }) : createError(status, err);
     }
-    function decode2(path12) {
+    function decode2(path13) {
       try {
-        return decodeURIComponent(path12);
+        return decodeURIComponent(path13);
       } catch (err) {
         return -1;
       }
@@ -27022,7 +27022,7 @@ var require_response = __commonJS({
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
-    var path11 = __require("node:path");
+    var path12 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
     var sign2 = require_cookie_signature().sign;
@@ -27031,8 +27031,8 @@ var require_response = __commonJS({
     var setCharset = require_utils3().setCharset;
     var cookie = require_cookie();
     var send = require_send();
-    var extname = path11.extname;
-    var resolve = path11.resolve;
+    var extname = path12.extname;
+    var resolve = path12.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = __require("node:buffer");
     var res = Object.create(http.ServerResponse.prototype);
@@ -27178,26 +27178,26 @@ var require_response = __commonJS({
       this.type("txt");
       return this.send(body);
     };
-    res.sendFile = function sendFile(path12, options, callback) {
+    res.sendFile = function sendFile(path13, options, callback) {
       var done = callback;
       var req = this.req;
       var res2 = this;
       var next = req.next;
       var opts = options || {};
-      if (!path12) {
+      if (!path13) {
         throw new TypeError("path argument is required to res.sendFile");
       }
-      if (typeof path12 !== "string") {
+      if (typeof path13 !== "string") {
         throw new TypeError("path must be a string to res.sendFile");
       }
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      if (!opts.root && !pathIsAbsolute(path12)) {
+      if (!opts.root && !pathIsAbsolute(path13)) {
         throw new TypeError("path must be absolute or specify root to res.sendFile");
       }
-      var pathname = encodeURI(path12);
+      var pathname = encodeURI(path13);
       opts.etag = this.app.enabled("etag");
       var file = send(req, pathname, opts);
       sendfile(res2, file, opts, function(err) {
@@ -27208,7 +27208,7 @@ var require_response = __commonJS({
         }
       });
     };
-    res.download = function download(path12, filename, options, callback) {
+    res.download = function download(path13, filename, options, callback) {
       var done = callback;
       var name2 = filename;
       var opts = options || null;
@@ -27225,7 +27225,7 @@ var require_response = __commonJS({
         opts = filename;
       }
       var headers = {
-        "Content-Disposition": contentDisposition(name2 || path12)
+        "Content-Disposition": contentDisposition(name2 || path13)
       };
       if (opts && opts.headers) {
         var keys = Object.keys(opts.headers);
@@ -27238,7 +27238,7 @@ var require_response = __commonJS({
       }
       opts = Object.create(opts);
       opts.headers = headers;
-      var fullPath = !opts.root ? resolve(path12) : path12;
+      var fullPath = !opts.root ? resolve(path13) : path13;
       return this.sendFile(fullPath, opts, done);
     };
     res.contentType = res.type = function contentType(type) {
@@ -27521,11 +27521,11 @@ var require_serve_static = __commonJS({
         }
         var forwardError = !fallthrough;
         var originalUrl = parseUrl.original(req);
-        var path11 = parseUrl(req).pathname;
-        if (path11 === "/" && originalUrl.pathname.substr(-1) !== "/") {
-          path11 = "";
+        var path12 = parseUrl(req).pathname;
+        if (path12 === "/" && originalUrl.pathname.substr(-1) !== "/") {
+          path12 = "";
         }
-        var stream = send(req, path11, opts);
+        var stream = send(req, path12, opts);
         stream.on("directory", onDirectory);
         if (setHeaders) {
           stream.on("headers", setHeaders);
@@ -28173,8 +28173,8 @@ var require_req = __commonJS({
       if (req.originalUrl) {
         _req.url = req.originalUrl;
       } else {
-        const path11 = req.path;
-        _req.url = typeof path11 === "string" ? path11 : req.url ? req.url.path || req.url : void 0;
+        const path12 = req.path;
+        _req.url = typeof path12 === "string" ? path12 : req.url ? req.url.path || req.url : void 0;
       }
       if (req.query) {
         _req.query = req.query;
@@ -28339,14 +28339,14 @@ var require_redact = __commonJS({
       }
       return obj;
     }
-    function parsePath(path11) {
+    function parsePath(path12) {
       const parts = [];
       let current = "";
       let inBrackets = false;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path11.length; i++) {
-        const char2 = path11[i];
+      for (let i = 0; i < path12.length; i++) {
+        const char2 = path12[i];
         if (!inBrackets && char2 === ".") {
           if (current) {
             parts.push(current);
@@ -28477,10 +28477,10 @@ var require_redact = __commonJS({
       return current;
     }
     function redactPaths(obj, paths, censor, remove = false) {
-      for (const path11 of paths) {
-        const parts = parsePath(path11);
+      for (const path12 of paths) {
+        const parts = parsePath(path12);
         if (parts.includes("*")) {
-          redactWildcardPath(obj, parts, censor, path11, remove);
+          redactWildcardPath(obj, parts, censor, path12, remove);
         } else {
           if (remove) {
             removeKey(obj, parts);
@@ -28565,8 +28565,8 @@ var require_redact = __commonJS({
           }
         } else {
           if (afterWildcard.includes("*")) {
-            const wrappedCensor = typeof censor === "function" ? (value, path11) => {
-              const fullPath = [...pathArray.slice(0, pathLength), ...path11];
+            const wrappedCensor = typeof censor === "function" ? (value, path12) => {
+              const fullPath = [...pathArray.slice(0, pathLength), ...path12];
               return censor(value, fullPath);
             } : censor;
             redactWildcardPath(current, afterWildcard, wrappedCensor, originalPath, remove);
@@ -28601,8 +28601,8 @@ var require_redact = __commonJS({
         return null;
       }
       const pathStructure = /* @__PURE__ */ new Map();
-      for (const path11 of pathsToClone) {
-        const parts = parsePath(path11);
+      for (const path12 of pathsToClone) {
+        const parts = parsePath(path12);
         let current = pathStructure;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -28654,24 +28654,24 @@ var require_redact = __commonJS({
       }
       return cloneSelectively(obj, pathStructure);
     }
-    function validatePath(path11) {
-      if (typeof path11 !== "string") {
+    function validatePath(path12) {
+      if (typeof path12 !== "string") {
         throw new Error("Paths must be (non-empty) strings");
       }
-      if (path11 === "") {
+      if (path12 === "") {
         throw new Error("Invalid redaction path ()");
       }
-      if (path11.includes("..")) {
-        throw new Error(`Invalid redaction path (${path11})`);
+      if (path12.includes("..")) {
+        throw new Error(`Invalid redaction path (${path12})`);
       }
-      if (path11.includes(",")) {
-        throw new Error(`Invalid redaction path (${path11})`);
+      if (path12.includes(",")) {
+        throw new Error(`Invalid redaction path (${path12})`);
       }
       let bracketCount = 0;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path11.length; i++) {
-        const char2 = path11[i];
+      for (let i = 0; i < path12.length; i++) {
+        const char2 = path12[i];
         if ((char2 === '"' || char2 === "'") && bracketCount > 0) {
           if (!inQuotes) {
             inQuotes = true;
@@ -28685,20 +28685,20 @@ var require_redact = __commonJS({
         } else if (char2 === "]" && !inQuotes) {
           bracketCount--;
           if (bracketCount < 0) {
-            throw new Error(`Invalid redaction path (${path11})`);
+            throw new Error(`Invalid redaction path (${path12})`);
           }
         }
       }
       if (bracketCount !== 0) {
-        throw new Error(`Invalid redaction path (${path11})`);
+        throw new Error(`Invalid redaction path (${path12})`);
       }
     }
     function validatePaths(paths) {
       if (!Array.isArray(paths)) {
         throw new TypeError("paths must be an array");
       }
-      for (const path11 of paths) {
-        validatePath(path11);
+      for (const path12 of paths) {
+        validatePath(path12);
       }
     }
     function slowRedact(options = {}) {
@@ -28866,8 +28866,8 @@ var require_redaction = __commonJS({
         if (shape[k] === null) {
           o[k] = (value) => topCensor(value, [k]);
         } else {
-          const wrappedCensor = typeof censor === "function" ? (value, path11) => {
-            return censor(value, [k, ...path11]);
+          const wrappedCensor = typeof censor === "function" ? (value, path12) => {
+            return censor(value, [k, ...path12]);
           } : censor;
           o[k] = Redact({
             paths: shape[k],
@@ -29088,7 +29088,7 @@ var require_sonic_boom = __commonJS({
     var fs3 = __require("fs");
     var EventEmitter = __require("events");
     var inherits = __require("util").inherits;
-    var path11 = __require("path");
+    var path12 = __require("path");
     var sleep = require_atomic_sleep();
     var assert = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
@@ -29142,7 +29142,7 @@ var require_sonic_boom = __commonJS({
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
-          if (sonic.mkdir) fs3.mkdirSync(path11.dirname(file), { recursive: true });
+          if (sonic.mkdir) fs3.mkdirSync(path12.dirname(file), { recursive: true });
           const fd = fs3.openSync(file, flags, mode);
           fileOpened(null, fd);
         } catch (err) {
@@ -29150,7 +29150,7 @@ var require_sonic_boom = __commonJS({
           throw err;
         }
       } else if (sonic.mkdir) {
-        fs3.mkdir(path11.dirname(file), { recursive: true }, (err) => {
+        fs3.mkdir(path12.dirname(file), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
           fs3.open(file, flags, mode, fileOpened);
         });
@@ -29162,7 +29162,7 @@ var require_sonic_boom = __commonJS({
       if (!(this instanceof SonicBoom)) {
         return new SonicBoom(opts);
       }
-      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir6, retryEAGAIN, fsync, contentMode, mode } = opts || {};
+      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir7, retryEAGAIN, fsync, contentMode, mode } = opts || {};
       fd = fd || dest;
       this._len = 0;
       this.fd = -1;
@@ -29187,7 +29187,7 @@ var require_sonic_boom = __commonJS({
       this.append = append || false;
       this.mode = mode;
       this.retryEAGAIN = retryEAGAIN || (() => true);
-      this.mkdir = mkdir6 || false;
+      this.mkdir = mkdir7 || false;
       let fsWriteSync;
       let fsWrite;
       if (contentMode === kContentModeBuffer) {
@@ -32010,9 +32010,9 @@ var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
-        const path11 = __require("path");
+        const path12 = __require("path");
         const outputDir = "/Users/vedo/Downloads/imoove/artifacts/api-server/dist";
-        return path11.resolve(outputDir, p.replace(/^\.\//, ""));
+        return path12.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
         return f(p);
@@ -34007,7 +34007,7 @@ var init_query_promise = __esm({
 function mapResultRow(columns, row, joinsNotNullableMap) {
   const nullifyMap = {};
   const result = columns.reduce(
-    (result2, { path: path11, field }, columnIndex) => {
+    (result2, { path: path12, field }, columnIndex) => {
       let decoder2;
       if (is(field, Column)) {
         decoder2 = field;
@@ -34019,8 +34019,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         decoder2 = field.sql.decoder;
       }
       let node = result2;
-      for (const [pathChunkIndex, pathChunk] of path11.entries()) {
-        if (pathChunkIndex < path11.length - 1) {
+      for (const [pathChunkIndex, pathChunk] of path12.entries()) {
+        if (pathChunkIndex < path12.length - 1) {
           if (!(pathChunk in node)) {
             node[pathChunk] = {};
           }
@@ -34028,8 +34028,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         } else {
           const rawValue = row[columnIndex];
           const value = node[pathChunk] = rawValue === null ? null : decoder2.mapFromDriverValue(rawValue);
-          if (joinsNotNullableMap && is(field, Column) && path11.length === 2) {
-            const objectName = path11[0];
+          if (joinsNotNullableMap && is(field, Column) && path12.length === 2) {
+            const objectName = path12[0];
             if (!(objectName in nullifyMap)) {
               nullifyMap[objectName] = value === null ? getTableName(field.table) : false;
             } else if (typeof nullifyMap[objectName] === "string" && nullifyMap[objectName] !== getTableName(field.table)) {
@@ -41231,7 +41231,10 @@ __export(schema_exports, {
   insurerRideTransportDocumentsTable: () => insurerRideTransportDocumentsTable,
   invoiceItemsTable: () => invoiceItemsTable,
   invoicesTable: () => invoicesTable,
+  medicalCasesTable: () => medicalCasesTable,
   medicalDocumentExtractionsTable: () => medicalDocumentExtractionsTable,
+  medicalDocumentsTable: () => medicalDocumentsTable,
+  medicalReviewsTable: () => medicalReviewsTable,
   panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
   partnerRegistrationDocumentsTable: () => partnerRegistrationDocumentsTable,
@@ -41252,7 +41255,7 @@ __export(schema_exports, {
   supportMessagesTable: () => supportMessagesTable,
   supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41314,7 +41317,11 @@ var init_schema2 = __esm({
        */
       partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false),
       /** ONRODA-Provision (0.10 = 10 %), siehe ride_financials bei completed. */
-      commission_rate: doublePrecision("commission_rate").notNull().default(0.1)
+      commission_rate: doublePrecision("commission_rate").notNull().default(0.1),
+      /** Institutionskennzeichen (IK) des Partners — Snapshot in medical_cases. */
+      partner_ik_number: text("partner_ik_number").notNull().default(""),
+      /** ONRODA-Admin: Krankenfahrten + Transportschein-Scanner für diesen Mandanten. */
+      medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false)
     });
     fleetDriversTable = pgTable("fleet_drivers", {
       id: text("id").primaryKey(),
@@ -41352,6 +41359,10 @@ var init_schema2 = __esm({
       last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
       /** Fleet-App: neue Markt-Sofortaufträge annehmen (false = offline am Markt). */
       is_market_online: boolean("is_market_online").notNull().default(false),
+      /** ONRODA-Admin: Fahrer-Override für Krankenfahrten (wirksam wenn inherit=false). */
+      medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
+      /** true = medical_transport_enabled vom Unternehmen erben. */
+      medical_transport_inherit_from_company: boolean("medical_transport_inherit_from_company").notNull().default(true),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
       reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true })
@@ -41922,6 +41933,50 @@ var init_schema2 = __esm({
       total_rides: integer("total_rides").notNull(),
       status: text("status").notNull().default("active"),
       meta: jsonb("meta").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    medicalCasesTable = pgTable("medical_cases", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      ride_id: text("ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+      series_id: text("series_id").references(() => partnerRideSeriesTable.id, { onDelete: "set null" }),
+      patient_display_name: text("patient_display_name").notNull().default(""),
+      patient_reference: text("patient_reference").notNull().default(""),
+      insurance_name: text("insurance_name").notNull().default(""),
+      insurance_ik: text("insurance_ik").notNull().default(""),
+      partner_ik_number: text("partner_ik_number").notNull().default(""),
+      case_type: text("case_type").notNull().default("transport_sheet"),
+      date_logic_type: text("date_logic_type").notNull().default("today"),
+      date_logic_context_json: jsonb("date_logic_context_json").$type().notNull().default({}),
+      status: text("status").notNull().default("open"),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    medicalDocumentsTable = pgTable("medical_documents", {
+      id: text("id").primaryKey(),
+      case_id: text("case_id").notNull().references(() => medicalCasesTable.id, { onDelete: "cascade" }),
+      ride_id: text("ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+      document_type: text("document_type").notNull().default("transport_sheet"),
+      storage_key: text("storage_key").notNull().default(""),
+      mime_type: text("mime_type").notNull().default(""),
+      ocr_provider: text("ocr_provider").notNull().default(""),
+      ocr_model: text("ocr_model").notNull().default(""),
+      ocr_raw_json: jsonb("ocr_raw_json").$type().notNull().default({}),
+      ocr_extracted_json: jsonb("ocr_extracted_json").$type().notNull().default({}),
+      ocr_confidence_json: jsonb("ocr_confidence_json").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    medicalReviewsTable = pgTable("medical_reviews", {
+      id: text("id").primaryKey(),
+      case_id: text("case_id").notNull().references(() => medicalCasesTable.id, { onDelete: "cascade" }),
+      document_id: text("document_id").notNull().references(() => medicalDocumentsTable.id, { onDelete: "cascade" }),
+      traffic_light: text("traffic_light").notNull().default("yellow"),
+      warnings_json: jsonb("warnings_json").$type().notNull().default([]),
+      date_logic_result_json: jsonb("date_logic_result_json").$type().notNull().default({}),
+      reviewer_actor_kind: text("reviewer_actor_kind").notNull().default("system"),
+      reviewer_actor_id: text("reviewer_actor_id"),
+      reviewed_at: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
+      auto_approved: boolean("auto_approved").notNull().default(false),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
     billingExportBatchesTable = pgTable("billing_export_batches", {
@@ -46062,7 +46117,8 @@ function rowToCompany(r) {
     release_radius_km: r.release_radius_km,
     panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null,
     partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
-    commission_rate: typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1
+    commission_rate: typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
+    medical_transport_enabled: Boolean(r.medical_transport_enabled)
   };
 }
 function rowToFareArea(r) {
@@ -46342,7 +46398,8 @@ function companyRowToDbValues(c) {
     release_radius_km: c.release_radius_km,
     panel_modules: c.panel_modules ?? null,
     partner_panel_profile_locked: c.partner_panel_profile_locked,
-    commission_rate: c.commission_rate
+    commission_rate: c.commission_rate,
+    medical_transport_enabled: c.medical_transport_enabled
   };
 }
 function applyAdminCompanyPatch(cur, body) {
@@ -46446,6 +46503,9 @@ function applyAdminCompanyPatch(cur, body) {
   if (typeof body.commission_rate === "number" && Number.isFinite(body.commission_rate)) {
     next.commission_rate = Math.min(1, Math.max(0, body.commission_rate));
   }
+  if (typeof body.medical_transport_enabled === "boolean") {
+    next.medical_transport_enabled = body.medical_transport_enabled;
+  }
   return next;
 }
 async function insertAdminCompany(body) {
@@ -46502,7 +46562,8 @@ async function insertAdminCompany(body) {
     release_radius_km: 10,
     panel_modules: null,
     partner_panel_profile_locked: false,
-    commission_rate: 0.1
+    commission_rate: 0.1,
+    medical_transport_enabled: false
   };
   const next = applyAdminCompanyPatch(base, body);
   const db2 = getDb();
@@ -46896,7 +46957,8 @@ var init_adminData = __esm({
           "taxi_fleet"
         ],
         partner_panel_profile_locked: false,
-        commission_rate: 0.1
+        commission_rate: 0.1,
+        medical_transport_enabled: false
       },
       {
         id: "co-demo-2",
@@ -46948,7 +47010,8 @@ var init_adminData = __esm({
         release_radius_km: 8,
         panel_modules: null,
         partner_panel_profile_locked: false,
-        commission_rate: 0.1
+        commission_rate: 0.1,
+        medical_transport_enabled: false
       }
     ];
     seedFareAreas = [
@@ -47327,6 +47390,7 @@ __export(fleetDriversData_exports, {
   setFleetDriverApprovalForCompany: () => setFleetDriverApprovalForCompany,
   setFleetDriverApprovalStatusOnlyForCompany: () => setFleetDriverApprovalStatusOnlyForCompany,
   setFleetDriverMarketOnline: () => setFleetDriverMarketOnline,
+  setFleetDriverMedicalTransport: () => setFleetDriverMedicalTransport,
   setFleetDriverReadinessOverrideSystem: () => setFleetDriverReadinessOverrideSystem,
   setReservationSuspension: () => setReservationSuspension,
   suspendFleetDriver: () => suspendFleetDriver,
@@ -47380,7 +47444,9 @@ function fleetDriverTableRowToList(r) {
     adminInternalNote: r.admin_internal_note ?? "",
     readinessOverrideSystem: Boolean(r.readiness_override_system),
     reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
-    isMarketOnline: Boolean(r.is_market_online)
+    isMarketOnline: Boolean(r.is_market_online),
+    medicalTransportEnabled: Boolean(r.medical_transport_enabled),
+    medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company)
   };
 }
 function rowToList(r) {
@@ -47648,6 +47714,20 @@ async function setFleetDriverReadinessOverrideSystem(companyId, driverId, enable
   const db2 = getDb();
   if (!db2) return false;
   const r = await db2.update(fleetDriversTable).set({ readiness_override_system: enabled, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setFleetDriverMedicalTransport(companyId, driverId, patch) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (typeof patch.enabled === "boolean") set.medical_transport_enabled = patch.enabled;
+  if (typeof patch.inheritFromCompany === "boolean") {
+    set.medical_transport_inherit_from_company = patch.inheritFromCompany;
+  }
+  if (set.medical_transport_enabled === void 0 && set.medical_transport_inherit_from_company === void 0) {
+    return false;
+  }
+  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
   return r.length > 0;
 }
 async function setFleetDriverApprovalForCompany(companyId, driverId, nextStatus) {
@@ -48267,6 +48347,78 @@ var init_fleetVehiclesData = __esm({
   }
 });
 
+// src/lib/medical/medicalTransportAuthorization.ts
+function computeMedicalTransportAuthorized(flags) {
+  if (!flags.companyMedicalTransportEnabled) return false;
+  if (flags.driverInheritFromCompany) return true;
+  return flags.driverMedicalTransportEnabled;
+}
+function medicalTransportAuthorizationFromRows(driverRow, companyRow) {
+  const companyEnabled = Boolean(companyRow.medical_transport_enabled);
+  const authorized = computeMedicalTransportAuthorized({
+    companyMedicalTransportEnabled: companyEnabled,
+    driverMedicalTransportEnabled: Boolean(driverRow.medical_transport_enabled),
+    driverInheritFromCompany: Boolean(driverRow.medical_transport_inherit_from_company)
+  });
+  return { companyEnabled, authorized };
+}
+async function findCompanyMedicalTransportRow(companyId) {
+  const cid = companyId.trim();
+  if (!cid || !isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    medical_transport_enabled: adminCompaniesTable.medical_transport_enabled,
+    is_active: adminCompaniesTable.is_active,
+    is_blocked: adminCompaniesTable.is_blocked
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
+  return rows[0] ?? null;
+}
+async function resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId) {
+  const driverRow = await findFleetDriverInCompany(fleetDriverId.trim(), companyId.trim());
+  if (!driverRow) return null;
+  const companyRow = await findCompanyMedicalTransportRow(companyId);
+  if (!companyRow) return null;
+  return medicalTransportAuthorizationFromRows(driverRow, companyRow);
+}
+async function isMedicalTransportPlatformAvailable() {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const rows = await db2.select({ id: adminCompaniesTable.id }).from(adminCompaniesTable).where(
+    and(
+      eq(adminCompaniesTable.medical_transport_enabled, true),
+      eq(adminCompaniesTable.is_active, true),
+      eq(adminCompaniesTable.is_blocked, false)
+    )
+  ).limit(1);
+  return rows.length > 0;
+}
+async function assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId) {
+  const authorization = await resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId);
+  if (!authorization?.authorized) {
+    return { ok: false, error: MEDICAL_TRANSPORT_NOT_AUTHORIZED };
+  }
+  return { ok: true, authorization };
+}
+async function assertMedicalTransportPlatformAvailable() {
+  const available = await isMedicalTransportPlatformAvailable();
+  if (!available) {
+    return { ok: false, error: MEDICAL_TRANSPORT_NOT_AUTHORIZED };
+  }
+  return { ok: true };
+}
+var MEDICAL_TRANSPORT_NOT_AUTHORIZED;
+var init_medicalTransportAuthorization = __esm({
+  "src/lib/medical/medicalTransportAuthorization.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_fleetDriversData();
+    init_schema2();
+    MEDICAL_TRANSPORT_NOT_AUTHORIZED = "medical_transport_not_authorized";
+  }
+});
+
 // src/db/fleetDriverReadiness.ts
 function buildFleetDriverMeClientHints(readiness, listRow) {
   if (readiness.ready) {
@@ -48467,28 +48619,56 @@ function assignedVehicleMeta(driverId, assignRows, vehicles) {
     approvalStatus: v.approvalStatus
   };
 }
+async function medicalTransportFieldsForDriver(companyId, listRow) {
+  const company = await findCompanyById(companyId);
+  const auth = medicalTransportAuthorizationFromRows(
+    {
+      medical_transport_enabled: listRow.medicalTransportEnabled,
+      medical_transport_inherit_from_company: listRow.medicalTransportInheritFromCompany
+    },
+    { medical_transport_enabled: Boolean(company?.medical_transport_enabled) }
+  );
+  return {
+    medicalTransportCompanyEnabled: auth.companyEnabled,
+    medicalTransportAuthorized: auth.authorized
+  };
+}
 async function listAdminTaxiFleetDriverRows(companyId) {
-  const [views, ass, veh] = await Promise.all([
+  const [views, ass, veh, company] = await Promise.all([
     getPanelFleetDriverViews(companyId),
     listAssignmentsForCompany(companyId),
-    listFleetVehiclesForCompany(companyId)
+    listFleetVehiclesForCompany(companyId),
+    findCompanyById(companyId)
   ]);
-  return views.map((v) => ({
-    ...v,
-    assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
-    pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
-    suspensionReason: v.suspensionReason,
-    adminInternalNote: v.adminInternalNote
-  }));
+  const companyEnabled = Boolean(company?.medical_transport_enabled);
+  return views.map((v) => {
+    const auth = medicalTransportAuthorizationFromRows(
+      {
+        medical_transport_enabled: v.medicalTransportEnabled,
+        medical_transport_inherit_from_company: v.medicalTransportInheritFromCompany
+      },
+      { medical_transport_enabled: companyEnabled }
+    );
+    return {
+      ...v,
+      assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
+      pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
+      suspensionReason: v.suspensionReason,
+      adminInternalNote: v.adminInternalNote,
+      medicalTransportCompanyEnabled: auth.companyEnabled,
+      medicalTransportAuthorized: auth.authorized
+    };
+  });
 }
 async function getAdminTaxiFleetDriverDetail(companyId, driverId) {
   const r = await findFleetDriverInCompany(driverId, companyId);
   if (!r) return null;
   const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh] = await Promise.all([
+  const [gate, ass, veh, medical] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listAssignmentsForCompany(companyId),
-    listFleetVehiclesForCompany(companyId)
+    listFleetVehiclesForCompany(companyId),
+    medicalTransportFieldsForDriver(companyId, listRow)
   ]);
   const av = assignedVehicleForDriver(listRow.id, ass, veh);
   const view = {
@@ -48501,17 +48681,21 @@ async function getAdminTaxiFleetDriverDetail(companyId, driverId) {
     assignedVehicle: assignedVehicleMeta(listRow.id, ass, veh),
     pScheinDocPresent: !pScheinDocMissing(listRow.pScheinDocStorageKey),
     suspensionReason: listRow.suspensionReason,
-    adminInternalNote: listRow.adminInternalNote
+    adminInternalNote: listRow.adminInternalNote,
+    medicalTransportCompanyEnabled: medical.medicalTransportCompanyEnabled,
+    medicalTransportAuthorized: medical.medicalTransportAuthorized
   };
 }
 var MSG, READINESS_OVERRIDE_HARD_STOPS;
 var init_fleetDriverReadiness = __esm({
   "src/db/fleetDriverReadiness.ts"() {
     init_companyGovernanceData();
+    init_adminData();
     init_fleetDriversData();
     init_fleetAssignmentsData();
     init_fleetVehiclesData();
     init_fleetDriversData();
+    init_medicalTransportAuthorization();
     MSG = {
       company_not_ready: "Unternehmen ist noch nicht vollst\xE4ndig freigegeben (Verifizierung, Nachweise, Vertrag oder Stammdaten).",
       driver_suspended: "Fahrerzugang ist gesperrt.",
@@ -48569,6 +48753,10 @@ async function listMarketOnlineDriversEligibleForInstantRide(ride) {
     const capability = await getFleetDriverCapability(fleetDriverId, companyId);
     if (!capability?.vehicleLegalType) continue;
     if (!isRideCompatibleWithCapability(ride, capability)) continue;
+    if (ride.rideKind === "medical") {
+      const medicalAuth = await resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId);
+      if (!medicalAuth?.authorized) continue;
+    }
     out.push({ fleetDriverId, companyId });
   }
   return out;
@@ -48580,6 +48768,7 @@ var init_fleetInstantRideMarketData = __esm({
     init_client();
     init_fleetDriverReadiness();
     init_fleetMatchingData();
+    init_medicalTransportAuthorization();
     init_schema2();
     INSTANT_MARKET_STATUSES = /* @__PURE__ */ new Set([
       "pending",
@@ -49043,7 +49232,7 @@ var wrapper_default = import_websocket.default;
 var import_express24 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
-import path10 from "path";
+import path11 from "path";
 import { fileURLToPath as fileURLToPath5 } from "node:url";
 
 // src/routes/index.ts
@@ -49530,8 +49719,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path11, errorMaps, issueData } = params;
-  const fullPath = [...path11, ...issueData.path || []];
+  const { data, path: path12, errorMaps, issueData } = params;
+  const fullPath = [...path12, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -49647,11 +49836,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path11, key) {
+  constructor(parent, value, path12, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path11;
+    this._path = path12;
     this._key = key;
   }
   get path() {
@@ -53857,6 +54046,7 @@ init_fleetDriverReadiness();
 init_fleetDriversData();
 init_dispatchStatus();
 init_driverRideExpoPush();
+init_medicalTransportAuthorization();
 init_appOperationalData();
 init_financeCalculationService();
 
@@ -57623,6 +57813,19 @@ async function patchRideStatusRoute(req, res, next) {
         });
         return;
       }
+      if (cur.rideKind === "medical") {
+        const medicalAuthz = await assertMedicalTransportAuthorizedForFleetDriver(
+          capabilityCompanyId,
+          driverId
+        );
+        if (!medicalAuthz.ok) {
+          res.status(403).json({
+            error: MEDICAL_TRANSPORT_NOT_AUTHORIZED,
+            message: "Krankenfahrten f\xFCr dieses Unternehmen oder diesen Fahrer sind nicht freigeschaltet."
+          });
+          return;
+        }
+      }
       companyIdOnAccept = capabilityCompanyId;
     }
     let finalFareForPatch = parsedFinalFare;
@@ -58231,8 +58434,8 @@ import { createHash, randomBytes as randomBytes4 } from "crypto";
 import admin from "firebase-admin";
 function isFirebaseAdminConfigured() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
-  const path11 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
-  return raw.length > 0 || path11.length > 0;
+  const path12 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
+  return raw.length > 0 || path12.length > 0;
 }
 function ensureFirebaseApp() {
   if (admin.apps.length > 0) {
@@ -58730,6 +58933,7 @@ import { createHash as createHash2, randomInt } from "node:crypto";
 var EMAIL_VERIFICATION_TTL_MS = 10 * 60 * 1e3;
 var EMAIL_VERIFICATION_MAX_ATTEMPTS = 5;
 var CUSTOMER_REGISTRATION_PURPOSE = "customer_registration";
+var CUSTOMER_PASSWORD_RESET_PURPOSE = "customer_password_reset";
 var PURPOSE_SAFE = /^[a-z][a-z0-9_]{0,62}$/;
 function normalizeCustomerEmail(raw) {
   return raw.trim().toLowerCase();
@@ -58813,6 +59017,15 @@ async function insertCustomerAccount(row) {
   const created = await findCustomerAccountById(row.id);
   if (!created) throw new Error("customer_account_insert_failed");
   return created;
+}
+async function updateCustomerAccountPassword(email, passwordHash) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const normalizedEmail = normalizeCustomerEmail(email);
+  if (!normalizedEmail) return false;
+  const now = /* @__PURE__ */ new Date();
+  const rows = await db2.update(customerAccountsTable).set({ password_hash: passwordHash, updated_at: now }).where(eq(customerAccountsTable.email, normalizedEmail)).returning({ id: customerAccountsTable.id });
+  return rows.length > 0;
 }
 async function listCustomerAccountsAdmin(limit = 500) {
   const db2 = getDb();
@@ -58984,6 +59197,19 @@ async function dispatchEmailVerificationCode(opts) {
       return { ok: false, error: "account_exists", status: 409 };
     }
   }
+  if (purpose === CUSTOMER_PASSWORD_RESET_PURPOSE) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (!accountCheck.exists) {
+      logger.info(
+        { event: "auth.email.start.password_reset_no_account", emailDomain: normalized.split("@")[1] ?? "" },
+        "password reset requested for unknown email \u2014 neutral ok, no code sent"
+      );
+      return { ok: true };
+    }
+  }
   const ipKey = clientIpKey(opts.ip);
   const rollingHour = 60 * 60 * 1e3;
   const ipTh = throttleIpRollingHour(ipKey, maxSendsIpPerHour(), rollingHour);
@@ -59063,6 +59289,15 @@ async function verifyEmailCode(opts) {
     }
     if (accountCheck.exists) {
       return { ok: false, error: "account_exists", status: 409 };
+    }
+  }
+  if (purpose === CUSTOMER_PASSWORD_RESET_PURPOSE) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (!accountCheck.exists) {
+      return { ok: false, error: "invalid_code", status: 400 };
     }
   }
   const row = await getLatestUnconsumedRowAnyExpiry(normalized, purpose);
@@ -59307,6 +59542,44 @@ async function loginCustomerAccount(opts) {
   }
   return { ok: true, sessionToken, customer: toPublicDto(row) };
 }
+async function confirmCustomerPasswordReset(opts) {
+  if (!isPostgresConfigured() || !getDb()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+  const email = normalizeCustomerEmail(typeof opts.bodyEmail === "string" ? opts.bodyEmail : "");
+  const proofToken = typeof opts.bodyProofToken === "string" ? opts.bodyProofToken.trim() : "";
+  const password = typeof opts.bodyPassword === "string" ? opts.bodyPassword : "";
+  const passwordConfirm = typeof opts.bodyPasswordConfirm === "string" ? opts.bodyPasswordConfirm : "";
+  if (!isPlausibleRegistrationEmail(email) || !proofToken) {
+    return { ok: false, error: "invalid_params", status: 400 };
+  }
+  const pwCheck = validateCustomerPassword(password);
+  if (!pwCheck.ok) {
+    return { ok: false, error: pwCheck.error, status: 400 };
+  }
+  if (!passwordsMatch(password, passwordConfirm)) {
+    return { ok: false, error: "password_mismatch", status: 400 };
+  }
+  const proof = await verifyEmailVerificationProofJwt(proofToken);
+  if (!proof || proof.email !== email || proof.purpose !== CUSTOMER_PASSWORD_RESET_PURPOSE) {
+    return { ok: false, error: "invalid_proof_token", status: 400 };
+  }
+  const existing = await findCustomerAccountByEmail(email);
+  if (!existing) {
+    return { ok: false, error: "invalid_params", status: 400 };
+  }
+  let passwordHash;
+  try {
+    passwordHash = await hashPassword(password);
+  } catch {
+    return { ok: false, error: "password_hash_failed", status: 500 };
+  }
+  const updated = await updateCustomerAccountPassword(email, passwordHash);
+  if (!updated) {
+    return { ok: false, error: "account_not_found", status: 400 };
+  }
+  return { ok: true };
+}
 
 // src/routes/customerAuth.ts
 var router5 = (0, import_express5.Router)();
@@ -59349,6 +59622,19 @@ router5.post("/auth/customer/login", async (req, res) => {
     return;
   }
   res.json({ ok: true, sessionToken: outcome.sessionToken, customer: outcome.customer });
+});
+router5.post("/auth/customer/password-reset/confirm", async (req, res) => {
+  const outcome = await confirmCustomerPasswordReset({
+    bodyEmail: req.body?.email,
+    bodyProofToken: req.body?.proofToken ?? req.body?.proof_token,
+    bodyPassword: req.body?.password,
+    bodyPasswordConfirm: req.body?.passwordConfirm ?? req.body?.password_confirm
+  });
+  if (!outcome.ok) {
+    res.status(outcome.status).json({ ok: false, error: outcome.error });
+    return;
+  }
+  res.json({ ok: true });
 });
 var customerAuth_default = router5;
 
@@ -66403,6 +66689,50 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-overr
     next(e);
   }
 });
+adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/medical-transport", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = req.body ?? {};
+    const patch = {};
+    if (b.enabled === true || b.enabled === false) patch.enabled = b.enabled;
+    if (b.inheritFromCompany === true || b.inheritFromCompany === false) {
+      patch.inheritFromCompany = b.inheritFromCompany;
+    }
+    if (patch.enabled === void 0 && patch.inheritFromCompany === void 0) {
+      res.status(400).json({
+        error: "body_required",
+        hint: 'Send {"enabled": boolean} and/or {"inheritFromCompany": boolean}.'
+      });
+      return;
+    }
+    const ok2 = await setFleetDriverMedicalTransport(companyId, driverId, patch);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID28(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.medical_transport",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { ...patch, adminUserId: adminId }
+    });
+    const driver = await getAdminTaxiFleetDriverDetail(companyId, driverId);
+    res.json({ ok: true, driver });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
@@ -67529,10 +67859,27 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
     if (!allowed) return;
     const body = req.body;
+    const prev = typeof body.medical_transport_enabled === "boolean" ? await findCompanyById(req.params.companyId) : null;
     const item = await updateAdminCompany(req.params.companyId, body);
     if (!item) {
       res.status(404).json({ error: "not_found" });
       return;
+    }
+    if (prev && typeof body.medical_transport_enabled === "boolean" && prev.medical_transport_enabled !== body.medical_transport_enabled && isPostgresConfigured()) {
+      const adminId = await resolveAdminAuthUserIdForSupport(req);
+      await insertPanelAuditLog({
+        id: randomUUID28(),
+        companyId: req.params.companyId,
+        actorPanelUserId: null,
+        action: "admin.company.medical_transport_enabled",
+        subjectType: "company",
+        subjectId: req.params.companyId,
+        meta: {
+          enabled: body.medical_transport_enabled,
+          previous: prev.medical_transport_enabled,
+          adminUserId: adminId
+        }
+      });
     }
     res.json({ ok: true, item });
   } catch (e) {
@@ -70535,6 +70882,23 @@ async function insertPartnerRideSeries(input) {
   if (!r) throw new Error("partner_ride_series insert failed");
   return rowToSeries(r);
 }
+async function findPartnerRideSeriesById(id, companyId) {
+  const db2 = getDb();
+  const sid = id.trim();
+  if (!sid) return null;
+  if (!db2) {
+    const row = memSeries.find((s) => s.id === sid);
+    if (!row) return null;
+    if (companyId && row.companyId !== companyId.trim()) return null;
+    return row;
+  }
+  const rows = await db2.select().from(partnerRideSeriesTable).where(eq(partnerRideSeriesTable.id, sid)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  const mapped = rowToSeries(r);
+  if (companyId && mapped.companyId !== companyId.trim()) return null;
+  return mapped;
+}
 async function listPartnerRideSeriesForCompany(companyId) {
   const db2 = getDb();
   if (!db2) {
@@ -73160,6 +73524,1340 @@ async function listActualDurationMinutesByRideIds(rideIds) {
 init_adminData();
 init_appOperationalData();
 init_financeCalculationService();
+
+// src/lib/medical/medicalScanService.ts
+init_drizzle_orm();
+init_client();
+import { randomUUID as randomUUID34 } from "node:crypto";
+import { mkdir as mkdir6, writeFile as writeFile6 } from "node:fs/promises";
+import path8 from "node:path";
+
+// src/db/medicalCasesData.ts
+init_drizzle_orm();
+import { randomUUID as randomUUID31 } from "node:crypto";
+
+// src/lib/medical/medicalOcrNormalize.ts
+var MEDICAL_OCR_EXTRACTED_FIELDS = [
+  "patientDisplayName",
+  "patientReference",
+  "insuranceName",
+  "insuranceIk",
+  "partnerIkNumber",
+  "transportDate",
+  "validFrom",
+  "validUntil",
+  "documentKind",
+  "behandlungsArt",
+  "pflegegrad",
+  "merkzeichen",
+  "genehmigungsnummer"
+];
+var EMPTY_EXTRACTED = {
+  patientDisplayName: "",
+  patientReference: "",
+  insuranceName: "",
+  insuranceIk: "",
+  partnerIkNumber: "",
+  transportDate: null,
+  validFrom: null,
+  validUntil: null,
+  documentKind: "transport_sheet",
+  behandlungsArt: "unbekannt",
+  pflegegrad: "unbekannt",
+  merkzeichen: "unbekannt",
+  genehmigungsnummer: null
+};
+function isRecord2(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function pickString(raw, keys) {
+  for (const k of keys) {
+    const v = raw[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  }
+  return "";
+}
+function normalizeIk(raw) {
+  return raw.replace(/\D/g, "").slice(0, 9);
+}
+function normalizeMedicalOcrDate(raw) {
+  if (raw == null) return null;
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    return raw.toISOString().slice(0, 10);
+  }
+  const s = String(raw).trim();
+  if (!s) return null;
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const de = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (de) {
+    const dd = de[1].padStart(2, "0");
+    const mm = de[2].padStart(2, "0");
+    return `${de[3]}-${mm}-${dd}`;
+  }
+  const t = Date.parse(s);
+  if (Number.isFinite(t)) return new Date(t).toISOString().slice(0, 10);
+  return null;
+}
+function parseDocumentKind(raw) {
+  const v = raw.trim().toLowerCase();
+  if (v === "signature_image" || v === "signature") return "signature_image";
+  if (v === "other") return "other";
+  return "transport_sheet";
+}
+function parseMedicalBehandlungsArt(raw) {
+  const v = String(raw ?? "").trim().toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v === "ambulant" || v.includes("ambulant") || v === "outpatient") {
+    return "ambulant";
+  }
+  if (v === "stationaer" || v === "station\xE4r" || v.includes("stationaer") || v.includes("stationar") || v === "inpatient") {
+    return "stationaer";
+  }
+  return "unbekannt";
+}
+function parseMedicalPflegegrad(raw) {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v === "keins" || v === "keine" || v === "none" || v === "0" || v === "nein") return "keins";
+  const digit = v.match(/\b([345])\b/)?.[1];
+  if (digit === "3" || digit === "4" || digit === "5") return digit;
+  return "unbekannt";
+}
+function parseMedicalMerkzeichen(raw) {
+  const v = String(raw ?? "").trim();
+  if (!v || v.toLowerCase() === "unbekannt" || v.toLowerCase() === "unknown") return "unbekannt";
+  if (v.toLowerCase() === "keins" || v.toLowerCase() === "keine" || v.toLowerCase() === "none") return "keins";
+  const compact = v.replace(/\s+/g, "");
+  if (/^aG$/i.test(compact) || compact.toLowerCase() === "ag") return "aG";
+  if (/^Bl$/i.test(compact) || compact.toLowerCase() === "bl") return "Bl";
+  if (compact === "H" || compact.toLowerCase() === "h") return "H";
+  const upper = v.toUpperCase();
+  if (upper.includes("AG") && !upper.includes("BL")) return "aG";
+  if (upper.includes("BL")) return "Bl";
+  if (/\bH\b/.test(v)) return "H";
+  return "unbekannt";
+}
+function normalizeGenehmigungsnummer(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "unbekannt") return null;
+  return s.slice(0, 64);
+}
+function parseHasSignatureOnDocument(raw) {
+  if (!isRecord2(raw)) return void 0;
+  const nested = isRecord2(raw.extracted) ? raw.extracted : raw;
+  if (typeof nested.hasSignatureOnDocument === "boolean") return nested.hasSignatureOnDocument;
+  if (typeof nested.has_signature_on_document === "boolean") return nested.has_signature_on_document;
+  return void 0;
+}
+function pickConfidence(raw) {
+  const out = {};
+  const conf = raw.confidence ?? raw.confidences ?? raw.field_confidence;
+  const source = isRecord2(conf) ? conf : raw;
+  if (!isRecord2(source)) return out;
+  for (const field of MEDICAL_OCR_EXTRACTED_FIELDS) {
+    const v = source[field];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      out[field] = Math.max(0, Math.min(1, v));
+    }
+  }
+  return out;
+}
+function normalizeMedicalOcrPayload(raw) {
+  if (!isRecord2(raw)) {
+    return { extracted: { ...EMPTY_EXTRACTED }, confidence: {} };
+  }
+  const nested = isRecord2(raw.extracted) ? raw.extracted : isRecord2(raw.fields) ? raw.fields : raw;
+  const patientDisplayName = pickString(nested, [
+    "patientDisplayName",
+    "patient_display_name",
+    "patientName",
+    "patient_name",
+    "name"
+  ]).slice(0, 200);
+  const patientReference = pickString(nested, [
+    "patientReference",
+    "patient_reference",
+    "patientId",
+    "patient_id",
+    "versichertennummer"
+  ]).slice(0, 120);
+  const insuranceName = pickString(nested, [
+    "insuranceName",
+    "insurance_name",
+    "krankenkasse",
+    "kasse",
+    "health_insurance"
+  ]).slice(0, 200);
+  const insuranceIkRaw = pickString(nested, [
+    "insuranceIk",
+    "insurance_ik",
+    "kassenIk",
+    "kassen_ik",
+    "kk_ik"
+  ]);
+  const insuranceIk = normalizeIk(insuranceIkRaw);
+  const partnerIkRaw = pickString(nested, [
+    "partnerIkNumber",
+    "partner_ik_number",
+    "leistungserbringerIk",
+    "leistungserbringer_ik",
+    "provider_ik"
+  ]);
+  const partnerIkNumber = normalizeIk(partnerIkRaw);
+  const transportDate = normalizeMedicalOcrDate(
+    nested.transportDate ?? nested.transport_date ?? nested.fahrtdatum ?? nested.ride_date ?? nested.date
+  );
+  const validFrom = normalizeMedicalOcrDate(
+    nested.validFrom ?? nested.valid_from ?? nested.gueltig_ab ?? nested.gueltigAb
+  );
+  const validUntil = normalizeMedicalOcrDate(
+    nested.validUntil ?? nested.valid_until ?? nested.gueltig_bis ?? nested.gueltigBis
+  );
+  const documentKind = parseDocumentKind(
+    pickString(nested, ["documentKind", "document_kind", "documentType", "document_type"])
+  );
+  const behandlungsArt = parseMedicalBehandlungsArt(
+    nested.behandlungsArt ?? nested.behandlungs_art ?? nested.behandlungsart ?? nested.treatmentType ?? nested.treatment_type
+  );
+  const pflegegrad = parseMedicalPflegegrad(
+    nested.pflegegrad ?? nested.pflegegrad_level ?? nested.careLevel ?? nested.care_level
+  );
+  const merkzeichen = parseMedicalMerkzeichen(
+    nested.merkzeichen ?? nested.merkzeichen_code ?? nested.disabilityMark ?? nested.disability_mark
+  );
+  const genehmigungsnummer = normalizeGenehmigungsnummer(
+    nested.genehmigungsnummer ?? nested.genehmigungs_nummer ?? nested.approvalNumber ?? nested.approval_number ?? nested.kk_genehmigungsnummer
+  );
+  const confidence = pickConfidence(raw);
+  return {
+    extracted: {
+      patientDisplayName,
+      patientReference,
+      insuranceName,
+      insuranceIk,
+      partnerIkNumber,
+      transportDate,
+      validFrom,
+      validUntil,
+      documentKind,
+      behandlungsArt,
+      pflegegrad,
+      merkzeichen,
+      genehmigungsnummer
+    },
+    confidence
+  };
+}
+
+// src/lib/medical/medicalDateLogic.ts
+var MEDICAL_DATE_LOGIC_TYPES = [
+  "today",
+  "series",
+  "return_trip",
+  "long_term_treatment"
+];
+function isMedicalDateLogicType(v) {
+  return MEDICAL_DATE_LOGIC_TYPES.includes(v);
+}
+function parseMedicalDateLogicType(raw) {
+  const v = (raw ?? "").trim().toLowerCase();
+  return isMedicalDateLogicType(v) ? v : "today";
+}
+var BERLIN_TZ2 = "Europe/Berlin";
+function berlinCalendarDay(d) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: BERLIN_TZ2,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(d);
+}
+function toDate(v) {
+  if (v == null) return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  const t = Date.parse(String(v));
+  return Number.isFinite(t) ? new Date(t) : null;
+}
+function dayDiff(a, b) {
+  const ta = Date.parse(`${a}T12:00:00.000Z`);
+  const tb = Date.parse(`${b}T12:00:00.000Z`);
+  if (!Number.isFinite(ta) || !Number.isFinite(tb)) return null;
+  return Math.round((ta - tb) / 864e5);
+}
+function pickOcrRideDate(extracted) {
+  return extracted.transportDate ?? extracted.validFrom ?? null;
+}
+function evaluateToday(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const ride = toDate(input.rideScheduledAt);
+  const expectedDate = ride ? berlinCalendarDay(ride) : berlinCalendarDay(now);
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const warningCodes = [];
+  let severity = "ok";
+  if (!ocrDate) {
+    warningCodes.push("missing_ocr_date");
+    severity = "warn";
+  } else if (ocrDate !== expectedDate) {
+    const diff = dayDiff(ocrDate, expectedDate);
+    warningCodes.push("ride_date_mismatch");
+    severity = diff != null && Math.abs(diff) <= 1 ? "warn" : "fail";
+  }
+  return {
+    type: "today",
+    passed: severity === "ok",
+    severity,
+    expectedDate,
+    ocrDate,
+    warningCodes,
+    details: { rideScheduledAt: ride?.toISOString() ?? null }
+  };
+}
+function evaluateSeries(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const ride = toDate(input.rideScheduledAt);
+  const expectedDate = ride ? berlinCalendarDay(ride) : berlinCalendarDay(now);
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const warningCodes = [];
+  let severity = "ok";
+  const series = input.series;
+  if (!series?.id) {
+    warningCodes.push("missing_series");
+    severity = "fail";
+  } else {
+    const from = normalizeMedicalOcrDate(series.validFrom);
+    const until = normalizeMedicalOcrDate(series.validUntil);
+    if (from && expectedDate < from) {
+      warningCodes.push("series_before_valid_from");
+      severity = "fail";
+    }
+    if (until && expectedDate > until) {
+      warningCodes.push("series_after_valid_until");
+      severity = "fail";
+    }
+    const completed = series.completedRides ?? 0;
+    if (series.totalRides > 0 && completed >= series.totalRides) {
+      warningCodes.push("series_quota_exhausted");
+      severity = severity === "fail" ? "fail" : "warn";
+    }
+  }
+  if (!ocrDate) {
+    warningCodes.push("missing_ocr_date");
+    if (severity !== "fail") severity = "warn";
+  } else if (ocrDate !== expectedDate && severity !== "fail") {
+    warningCodes.push("ride_date_mismatch");
+    severity = "warn";
+  }
+  return {
+    type: "series",
+    passed: severity === "ok",
+    severity,
+    expectedDate,
+    ocrDate,
+    warningCodes,
+    details: {
+      seriesId: series?.id ?? null,
+      validFrom: series ? normalizeMedicalOcrDate(series.validFrom) : null,
+      validUntil: series ? normalizeMedicalOcrDate(series.validUntil) : null,
+      totalRides: series?.totalRides ?? null,
+      completedRides: series?.completedRides ?? null
+    }
+  };
+}
+function evaluateReturnTrip(input) {
+  const ride = toDate(input.rideScheduledAt);
+  const returnRide = toDate(input.returnRideScheduledAt);
+  const expectedDate = ride ? berlinCalendarDay(ride) : null;
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const warningCodes = [];
+  let severity = "ok";
+  if (!returnRide) {
+    warningCodes.push("missing_return_ride");
+    severity = "warn";
+  } else if (ride) {
+    const outboundDay = berlinCalendarDay(ride);
+    const returnDay = berlinCalendarDay(returnRide);
+    const diff = dayDiff(returnDay, outboundDay);
+    if (diff != null && (diff < 0 || diff > 14)) {
+      warningCodes.push("return_trip_date_implausible");
+      severity = "fail";
+    }
+  }
+  if (!ocrDate) {
+    warningCodes.push("missing_ocr_date");
+    if (severity !== "fail") severity = "warn";
+  } else if (expectedDate && ocrDate !== expectedDate && severity !== "fail") {
+    warningCodes.push("ride_date_mismatch");
+    severity = "warn";
+  }
+  return {
+    type: "return_trip",
+    passed: severity === "ok",
+    severity,
+    expectedDate,
+    ocrDate,
+    warningCodes,
+    details: {
+      returnRideScheduledAt: returnRide?.toISOString() ?? null
+    }
+  };
+}
+function evaluateLongTermTreatment(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const today = berlinCalendarDay(now);
+  const ride = toDate(input.rideScheduledAt);
+  const expectedDate = ride ? berlinCalendarDay(ride) : today;
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const validFrom = input.extracted.validFrom;
+  const validUntil = input.extracted.validUntil;
+  const warningCodes = [];
+  let severity = "ok";
+  if (!validFrom && !validUntil) {
+    warningCodes.push("missing_validity_window");
+    severity = "warn";
+  }
+  if (validUntil && validUntil < today) {
+    warningCodes.push("validity_expired");
+    severity = "fail";
+  }
+  if (validFrom && expectedDate < validFrom) {
+    warningCodes.push("ride_before_valid_from");
+    severity = "fail";
+  }
+  if (validUntil && expectedDate > validUntil) {
+    warningCodes.push("ride_after_valid_until");
+    severity = "fail";
+  }
+  const series = input.series;
+  if (series?.id) {
+    const sUntil = normalizeMedicalOcrDate(series.validUntil);
+    if (sUntil && expectedDate > sUntil) {
+      warningCodes.push("series_window_exceeded");
+      severity = "fail";
+    }
+  }
+  if (!ocrDate) {
+    warningCodes.push("missing_ocr_date");
+    if (severity !== "fail") severity = "warn";
+  }
+  return {
+    type: "long_term_treatment",
+    passed: severity === "ok",
+    severity,
+    expectedDate,
+    ocrDate,
+    warningCodes,
+    details: {
+      validFrom,
+      validUntil,
+      seriesId: series?.id ?? null
+    }
+  };
+}
+function evaluateMedicalDateLogic(input) {
+  switch (input.dateLogicType) {
+    case "series":
+      return evaluateSeries(input);
+    case "return_trip":
+      return evaluateReturnTrip(input);
+    case "long_term_treatment":
+      return evaluateLongTermTreatment(input);
+    case "today":
+    default:
+      return evaluateToday(input);
+  }
+}
+
+// src/db/medicalCasesData.ts
+init_client();
+init_schema2();
+var MEDICAL_CASE_TYPES = ["transport_sheet", "signature_image", "other"];
+var MEDICAL_CASE_STATUSES = ["open", "reviewed", "closed"];
+function isCaseType(v) {
+  return MEDICAL_CASE_TYPES.includes(v);
+}
+function isCaseStatus(v) {
+  return MEDICAL_CASE_STATUSES.includes(v);
+}
+function mapRow6(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    rideId: r.ride_id ?? null,
+    seriesId: r.series_id ?? null,
+    patientDisplayName: r.patient_display_name ?? "",
+    patientReference: r.patient_reference ?? "",
+    insuranceName: r.insurance_name ?? "",
+    insuranceIk: r.insurance_ik ?? "",
+    partnerIkNumber: r.partner_ik_number ?? "",
+    caseType: isCaseType(r.case_type) ? r.case_type : "transport_sheet",
+    dateLogicType: parseMedicalDateLogicType(r.date_logic_type),
+    dateLogicContextJson: r.date_logic_context_json && typeof r.date_logic_context_json === "object" ? r.date_logic_context_json : {},
+    status: isCaseStatus(r.status) ? r.status : "open",
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function getAdminCompanyPartnerIkNumber(companyId) {
+  const db2 = getDb();
+  if (!db2) return "";
+  const cid = companyId.trim();
+  if (!cid) return "";
+  const rows = await db2.select({ partnerIkNumber: adminCompaniesTable.partner_ik_number }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
+  return rows[0]?.partnerIkNumber?.trim() ?? "";
+}
+async function insertMedicalCase(input) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const id = `mc-${randomUUID31()}`;
+  const now = /* @__PURE__ */ new Date();
+  const caseType = input.caseType && isCaseType(input.caseType) ? input.caseType : "transport_sheet";
+  const status = input.status && isCaseStatus(input.status) ? input.status : "open";
+  await db2.insert(medicalCasesTable).values({
+    id,
+    company_id: input.companyId.trim(),
+    ride_id: input.rideId?.trim() || null,
+    series_id: input.seriesId?.trim() || null,
+    patient_display_name: (input.patientDisplayName ?? "").trim().slice(0, 200),
+    patient_reference: (input.patientReference ?? "").trim().slice(0, 120),
+    insurance_name: (input.insuranceName ?? "").trim().slice(0, 200),
+    insurance_ik: (input.insuranceIk ?? "").replace(/\D/g, "").slice(0, 9),
+    partner_ik_number: (input.partnerIkNumber ?? "").replace(/\D/g, "").slice(0, 9),
+    case_type: caseType,
+    date_logic_type: input.dateLogicType ?? "today",
+    date_logic_context_json: input.dateLogicContextJson ?? {},
+    status,
+    created_at: now,
+    updated_at: now
+  });
+  const created = await findMedicalCaseById(id);
+  if (!created) throw new Error("medical_case_insert_failed");
+  return created;
+}
+async function findMedicalCaseById(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const tid = id.trim();
+  if (!tid) return null;
+  const rows = await db2.select().from(medicalCasesTable).where(eq(medicalCasesTable.id, tid)).limit(1);
+  const r = rows[0];
+  return r ? mapRow6(r) : null;
+}
+async function updateMedicalCaseStatus(id, status) {
+  const db2 = getDb();
+  if (!db2) return null;
+  if (!isCaseStatus(status)) return null;
+  const tid = id.trim();
+  if (!tid) return null;
+  await db2.update(medicalCasesTable).set({ status, updated_at: /* @__PURE__ */ new Date() }).where(eq(medicalCasesTable.id, tid));
+  return findMedicalCaseById(tid);
+}
+
+// src/db/medicalDocumentsData.ts
+init_drizzle_orm();
+import { randomUUID as randomUUID32 } from "node:crypto";
+init_client();
+init_schema2();
+var MEDICAL_DOCUMENT_TYPES = ["transport_sheet", "signature_image", "other"];
+function isDocumentType(v) {
+  return MEDICAL_DOCUMENT_TYPES.includes(v);
+}
+function asRecord2(v) {
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
+function mapExtracted(raw) {
+  return normalizeMedicalOcrPayload(raw).extracted;
+}
+function mapConfidence(raw) {
+  const r = asRecord2(raw);
+  const out = {};
+  for (const [k, v] of Object.entries(r)) {
+    if (typeof v === "number" && Number.isFinite(v)) {
+      out[k] = Math.max(0, Math.min(1, v));
+    }
+  }
+  return out;
+}
+function mapRow7(r) {
+  return {
+    id: r.id,
+    caseId: r.case_id,
+    rideId: r.ride_id ?? null,
+    documentType: isDocumentType(r.document_type) ? r.document_type : "transport_sheet",
+    storageKey: r.storage_key ?? "",
+    mimeType: r.mime_type ?? "",
+    ocrProvider: r.ocr_provider ?? "",
+    ocrModel: r.ocr_model ?? "",
+    ocrRawJson: asRecord2(r.ocr_raw_json),
+    ocrExtractedJson: mapExtracted(r.ocr_extracted_json),
+    ocrConfidenceJson: mapConfidence(r.ocr_confidence_json),
+    createdAt: r.created_at.toISOString()
+  };
+}
+async function insertMedicalDocument(input) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const id = `mdoc-${randomUUID32()}`;
+  const docType = input.documentType && isDocumentType(input.documentType) ? input.documentType : "transport_sheet";
+  await db2.insert(medicalDocumentsTable).values({
+    id,
+    case_id: input.caseId.trim(),
+    ride_id: input.rideId?.trim() || null,
+    document_type: docType,
+    storage_key: input.storageKey.trim(),
+    mime_type: input.mimeType.trim().slice(0, 120),
+    ocr_provider: (input.ocrProvider ?? "").trim().slice(0, 80),
+    ocr_model: (input.ocrModel ?? "").trim().slice(0, 120),
+    ocr_raw_json: input.ocrRawJson ?? {},
+    ocr_extracted_json: input.ocrExtractedJson ?? mapExtracted({}),
+    ocr_confidence_json: input.ocrConfidenceJson ?? {}
+  });
+  const created = await findMedicalDocumentById(id);
+  if (!created) throw new Error("medical_document_insert_failed");
+  return created;
+}
+async function findMedicalDocumentById(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const tid = id.trim();
+  if (!tid) return null;
+  const rows = await db2.select().from(medicalDocumentsTable).where(eq(medicalDocumentsTable.id, tid)).limit(1);
+  const r = rows[0];
+  return r ? mapRow7(r) : null;
+}
+
+// src/db/medicalReviewsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID33 } from "node:crypto";
+var MEDICAL_REVIEWER_ACTOR_KINDS = ["system", "driver", "panel", "admin"];
+function isTrafficLight(v) {
+  return v === "green" || v === "yellow" || v === "red";
+}
+function isReviewerActorKind(v) {
+  return MEDICAL_REVIEWER_ACTOR_KINDS.includes(v);
+}
+function mapWarnings(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((w) => w && typeof w === "object" && !Array.isArray(w)).map((w) => {
+    const rec = w;
+    const severity = rec.severity === "info" || rec.severity === "warn" || rec.severity === "block_recommended" ? rec.severity : "warn";
+    return {
+      code: typeof rec.code === "string" ? rec.code : "unknown",
+      message: typeof rec.message === "string" ? rec.message : "",
+      severity
+    };
+  });
+}
+function mapDateLogicResult(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return {
+      type: "today",
+      passed: false,
+      severity: "warn",
+      expectedDate: null,
+      ocrDate: null,
+      warningCodes: [],
+      details: {}
+    };
+  }
+  const r = raw;
+  const typeRaw = typeof r.type === "string" ? r.type : "today";
+  const type = typeRaw === "series" || typeRaw === "return_trip" || typeRaw === "long_term_treatment" || typeRaw === "today" ? typeRaw : "today";
+  const severity = r.severity === "ok" || r.severity === "warn" || r.severity === "fail" ? r.severity : "warn";
+  return {
+    type,
+    passed: r.passed === true,
+    severity,
+    expectedDate: typeof r.expectedDate === "string" ? r.expectedDate : null,
+    ocrDate: typeof r.ocrDate === "string" ? r.ocrDate : null,
+    warningCodes: Array.isArray(r.warningCodes) ? r.warningCodes.filter((c) => typeof c === "string") : [],
+    details: r.details && typeof r.details === "object" && !Array.isArray(r.details) ? r.details : {}
+  };
+}
+function mapRow8(r) {
+  return {
+    id: r.id,
+    caseId: r.case_id,
+    documentId: r.document_id,
+    trafficLight: isTrafficLight(r.traffic_light) ? r.traffic_light : "yellow",
+    warnings: mapWarnings(r.warnings_json),
+    dateLogicResultJson: mapDateLogicResult(r.date_logic_result_json),
+    reviewerActorKind: isReviewerActorKind(r.reviewer_actor_kind) ? r.reviewer_actor_kind : "system",
+    reviewerActorId: r.reviewer_actor_id ?? null,
+    reviewedAt: r.reviewed_at.toISOString(),
+    autoApproved: r.auto_approved === true,
+    createdAt: r.created_at.toISOString()
+  };
+}
+async function insertMedicalReview(input) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const id = `mrev-${randomUUID33()}`;
+  const reviewedAt = input.reviewedAt ?? /* @__PURE__ */ new Date();
+  const actorKind = input.reviewerActorKind && isReviewerActorKind(input.reviewerActorKind) ? input.reviewerActorKind : "system";
+  await db2.insert(medicalReviewsTable).values({
+    id,
+    case_id: input.caseId.trim(),
+    document_id: input.documentId.trim(),
+    traffic_light: input.trafficLight,
+    warnings_json: input.warnings,
+    date_logic_result_json: input.dateLogicResultJson,
+    reviewer_actor_kind: actorKind,
+    reviewer_actor_id: input.reviewerActorId?.trim() || null,
+    reviewed_at: reviewedAt,
+    auto_approved: false,
+    created_at: reviewedAt
+  });
+  const created = await findMedicalReviewById(id);
+  if (!created) throw new Error("medical_review_insert_failed");
+  return created;
+}
+async function findMedicalReviewById(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const tid = id.trim();
+  if (!tid) return null;
+  const rows = await db2.select().from(medicalReviewsTable).where(eq(medicalReviewsTable.id, tid)).limit(1);
+  const r = rows[0];
+  return r ? mapRow8(r) : null;
+}
+
+// src/lib/medical/medicalScanService.ts
+init_ridesData();
+init_schema2();
+init_partnerBookingMeta();
+
+// src/lib/medical/claudeVisionOcr.ts
+var MEDICAL_OCR_PROVIDER = "anthropic_claude_vision";
+var DEFAULT_MEDICAL_OCR_MODEL = "claude-sonnet-4-6";
+var ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+var ANTHROPIC_VERSION = "2023-06-01";
+function isMedicalOcrEnabled() {
+  const v = (process.env.MEDICAL_OCR_ENABLED ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+function getAnthropicApiKey() {
+  const key = (process.env.ANTHROPIC_API_KEY ?? "").trim();
+  return key || null;
+}
+function resolveMedicalOcrModel() {
+  const configured = (process.env.MEDICAL_OCR_MODEL ?? "").trim();
+  return configured || DEFAULT_MEDICAL_OCR_MODEL;
+}
+var EXTRACTION_PROMPT = `Du analysierst ein Foto eines deutschen Krankenfahrt-Transportscheins (Verordnung/Schein).
+Extrahiere NUR abrechnungsrelevante Felder \u2014 KEINE Diagnosen, KEINE ICD-Codes, KEINE medizinischen Befunde.
+
+Antworte ausschlie\xDFlich mit einem JSON-Objekt (kein Markdown, kein Flie\xDFtext) in exakt dieser Struktur:
+{
+  "patientDisplayName": string,
+  "patientReference": string,
+  "insuranceName": string,
+  "insuranceIk": string,
+  "transportDate": "YYYY-MM-DD" | null,
+  "validFrom": "YYYY-MM-DD" | null,
+  "validUntil": "YYYY-MM-DD" | null,
+  "documentKind": "transport_sheet" | "signature_image" | "other",
+  "behandlungsArt": "stationaer" | "ambulant" | "unbekannt",
+  "pflegegrad": "3" | "4" | "5" | "keins" | "unbekannt",
+  "merkzeichen": "aG" | "Bl" | "H" | "keins" | "unbekannt",
+  "genehmigungsnummer": string | null,
+  "hasSignatureOnDocument": boolean,
+  "confidence": {
+    "patientDisplayName": number,
+    "patientReference": number,
+    "insuranceName": number,
+    "insuranceIk": number,
+    "transportDate": number,
+    "validFrom": number,
+    "validUntil": number,
+    "behandlungsArt": number,
+    "pflegegrad": number,
+    "merkzeichen": number,
+    "genehmigungsnummer": number
+  }
+}
+
+Regeln:
+- Fehlende Werte als leerer String "" oder null bei Datumsfeldern.
+- insuranceIk: nur Ziffern (Institutionskennzeichen IK der Krankenkasse).
+- behandlungsArt: erkenne angekreuztes Feld ambulant vs. station\xE4r auf dem Schein.
+- pflegegrad: nur 3, 4, 5 wenn angekreuzt/lesbar, sonst "keins" oder "unbekannt".
+- merkzeichen: aG, Bl oder H wenn angekreuzt, sonst "keins" oder "unbekannt".
+- genehmigungsnummer: KK-Genehmigungsnummer falls lesbar, sonst null.
+- hasSignatureOnDocument: true wenn Patientenunterschrift auf dem Schein sichtbar.
+- confidence: 0.0\u20131.0 pro Feld; bei Unsicherheit niedrig w\xE4hlen.
+- Wenn das Bild kein Transportschein ist: documentKind "other", sonstige Felder leer lassen.`;
+function isRecord3(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function extractTextFromAnthropicBody(body) {
+  if (!isRecord3(body)) return "";
+  const content = body.content;
+  if (!Array.isArray(content)) return "";
+  const parts = [];
+  for (const block of content) {
+    if (isRecord3(block) && block.type === "text" && typeof block.text === "string") {
+      parts.push(block.text);
+    }
+  }
+  return parts.join("\n").trim();
+}
+function parseJsonFromModelText(text2) {
+  const trimmed = text2.trim();
+  if (!trimmed) return null;
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced?.[1] ?? trimmed).trim();
+  try {
+    const parsed = JSON.parse(candidate);
+    return isRecord3(parsed) ? parsed : null;
+  } catch {
+    const start = candidate.indexOf("{");
+    const end = candidate.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        const parsed = JSON.parse(candidate.slice(start, end + 1));
+        return isRecord3(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+async function runClaudeVisionMedicalOcr(input) {
+  if (!isMedicalOcrEnabled()) {
+    return { ok: false, error: "ocr_disabled" };
+  }
+  const apiKey = getAnthropicApiKey();
+  if (!apiKey) {
+    return { ok: false, error: "anthropic_api_key_missing" };
+  }
+  const model = input.model?.trim() || resolveMedicalOcrModel();
+  const mediaType = input.mime;
+  const data = input.buffer.toString("base64");
+  let response;
+  try {
+    response = await fetch(ANTHROPIC_MESSAGES_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": ANTHROPIC_VERSION
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1200,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: { type: "base64", media_type: mediaType, data }
+              },
+              { type: "text", text: EXTRACTION_PROMPT }
+            ]
+          }
+        ]
+      })
+    });
+  } catch {
+    return { ok: false, error: "ocr_request_failed" };
+  }
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    return { ok: false, error: "ocr_response_invalid" };
+  }
+  if (!response.ok) {
+    const errType = isRecord3(body) && typeof body.error === "object" && isRecord3(body.error) && typeof body.error.type === "string" ? body.error.type : "ocr_http_error";
+    return { ok: false, error: errType };
+  }
+  const text2 = extractTextFromAnthropicBody(body);
+  const parsed = parseJsonFromModelText(text2);
+  if (!parsed) {
+    return {
+      ok: false,
+      error: "ocr_json_parse_failed"
+    };
+  }
+  const rawJson = {
+    provider: MEDICAL_OCR_PROVIDER,
+    model,
+    anthropic: body,
+    extracted: parsed
+  };
+  return { ok: true, rawJson, model, provider: MEDICAL_OCR_PROVIDER };
+}
+
+// src/lib/medical/medicalInsuranceRules.ts
+var PROFILE_DEFINITIONS = {
+  AOK_BW: {
+    id: "AOK_BW",
+    displayTitle: "Profil AOK Baden-W\xFCrttemberg (Basis)",
+    summaryTemplate: "Erkanntes AOK-BW-N\xE4he-Profil. Es sind noch keine finalen AOK-Fachregeln hinterlegt \u2014 nur strukturelle ONRODA-Vorpr\xFCfung.",
+    requiredFields: ["insuranceName", "insuranceIk", "transportDate", "patientReference"],
+    defaultManualReview: true
+  },
+  VDEK_STANDARD: {
+    id: "VDEK_STANDARD",
+    displayTitle: "Profil GKV / vdek-Standard (Basis)",
+    summaryTemplate: "Erkanntes gesetzliches Krankenkassen-Profil (vdek-N\xE4he). Konkrete Kassenregeln (TK, DAK, Barmer \u2026) folgen in sp\xE4teren Schritten.",
+    requiredFields: ["insuranceName", "insuranceIk", "transportDate"],
+    defaultManualReview: true
+  },
+  PRIVATE: {
+    id: "PRIVATE",
+    displayTitle: "Profil Privat / PKV / Beihilfe (Basis)",
+    summaryTemplate: "Hinweis auf private oder beihilfe-nahe Abrechnung. Keine GKV-Sonderregeln \u2014 manuelle Pr\xFCfung der Abrechnungsunterlagen empfohlen.",
+    requiredFields: ["insuranceName", "transportDate"],
+    defaultManualReview: true
+  },
+  UNKNOWN: {
+    id: "UNKNOWN",
+    displayTitle: "Profil unbekannt",
+    summaryTemplate: "Krankenkasse konnte nicht sicher zugeordnet werden. Bitte Transportschein manuell pr\xFCfen, bevor die Fahrt abgerechnet wird.",
+    requiredFields: ["insuranceName", "insuranceIk", "transportDate"],
+    defaultManualReview: true
+  }
+};
+var FIELD_LABELS_DE = {
+  insuranceName: "Name der Krankenkasse",
+  insuranceIk: "IK der Krankenkasse",
+  transportDate: "Fahrtdatum auf dem Schein",
+  patientReference: "Versicherten-Nr. / Kostentr\xE4gerkennung",
+  validFrom: "G\xFCltig ab",
+  validUntil: "G\xFCltig bis",
+  genehmigungsnummer: "Genehmigungsnummer",
+  partnerIkNumber: "Partner-IK (Unternehmen)"
+};
+function normalizeText(value) {
+  return value.trim().toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+}
+function normalizeIk2(value) {
+  return value.replace(/\D/g, "").slice(0, 9);
+}
+function isPrivateInsuranceHint(nameNorm) {
+  return nameNorm.includes("privat") || nameNorm.includes("pkv") || nameNorm.includes("beihilfe") || nameNorm.includes("private kranken") || nameNorm.includes("krankenversicherung privat");
+}
+function isAokBwHint(nameNorm) {
+  if (!nameNorm.includes("aok")) return false;
+  return nameNorm.includes("baden") || nameNorm.includes("wurttemberg") || nameNorm.includes(" wurtt") || /\baok\s*bw\b/.test(nameNorm) || nameNorm.includes("aok bw");
+}
+function isStatutoryInsuranceHint(nameNorm, ik) {
+  if (ik.length === 9 && /^10[89]/.test(ik)) return true;
+  const statutoryTokens = [
+    "krankenkasse",
+    "kasse",
+    "bkk",
+    "ikk",
+    "tk ",
+    "techniker",
+    "dak",
+    "barmer",
+    "hkk",
+    "kkh",
+    "huk",
+    "aok",
+    "vdek",
+    "knappschaft",
+    "mobil",
+    "sbk",
+    "hek",
+    "big"
+  ];
+  return statutoryTokens.some((token) => nameNorm.includes(token));
+}
+function resolveMedicalInsuranceProfile(insuranceName, insuranceIk) {
+  const nameNorm = normalizeText(insuranceName);
+  const ik = normalizeIk2(insuranceIk);
+  if (isPrivateInsuranceHint(nameNorm)) {
+    return "PRIVATE";
+  }
+  if (isAokBwHint(nameNorm)) {
+    return "AOK_BW";
+  }
+  if (nameNorm.length > 0 || ik.length > 0) {
+    if (isStatutoryInsuranceHint(nameNorm, ik)) {
+      return "VDEK_STANDARD";
+    }
+  }
+  return "UNKNOWN";
+}
+function fieldPresent(extracted, field) {
+  const value = extracted[field];
+  if (value == null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  return true;
+}
+function missingFieldWarnings(extracted, requiredFields) {
+  const warnings = [];
+  for (const field of requiredFields) {
+    if (!fieldPresent(extracted, field)) {
+      const label = FIELD_LABELS_DE[field] ?? field;
+      warnings.push(`Pflichtfeld fehlt oder unleserlich: ${label}.`);
+    }
+  }
+  return warnings;
+}
+function partnerIkWarning(_extracted, companyProfile) {
+  if (!companyProfile.partnerIkNumber.trim()) {
+    return "Partner-IK (Unternehmen) nicht hinterlegt \u2014 bitte im Mandantenprofil pflegen.";
+  }
+  return null;
+}
+function evaluateMedicalInsuranceRules(normalizedOcr, companyProfile, rideContext) {
+  const detectedInsuranceName = normalizedOcr.insuranceName.trim();
+  const detectedInsuranceIk = normalizedOcr.insuranceIk.trim();
+  const profile = resolveMedicalInsuranceProfile(detectedInsuranceName, detectedInsuranceIk);
+  const def = PROFILE_DEFINITIONS[profile];
+  const warnings = missingFieldWarnings(normalizedOcr, def.requiredFields);
+  if (!detectedInsuranceName && !detectedInsuranceIk) {
+    warnings.push("Keine Krankenkasse auf dem Transportschein erkannt.");
+  }
+  const partnerWarn = partnerIkWarning(normalizedOcr, companyProfile);
+  if (partnerWarn) warnings.push(partnerWarn);
+  if (profile === "UNKNOWN") {
+    warnings.push("Profilzuordnung unsicher \u2014 keine automatische Kassenregel anwendbar.");
+  }
+  if (!rideContext.scheduledAt && rideContext.dateLogicType === "today") {
+    warnings.push("Keine geplante Abholzeit in der Fahrt hinterlegt \u2014 Datumsabgleich eingeschr\xE4nkt.");
+  }
+  const manualReviewRequired = def.defaultManualReview || warnings.length > 0 || profile === "UNKNOWN";
+  return {
+    profile,
+    title: `ONRODA-Vorpr\xFCfung \u2014 ${def.displayTitle}`,
+    summary: def.summaryTemplate,
+    warnings,
+    requiredFields: def.requiredFields.map((f) => FIELD_LABELS_DE[f] ?? String(f)),
+    manualReviewRequired,
+    detectedInsuranceName,
+    detectedInsuranceIk
+  };
+}
+
+// src/lib/medical/medicalScanService.ts
+init_medicalTransportAuthorization();
+var MEDICAL_RIDE_UPLOAD_ROOT2 = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path8.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
+var MEDICAL_TEST_SCAN_DISCLAIMER = "Testpr\xFCfung ohne Fahrt \u2013 nicht abrechnungsrelevant.";
+function isMedicalTestScanEnabled() {
+  const v = (process.env.MEDICAL_TEST_SCAN_ENABLED ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+async function countCompletedRidesForSeries(seriesId, companyId) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const sid = seriesId.trim();
+  const cid = companyId.trim();
+  if (!sid || !cid) return 0;
+  const [row] = await db2.select({ n: count() }).from(ridesTable).where(
+    and(
+      eq(ridesTable.company_id, cid),
+      eq(ridesTable.status, "completed"),
+      sql2`${ridesTable.partner_booking_meta}->'medical'->>'seriesId' = ${sid}`
+    )
+  );
+  return Number(row?.n ?? 0);
+}
+async function resolvePartnerIk(companyId) {
+  if (!isPostgresConfigured()) return "";
+  try {
+    return await getAdminCompanyPartnerIkNumber(companyId) || "";
+  } catch {
+    return "";
+  }
+}
+function normalizePartnerIkNumber(value) {
+  return value.replace(/\D/g, "").slice(0, 9);
+}
+function applyPartnerIkFromCompanyProfile(normalized, partnerIkSnapshot) {
+  const partnerIk = normalizePartnerIkNumber(partnerIkSnapshot);
+  if (!partnerIk) return;
+  normalized.extracted.partnerIkNumber = partnerIk;
+  normalized.confidence.partnerIkNumber = 1;
+}
+async function runMedicalOcrPipeline(input) {
+  const ocrResult = await runClaudeVisionMedicalOcr({
+    buffer: input.buffer,
+    mime: input.mime
+  });
+  console.log(
+    "[medical-scan-debug] ocrResult",
+    JSON.stringify({ ok: ocrResult.ok, error: ocrResult.error }, null, 2)
+  );
+  const normalized = normalizeMedicalOcrPayload(
+    ocrResult.ok ? ocrResult.rawJson.extracted ?? ocrResult.rawJson : {}
+  );
+  applyPartnerIkFromCompanyProfile(normalized, input.partnerIkSnapshot);
+  const dateLogicResult = evaluateMedicalDateLogic({
+    dateLogicType: input.dateLogicType,
+    rideScheduledAt: input.rideScheduledAt,
+    series: input.seriesRow ? {
+      id: input.seriesRow.id,
+      validFrom: input.seriesRow.validFrom,
+      validUntil: input.seriesRow.validUntil,
+      totalRides: input.seriesRow.totalRides,
+      completedRides: input.completedRidesInSeries
+    } : null,
+    returnRideScheduledAt: input.returnRideScheduledAt ?? null,
+    extracted: normalized.extracted
+  });
+  const traffic = evaluateMedicalTrafficLight({
+    extracted: normalized.extracted,
+    confidence: normalized.confidence,
+    partnerIkSnapshot: input.partnerIkSnapshot,
+    dateLogicResult,
+    ocrProviderSucceeded: ocrResult.ok,
+    hasSignatureOnDocument: ocrResult.ok ? parseHasSignatureOnDocument(ocrResult.rawJson.extracted ?? ocrResult.rawJson) : void 0
+  });
+  const insuranceRules = evaluateMedicalInsuranceRules(normalized.extracted, {
+    companyId: input.companyId,
+    partnerIkNumber: input.partnerIkSnapshot
+  }, {
+    rideId: input.insuranceRideId,
+    scheduledAt: input.rideScheduledAt,
+    dateLogicType: input.dateLogicType
+  });
+  return {
+    trafficLight: traffic.trafficLight,
+    warnings: traffic.warnings,
+    extracted: normalized.extracted,
+    dateLogic: dateLogicResult,
+    insuranceRules,
+    ocrRawJson: ocrResult.ok ? ocrResult.rawJson : { error: ocrResult.error },
+    ocrProvider: ocrResult.ok ? ocrResult.provider : "",
+    ocrModel: ocrResult.ok ? ocrResult.model : "",
+    ocrConfidence: normalized.confidence
+  };
+}
+async function runMedicalTransportDocumentScanTest(input) {
+  if (!isMedicalTestScanEnabled()) {
+    return { ok: false, error: "test_scan_disabled", status: 403 };
+  }
+  const companyId = input.companyId.trim();
+  const fleetDriverId = input.fleetDriverId.trim();
+  if (!companyId || !fleetDriverId) {
+    return { ok: false, error: "bad_request", status: 400 };
+  }
+  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
+  if (!authz.ok) {
+    return { ok: false, error: authz.error, status: 403 };
+  }
+  return runMedicalTransportDocumentScanTestCore({
+    imageBase64: input.imageBase64,
+    companyId,
+    partnerIkSnapshot: await resolvePartnerIk(companyId),
+    insuranceRideId: "test"
+  });
+}
+async function runMedicalTransportDocumentScanTestForCustomer(input) {
+  if (!isMedicalTestScanEnabled()) {
+    return { ok: false, error: "test_scan_disabled", status: 403 };
+  }
+  const customerPassengerId2 = input.customerPassengerId.trim();
+  if (!customerPassengerId2) {
+    return { ok: false, error: "bad_request", status: 400 };
+  }
+  const platform = await assertMedicalTransportPlatformAvailable();
+  if (!platform.ok) {
+    return { ok: false, error: platform.error, status: 403 };
+  }
+  return runMedicalTransportDocumentScanTestCore({
+    imageBase64: input.imageBase64,
+    companyId: "",
+    partnerIkSnapshot: "",
+    insuranceRideId: `customer-test:${customerPassengerId2}`
+  });
+}
+async function runMedicalTransportDocumentScanTestCore(input) {
+  const b64 = input.imageBase64.trim();
+  if (!b64) {
+    return { ok: false, error: "image_base64_required", status: 400 };
+  }
+  const decoded = decodeValidatedMedicalTransportImage(b64);
+  if (!decoded.ok) {
+    const status = decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
+    return { ok: false, error: decoded.error, status };
+  }
+  const pipeline = await runMedicalOcrPipeline({
+    buffer: decoded.buffer,
+    mime: decoded.mime,
+    companyId: input.companyId,
+    partnerIkSnapshot: input.partnerIkSnapshot,
+    dateLogicType: "today",
+    rideScheduledAt: null,
+    insuranceRideId: input.insuranceRideId
+  });
+  return {
+    ok: true,
+    testMode: true,
+    testDisclaimer: MEDICAL_TEST_SCAN_DISCLAIMER,
+    trafficLight: pipeline.trafficLight,
+    warnings: pipeline.warnings,
+    extracted: pipeline.extracted,
+    dateLogic: pipeline.dateLogic,
+    insuranceRules: pipeline.insuranceRules
+  };
+}
+async function runMedicalTransportDocumentScan(input) {
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+  const rideId = input.rideId.trim();
+  const companyId = input.companyId.trim();
+  const fleetDriverId = input.fleetDriverId.trim();
+  if (!rideId || !companyId || !fleetDriverId) {
+    return { ok: false, error: "bad_request", status: 400 };
+  }
+  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
+  if (!authz.ok) {
+    return { ok: false, error: authz.error, status: 403 };
+  }
+  const ride = await findRide(rideId);
+  if (!ride) {
+    return { ok: false, error: "not_found", status: 404 };
+  }
+  if (ride.rideKind !== "medical") {
+    return { ok: false, error: "not_medical_ride", status: 400 };
+  }
+  if ((ride.companyId ?? "").trim() !== companyId) {
+    return { ok: false, error: "wrong_company", status: 403 };
+  }
+  const assignedDriver = (ride.driverId ?? "").trim();
+  if (!assignedDriver) {
+    return { ok: false, error: "driver_not_assigned", status: 403 };
+  }
+  if (assignedDriver !== fleetDriverId) {
+    return { ok: false, error: "not_assigned_driver", status: 403 };
+  }
+  const b64 = input.imageBase64.trim();
+  if (!b64) {
+    return { ok: false, error: "image_base64_required", status: 400 };
+  }
+  const decoded = decodeValidatedMedicalTransportImage(b64);
+  if (!decoded.ok) {
+    const status = decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
+    return { ok: false, error: decoded.error, status };
+  }
+  const partnerMeta = parsePartnerBookingMeta(ride.partnerBookingMeta);
+  const dateLogicType = parseMedicalDateLogicType(
+    input.dateLogicType ?? (input.seriesId || partnerMeta?.medical?.seriesId ? "series" : void 0) ?? (input.returnRideId || partnerMeta?.medical?.linkedRideId ? "return_trip" : void 0)
+  );
+  const seriesId = (input.seriesId ?? partnerMeta?.medical?.seriesId ?? "").trim() || null;
+  let seriesRow = null;
+  if (seriesId) {
+    seriesRow = await findPartnerRideSeriesById(seriesId, companyId);
+    if (!seriesRow) {
+      return { ok: false, error: "series_not_found", status: 404 };
+    }
+  }
+  const returnRideId = (input.returnRideId ?? partnerMeta?.medical?.linkedRideId ?? "").trim() || null;
+  let returnRideScheduledAt = null;
+  if (returnRideId) {
+    const returnRide = await findRide(returnRideId);
+    if (returnRide?.scheduledAt) {
+      returnRideScheduledAt = new Date(returnRide.scheduledAt);
+    }
+  }
+  const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const rel = path8.join(companyKey, "rides", rideId, `scan-${randomUUID34()}.${decoded.ext}`).replace(/\\/g, "/");
+  const dest = path8.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
+  await mkdir6(path8.dirname(dest), { recursive: true });
+  await writeFile6(dest, decoded.buffer);
+  const partnerIkSnapshot = await resolvePartnerIk(companyId);
+  let completedRidesInSeries;
+  if (seriesRow) {
+    completedRidesInSeries = await countCompletedRidesForSeries(seriesRow.id, companyId);
+  }
+  const pipeline = await runMedicalOcrPipeline({
+    buffer: decoded.buffer,
+    mime: decoded.mime,
+    companyId,
+    partnerIkSnapshot,
+    dateLogicType,
+    rideScheduledAt: ride.scheduledAt ?? null,
+    insuranceRideId: rideId,
+    seriesRow,
+    returnRideScheduledAt,
+    completedRidesInSeries
+  });
+  const dateLogicContextJson = {
+    dateLogicType,
+    seriesId,
+    returnRideId,
+    rideScheduledAt: ride.scheduledAt ?? null
+  };
+  const medicalCase = await insertMedicalCase({
+    companyId,
+    rideId,
+    seriesId,
+    patientDisplayName: pipeline.extracted.patientDisplayName,
+    patientReference: pipeline.extracted.patientReference || partnerMeta?.medical?.patientReference?.trim() || "",
+    insuranceName: pipeline.extracted.insuranceName,
+    insuranceIk: pipeline.extracted.insuranceIk,
+    partnerIkNumber: normalizePartnerIkNumber(partnerIkSnapshot),
+    caseType: "transport_sheet",
+    dateLogicType,
+    dateLogicContextJson,
+    status: "open"
+  });
+  const document2 = await insertMedicalDocument({
+    caseId: medicalCase.id,
+    rideId,
+    documentType: "transport_sheet",
+    storageKey: rel,
+    mimeType: decoded.mime,
+    ocrProvider: pipeline.ocrProvider,
+    ocrModel: pipeline.ocrModel,
+    ocrRawJson: pipeline.ocrRawJson,
+    ocrExtractedJson: pipeline.extracted,
+    ocrConfidenceJson: pipeline.ocrConfidence
+  });
+  const review = await insertMedicalReview({
+    caseId: medicalCase.id,
+    documentId: document2.id,
+    trafficLight: pipeline.trafficLight,
+    warnings: pipeline.warnings,
+    dateLogicResultJson: pipeline.dateLogic,
+    reviewerActorKind: "system",
+    reviewerActorId: fleetDriverId
+  });
+  await updateMedicalCaseStatus(medicalCase.id, "reviewed");
+  void insertSupplementalRideEvent(rideId, {
+    eventType: "medical_scan_reviewed",
+    actorType: "driver",
+    actorId: fleetDriverId,
+    payload: {
+      caseId: medicalCase.id,
+      documentId: document2.id,
+      reviewId: review.id,
+      trafficLight: pipeline.trafficLight,
+      warningCodes: pipeline.warnings.map((w) => w.code),
+      insuranceProfile: pipeline.insuranceRules.profile,
+      insuranceManualReview: pipeline.insuranceRules.manualReviewRequired
+    }
+  });
+  return {
+    ok: true,
+    caseId: medicalCase.id,
+    documentId: document2.id,
+    reviewId: review.id,
+    trafficLight: pipeline.trafficLight,
+    warnings: pipeline.warnings,
+    extracted: pipeline.extracted,
+    dateLogic: pipeline.dateLogic,
+    insuranceRules: pipeline.insuranceRules,
+    storageKey: rel
+  };
+}
+
+// src/routes/fleetDriverApi.ts
+init_medicalTransportAuthorization();
 var router16 = (0, import_express16.Router)();
 router16.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
@@ -73201,10 +74899,16 @@ router16.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     opPayload,
     regions
   );
+  const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
+    a.companyId,
+    a.fleetDriverId
+  );
   res.json({
     ok: true,
     einsatzbereit,
     isMarketOnline,
+    medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
+    medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
     companyCommission: {
       rate: commissionRate,
       ratePercent: Math.round(commissionRate * 1e3) / 10,
@@ -73383,6 +75087,11 @@ router16.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
       return;
     }
     const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
+    const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
+      a.companyId,
+      a.fleetDriverId
+    );
+    const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
     const all = await listRides();
@@ -73407,6 +75116,7 @@ router16.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
         return ride.status === "ready_for_dispatch" || ride.status === "accepted" || ride.status === "driver_arriving" || ride.status === "driver_waiting" || ride.status === "passenger_onboard" || ride.status === "arrived" || ride.status === "in_progress";
       }
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      if (ride.rideKind === "medical" && !medicalTransportAuthorized) return false;
       const inMarket = ride.status === "pending" || ride.status === "requested" || ride.status === "searching_driver" || ride.status === "offered";
       if (!inMarket) return false;
       if (!marketOnline) return false;
@@ -73463,6 +75173,11 @@ router16.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
       });
       return;
     }
+    const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
+      a.companyId,
+      a.fleetDriverId
+    );
+    const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
     const all = await listRides();
     const pool2 = all.filter((ride) => {
       const isFutureReservationStatus = ride.status === "scheduled" || ride.status === "scheduled_assigned";
@@ -73477,6 +75192,7 @@ router16.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
       const isAssignedToOtherDriver = assignedDriverId.length > 0 && !isAssignedToThisDriver;
       if (isAssignedToOtherDriver) return false;
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      if (ride.rideKind === "medical" && !medicalTransportAuthorized) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = pool2.map(stripPartnerOnlyRideFields);
@@ -73640,6 +75356,85 @@ router16.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async 
   }
   res.json({ ok: true });
 });
+router16.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const auth = req.fleetDriverAuth;
+    if (!auth) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body;
+    const rideId = typeof body.rideId === "string" ? body.rideId.trim() : "";
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+    const result = await runMedicalTransportDocumentScan({
+      fleetDriverId: auth.fleetDriverId,
+      companyId: auth.companyId,
+      rideId,
+      imageBase64,
+      dateLogicType: typeof body.dateLogicType === "string" ? body.dateLogicType : void 0,
+      seriesId: typeof body.seriesId === "string" ? body.seriesId : void 0,
+      returnRideId: typeof body.returnRideId === "string" ? body.returnRideId : void 0
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      caseId: result.caseId,
+      documentId: result.documentId,
+      reviewId: result.reviewId,
+      trafficLight: result.trafficLight,
+      warnings: result.warnings,
+      extracted: result.extracted,
+      dateLogic: result.dateLogic,
+      insuranceRules: result.insuranceRules,
+      storageKey: result.storageKey
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+router16.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const auth = req.fleetDriverAuth;
+    if (!auth) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body;
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const result = await runMedicalTransportDocumentScanTest({
+      fleetDriverId: auth.fleetDriverId,
+      companyId: auth.companyId,
+      imageBase64
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      testMode: true,
+      testDisclaimer: result.testDisclaimer,
+      trafficLight: result.trafficLight,
+      warnings: result.warnings,
+      extracted: result.extracted,
+      dateLogic: result.dateLogic,
+      insuranceRules: result.insuranceRules
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 router16.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
@@ -73659,10 +75454,10 @@ var fleetDriverApi_default = router16;
 // src/routes/fleetPanelApi.ts
 var import_express17 = __toESM(require_express2(), 1);
 init_companyComplianceDocumentsData();
-import { randomUUID as randomUUID31 } from "node:crypto";
+import { randomUUID as randomUUID35 } from "node:crypto";
 import fs from "node:fs/promises";
 import { createReadStream as createReadStream3 } from "node:fs";
-import path8 from "node:path";
+import path9 from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 init_client();
 init_fleetDriversData();
@@ -73679,8 +75474,8 @@ router17.use((_req, res, next) => {
   res.setHeader("Vary", "Authorization");
   next();
 });
-var pkgRoot = path8.join(path8.dirname(fileURLToPath3(import.meta.url)), "..", "..");
-var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path8.join(pkgRoot, "data", "fleet-uploads");
+var pkgRoot = path9.join(path9.dirname(fileURLToPath3(import.meta.url)), "..", "..");
+var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path9.join(pkgRoot, "data", "fleet-uploads");
 var ALLOWED_VEHICLE_LEGAL_TYPES = ["taxi"];
 var ALLOWED_VEHICLE_CLASSES = ["standard", "xl", "wheelchair"];
 function enabledPanelModules2(panelModules, companyKind) {
@@ -73837,7 +75632,7 @@ router17.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID35(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -73908,7 +75703,7 @@ router17.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
       }
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID35(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_updated",
@@ -73932,7 +75727,7 @@ router17.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID35(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -73956,7 +75751,7 @@ router17.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID35(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -73983,7 +75778,7 @@ router17.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID35(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -74016,9 +75811,9 @@ router17.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID31()}.pdf`);
-      const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path8.dirname(dest), { recursive: true });
+      const rel = path9.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID35()}.pdf`);
+      const dest = path9.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path9.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const pr = await patchFleetDriverProfile(id, ctx.claims.companyId, { pScheinDocStorageKey: storageKey });
@@ -74104,7 +75899,7 @@ router17.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID35(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -74231,9 +76026,9 @@ router17.post(
         res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID31()}.pdf`);
-      const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path8.dirname(dest), { recursive: true });
+      const rel = path9.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID35()}.pdf`);
+      const dest = path9.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path9.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const ar = await addFleetVehicleDocumentVersion(id, ctx.claims.companyId, storageKey, {
@@ -74246,7 +76041,7 @@ router17.post(
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID35(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: "fleet.vehicle_document_uploaded",
@@ -74278,7 +76073,7 @@ router17.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID35(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_submitted_for_approval",
@@ -74310,9 +76105,9 @@ router17.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path8.resolve(path8.join(FLEET_UPLOAD_ROOT, storageKey));
-    const root = path8.resolve(path8.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
-    if (!abs.startsWith(root + path8.sep) && abs !== root) {
+    const abs = path9.resolve(path9.join(FLEET_UPLOAD_ROOT, storageKey));
+    const root = path9.resolve(path9.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
+    if (!abs.startsWith(root + path9.sep) && abs !== root) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -74343,9 +76138,9 @@ router17.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID31()}.pdf`);
-      const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path8.dirname(dest), { recursive: true });
+      const rel = path9.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID35()}.pdf`);
+      const dest = path9.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path9.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       if (!isPostgresConfigured()) {
@@ -74368,7 +76163,7 @@ router17.post(
         throw e;
       }
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID35(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -74387,10 +76182,10 @@ var fleetPanelApi_default = router17;
 // src/routes/insurerPanelApi.ts
 var import_express18 = __toESM(require_express2(), 1);
 init_client();
-import { randomUUID as randomUUID33 } from "node:crypto";
+import { randomUUID as randomUUID37 } from "node:crypto";
 import fs2 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
-import path9 from "node:path";
+import path10 from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 init_fleetDriversData();
 
@@ -74400,7 +76195,7 @@ init_partnerBookingMeta();
 init_client();
 init_schema2();
 init_ridesData();
-import { randomUUID as randomUUID32 } from "node:crypto";
+import { randomUUID as randomUUID36 } from "node:crypto";
 var OPEN = [
   "draft",
   "scheduled",
@@ -74523,7 +76318,7 @@ async function insertInsurerCostCenter(companyId, input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const code = input.code.trim();
   if (!code) return { ok: false, error: "code_required" };
-  const id = randomUUID32();
+  const id = randomUUID36();
   const now = /* @__PURE__ */ new Date();
   try {
     await db2.insert(insurerCostCentersTable).values({
@@ -74615,7 +76410,7 @@ async function insertInsurerTransportDocument(companyId, rideId, panelUserId, in
   if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const id = randomUUID32();
+  const id = randomUUID36();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(insurerRideTransportDocumentsTable).values({
     id,
@@ -74651,8 +76446,8 @@ async function getInsurerTransportDocumentFile(companyId, docId) {
 // src/routes/insurerPanelApi.ts
 init_panelModules();
 var router18 = (0, import_express18.Router)();
-var pkgRoot2 = path9.join(path9.dirname(fileURLToPath4(import.meta.url)), "..", "..");
-var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path9.join(pkgRoot2, "uploads", "insurer-transport");
+var pkgRoot2 = path10.join(path10.dirname(fileURLToPath4(import.meta.url)), "..", "..");
+var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path10.join(pkgRoot2, "uploads", "insurer-transport");
 router18.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
@@ -74794,7 +76589,7 @@ router18.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID37(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "insurer.ride_org_meta_patched",
@@ -74847,9 +76642,9 @@ router18.post(
       const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
       const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
       const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
-      const rel = path9.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID33()}.${ext}`);
-      const dest = path9.join(INSURER_UPLOAD_ROOT, rel);
-      await fs2.mkdir(path9.dirname(dest), { recursive: true });
+      const rel = path10.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID37()}.${ext}`);
+      const dest = path10.join(INSURER_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path10.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const out = await insertInsurerTransportDocument(
@@ -74887,7 +76682,7 @@ router18.get(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const full = path9.join(INSURER_UPLOAD_ROOT, meta.storageKey);
+      const full = path10.join(INSURER_UPLOAD_ROOT, meta.storageKey);
       res.setHeader("Content-Type", meta.contentType);
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(meta.originalFilename)}"`);
       createReadStream4(full).pipe(res);
@@ -75331,6 +77126,37 @@ router21.post("/customer/v1/expo-push-token", requireCustomerSession, async (req
     next(e);
   }
 });
+router21.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body;
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const result = await runMedicalTransportDocumentScanTestForCustomer({
+      customerPassengerId: customerPassengerId(sess),
+      imageBase64
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      testMode: true,
+      testDisclaimer: result.testDisclaimer,
+      trafficLight: result.trafficLight,
+      warnings: result.warnings,
+      extracted: result.extracted,
+      dateLogic: result.dateLogic,
+      insuranceRules: result.insuranceRules
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 var customerApi_default = router21;
 
 // src/routes/index.ts
@@ -75462,21 +77288,21 @@ app.use(
 );
 app.use((req, res, next) => {
   const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
-  const medicalUpload = req.method === "POST" && u.includes("/rides/") && (u.includes("/medical/transport-document") || u.includes("/medical/signature"));
+  const medicalUpload = req.method === "POST" && (u.includes("/fleet-driver/v1/medical/scan") || u.includes("/fleet-driver/v1/medical/scan-test") || u.includes("/customer/v1/medical/scan-test") || u.includes("/rides/") && (u.includes("/medical/transport-document") || u.includes("/medical/signature")));
   const partnerRegInitialPost = req.method === "POST" && /\/panel-auth\/registration-request\/?$/.test(u);
   const partnerRegDocPost = req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(u);
-  const limit = medicalUpload ? "6mb" : partnerRegInitialPost ? "25mb" : partnerRegDocPost ? "12mb" : "200kb";
+  const limit = medicalUpload ? "10mb" : partnerRegInitialPost ? "25mb" : partnerRegDocPost ? "12mb" : "200kb";
   import_express24.default.json({ limit })(req, res, next);
 });
 app.use(import_express24.default.urlencoded({ extended: true, limit: "200kb" }));
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
-var __dirname2 = path10.dirname(fileURLToPath5(import.meta.url));
-var staticRoot = path10.join(__dirname2, "../static");
-var panelPublicRoot = path10.join(__dirname2, "../../partner-panel/dist");
+var __dirname2 = path11.dirname(fileURLToPath5(import.meta.url));
+var staticRoot = path11.join(__dirname2, "../static");
+var panelPublicRoot = path11.join(__dirname2, "../../partner-panel/dist");
 function resolvePublicRoot() {
-  return path10.join(__dirname2, "../../admin-panel/dist");
+  return path11.join(__dirname2, "../../admin-panel/dist");
 }
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
@@ -75494,7 +77320,7 @@ app.use("/partners", (req, res, next) => {
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
-  res.sendFile(path10.join(adminPublicRoot, "index.html"), (err) => {
+  res.sendFile(path11.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
@@ -75506,7 +77332,7 @@ app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
   if (req.path.startsWith("/partners")) return next();
-  res.sendFile(path10.join(panelPublicRoot, "index.html"), (err) => {
+  res.sendFile(path11.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
@@ -75517,23 +77343,23 @@ app.use((req, res, next) => {
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path10.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path11.join(staticRoot, "index.html"));
   return next();
 });
 app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path10.join(staticRoot, "partner-status.html"), (err) => {
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path11.join(staticRoot, "partner-status.html"), (err) => {
     if (err) next(err);
   });
   return next();
 });
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path10.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path11.join(staticRoot, "index.html"));
   if (isApiHost(host)) {
     return res.json({ ok: true, service: "onroda-api" });
   }
-  if (isPanelBrowserHost(host)) return res.sendFile(path10.join(panelPublicRoot, "index.html"), (err) => {
+  if (isPanelBrowserHost(host)) return res.sendFile(path11.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
   if (isAdminBrowserHost(host)) return res.redirect(302, "/partners/");

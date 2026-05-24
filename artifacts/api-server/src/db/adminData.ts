@@ -105,6 +105,7 @@ const seedCompanies: CompanyRow[] = [
     ],
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
+    medical_transport_enabled: false,
   },
   {
     id: "co-demo-2",
@@ -157,6 +158,7 @@ const seedCompanies: CompanyRow[] = [
     panel_modules: null,
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
+    medical_transport_enabled: false,
   },
 ];
 
@@ -238,6 +240,7 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
     commission_rate:
       typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
+    medical_transport_enabled: Boolean(r.medical_transport_enabled),
   };
 }
 
@@ -583,6 +586,8 @@ export type AdminCompanyUpdateBody = Partial<{
   release_radius_km: number;
   /** Explizite Panel-Modul-Whitelist; `null` = alle (Legacy). */
   panel_modules?: string[] | null;
+  /** ONRODA-Admin: Krankenfahrten für diesen Mandanten freigeschaltet. */
+  medical_transport_enabled: boolean;
   /**
    * Synchronisiert `billing_accounts.billing_email` (erste aktive Zeile, sonst Insert mit Default).
    * Nicht Teil von `CompanyRow` — nur Schreib-Seite.
@@ -673,6 +678,7 @@ function companyRowToDbValues(c: CompanyRow) {
     panel_modules: c.panel_modules ?? null,
     partner_panel_profile_locked: c.partner_panel_profile_locked,
     commission_rate: c.commission_rate,
+    medical_transport_enabled: c.medical_transport_enabled,
   };
 }
 
@@ -781,6 +787,9 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (typeof body.commission_rate === "number" && Number.isFinite(body.commission_rate)) {
     next.commission_rate = Math.min(1, Math.max(0, body.commission_rate));
   }
+  if (typeof body.medical_transport_enabled === "boolean") {
+    next.medical_transport_enabled = body.medical_transport_enabled;
+  }
   return next;
 }
 
@@ -842,6 +851,7 @@ export async function insertAdminCompany(
     panel_modules: null,
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
+    medical_transport_enabled: false,
   };
   const next = applyAdminCompanyPatch(base, body);
 

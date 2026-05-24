@@ -194,6 +194,7 @@ import {
   setFleetDriverApprovalByAdmin,
   setFleetDriverApprovalStatusOnlyForCompany,
   setFleetDriverReadinessOverrideSystem,
+  setFleetDriverMedicalTransport,
   type FleetDriverApprovalStatus,
 } from "../db/fleetDriversData";
 import {
@@ -1546,6 +1547,51 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-overr
   }
 });
 
+adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/medical-transport", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = (req.body ?? {}) as { enabled?: unknown; inheritFromCompany?: unknown };
+    const patch: { enabled?: boolean; inheritFromCompany?: boolean } = {};
+    if (b.enabled === true || b.enabled === false) patch.enabled = b.enabled;
+    if (b.inheritFromCompany === true || b.inheritFromCompany === false) {
+      patch.inheritFromCompany = b.inheritFromCompany;
+    }
+    if (patch.enabled === undefined && patch.inheritFromCompany === undefined) {
+      res.status(400).json({
+        error: "body_required",
+        hint: 'Send {"enabled": boolean} and/or {"inheritFromCompany": boolean}.',
+      });
+      return;
+    }
+    const ok = await setFleetDriverMedicalTransport(companyId, driverId, patch);
+    if (!ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.medical_transport",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { ...patch, adminUserId: adminId },
+    });
+    const driver = await getAdminTaxiFleetDriverDetail(companyId, driverId);
+    res.json({ ok: true, driver });
+  } catch (e) {
+    next(e);
+  }
+});
+
 adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
@@ -2766,10 +2812,35 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
     if (!allowed) return;
     const body = req.body as AdminCompanyUpdateBody;
+    const prev =
+      typeof body.medical_transport_enabled === "boolean"
+        ? await findCompanyById(req.params.companyId)
+        : null;
     const item = await updateAdminCompany(req.params.companyId, body);
     if (!item) {
       res.status(404).json({ error: "not_found" });
       return;
+    }
+    if (
+      prev &&
+      typeof body.medical_transport_enabled === "boolean" &&
+      prev.medical_transport_enabled !== body.medical_transport_enabled &&
+      isPostgresConfigured()
+    ) {
+      const adminId = await resolveAdminAuthUserIdForSupport(req);
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId: req.params.companyId,
+        actorPanelUserId: null,
+        action: "admin.company.medical_transport_enabled",
+        subjectType: "company",
+        subjectId: req.params.companyId,
+        meta: {
+          enabled: body.medical_transport_enabled,
+          previous: prev.medical_transport_enabled,
+          adminUserId: adminId,
+        },
+      });
     }
     res.json({ ok: true, item });
   } catch (e) {

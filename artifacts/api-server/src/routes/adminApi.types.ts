@@ -58,6 +58,8 @@ export interface CompanyRow {
   partner_panel_profile_locked: boolean;
   /** ONRODA-Provisionssatz (0.10 = 10 %), Plattform-Admin je Mandant. */
   commission_rate: number;
+  /** ONRODA-Admin: Krankenfahrten für diesen Mandanten freigeschaltet. */
+  medical_transport_enabled: boolean;
 }
 
 export interface FareAreaRow {

@@ -178,6 +178,7 @@ function formFromCompany(c, billingAccountEmail) {
     contract_status: c.contract_status ?? "inactive",
     is_active: Boolean(c.is_active),
     is_blocked: Boolean(c.is_blocked),
+    medical_transport_enabled: Boolean(c.medical_transport_enabled),
     business_notes: c.business_notes ?? "",
     max_drivers: Number.isFinite(Number(c.max_drivers)) ? Number(c.max_drivers) : 100,
     max_vehicles: Number.isFinite(Number(c.max_vehicles)) ? Number(c.max_vehicles) : 100,
@@ -564,6 +565,7 @@ export default function CompanyMandateDetailPage({
         contract_status: form.contract_status,
         is_active: form.is_active,
         is_blocked: form.is_blocked,
+        medical_transport_enabled: form.medical_transport_enabled,
         business_notes: form.business_notes,
         max_drivers: form.max_drivers,
         max_vehicles: form.max_vehicles,
@@ -757,6 +759,18 @@ export default function CompanyMandateDetailPage({
                 <label className="admin-m-lbl admin-m-lbl--check" style={{ gridColumn: "1 / -1" }}>
                   <input type="checkbox" checked={!!form.is_blocked} onChange={onField("is_blocked")} /> Plattform-Sperre
                 </label>
+                <label className="admin-m-lbl admin-m-lbl--check" style={{ gridColumn: "1 / -1" }}>
+                  <input
+                    type="checkbox"
+                    checked={!!form.medical_transport_enabled}
+                    onChange={onField("medical_transport_enabled")}
+                  />{" "}
+                  Krankenfahrten freigegeben
+                </label>
+                <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1", marginTop: -4 }}>
+                  Nur freigegebene Mandanten dürfen Krankenfahrten annehmen; Fahrer erben standardmäßig diese
+                  Einstellung (Override pro Fahrer in Taxi · Fahrer).
+                </p>
                 <label className="admin-m-lbl">
                   Verifizierungsstatus
                   <select
@@ -1137,6 +1151,12 @@ export default function CompanyMandateDetailPage({
                   <div>
                     <div className="admin-table-sub">Compliance</div>
                     <div>{fmtText(c.compliance_status)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Krankenfahrten freigegeben</div>
+                    <div style={{ color: c.medical_transport_enabled ? "#047857" : undefined }}>
+                      {boolJaNein(c.medical_transport_enabled)}
+                    </div>
                   </div>
                 </div>
                 {blockReasonRO ? (
