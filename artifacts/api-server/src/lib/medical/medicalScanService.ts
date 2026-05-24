@@ -28,6 +28,7 @@ import {
   type MedicalInsuranceRuleResult,
 } from "./medicalInsuranceRules";
 import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument, type MedicalOcrExtracted } from "./medicalOcrNormalize";
+import { evaluateMedicalTrafficLight, type MedicalWarning } from "./medicalTrafficLight";
 import {
   assertMedicalTransportAuthorizedForFleetDriver,
   assertMedicalTransportPlatformAvailable,

@@ -109,32 +109,51 @@ app.use(
   }),
 );
 
-/** Größeres Body-Limit nur wo Base64 in JSON nötig ist; u. a. POST /customer/v1/medical/scan (Buchungs-Scan). */
+/** Pfad für große JSON-Bodies (Base64-Bilder/PDFs). originalUrl und url prüfen (/api/… und ohne Präfix). */
+function requestPathname(req: express.Request): string {
+  const raw = (req.originalUrl ?? req.url ?? req.path ?? "").split("?")[0] ?? "";
+  return raw.startsWith("/") ? raw : `/${raw}`;
+}
+
+function isMedicalLargeJsonPost(pathname: string): boolean {
+  return (
+    /\/fleet-driver\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) ||
+    /\/customer\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) ||
+    (/\/rides\/[^/]+\/medical\/(?:transport-document|signature)\/?$/.test(pathname))
+  );
+}
+
+const jsonBodyDefault = express.json({ limit: "200kb" });
+const jsonBodyMedical = express.json({ limit: "10mb" });
+const jsonBodyPartnerRegInitial = express.json({ limit: "25mb" });
+const jsonBodyPartnerRegDoc = express.json({ limit: "12mb" });
+const urlencodedDefault = express.urlencoded({ extended: true, limit: "200kb" });
+
 app.use((req, res, next) => {
-  const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
-  const medicalUpload =
-    req.method === "POST" &&
-    (u.includes("/fleet-driver/v1/medical/scan") ||
-      u.includes("/fleet-driver/v1/medical/scan-test") ||
-      u.includes("/customer/v1/medical/scan") ||
-      u.includes("/customer/v1/medical/scan-test") ||
-      (u.includes("/rides/") &&
-        (u.includes("/medical/transport-document") || u.includes("/medical/signature"))));
-  // Mehrere Base64-PDFs (Taxi): Nginx braucht passendes client_max_body_size (siehe nginx-onroda.example.conf).
-  const partnerRegInitialPost =
-    req.method === "POST" && /\/panel-auth\/registration-request\/?$/.test(u);
-  const partnerRegDocPost =
-    req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(u);
-  const limit = medicalUpload
-    ? "10mb"
-    : partnerRegInitialPost
-      ? "25mb"
-      : partnerRegDocPost
-        ? "12mb"
-        : "200kb";
-  express.json({ limit })(req, res, next);
+  if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") {
+    return jsonBodyDefault(req, res, next);
+  }
+  const pathname = requestPathname(req);
+  if (isMedicalLargeJsonPost(pathname)) {
+    return jsonBodyMedical(req, res, next);
+  }
+  if (/\/panel-auth\/registration-request\/?$/.test(pathname)) {
+    return jsonBodyPartnerRegInitial(req, res, next);
+  }
+  if (/\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(pathname)) {
+    return jsonBodyPartnerRegDoc(req, res, next);
+  }
+  return jsonBodyDefault(req, res, next);
 });
-app.use(express.urlencoded({ extended: true, limit: "200kb" }));
+
+/** Nach JSON-Parser: urlencoded nur bei nicht-JSON (sonst doppeltes Lesen / falsches Limit). */
+app.use((req, res, next) => {
+  const ct = String(req.headers["content-type"] ?? "").toLowerCase();
+  if (ct.includes("application/json")) {
+    return next();
+  }
+  return urlencodedDefault(req, res, next);
+});
 
 app.use("/api", router);
 app.use(router);
