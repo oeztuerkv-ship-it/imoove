@@ -3,6 +3,7 @@ import type { RideRequest } from "../domain/rideRequest";
 import { getDb, isPostgresConfigured } from "./client";
 import { getFleetDriverReadinessById } from "./fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "./fleetMatchingData";
+import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { fleetDriversTable } from "./schema";
 
 export type MarketOnlineDriverRef = { fleetDriverId: string; companyId: string };
@@ -60,6 +61,11 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     const capability = await getFleetDriverCapability(fleetDriverId, companyId);
     if (!capability?.vehicleLegalType) continue;
     if (!isRideCompatibleWithCapability(ride, capability)) continue;
+
+    if (ride.rideKind === "medical") {
+      const medicalAuth = await resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId);
+      if (!medicalAuth?.authorized) continue;
+    }
 
     out.push({ fleetDriverId, companyId });
   }

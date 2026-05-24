@@ -27,7 +27,11 @@ import {
   type MedicalInsuranceRuleResult,
 } from "./medicalInsuranceRules";
 import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument, type MedicalOcrExtracted } from "./medicalOcrNormalize";
-import { evaluateMedicalTrafficLight, type MedicalWarning } from "./medicalTrafficLight";
+import {
+  assertMedicalTransportAuthorizedForFleetDriver,
+  assertMedicalTransportPlatformAvailable,
+  resolveMedicalTransportAuthorizationForFleetDriver,
+} from "./medicalTransportAuthorization";
 
 export const MEDICAL_RIDE_UPLOAD_ROOT =
   (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() ||
@@ -241,6 +245,11 @@ export async function runMedicalTransportDocumentScanTest(
     return { ok: false, error: "bad_request", status: 400 };
   }
 
+  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
+  if (!authz.ok) {
+    return { ok: false, error: authz.error, status: 403 };
+  }
+
   return runMedicalTransportDocumentScanTestCore({
     imageBase64: input.imageBase64,
     companyId,
@@ -260,6 +269,11 @@ export async function runMedicalTransportDocumentScanTestForCustomer(
   const customerPassengerId = input.customerPassengerId.trim();
   if (!customerPassengerId) {
     return { ok: false, error: "bad_request", status: 400 };
+  }
+
+  const platform = await assertMedicalTransportPlatformAvailable();
+  if (!platform.ok) {
+    return { ok: false, error: platform.error, status: 403 };
   }
 
   return runMedicalTransportDocumentScanTestCore({
@@ -323,6 +337,11 @@ export async function runMedicalTransportDocumentScan(
   const fleetDriverId = input.fleetDriverId.trim();
   if (!rideId || !companyId || !fleetDriverId) {
     return { ok: false, error: "bad_request", status: 400 };
+  }
+
+  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
+  if (!authz.ok) {
+    return { ok: false, error: authz.error, status: 403 };
   }
 
   const ride = await findRide(rideId);

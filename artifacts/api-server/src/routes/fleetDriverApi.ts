@@ -35,6 +35,7 @@ import {
 } from "../db/appOperationalData";
 import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
 import { runMedicalTransportDocumentScan, runMedicalTransportDocumentScanTest } from "../lib/medical/medicalScanService";
+import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 const router: IRouter = Router();
@@ -87,10 +88,16 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     opPayload,
     regions,
   );
+  const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
+    a.companyId,
+    a.fleetDriverId,
+  );
   res.json({
     ok: true,
     einsatzbereit,
     isMarketOnline,
+    medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
+    medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
     companyCommission: {
       rate: commissionRate,
       ratePercent: Math.round(commissionRate * 1000) / 10,
@@ -283,6 +290,11 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       return;
     }
     const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
+    const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
+      a.companyId,
+      a.fleetDriverId,
+    );
+    const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
     const all = await listRides();
@@ -318,6 +330,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         );
       }
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      if (ride.rideKind === "medical" && !medicalTransportAuthorized) return false;
       const inMarket =
         ride.status === "pending" ||
         ride.status === "requested" ||
@@ -386,6 +399,11 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       });
       return;
     }
+    const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
+      a.companyId,
+      a.fleetDriverId,
+    );
+    const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
     const all = await listRides();
     const pool = all.filter((ride) => {
       const isFutureReservationStatus =
@@ -405,6 +423,7 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       if (isAssignedToOtherDriver) return false;
 
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      if (ride.rideKind === "medical" && !medicalTransportAuthorized) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = pool.map(stripPartnerOnlyRideFields);
