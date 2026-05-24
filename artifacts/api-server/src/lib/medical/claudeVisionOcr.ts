@@ -37,7 +37,6 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
   "patientReference": string,
   "insuranceName": string,
   "insuranceIk": string,
-  "partnerIkNumber": string,
   "transportDate": "YYYY-MM-DD" | null,
   "validFrom": "YYYY-MM-DD" | null,
   "validUntil": "YYYY-MM-DD" | null,
@@ -52,7 +51,6 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
     "patientReference": number,
     "insuranceName": number,
     "insuranceIk": number,
-    "partnerIkNumber": number,
     "transportDate": number,
     "validFrom": number,
     "validUntil": number,
@@ -65,7 +63,7 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
 
 Regeln:
 - Fehlende Werte als leerer String "" oder null bei Datumsfeldern.
-- insuranceIk / partnerIkNumber: nur Ziffern (Institutionskennzeichen IK).
+- insuranceIk: nur Ziffern (Institutionskennzeichen IK der Krankenkasse).
 - behandlungsArt: erkenne angekreuztes Feld ambulant vs. stationär auf dem Schein.
 - pflegegrad: nur 3, 4, 5 wenn angekreuzt/lesbar, sonst "keins" oder "unbekannt".
 - merkzeichen: aG, Bl oder H wenn angekreuzt, sonst "keins" oder "unbekannt".

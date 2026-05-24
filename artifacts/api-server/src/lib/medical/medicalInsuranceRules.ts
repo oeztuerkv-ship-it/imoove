@@ -199,13 +199,9 @@ function missingFieldWarnings(
   return warnings;
 }
 
-function partnerIkWarning(extracted: MedicalOcrExtracted, companyProfile: MedicalCompanyProfile): string | null {
-  const partnerIk = companyProfile.partnerIkNumber.trim();
-  if (!partnerIk) return null;
-  const ocrPartnerIk = extracted.partnerIkNumber.trim();
-  if (!ocrPartnerIk) return null;
-  if (normalizeIk(ocrPartnerIk) !== normalizeIk(partnerIk)) {
-    return "Partner-IK auf dem Schein weicht vom Unternehmens-IK ab — bitte manuell prüfen.";
+function partnerIkWarning(_extracted: MedicalOcrExtracted, companyProfile: MedicalCompanyProfile): string | null {
+  if (!companyProfile.partnerIkNumber.trim()) {
+    return "Partner-IK (Unternehmen) nicht hinterlegt — bitte im Mandantenprofil pflegen.";
   }
   return null;
 }

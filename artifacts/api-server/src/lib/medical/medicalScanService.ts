@@ -127,6 +127,21 @@ async function resolvePartnerIk(companyId: string): Promise<string> {
   }
 }
 
+function normalizePartnerIkNumber(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 9);
+}
+
+/** Partner-IK stammt aus admin_companies — nicht vom Schein-Foto. */
+function applyPartnerIkFromCompanyProfile(
+  normalized: ReturnType<typeof normalizeMedicalOcrPayload>,
+  partnerIkSnapshot: string,
+): void {
+  const partnerIk = normalizePartnerIkNumber(partnerIkSnapshot);
+  if (!partnerIk) return;
+  normalized.extracted.partnerIkNumber = partnerIk;
+  normalized.confidence.partnerIkNumber = 1;
+}
+
 async function runMedicalOcrPipeline(input: {
   buffer: Buffer;
   mime: string;
@@ -156,6 +171,7 @@ async function runMedicalOcrPipeline(input: {
   const normalized = normalizeMedicalOcrPayload(
     ocrResult.ok ? (ocrResult.rawJson.extracted ?? ocrResult.rawJson) : {},
   );
+  applyPartnerIkFromCompanyProfile(normalized, input.partnerIkSnapshot);
 
   const dateLogicResult = evaluateMedicalDateLogic({
     dateLogicType: input.dateLogicType,
@@ -369,7 +385,7 @@ export async function runMedicalTransportDocumentScan(
       pipeline.extracted.patientReference || partnerMeta?.medical?.patientReference?.trim() || "",
     insuranceName: pipeline.extracted.insuranceName,
     insuranceIk: pipeline.extracted.insuranceIk,
-    partnerIkNumber: partnerIkSnapshot || pipeline.extracted.partnerIkNumber,
+    partnerIkNumber: normalizePartnerIkNumber(partnerIkSnapshot),
     caseType: "transport_sheet",
     dateLogicType,
     dateLogicContextJson,

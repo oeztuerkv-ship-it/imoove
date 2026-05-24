@@ -35,10 +35,6 @@ export type MedicalTrafficLightResult = {
 
 const CONFIDENCE_WARN_THRESHOLD = 0.55;
 
-function normalizeIk(v: string): string {
-  return v.replace(/\D/g, "").slice(0, 9);
-}
-
 const DATE_LOGIC_MESSAGES: Record<string, string> = {
   missing_ocr_date: "Fahrtdatum auf dem Schein nicht erkannt",
   ride_date_mismatch: "Fahrtdatum weicht von der geplanten Fahrt ab",
@@ -101,7 +97,7 @@ function evaluateBehandlungsArtRules(
         severity: "warn",
       });
     }
-    if (!extracted.partnerIkNumber.trim() && !input.partnerIkSnapshot.trim()) {
+    if (!input.partnerIkSnapshot.trim()) {
       warnings.push({
         code: "stationaer_missing_taxi_ik",
         message: "Stationär: Leistungserbringer-IK (Taxi) nicht erkennbar",
@@ -117,7 +113,7 @@ function evaluateBehandlungsArtRules(
     }
     if (
       hasTransportDate(extracted) &&
-      (extracted.partnerIkNumber.trim() || input.partnerIkSnapshot.trim()) &&
+      input.partnerIkSnapshot.trim() &&
       input.hasSignatureOnDocument !== false
     ) {
       warnings.push({
@@ -162,7 +158,7 @@ function evaluateBehandlungsArtRules(
  */
 export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): MedicalTrafficLightResult {
   const warnings: MedicalWarning[] = [];
-  const { extracted, confidence, partnerIkSnapshot, dateLogicResult } = input;
+  const { extracted, confidence, dateLogicResult } = input;
   const ocrOk = input.ocrProviderSucceeded !== false;
 
   if (!ocrOk) {
@@ -207,25 +203,16 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
     });
   }
 
-  const snapshotIk = normalizeIk(partnerIkSnapshot);
-  const ocrPartnerIk = normalizeIk(extracted.partnerIkNumber);
-  if (snapshotIk && ocrPartnerIk && snapshotIk !== ocrPartnerIk) {
-    warnings.push({
-      code: "partner_ik_mismatch",
-      message: "Leistungserbringer-IK weicht vom Mandanten ab",
-      severity: "block_recommended",
-    });
-  } else if (snapshotIk && !ocrPartnerIk) {
+  if (!input.partnerIkSnapshot.trim()) {
     warnings.push({
       code: "missing_partner_ik",
-      message: "Leistungserbringer-IK auf dem Schein nicht erkannt",
+      message: "Leistungserbringer-IK (Unternehmen) nicht hinterlegt",
       severity: "warn",
     });
   }
 
   for (const field of [
     "insuranceIk",
-    "partnerIkNumber",
     "transportDate",
     "behandlungsArt",
     "genehmigungsnummer",
