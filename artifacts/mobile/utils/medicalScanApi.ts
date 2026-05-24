@@ -313,6 +313,75 @@ export async function postCustomerMedicalTransportScanTest(
   return postMedicalTransportScanTestAtPath("/customer/v1/medical/scan-test", input);
 }
 
+export type CustomerMedicalBookingScanSuccess = {
+  ok: true;
+  scanId: string;
+  trafficLight: MedicalTrafficLight;
+  primaryReasonDe: string | null;
+  scannedAt: string;
+};
+
+export type CustomerMedicalBookingScanResult = CustomerMedicalBookingScanSuccess | MedicalScanError;
+
+/** Persistierter Kunden-Scan vor Krankenfahrt-Buchung (POST /customer/v1/medical/scan). */
+export async function postCustomerMedicalTransportScan(
+  input: PostMedicalTransportScanTestInput,
+): Promise<CustomerMedicalBookingScanResult> {
+  const token = input.authToken.trim();
+  const API_BASE = getApiBaseUrl();
+  if (!API_BASE) {
+    return { ok: false, error: "api_not_configured", httpStatus: 0 };
+  }
+  if (!token) {
+    return { ok: false, error: "unauthorized", httpStatus: 401 };
+  }
+  const imageBase64 = input.imageBase64.trim();
+  if (!imageBase64) {
+    return { ok: false, error: "image_base64_required", httpStatus: 400 };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/customer/v1/medical/scan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ imageBase64 }),
+    });
+  } catch {
+    return { ok: false, error: "network_error", httpStatus: 0 };
+  }
+
+  const data = (await res.json().catch(() => ({}))) as Partial<CustomerMedicalBookingScanSuccess> & {
+    error?: string;
+  };
+  if (!res.ok || data.ok !== true) {
+    const error = typeof data.error === "string" ? data.error : `http_${res.status}`;
+    return { ok: false, error, httpStatus: res.status };
+  }
+
+  const scanId = typeof data.scanId === "string" ? data.scanId.trim() : "";
+  if (!scanId) {
+    return { ok: false, error: "scan_response_invalid", httpStatus: res.status };
+  }
+
+  return {
+    ok: true,
+    scanId,
+    trafficLight:
+      data.trafficLight === "green" || data.trafficLight === "yellow" || data.trafficLight === "red"
+        ? data.trafficLight
+        : "yellow",
+    primaryReasonDe:
+      typeof data.primaryReasonDe === "string" && data.primaryReasonDe.trim()
+        ? data.primaryReasonDe.trim()
+        : null,
+    scannedAt: typeof data.scannedAt === "string" ? data.scannedAt : new Date().toISOString(),
+  };
+}
+
 /** Serien-/Rückfahrt-Kontext aus Ride-Meta für Scan-Request. */
 export function medicalScanContextFromRide(partnerBookingMeta: Record<string, unknown> | null | undefined): {
   seriesId?: string;

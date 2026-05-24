@@ -116,6 +116,7 @@ app.use((req, res, next) => {
     req.method === "POST" &&
     (u.includes("/fleet-driver/v1/medical/scan") ||
       u.includes("/fleet-driver/v1/medical/scan-test") ||
+      u.includes("/customer/v1/medical/scan") ||
       u.includes("/customer/v1/medical/scan-test") ||
       (u.includes("/rides/") &&
         (u.includes("/medical/transport-document") || u.includes("/medical/signature"))));

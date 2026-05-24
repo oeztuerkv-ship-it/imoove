@@ -81,6 +81,10 @@ type Props = {
   primaryBusy?: boolean;
   /** fleet = vollständige Fahrer-Ansicht; customer = vereinfachte Kunden-Ansicht */
   scanApi?: "fleet" | "customer";
+  /** Krankenfahrt-Buchung: Gelb mit Fahrer-Hinweis, Rot ohne Buchung */
+  bookingFlow?: boolean;
+  /** API primaryReasonDe wenn keine Warnungen im Test-Scan-Format vorliegen */
+  customerReasonOverride?: string | null;
 };
 
 const CUSTOMER_TRAFFIC_CONFIG: Record<
@@ -153,14 +157,23 @@ export function MedicalTrafficLightCard({
   onPrimaryAction,
   primaryBusy = false,
   scanApi = "fleet",
+  bookingFlow = false,
+  customerReasonOverride,
 }: Props) {
   if (scanApi === "customer") {
     const cfg = CUSTOMER_TRAFFIC_CONFIG[trafficLight];
-    const reason = pickPrimaryCustomerReason(trafficLight, warnings, insuranceRules);
-    const subtitle =
+    const reason =
+      customerReasonOverride?.trim() ||
+      pickPrimaryCustomerReason(trafficLight, warnings, insuranceRules);
+    let subtitle =
       trafficLight === "red" || trafficLight === "yellow"
         ? reason ?? cfg.subtitle
         : cfg.subtitle;
+    if (bookingFlow && trafficLight === "yellow" && subtitle) {
+      subtitle = `${subtitle}\n\nWeiter möglich — letzte Entscheidung liegt beim Fahrer.`;
+    }
+    const primaryLabel =
+      bookingFlow && trafficLight === "yellow" ? "Weiter buchen" : cfg.primaryLabel;
 
     return (
       <View style={[styles.customerCard, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
@@ -179,7 +192,7 @@ export function MedicalTrafficLightCard({
             },
           ]}
         >
-          <Text style={styles.primaryBtnText}>{primaryBusy ? "Bitte warten…" : cfg.primaryLabel}</Text>
+          <Text style={styles.primaryBtnText}>{primaryBusy ? "Bitte warten…" : primaryLabel}</Text>
         </Pressable>
       </View>
     );

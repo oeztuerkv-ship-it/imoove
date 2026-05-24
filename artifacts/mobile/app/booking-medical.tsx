@@ -5,6 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -19,9 +20,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar, mainTabScrollPaddingBottom } from "@/components/BottomTabBar";
+import { MedicalScanResultSheet } from "@/components/MedicalScanResultSheet";
+import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
 import { useRideRequests, type RideAccessibilityOptions } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
+import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
+import {
+  medicalScanErrorMessageDe,
+  postCustomerMedicalTransportScan,
+  type MedicalTrafficLight,
+} from "@/utils/medicalScanApi";
 import { rf, rs } from "@/utils/scale";
 
 type WeekdayKey = "mo" | "tu" | "we" | "th" | "fr" | "sa" | "su";
@@ -140,6 +149,13 @@ export default function BookingMedicalScreen() {
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
   const [pickerDraftValue, setPickerDraftValue] = useState<Date | null>(null);
+
+  const [scanBusy, setScanBusy] = useState(false);
+  const [submitBusy, setSubmitBusy] = useState(false);
+  const [scanSheetOpen, setScanSheetOpen] = useState(false);
+  const [scanTrafficLight, setScanTrafficLight] = useState<MedicalTrafficLight | null>(null);
+  const [scanPrimaryReasonDe, setScanPrimaryReasonDe] = useState<string | null>(null);
+  const [pendingScanId, setPendingScanId] = useState<string | null>(null);
 
   function focusIntoView(e: any) {
     const target = e.target;
@@ -292,13 +308,9 @@ export default function BookingMedicalScreen() {
     return null;
   }
 
-  async function submitMedical() {
-    const err = validateRequired();
-    if (err) {
-      Alert.alert("Angaben prüfen", err);
-      return;
-    }
-
+  async function executeBooking(customerMedicalScanId: string) {
+    setSubmitBusy(true);
+    try {
     const accessibilityOptions: RideAccessibilityOptions | null = needsAssistance
       ? {
           assistanceLevel: assistanceLevel as RideAccessibilityOptions["assistanceLevel"],
@@ -384,6 +396,7 @@ export default function BookingMedicalScreen() {
         payerKind: "insurance",
         billingReference: costCenter.trim() || authorizationReference.trim() || null,
         partnerBookingMeta: medicalMeta,
+        customerMedicalScanId,
         ...(accessibilityOptions ? { accessibilityOptions } : {}),
       });
       if (returnRide) {
@@ -403,6 +416,7 @@ export default function BookingMedicalScreen() {
           payerKind: "insurance",
           billingReference: costCenter.trim() || authorizationReference.trim() || null,
           partnerBookingMeta: { ...medicalMeta, return_leg: true },
+          customerMedicalScanId,
           ...(accessibilityOptions ? { accessibilityOptions } : {}),
         });
       }
@@ -427,6 +441,107 @@ export default function BookingMedicalScreen() {
       Alert.alert("Krankenfahrt angelegt", "Die Buchung wurde gespeichert.");
     }
     router.replace("/my-rides");
+    } catch (e) {
+      const msg =
+        e instanceof Error && "userMessage" in e && typeof (e as Error & { userMessage?: string }).userMessage === "string"
+          ? (e as Error & { userMessage: string }).userMessage
+          : e instanceof Error
+            ? e.message
+            : "Buchung fehlgeschlagen.";
+      if (msg === "medical_transport_scan_rejected") {
+        Alert.alert(
+          "Transportschein abgelehnt",
+          "Die Buchung wurde vom Server abgelehnt. Bitte Transportschein erneut prüfen.",
+        );
+      } else {
+        Alert.alert("Krankenfahrt", msg);
+      }
+    } finally {
+      setSubmitBusy(false);
+      setScanSheetOpen(false);
+      setPendingScanId(null);
+      setScanTrafficLight(null);
+      setScanPrimaryReasonDe(null);
+    }
+  }
+
+  async function runTransportScan(fromCamera: boolean) {
+    const token = profile.sessionToken?.trim() ?? "";
+    if (!token) {
+      Alert.alert("Anmeldung", "Bitte zuerst anmelden, um eine Krankenfahrt zu buchen.");
+      return;
+    }
+    setScanBusy(true);
+    try {
+      const imageBase64 = await pickTransportImageBase64(fromCamera, { maxWidth: 1280, jpegQuality: 0.62 });
+      if (!imageBase64) return;
+
+      const result = await postCustomerMedicalTransportScan({ authToken: token, imageBase64 });
+      if (!result.ok) {
+        Alert.alert("Transportschein", medicalScanErrorMessageDe(result.error));
+        return;
+      }
+
+      if (result.trafficLight === "green") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await executeBooking(result.scanId);
+        return;
+      }
+
+      setPendingScanId(result.scanId);
+      setScanTrafficLight(result.trafficLight);
+      setScanPrimaryReasonDe(result.primaryReasonDe);
+      setScanSheetOpen(true);
+      Haptics.notificationAsync(
+        result.trafficLight === "red"
+          ? Haptics.NotificationFeedbackType.Error
+          : Haptics.NotificationFeedbackType.Warning,
+      );
+    } catch (e) {
+      Alert.alert("Transportschein", e instanceof Error ? e.message : "Scan fehlgeschlagen.");
+    } finally {
+      setScanBusy(false);
+    }
+  }
+
+  function openTransportScanPicker() {
+    if (Platform.OS === "web") {
+      Alert.alert("Transportschein", "Bitte in der nativen App (iOS/Android) buchen.");
+      return;
+    }
+    Alert.alert("Transportschein scannen", "Foto des Transportscheins für die Vorprüfung", [
+      { text: "Abbrechen", style: "cancel" },
+      { text: "Foto aufnehmen", onPress: () => void runTransportScan(true) },
+      { text: "Aus Galerie", onPress: () => void runTransportScan(false) },
+    ]);
+  }
+
+  async function submitMedical() {
+    const err = validateRequired();
+    if (err) {
+      Alert.alert("Angaben prüfen", err);
+      return;
+    }
+    if (!profile.isLoggedIn || !profile.sessionToken?.trim()) {
+      Alert.alert("Anmeldung", "Bitte zuerst anmelden, um eine Krankenfahrt zu buchen.");
+      return;
+    }
+    openTransportScanPicker();
+  }
+
+  function dismissScanSheet() {
+    setScanSheetOpen(false);
+    setPendingScanId(null);
+    setScanTrafficLight(null);
+    setScanPrimaryReasonDe(null);
+  }
+
+  function onScanSheetPrimaryAction() {
+    if (scanTrafficLight === "yellow" && pendingScanId) {
+      void executeBooking(pendingScanId);
+      return;
+    }
+    dismissScanSheet();
   }
 
   return (
@@ -691,11 +806,49 @@ export default function BookingMedicalScreen() {
           </View>
         ) : null}
 
-        <Pressable style={styles.submitBtn} onPress={() => void submitMedical()}>
-          <Feather name="check" size={18} color="#fff" />
-          <Text style={styles.submitText}>{seriesMode ? "Serienfahrt erstellen" : "Krankenfahrt speichern"}</Text>
+        <Text style={styles.profileHint}>
+          Vor dem Speichern wird der Transportschein gescannt (OCR-Vorprüfung).
+        </Text>
+
+        <Pressable
+          style={[styles.submitBtn, (scanBusy || submitBusy) && { opacity: 0.65 }]}
+          disabled={scanBusy || submitBusy}
+          onPress={() => void submitMedical()}
+        >
+          {scanBusy || submitBusy ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Feather name="check" size={18} color="#fff" />
+          )}
+          <Text style={styles.submitText}>
+            {scanBusy
+              ? "Transportschein wird geprüft…"
+              : submitBusy
+                ? "Buchung wird gespeichert…"
+                : seriesMode
+                  ? "Serienfahrt erstellen"
+                  : "Krankenfahrt speichern"}
+          </Text>
         </Pressable>
       </ScrollView>
+      <MedicalScanResultSheet
+        visible={scanSheetOpen && scanTrafficLight != null}
+        title="Transportschein"
+        scanApi="customer"
+        onClose={dismissScanSheet}
+      >
+        {scanTrafficLight ? (
+          <MedicalTrafficLightCard
+            scanApi="customer"
+            bookingFlow
+            trafficLight={scanTrafficLight}
+            warnings={[]}
+            customerReasonOverride={scanPrimaryReasonDe}
+            onPrimaryAction={onScanSheetPrimaryAction}
+            primaryBusy={submitBusy}
+          />
+        ) : null}
+      </MedicalScanResultSheet>
       <Modal visible={pickerTarget != null} transparent animationType="fade" onRequestClose={cancelPicker}>
         <View style={styles.pickerModalBackdrop}>
           <View style={styles.pickerModalCard}>

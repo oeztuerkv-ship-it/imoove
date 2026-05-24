@@ -160,6 +160,7 @@ interface RideRequestContextValue {
       billingReference?: string | null;
       accessCode?: string | null;
       accessCodeVerifyToken?: string | null;
+      customerMedicalScanId?: string | null;
     },
   ) => Promise<string>;
   acceptRequest: (id: string, driverId?: string) => Promise<void>;
@@ -1032,6 +1033,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         billingReference?: string | null;
         accessCode?: string | null;
         accessCodeVerifyToken?: string | null;
+        customerMedicalScanId?: string | null;
       },
     ): Promise<string> => {
       const resolvedPassengerId = await ensurePassengerId();
