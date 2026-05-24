@@ -9,6 +9,7 @@ import {
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { getAdminCompanyCommissionRate } from "./adminData";
 import { getDb, isPostgresConfigured } from "./client";
+import { isMedicalTransportPlatformAvailable } from "../lib/medical/medicalTransportAuthorization";
 import { appOperationalConfigTable, appServiceRegionsTable } from "./schema";
 import {
   findServiceRegionIdForPickup,
@@ -815,6 +816,8 @@ export type AppConfigPublic = {
   system: Record<string, unknown>;
   /** Volle Tarife pro Einfahrt-Region (Defaults + byServiceRegion[id] gemerged). */
   tariffsPerServiceRegion: Record<string, unknown>;
+  /** Plattform-Gate: mindestens ein aktiver Mandant mit Krankenfahrt-Freigabe. */
+  medicalTransportAvailable: boolean;
 };
 
 export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
@@ -892,6 +895,8 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     tariffsPerServiceRegion[r.id] = mergeTariffsForServiceRegion(tSec, isPlainObject(o) ? o : null);
   }
 
+  const medicalTransportAvailable = await isMedicalTransportPlatformAvailable();
+
   return {
     ok: true,
     version: typeof v === "number" && Number.isFinite(v) ? v : 1,
@@ -907,6 +912,7 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     driverRules: section("driverRules"),
     bookingRules: section("bookingRules"),
     system: section("system"),
+    medicalTransportAvailable,
   };
 }
 

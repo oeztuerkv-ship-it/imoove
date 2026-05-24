@@ -102,6 +102,7 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     typeof cc.minCommissionEur === "number" && Number.isFinite(cc.minCommissionEur)
       ? cc.minCommissionEur
       : null;
+  const medicalTransportAuthorized = me.medicalTransportAuthorized === true;
   return {
     ...prev,
     id: String(d.id ?? prev.id ?? ""),
@@ -127,6 +128,7 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
       ratePercent: commissionRatePercent,
       minCommissionEur,
     },
+    medicalTransportAuthorized,
   };
 }
 
@@ -153,6 +155,7 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     blockBannerTitle: typeof p.blockBannerTitle === "string" ? p.blockBannerTitle : "",
     driverBlockKind: typeof p.driverBlockKind === "string" ? p.driverBlockKind : "",
     companyCommission: normalizeCompanyCommissionFromStorage(p.companyCommission),
+    medicalTransportAuthorized: p.medicalTransportAuthorized === true,
   };
 }
 
@@ -202,6 +205,8 @@ export interface DriverProfile {
   driverBlockKind: string;
   /** ONRODA-Provisionssatz des Mandanten (aus `/fleet-driver/v1/me`). */
   companyCommission: DriverCompanyCommission;
+  /** Krankenfahrt-Freigabe (aus `/fleet-driver/v1/me`). */
+  medicalTransportAuthorized: boolean;
 }
 
 interface DriverContextValue {
@@ -351,6 +356,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         blockBannerTitle: "",
         driverBlockKind: "",
         companyCommission: { rate: 0.1, ratePercent: 10, minCommissionEur: null },
+        medicalTransportAuthorized: false,
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));

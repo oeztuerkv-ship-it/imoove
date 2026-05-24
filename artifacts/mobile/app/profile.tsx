@@ -25,7 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/components/CustomerPasswordFields";
 import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
-import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
+import { accountSheetPrimaryLabel, accountSheetInputText, ACCOUNT_SHEET_FIELD_BORDER, ACCOUNT_SHEET_FIELD_BORDER_FOCUS, ACCOUNT_SHEET_FIELD_BORDER_WIDTH, ACCOUNT_SHEET_FIELD_BORDER_WIDTH_FOCUS } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import {
   LOGIN_ACTION_ICON_SIZE,
@@ -38,6 +38,7 @@ import {
 } from "@/src/screens/LoginScreen";
 import { useTranslation } from "@/context/LanguageContext";
 import { type UserProfile, useUser } from "@/context/UserContext";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { SUPPORTED_LOCALES, type AppLocale } from "@/src/i18n";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -212,6 +213,9 @@ function AccountSectionTitle({ title, comfortable }: { title: string; comfortabl
 /** Vorbild Rechnungsadresse: weiße Karten, Rand, Scroll-Padding, Feld-Typografie (Persönliche Daten + Patienten-Profil gleich). */
 const BILLING_FIELD_CARD = "#FFFFFF";
 const BILLING_CARD_INSET = rs(8);
+/** Notfallkontakt im Patienten-Profil: etwas breiter als Standard-Karten */
+const PATIENT_NOTFALL_CARD_INSET = rs(4);
+const notfallFieldPad = { paddingHorizontal: rs(8), paddingVertical: rs(11) };
 const BILLING_SCROLL_H_PAD = rs(8);
 const billingCardShell = { marginHorizontal: BILLING_CARD_INSET, alignSelf: "stretch" as const };
 const billingFieldPad = { paddingHorizontal: rs(11), paddingVertical: rs(12) };
@@ -659,6 +663,8 @@ function PatientProfileModal({
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { config: appConfig } = useOnrodaAppConfig();
+  const medicalTransportAvailable = appConfig.medicalTransportAvailable === true;
 
   const [krankenkasse, setKrankenkasse] = useState(profile.krankenkasse ?? "");
   const [versichertennummer, setVersichertennummer] = useState(profile.versichertennummer ?? "");
@@ -674,6 +680,8 @@ function PatientProfileModal({
   const [dialyse, setDialyse] = useState(profile.dialyse ?? false);
   const [notfallName, setNotfallName] = useState(profile.notfallName ?? "");
   const [notfallTelefon, setNotfallTelefon] = useState(profile.notfallTelefon ?? "");
+  const [notfallNameFocused, setNotfallNameFocused] = useState(false);
+  const [notfallTelefonFocused, setNotfallTelefonFocused] = useState(false);
   const [patientNotiz, setPatientNotiz] = useState(profile.patientNotiz ?? "");
 
   const handleSave = () => {
@@ -690,7 +698,19 @@ function PatientProfileModal({
   const divider = { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border };
   const fieldOnWhite = billingInput(colors.foreground);
   const notfallLabel = [styles.modalFieldLabel, { color: "#B91C1C", fontSize: rf(13), marginBottom: rs(5) }];
-  const notfallInput = [styles.modalFieldInput, { color: colors.foreground, backgroundColor: "#FFFFFF", fontSize: rf(17) }];
+  const notfallInputBox = (focused: boolean) => [
+    accountSheetInputText,
+    {
+      color: colors.foreground,
+      backgroundColor: "#FFFFFF",
+      alignSelf: "stretch" as const,
+      borderRadius: rs(12),
+      borderWidth: focused ? ACCOUNT_SHEET_FIELD_BORDER_WIDTH_FOCUS : ACCOUNT_SHEET_FIELD_BORDER_WIDTH,
+      borderColor: focused ? ACCOUNT_SHEET_FIELD_BORDER_FOCUS : ACCOUNT_SHEET_FIELD_BORDER,
+      paddingHorizontal: rs(12),
+      paddingVertical: rs(12),
+    },
+  ];
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose(null)}>
@@ -737,7 +757,7 @@ function PatientProfileModal({
               </View>
             </View>
 
-            {customerSessionToken?.trim() ? (
+            {customerSessionToken?.trim() && medicalTransportAvailable ? (
               <>
                 <View style={{ paddingHorizontal: 0 }}>
                   <AccountSectionTitle title="Transportschein" />
@@ -795,33 +815,37 @@ function PatientProfileModal({
               <ToggleSwitchRow label="Tragehilfe (2. Fahrer erforderlich)" value={tragehilfe} onToggle={setTragehilfe} colors={colors} />
             </View>
 
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginLeft: BILLING_CARD_INSET }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginLeft: PATIENT_NOTFALL_CARD_INSET }}>
               <Feather name="bell" size={17} color="#DC2626" />
               <Text style={{ fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#DC2626", letterSpacing: 0.8 }}>NOTFALLKONTAKT</Text>
             </View>
-            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: "#FFF5F5", borderColor: "#FCA5A5", borderWidth: StyleSheet.hairlineWidth }]}>
-              <View style={[styles.modalField, billingFieldPad, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#FCA5A5" }]}>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: "#FFF5F5", borderColor: "#FCA5A5", borderWidth: StyleSheet.hairlineWidth, marginHorizontal: PATIENT_NOTFALL_CARD_INSET }]}>
+              <View style={[notfallFieldPad, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#FCA5A5" }]}>
                 <Text style={notfallLabel}>Name</Text>
                 <TextInput
-                  style={notfallInput}
+                  style={notfallInputBox(notfallNameFocused)}
                   value={notfallName}
                   onChangeText={setNotfallName}
                   placeholder="Vertrauensperson"
                   placeholderTextColor="#FCA5A5"
                   autoCapitalize="words"
                   returnKeyType="next"
+                  onFocus={() => setNotfallNameFocused(true)}
+                  onBlur={() => setNotfallNameFocused(false)}
                 />
               </View>
-              <View style={[styles.modalField, billingFieldPad]}>
+              <View style={notfallFieldPad}>
                 <Text style={notfallLabel}>Telefon</Text>
                 <TextInput
-                  style={notfallInput}
+                  style={notfallInputBox(notfallTelefonFocused)}
                   value={notfallTelefon}
                   onChangeText={setNotfallTelefon}
                   placeholder="+49 711 000000"
                   placeholderTextColor="#FCA5A5"
                   keyboardType="phone-pad"
                   returnKeyType="done"
+                  onFocus={() => setNotfallTelefonFocused(true)}
+                  onBlur={() => setNotfallTelefonFocused(false)}
                 />
               </View>
             </View>

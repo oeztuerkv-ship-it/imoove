@@ -11,8 +11,9 @@ import {
   accountSheetPrimaryLabel,
   accountSheetSecondaryLabel,
 } from "@/constants/accountSheetTypography";
-import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
+import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useUser } from "@/context/UserContext";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { rs } from "@/utils/scale";
 
@@ -21,13 +22,14 @@ type BookingCard = {
   title: string;
   subtitle: string;
   icon: keyof typeof Feather.glyphMap;
-  color: string;
   onPress: () => void;
 };
 
 export default function BookingCenterScreen() {
   const colors = useColors();
   const { profile } = useUser();
+  const { config: appConfig } = useOnrodaAppConfig();
+  const medicalTransportAvailable = appConfig.medicalTransportAvailable === true;
   const customerSessionToken =
     typeof profile.sessionToken === "string" && profile.sessionToken.trim() ? profile.sessionToken.trim() : "";
   const insets = useSafeAreaInsets();
@@ -80,7 +82,6 @@ export default function BookingCenterScreen() {
       title: "Jetzt fahren",
       subtitle: "Start & Ziel eingeben – Fahrer kommt sofort.",
       icon: "navigation",
-      color: "#DC2626",
       onPress: () => router.replace("/?openBooking=instant"),
     },
     {
@@ -88,7 +89,6 @@ export default function BookingCenterScreen() {
       title: "Reservierung",
       subtitle: "Fahrt für später planen – Datum & Uhrzeit wählen.",
       icon: "calendar",
-      color: "#2563EB",
       onPress: () => router.push("/new-booking"),
     },
     {
@@ -96,7 +96,6 @@ export default function BookingCenterScreen() {
       title: "Krankenfahrt",
       subtitle: "Fahrtrelevante Angaben ohne Diagnose speichern.",
       icon: "heart",
-      color: "#0EA5E9",
       onPress: () => router.push("/booking-medical"),
     },
     {
@@ -104,7 +103,6 @@ export default function BookingCenterScreen() {
       title: "Serienfahrt",
       subtitle: "Wiederkehrende Krankenfahrten über Zeitraum anlegen.",
       icon: "repeat",
-      color: "#16A34A",
       onPress: () => router.push("/booking-medical?mode=series"),
     },
     {
@@ -112,7 +110,6 @@ export default function BookingCenterScreen() {
       title: "QR-Code / Code einlösen",
       subtitle: "Genehmigung/Buchung aufrufen und später automatisch prüfen.",
       icon: "maximize",
-      color: "#7C3AED",
       onPress: () => router.push("/booking-qr"),
     },
   ];
@@ -128,26 +125,31 @@ export default function BookingCenterScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) }]}
       >
-        {cards.map((c) => (
-          <Pressable
-            key={c.key}
-            onPress={c.onPress}
-            style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}
-          >
-            <View style={[styles.iconWrap, { backgroundColor: `${c.color}14` }]}>
-              <Feather name={c.icon} size={16} color={c.color} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>{c.title}</Text>
-              <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>{c.subtitle}</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-          </Pressable>
-        ))}
-        {profile.isLoggedIn && customerSessionToken ? (
-          <View
-            style={[styles.scanCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}
-          >
+        <View style={[styles.cardGroup, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
+          {cards.map((c, index) => (
+            <Pressable
+              key={c.key}
+              onPress={c.onPress}
+              style={({ pressed }) => [
+                styles.cardRow,
+                pressed && { backgroundColor: HOME_SHEET_INNER },
+                index < cards.length - 1 && styles.cardRowDivider,
+                index < cards.length - 1 && { borderBottomColor: HOME_SHEET_RIM },
+              ]}
+            >
+              <View style={[styles.iconWrap, { backgroundColor: colors.muted }]}>
+                <Feather name={c.icon} size={16} color={colors.foreground} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>{c.title}</Text>
+                <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>{c.subtitle}</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </Pressable>
+          ))}
+        </View>
+        {profile.isLoggedIn && customerSessionToken && medicalTransportAvailable ? (
+          <View style={[styles.cardGroup, styles.scanGroup, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
             <MedicalTransportScanTestTool
               authToken={customerSessionToken}
               scanApi="customer"
@@ -155,9 +157,11 @@ export default function BookingCenterScreen() {
             />
           </View>
         ) : null}
-        <View style={[styles.notice, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
-          <MaterialCommunityIcons name="shield-check-outline" size={16} color="#166534" />
-          <Text style={styles.noticeText}>
+        <View style={[styles.notice, { backgroundColor: "#ECFDF5", borderColor: "#BBF7D0" }]}>
+          <View style={styles.noticeIconWrap}>
+            <MaterialCommunityIcons name="shield-check-outline" size={16} color="#16A34A" />
+          </View>
+          <Text style={[styles.noticeText, { color: colors.foreground }]}>
             ONRODA speichert nur fahrtrelevante Daten für Disposition, Nachweis und Abrechnung.
           </Text>
         </View>
@@ -179,18 +183,27 @@ const styles = StyleSheet.create({
   },
   headerTitle: accountSheetHeaderTitle,
   scroll: {
-    paddingHorizontal: rs(16),
-    paddingTop: rs(20),
-    gap: rs(10),
+    paddingHorizontal: rs(8),
+    paddingTop: rs(24),
+    gap: rs(16),
   },
-  card: {
+  cardGroup: {
     borderRadius: rs(16),
     borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  cardRow: {
     paddingVertical: rs(14),
-    paddingHorizontal: rs(14),
+    paddingHorizontal: rs(16),
     flexDirection: "row",
     alignItems: "center",
     gap: rs(12),
+  },
+  cardRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  scanGroup: {
+    padding: rs(16),
   },
   iconWrap: {
     width: rs(32),
@@ -201,20 +214,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: accountSheetPrimaryLabel,
   cardSub: { ...accountSheetSecondaryLabel, marginTop: rs(2) },
-  scanCard: {
+  notice: {
     borderRadius: rs(16),
     borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: rs(14),
-    paddingHorizontal: rs(14),
-  },
-  notice: {
-    borderRadius: rs(14),
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: rs(12),
+    padding: rs(16),
     flexDirection: "row",
     gap: rs(10),
-    alignItems: "flex-start",
+    alignItems: "center",
   },
-  noticeText: { flex: 1, color: "#166534", ...accountSheetSecondaryLabel },
+  noticeIconWrap: {
+    alignSelf: "center",
+    paddingTop: rs(1),
+  },
+  noticeText: { flex: 1, ...accountSheetSecondaryLabel },
 });
 

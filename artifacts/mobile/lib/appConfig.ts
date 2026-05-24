@@ -42,6 +42,8 @@ export type OnrodaAppConfig = {
   driverRules: Record<string, unknown>;
   bookingRules: Record<string, unknown>;
   system: Record<string, unknown>;
+  /** Plattform-Gate Krankenfahrten (aus GET /app/config). */
+  medicalTransportAvailable: boolean;
 };
 
 const DEFAULT: OnrodaAppConfig = {
@@ -115,6 +117,7 @@ const DEFAULT: OnrodaAppConfig = {
     minAppVersionHint: null,
     emergencyShutdown: false,
   },
+  medicalTransportAvailable: false,
 };
 
 let cache: { at: number; data: OnrodaAppConfig } | null = null;
@@ -166,6 +169,7 @@ export async function fetchAppConfig(): Promise<OnrodaAppConfig> {
         activeCities: Array.isArray(j.activeCities) && j.activeCities.length > 0 ? j.activeCities : DEFAULT.activeCities,
         version: typeof j.version === "number" ? j.version : 1,
         updatedAt: typeof j.updatedAt === "string" ? j.updatedAt : j.updatedAt === null ? null : DEFAULT.updatedAt,
+        medicalTransportAvailable: j.medicalTransportAvailable === true,
       } as OnrodaAppConfig;
       cache = { at: Date.now(), data };
       return data;

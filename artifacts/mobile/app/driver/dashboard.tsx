@@ -55,6 +55,7 @@ import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
 import { MedicalScanResultSheet } from "@/components/MedicalScanResultSheet";
 import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
+import { MedicalTransportNotAuthorizedCard } from "@/components/MedicalTransportNotAuthorizedCard";
 import {
   medicalScanContextFromRide,
   medicalScanErrorMessageDe,
@@ -612,6 +613,7 @@ function ScheduledCard({
   fleetAuthToken,
   driverId,
   onMedicalUpdated,
+  medicalTransportAuthorized = true,
 }: {
   req: RideRequest;
   onAccept: () => void;
@@ -622,6 +624,7 @@ function ScheduledCard({
   fleetAuthToken?: string;
   driverId?: string;
   onMedicalUpdated?: () => void | Promise<void>;
+  medicalTransportAuthorized?: boolean;
 }) {
   const { t } = useTranslation();
   const isAssignedUpcoming = req.status === "scheduled_assigned";
@@ -740,6 +743,7 @@ function ScheduledCard({
           fleetAuthToken={fleetAuthToken.trim()}
           driverId={driverId}
           mode="orderCheck"
+          medicalTransportAuthorized={medicalTransportAuthorized}
           onUpdated={() => void onMedicalUpdated?.()}
         />
       ) : null}
@@ -1209,7 +1213,11 @@ function TabProfil({
           ]}
         >
           <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>KONTO</Text>
-          <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="card" />
+          {driver.medicalTransportAuthorized ? (
+            <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="card" />
+          ) : (
+            <MedicalTransportNotAuthorizedCard />
+          )}
         </View>
       ) : null}
 
@@ -1279,12 +1287,14 @@ function MedicalRideProofActions({
   onUpdated,
   mode = "full",
   driverId,
+  medicalTransportAuthorized = true,
 }: {
   req: RideRequest;
   fleetAuthToken: string;
   onUpdated: () => void | Promise<void>;
   mode?: "full" | "orderCheck";
   driverId?: string;
+  medicalTransportAuthorized?: boolean;
 }) {
   const metaRaw = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
   const meta = metaRaw && typeof metaRaw === "object" ? metaRaw : {};
@@ -1301,9 +1311,17 @@ function MedicalRideProofActions({
     if (camOpen) scannedRef.current = false;
   }, [camOpen]);
 
-  if (!isMedicalRideRequest(req)) return null;
-  const signatureDone = meta.signature_done === true;
   const orderCheckMode = mode === "orderCheck";
+
+  if (!isMedicalRideRequest(req)) return null;
+  if (!medicalTransportAuthorized) {
+    return (
+      <View style={{ paddingHorizontal: orderCheckMode ? 0 : 16, marginBottom: 10, marginTop: orderCheckMode ? 14 : 0 }}>
+        <MedicalTransportNotAuthorizedCard />
+      </View>
+    );
+  }
+  const signatureDone = meta.signature_done === true;
   const canVerify = driverId ? canDriverVerifyMedicalRide(req, driverId) : true;
   const medicalChecklist = medicalSteps(req);
 
@@ -1429,7 +1447,7 @@ function MedicalRideProofActions({
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) {
-        throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+        throw new Error(medicalScanErrorMessageDe(typeof data.error === "string" ? data.error : `http_${res.status}`));
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await onUpdated();
@@ -1723,12 +1741,14 @@ function ActiveRideScreen({
   onCancel,
   driverId,
   fleetAuthToken,
+  medicalTransportAuthorized = true,
 }: {
   req: RideRequest;
   onComplete: (finalFare: number) => void | Promise<void>;
   onCancel: () => void;
   driverId: string;
   fleetAuthToken: string;
+  medicalTransportAuthorized?: boolean;
 }) {
   const colors = useColors();
   const { startDriving, arriveAtCustomer, markDriverArriving, refreshRequests } = useRideRequests();
@@ -2049,6 +2069,7 @@ function ActiveRideScreen({
           <MedicalRideProofActions
             req={req}
             fleetAuthToken={fleetAuthToken}
+            medicalTransportAuthorized={medicalTransportAuthorized}
             onUpdated={() => void refreshRequests()}
           />
         ) : null}
@@ -3454,6 +3475,7 @@ export default function DriverDashboard() {
             onCancel={() => handleCancel(activeDriverRequest.id)}
             driverId={driverId}
             fleetAuthToken={driver.authToken}
+            medicalTransportAuthorized={driver.medicalTransportAuthorized}
           />
         ) : (
           <>
@@ -3585,6 +3607,7 @@ export default function DriverDashboard() {
                             driverPos={driverPos}
                             fleetAuthToken={driver.authToken}
                             driverId={driver.id}
+                            medicalTransportAuthorized={driver.medicalTransportAuthorized}
                             onMedicalUpdated={() => void refreshDriverMarketHard()}
                             onAccept={() => handleAccept(req.id)}
                             onReject={() => handleReject(req.id)}
@@ -3617,6 +3640,7 @@ export default function DriverDashboard() {
                             driverPos={driverPos}
                             fleetAuthToken={driver.authToken}
                             driverId={driver.id}
+                            medicalTransportAuthorized={driver.medicalTransportAuthorized}
                             onMedicalUpdated={() => void refreshDriverMarketHard()}
                             onAccept={() => handleAccept(req.id)}
                             onReject={() => handleReject(req.id)}

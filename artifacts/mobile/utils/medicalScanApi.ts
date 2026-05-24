@@ -99,6 +99,8 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
   unsupported_or_corrupt_image: "Bild beschädigt oder nicht unterstützt.",
   unauthorized: "Nicht angemeldet.",
   test_scan_disabled: "Testscan ist auf dem Server deaktiviert.",
+  medical_transport_not_authorized:
+    "Krankenfahrten sind für Sie derzeit nicht freigeschaltet. Bitte wenden Sie sich an ONRODA: onroda@mail.de",
   http_413: "Foto ist zu groß für den Upload. Bitte erneut aufnehmen.",
   network_error: "Keine Verbindung zum Server.",
 };
