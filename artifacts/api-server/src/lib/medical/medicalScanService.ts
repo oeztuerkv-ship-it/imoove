@@ -23,7 +23,7 @@ import {
   parseMedicalDateLogicType,
   type MedicalDateLogicType,
 } from "./medicalDateLogic";
-import { normalizeMedicalOcrPayload } from "./medicalOcrNormalize";
+import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument } from "./medicalOcrNormalize";
 import { evaluateMedicalTrafficLight } from "./medicalTrafficLight";
 
 export const MEDICAL_RIDE_UPLOAD_ROOT =
@@ -198,6 +198,9 @@ export async function runMedicalTransportDocumentScan(
     partnerIkSnapshot,
     dateLogicResult,
     ocrProviderSucceeded,
+    hasSignatureOnDocument: ocrResult.ok
+      ? parseHasSignatureOnDocument(ocrResult.rawJson.extracted ?? ocrResult.rawJson)
+      : undefined,
   });
 
   const dateLogicContextJson: Record<string, unknown> = {

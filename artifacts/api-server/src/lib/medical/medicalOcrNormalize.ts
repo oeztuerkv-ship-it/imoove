@@ -13,9 +13,16 @@ export const MEDICAL_OCR_EXTRACTED_FIELDS = [
   "validFrom",
   "validUntil",
   "documentKind",
+  "behandlungsArt",
+  "pflegegrad",
+  "merkzeichen",
+  "genehmigungsnummer",
 ] as const;
 
 export type MedicalOcrDocumentKind = "transport_sheet" | "signature_image" | "other";
+export type MedicalBehandlungsArt = "stationaer" | "ambulant" | "unbekannt";
+export type MedicalPflegegrad = "3" | "4" | "5" | "keins" | "unbekannt";
+export type MedicalMerkzeichen = "aG" | "Bl" | "H" | "keins" | "unbekannt";
 
 export type MedicalOcrExtracted = {
   patientDisplayName: string;
@@ -27,6 +34,10 @@ export type MedicalOcrExtracted = {
   validFrom: string | null;
   validUntil: string | null;
   documentKind: MedicalOcrDocumentKind;
+  behandlungsArt: MedicalBehandlungsArt;
+  pflegegrad: MedicalPflegegrad;
+  merkzeichen: MedicalMerkzeichen;
+  genehmigungsnummer: string | null;
 };
 
 export type MedicalOcrConfidence = Partial<Record<(typeof MEDICAL_OCR_EXTRACTED_FIELDS)[number], number>>;
@@ -41,6 +52,10 @@ const EMPTY_EXTRACTED: MedicalOcrExtracted = {
   validFrom: null,
   validUntil: null,
   documentKind: "transport_sheet",
+  behandlungsArt: "unbekannt",
+  pflegegrad: "unbekannt",
+  merkzeichen: "unbekannt",
+  genehmigungsnummer: null,
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -91,12 +106,101 @@ function parseDocumentKind(raw: string): MedicalOcrDocumentKind {
   return "transport_sheet";
 }
 
+export function parseMedicalBehandlungsArt(raw: unknown): MedicalBehandlungsArt {
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss");
+  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (
+    v === "ambulant" ||
+    v.includes("ambulant") ||
+    v === "outpatient"
+  ) {
+    return "ambulant";
+  }
+  if (
+    v === "stationaer" ||
+    v === "stationär" ||
+    v.includes("stationaer") ||
+    v.includes("stationar") ||
+    v === "inpatient"
+  ) {
+    return "stationaer";
+  }
+  return "unbekannt";
+}
+
+export function parseMedicalPflegegrad(raw: unknown): MedicalPflegegrad {
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v === "keins" || v === "keine" || v === "none" || v === "0" || v === "nein") return "keins";
+  const digit = v.match(/\b([345])\b/)?.[1];
+  if (digit === "3" || digit === "4" || digit === "5") return digit;
+  return "unbekannt";
+}
+
+export function parseMedicalMerkzeichen(raw: unknown): MedicalMerkzeichen {
+  const v = String(raw ?? "").trim();
+  if (!v || v.toLowerCase() === "unbekannt" || v.toLowerCase() === "unknown") return "unbekannt";
+  if (v.toLowerCase() === "keins" || v.toLowerCase() === "keine" || v.toLowerCase() === "none") return "keins";
+
+  const compact = v.replace(/\s+/g, "");
+  if (/^aG$/i.test(compact) || compact.toLowerCase() === "ag") return "aG";
+  if (/^Bl$/i.test(compact) || compact.toLowerCase() === "bl") return "Bl";
+  if (compact === "H" || compact.toLowerCase() === "h") return "H";
+
+  const upper = v.toUpperCase();
+  if (upper.includes("AG") && !upper.includes("BL")) return "aG";
+  if (upper.includes("BL")) return "Bl";
+  if (/\bH\b/.test(v)) return "H";
+
+  return "unbekannt";
+}
+
+export function normalizeGenehmigungsnummer(raw: unknown): string | null {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "unbekannt") return null;
+  return s.slice(0, 64);
+}
+
+/** Pflegegrad 3/4/5 oder Merkzeichen aG/Bl/H → ambulant genehmigungsfrei. */
+export function isAmbulantGenehmigungsfrei(extracted: MedicalOcrExtracted): boolean {
+  if (extracted.pflegegrad === "3" || extracted.pflegegrad === "4" || extracted.pflegegrad === "5") {
+    return true;
+  }
+  if (extracted.merkzeichen === "aG" || extracted.merkzeichen === "Bl" || extracted.merkzeichen === "H") {
+    return true;
+  }
+  return false;
+}
+
+export function hasGenehmigungsnummer(extracted: MedicalOcrExtracted): boolean {
+  return Boolean(extracted.genehmigungsnummer?.trim());
+}
+
+/** Optional aus OCR-Roh-JSON (Claude-Feld `hasSignatureOnDocument`). */
+export function parseHasSignatureOnDocument(raw: unknown): boolean | undefined {
+  if (!isRecord(raw)) return undefined;
+  const nested = isRecord(raw.extracted) ? raw.extracted : raw;
+  if (typeof nested.hasSignatureOnDocument === "boolean") return nested.hasSignatureOnDocument;
+  if (typeof nested.has_signature_on_document === "boolean") return nested.has_signature_on_document;
+  return undefined;
+}
+
 function pickConfidence(raw: Record<string, unknown>): MedicalOcrConfidence {
   const out: MedicalOcrConfidence = {};
   const conf = raw.confidence ?? raw.confidences ?? raw.field_confidence;
-  if (!isRecord(conf)) return out;
+  const source = isRecord(conf) ? conf : raw;
+  if (!isRecord(source)) return out;
   for (const field of MEDICAL_OCR_EXTRACTED_FIELDS) {
-    const v = conf[field];
+    const v = source[field];
     if (typeof v === "number" && Number.isFinite(v)) {
       out[field] = Math.max(0, Math.min(1, v));
     }
@@ -178,6 +282,30 @@ export function normalizeMedicalOcrPayload(raw: unknown): {
     pickString(nested, ["documentKind", "document_kind", "documentType", "document_type"]),
   );
 
+  const behandlungsArt = parseMedicalBehandlungsArt(
+    nested.behandlungsArt ??
+      nested.behandlungs_art ??
+      nested.behandlungsart ??
+      nested.treatmentType ??
+      nested.treatment_type,
+  );
+
+  const pflegegrad = parseMedicalPflegegrad(
+    nested.pflegegrad ?? nested.pflegegrad_level ?? nested.careLevel ?? nested.care_level,
+  );
+
+  const merkzeichen = parseMedicalMerkzeichen(
+    nested.merkzeichen ?? nested.merkzeichen_code ?? nested.disabilityMark ?? nested.disability_mark,
+  );
+
+  const genehmigungsnummer = normalizeGenehmigungsnummer(
+    nested.genehmigungsnummer ??
+      nested.genehmigungs_nummer ??
+      nested.approvalNumber ??
+      nested.approval_number ??
+      nested.kk_genehmigungsnummer,
+  );
+
   const confidence = pickConfidence(raw);
 
   return {
@@ -191,6 +319,10 @@ export function normalizeMedicalOcrPayload(raw: unknown): {
       validFrom,
       validUntil,
       documentKind,
+      behandlungsArt,
+      pflegegrad,
+      merkzeichen,
+      genehmigungsnummer,
     },
     confidence,
   };
@@ -206,6 +338,8 @@ export function medicalOcrHasMinimalExtract(extracted: MedicalOcrExtracted): boo
       extracted.validFrom ||
       extracted.validUntil ||
       extracted.patientDisplayName ||
-      extracted.patientReference,
+      extracted.patientReference ||
+      extracted.behandlungsArt !== "unbekannt" ||
+      extracted.genehmigungsnummer,
   );
 }

@@ -42,6 +42,11 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
   "validFrom": "YYYY-MM-DD" | null,
   "validUntil": "YYYY-MM-DD" | null,
   "documentKind": "transport_sheet" | "signature_image" | "other",
+  "behandlungsArt": "stationaer" | "ambulant" | "unbekannt",
+  "pflegegrad": "3" | "4" | "5" | "keins" | "unbekannt",
+  "merkzeichen": "aG" | "Bl" | "H" | "keins" | "unbekannt",
+  "genehmigungsnummer": string | null,
+  "hasSignatureOnDocument": boolean,
   "confidence": {
     "patientDisplayName": number,
     "patientReference": number,
@@ -50,13 +55,22 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
     "partnerIkNumber": number,
     "transportDate": number,
     "validFrom": number,
-    "validUntil": number
+    "validUntil": number,
+    "behandlungsArt": number,
+    "pflegegrad": number,
+    "merkzeichen": number,
+    "genehmigungsnummer": number
   }
 }
 
 Regeln:
 - Fehlende Werte als leerer String "" oder null bei Datumsfeldern.
 - insuranceIk / partnerIkNumber: nur Ziffern (Institutionskennzeichen IK).
+- behandlungsArt: erkenne angekreuztes Feld ambulant vs. stationär auf dem Schein.
+- pflegegrad: nur 3, 4, 5 wenn angekreuzt/lesbar, sonst "keins" oder "unbekannt".
+- merkzeichen: aG, Bl oder H wenn angekreuzt, sonst "keins" oder "unbekannt".
+- genehmigungsnummer: KK-Genehmigungsnummer falls lesbar, sonst null.
+- hasSignatureOnDocument: true wenn Patientenunterschrift auf dem Schein sichtbar.
 - confidence: 0.0–1.0 pro Feld; bei Unsicherheit niedrig wählen.
 - Wenn das Bild kein Transportschein ist: documentKind "other", sonstige Felder leer lassen.`;
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
 import type { MedicalOcrConfidence, MedicalOcrExtracted } from "../lib/medical/medicalOcrNormalize";
+import { normalizeMedicalOcrPayload } from "../lib/medical/medicalOcrNormalize";
 import { getDb } from "./client";
 import { medicalDocumentsTable } from "./schema";
 
@@ -31,18 +32,7 @@ function asRecord(v: unknown): Record<string, unknown> {
 }
 
 function mapExtracted(raw: unknown): MedicalOcrExtracted {
-  const r = asRecord(raw);
-  return {
-    patientDisplayName: typeof r.patientDisplayName === "string" ? r.patientDisplayName : "",
-    patientReference: typeof r.patientReference === "string" ? r.patientReference : "",
-    insuranceName: typeof r.insuranceName === "string" ? r.insuranceName : "",
-    insuranceIk: typeof r.insuranceIk === "string" ? r.insuranceIk : "",
-    partnerIkNumber: typeof r.partnerIkNumber === "string" ? r.partnerIkNumber : "",
-    transportDate: typeof r.transportDate === "string" ? r.transportDate : null,
-    validFrom: typeof r.validFrom === "string" ? r.validFrom : null,
-    validUntil: typeof r.validUntil === "string" ? r.validUntil : null,
-    documentKind: isDocumentType(String(r.documentKind ?? "")) ? (r.documentKind as MedicalDocumentType) : "transport_sheet",
-  };
+  return normalizeMedicalOcrPayload(raw).extracted;
 }
 
 function mapConfidence(raw: unknown): MedicalOcrConfidence {

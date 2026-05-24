@@ -1,6 +1,10 @@
 import type { MedicalDateLogicResult } from "./medicalDateLogic";
 import type { MedicalOcrConfidence, MedicalOcrExtracted } from "./medicalOcrNormalize";
-import { medicalOcrHasMinimalExtract } from "./medicalOcrNormalize";
+import {
+  hasGenehmigungsnummer,
+  isAmbulantGenehmigungsfrei,
+  medicalOcrHasMinimalExtract,
+} from "./medicalOcrNormalize";
 
 export const MEDICAL_TRAFFIC_LIGHTS = ["green", "yellow", "red"] as const;
 export type MedicalTrafficLight = (typeof MEDICAL_TRAFFIC_LIGHTS)[number];
@@ -20,6 +24,8 @@ export type MedicalTrafficLightInput = {
   partnerIkSnapshot: string;
   dateLogicResult: MedicalDateLogicResult;
   ocrProviderSucceeded?: boolean;
+  /** Patientenunterschrift auf dem Schein erkannt (optional, Phase 1 oft unbekannt). */
+  hasSignatureOnDocument?: boolean;
 };
 
 export type MedicalTrafficLightResult = {
@@ -66,6 +72,90 @@ function trafficLightFromWarnings(warnings: MedicalWarning[]): MedicalTrafficLig
   return "green";
 }
 
+function hasTransportDate(extracted: MedicalOcrExtracted): boolean {
+  return Boolean(extracted.transportDate || extracted.validFrom);
+}
+
+/** Ambulant/stationär-Regeln (Genehmigungsfreiheit, KK-Genehmigungsnummer). */
+function evaluateBehandlungsArtRules(
+  extracted: MedicalOcrExtracted,
+  input: MedicalTrafficLightInput,
+): MedicalWarning[] {
+  const warnings: MedicalWarning[] = [];
+  const art = extracted.behandlungsArt;
+
+  if (art === "unbekannt") {
+    warnings.push({
+      code: "behandlungsart_unbekannt",
+      message: "Ambulant oder stationär nicht eindeutig erkennbar",
+      severity: "warn",
+    });
+    return warnings;
+  }
+
+  if (art === "stationaer") {
+    if (!hasTransportDate(extracted)) {
+      warnings.push({
+        code: "stationaer_missing_date",
+        message: "Stationär: Fahrtdatum auf dem Schein fehlt",
+        severity: "warn",
+      });
+    }
+    if (!extracted.partnerIkNumber.trim() && !input.partnerIkSnapshot.trim()) {
+      warnings.push({
+        code: "stationaer_missing_taxi_ik",
+        message: "Stationär: Leistungserbringer-IK (Taxi) nicht erkennbar",
+        severity: "warn",
+      });
+    }
+    if (input.hasSignatureOnDocument === false) {
+      warnings.push({
+        code: "stationaer_missing_signature",
+        message: "Stationär: Unterschrift auf dem Schein nicht erkennbar",
+        severity: "warn",
+      });
+    }
+    if (
+      hasTransportDate(extracted) &&
+      (extracted.partnerIkNumber.trim() || input.partnerIkSnapshot.trim()) &&
+      input.hasSignatureOnDocument !== false
+    ) {
+      warnings.push({
+        code: "stationaer_checks_ok",
+        message: "Stationär: Datum, Taxi-IK und Unterschrift — keine KK-Genehmigungsnummer nötig",
+        severity: "info",
+      });
+    }
+    return warnings;
+  }
+
+  // ambulant
+  if (isAmbulantGenehmigungsfrei(extracted)) {
+    warnings.push({
+      code: "ambulant_genehmigungsfrei",
+      message: "Ambulant genehmigungsfrei (Pflegegrad 3/4/5 oder Merkzeichen aG/Bl/H)",
+      severity: "info",
+    });
+    return warnings;
+  }
+
+  if (!hasGenehmigungsnummer(extracted)) {
+    warnings.push({
+      code: "missing_genehmigungsnummer",
+      message: "Ambulant ohne Pflegegrad/Merkzeichen: Genehmigungsnummer der Krankenkasse fehlt",
+      severity: "block_recommended",
+    });
+    return warnings;
+  }
+
+  warnings.push({
+    code: "ambulant_genehmigungsnummer_ok",
+    message: "Ambulant: Genehmigungsnummer der Krankenkasse erkannt",
+    severity: "info",
+  });
+  return warnings;
+}
+
 /**
  * Ampel-Regelwerk Phase 1 — nur Empfehlung, keine Auto-Freigabe.
  * Rot = Ablehnen empfohlen; Gelb = mit Warnung weiter möglich.
@@ -90,6 +180,8 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
       severity: "block_recommended",
     });
   }
+
+  warnings.push(...evaluateBehandlungsArtRules(extracted, input));
 
   for (const code of dateLogicResult.warningCodes) {
     warnings.push({
@@ -131,7 +223,13 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
     });
   }
 
-  for (const field of ["insuranceIk", "partnerIkNumber", "transportDate"] as const) {
+  for (const field of [
+    "insuranceIk",
+    "partnerIkNumber",
+    "transportDate",
+    "behandlungsArt",
+    "genehmigungsnummer",
+  ] as const) {
     const c = confidence[field];
     if (typeof c === "number" && c < CONFIDENCE_WARN_THRESHOLD) {
       warnings.push({
