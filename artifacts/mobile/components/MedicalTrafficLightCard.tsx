@@ -2,7 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { MedicalScanWarning, MedicalTrafficLight } from "@/utils/medicalScanApi";
+import type { MedicalDateLogicResultDto, MedicalScanExtracted, MedicalScanWarning, MedicalTrafficLight } from "@/utils/medicalScanApi";
 
 const TRAFFIC_CONFIG: Record<
   MedicalTrafficLight,
@@ -34,11 +34,27 @@ const TRAFFIC_CONFIG: Record<
   },
 };
 
+function formatDeDate(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  return iso.trim();
+}
+
+function behandlungsArtDe(v: string | undefined): string | null {
+  if (!v?.trim()) return null;
+  if (v === "stationaer") return "Stationär";
+  if (v === "ambulant") return "Ambulant";
+  return null;
+}
+
 type Props = {
   trafficLight: MedicalTrafficLight;
   warnings: MedicalScanWarning[];
   insuranceName?: string;
   transportDate?: string | null;
+  extracted?: Partial<MedicalScanExtracted>;
+  dateLogic?: MedicalDateLogicResultDto | null;
   onPrimaryAction: () => void;
   primaryBusy?: boolean;
 };
@@ -48,11 +64,37 @@ export function MedicalTrafficLightCard({
   warnings,
   insuranceName,
   transportDate,
+  extracted,
+  dateLogic,
   onPrimaryAction,
   primaryBusy = false,
 }: Props) {
   const cfg = TRAFFIC_CONFIG[trafficLight];
   const visibleWarnings = warnings.filter((w) => w.severity !== "info");
+  const kkName = insuranceName?.trim() || extracted?.insuranceName?.trim() || "";
+  const kkIk = extracted?.insuranceIk?.trim() || "";
+  const fahrtDatum = formatDeDate(transportDate ?? extracted?.transportDate ?? null);
+  const gueltigVon = formatDeDate(extracted?.validFrom ?? null);
+  const gueltigBis = formatDeDate(extracted?.validUntil ?? null);
+  const genehmigung = extracted?.genehmigungsnummer?.trim() || "";
+  const versichertenNr = extracted?.patientReference?.trim() || "";
+  const behandlung = behandlungsArtDe(extracted?.behandlungsArt);
+  const verificationRows = [
+    kkName ? { label: "Krankenkasse", value: kkName } : null,
+    kkIk ? { label: "KK-IK", value: kkIk } : null,
+    versichertenNr ? { label: "Versicherten-Nr.", value: versichertenNr } : null,
+    fahrtDatum ? { label: "Fahrtdatum", value: fahrtDatum } : null,
+    gueltigVon ? { label: "Gültig ab", value: gueltigVon } : null,
+    gueltigBis ? { label: "Gültig bis", value: gueltigBis } : null,
+    genehmigung ? { label: "Genehmigung", value: genehmigung } : null,
+    behandlung ? { label: "Behandlungsart", value: behandlung } : null,
+    dateLogic
+      ? {
+          label: "Datumsprüfung",
+          value: dateLogic.passed ? "Bestanden" : "Abweichung — bitte prüfen",
+        }
+      : null,
+  ].filter(Boolean) as { label: string; value: string }[];
   const primaryLabel =
     trafficLight === "yellow"
       ? "Trotzdem fortfahren"
@@ -70,20 +112,15 @@ export function MedicalTrafficLightCard({
         </View>
       </View>
 
-      {insuranceName?.trim() || transportDate ? (
+      {verificationRows.length > 0 ? (
         <View style={styles.metaBox}>
-          {insuranceName?.trim() ? (
-            <Text style={styles.metaLine}>
-              <Text style={styles.metaLabel}>Kasse: </Text>
-              {insuranceName.trim()}
+          <Text style={styles.verifyHeading}>Geprüfte Fahrtdetails</Text>
+          {verificationRows.map((row) => (
+            <Text key={row.label} style={styles.metaLine}>
+              <Text style={styles.metaLabel}>{row.label}: </Text>
+              {row.value}
             </Text>
-          ) : null}
-          {transportDate ? (
-            <Text style={styles.metaLine}>
-              <Text style={styles.metaLabel}>Datum: </Text>
-              {transportDate}
-            </Text>
-          ) : null}
+          ))}
         </View>
       ) : null}
 
@@ -154,6 +191,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     gap: 4,
+  },
+  verifyHeading: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 2,
   },
   metaLine: {
     fontSize: 13,

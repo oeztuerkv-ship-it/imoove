@@ -7,18 +7,30 @@ import { Stack } from "expo-router";
  * Stack-RESET läuft in `navigation.tsx` (useNavigation = Fahrer-Stack),
  * nicht hier — ein Bridge neben `<Stack>` nutzt sonst den Root-Navigator → RESET-Fehler.
  */
+const noSwipeBack = {
+  gestureEnabled: false as const,
+  fullScreenGestureEnabled: false as const,
+};
+
 export default function DriverLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        gestureEnabled: false,
+        ...noSwipeBack,
       }}
     >
-      <Stack.Screen name="login" options={{ gestureEnabled: true }} />
-      <Stack.Screen name="change-password" />
-      <Stack.Screen name="dashboard" />
-      <Stack.Screen name="inbox" />
+      <Stack.Screen name="login" options={{ gestureEnabled: true, fullScreenGestureEnabled: false }} />
+      <Stack.Screen name="change-password" options={noSwipeBack} />
+      <Stack.Screen name="dashboard" options={noSwipeBack} />
+      <Stack.Screen
+        name="inbox"
+        options={{
+          gestureEnabled: true,
+          fullScreenGestureEnabled: false,
+          animation: "slide_from_right",
+        }}
+      />
       <Stack.Screen
         name="navigation"
         options={{

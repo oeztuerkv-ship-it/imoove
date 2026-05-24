@@ -18,6 +18,8 @@ export type MedicalScanExtracted = {
   validFrom: string | null;
   validUntil: string | null;
   documentKind: string;
+  behandlungsArt?: string;
+  genehmigungsnummer?: string | null;
 };
 
 export type MedicalDateLogicResultDto = {

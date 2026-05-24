@@ -158,7 +158,15 @@ export default function DriverInboxScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F7" }}>
       <StatusBar barStyle="dark-content" backgroundColor="#F2F2F7" />
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.replace("/driver/dashboard");
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "#FFFFFF", alignItems: "center",
             justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4,
             shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>

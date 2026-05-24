@@ -190,8 +190,18 @@ function transportDocumentStatusDe(v: string): string {
 
 function medicalSteps(req: RideRequest): MedicalStep[] | null {
   const metaRaw = (req as RideRequest & { partnerBookingMeta?: any }).partnerBookingMeta;
-  if (!metaRaw || typeof metaRaw !== "object") return null;
-  if (metaRaw.medical_ride !== true) return null;
+  const isMedical =
+    (metaRaw && typeof metaRaw === "object" && metaRaw.medical_ride === true) ||
+    req.rideKind === "medical" ||
+    isKrankenkasseRide(req.paymentMethod);
+  if (!isMedical) return null;
+  if (!metaRaw || typeof metaRaw !== "object") {
+    return [
+      { label: "Transportschein", done: false },
+      { label: "Freigabe", done: false },
+      { label: "Kasse/Kostenstelle", done: false },
+    ];
+  }
   const approval = typeof metaRaw.approval_status === "string" ? metaRaw.approval_status.toLowerCase() : "pending";
   const doc = typeof metaRaw.transport_document_status === "string" ? metaRaw.transport_document_status.toLowerCase() : "missing";
   const hasInsurance = typeof metaRaw.insurance_name === "string" && metaRaw.insurance_name.trim().length > 0;
@@ -589,9 +599,30 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 }
 
 /* ─── Scheduled Request Card ─── */
-function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; onActivate: () => void; onCancelAssigned: () => void; driverPos?: { lat: number; lon: number } | null }) {
+function ScheduledCard({
+  req,
+  onAccept,
+  onReject,
+  onActivate,
+  onCancelAssigned,
+  driverPos,
+  fleetAuthToken,
+  driverId,
+  onMedicalUpdated,
+}: {
+  req: RideRequest;
+  onAccept: () => void;
+  onReject: () => void;
+  onActivate: () => void;
+  onCancelAssigned: () => void;
+  driverPos?: { lat: number; lon: number } | null;
+  fleetAuthToken?: string;
+  driverId?: string;
+  onMedicalUpdated?: () => void | Promise<void>;
+}) {
   const { t } = useTranslation();
   const isAssignedUpcoming = req.status === "scheduled_assigned";
+  const isMedical = isMedicalRideRequest(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const [activationTick, setActivationTick] = useState(0);
   useEffect(() => {
@@ -699,6 +730,16 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
           </Text>
         </View>
       </View>
+
+      {isMedical && fleetAuthToken?.trim() ? (
+        <MedicalRideProofActions
+          req={req}
+          fleetAuthToken={fleetAuthToken.trim()}
+          driverId={driverId}
+          mode="orderCheck"
+          onUpdated={() => void onMedicalUpdated?.()}
+        />
+      ) : null}
 
       {!isAssignedUpcoming ? (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
@@ -1099,7 +1140,11 @@ function TabProfil({
 }) {
   const colors = useColors();
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabScroll, { paddingTop: 8 }]}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      directionalLockEnabled={Platform.OS === "ios"}
+      contentContainerStyle={[styles.tabScroll, { paddingTop: 8 }]}
+    >
       {/* Driver info header */}
       <View style={{ alignItems: "center", paddingVertical: 24, gap: 6 }}>
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EF1D26", alignItems: "center", justifyContent: "center" }}>
@@ -1200,16 +1245,56 @@ function TabProfil({
   );
 }
 
+function isMedicalRideRequest(req: RideRequest): boolean {
+  const metaRaw = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
+  if (metaRaw && typeof metaRaw === "object" && metaRaw.medical_ride === true) return true;
+  return req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod);
+}
+
+function canDriverVerifyMedicalRide(req: RideRequest, driverId: string): boolean {
+  const assigned = (req.driverId ?? "").trim();
+  return assigned.length > 0 && assigned === driverId.trim();
+}
+
+async function pickTransportImageBase64(fromCamera: boolean): Promise<string | null> {
+  const perm = fromCamera
+    ? await ImagePicker.requestCameraPermissionsAsync()
+    : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    Alert.alert(fromCamera ? "Kamera" : "Fotos", "Zugriff wird benötigt.");
+    return null;
+  }
+  const r = fromCamera
+    ? await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.85,
+        base64: true,
+      })
+    : await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.85,
+        base64: true,
+      });
+  if (r.canceled || !r.assets?.[0]?.base64) return null;
+  const mime = r.assets[0].mimeType ?? "image/jpeg";
+  return `data:${mime};base64,${r.assets[0].base64}`;
+}
+
 function MedicalRideProofActions({
   req,
   fleetAuthToken,
   onUpdated,
+  mode = "full",
+  driverId,
 }: {
   req: RideRequest;
   fleetAuthToken: string;
   onUpdated: () => void | Promise<void>;
+  mode?: "full" | "orderCheck";
+  driverId?: string;
 }) {
-  const meta = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
+  const metaRaw = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
+  const meta = metaRaw && typeof metaRaw === "object" ? metaRaw : {};
   const [camOpen, setCamOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [scanModalOpen, setScanModalOpen] = useState(false);
@@ -1223,8 +1308,11 @@ function MedicalRideProofActions({
     if (camOpen) scannedRef.current = false;
   }, [camOpen]);
 
-  if (!meta || meta.medical_ride !== true) return null;
+  if (!isMedicalRideRequest(req)) return null;
   const signatureDone = meta.signature_done === true;
+  const orderCheckMode = mode === "orderCheck";
+  const canVerify = driverId ? canDriverVerifyMedicalRide(req, driverId) : true;
+  const medicalChecklist = medicalSteps(req);
 
   async function postVerifyToken(token: string, rideId: string) {
     const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(rideId)}/medical/verify-qr`, {
@@ -1286,19 +1374,12 @@ function MedicalRideProofActions({
       Alert.alert("Transportschein scannen", "Bitte in der nativen App (iOS/Android) scannen.");
       return;
     }
-    const p = await ImagePicker.requestCameraPermissionsAsync();
-    if (!p.granted) {
-      Alert.alert("Kamera", "Kamerazugriff wird benötigt.");
+    if (!canVerify) {
+      Alert.alert("Transportschein", "Prüfung erst nach Annahme des Auftrags möglich.");
       return;
     }
-    const r = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-      base64: true,
-    });
-    if (r.canceled || !r.assets?.[0]?.base64) return;
-    const mime = r.assets[0].mimeType ?? "image/jpeg";
-    const b64url = `data:${mime};base64,${r.assets[0].base64}`;
+    const b64url = await pickTransportImageBase64(true);
+    if (!b64url) return;
     setBusy(true);
     try {
       const ctx = medicalScanContextFromRide(
@@ -1336,20 +1417,13 @@ function MedicalRideProofActions({
     setScanResult(null);
   }
 
-  async function onPressTransportPhoto() {
-    const p = await ImagePicker.requestCameraPermissionsAsync();
-    if (!p.granted) {
-      Alert.alert("Kamera", "Kamerazugriff wird benötigt.");
+  async function onPressTransportPhoto(fromCamera: boolean) {
+    if (!canVerify) {
+      Alert.alert("Transportschein", "Upload erst nach Annahme des Auftrags möglich.");
       return;
     }
-    const r = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-      base64: true,
-    });
-    if (r.canceled || !r.assets?.[0]?.base64) return;
-    const mime = r.assets[0].mimeType ?? "image/jpeg";
-    const b64url = `data:${mime};base64,${r.assets[0].base64}`;
+    const b64url = await pickTransportImageBase64(fromCamera);
+    if (!b64url) return;
     setBusy(true);
     try {
       const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(req.id)}/medical/transport-document`, {
@@ -1408,14 +1482,42 @@ function MedicalRideProofActions({
 
   return (
     <>
-      <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+      <View style={{ paddingHorizontal: orderCheckMode ? 0 : 16, marginBottom: 10, marginTop: orderCheckMode ? 14 : 0 }}>
         <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#1D4ED8", marginBottom: 6 }}>
-          Nachweise (Krankenfahrt)
+          {orderCheckMode ? "Transportschein prüfen (Krankenfahrt)" : "Nachweise (Krankenfahrt)"}
         </Text>
+        {orderCheckMode && !canVerify ? (
+          <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B", marginBottom: 8, lineHeight: 17 }}>
+            Auftrag zuerst annehmen — danach können Sie den Transportschein scannen oder hochladen.
+          </Text>
+        ) : null}
+        {orderCheckMode && medicalChecklist ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            {medicalChecklist.map((step) => (
+              <View
+                key={step.label}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  borderRadius: 999,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  backgroundColor: step.done ? "#DCFCE7" : "#FEE2E2",
+                }}
+              >
+                <Feather name={step.done ? "check-circle" : "alert-circle"} size={12} color={step.done ? "#166534" : "#B91C1C"} />
+                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: step.done ? "#166534" : "#B91C1C" }}>
+                  {step.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <Pressable
             onPress={() => void onPressTransportScan()}
-            disabled={busy}
+            disabled={busy || (orderCheckMode && !canVerify)}
             style={({ pressed }) => ({
               backgroundColor: "#DCFCE7",
               paddingVertical: 10,
@@ -1423,58 +1525,79 @@ function MedicalRideProofActions({
               borderRadius: 10,
               borderWidth: 1,
               borderColor: "#86EFAC",
-              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
+              opacity: pressed ? 0.9 : busy || (orderCheckMode && !canVerify) ? 0.55 : 1,
             })}
           >
             <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#166534" }}>Transportschein scannen</Text>
           </Pressable>
+          {!orderCheckMode ? (
+            <Pressable
+              onPress={() => void onPressScan()}
+              disabled={busy}
+              style={({ pressed }) => ({
+                backgroundColor: "#DBEAFE",
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                opacity: pressed ? 0.9 : busy ? 0.55 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E40AF" }}>QR scannen</Text>
+            </Pressable>
+          ) : null}
           <Pressable
-            onPress={() => void onPressScan()}
-            disabled={busy}
+            onPress={() => void onPressTransportPhoto(true)}
+            disabled={busy || (orderCheckMode && !canVerify)}
             style={({ pressed }) => ({
               backgroundColor: "#DBEAFE",
               paddingVertical: 10,
               paddingHorizontal: 14,
               borderRadius: 10,
-              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
+              opacity: pressed ? 0.9 : busy || (orderCheckMode && !canVerify) ? 0.55 : 1,
             })}
           >
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E40AF" }}>QR scannen</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => void onPressTransportPhoto()}
-            disabled={busy}
-            style={({ pressed }) => ({
-              backgroundColor: "#DBEAFE",
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              borderRadius: 10,
-              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
-            })}
-          >
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E40AF" }}>Transportschein fotografieren</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              if (signatureDone) {
-                Alert.alert("Unterschrift", "Unterschrift ist bereits erledigt.");
-                return;
-              }
-              setSignatureOpen(true);
-            }}
-            disabled={busy}
-            style={({ pressed }) => ({
-              backgroundColor: signatureDone ? "#DCFCE7" : "#E2E8F0",
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              borderRadius: 10,
-              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
-            })}
-          >
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: signatureDone ? "#166534" : "#475569" }}>
-              {signatureDone ? "Unterschrift erledigt" : "Unterschrift holen"}
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E40AF" }}>
+              {orderCheckMode ? "Foto aufnehmen" : "Transportschein fotografieren"}
             </Text>
           </Pressable>
+          {orderCheckMode ? (
+            <Pressable
+              onPress={() => void onPressTransportPhoto(false)}
+              disabled={busy || !canVerify}
+              style={({ pressed }) => ({
+                backgroundColor: "#E0E7FF",
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                opacity: pressed ? 0.9 : busy || !canVerify ? 0.55 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#3730A3" }}>Foto hochladen</Text>
+            </Pressable>
+          ) : null}
+          {!orderCheckMode ? (
+            <Pressable
+              onPress={() => {
+                if (signatureDone) {
+                  Alert.alert("Unterschrift", "Unterschrift ist bereits erledigt.");
+                  return;
+                }
+                setSignatureOpen(true);
+              }}
+              disabled={busy}
+              style={({ pressed }) => ({
+                backgroundColor: signatureDone ? "#DCFCE7" : "#E2E8F0",
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                opacity: pressed ? 0.9 : busy ? 0.55 : 1,
+              })}
+            >
+              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: signatureDone ? "#166534" : "#475569" }}>
+                {signatureDone ? "Unterschrift erledigt" : "Unterschrift holen"}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
         {lastScanResult ? (
           <Pressable
@@ -1527,7 +1650,7 @@ function MedicalRideProofActions({
             }}
           >
             <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A", marginBottom: 12 }}>
-              Scan-Ergebnis
+              {orderCheckMode ? "Transportschein — Prüfergebnis" : "Scan-Ergebnis"}
             </Text>
             {scanResult ? (
               <MedicalTrafficLightCard
@@ -1535,6 +1658,8 @@ function MedicalRideProofActions({
                 warnings={scanResult.warnings}
                 insuranceName={scanResult.extracted?.insuranceName}
                 transportDate={scanResult.extracted?.transportDate}
+                extracted={scanResult.extracted}
+                dateLogic={scanResult.dateLogic}
                 onPrimaryAction={dismissScanModal}
                 primaryBusy={busy}
               />
@@ -3036,11 +3161,22 @@ export default function DriverDashboard() {
       );
     }
   };
-  const handleLogout = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await logout();
-    router.replace("/");
-  };
+  const handleLogout = useCallback(() => {
+    Alert.alert("Abmelden?", "Möchtest du dich wirklich abmelden?", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "Abmelden",
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            await logout();
+            router.replace("/");
+          })();
+        },
+      },
+    ]);
+  }, [logout]);
 
   const resetCodeRideForm = useCallback(() => {
     setCodeRideFrom("");
@@ -3472,6 +3608,9 @@ export default function DriverDashboard() {
                             key={req.id}
                             req={req}
                             driverPos={driverPos}
+                            fleetAuthToken={driver.authToken}
+                            driverId={driver.id}
+                            onMedicalUpdated={() => void refreshDriverMarketHard()}
                             onAccept={() => handleAccept(req.id)}
                             onReject={() => handleReject(req.id)}
                             onActivate={() => handleActivateScheduled(req.id)}
@@ -3501,6 +3640,9 @@ export default function DriverDashboard() {
                             key={req.id}
                             req={req}
                             driverPos={driverPos}
+                            fleetAuthToken={driver.authToken}
+                            driverId={driver.id}
+                            onMedicalUpdated={() => void refreshDriverMarketHard()}
                             onAccept={() => handleAccept(req.id)}
                             onReject={() => handleReject(req.id)}
                             onActivate={() => handleActivateScheduled(req.id)}
@@ -4144,7 +4286,7 @@ const styles = StyleSheet.create({
   profilRowLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   profilRowSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   profilDivider: { height: 1, marginVertical: 8, width: "100%" },
-  profilLogoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 16, paddingVertical: 15, borderWidth: 1.5, borderColor: "#DC2626", backgroundColor: "#FEF2F2", marginTop: 4 },
+  profilLogoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 16, paddingVertical: 15, borderWidth: 1.5, borderColor: "#DC2626", backgroundColor: "#FEF2F2", marginTop: 16 },
   inboxCountBadge: { backgroundColor: "#EF1D26", borderRadius: 10, minWidth: 20, height: 20, alignItems: "center" as const, justifyContent: "center" as const, paddingHorizontal: 5, marginRight: 6 },
   inboxCountBadgeText: { color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" },
   profilLogoutText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#DC2626" },
