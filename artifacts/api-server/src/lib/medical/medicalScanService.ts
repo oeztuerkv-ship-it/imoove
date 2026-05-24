@@ -91,12 +91,10 @@ export type MedicalScanTestServiceResult =
     } & MedicalScanEvaluationCore)
   | { ok: false; error: string; status: number };
 
-/** Feature-Flag: Testscan ohne Fahrt (Prod standardmäßig aus). */
+/** Feature-Flag: Testscan ohne Fahrt — nur bei explizit gesetztem MEDICAL_TEST_SCAN_ENABLED. */
 export function isMedicalTestScanEnabled(): boolean {
   const v = (process.env.MEDICAL_TEST_SCAN_ENABLED ?? "").trim().toLowerCase();
-  if (v === "1" || v === "true" || v === "yes" || v === "on") return true;
-  if (v === "0" || v === "false" || v === "no" || v === "off") return false;
-  return process.env.NODE_ENV !== "production";
+  return v === "1" || v === "true" || v === "yes" || v === "on";
 }
 
 async function countCompletedRidesForSeries(seriesId: string, companyId: string): Promise<number> {

@@ -848,6 +848,9 @@ function TabUebersicht({
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)} />
         )}
+        {isAvailable && fleetAuthToken?.trim() ? (
+          <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="dashboard" />
+        ) : null}
       </View>
     );
   }
@@ -878,6 +881,13 @@ function TabUebersicht({
             : "Offline — Keine Aufträge"}
         </Text>
       </View>
+
+      {/* Test-Scanner — nur online, ohne Ride-ID, nichts wird gespeichert */}
+      {isAvailable && fleetAuthToken?.trim() && !(firstReq && !marketLoading) ? (
+        <View style={styles.mapTestScanBtn}>
+          <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="dashboard" />
+        </View>
+      ) : null}
 
       {/* Ride request popup — slides up from bottom (nur wenn ONLINE) */}
       {firstReq && isAvailable && !marketLoading && (
@@ -1128,7 +1138,6 @@ function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driv
 /* ─── Tab: Profil ─── */
 function TabProfil({
   driver,
-  fleetAuthToken,
   onLogout,
   offersTeaserTitle,
   offersTeaserBody,
@@ -1136,7 +1145,6 @@ function TabProfil({
   inboxUnreadCount,
 }: {
   driver: DriverProfile;
-  fleetAuthToken?: string;
   onLogout: () => void;
   offersTeaserTitle: string;
   offersTeaserBody: string;
@@ -1200,15 +1208,6 @@ function TabProfil({
           </View>
         ) : null}
       </View>
-
-      {fleetAuthToken?.trim() ? (
-        <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border, padding: 0, overflow: "hidden" }]}>
-          <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground, paddingHorizontal: 16, paddingTop: 14 }]}>
-            TOOLS
-          </Text>
-          <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="card" />
-        </View>
-      ) : null}
 
       <Pressable
         style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -3468,9 +3467,6 @@ export default function DriverDashboard() {
             )}
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-                {driver.authToken?.trim() ? (
-                  <MedicalTransportScanTestTool fleetAuthToken={driver.authToken.trim()} variant="button" />
-                ) : null}
                 <View style={{ flexDirection: "row", marginBottom: 18, backgroundColor: colors.muted, borderRadius: 12, padding: 3 }}>
                   <Pressable
                     onPress={() => setOrdersView("anfragen")}
@@ -3634,7 +3630,6 @@ export default function DriverDashboard() {
             {activeTab === "profil" && (
               <TabProfil
                 driver={driver}
-                fleetAuthToken={driver.authToken}
                 onLogout={handleLogout}
                 offersTeaserTitle={offersTeaserTitle}
                 offersTeaserBody={offersTeaserBody}
@@ -4181,6 +4176,12 @@ const styles = StyleSheet.create({
   },
   mapStatusDot: { width: 9, height: 9, borderRadius: 5 },
   mapStatusText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  mapTestScanBtn: {
+    position: "absolute",
+    top: 62,
+    right: 12,
+    zIndex: 5,
+  },
   mapReqOverlay: {
     position: "absolute", bottom: 12, left: 12, right: 12,
   },

@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
@@ -17,7 +17,7 @@ const TEST_DISCLAIMER =
 
 type Props = {
   fleetAuthToken: string;
-  variant?: "button" | "card";
+  variant?: "button" | "card" | "dashboard";
 };
 
 export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button" }: Props) {
@@ -60,59 +60,127 @@ export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button
     [fleetAuthToken],
   );
 
+  const openScanPicker = useCallback(() => {
+    if (Platform.OS === "web") {
+      Alert.alert("Transportschein testen", "Bitte in der nativen App (iOS/Android) testen.");
+      return;
+    }
+    Alert.alert("Transportschein testen", "Test ohne Fahrt — nichts wird gespeichert.", [
+      { text: "Abbrechen", style: "cancel" },
+      { text: "Foto aufnehmen", onPress: () => void runScan(true) },
+      { text: "Aus Galerie", onPress: () => void runScan(false) },
+    ]);
+  }, [runScan]);
+
   const dismissModal = useCallback(() => {
     setScanModalOpen(false);
     setScanResult(null);
   }, []);
 
+  const isCard = variant === "card";
+  const isDashboard = variant === "dashboard";
+
   const actionRow = (
-    <View style={variant === "card" ? styles.cardActions : styles.inlineActions}>
+    <View style={isCard ? styles.cardActions : styles.inlineActions}>
       <Pressable
         onPress={() => void runScan(true)}
         disabled={busy}
         style={({ pressed }) => [
-          styles.actionChip,
-          styles.actionChipPrimary,
-          variant === "card" && { flex: 1 },
-          { opacity: pressed ? 0.9 : busy ? 0.55 : 1 },
+          styles.actionBtn,
+          styles.actionBtnPrimary,
+          isCard && styles.actionBtnFlex,
+          pressed && styles.actionBtnPressed,
+          busy && styles.actionBtnDisabled,
         ]}
       >
         {busy ? (
-          <ActivityIndicator size="small" color="#166534" />
+          <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Text style={styles.actionChipPrimaryText}>Foto aufnehmen</Text>
+          <>
+            <Feather name="camera" size={16} color="#FFFFFF" />
+            <Text style={styles.actionBtnPrimaryText}>Foto aufnehmen</Text>
+          </>
         )}
       </Pressable>
       <Pressable
         onPress={() => void runScan(false)}
         disabled={busy}
         style={({ pressed }) => [
-          styles.actionChip,
-          variant === "card" && { flex: 1 },
-          { opacity: pressed ? 0.9 : busy ? 0.55 : 1 },
+          styles.actionBtn,
+          styles.actionBtnSecondary,
+          isCard && styles.actionBtnFlex,
+          pressed && styles.actionBtnPressed,
+          busy && styles.actionBtnDisabled,
         ]}
       >
-        <Text style={styles.actionChipText}>Foto hochladen</Text>
+        <Feather name="image" size={16} color="#111827" />
+        <Text style={styles.actionBtnSecondaryText}>Aus Galerie</Text>
       </Pressable>
     </View>
   );
 
+  if (isDashboard) {
+    return (
+      <>
+        <Pressable
+          onPress={openScanPicker}
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.dashboardBtn,
+            pressed && styles.actionBtnPressed,
+            busy && styles.actionBtnDisabled,
+          ]}
+        >
+          {busy ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.dashboardBtnText}>🔍 Transportschein testen</Text>
+          )}
+        </Pressable>
+
+        <MedicalScanResultSheet
+          visible={scanModalOpen}
+          title="Transportschein — Testprüfung"
+          disclaimer={TEST_DISCLAIMER}
+          onClose={dismissModal}
+        >
+          {scanResult ? (
+            <MedicalTrafficLightCard
+              trafficLight={scanResult.trafficLight}
+              warnings={scanResult.warnings}
+              insuranceName={scanResult.extracted?.insuranceName}
+              transportDate={scanResult.extracted?.transportDate}
+              extracted={scanResult.extracted}
+              dateLogic={scanResult.dateLogic}
+              insuranceRules={scanResult.insuranceRules}
+              testDisclaimer={scanResult.testDisclaimer}
+              onPrimaryAction={dismissModal}
+            />
+          ) : null}
+        </MedicalScanResultSheet>
+      </>
+    );
+  }
+
   return (
     <>
-      <View style={variant === "card" ? undefined : styles.compactWrap}>
-        <View style={variant === "card" ? styles.cardHeader : styles.compactHeader}>
-          <MaterialCommunityIcons
-            name="file-document-check-outline"
-            size={variant === "card" ? 22 : 18}
-            color={variant === "card" ? "#166534" : "#1D4ED8"}
-          />
-          <View style={{ flex: 1 }}>
-            <Text style={variant === "card" ? styles.cardTitle : styles.compactTitle}>Transportschein prüfen</Text>
-            <Text style={variant === "card" ? styles.cardSub : styles.compactSub}>
+      <View style={isCard ? styles.cardRoot : styles.compactWrap}>
+        <View style={isCard ? styles.cardIntroRow : styles.compactHeader}>
+          <View style={isCard ? styles.cardIconWrap : styles.compactIconWrap}>
+            <MaterialCommunityIcons
+              name="file-document-check-outline"
+              size={22}
+              color={isCard ? "#15803D" : "#1D4ED8"}
+            />
+          </View>
+          <View style={styles.copyBlock}>
+            <Text style={isCard ? styles.cardTitle : styles.compactTitle}>Transportschein prüfen</Text>
+            <Text style={isCard ? styles.cardSub : styles.compactSub}>
               Test ohne Fahrt · OCR · Ampel · Krankenkasse
             </Text>
           </View>
         </View>
+        {isCard ? <View style={styles.cardDivider} /> : null}
         {actionRow}
       </View>
 
@@ -141,50 +209,79 @@ export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button
 }
 
 const styles = StyleSheet.create({
+  cardRoot: {
+    width: "100%",
+    alignSelf: "stretch",
+  },
   compactWrap: {
     marginBottom: 14,
-    padding: 12,
+    padding: 14,
     borderRadius: 14,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#BFDBFE",
+    borderColor: "#E5E7EB",
   },
   compactHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
   },
-  cardHeader: {
+  compactIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#EFF6FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardIntroRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 4,
+    width: "100%",
+  },
+  cardIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F0FDF4",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  copyBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   compactTitle: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    color: "#1E3A8A",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#111827",
   },
   compactSub: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "#64748B",
-    marginTop: 2,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    marginTop: 3,
+    lineHeight: 18,
   },
   cardTitle: {
     fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    color: "#166534",
+    fontFamily: "Inter_600SemiBold",
+    color: "#111827",
   },
   cardSub: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: "#64748B",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
     marginTop: 3,
-    lineHeight: 17,
+    lineHeight: 18,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginVertical: 12,
+    width: "100%",
   },
   inlineActions: {
     flexDirection: "row",
@@ -193,33 +290,63 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    paddingTop: 6,
+    gap: 10,
+    width: "100%",
   },
-  actionChip: {
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: "#DBEAFE",
+  actionBtn: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 40,
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    minHeight: 46,
   },
-  actionChipPrimary: {
-    backgroundColor: "#DCFCE7",
+  actionBtnFlex: {
+    flex: 1,
+  },
+  actionBtnPrimary: {
+    backgroundColor: "#15803D",
+  },
+  actionBtnSecondary: {
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#86EFAC",
+    borderColor: "#D1D5DB",
   },
-  actionChipPrimaryText: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#166534",
+  actionBtnPressed: {
+    opacity: 0.92,
   },
-  actionChipText: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#1E40AF",
+  actionBtnDisabled: {
+    opacity: 0.55,
+  },
+  actionBtnPrimaryText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFFFFF",
+  },
+  actionBtnSecondaryText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#111827",
+  },
+  dashboardBtn: {
+    backgroundColor: "rgba(17,24,39,0.88)",
+    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  dashboardBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFFFFF",
   },
 });
