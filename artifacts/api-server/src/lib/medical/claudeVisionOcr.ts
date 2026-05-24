@@ -171,6 +171,12 @@ export async function runClaudeVisionMedicalOcr(input: {
     return { ok: false, error: "ocr_response_invalid" };
   }
 
+  // TEMP DEBUG: rohe Claude-Antwort (nach Deploy entfernen)
+  console.log(
+    "[medical-ocr-debug] claude raw response",
+    JSON.stringify({ httpStatus: response.status, ok: response.ok, body }, null, 2),
+  );
+
   if (!response.ok) {
     const errType =
       isRecord(body) && typeof body.error === "object" && isRecord(body.error) && typeof body.error.type === "string"
