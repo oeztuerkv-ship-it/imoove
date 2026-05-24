@@ -792,6 +792,20 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'customer_medical_transport_scans'
+  ) THEN
+    errs := array_append(errs, 'table customer_medical_transport_scans (Migration 077)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'customer_medical_transport_scans' AND column_name = 'snapshot_json'
+  ) THEN
+    errs := array_append(errs, 'customer_medical_transport_scans.snapshot_json (Migration 077)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'app_news_items'
   ) THEN
     errs := array_append(errs, 'table app_news_items (Migration 057)');

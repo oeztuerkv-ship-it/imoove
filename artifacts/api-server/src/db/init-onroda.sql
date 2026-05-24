@@ -1196,6 +1196,29 @@ CREATE INDEX IF NOT EXISTS medical_reviews_case_reviewed_idx
 CREATE INDEX IF NOT EXISTS medical_reviews_document_idx
   ON medical_reviews (document_id);
 
+-- Kunden-Transportschein-Scan vor Buchung (Migration 077)
+CREATE TABLE IF NOT EXISTS customer_medical_transport_scans (
+  id TEXT PRIMARY KEY,
+  passenger_id TEXT NOT NULL,
+  traffic_light TEXT NOT NULL,
+  primary_reason_de TEXT NOT NULL DEFAULT '',
+  snapshot_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  storage_key TEXT NOT NULL DEFAULT '',
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  consumed_ride_id TEXT REFERENCES rides (id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT customer_medical_transport_scans_traffic_light_chk
+    CHECK (traffic_light IN ('green', 'yellow', 'red'))
+);
+
+CREATE INDEX IF NOT EXISTS customer_medical_transport_scans_passenger_created_idx
+  ON customer_medical_transport_scans (passenger_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS customer_medical_transport_scans_consumed_idx
+  ON customer_medical_transport_scans (consumed_ride_id)
+  WHERE consumed_ride_id IS NOT NULL;
+
 -- Krankenfahrt-Freigabe (Migration 076)
 ALTER TABLE admin_companies
   ADD COLUMN IF NOT EXISTS medical_transport_enabled BOOLEAN NOT NULL DEFAULT false;

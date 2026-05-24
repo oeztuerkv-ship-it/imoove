@@ -7,7 +7,7 @@ import { upsertPassengerExpoPushToken } from "../db/passengerExpoPushData";
 import { createAppHelpTicket, parseAppHelpCategory } from "../db/appHelpTicketsData";
 import { isPostgresConfigured } from "../db/client";
 import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
-import { runMedicalTransportDocumentScanTestForCustomer } from "../lib/medical/medicalScanService";
+import { runMedicalTransportDocumentScanTestForCustomer, runMedicalTransportDocumentScanForCustomerBooking } from "../lib/medical/medicalScanService";
 import {
   customerPassengerId,
   requireCustomerSession,
@@ -360,6 +360,36 @@ router.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req
       extracted: result.extracted,
       dateLogic: result.dateLogic,
       insuranceRules: result.insuranceRules,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Kunden-Transportschein-Scan vor Krankenfahrt-Buchung (persistierter Snapshot, kein Test-Modus). */
+router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body as { imageBase64?: unknown };
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const result = await runMedicalTransportDocumentScanForCustomerBooking({
+      customerPassengerId: customerPassengerId(sess),
+      imageBase64,
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      scanId: result.scanId,
+      trafficLight: result.trafficLight,
+      primaryReasonDe: result.primaryReasonDe || null,
+      scannedAt: result.scannedAt,
     });
   } catch (err) {
     next(err);

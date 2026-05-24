@@ -14,6 +14,7 @@ import { findPartnerRideSeriesById } from "../../db/partnerRideSeriesData";
 import { findRide, insertSupplementalRideEvent } from "../../db/ridesData";
 import { ridesTable } from "../../db/schema";
 import { parsePartnerBookingMeta } from "../../domain/partnerBookingMeta";
+import { insertCustomerMedicalTransportScan } from "../../db/customerMedicalTransportScansData";
 import { decodeValidatedMedicalTransportImage } from "../medicalTransportImage";
 import { runClaudeVisionMedicalOcr } from "./claudeVisionOcr";
 import {
@@ -32,6 +33,12 @@ import {
   assertMedicalTransportPlatformAvailable,
   resolveMedicalTransportAuthorizationForFleetDriver,
 } from "./medicalTransportAuthorization";
+import {
+  buildCustomerTransportScanMeta,
+  buildDriverHintLines,
+  customerTransportScanMetaToPartnerJson,
+  pickPrimaryCustomerScanReasonDe,
+} from "./customerTransportScanSnapshot";
 
 export const MEDICAL_RIDE_UPLOAD_ROOT =
   (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() ||
@@ -60,6 +67,117 @@ export type MedicalScanCustomerTestServiceInput = {
   customerPassengerId: string;
   imageBase64: string;
 };
+
+export type MedicalScanCustomerBookingServiceInput = {
+  customerPassengerId: string;
+  imageBase64: string;
+};
+
+export type MedicalScanCustomerBookingServiceResult =
+  | {
+      ok: true;
+      scanId: string;
+      trafficLight: "green" | "yellow" | "red";
+      primaryReasonDe: string;
+      scannedAt: string;
+    }
+  | { ok: false; error: string; status: number };
+
+/** Kunden-Scan vor Buchung: OCR + persistierter Snapshot (kein Test-Modus). */
+export async function runMedicalTransportDocumentScanForCustomerBooking(
+  input: MedicalScanCustomerBookingServiceInput,
+): Promise<MedicalScanCustomerBookingServiceResult> {
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+
+  const customerPassengerId = input.customerPassengerId.trim();
+  if (!customerPassengerId) {
+    return { ok: false, error: "bad_request", status: 400 };
+  }
+
+  const platform = await assertMedicalTransportPlatformAvailable();
+  if (!platform.ok) {
+    return { ok: false, error: platform.error, status: 403 };
+  }
+
+  const b64 = input.imageBase64.trim();
+  if (!b64) {
+    return { ok: false, error: "image_base64_required", status: 400 };
+  }
+
+  const decoded = decodeValidatedMedicalTransportImage(b64);
+  if (!decoded.ok) {
+    const status =
+      decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
+    return { ok: false, error: decoded.error, status };
+  }
+
+  const scanId = `cms-${randomUUID()}`;
+  const passengerKey = customerPassengerId.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const rel = path.join("customer-pending", passengerKey, `${scanId}.${decoded.ext}`).replace(/\\/g, "/");
+  const dest = path.join(MEDICAL_RIDE_UPLOAD_ROOT, rel);
+  await mkdir(path.dirname(dest), { recursive: true });
+  await writeFile(dest, decoded.buffer);
+
+  const pipeline = await runMedicalOcrPipeline({
+    buffer: decoded.buffer,
+    mime: decoded.mime,
+    companyId: "",
+    partnerIkSnapshot: "",
+    dateLogicType: "today",
+    rideScheduledAt: null,
+    insuranceRideId: `customer-booking:${scanId}`,
+  });
+
+  const scannedAt = new Date().toISOString();
+  const primaryReasonDe = pickPrimaryCustomerScanReasonDe(
+    pipeline.trafficLight,
+    pipeline.warnings,
+    pipeline.insuranceRules,
+  );
+  const meta = buildCustomerTransportScanMeta({
+    scanId,
+    trafficLight: pipeline.trafficLight,
+    scannedAt,
+    primaryReasonDe,
+    insuranceName: pipeline.extracted.insuranceName?.trim() ?? "",
+    transportDate: pipeline.extracted.transportDate ?? null,
+    driverHintLines: buildDriverHintLines(pipeline.warnings, pipeline.insuranceRules),
+    storageKey: rel,
+  });
+
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const inserted = await insertCustomerMedicalTransportScan({
+    id: scanId,
+    passengerId: customerPassengerId,
+    trafficLight: pipeline.trafficLight,
+    primaryReasonDe,
+    snapshotJson: {
+      ...customerTransportScanMetaToPartnerJson(meta),
+      evaluation: {
+        warnings: pipeline.warnings,
+        extracted: pipeline.extracted,
+        dateLogic: pipeline.dateLogic,
+        insuranceRules: pipeline.insuranceRules,
+      },
+    },
+    storageKey: rel,
+    expiresAt,
+  });
+
+  if (!inserted) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+
+  return {
+    ok: true,
+    scanId: inserted.id,
+    trafficLight: pipeline.trafficLight,
+    primaryReasonDe,
+    scannedAt,
+  };
+}
 
 export type MedicalScanWarningDto = {
   code: string;

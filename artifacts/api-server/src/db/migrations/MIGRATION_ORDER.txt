@@ -77,6 +77,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Kundenkonten E-Mail/Passwort (Mobile-Registrierung)                   → 074_customer_accounts.sql
   Medical Scan-Workflow Phase 1 (Fälle, Dokumente, Ampel-Reviews, Partner-IK) → 075_medical_workflow_phase1.sql
   Krankenfahrt-Freigabe (admin_companies + fleet_drivers medical transport flags) → 076_medical_transport_authorization.sql
+  Kunden-Transportschein-Snapshot vor Buchung → 077_customer_medical_transport_scans.sql
 
 Nach Migrationen Schema prüfen:
 

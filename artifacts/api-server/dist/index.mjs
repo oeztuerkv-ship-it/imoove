@@ -41213,6 +41213,7 @@ __export(schema_exports, {
   companyChangeRequestsTable: () => companyChangeRequestsTable,
   companyComplianceDocumentsTable: () => companyComplianceDocumentsTable,
   customerAccountsTable: () => customerAccountsTable,
+  customerMedicalTransportScansTable: () => customerMedicalTransportScansTable,
   driverMessageDismissalsTable: () => driverMessageDismissalsTable,
   driverMessagesTable: () => driverMessagesTable,
   driverVehicleAssignmentsTable: () => driverVehicleAssignmentsTable,
@@ -41255,7 +41256,7 @@ __export(schema_exports, {
   supportMessagesTable: () => supportMessagesTable,
   supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, customerMedicalTransportScansTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41977,6 +41978,18 @@ var init_schema2 = __esm({
       reviewer_actor_id: text("reviewer_actor_id"),
       reviewed_at: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
       auto_approved: boolean("auto_approved").notNull().default(false),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    customerMedicalTransportScansTable = pgTable("customer_medical_transport_scans", {
+      id: text("id").primaryKey(),
+      passenger_id: text("passenger_id").notNull(),
+      traffic_light: text("traffic_light").notNull(),
+      primary_reason_de: text("primary_reason_de").notNull().default(""),
+      snapshot_json: jsonb("snapshot_json").$type().notNull().default({}),
+      storage_key: text("storage_key").notNull().default(""),
+      expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+      consumed_at: timestamp("consumed_at", { withTimezone: true }),
+      consumed_ride_id: text("consumed_ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
     billingExportBatchesTable = pgTable("billing_export_batches", {
@@ -45319,6 +45332,609 @@ var init_operationalTariffEngine = __esm({
   }
 });
 
+// src/db/fleetDriversData.ts
+var fleetDriversData_exports = {};
+__export(fleetDriversData_exports, {
+  activateFleetDriver: () => activateFleetDriver,
+  adminActivateFleetDriver: () => adminActivateFleetDriver,
+  adminPatchFleetDriverAdminFields: () => adminPatchFleetDriverAdminFields,
+  adminSuspendFleetDriver: () => adminSuspendFleetDriver,
+  approveFleetDriverForCompany: () => approveFleetDriverForCompany,
+  computeFleetDriverComplianceGaps: () => computeFleetDriverComplianceGaps,
+  countFleetDriversOnline: () => countFleetDriversOnline,
+  countFleetDriversPScheinExpiringSoon: () => countFleetDriversPScheinExpiringSoon,
+  countPendingFleetDriversForAdmin: () => countPendingFleetDriversForAdmin,
+  findFleetDriverAuthRow: () => findFleetDriverAuthRow,
+  findFleetDriverByEmailNormalized: () => findFleetDriverByEmailNormalized,
+  findFleetDriverGlobal: () => findFleetDriverGlobal,
+  findFleetDriverInCompany: () => findFleetDriverInCompany,
+  fleetDriverTableRowToList: () => fleetDriverTableRowToList,
+  getCompanyKind: () => getCompanyKind,
+  getFleetDriverMarketOnline: () => getFleetDriverMarketOnline,
+  insertFleetDriver: () => insertFleetDriver,
+  isDriverReservationSuspendedSync: () => isDriverReservationSuspendedSync,
+  listFleetDriversForCompany: () => listFleetDriversForCompany,
+  listPendingFleetDriversForAdmin: () => listPendingFleetDriversForAdmin,
+  markFleetDriverMissingDocumentsForCompany: () => markFleetDriverMissingDocumentsForCompany,
+  normalizeFleetDriverApproval: () => normalizeFleetDriverApproval,
+  patchFleetDriverProfile: () => patchFleetDriverProfile,
+  rejectFleetDriverForCompany: () => rejectFleetDriverForCompany,
+  setFleetDriverApprovalByAdmin: () => setFleetDriverApprovalByAdmin,
+  setFleetDriverApprovalForCompany: () => setFleetDriverApprovalForCompany,
+  setFleetDriverApprovalStatusOnlyForCompany: () => setFleetDriverApprovalStatusOnlyForCompany,
+  setFleetDriverMarketOnline: () => setFleetDriverMarketOnline,
+  setFleetDriverMedicalTransport: () => setFleetDriverMedicalTransport,
+  setFleetDriverReadinessOverrideSystem: () => setFleetDriverReadinessOverrideSystem,
+  setReservationSuspension: () => setReservationSuspension,
+  suspendFleetDriver: () => suspendFleetDriver,
+  touchFleetDriverHeartbeat: () => touchFleetDriverHeartbeat,
+  touchFleetDriverLogin: () => touchFleetDriverLogin,
+  updateFleetDriverPassword: () => updateFleetDriverPassword
+});
+import { randomUUID as randomUUID6 } from "node:crypto";
+function normalizeFleetDriverApproval(raw) {
+  const t = String(raw ?? "").toLowerCase().trim();
+  if (t === "in_review" || t === "pending" || t === "missing_documents" || t === "rejected" || t === "approved")
+    return t;
+  return "pending";
+}
+function computeFleetDriverComplianceGaps(d) {
+  const gaps = [];
+  if (!(d.pScheinNumber ?? "").trim()) gaps.push("P-Schein-Nummer fehlt");
+  const exp = d.pScheinExpiry != null ? String(d.pScheinExpiry).trim() : "";
+  if (!exp) gaps.push("P-Schein-Ablaufdatum fehlt");
+  const doc = (d.pScheinDocStorageKey ?? "").trim();
+  if (!doc) gaps.push("P-Schein-PDF-Nachweis fehlt");
+  return gaps;
+}
+function fleetDriverTableRowToList(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    email: r.email,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    phone: r.phone,
+    accessStatus: r.access_status,
+    isActive: r.is_active,
+    mustChangePassword: r.must_change_password,
+    pScheinNumber: r.p_schein_number,
+    pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
+    pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    homeAddress: r.home_address ?? "",
+    driversLicenseNumber: r.drivers_license_number ?? "",
+    driversLicenseExpiry: r.drivers_license_expiry ? String(r.drivers_license_expiry) : null,
+    vehicleLegalType: r.vehicle_legal_type,
+    vehicleClass: r.vehicle_class,
+    lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
+    lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString(),
+    approvalStatus: normalizeFleetDriverApproval(
+      r.approval_status ?? "approved"
+    ),
+    suspensionReason: r.suspension_reason ?? "",
+    adminInternalNote: r.admin_internal_note ?? "",
+    readinessOverrideSystem: Boolean(r.readiness_override_system),
+    reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
+    isMarketOnline: Boolean(r.is_market_online),
+    medicalTransportEnabled: Boolean(r.medical_transport_enabled),
+    medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company)
+  };
+}
+function rowToList(r) {
+  return fleetDriverTableRowToList(r);
+}
+async function getCompanyKind(companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({ k: adminCompaniesTable.company_kind }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const k = rows[0]?.k;
+  return typeof k === "string" ? k : null;
+}
+async function findFleetDriverAuthRow(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: fleetDriversTable.id,
+    company_id: fleetDriversTable.company_id,
+    session_version: fleetDriversTable.session_version,
+    is_active: fleetDriversTable.is_active,
+    access_status: fleetDriversTable.access_status
+  }).from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    session_version: r.session_version,
+    is_active: r.is_active,
+    access_status: r.access_status
+  };
+}
+async function findFleetDriverByEmailNormalized(email) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const em = email.trim().toLowerCase();
+  if (!em) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(sql2`lower(trim(${fleetDriversTable.email})) = ${em}`).limit(1);
+  return rows[0] ?? null;
+}
+async function findFleetDriverGlobal(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+async function findFleetDriverInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function listFleetDriversForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
+  return rows.map(rowToList);
+}
+async function insertFleetDriver(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const email = input.email.trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: "email_invalid" };
+  }
+  const existing = await findFleetDriverByEmailNormalized(email);
+  if (existing) {
+    return { ok: false, error: "email_taken" };
+  }
+  const id = `fd-${randomUUID6()}`;
+  const pExp = input.pScheinExpiry?.trim();
+  const dlExp = input.driversLicenseExpiry?.trim();
+  await db2.insert(fleetDriversTable).values({
+    id,
+    company_id: input.companyId,
+    email,
+    first_name: input.firstName.trim(),
+    last_name: input.lastName.trim(),
+    phone: input.phone.trim(),
+    password_hash: input.passwordHash,
+    must_change_password: input.mustChangePassword,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
+    p_schein_number: (input.pScheinNumber ?? "").trim(),
+    p_schein_expiry: pExp ? pExp : null,
+    home_address: (input.homeAddress ?? "").trim(),
+    drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
+    drivers_license_expiry: dlExp ? dlExp : null,
+    is_active: true,
+    access_status: "active",
+    approval_status: input.approvalStatus ?? "approved",
+    session_version: 1
+  });
+  return { ok: true, id };
+}
+async function patchFleetDriverProfile(id, companyId, patch) {
+  const cur = await findFleetDriverInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  let bumpSession = false;
+  if (patch.email !== void 0) {
+    const em = patch.email.trim().toLowerCase();
+    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      return { ok: false, error: "email_invalid" };
+    }
+    const other = await findFleetDriverByEmailNormalized(em);
+    if (other && other.id !== id) {
+      return { ok: false, error: "email_taken" };
+    }
+    set.email = em;
+    bumpSession = true;
+  }
+  if (patch.isActive !== void 0) {
+    set.is_active = patch.isActive;
+    bumpSession = true;
+  }
+  if (patch.firstName !== void 0) set.first_name = patch.firstName.trim();
+  if (patch.lastName !== void 0) set.last_name = patch.lastName.trim();
+  if (patch.phone !== void 0) set.phone = patch.phone.trim();
+  if (patch.pScheinNumber !== void 0) set.p_schein_number = patch.pScheinNumber.trim();
+  if (patch.pScheinExpiry !== void 0) {
+    const raw = patch.pScheinExpiry?.trim();
+    set.p_schein_expiry = raw ? raw : null;
+  }
+  if (patch.pScheinDocStorageKey !== void 0) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
+  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
+  if (patch.homeAddress !== void 0) set.home_address = patch.homeAddress.trim();
+  if (patch.driversLicenseNumber !== void 0) set.drivers_license_number = patch.driversLicenseNumber.trim();
+  if (patch.driversLicenseExpiry !== void 0) {
+    const raw = patch.driversLicenseExpiry?.trim();
+    set.drivers_license_expiry = raw ? raw : null;
+  }
+  if (bumpSession) {
+    set.session_version = sql2`${fleetDriversTable.session_version} + 1`;
+  }
+  await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
+  return { ok: true };
+}
+async function updateFleetDriverPassword(id, companyId, passwordHash, mustChangePassword) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    password_hash: passwordHash,
+    must_change_password: mustChangePassword,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function suspendFleetDriver(id, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "suspended",
+    is_active: true,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setReservationSuspension(id, companyId, suspendedUntil) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    reservation_suspended_until: suspendedUntil,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+function isDriverReservationSuspendedSync(suspendedUntil) {
+  if (!suspendedUntil) return false;
+  return new Date(suspendedUntil) > /* @__PURE__ */ new Date();
+}
+async function activateFleetDriver(id, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "active",
+    is_active: true,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setFleetDriverApprovalByAdmin(driverId, nextStatus, opts) {
+  const row = await findFleetDriverGlobal(driverId);
+  if (!row) return { ok: false, error: "not_found" };
+  const companyId = row.company_id;
+  if (nextStatus === "approved") {
+    return approveFleetDriverForCompany(companyId, driverId, {
+      acknowledgeIncompleteDocuments: opts?.acknowledgeIncompleteDocuments === true
+    });
+  }
+  if (nextStatus === "rejected") {
+    const reason = String(opts?.rejectionReason ?? "").trim();
+    return rejectFleetDriverForCompany(companyId, driverId, reason);
+  }
+  if (nextStatus === "missing_documents") {
+    return markFleetDriverMissingDocumentsForCompany(companyId, driverId);
+  }
+  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
+}
+async function approveFleetDriverForCompany(companyId, driverId, opts) {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const listRow = fleetDriverTableRowToList(cur);
+  const gaps = computeFleetDriverComplianceGaps(listRow);
+  if (gaps.length > 0 && !opts.acknowledgeIncompleteDocuments) {
+    return { ok: false, error: "incomplete_documents_ack_required", gaps };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "approved", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function rejectFleetDriverForCompany(companyId, driverId, rejectionReason) {
+  const reason = String(rejectionReason ?? "").trim();
+  if (!reason) return { ok: false, error: "rejection_reason_required" };
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "rejected", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function markFleetDriverMissingDocumentsForCompany(companyId, driverId) {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "approved"].includes(st)) {
+    return { ok: false, error: "invalid_state" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "missing_documents", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus) {
+  const allowed = ["pending", "in_review", "missing_documents"];
+  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "not_found" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function setFleetDriverReadinessOverrideSystem(companyId, driverId, enabled) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({ readiness_override_system: enabled, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setFleetDriverMedicalTransport(companyId, driverId, patch) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (typeof patch.enabled === "boolean") set.medical_transport_enabled = patch.enabled;
+  if (typeof patch.inheritFromCompany === "boolean") {
+    set.medical_transport_inherit_from_company = patch.inheritFromCompany;
+  }
+  if (set.medical_transport_enabled === void 0 && set.medical_transport_inherit_from_company === void 0) {
+    return false;
+  }
+  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setFleetDriverApprovalForCompany(companyId, driverId, nextStatus) {
+  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
+}
+async function adminSuspendFleetDriver(companyId, driverId, suspensionReason) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const reason = String(suspensionReason ?? "").trim().slice(0, MAX_SUS_REASON);
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "suspended",
+    is_active: true,
+    suspension_reason: reason,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function adminActivateFleetDriver(companyId, driverId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "active",
+    is_active: true,
+    suspension_reason: "",
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function adminPatchFleetDriverAdminFields(companyId, driverId, patch) {
+  if (patch.adminInternalNote === void 0 && patch.suspensionReason === void 0) return true;
+  const db2 = getDb();
+  if (!db2) return false;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.adminInternalNote !== void 0) {
+    set.admin_internal_note = String(patch.adminInternalNote).trim().slice(0, MAX_ADMIN_NOTE);
+  }
+  if (patch.suspensionReason !== void 0) {
+    set.suspension_reason = String(patch.suspensionReason).trim().slice(0, MAX_SUS_REASON);
+  }
+  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function touchFleetDriverLogin(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(fleetDriversTable).set({ last_login_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
+}
+async function touchFleetDriverHeartbeat(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(fleetDriversTable).set({ last_heartbeat_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
+}
+async function getFleetDriverMarketOnline(fleetDriverId, companyId) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return false;
+  const rows = await db2.select({ is_market_online: fleetDriversTable.is_market_online }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co))).limit(1);
+  return rows[0]?.is_market_online === true;
+}
+async function setFleetDriverMarketOnline(fleetDriverId, companyId, online) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return false;
+  const rows = await db2.update(fleetDriversTable).set({ is_market_online: online, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co))).returning({ id: fleetDriversTable.id });
+  return rows.length > 0;
+}
+async function countFleetDriversPScheinExpiringSoon(companyId, withinDays) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const today = /* @__PURE__ */ new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const until = new Date(today);
+  until.setUTCDate(until.getUTCDate() + withinDays);
+  const todayStr = today.toISOString().slice(0, 10);
+  const untilStr = until.toISOString().slice(0, 10);
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).where(
+    and(
+      eq(fleetDriversTable.company_id, companyId),
+      isNotNull(fleetDriversTable.p_schein_expiry),
+      gte(fleetDriversTable.p_schein_expiry, todayStr),
+      lte(fleetDriversTable.p_schein_expiry, untilStr)
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function countFleetDriversOnline(companyId, withinSeconds) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const since = new Date(Date.now() - withinSeconds * 1e3);
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).where(
+    and(
+      eq(fleetDriversTable.company_id, companyId),
+      eq(fleetDriversTable.access_status, "active"),
+      eq(fleetDriversTable.is_active, true),
+      isNotNull(fleetDriversTable.last_heartbeat_at),
+      gte(fleetDriversTable.last_heartbeat_at, since)
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function countPendingFleetDriversForAdmin() {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(adminCompaniesTable.company_kind, "taxi"),
+      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function listPendingFleetDriversForAdmin(limit) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const lim = typeof limit === "number" && limit > 0 ? Math.min(500, limit) : 5;
+  const rows = await db2.select({
+    driverId: fleetDriversTable.id,
+    companyId: fleetDriversTable.company_id,
+    companyName: adminCompaniesTable.name,
+    firstName: fleetDriversTable.first_name,
+    lastName: fleetDriversTable.last_name,
+    email: fleetDriversTable.email,
+    approvalStatus: fleetDriversTable.approval_status,
+    updatedAt: fleetDriversTable.updated_at
+  }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(adminCompaniesTable.company_kind, "taxi"),
+      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
+    )
+  ).orderBy(desc(fleetDriversTable.updated_at)).limit(lim);
+  return rows.map((r) => ({
+    driverId: r.driverId,
+    companyId: r.companyId,
+    companyName: r.companyName,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    email: r.email,
+    approvalStatus: r.approvalStatus,
+    updatedAt: r.updatedAt.toISOString()
+  }));
+}
+var MAX_SUS_REASON, MAX_ADMIN_NOTE;
+var init_fleetDriversData = __esm({
+  "src/db/fleetDriversData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+    MAX_SUS_REASON = 2e3;
+    MAX_ADMIN_NOTE = 4e3;
+  }
+});
+
+// src/lib/medical/medicalTransportAuthorization.ts
+function computeMedicalTransportAuthorized(flags) {
+  if (!flags.companyMedicalTransportEnabled) return false;
+  if (flags.driverInheritFromCompany) return true;
+  return flags.driverMedicalTransportEnabled;
+}
+function medicalTransportAuthorizationFromRows(driverRow, companyRow) {
+  const companyEnabled = Boolean(companyRow.medical_transport_enabled);
+  const authorized = computeMedicalTransportAuthorized({
+    companyMedicalTransportEnabled: companyEnabled,
+    driverMedicalTransportEnabled: Boolean(driverRow.medical_transport_enabled),
+    driverInheritFromCompany: Boolean(driverRow.medical_transport_inherit_from_company)
+  });
+  return { companyEnabled, authorized };
+}
+async function findCompanyMedicalTransportRow(companyId) {
+  const cid = companyId.trim();
+  if (!cid || !isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    medical_transport_enabled: adminCompaniesTable.medical_transport_enabled,
+    is_active: adminCompaniesTable.is_active,
+    is_blocked: adminCompaniesTable.is_blocked
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
+  return rows[0] ?? null;
+}
+async function resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId) {
+  const driverRow = await findFleetDriverInCompany(fleetDriverId.trim(), companyId.trim());
+  if (!driverRow) return null;
+  const companyRow = await findCompanyMedicalTransportRow(companyId);
+  if (!companyRow) return null;
+  return medicalTransportAuthorizationFromRows(driverRow, companyRow);
+}
+async function isMedicalTransportPlatformAvailable() {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const rows = await db2.select({ id: adminCompaniesTable.id }).from(adminCompaniesTable).where(
+    and(
+      eq(adminCompaniesTable.medical_transport_enabled, true),
+      eq(adminCompaniesTable.is_active, true),
+      eq(adminCompaniesTable.is_blocked, false)
+    )
+  ).limit(1);
+  return rows.length > 0;
+}
+async function assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId) {
+  const authorization = await resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId);
+  if (!authorization?.authorized) {
+    return { ok: false, error: MEDICAL_TRANSPORT_NOT_AUTHORIZED };
+  }
+  return { ok: true, authorization };
+}
+async function assertMedicalTransportPlatformAvailable() {
+  const available = await isMedicalTransportPlatformAvailable();
+  if (!available) {
+    return { ok: false, error: MEDICAL_TRANSPORT_NOT_AUTHORIZED };
+  }
+  return { ok: true };
+}
+var MEDICAL_TRANSPORT_NOT_AUTHORIZED;
+var init_medicalTransportAuthorization = __esm({
+  "src/lib/medical/medicalTransportAuthorization.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_fleetDriversData();
+    init_schema2();
+    MEDICAL_TRANSPORT_NOT_AUTHORIZED = "medical_transport_not_authorized";
+  }
+});
+
 // src/db/appOperationalData.ts
 var appOperationalData_exports = {};
 __export(appOperationalData_exports, {
@@ -45340,7 +45956,7 @@ __export(appOperationalData_exports, {
   updateOperationalConfigPayload: () => updateOperationalConfigPayload,
   updateServiceRegionById: () => updateServiceRegionById
 });
-import { randomUUID as randomUUID6 } from "node:crypto";
+import { randomUUID as randomUUID7 } from "node:crypto";
 function isPlainObject(x) {
   return x !== null && typeof x === "object" && !Array.isArray(x);
 }
@@ -45721,7 +46337,7 @@ async function updateServiceRegionById(id, input) {
   return u.length > 0;
 }
 async function insertServiceRegion(input) {
-  const id = `asr-${randomUUID6()}`;
+  const id = `asr-${randomUUID7()}`;
   const mode = typeof input.matchMode === "string" && input.matchMode.trim() ? input.matchMode.trim() : "substring";
   const next = {
     id,
@@ -45822,6 +46438,7 @@ async function getAppConfigForPublic() {
     const o = bsr[r.id];
     tariffsPerServiceRegion[r.id] = mergeTariffsForServiceRegion(tSec, isPlainObject(o) ? o : null);
   }
+  const medicalTransportAvailable = await isMedicalTransportPlatformAvailable();
   return {
     ok: true,
     version: typeof v === "number" && Number.isFinite(v) ? v : 1,
@@ -45836,7 +46453,8 @@ async function getAppConfigForPublic() {
     features: section("features"),
     driverRules: section("driverRules"),
     bookingRules: section("bookingRules"),
-    system: section("system")
+    system: section("system"),
+    medicalTransportAvailable
   };
 }
 async function getAppPricingForPublic() {
@@ -45862,6 +46480,7 @@ var init_appOperationalData = __esm({
     init_dispatchStatus();
     init_adminData();
     init_client();
+    init_medicalTransportAuthorization();
     init_schema2();
     init_serviceRegionMatch();
     init_serviceRegionMatch();
@@ -46036,7 +46655,7 @@ var init_appOperationalData = __esm({
 });
 
 // src/db/adminData.ts
-import { randomUUID as randomUUID7 } from "node:crypto";
+import { randomUUID as randomUUID8 } from "node:crypto";
 function flattenPgError(err) {
   const parts = [];
   const seen = /* @__PURE__ */ new Set();
@@ -46511,7 +47130,7 @@ function applyAdminCompanyPatch(cur, body) {
 async function insertAdminCompany(body) {
   const name2 = typeof body.name === "string" ? body.name.trim() : "";
   if (!name2) return { error: "name_required" };
-  const id = `co-${randomUUID7()}`;
+  const id = `co-${randomUUID8()}`;
   const base = {
     id,
     name: name2,
@@ -46601,7 +47220,7 @@ async function syncCompanyBillingAccountEmail(companyId, email) {
     return;
   }
   await db2.insert(billingAccountsTable).values({
-    id: `ba-${randomUUID7()}`,
+    id: `ba-${randomUUID8()}`,
     company_id: companyId,
     account_name: "Partner-Abrechnung",
     billing_email: normalized
@@ -47108,7 +47727,7 @@ var init_fleetMatchingData = __esm({
 });
 
 // src/db/companyComplianceDocumentsData.ts
-import { randomUUID as randomUUID8 } from "node:crypto";
+import { randomUUID as randomUUID9 } from "node:crypto";
 function asReview(s) {
   const v = String(s ?? "").trim();
   if (v === "approved" || v === "rejected" || v === "pending") return v;
@@ -47223,7 +47842,7 @@ async function insertComplianceDocumentUpload(companyId, kind, storageKey, panel
   if (!db2) {
     throw new Error("database_not_configured");
   }
-  const docId = randomUUID8();
+  const docId = randomUUID9();
   const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
   await db2.transaction(async (tx) => {
     await tx.update(companyComplianceDocumentsTable).set({ is_current: false }).where(
@@ -47356,537 +47975,6 @@ var init_companyGovernanceData = __esm({
     init_client();
     init_companyComplianceDocumentsData();
     init_schema2();
-  }
-});
-
-// src/db/fleetDriversData.ts
-var fleetDriversData_exports = {};
-__export(fleetDriversData_exports, {
-  activateFleetDriver: () => activateFleetDriver,
-  adminActivateFleetDriver: () => adminActivateFleetDriver,
-  adminPatchFleetDriverAdminFields: () => adminPatchFleetDriverAdminFields,
-  adminSuspendFleetDriver: () => adminSuspendFleetDriver,
-  approveFleetDriverForCompany: () => approveFleetDriverForCompany,
-  computeFleetDriverComplianceGaps: () => computeFleetDriverComplianceGaps,
-  countFleetDriversOnline: () => countFleetDriversOnline,
-  countFleetDriversPScheinExpiringSoon: () => countFleetDriversPScheinExpiringSoon,
-  countPendingFleetDriversForAdmin: () => countPendingFleetDriversForAdmin,
-  findFleetDriverAuthRow: () => findFleetDriverAuthRow,
-  findFleetDriverByEmailNormalized: () => findFleetDriverByEmailNormalized,
-  findFleetDriverGlobal: () => findFleetDriverGlobal,
-  findFleetDriverInCompany: () => findFleetDriverInCompany,
-  fleetDriverTableRowToList: () => fleetDriverTableRowToList,
-  getCompanyKind: () => getCompanyKind,
-  getFleetDriverMarketOnline: () => getFleetDriverMarketOnline,
-  insertFleetDriver: () => insertFleetDriver,
-  isDriverReservationSuspendedSync: () => isDriverReservationSuspendedSync,
-  listFleetDriversForCompany: () => listFleetDriversForCompany,
-  listPendingFleetDriversForAdmin: () => listPendingFleetDriversForAdmin,
-  markFleetDriverMissingDocumentsForCompany: () => markFleetDriverMissingDocumentsForCompany,
-  normalizeFleetDriverApproval: () => normalizeFleetDriverApproval,
-  patchFleetDriverProfile: () => patchFleetDriverProfile,
-  rejectFleetDriverForCompany: () => rejectFleetDriverForCompany,
-  setFleetDriverApprovalByAdmin: () => setFleetDriverApprovalByAdmin,
-  setFleetDriverApprovalForCompany: () => setFleetDriverApprovalForCompany,
-  setFleetDriverApprovalStatusOnlyForCompany: () => setFleetDriverApprovalStatusOnlyForCompany,
-  setFleetDriverMarketOnline: () => setFleetDriverMarketOnline,
-  setFleetDriverMedicalTransport: () => setFleetDriverMedicalTransport,
-  setFleetDriverReadinessOverrideSystem: () => setFleetDriverReadinessOverrideSystem,
-  setReservationSuspension: () => setReservationSuspension,
-  suspendFleetDriver: () => suspendFleetDriver,
-  touchFleetDriverHeartbeat: () => touchFleetDriverHeartbeat,
-  touchFleetDriverLogin: () => touchFleetDriverLogin,
-  updateFleetDriverPassword: () => updateFleetDriverPassword
-});
-import { randomUUID as randomUUID9 } from "node:crypto";
-function normalizeFleetDriverApproval(raw) {
-  const t = String(raw ?? "").toLowerCase().trim();
-  if (t === "in_review" || t === "pending" || t === "missing_documents" || t === "rejected" || t === "approved")
-    return t;
-  return "pending";
-}
-function computeFleetDriverComplianceGaps(d) {
-  const gaps = [];
-  if (!(d.pScheinNumber ?? "").trim()) gaps.push("P-Schein-Nummer fehlt");
-  const exp = d.pScheinExpiry != null ? String(d.pScheinExpiry).trim() : "";
-  if (!exp) gaps.push("P-Schein-Ablaufdatum fehlt");
-  const doc = (d.pScheinDocStorageKey ?? "").trim();
-  if (!doc) gaps.push("P-Schein-PDF-Nachweis fehlt");
-  return gaps;
-}
-function fleetDriverTableRowToList(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    email: r.email,
-    firstName: r.first_name,
-    lastName: r.last_name,
-    phone: r.phone,
-    accessStatus: r.access_status,
-    isActive: r.is_active,
-    mustChangePassword: r.must_change_password,
-    pScheinNumber: r.p_schein_number,
-    pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
-    pScheinDocStorageKey: r.p_schein_doc_storage_key,
-    homeAddress: r.home_address ?? "",
-    driversLicenseNumber: r.drivers_license_number ?? "",
-    driversLicenseExpiry: r.drivers_license_expiry ? String(r.drivers_license_expiry) : null,
-    vehicleLegalType: r.vehicle_legal_type,
-    vehicleClass: r.vehicle_class,
-    lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
-    lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString(),
-    approvalStatus: normalizeFleetDriverApproval(
-      r.approval_status ?? "approved"
-    ),
-    suspensionReason: r.suspension_reason ?? "",
-    adminInternalNote: r.admin_internal_note ?? "",
-    readinessOverrideSystem: Boolean(r.readiness_override_system),
-    reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
-    isMarketOnline: Boolean(r.is_market_online),
-    medicalTransportEnabled: Boolean(r.medical_transport_enabled),
-    medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company)
-  };
-}
-function rowToList(r) {
-  return fleetDriverTableRowToList(r);
-}
-async function getCompanyKind(companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({ k: adminCompaniesTable.company_kind }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const k = rows[0]?.k;
-  return typeof k === "string" ? k : null;
-}
-async function findFleetDriverAuthRow(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    id: fleetDriversTable.id,
-    company_id: fleetDriversTable.company_id,
-    session_version: fleetDriversTable.session_version,
-    is_active: fleetDriversTable.is_active,
-    access_status: fleetDriversTable.access_status
-  }).from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id,
-    company_id: r.company_id,
-    session_version: r.session_version,
-    is_active: r.is_active,
-    access_status: r.access_status
-  };
-}
-async function findFleetDriverByEmailNormalized(email) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const em = email.trim().toLowerCase();
-  if (!em) return null;
-  const rows = await db2.select().from(fleetDriversTable).where(sql2`lower(trim(${fleetDriversTable.email})) = ${em}`).limit(1);
-  return rows[0] ?? null;
-}
-async function findFleetDriverGlobal(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
-  return rows[0] ?? null;
-}
-async function findFleetDriverInCompany(id, companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).limit(1);
-  return rows[0] ?? null;
-}
-async function listFleetDriversForCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
-  return rows.map(rowToList);
-}
-async function insertFleetDriver(input) {
-  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const email = input.email.trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, error: "email_invalid" };
-  }
-  const existing = await findFleetDriverByEmailNormalized(email);
-  if (existing) {
-    return { ok: false, error: "email_taken" };
-  }
-  const id = `fd-${randomUUID9()}`;
-  const pExp = input.pScheinExpiry?.trim();
-  const dlExp = input.driversLicenseExpiry?.trim();
-  await db2.insert(fleetDriversTable).values({
-    id,
-    company_id: input.companyId,
-    email,
-    first_name: input.firstName.trim(),
-    last_name: input.lastName.trim(),
-    phone: input.phone.trim(),
-    password_hash: input.passwordHash,
-    must_change_password: input.mustChangePassword,
-    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
-    vehicle_class: input.vehicleClass ?? "standard",
-    p_schein_number: (input.pScheinNumber ?? "").trim(),
-    p_schein_expiry: pExp ? pExp : null,
-    home_address: (input.homeAddress ?? "").trim(),
-    drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
-    drivers_license_expiry: dlExp ? dlExp : null,
-    is_active: true,
-    access_status: "active",
-    approval_status: input.approvalStatus ?? "approved",
-    session_version: 1
-  });
-  return { ok: true, id };
-}
-async function patchFleetDriverProfile(id, companyId, patch) {
-  const cur = await findFleetDriverInCompany(id, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  let bumpSession = false;
-  if (patch.email !== void 0) {
-    const em = patch.email.trim().toLowerCase();
-    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
-      return { ok: false, error: "email_invalid" };
-    }
-    const other = await findFleetDriverByEmailNormalized(em);
-    if (other && other.id !== id) {
-      return { ok: false, error: "email_taken" };
-    }
-    set.email = em;
-    bumpSession = true;
-  }
-  if (patch.isActive !== void 0) {
-    set.is_active = patch.isActive;
-    bumpSession = true;
-  }
-  if (patch.firstName !== void 0) set.first_name = patch.firstName.trim();
-  if (patch.lastName !== void 0) set.last_name = patch.lastName.trim();
-  if (patch.phone !== void 0) set.phone = patch.phone.trim();
-  if (patch.pScheinNumber !== void 0) set.p_schein_number = patch.pScheinNumber.trim();
-  if (patch.pScheinExpiry !== void 0) {
-    const raw = patch.pScheinExpiry?.trim();
-    set.p_schein_expiry = raw ? raw : null;
-  }
-  if (patch.pScheinDocStorageKey !== void 0) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
-  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
-  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
-  if (patch.homeAddress !== void 0) set.home_address = patch.homeAddress.trim();
-  if (patch.driversLicenseNumber !== void 0) set.drivers_license_number = patch.driversLicenseNumber.trim();
-  if (patch.driversLicenseExpiry !== void 0) {
-    const raw = patch.driversLicenseExpiry?.trim();
-    set.drivers_license_expiry = raw ? raw : null;
-  }
-  if (bumpSession) {
-    set.session_version = sql2`${fleetDriversTable.session_version} + 1`;
-  }
-  await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
-  return { ok: true };
-}
-async function updateFleetDriverPassword(id, companyId, passwordHash, mustChangePassword) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    password_hash: passwordHash,
-    must_change_password: mustChangePassword,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql2`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function suspendFleetDriver(id, companyId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "suspended",
-    is_active: true,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql2`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function setReservationSuspension(id, companyId, suspendedUntil) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    reservation_suspended_until: suspendedUntil,
-    updated_at: /* @__PURE__ */ new Date()
-  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-function isDriverReservationSuspendedSync(suspendedUntil) {
-  if (!suspendedUntil) return false;
-  return new Date(suspendedUntil) > /* @__PURE__ */ new Date();
-}
-async function activateFleetDriver(id, companyId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "active",
-    is_active: true,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql2`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function setFleetDriverApprovalByAdmin(driverId, nextStatus, opts) {
-  const row = await findFleetDriverGlobal(driverId);
-  if (!row) return { ok: false, error: "not_found" };
-  const companyId = row.company_id;
-  if (nextStatus === "approved") {
-    return approveFleetDriverForCompany(companyId, driverId, {
-      acknowledgeIncompleteDocuments: opts?.acknowledgeIncompleteDocuments === true
-    });
-  }
-  if (nextStatus === "rejected") {
-    const reason = String(opts?.rejectionReason ?? "").trim();
-    return rejectFleetDriverForCompany(companyId, driverId, reason);
-  }
-  if (nextStatus === "missing_documents") {
-    return markFleetDriverMissingDocumentsForCompany(companyId, driverId);
-  }
-  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
-}
-async function approveFleetDriverForCompany(companyId, driverId, opts) {
-  const cur = await findFleetDriverInCompany(driverId, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = normalizeFleetDriverApproval(cur.approval_status);
-  if (!["pending", "in_review", "missing_documents"].includes(st)) {
-    return { ok: false, error: "not_pending" };
-  }
-  const listRow = fleetDriverTableRowToList(cur);
-  const gaps = computeFleetDriverComplianceGaps(listRow);
-  if (gaps.length > 0 && !opts.acknowledgeIncompleteDocuments) {
-    return { ok: false, error: "incomplete_documents_ack_required", gaps };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: "approved", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function rejectFleetDriverForCompany(companyId, driverId, rejectionReason) {
-  const reason = String(rejectionReason ?? "").trim();
-  if (!reason) return { ok: false, error: "rejection_reason_required" };
-  const cur = await findFleetDriverInCompany(driverId, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = normalizeFleetDriverApproval(cur.approval_status);
-  if (!["pending", "in_review", "missing_documents"].includes(st)) {
-    return { ok: false, error: "not_pending" };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: "rejected", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function markFleetDriverMissingDocumentsForCompany(companyId, driverId) {
-  const cur = await findFleetDriverInCompany(driverId, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = normalizeFleetDriverApproval(cur.approval_status);
-  if (!["pending", "in_review", "approved"].includes(st)) {
-    return { ok: false, error: "invalid_state" };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: "missing_documents", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus) {
-  const allowed = ["pending", "in_review", "missing_documents"];
-  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "not_found" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function setFleetDriverReadinessOverrideSystem(companyId, driverId, enabled) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({ readiness_override_system: enabled, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function setFleetDriverMedicalTransport(companyId, driverId, patch) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  if (typeof patch.enabled === "boolean") set.medical_transport_enabled = patch.enabled;
-  if (typeof patch.inheritFromCompany === "boolean") {
-    set.medical_transport_inherit_from_company = patch.inheritFromCompany;
-  }
-  if (set.medical_transport_enabled === void 0 && set.medical_transport_inherit_from_company === void 0) {
-    return false;
-  }
-  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function setFleetDriverApprovalForCompany(companyId, driverId, nextStatus) {
-  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
-}
-async function adminSuspendFleetDriver(companyId, driverId, suspensionReason) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const reason = String(suspensionReason ?? "").trim().slice(0, MAX_SUS_REASON);
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "suspended",
-    is_active: true,
-    suspension_reason: reason,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql2`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function adminActivateFleetDriver(companyId, driverId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "active",
-    is_active: true,
-    suspension_reason: "",
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql2`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function adminPatchFleetDriverAdminFields(companyId, driverId, patch) {
-  if (patch.adminInternalNote === void 0 && patch.suspensionReason === void 0) return true;
-  const db2 = getDb();
-  if (!db2) return false;
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  if (patch.adminInternalNote !== void 0) {
-    set.admin_internal_note = String(patch.adminInternalNote).trim().slice(0, MAX_ADMIN_NOTE);
-  }
-  if (patch.suspensionReason !== void 0) {
-    set.suspension_reason = String(patch.suspensionReason).trim().slice(0, MAX_SUS_REASON);
-  }
-  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function touchFleetDriverLogin(id) {
-  const db2 = getDb();
-  if (!db2) return;
-  await db2.update(fleetDriversTable).set({ last_login_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
-}
-async function touchFleetDriverHeartbeat(id) {
-  const db2 = getDb();
-  if (!db2) return;
-  await db2.update(fleetDriversTable).set({ last_heartbeat_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
-}
-async function getFleetDriverMarketOnline(fleetDriverId, companyId) {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const id = fleetDriverId.trim();
-  const co = companyId.trim();
-  if (!id || !co) return false;
-  const rows = await db2.select({ is_market_online: fleetDriversTable.is_market_online }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co))).limit(1);
-  return rows[0]?.is_market_online === true;
-}
-async function setFleetDriverMarketOnline(fleetDriverId, companyId, online) {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const id = fleetDriverId.trim();
-  const co = companyId.trim();
-  if (!id || !co) return false;
-  const rows = await db2.update(fleetDriversTable).set({ is_market_online: online, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co))).returning({ id: fleetDriversTable.id });
-  return rows.length > 0;
-}
-async function countFleetDriversPScheinExpiringSoon(companyId, withinDays) {
-  const db2 = getDb();
-  if (!db2) return 0;
-  const today = /* @__PURE__ */ new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const until = new Date(today);
-  until.setUTCDate(until.getUTCDate() + withinDays);
-  const todayStr = today.toISOString().slice(0, 10);
-  const untilStr = until.toISOString().slice(0, 10);
-  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).where(
-    and(
-      eq(fleetDriversTable.company_id, companyId),
-      isNotNull(fleetDriversTable.p_schein_expiry),
-      gte(fleetDriversTable.p_schein_expiry, todayStr),
-      lte(fleetDriversTable.p_schein_expiry, untilStr)
-    )
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function countFleetDriversOnline(companyId, withinSeconds) {
-  const db2 = getDb();
-  if (!db2) return 0;
-  const since = new Date(Date.now() - withinSeconds * 1e3);
-  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).where(
-    and(
-      eq(fleetDriversTable.company_id, companyId),
-      eq(fleetDriversTable.access_status, "active"),
-      eq(fleetDriversTable.is_active, true),
-      isNotNull(fleetDriversTable.last_heartbeat_at),
-      gte(fleetDriversTable.last_heartbeat_at, since)
-    )
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function countPendingFleetDriversForAdmin() {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      eq(adminCompaniesTable.company_kind, "taxi"),
-      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
-    )
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function listPendingFleetDriversForAdmin(limit) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const lim = typeof limit === "number" && limit > 0 ? Math.min(500, limit) : 5;
-  const rows = await db2.select({
-    driverId: fleetDriversTable.id,
-    companyId: fleetDriversTable.company_id,
-    companyName: adminCompaniesTable.name,
-    firstName: fleetDriversTable.first_name,
-    lastName: fleetDriversTable.last_name,
-    email: fleetDriversTable.email,
-    approvalStatus: fleetDriversTable.approval_status,
-    updatedAt: fleetDriversTable.updated_at
-  }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      eq(adminCompaniesTable.company_kind, "taxi"),
-      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
-    )
-  ).orderBy(desc(fleetDriversTable.updated_at)).limit(lim);
-  return rows.map((r) => ({
-    driverId: r.driverId,
-    companyId: r.companyId,
-    companyName: r.companyName,
-    firstName: r.firstName,
-    lastName: r.lastName,
-    email: r.email,
-    approvalStatus: r.approvalStatus,
-    updatedAt: r.updatedAt.toISOString()
-  }));
-}
-var MAX_SUS_REASON, MAX_ADMIN_NOTE;
-var init_fleetDriversData = __esm({
-  "src/db/fleetDriversData.ts"() {
-    init_drizzle_orm();
-    init_client();
-    init_schema2();
-    MAX_SUS_REASON = 2e3;
-    MAX_ADMIN_NOTE = 4e3;
   }
 });
 
@@ -48344,78 +48432,6 @@ var init_fleetVehiclesData = __esm({
       "taximeter",
       "accessibility"
     ];
-  }
-});
-
-// src/lib/medical/medicalTransportAuthorization.ts
-function computeMedicalTransportAuthorized(flags) {
-  if (!flags.companyMedicalTransportEnabled) return false;
-  if (flags.driverInheritFromCompany) return true;
-  return flags.driverMedicalTransportEnabled;
-}
-function medicalTransportAuthorizationFromRows(driverRow, companyRow) {
-  const companyEnabled = Boolean(companyRow.medical_transport_enabled);
-  const authorized = computeMedicalTransportAuthorized({
-    companyMedicalTransportEnabled: companyEnabled,
-    driverMedicalTransportEnabled: Boolean(driverRow.medical_transport_enabled),
-    driverInheritFromCompany: Boolean(driverRow.medical_transport_inherit_from_company)
-  });
-  return { companyEnabled, authorized };
-}
-async function findCompanyMedicalTransportRow(companyId) {
-  const cid = companyId.trim();
-  if (!cid || !isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    medical_transport_enabled: adminCompaniesTable.medical_transport_enabled,
-    is_active: adminCompaniesTable.is_active,
-    is_blocked: adminCompaniesTable.is_blocked
-  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
-  return rows[0] ?? null;
-}
-async function resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId) {
-  const driverRow = await findFleetDriverInCompany(fleetDriverId.trim(), companyId.trim());
-  if (!driverRow) return null;
-  const companyRow = await findCompanyMedicalTransportRow(companyId);
-  if (!companyRow) return null;
-  return medicalTransportAuthorizationFromRows(driverRow, companyRow);
-}
-async function isMedicalTransportPlatformAvailable() {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const rows = await db2.select({ id: adminCompaniesTable.id }).from(adminCompaniesTable).where(
-    and(
-      eq(adminCompaniesTable.medical_transport_enabled, true),
-      eq(adminCompaniesTable.is_active, true),
-      eq(adminCompaniesTable.is_blocked, false)
-    )
-  ).limit(1);
-  return rows.length > 0;
-}
-async function assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId) {
-  const authorization = await resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId);
-  if (!authorization?.authorized) {
-    return { ok: false, error: MEDICAL_TRANSPORT_NOT_AUTHORIZED };
-  }
-  return { ok: true, authorization };
-}
-async function assertMedicalTransportPlatformAvailable() {
-  const available = await isMedicalTransportPlatformAvailable();
-  if (!available) {
-    return { ok: false, error: MEDICAL_TRANSPORT_NOT_AUTHORIZED };
-  }
-  return { ok: true };
-}
-var MEDICAL_TRANSPORT_NOT_AUTHORIZED;
-var init_medicalTransportAuthorization = __esm({
-  "src/lib/medical/medicalTransportAuthorization.ts"() {
-    init_drizzle_orm();
-    init_client();
-    init_fleetDriversData();
-    init_schema2();
-    MEDICAL_TRANSPORT_NOT_AUTHORIZED = "medical_transport_not_authorized";
   }
 });
 
@@ -54114,6 +54130,168 @@ function calculateMedicalBillingReadiness(meta) {
   return { billingReady: missing.length === 0, missingReasons: missing };
 }
 
+// src/lib/medical/customerTransportScanSnapshot.ts
+function pickPrimaryCustomerScanReasonDe(trafficLight, warnings, insuranceRules) {
+  const visible = warnings.filter((w) => w.severity !== "info" && (w.message?.trim() || w.code));
+  const fromWarning = visible.find((w) => w.severity === "block_recommended") ?? visible[0];
+  if (fromWarning?.message?.trim()) return fromWarning.message.trim();
+  const fromRules = insuranceRules?.warnings.find((w) => w.trim());
+  if (fromRules?.trim()) return fromRules.trim();
+  const summary = insuranceRules?.summary?.trim();
+  if (summary) return summary;
+  if (trafficLight === "yellow") return "Der Schein konnte nicht vollst\xE4ndig gepr\xFCft werden.";
+  if (trafficLight === "red") return "Der Schein erf\xFCllt die Anforderungen nicht.";
+  return "";
+}
+function buildDriverHintLines(warnings, insuranceRules) {
+  const lines = [];
+  for (const w of warnings) {
+    if (w.severity === "info") continue;
+    const msg = w.message?.trim();
+    if (msg && !lines.includes(msg)) lines.push(msg);
+    if (lines.length >= 3) break;
+  }
+  if (lines.length < 3 && insuranceRules) {
+    for (const w of insuranceRules.warnings) {
+      const t = w.trim();
+      if (t && !lines.includes(t)) lines.push(t);
+      if (lines.length >= 3) break;
+    }
+  }
+  return lines;
+}
+function buildCustomerTransportScanMeta(input) {
+  return {
+    scanId: input.scanId,
+    trafficLight: input.trafficLight,
+    scannedAt: input.scannedAt,
+    testMode: false,
+    primaryReasonDe: input.primaryReasonDe,
+    requiresDriverRecheck: input.trafficLight !== "green",
+    insuranceName: input.insuranceName,
+    transportDate: input.transportDate,
+    driverHintLines: input.driverHintLines,
+    storageKey: input.storageKey
+  };
+}
+function customerTransportScanMetaToPartnerJson(meta) {
+  return JSON.parse(JSON.stringify(meta));
+}
+function parseCustomerMedicalScanIdFromBody(raw) {
+  const top = typeof raw.customerMedicalScanId === "string" ? raw.customerMedicalScanId : typeof raw.customer_medical_scan_id === "string" ? raw.customer_medical_scan_id : "";
+  if (top.trim()) return top.trim();
+  const pm = raw.partnerBookingMeta ?? raw.partner_booking_meta;
+  if (!pm || typeof pm !== "object" || Array.isArray(pm)) return "";
+  const rec = pm;
+  const nested = typeof rec.customerMedicalScanId === "string" ? rec.customerMedicalScanId : typeof rec.customer_medical_scan_id === "string" ? rec.customer_medical_scan_id : "";
+  return nested.trim();
+}
+
+// src/db/customerMedicalTransportScansData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+function rowToScan(r) {
+  return {
+    id: r.id,
+    passengerId: r.passenger_id,
+    trafficLight: r.traffic_light,
+    primaryReasonDe: r.primary_reason_de ?? "",
+    snapshotJson: r.snapshot_json ?? {},
+    storageKey: r.storage_key ?? "",
+    expiresAt: r.expires_at,
+    consumedAt: r.consumed_at ?? null,
+    consumedRideId: r.consumed_ride_id ?? null,
+    createdAt: r.created_at
+  };
+}
+async function insertCustomerMedicalTransportScan(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = input.id.trim();
+  if (!id) return null;
+  const now = /* @__PURE__ */ new Date();
+  await db2.insert(customerMedicalTransportScansTable).values({
+    id,
+    passenger_id: input.passengerId.trim(),
+    traffic_light: input.trafficLight,
+    primary_reason_de: input.primaryReasonDe.slice(0, 500),
+    snapshot_json: input.snapshotJson,
+    storage_key: input.storageKey,
+    expires_at: input.expiresAt,
+    created_at: now
+  });
+  const rows = await db2.select().from(customerMedicalTransportScansTable).where(eq(customerMedicalTransportScansTable.id, id)).limit(1);
+  return rows[0] ? rowToScan(rows[0]) : null;
+}
+async function findCustomerMedicalTransportScanById(scanId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = scanId.trim();
+  if (!id) return null;
+  const rows = await db2.select().from(customerMedicalTransportScansTable).where(eq(customerMedicalTransportScansTable.id, id)).limit(1);
+  return rows[0] ? rowToScan(rows[0]) : null;
+}
+function metaFromSnapshotJson(json2, row) {
+  const scanId = typeof json2.scanId === "string" ? json2.scanId.trim() : "";
+  if (!scanId || scanId !== row.id) return null;
+  const trafficLight = row.trafficLight;
+  const driverHintLines = Array.isArray(json2.driverHintLines) ? json2.driverHintLines.filter((x) => typeof x === "string" && x.trim().length > 0).slice(0, 3) : [];
+  return {
+    scanId: row.id,
+    trafficLight,
+    scannedAt: typeof json2.scannedAt === "string" && json2.scannedAt.trim() ? json2.scannedAt.trim() : row.createdAt.toISOString(),
+    testMode: false,
+    primaryReasonDe: row.primaryReasonDe,
+    requiresDriverRecheck: trafficLight !== "green",
+    insuranceName: typeof json2.insuranceName === "string" ? json2.insuranceName : "",
+    transportDate: typeof json2.transportDate === "string" ? json2.transportDate : null,
+    driverHintLines,
+    storageKey: row.storageKey
+  };
+}
+async function resolveCustomerMedicalScanForBooking(input) {
+  const scanId = input.scanId.trim();
+  const passengerId = input.passengerId.trim();
+  if (!scanId || !passengerId) {
+    return { ok: false, error: "medical_transport_scan_required", status: 422 };
+  }
+  const row = await findCustomerMedicalTransportScanById(scanId);
+  if (!row) {
+    return { ok: false, error: "medical_transport_scan_not_found", status: 422 };
+  }
+  if (row.passengerId !== passengerId) {
+    return { ok: false, error: "medical_transport_scan_not_found", status: 422 };
+  }
+  if (row.consumedAt != null || row.consumedRideId) {
+    return { ok: false, error: "medical_transport_scan_already_used", status: 422 };
+  }
+  if (row.expiresAt.getTime() <= Date.now()) {
+    return { ok: false, error: "medical_transport_scan_expired", status: 422 };
+  }
+  const meta = metaFromSnapshotJson(row.snapshotJson, row);
+  if (!meta) {
+    return { ok: false, error: "medical_transport_scan_invalid", status: 422 };
+  }
+  return { ok: true, meta, trafficLight: row.trafficLight };
+}
+async function markCustomerMedicalTransportScanConsumed(scanId, passengerId, rideId) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const now = /* @__PURE__ */ new Date();
+  const updated = await db2.update(customerMedicalTransportScansTable).set({ consumed_at: now, consumed_ride_id: rideId.trim() }).where(
+    and(
+      eq(customerMedicalTransportScansTable.id, scanId.trim()),
+      eq(customerMedicalTransportScansTable.passenger_id, passengerId.trim()),
+      isNull(customerMedicalTransportScansTable.consumed_at)
+    )
+  ).returning({ id: customerMedicalTransportScansTable.id });
+  return updated.length > 0;
+}
+
 // src/lib/medicalQrToken.ts
 import { randomBytes as randomBytes2 } from "node:crypto";
 function createMedicalQrToken() {
@@ -57536,6 +57714,46 @@ router2.post("/rides", async (req, res, next) => {
       normalizedPartnerMeta.billing_ready = ready.billingReady;
       normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
     }
+    let medicalScanConsume = null;
+    if (rideKind === "medical" && normalizedPartnerMeta.medical_demo_mode !== true) {
+      const passengerIdForScan = String(raw.passengerId ?? "").trim();
+      const customerMedicalScanId = parseCustomerMedicalScanIdFromBody(raw);
+      if (!customerMedicalScanId) {
+        res.status(422).json({ error: "medical_transport_scan_required" });
+        return;
+      }
+      const scanBooking = await resolveCustomerMedicalScanForBooking({
+        scanId: customerMedicalScanId,
+        passengerId: passengerIdForScan
+      });
+      if (!scanBooking.ok) {
+        res.status(scanBooking.status).json({ error: scanBooking.error });
+        return;
+      }
+      if (scanBooking.trafficLight === "red") {
+        res.status(422).json({
+          error: "medical_transport_scan_rejected",
+          primaryReasonDe: scanBooking.meta.primaryReasonDe?.trim() || scanBooking.meta.driverHintLines[0] || null
+        });
+        return;
+      }
+      normalizedPartnerMeta = {
+        ...normalizedPartnerMeta,
+        customer_transport_scan: customerTransportScanMetaToPartnerJson(scanBooking.meta),
+        transport_document_status: scanBooking.trafficLight === "green" ? "verified" : "uploaded",
+        transport_document_recognition_status: scanBooking.trafficLight === "green" ? "recognized" : "unclear",
+        transport_document_file_key: scanBooking.meta.storageKey,
+        transport_document_uploaded_at: scanBooking.meta.scannedAt,
+        approval_proof_mode: "customer_scan"
+      };
+      if (scanBooking.trafficLight === "green") {
+        normalizedPartnerMeta.approval_status = "approved";
+      }
+      const readyAfterScan = calculateMedicalBillingReadiness(normalizedPartnerMeta);
+      normalizedPartnerMeta.billing_ready = readyAfterScan.billingReady;
+      normalizedPartnerMeta.billing_missing_reasons = readyAfterScan.missingReasons;
+      medicalScanConsume = { scanId: customerMedicalScanId, passengerId: passengerIdForScan };
+    }
     const customerDriverNoteFromBody = extractCustomerDriverNoteFromRawBody(raw);
     if (customerDriverNoteFromBody) {
       normalizedPartnerMeta = { ...normalizedPartnerMeta, customer_driver_note: customerDriverNoteFromBody };
@@ -57594,6 +57812,13 @@ router2.post("/rides", async (req, res, next) => {
     if (!created) {
       res.status(500).json({ error: "ride_insert_inconsistent" });
       return;
+    }
+    if (medicalScanConsume) {
+      await markCustomerMedicalTransportScanConsumed(
+        medicalScanConsume.scanId,
+        medicalScanConsume.passengerId,
+        created.id
+      );
     }
     const pcCreated = await resolveFinancePricingContextForRide(created, opPayload, regions);
     void upsertRideFinancialSnapshot({
@@ -74545,6 +74770,87 @@ function evaluateMedicalInsuranceRules(normalizedOcr, companyProfile, rideContex
 init_medicalTransportAuthorization();
 var MEDICAL_RIDE_UPLOAD_ROOT2 = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path8.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
 var MEDICAL_TEST_SCAN_DISCLAIMER = "Testpr\xFCfung ohne Fahrt \u2013 nicht abrechnungsrelevant.";
+async function runMedicalTransportDocumentScanForCustomerBooking(input) {
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+  const customerPassengerId2 = input.customerPassengerId.trim();
+  if (!customerPassengerId2) {
+    return { ok: false, error: "bad_request", status: 400 };
+  }
+  const platform = await assertMedicalTransportPlatformAvailable();
+  if (!platform.ok) {
+    return { ok: false, error: platform.error, status: 403 };
+  }
+  const b64 = input.imageBase64.trim();
+  if (!b64) {
+    return { ok: false, error: "image_base64_required", status: 400 };
+  }
+  const decoded = decodeValidatedMedicalTransportImage(b64);
+  if (!decoded.ok) {
+    const status = decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
+    return { ok: false, error: decoded.error, status };
+  }
+  const scanId = `cms-${randomUUID34()}`;
+  const passengerKey = customerPassengerId2.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const rel = path8.join("customer-pending", passengerKey, `${scanId}.${decoded.ext}`).replace(/\\/g, "/");
+  const dest = path8.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
+  await mkdir6(path8.dirname(dest), { recursive: true });
+  await writeFile6(dest, decoded.buffer);
+  const pipeline = await runMedicalOcrPipeline({
+    buffer: decoded.buffer,
+    mime: decoded.mime,
+    companyId: "",
+    partnerIkSnapshot: "",
+    dateLogicType: "today",
+    rideScheduledAt: null,
+    insuranceRideId: `customer-booking:${scanId}`
+  });
+  const scannedAt = (/* @__PURE__ */ new Date()).toISOString();
+  const primaryReasonDe = pickPrimaryCustomerScanReasonDe(
+    pipeline.trafficLight,
+    pipeline.warnings,
+    pipeline.insuranceRules
+  );
+  const meta = buildCustomerTransportScanMeta({
+    scanId,
+    trafficLight: pipeline.trafficLight,
+    scannedAt,
+    primaryReasonDe,
+    insuranceName: pipeline.extracted.insuranceName?.trim() ?? "",
+    transportDate: pipeline.extracted.transportDate ?? null,
+    driverHintLines: buildDriverHintLines(pipeline.warnings, pipeline.insuranceRules),
+    storageKey: rel
+  });
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1e3);
+  const inserted = await insertCustomerMedicalTransportScan({
+    id: scanId,
+    passengerId: customerPassengerId2,
+    trafficLight: pipeline.trafficLight,
+    primaryReasonDe,
+    snapshotJson: {
+      ...customerTransportScanMetaToPartnerJson(meta),
+      evaluation: {
+        warnings: pipeline.warnings,
+        extracted: pipeline.extracted,
+        dateLogic: pipeline.dateLogic,
+        insuranceRules: pipeline.insuranceRules
+      }
+    },
+    storageKey: rel,
+    expiresAt
+  });
+  if (!inserted) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+  return {
+    ok: true,
+    scanId: inserted.id,
+    trafficLight: pipeline.trafficLight,
+    primaryReasonDe,
+    scannedAt
+  };
+}
 function isMedicalTestScanEnabled() {
   const v = (process.env.MEDICAL_TEST_SCAN_ENABLED ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
@@ -77152,6 +77458,34 @@ router21.post("/customer/v1/medical/scan-test", requireCustomerSession, async (r
       extracted: result.extracted,
       dateLogic: result.dateLogic,
       insuranceRules: result.insuranceRules
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+router21.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body;
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const result = await runMedicalTransportDocumentScanForCustomerBooking({
+      customerPassengerId: customerPassengerId(sess),
+      imageBase64
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      scanId: result.scanId,
+      trafficLight: result.trafficLight,
+      primaryReasonDe: result.primaryReasonDe || null,
+      scannedAt: result.scannedAt
     });
   } catch (err) {
     next(err);

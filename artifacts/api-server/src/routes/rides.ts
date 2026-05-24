@@ -82,6 +82,14 @@ import {
 import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
 import { decodeValidatedMedicalTransportImage } from "../lib/medicalTransportImage";
 import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
+import {
+  customerTransportScanMetaToPartnerJson,
+  parseCustomerMedicalScanIdFromBody,
+} from "../lib/medical/customerTransportScanSnapshot";
+import {
+  markCustomerMedicalTransportScanConsumed,
+  resolveCustomerMedicalScanForBooking,
+} from "../db/customerMedicalTransportScansData";
 import { createMedicalQrToken, formatMedicalQrPayload } from "../lib/medicalQrToken";
 import { signReceiptHtmlAccessJwt, verifyReceiptHtmlAccessJwt } from "../lib/receiptAccessJwt";
 import type { RideMutateActor } from "../lib/rideRouteAuth";
@@ -1463,6 +1471,50 @@ router.post("/rides", async (req, res, next) => {
       normalizedPartnerMeta.billing_ready = ready.billingReady;
       normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
     }
+    let medicalScanConsume: { scanId: string; passengerId: string } | null = null;
+    if (rideKind === "medical" && normalizedPartnerMeta.medical_demo_mode !== true) {
+      const passengerIdForScan = String(raw.passengerId ?? "").trim();
+      const customerMedicalScanId = parseCustomerMedicalScanIdFromBody(raw as Record<string, unknown>);
+      if (!customerMedicalScanId) {
+        res.status(422).json({ error: "medical_transport_scan_required" });
+        return;
+      }
+      const scanBooking = await resolveCustomerMedicalScanForBooking({
+        scanId: customerMedicalScanId,
+        passengerId: passengerIdForScan,
+      });
+      if (!scanBooking.ok) {
+        res.status(scanBooking.status).json({ error: scanBooking.error });
+        return;
+      }
+      if (scanBooking.trafficLight === "red") {
+        res.status(422).json({
+          error: "medical_transport_scan_rejected",
+          primaryReasonDe:
+            scanBooking.meta.primaryReasonDe?.trim() ||
+            scanBooking.meta.driverHintLines[0] ||
+            null,
+        });
+        return;
+      }
+      normalizedPartnerMeta = {
+        ...normalizedPartnerMeta,
+        customer_transport_scan: customerTransportScanMetaToPartnerJson(scanBooking.meta),
+        transport_document_status: scanBooking.trafficLight === "green" ? "verified" : "uploaded",
+        transport_document_recognition_status:
+          scanBooking.trafficLight === "green" ? "recognized" : "unclear",
+        transport_document_file_key: scanBooking.meta.storageKey,
+        transport_document_uploaded_at: scanBooking.meta.scannedAt,
+        approval_proof_mode: "customer_scan",
+      };
+      if (scanBooking.trafficLight === "green") {
+        normalizedPartnerMeta.approval_status = "approved";
+      }
+      const readyAfterScan = calculateMedicalBillingReadiness(normalizedPartnerMeta);
+      normalizedPartnerMeta.billing_ready = readyAfterScan.billingReady;
+      normalizedPartnerMeta.billing_missing_reasons = readyAfterScan.missingReasons;
+      medicalScanConsume = { scanId: customerMedicalScanId, passengerId: passengerIdForScan };
+    }
     const customerDriverNoteFromBody = extractCustomerDriverNoteFromRawBody(raw as Record<string, unknown>);
     if (customerDriverNoteFromBody) {
       normalizedPartnerMeta = { ...normalizedPartnerMeta, customer_driver_note: customerDriverNoteFromBody };
@@ -1531,6 +1583,13 @@ router.post("/rides", async (req, res, next) => {
     if (!created) {
       res.status(500).json({ error: "ride_insert_inconsistent" });
       return;
+    }
+    if (medicalScanConsume) {
+      await markCustomerMedicalTransportScanConsumed(
+        medicalScanConsume.scanId,
+        medicalScanConsume.passengerId,
+        created.id,
+      );
     }
     const pcCreated = await resolveFinancePricingContextForRide(created, opPayload, regions);
     void upsertRideFinancialSnapshot({

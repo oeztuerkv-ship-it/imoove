@@ -905,6 +905,20 @@ export const medicalReviewsTable = pgTable("medical_reviews", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Kunden-Transportschein-OCR vor Krankenfahrt-Buchung (Snapshot bis Ride-Create). */
+export const customerMedicalTransportScansTable = pgTable("customer_medical_transport_scans", {
+  id: text("id").primaryKey(),
+  passenger_id: text("passenger_id").notNull(),
+  traffic_light: text("traffic_light").notNull(),
+  primary_reason_de: text("primary_reason_de").notNull().default(""),
+  snapshot_json: jsonb("snapshot_json").$type<Record<string, unknown>>().notNull().default({}),
+  storage_key: text("storage_key").notNull().default(""),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumed_at: timestamp("consumed_at", { withTimezone: true }),
+  consumed_ride_id: text("consumed_ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Admin Krankenkassen-Modus: Export-Batches (CSV), Fahrt-IDs im Batch für Anzeige „Exportiert in …“. */
 export const billingExportBatchesTable = pgTable("billing_export_batches", {
   id: text("id").primaryKey(),
