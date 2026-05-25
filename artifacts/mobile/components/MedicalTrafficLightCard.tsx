@@ -105,6 +105,8 @@ type Props = {
   bookingFlow?: boolean;
   /** API primaryReasonDe wenn keine Warnungen im Test-Scan-Format vorliegen */
   customerReasonOverride?: string | null;
+  /** Inline in Buchungsform: Ampel ohne Aktionsbutton (Buchen separat) */
+  hidePrimaryButton?: boolean;
 };
 
 const CUSTOMER_TRAFFIC_CONFIG: Record<
@@ -182,6 +184,7 @@ export function MedicalTrafficLightCard({
   scanApi = "fleet",
   bookingFlow = false,
   customerReasonOverride,
+  hidePrimaryButton = false,
 }: Props) {
   const customerWarnings = scanApi === "customer" ? warningsForCustomerDisplay(warnings) : warnings;
   const customerInsuranceRules =
@@ -207,20 +210,22 @@ export function MedicalTrafficLightCard({
         <MaterialCommunityIcons name={cfg.icon} size={56} color={cfg.accent} />
         <Text style={[styles.customerTitle, { color: cfg.accent }]}>{cfg.title}</Text>
         {subtitle ? <Text style={styles.customerSubtitle}>{subtitle}</Text> : null}
-        <Pressable
-          onPress={onPrimaryAction}
-          disabled={primaryBusy}
-          style={({ pressed }) => [
-            styles.primaryBtn,
-            styles.customerPrimaryBtn,
-            {
-              backgroundColor: trafficLight === "yellow" ? "#F59E0B" : trafficLight === "red" ? "#64748B" : "#16A34A",
-              opacity: pressed ? 0.9 : primaryBusy ? 0.55 : 1,
-            },
-          ]}
-        >
-          <Text style={styles.primaryBtnText}>{primaryBusy ? "Bitte warten…" : primaryLabel}</Text>
-        </Pressable>
+        {!hidePrimaryButton ? (
+          <Pressable
+            onPress={onPrimaryAction}
+            disabled={primaryBusy}
+            style={({ pressed }) => [
+              styles.primaryBtn,
+              styles.customerPrimaryBtn,
+              {
+                backgroundColor: trafficLight === "yellow" ? "#F59E0B" : trafficLight === "red" ? "#64748B" : "#16A34A",
+                opacity: pressed ? 0.9 : primaryBusy ? 0.55 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.primaryBtnText}>{primaryBusy ? "Bitte warten…" : primaryLabel}</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
