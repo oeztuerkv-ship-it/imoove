@@ -28,7 +28,7 @@ export type ClaudeVisionOcrResult =
   | { ok: true; rawJson: Record<string, unknown>; model: string; provider: string }
   | { ok: false; error: string };
 
-const EXTRACTION_PROMPT = `Du analysierst ein Foto eines deutschen Krankenfahrt-Transportscheins (Verordnung/Schein).
+const EXTRACTION_PROMPT = `Du analysierst ein Foto eines deutschen Krankenfahrt-Transportscheins (AOK Muster 4 / vergleichbar).
 Extrahiere NUR abrechnungsrelevante Felder — KEINE Diagnosen, KEINE ICD-Codes, KEINE medizinischen Befunde.
 
 Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) in exakt dieser Struktur:
@@ -40,10 +40,15 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
   "transportDate": "YYYY-MM-DD" | null,
   "validFrom": "YYYY-MM-DD" | null,
   "validUntil": "YYYY-MM-DD" | null,
+  "aufnahmedatum": "YYYY-MM-DD" | null,
+  "entlassungsdatum": "YYYY-MM-DD" | null,
   "documentKind": "transport_sheet" | "signature_image" | "other",
   "behandlungsArt": "stationaer" | "ambulant" | "unbekannt",
+  "behandlungsKontext": "standard" | "vorstationaer" | "nachstationaer" | "unbekannt",
+  "behandlungsFrequenz": "keine" | "dialyse" | "chemo" | "strahlen" | "unbekannt",
   "pflegegrad": "3" | "4" | "5" | "keins" | "unbekannt",
-  "merkzeichen": "aG" | "Bl" | "H" | "keins" | "unbekannt",
+  "merkzeichen": "aG" | "Bl" | "H" | "G" | "keins" | "unbekannt",
+  "dauerhafteMobilitaetsbeeintraechtigung": boolean,
   "genehmigungsnummer": string | null,
   "hasSignatureOnDocument": boolean,
   "confidence": {
@@ -54,21 +59,31 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
     "transportDate": number,
     "validFrom": number,
     "validUntil": number,
+    "aufnahmedatum": number,
+    "entlassungsdatum": number,
     "behandlungsArt": number,
+    "behandlungsKontext": number,
+    "behandlungsFrequenz": number,
     "pflegegrad": number,
     "merkzeichen": number,
+    "dauerhafteMobilitaetsbeeintraechtigung": number,
     "genehmigungsnummer": number
   }
 }
 
 Regeln:
-- Fehlende Werte als leerer String "" oder null bei Datumsfeldern.
-- insuranceIk: nur Ziffern (Institutionskennzeichen IK der Krankenkasse).
-- behandlungsArt: erkenne angekreuztes Feld ambulant vs. stationär auf dem Schein.
-- pflegegrad: nur 3, 4, 5 wenn angekreuzt/lesbar, sonst "keins" oder "unbekannt".
-- merkzeichen: aG, Bl oder H wenn angekreuzt, sonst "keins" oder "unbekannt".
+- Fehlende Werte als leerer String "" oder null bei Datumsfeldern; boolean false wenn nicht angekreuzt.
+- insuranceIk: nur Ziffern (IK der Krankenkasse).
+- behandlungsArt: angekreuztes Feld ambulant vs. stationär.
+- behandlungsKontext: "vorstationaer" bei Vorstationär/Aufnahme vor stationärer Behandlung; "nachstationaer" bei Entlassung/nachstationär; sonst "standard".
+- aufnahmedatum: geplantes Aufnahmedatum bei vorstationär; entlassungsdatum: Entlassungsdatum bei nachstationär.
+- behandlungsFrequenz: "dialyse" (Dialyse/Hämodialyse), "chemo" (Chemotherapie), "strahlen" (Strahlentherapie) wenn angekreuzt/genannt; sonst "keine".
+- pflegegrad: nur 3, 4, 5 wenn angekreuzt — PG3 ist NICHT automatisch genehmigungsfrei.
+- dauerhafteMobilitaetsbeeintraechtigung: true nur wenn Checkbox/Text „dauerhafte Mobilitätsbeeinträchtigung" auf dem Schein erkennbar.
+- merkzeichen: aG, Bl, H oder G (Gehbehinderung) wenn angekreuzt; G nicht mit aG verwechseln; sonst "keins" oder "unbekannt".
 - genehmigungsnummer: KK-Genehmigungsnummer falls lesbar, sonst null.
-- hasSignatureOnDocument: true wenn Patientenunterschrift auf dem Schein sichtbar.
+- validFrom/validUntil: Gültigkeitszeitraum/Dauerverordnung falls lesbar.
+- hasSignatureOnDocument: true wenn Patientenunterschrift sichtbar.
 - confidence: 0.0–1.0 pro Feld; bei Unsicherheit niedrig wählen.
 - Wenn das Bild kein Transportschein ist: documentKind "other", sonstige Felder leer lassen.`;
 
@@ -143,7 +158,7 @@ export async function runClaudeVisionMedicalOcr(input: {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1200,
+        max_tokens: 1400,
         messages: [
           {
             role: "user",

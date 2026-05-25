@@ -3,6 +3,10 @@ import type { MedicalOcrConfidence, MedicalOcrExtracted } from "./medicalOcrNorm
 import {
   hasGenehmigungsnummer,
   isAmbulantGenehmigungsfrei,
+  isAmbulantGenehmigungsfreiPg3,
+  isAmbulantGenehmigungsfreiPg45,
+  isAmbulantGenehmigungsfreiMerkzeichen,
+  isHochfrequenteBehandlung,
   medicalOcrHasMinimalExtract,
 } from "./medicalOcrNormalize";
 
@@ -40,7 +44,8 @@ export type MedicalTrafficLightResult = {
 
 const CONFIDENCE_WARN_THRESHOLD = 0.55;
 
-const DATE_LOGIC_MESSAGES: Record<string, string> = {
+/** DE-Texte für Datumslogik-Warnungen (inkl. Vor-/Nachstationär, Schritt 2). */
+export const MEDICAL_DATE_LOGIC_MESSAGES_DE: Record<string, string> = {
   missing_ocr_date: "Fahrtdatum auf dem Schein nicht erkannt",
   ride_date_mismatch: "Fahrtdatum weicht von der geplanten Fahrt ab",
   missing_series: "Serienfahrt nicht zugeordnet",
@@ -55,9 +60,39 @@ const DATE_LOGIC_MESSAGES: Record<string, string> = {
   ride_before_valid_from: "Fahrt vor Gültigkeitsbeginn",
   ride_after_valid_until: "Fahrt nach Gültigkeitsende",
   series_window_exceeded: "Fahrt außerhalb Serien-Zeitraum",
+  vorstationaer_missing_aufnahmedatum: "Vorstationär: Aufnahmedatum auf dem Schein nicht erkannt",
+  nachstationaer_missing_entlassungsdatum: "Nachstationär: Entlassungsdatum auf dem Schein nicht erkannt",
+  vorstationaer_outside_window:
+    "Vorstationär: Fahrt liegt nicht innerhalb von 3 Tagen vor dem Aufnahmedatum",
+  nachstationaer_outside_window:
+    "Nachstationär: Fahrt liegt nicht innerhalb von 7 Tagen nach dem Entlassungsdatum",
   customer_missing_signature:
     "Bitte Fahrer zeigen — Unterschrift und Stempel vor Ort prüfen",
 };
+
+const DATE_LOGIC_CODE_SEVERITY: Record<string, MedicalWarningSeverity> = {
+  vorstationaer_missing_aufnahmedatum: "warn",
+  nachstationaer_missing_entlassungsdatum: "warn",
+  missing_ocr_date: "warn",
+  missing_return_ride: "warn",
+  missing_validity_window: "warn",
+  series_quota_exhausted: "warn",
+  vorstationaer_outside_window: "block_recommended",
+  nachstationaer_outside_window: "block_recommended",
+  ride_date_mismatch: "block_recommended",
+  missing_series: "block_recommended",
+  series_before_valid_from: "block_recommended",
+  series_after_valid_until: "block_recommended",
+  return_trip_date_implausible: "block_recommended",
+  validity_expired: "block_recommended",
+  validity_not_yet_started: "block_recommended",
+  ride_before_valid_from: "block_recommended",
+  ride_after_valid_until: "block_recommended",
+  series_window_exceeded: "block_recommended",
+};
+
+export const PG3_GENEHMIGUNG_ERFORDERLICH_HINT_DE =
+  "Pflegegrad 3: nur mit dauerhafter Mobilitätsbeeinträchtigung oder Merkzeichen G genehmigungsfrei — KK-Genehmigung prüfen";
 
 /** Kunden-Scan: Unterschrift fehlt → Gelb, Fahrer prüft vor Ort. */
 export const CUSTOMER_MISSING_SIGNATURE_HINT_DE =
@@ -67,6 +102,13 @@ function dateLogicSeverityToWarning(severity: MedicalDateLogicResult["severity"]
   if (severity === "fail") return "block_recommended";
   if (severity === "warn") return "warn";
   return "info";
+}
+
+function warningSeverityForDateLogicCode(
+  code: string,
+  overall: MedicalDateLogicResult["severity"],
+): MedicalWarningSeverity {
+  return DATE_LOGIC_CODE_SEVERITY[code] ?? dateLogicSeverityToWarning(overall);
 }
 
 function maxTrafficLight(a: MedicalTrafficLight, b: MedicalTrafficLight): MedicalTrafficLight {
@@ -108,7 +150,64 @@ function hasTransportDate(extracted: MedicalOcrExtracted): boolean {
   return Boolean(extracted.transportDate || extracted.validFrom);
 }
 
-/** Ambulant/stationär-Regeln (Genehmigungsfreiheit, KK-Genehmigungsnummer). */
+function hasDauerverordnung(extracted: MedicalOcrExtracted): boolean {
+  return Boolean(extracted.validFrom && extracted.validUntil);
+}
+
+function hochfrequenteBehandlungLabel(frequenz: MedicalOcrExtracted["behandlungsFrequenz"]): string {
+  if (frequenz === "dialyse") return "Dialyse";
+  if (frequenz === "chemo") return "Chemotherapie";
+  if (frequenz === "strahlen") return "Strahlentherapie";
+  return "Hochfrequente Behandlung";
+}
+
+/** Dialyse/Chemo/Strahlen: genehmigungspflichtig; PG-Freistellung gilt nicht. */
+function evaluateBehandlungsFrequenzRules(extracted: MedicalOcrExtracted): MedicalWarning[] {
+  if (!isHochfrequenteBehandlung(extracted)) return [];
+
+  const warnings: MedicalWarning[] = [];
+  const label = hochfrequenteBehandlungLabel(extracted.behandlungsFrequenz);
+
+  if (hasGenehmigungsnummer(extracted) || hasDauerverordnung(extracted)) {
+    warnings.push({
+      code: "hochfrequent_approval_ok",
+      message: `${label}: Genehmigung oder Dauerverordnung erkannt — Fahrer prüft vor Ort.`,
+      severity: "info",
+    });
+    return warnings;
+  }
+
+  if (extracted.validFrom || extracted.validUntil || extracted.genehmigungsnummer) {
+    warnings.push({
+      code: "hochfrequent_genehmigung_pruefen",
+      message: `${label}: KK-Genehmigung oder Dauerverordnung unvollständig — letzte Entscheidung beim Fahrer.`,
+      severity: "warn",
+    });
+    return warnings;
+  }
+
+  warnings.push({
+    code: "hochfrequent_missing_approval",
+    message: `${label}: Genehmigung der Krankenkasse oder Dauerverordnung fehlt.`,
+    severity: "block_recommended",
+  });
+  return warnings;
+}
+
+function ambulantGenehmigungsfreiMessageDe(extracted: MedicalOcrExtracted): string {
+  if (isAmbulantGenehmigungsfreiPg3(extracted)) {
+    return "Ambulant genehmigungsfrei (Pflegegrad 3 mit dauerhafter Mobilitätsbeeinträchtigung oder Merkzeichen G)";
+  }
+  if (isAmbulantGenehmigungsfreiPg45(extracted)) {
+    return "Ambulant genehmigungsfrei (Pflegegrad 4 oder 5)";
+  }
+  if (isAmbulantGenehmigungsfreiMerkzeichen(extracted)) {
+    return `Ambulant genehmigungsfrei (Merkzeichen ${extracted.merkzeichen})`;
+  }
+  return "Ambulant genehmigungsfrei";
+}
+
+/** Ambulant/stationär-Regeln (Genehmigungsfreiheit, KK-Genehmigungsnummer, Muster-4). */
 function evaluateBehandlungsArtRules(
   extracted: MedicalOcrExtracted,
   input: MedicalTrafficLightInput,
@@ -157,10 +256,42 @@ function evaluateBehandlungsArtRules(
   }
 
   // ambulant
+  const freqWarnings = evaluateBehandlungsFrequenzRules(extracted);
+  warnings.push(...freqWarnings);
+  if (freqWarnings.some((w) => w.severity === "block_recommended")) {
+    return warnings;
+  }
+  if (isHochfrequenteBehandlung(extracted)) {
+    return warnings;
+  }
+
+  if (
+    extracted.pflegegrad === "3" &&
+    !isAmbulantGenehmigungsfreiPg3(extracted) &&
+    !isAmbulantGenehmigungsfreiPg45(extracted) &&
+    !isAmbulantGenehmigungsfreiMerkzeichen(extracted)
+  ) {
+    warnings.push({
+      code: "pg3_genehmigung_erforderlich",
+      message: PG3_GENEHMIGUNG_ERFORDERLICH_HINT_DE,
+      severity: "warn",
+    });
+    if (!hasGenehmigungsnummer(extracted)) {
+      warnings.push({
+        code: "missing_genehmigungsnummer",
+        message:
+          "Pflegegrad 3 ohne Mobilitätsbeeinträchtigung/Merkzeichen G: Genehmigungsnummer der Krankenkasse fehlt",
+        severity: "block_recommended",
+      });
+      return warnings;
+    }
+    return warnings;
+  }
+
   if (isAmbulantGenehmigungsfrei(extracted)) {
     warnings.push({
       code: "ambulant_genehmigungsfrei",
-      message: "Ambulant genehmigungsfrei (Pflegegrad 3/4/5 oder Merkzeichen aG/Bl/H)",
+      message: ambulantGenehmigungsfreiMessageDe(extracted),
       severity: "info",
     });
     return warnings;
@@ -213,8 +344,8 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
   for (const code of dateLogicResult.warningCodes) {
     warnings.push({
       code,
-      message: DATE_LOGIC_MESSAGES[code] ?? `Datumsprüfung: ${code}`,
-      severity: dateLogicSeverityToWarning(dateLogicResult.severity),
+      message: MEDICAL_DATE_LOGIC_MESSAGES_DE[code] ?? `Datumsprüfung: ${code}`,
+      severity: warningSeverityForDateLogicCode(code, dateLogicResult.severity),
     });
   }
 
@@ -246,6 +377,10 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
     "insuranceIk",
     "transportDate",
     "behandlungsArt",
+    "behandlungsFrequenz",
+    "behandlungsKontext",
+    "pflegegrad",
+    "merkzeichen",
     "genehmigungsnummer",
   ] as const) {
     const c = confidence[field];
@@ -258,7 +393,13 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
     }
   }
 
-  if (!extracted.transportDate && !extracted.validFrom && !extracted.validUntil) {
+  if (
+    !extracted.transportDate &&
+    !extracted.validFrom &&
+    !extracted.validUntil &&
+    !extracted.aufnahmedatum &&
+    !extracted.entlassungsdatum
+  ) {
     warnings.push({
       code: "missing_date_fields",
       message: "Kein Datum auf dem Schein erkannt",
