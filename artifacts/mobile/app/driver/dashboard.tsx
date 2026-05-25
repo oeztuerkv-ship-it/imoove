@@ -64,6 +64,10 @@ import {
 } from "@/utils/medicalScanApi";
 import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
 import {
+  customerTransportScanAmpelLabel,
+  customerTransportScanFromPartnerMeta,
+} from "@/utils/customerTransportScanRide";
+import {
   driverPaymentMethodLabelDe,
 } from "@/utils/driverPaymentMethodLabel";
 import {
@@ -328,6 +332,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const wheelchairLine = wheelchairInfoLine(req);
   const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
+  const customerTransportScan = customerTransportScanFromPartnerMeta(req.partnerBookingMeta ?? null);
   const rideKindLabel =
     req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod)
       ? t("driver.offer.medicalRide")
@@ -496,6 +501,54 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#115E59" }} numberOfLines={4}>
             Hinweis Kunde: {customerNoteLine}
           </Text>
+        </View>
+      ) : null}
+      {customerTransportScan ? (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <MaterialCommunityIcons name="file-document-outline" size={14} color="#2563EB" />
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
+              Transportschein (Kunde)
+            </Text>
+          </View>
+          <View
+            style={{
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor:
+                customerTransportScan.trafficLight === "green"
+                  ? "#86EFAC"
+                  : customerTransportScan.trafficLight === "yellow"
+                    ? "#FCD34D"
+                    : "#FCA5A5",
+              backgroundColor:
+                customerTransportScan.trafficLight === "green"
+                  ? "#ECFDF5"
+                  : customerTransportScan.trafficLight === "yellow"
+                    ? "#FFFBEB"
+                    : "#FEF2F2",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              gap: 4,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#0F172A" }}>
+              Ampel: {customerTransportScanAmpelLabel(customerTransportScan.trafficLight)}
+            </Text>
+            {customerTransportScan.insuranceName ? (
+              <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#475569" }} numberOfLines={2}>
+                {customerTransportScan.insuranceName}
+              </Text>
+            ) : null}
+            {customerTransportScan.primaryReasonDe ? (
+              <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#334155" }} numberOfLines={3}>
+                {customerTransportScan.primaryReasonDe}
+              </Text>
+            ) : null}
+            <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#64748B" }}>
+              Vorprüfung durch Kunde — Sie entscheiden vor Ort.
+            </Text>
+          </View>
         </View>
       ) : null}
       {medicalChecklist ? (

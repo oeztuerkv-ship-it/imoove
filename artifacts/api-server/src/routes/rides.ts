@@ -1472,7 +1472,12 @@ router.post("/rides", async (req, res, next) => {
       normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
     }
     let medicalScanConsume: { scanId: string; passengerId: string } | null = null;
-    if (rideKind === "medical" && normalizedPartnerMeta.medical_demo_mode !== true) {
+    const paymentMethodRaw = String((raw as { paymentMethod?: unknown }).paymentMethod ?? "").trim();
+    const isKrankenkassePayment = paymentMethodRaw.toLowerCase().includes("krankenkasse");
+    const requiresCustomerTransportScan =
+      (rideKind === "medical" && normalizedPartnerMeta.medical_demo_mode !== true) ||
+      (rideKind === "standard" && isKrankenkassePayment);
+    if (requiresCustomerTransportScan) {
       const passengerIdForScan = String(raw.passengerId ?? "").trim();
       const customerMedicalScanId = parseCustomerMedicalScanIdFromBody(raw as Record<string, unknown>);
       if (!customerMedicalScanId) {
@@ -1497,22 +1502,30 @@ router.post("/rides", async (req, res, next) => {
         });
         return;
       }
-      normalizedPartnerMeta = {
-        ...normalizedPartnerMeta,
-        customer_transport_scan: customerTransportScanMetaToPartnerJson(scanBooking.meta),
-        transport_document_status: scanBooking.trafficLight === "green" ? "verified" : "uploaded",
-        transport_document_recognition_status:
-          scanBooking.trafficLight === "green" ? "recognized" : "unclear",
-        transport_document_file_key: scanBooking.meta.storageKey,
-        transport_document_uploaded_at: scanBooking.meta.scannedAt,
-        approval_proof_mode: "customer_scan",
-      };
-      if (scanBooking.trafficLight === "green") {
-        normalizedPartnerMeta.approval_status = "approved";
+      const scanMetaJson = customerTransportScanMetaToPartnerJson(scanBooking.meta);
+      if (rideKind === "medical") {
+        normalizedPartnerMeta = {
+          ...normalizedPartnerMeta,
+          customer_transport_scan: scanMetaJson,
+          transport_document_status: scanBooking.trafficLight === "green" ? "verified" : "uploaded",
+          transport_document_recognition_status:
+            scanBooking.trafficLight === "green" ? "recognized" : "unclear",
+          transport_document_file_key: scanBooking.meta.storageKey,
+          transport_document_uploaded_at: scanBooking.meta.scannedAt,
+          approval_proof_mode: "customer_scan",
+        };
+        if (scanBooking.trafficLight === "green") {
+          normalizedPartnerMeta.approval_status = "approved";
+        }
+        const readyAfterScan = calculateMedicalBillingReadiness(normalizedPartnerMeta);
+        normalizedPartnerMeta.billing_ready = readyAfterScan.billingReady;
+        normalizedPartnerMeta.billing_missing_reasons = readyAfterScan.missingReasons;
+      } else {
+        normalizedPartnerMeta = {
+          ...normalizedPartnerMeta,
+          customer_transport_scan: scanMetaJson,
+        };
       }
-      const readyAfterScan = calculateMedicalBillingReadiness(normalizedPartnerMeta);
-      normalizedPartnerMeta.billing_ready = readyAfterScan.billingReady;
-      normalizedPartnerMeta.billing_missing_reasons = readyAfterScan.missingReasons;
       medicalScanConsume = { scanId: customerMedicalScanId, passengerId: passengerIdForScan };
     }
     const customerDriverNoteFromBody = extractCustomerDriverNoteFromRawBody(raw as Record<string, unknown>);

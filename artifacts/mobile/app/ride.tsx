@@ -4,6 +4,7 @@ import { router, useLocalSearchParams, usePathname, useSegments } from "expo-rou
 import React, { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   KeyboardAvoidingView,
@@ -44,6 +45,13 @@ import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
 import type { RideAccessibilityOptions } from "@/context/RideRequestContext";
+import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
+import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
+import {
+  medicalScanErrorMessageDe,
+  postCustomerMedicalTransportScan,
+  type MedicalTrafficLight,
+} from "@/utils/medicalScanApi";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Bar",
@@ -96,14 +104,16 @@ const RIDE_PAYMENT_OPTIONS: {
   featherIcon?: string;
   isPaypal?: boolean;
   isEuro?: boolean;
+  isCard?: boolean;
   isVoucher?: boolean;
   isApp?: boolean;
   isAccessCode?: boolean;
 }[] = [
-  { id: "app", label: "App bezahlen", isApp: true },
   { id: "cash", label: "Bar", isEuro: true },
+  { id: "card", label: "Karte", isCard: true },
   { id: "paypal", label: "PayPal", isPaypal: true },
-  { id: "voucher", label: "Transportschein", isVoucher: true },
+  { id: "voucher", label: "Transportschein (KK)", isVoucher: true },
+  { id: "app", label: "App bezahlen", isApp: true },
   { id: "access_code", label: "Gutschein / Code", isAccessCode: true },
 ];
 
@@ -305,6 +315,43 @@ export default function RideScreen() {
   const [elevatorAvailable, setElevatorAvailable] = useState(false);
   const [stairsPresent, setStairsPresent] = useState(false);
   const [accessibilityNote, setAccessibilityNote] = useState("");
+  const [transportScanBusy, setTransportScanBusy] = useState(false);
+  const [pendingTransportScanId, setPendingTransportScanId] = useState<string | null>(null);
+  const [transportScanTrafficLight, setTransportScanTrafficLight] = useState<MedicalTrafficLight | null>(null);
+  const [transportScanReasonDe, setTransportScanReasonDe] = useState<string | null>(null);
+
+  const { config: appConfig } = useOnrodaAppConfig();
+  const medicalTransportAvailable = appConfig.medicalTransportAvailable === true;
+  const ridePaymentOptions = React.useMemo(
+    () => RIDE_PAYMENT_OPTIONS.filter((o) => o.id !== "voucher" || medicalTransportAvailable),
+    [medicalTransportAvailable],
+  );
+
+  function dismissTransportScan() {
+    setPendingTransportScanId(null);
+    setTransportScanTrafficLight(null);
+    setTransportScanReasonDe(null);
+  }
+
+  function switchVoucherToSelfPay() {
+    dismissTransportScan();
+    setPaymentMethod("cash");
+    setIsExempted(false);
+    Haptics.selectionAsync();
+  }
+
+  const canPlaceOrder = React.useMemo(() => {
+    if (!paymentMethod || preAuthLoading) return false;
+    if (paymentMethod !== "voucher") return true;
+    if (!pendingTransportScanId || !transportScanTrafficLight) return false;
+    return transportScanTrafficLight === "green" || transportScanTrafficLight === "yellow";
+  }, [paymentMethod, preAuthLoading, pendingTransportScanId, transportScanTrafficLight]);
+
+  const orderCtaLabel = React.useMemo(() => {
+    if (preAuthLoading) return "Vorautorisierung…";
+    if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") return "Trotzdem buchen";
+    return rideConfirmCtaLabel(selectedVehicle, scheduledTime !== null);
+  }, [preAuthLoading, paymentMethod, transportScanTrafficLight, selectedVehicle, scheduledTime]);
 
   const handleAccessibilityNoteFocus = (e: any) => {
     const target = e?.target;
@@ -347,8 +394,65 @@ export default function RideScreen() {
     }
   };
 
+  async function runTransportScan(fromCamera: boolean) {
+    const token = profile.sessionToken?.trim() ?? "";
+    if (!token) {
+      Alert.alert("Anmeldung", "Bitte zuerst anmelden, um den Transportschein zu scannen.");
+      return;
+    }
+    setTransportScanBusy(true);
+    try {
+      const imageBase64 = await pickTransportImageBase64(fromCamera, { maxWidth: 1280, jpegQuality: 0.62 });
+      if (!imageBase64) return;
+      const result = await postCustomerMedicalTransportScan({ authToken: token, imageBase64 });
+      if (!result.ok) {
+        Alert.alert("Transportschein", medicalScanErrorMessageDe(result.error));
+        return;
+      }
+      setPendingTransportScanId(result.scanId);
+      setTransportScanTrafficLight(result.trafficLight);
+      setTransportScanReasonDe(result.primaryReasonDe);
+      Haptics.notificationAsync(
+        result.trafficLight === "green"
+          ? Haptics.NotificationFeedbackType.Success
+          : result.trafficLight === "red"
+            ? Haptics.NotificationFeedbackType.Error
+            : Haptics.NotificationFeedbackType.Warning,
+      );
+    } catch (e) {
+      Alert.alert("Transportschein", e instanceof Error ? e.message : "Scan fehlgeschlagen.");
+    } finally {
+      setTransportScanBusy(false);
+    }
+  }
+
+  function openTransportScanPicker() {
+    if (Platform.OS === "web") {
+      Alert.alert("Transportschein", "Bitte in der nativen App (iOS/Android) scannen.");
+      return;
+    }
+    Alert.alert("Transportschein scannen", "Foto des Transportscheins für die Vorprüfung", [
+      { text: "Abbrechen", style: "cancel" },
+      { text: "Foto aufnehmen", onPress: () => void runTransportScan(true) },
+      { text: "Aus Galerie", onPress: () => void runTransportScan(false) },
+    ]);
+  }
+
   const handleOrder = async () => {
     if (!fareBreakdown || !paymentMethod) return;
+    if (paymentMethod === "voucher") {
+      if (!pendingTransportScanId || !transportScanTrafficLight) {
+        Alert.alert("Transportschein", "Bitte zuerst den Transportschein scannen.");
+        return;
+      }
+      if (transportScanTrafficLight === "red") {
+        Alert.alert(
+          "Transportschein",
+          "Der Schein wurde als ungültig erkannt. Bitte erneut scannen oder als Selbstzahler (Bar) buchen.",
+        );
+        return;
+      }
+    }
     if (paymentMethod === "access_code" && !accessCodeInput.trim()) {
       setShowAccessCodeModal(true);
       Alert.alert("Code fehlt", "Bitte Gutschein- oder Freigabe-Code eingeben.");
@@ -507,6 +611,9 @@ export default function RideScreen() {
             passengerId: passengerId || undefined,
             scheduledAt: scheduledTime ?? null,
             ...partnerBookingMetaPayload,
+            ...(pm === "voucher" && pendingTransportScanId
+              ? { customerMedicalScanId: pendingTransportScanId, payerKind: "insurance" as const }
+              : {}),
             ...(pm === "access_code" && accessCodeInput.trim()
               ? { accessCode: accessCodeInput.trim() }
               : {}),
@@ -530,6 +637,18 @@ export default function RideScreen() {
           router.replace({ pathname: "/status", params: { rideId: rideRequestId } } as any);
         } catch (err) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          const code = err instanceof Error ? err.message : "";
+          if (code === "medical_transport_scan_rejected") {
+            Alert.alert(
+              "Transportschein abgelehnt",
+              "Die Buchung wurde abgelehnt. Bitte Transportschein erneut prüfen oder Bar wählen.",
+            );
+            return;
+          }
+          if (code === "medical_transport_scan_required") {
+            Alert.alert("Transportschein", "Bitte zuerst den Transportschein scannen.");
+            return;
+          }
           Alert.alert(
             "Buchung fehlgeschlagen",
             userFacingBookingErrorMessage(err, accessCodeBookingErrorMessage),
@@ -686,9 +805,8 @@ export default function RideScreen() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNGSART WÄHLEN</Text>
           <View style={styles.paymentGrid}>
-            {RIDE_PAYMENT_OPTIONS.map((opt) => {
+            {ridePaymentOptions.map((opt) => {
               const isSelected = paymentMethod === opt.id;
-              const voucherBlockedByOnroda = false;
               return (
                 <Pressable
                   key={opt.id}
@@ -698,13 +816,13 @@ export default function RideScreen() {
                       backgroundColor: colors.card,
                       borderColor: isSelected ? colors.primary : colors.border,
                       borderWidth: isSelected ? 2 : 1.5,
-                      opacity: voucherBlockedByOnroda ? 0.45 : 1,
                     },
                   ]}
                   onPress={() => {
-                    if (voucherBlockedByOnroda) {
+                    if (opt.id !== "voucher") {
+                      setIsExempted(false);
+                      dismissTransportScan();
                     }
-                    if (opt.id !== "voucher") setIsExempted(false);
                     if (opt.id !== "access_code") {
                       setAccessCodeInput("");
                       setShowAccessCodeModal(false);
@@ -722,6 +840,8 @@ export default function RideScreen() {
                     <Feather name="smartphone" size={14} color={colors.foreground} />
                   ) : opt.isPaypal ? (
                     <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
+                  ) : opt.isCard ? (
+                    <Feather name="credit-card" size={14} color={colors.foreground} />
                   ) : opt.isVoucher ? (
                     <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
                   ) : opt.isAccessCode ? (
@@ -766,7 +886,57 @@ export default function RideScreen() {
 
         {paymentMethod === "voucher" ? (
           <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#93C5FD", backgroundColor: "#EFF6FF", padding: 16, gap: 10 }}>
-            <Text style={[styles.cardLabel, { color: "#1D4ED8" }]}>TRANSPORTSCHEIN</Text>
+            <Text style={[styles.cardLabel, { color: "#1D4ED8" }]}>TRANSPORTSCHEIN (KK)</Text>
+            <Pressable
+              style={[styles.transportScanBtn, transportScanBusy && { opacity: 0.65 }]}
+              disabled={transportScanBusy || preAuthLoading}
+              onPress={openTransportScanPicker}
+            >
+              {transportScanBusy ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Feather name="camera" size={16} color="#fff" />
+              )}
+              <Text style={styles.transportScanBtnText}>
+                {transportScanBusy ? "Transportschein wird geprüft…" : "Transportschein scannen"}
+              </Text>
+            </Pressable>
+            {transportScanTrafficLight ? (
+              <>
+                <MedicalTrafficLightCard
+                  scanApi="customer"
+                  trafficLight={transportScanTrafficLight}
+                  warnings={[]}
+                  customerReasonOverride={transportScanReasonDe}
+                  onPrimaryAction={() => {}}
+                  hidePrimaryButton
+                />
+                {transportScanTrafficLight === "green" ? (
+                  <Text style={{ fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#1D4ED8", lineHeight: 18 }}>
+                    Fahrer prüft vor Ort nochmals — letzte Entscheidung beim Fahrer.
+                  </Text>
+                ) : null}
+                {transportScanTrafficLight === "yellow" ? (
+                  <Text style={{ fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#B45309", lineHeight: 18 }}>
+                    Letzte Entscheidung beim Fahrer.
+                  </Text>
+                ) : null}
+                {transportScanTrafficLight === "red" ? (
+                  <>
+                    <Text style={{ fontSize: rf(12), fontFamily: "Inter_600SemiBold", color: "#B91C1C", lineHeight: 18 }}>
+                      Schein ungültig — weiter als Selbstzahler?
+                    </Text>
+                    <Pressable style={styles.selfPaySwitchBtn} onPress={switchVoucherToSelfPay}>
+                      <Text style={styles.selfPaySwitchBtnText}>Stattdessen Bar zahlen</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <Text style={{ fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#2563EB", lineHeight: 17 }}>
+                Bitte Transportschein scannen, um die Buchung freizugeben.
+              </Text>
+            )}
             <View style={styles.paymentChip}>
               <MaterialCommunityIcons name="ticket-percent-outline" size={20} color="#2563EB" />
               <Text style={[styles.paymentChipText, { color: "#1D4ED8" }]}>Eigenanteil (Schätzung)</Text>
@@ -795,9 +965,6 @@ export default function RideScreen() {
               </View>
               <Text style={[styles.exemptText, { color: "#1D4ED8" }]}>Ich bin von der Zuzahlung befreit</Text>
             </Pressable>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#2563EB", lineHeight: 17 }}>
-              Gültigen Transportschein beim Fahrer bereithalten. Der Restbetrag wird mit der Krankenkasse abgerechnet.
-            </Text>
           </View>
         ) : null}
 
@@ -842,20 +1009,20 @@ export default function RideScreen() {
               style={[
                 styles.orderBtn,
                 {
-                  backgroundColor: preAuthLoading || !paymentMethod ? colors.muted : "#16A34A",
-                  opacity: !paymentMethod ? 0.85 : 1,
+                  backgroundColor: canPlaceOrder ? "#16A34A" : colors.muted,
+                  opacity: canPlaceOrder ? 1 : 0.85,
                 },
               ]}
               onPress={handleOrder}
-              disabled={preAuthLoading || !paymentMethod}
+              disabled={!canPlaceOrder}
             >
               <Text
                 style={[
                   styles.orderBtnText,
-                  { color: preAuthLoading || !paymentMethod ? colors.mutedForeground : "#fff" },
+                  { color: canPlaceOrder ? "#fff" : colors.mutedForeground },
                 ]}
               >
-                {preAuthLoading ? "Vorautorisierung…" : rideConfirmCtaLabel(selectedVehicle, scheduledTime !== null)}
+                {orderCtaLabel}
               </Text>
             </Pressable>
           </Animated.View>
@@ -1047,6 +1214,27 @@ const styles = StyleSheet.create({
   exemptRow: { flexDirection: "row", alignItems: "center", gap: rs(10), marginTop: rs(4) },
   exemptCheckbox: { width: rs(22), height: rs(22), borderRadius: rs(6), borderWidth: 2, justifyContent: "center", alignItems: "center" },
   exemptText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_500Medium" },
+  transportScanBtn: {
+    backgroundColor: "#0F766E",
+    borderRadius: rs(11),
+    paddingVertical: rs(11),
+    paddingHorizontal: rs(12),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+  },
+  transportScanBtnText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: rf(13) },
+  selfPaySwitchBtn: {
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: rs(11),
+    paddingVertical: rs(11),
+    paddingHorizontal: rs(12),
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  selfPaySwitchBtnText: { color: "#0F172A", fontFamily: "Inter_700Bold", fontSize: rf(13) },
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(16), paddingHorizontal: rs(20),
