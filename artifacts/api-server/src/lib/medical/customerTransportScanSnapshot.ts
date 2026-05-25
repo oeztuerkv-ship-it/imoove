@@ -19,21 +19,11 @@ export type CustomerTransportScanMeta = {
 
 const PARTNER_IK_WARNING_CODES = new Set(["stationaer_missing_taxi_ik", "missing_partner_ik"]);
 
-const CUSTOMER_SCAN_IRRELEVANT_WARNING_CODES = new Set([
-  ...PARTNER_IK_WARNING_CODES,
-  "stationaer_missing_signature",
-  "missing_signature",
-]);
-
-/** Partner-IK, Unterschrift usw. — beim Kunden-Scan irrelevant (Fahrer prüft vor Ort). */
+/** Partner-IK — beim Kunden-Scan irrelevant (kommt vom Mandanten). Unterschrift → Gelb mit Hinweis. */
 export function isWarningIrrelevantForCustomerScan(item: { code?: string; message?: string }): boolean {
-  if (item.code && CUSTOMER_SCAN_IRRELEVANT_WARNING_CODES.has(item.code)) return true;
+  if (item.code && PARTNER_IK_WARNING_CODES.has(item.code)) return true;
   const m = (item.message ?? "").toLowerCase();
-  return (
-    m.includes("leistungserbringer-ik") ||
-    m.includes("partner-ik") ||
-    m.includes("unterschrift")
-  );
+  return m.includes("leistungserbringer-ik") || m.includes("partner-ik");
 }
 
 /** @deprecated Alias — Partner-IK-Filter; nutze {@link isWarningIrrelevantForCustomerScan}. */
@@ -53,7 +43,10 @@ export function pickPrimaryCustomerScanReasonDe(
   const visible = filterWarningsForCustomerScan(
     warnings.filter((w) => w.severity !== "info" && (w.message?.trim() || w.code)),
   );
-  const fromWarning = visible.find((w) => w.severity === "block_recommended") ?? visible[0];
+  const fromWarning =
+    visible.find((w) => w.code === "customer_missing_signature") ??
+    visible.find((w) => w.severity === "block_recommended") ??
+    visible[0];
   if (fromWarning?.message?.trim()) return fromWarning.message.trim();
   const fromRules = filterWarningsForCustomerScan(
     (insuranceRules?.warnings ?? []).map((message) => ({ message })),

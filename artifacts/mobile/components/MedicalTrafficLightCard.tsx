@@ -11,22 +11,13 @@ import type {
   MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
 
-/** Partner-IK / Unterschrift — beim Kunden-Scan nicht anzeigen (Fahrer prüft vor Ort). */
+/** Partner-IK — beim Kunden-Scan ausblenden; Unterschrift-Hinweis bleibt sichtbar (Gelb). */
 function isCustomerScanWarningHidden(item: { code?: string; message?: string }): boolean {
-  if (
-    item.code === "stationaer_missing_taxi_ik" ||
-    item.code === "missing_partner_ik" ||
-    item.code === "stationaer_missing_signature" ||
-    item.code === "missing_signature"
-  ) {
+  if (item.code === "stationaer_missing_taxi_ik" || item.code === "missing_partner_ik") {
     return true;
   }
   const m = (item.message ?? "").toLowerCase();
-  return (
-    m.includes("leistungserbringer-ik") ||
-    m.includes("partner-ik") ||
-    m.includes("unterschrift")
-  );
+  return m.includes("leistungserbringer-ik") || m.includes("partner-ik");
 }
 
 function warningsForCustomerDisplay(warnings: MedicalScanWarning[]): MedicalScanWarning[] {
@@ -169,7 +160,10 @@ function pickPrimaryCustomerReason(
   const visible = warningsForCustomerDisplay(warnings).filter(
     (w) => w.severity !== "info" && (w.message?.trim() || w.code),
   );
-  const fromWarning = visible.find((w) => w.severity === "block_recommended") ?? visible[0];
+  const fromWarning =
+    visible.find((w) => w.code === "customer_missing_signature") ??
+    visible.find((w) => w.severity === "block_recommended") ??
+    visible[0];
   if (fromWarning?.message?.trim()) return fromWarning.message.trim();
   const rules = insuranceRulesForCustomerDisplay(insuranceRules);
   const fromRules = rules?.warnings.find((w) => w.trim());

@@ -55,7 +55,13 @@ const DATE_LOGIC_MESSAGES: Record<string, string> = {
   ride_before_valid_from: "Fahrt vor Gültigkeitsbeginn",
   ride_after_valid_until: "Fahrt nach Gültigkeitsende",
   series_window_exceeded: "Fahrt außerhalb Serien-Zeitraum",
+  customer_missing_signature:
+    "Bitte Fahrer zeigen — Unterschrift und Stempel vor Ort prüfen",
 };
+
+/** Kunden-Scan: Unterschrift fehlt → Gelb, Fahrer prüft vor Ort. */
+export const CUSTOMER_MISSING_SIGNATURE_HINT_DE =
+  "Bitte Fahrer zeigen — Unterschrift und Stempel vor Ort prüfen";
 
 function dateLogicSeverityToWarning(severity: MedicalDateLogicResult["severity"]): MedicalWarningSeverity {
   if (severity === "fail") return "block_recommended";
@@ -74,18 +80,28 @@ function trafficLightFromWarnings(warnings: MedicalWarning[]): MedicalTrafficLig
   return "green";
 }
 
-/** Kunden-Scan: Unterschrift prüft der Fahrer vor Ort — nicht für Ampel/Hauptgrund. */
-function isSignatureWarningIrrelevantForCustomerScan(item: { code?: string; message?: string }): boolean {
-  if (item.code === "stationaer_missing_signature" || item.code === "missing_signature") return true;
-  return (item.message ?? "").toLowerCase().includes("unterschrift");
-}
-
-function warningsForCustomerTrafficLightDecision(
-  warnings: MedicalWarning[],
-  omitPartnerIkWarnings: boolean,
-): MedicalWarning[] {
-  if (!omitPartnerIkWarnings) return warnings;
-  return warnings.filter((w) => !isSignatureWarningIrrelevantForCustomerScan(w));
+function pushMissingSignatureWarning(warnings: MedicalWarning[], input: MedicalTrafficLightInput): void {
+  if (input.hasSignatureOnDocument !== false) return;
+  if (
+    warnings.some(
+      (w) => w.code === "stationaer_missing_signature" || w.code === "customer_missing_signature",
+    )
+  ) {
+    return;
+  }
+  if (input.omitPartnerIkWarnings) {
+    warnings.push({
+      code: "customer_missing_signature",
+      message: CUSTOMER_MISSING_SIGNATURE_HINT_DE,
+      severity: "warn",
+    });
+    return;
+  }
+  warnings.push({
+    code: "stationaer_missing_signature",
+    message: "Stationär: Unterschrift auf dem Schein nicht erkennbar",
+    severity: "warn",
+  });
 }
 
 function hasTransportDate(extracted: MedicalOcrExtracted): boolean {
@@ -124,16 +140,13 @@ function evaluateBehandlungsArtRules(
         severity: "warn",
       });
     }
-    if (input.hasSignatureOnDocument === false && !input.omitPartnerIkWarnings) {
-      warnings.push({
-        code: "stationaer_missing_signature",
-        message: "Stationär: Unterschrift auf dem Schein nicht erkennbar",
-        severity: "warn",
-      });
+    if (input.hasSignatureOnDocument === false) {
+      pushMissingSignatureWarning(warnings, input);
     }
     const taxiIkSatisfied = input.omitPartnerIkWarnings || Boolean(input.partnerIkSnapshot.trim());
-    const signatureOkForCustomer = input.omitPartnerIkWarnings || input.hasSignatureOnDocument !== false;
-    if (hasTransportDate(extracted) && taxiIkSatisfied && signatureOkForCustomer) {
+    const signatureOkForStationaerSummary =
+      input.omitPartnerIkWarnings || input.hasSignatureOnDocument !== false;
+    if (hasTransportDate(extracted) && taxiIkSatisfied && signatureOkForStationaerSummary) {
       warnings.push({
         code: "stationaer_checks_ok",
         message: "Stationär: Datum, Taxi-IK und Unterschrift — keine KK-Genehmigungsnummer nötig",
@@ -253,9 +266,11 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
     });
   }
 
-  const trafficLight = trafficLightFromWarnings(
-    warningsForCustomerTrafficLightDecision(warnings, input.omitPartnerIkWarnings === true),
-  );
+  if (input.omitPartnerIkWarnings) {
+    pushMissingSignatureWarning(warnings, input);
+  }
+
+  const trafficLight = trafficLightFromWarnings(warnings);
 
   return { trafficLight, warnings };
 }
