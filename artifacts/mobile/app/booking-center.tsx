@@ -5,15 +5,12 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
-import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
 import {
   accountSheetHeaderTitle,
   accountSheetPrimaryLabel,
   accountSheetSecondaryLabel,
 } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
-import { useUser } from "@/context/UserContext";
-import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { rs } from "@/utils/scale";
 
@@ -27,11 +24,6 @@ type BookingCard = {
 
 export default function BookingCenterScreen() {
   const colors = useColors();
-  const { profile } = useUser();
-  const { config: appConfig } = useOnrodaAppConfig();
-  const medicalTransportAvailable = appConfig.medicalTransportAvailable === true;
-  const customerSessionToken =
-    typeof profile.sessionToken === "string" && profile.sessionToken.trim() ? profile.sessionToken.trim() : "";
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
@@ -148,15 +140,6 @@ export default function BookingCenterScreen() {
             </Pressable>
           ))}
         </View>
-        {profile.isLoggedIn && customerSessionToken && medicalTransportAvailable ? (
-          <View style={[styles.cardGroup, styles.scanGroup, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
-            <MedicalTransportScanTestTool
-              authToken={customerSessionToken}
-              scanApi="customer"
-              variant="card"
-            />
-          </View>
-        ) : null}
         <View style={[styles.notice, { backgroundColor: "#ECFDF5", borderColor: "#BBF7D0" }]}>
           <View style={styles.noticeIconWrap}>
             <MaterialCommunityIcons name="shield-check-outline" size={16} color="#16A34A" />
@@ -201,9 +184,6 @@ const styles = StyleSheet.create({
   },
   cardRowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  scanGroup: {
-    padding: rs(16),
   },
   iconWrap: {
     width: rs(32),

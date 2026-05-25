@@ -23,7 +23,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/components/CustomerPasswordFields";
-import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { accountSheetPrimaryLabel, accountSheetInputText, ACCOUNT_SHEET_FIELD_BORDER, ACCOUNT_SHEET_FIELD_BORDER_FOCUS, ACCOUNT_SHEET_FIELD_BORDER_WIDTH, ACCOUNT_SHEET_FIELD_BORDER_WIDTH_FOCUS } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
@@ -38,7 +37,6 @@ import {
 } from "@/src/screens/LoginScreen";
 import { useTranslation } from "@/context/LanguageContext";
 import { type UserProfile, useUser } from "@/context/UserContext";
-import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { SUPPORTED_LOCALES, type AppLocale } from "@/src/i18n";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -653,18 +651,14 @@ function BillingModal({ visible, profile, onClose }: { visible: boolean; profile
 function PatientProfileModal({
   visible,
   profile,
-  customerSessionToken,
   onClose,
 }: {
   visible: boolean;
   profile: UserProfile;
-  customerSessionToken?: string;
   onClose: (data: Partial<UserProfile> | null) => void;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { config: appConfig } = useOnrodaAppConfig();
-  const medicalTransportAvailable = appConfig.medicalTransportAvailable === true;
 
   const [krankenkasse, setKrankenkasse] = useState(profile.krankenkasse ?? "");
   const [versichertennummer, setVersichertennummer] = useState(profile.versichertennummer ?? "");
@@ -756,28 +750,6 @@ function PatientProfileModal({
                 />
               </View>
             </View>
-
-            {customerSessionToken?.trim() && medicalTransportAvailable ? (
-              <>
-                <View style={{ paddingHorizontal: 0 }}>
-                  <AccountSectionTitle title="Transportschein" />
-                </View>
-                <View
-                  style={[
-                    styles.sectionCard,
-                    styles.sectionCardCompact,
-                    billingCardShell,
-                    { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM, padding: rs(12) },
-                  ]}
-                >
-                  <MedicalTransportScanTestTool
-                    authToken={customerSessionToken.trim()}
-                    scanApi="customer"
-                    variant="card"
-                  />
-                </View>
-              </>
-            ) : null}
 
             <View style={{ paddingHorizontal: 0 }}>
               <AccountSectionTitle title="Mobilitätsbedarf" />
@@ -1677,9 +1649,6 @@ export default function ProfileScreen() {
             <PatientProfileModal
               visible={patientProfileOpen}
               profile={profile}
-              customerSessionToken={
-                typeof profile.sessionToken === "string" ? profile.sessionToken : undefined
-              }
               onClose={(data) => {
                 if (data) {
                   updateProfile(data);
