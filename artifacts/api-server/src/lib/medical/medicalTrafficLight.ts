@@ -74,6 +74,20 @@ function trafficLightFromWarnings(warnings: MedicalWarning[]): MedicalTrafficLig
   return "green";
 }
 
+/** Kunden-Scan: Unterschrift prüft der Fahrer vor Ort — nicht für Ampel/Hauptgrund. */
+function isSignatureWarningIrrelevantForCustomerScan(item: { code?: string; message?: string }): boolean {
+  if (item.code === "stationaer_missing_signature" || item.code === "missing_signature") return true;
+  return (item.message ?? "").toLowerCase().includes("unterschrift");
+}
+
+function warningsForCustomerTrafficLightDecision(
+  warnings: MedicalWarning[],
+  omitPartnerIkWarnings: boolean,
+): MedicalWarning[] {
+  if (!omitPartnerIkWarnings) return warnings;
+  return warnings.filter((w) => !isSignatureWarningIrrelevantForCustomerScan(w));
+}
+
 function hasTransportDate(extracted: MedicalOcrExtracted): boolean {
   return Boolean(extracted.transportDate || extracted.validFrom);
 }
@@ -110,7 +124,7 @@ function evaluateBehandlungsArtRules(
         severity: "warn",
       });
     }
-    if (input.hasSignatureOnDocument === false) {
+    if (input.hasSignatureOnDocument === false && !input.omitPartnerIkWarnings) {
       warnings.push({
         code: "stationaer_missing_signature",
         message: "Stationär: Unterschrift auf dem Schein nicht erkennbar",
@@ -118,7 +132,8 @@ function evaluateBehandlungsArtRules(
       });
     }
     const taxiIkSatisfied = input.omitPartnerIkWarnings || Boolean(input.partnerIkSnapshot.trim());
-    if (hasTransportDate(extracted) && taxiIkSatisfied && input.hasSignatureOnDocument !== false) {
+    const signatureOkForCustomer = input.omitPartnerIkWarnings || input.hasSignatureOnDocument !== false;
+    if (hasTransportDate(extracted) && taxiIkSatisfied && signatureOkForCustomer) {
       warnings.push({
         code: "stationaer_checks_ok",
         message: "Stationär: Datum, Taxi-IK und Unterschrift — keine KK-Genehmigungsnummer nötig",
@@ -238,7 +253,9 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
     });
   }
 
-  const trafficLight = trafficLightFromWarnings(warnings);
+  const trafficLight = trafficLightFromWarnings(
+    warningsForCustomerTrafficLightDecision(warnings, input.omitPartnerIkWarnings === true),
+  );
 
   return { trafficLight, warnings };
 }

@@ -11,22 +11,33 @@ import type {
   MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
 
-/** Partner-IK-Warnungen nur für Fahrer-Scan — beim Kunden ausblenden. */
-function isPartnerIkWarningHiddenFromCustomer(item: { code?: string; message?: string }): boolean {
-  if (item.code === "stationaer_missing_taxi_ik" || item.code === "missing_partner_ik") return true;
+/** Partner-IK / Unterschrift — beim Kunden-Scan nicht anzeigen (Fahrer prüft vor Ort). */
+function isCustomerScanWarningHidden(item: { code?: string; message?: string }): boolean {
+  if (
+    item.code === "stationaer_missing_taxi_ik" ||
+    item.code === "missing_partner_ik" ||
+    item.code === "stationaer_missing_signature" ||
+    item.code === "missing_signature"
+  ) {
+    return true;
+  }
   const m = (item.message ?? "").toLowerCase();
-  return m.includes("leistungserbringer-ik") || m.includes("partner-ik");
+  return (
+    m.includes("leistungserbringer-ik") ||
+    m.includes("partner-ik") ||
+    m.includes("unterschrift")
+  );
 }
 
 function warningsForCustomerDisplay(warnings: MedicalScanWarning[]): MedicalScanWarning[] {
-  return warnings.filter((w) => !isPartnerIkWarningHiddenFromCustomer(w));
+  return warnings.filter((w) => !isCustomerScanWarningHidden(w));
 }
 
 function insuranceRulesForCustomerDisplay(
   rules: MedicalInsuranceRuleResult | null | undefined,
 ): MedicalInsuranceRuleResult | null {
   if (!rules) return null;
-  const warnings = rules.warnings.filter((w) => !isPartnerIkWarningHiddenFromCustomer({ message: w }));
+  const warnings = rules.warnings.filter((w) => !isCustomerScanWarningHidden({ message: w }));
   if (warnings.length === rules.warnings.length) return rules;
   return { ...rules, warnings };
 }
