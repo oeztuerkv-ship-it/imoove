@@ -3,7 +3,7 @@ import RNDateTimePicker, { type DateTimePickerEvent } from "@react-native-commun
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams, type Href } from "expo-router";
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -46,7 +46,14 @@ import {
   validateServiceAreaForBooking,
 } from "@/lib/appOperationalConfig";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
 import { useColors } from "@/hooks/useColors";
+import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
+import {
+  medicalScanErrorMessageDe,
+  postCustomerMedicalTransportScan,
+  type MedicalTrafficLight,
+} from "@/utils/medicalScanApi";
 import { getRoute, fetchWithTimeout, searchLocation, type GeoLocation } from "@/utils/routing";
 import { rf, rs } from "@/utils/scale";
 
@@ -912,6 +919,7 @@ export default function NewBookingScreen() {
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
   const { config: appCfg } = useOnrodaAppConfig();
+  const medicalTransportAvailable = appCfg.medicalTransportAvailable === true;
   const brokerNoticeDe =
     (typeof appCfg.system?.globalNoticeDe === "string" ? appCfg.system.globalNoticeDe.trim() : "") ||
     CUSTOMER_BROKER_NOTICE_DE;
@@ -931,6 +939,23 @@ export default function NewBookingScreen() {
   const [wheelchairCompanion, setWheelchairCompanion] = useState(false);
   const [showDriverNoteModal, setShowDriverNoteModal] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [medicalRideEnabled, setMedicalRideEnabled] = useState(false);
+  const [transportScanBusy, setTransportScanBusy] = useState(false);
+  const [pendingTransportScanId, setPendingTransportScanId] = useState<string | null>(null);
+  const [transportScanTrafficLight, setTransportScanTrafficLight] = useState<MedicalTrafficLight | null>(null);
+  const [transportScanReasonDe, setTransportScanReasonDe] = useState<string | null>(null);
+
+  const dismissTransportScan = useCallback(() => {
+    setPendingTransportScanId(null);
+    setTransportScanTrafficLight(null);
+    setTransportScanReasonDe(null);
+  }, []);
+
+  const switchMedicalToBar = useCallback(() => {
+    setMedicalRideEnabled(false);
+    dismissTransportScan();
+    Haptics.selectionAsync();
+  }, [dismissTransportScan]);
 
   const [searchUserGps, setSearchUserGps] = useState<{ lat: number; lon: number } | null>(null);
   const originAddressInputRef = useRef<TextInput>(null);
@@ -1011,12 +1036,77 @@ export default function NewBookingScreen() {
     setAccessCode("");
     setDriverNote("");
     setFareEstimates({});
-  }, []);
+    setMedicalRideEnabled(false);
+    dismissTransportScan();
+  }, [dismissTransportScan]);
 
   const formComplete =
     selectedAddressIsBookingComplete(from) &&
     selectedAddressIsBookingComplete(to) &&
     (isInstant || scheduledAt !== null);
+
+  const canSubmitReservation = useMemo(() => {
+    if (!formComplete || submitting) return false;
+    if (!medicalRideEnabled) return true;
+    if (!pendingTransportScanId || !transportScanTrafficLight) return false;
+    return transportScanTrafficLight === "green" || transportScanTrafficLight === "yellow";
+  }, [
+    formComplete,
+    submitting,
+    medicalRideEnabled,
+    pendingTransportScanId,
+    transportScanTrafficLight,
+  ]);
+
+  const submitButtonLabel = useMemo(() => {
+    if (submitting) return "Wird gesendet…";
+    if (medicalRideEnabled && transportScanTrafficLight === "yellow") return "Trotzdem buchen";
+    return "Reservierung absenden";
+  }, [submitting, medicalRideEnabled, transportScanTrafficLight]);
+
+  async function runTransportScan(fromCamera: boolean) {
+    const token = profile.sessionToken?.trim() ?? "";
+    if (!token) {
+      Alert.alert("Anmeldung", "Bitte zuerst anmelden, um den Transportschein zu scannen.");
+      return;
+    }
+    setTransportScanBusy(true);
+    try {
+      const imageBase64 = await pickTransportImageBase64(fromCamera, { maxWidth: 1280, jpegQuality: 0.62 });
+      if (!imageBase64) return;
+      const result = await postCustomerMedicalTransportScan({ authToken: token, imageBase64 });
+      if (!result.ok) {
+        Alert.alert("Transportschein", medicalScanErrorMessageDe(result.error));
+        return;
+      }
+      setPendingTransportScanId(result.scanId);
+      setTransportScanTrafficLight(result.trafficLight);
+      setTransportScanReasonDe(result.primaryReasonDe);
+      Haptics.notificationAsync(
+        result.trafficLight === "green"
+          ? Haptics.NotificationFeedbackType.Success
+          : result.trafficLight === "red"
+            ? Haptics.NotificationFeedbackType.Error
+            : Haptics.NotificationFeedbackType.Warning,
+      );
+    } catch (e) {
+      Alert.alert("Transportschein", e instanceof Error ? e.message : "Scan fehlgeschlagen.");
+    } finally {
+      setTransportScanBusy(false);
+    }
+  }
+
+  function openTransportScanPicker() {
+    if (Platform.OS === "web") {
+      Alert.alert("Transportschein", "Bitte in der nativen App (iOS/Android) scannen.");
+      return;
+    }
+    Alert.alert("Transportschein scannen", "Foto des Transportscheins für die Vorprüfung", [
+      { text: "Abbrechen", style: "cancel" },
+      { text: "Foto aufnehmen", onPress: () => void runTransportScan(true) },
+      { text: "Aus Galerie", onPress: () => void runTransportScan(false) },
+    ]);
+  }
 
   useEffect(() => {
     if (!from.lat || !from.lon || !to.lat || !to.lon) {
@@ -1093,6 +1183,9 @@ export default function NewBookingScreen() {
       reservation_lead_time_too_short:
         "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.",
       request_failed: "Die Buchung konnte nicht gesendet werden.",
+      medical_transport_scan_required: "Bitte zuerst den Transportschein scannen.",
+      medical_transport_scan_rejected:
+        "Transportschein abgelehnt. Bitte erneut scannen oder ohne Krankenkasse (Bar) buchen.",
     };
     return m[code] ?? "Die Buchung ist fehlgeschlagen. Bitte erneut versuchen.";
   }
@@ -1185,6 +1278,10 @@ export default function NewBookingScreen() {
         { lat: destinationLat!, lon: destinationLon!, displayName: toFull },
       );
 
+      const partnerBookingMeta: Record<string, unknown> = {};
+      if (driverNote.trim()) partnerBookingMeta.customer_driver_note = driverNote.trim();
+      if (medicalRideEnabled) partnerBookingMeta.medical_ride = true;
+
       await addRequest({
         from: from.name,
         fromFull,
@@ -1197,13 +1294,18 @@ export default function NewBookingScreen() {
         distanceKm: bookingRoute.distanceKm,
         durationMinutes: bookingRoute.durationMinutes,
         estimatedFare: fareEstimates[selectedVehicle] ?? 0,
-        paymentMethod: "Bar",
+        paymentMethod: medicalRideEnabled ? "Krankenkasse" : "Bar",
         vehicle: vehicleApiValue,
         customerName,
         passengerId: passengerId || undefined,
         scheduledAt: isInstant ? null : scheduledAt,
+        rideKind: medicalRideEnabled ? "medical" : "standard",
+        payerKind: medicalRideEnabled ? "insurance" : "passenger",
         ...(pricingMode ? { pricingMode } : {}),
-        ...(driverNote.trim() ? { partnerBookingMeta: { customer_driver_note: driverNote.trim() } } : {}),
+        ...(Object.keys(partnerBookingMeta).length > 0 ? { partnerBookingMeta } : {}),
+        ...(medicalRideEnabled && pendingTransportScanId
+          ? { customerMedicalScanId: pendingTransportScanId }
+          : {}),
         ...(codeTrim ? { accessCode: codeTrim } : {}),
         ...(profile.billingType === "company" && profile.costCenter.trim()
           ? { billingReference: profile.costCenter.trim() }
@@ -1347,6 +1449,93 @@ export default function NewBookingScreen() {
           </Pressable>
         </View>
 
+        {medicalTransportAvailable ? (
+          <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+            <View style={styles.medicalToggleRow}>
+              <View style={{ flex: 1, gap: rs(4) }}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                  Krankenfahrt (Transportschein)
+                </Text>
+                <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
+                  Optional — Zahlung über Krankenkasse nach Scan-Vorprüfung.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  const next = !medicalRideEnabled;
+                  setMedicalRideEnabled(next);
+                  if (!next) dismissTransportScan();
+                  Haptics.selectionAsync();
+                }}
+                style={[
+                  styles.medicalToggleTrack,
+                  { backgroundColor: medicalRideEnabled ? "#16A34A" : colors.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.medicalToggleThumb,
+                    { alignSelf: medicalRideEnabled ? "flex-end" : "flex-start" },
+                  ]}
+                />
+              </Pressable>
+            </View>
+            {medicalRideEnabled ? (
+              <View style={styles.medicalScanBox}>
+                <Text style={[styles.medicalScanLabel, { color: "#1D4ED8" }]}>Zahlungsart: Krankenkasse (KK)</Text>
+                <Pressable
+                  style={[styles.transportScanBtn, transportScanBusy && { opacity: 0.65 }]}
+                  disabled={transportScanBusy || submitting}
+                  onPress={openTransportScanPicker}
+                >
+                  {transportScanBusy ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Feather name="camera" size={16} color="#fff" />
+                  )}
+                  <Text style={styles.transportScanBtnText}>
+                    {transportScanBusy ? "Transportschein wird geprüft…" : "Transportschein scannen"}
+                  </Text>
+                </Pressable>
+                {transportScanTrafficLight ? (
+                  <>
+                    <MedicalTrafficLightCard
+                      scanApi="customer"
+                      trafficLight={transportScanTrafficLight}
+                      warnings={[]}
+                      customerReasonOverride={transportScanReasonDe}
+                      onPrimaryAction={() => {}}
+                      hidePrimaryButton
+                    />
+                    {transportScanTrafficLight === "green" ? (
+                      <Text style={styles.medicalScanHint}>Fahrer prüft vor Ort nochmals.</Text>
+                    ) : null}
+                    {transportScanTrafficLight === "yellow" ? (
+                      <Text style={[styles.medicalScanHint, { color: "#B45309" }]}>
+                        Letzte Entscheidung beim Fahrer.
+                      </Text>
+                    ) : null}
+                    {transportScanTrafficLight === "red" ? (
+                      <>
+                        <Text style={[styles.medicalScanHint, { color: "#B91C1C", fontFamily: "Inter_600SemiBold" }]}>
+                          Schein ungültig — weiter ohne KK?
+                        </Text>
+                        <Pressable style={styles.selfPaySwitchBtn} onPress={switchMedicalToBar}>
+                          <Text style={styles.selfPaySwitchBtnText}>Stattdessen Bar zahlen</Text>
+                        </Pressable>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text style={[styles.medicalScanHint, { color: "#2563EB" }]}>
+                    Bitte Transportschein scannen, um die Reservierung freizugeben.
+                  </Text>
+                )}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Vehicle — only after all fields filled */}
         {formComplete && (
           <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
@@ -1449,15 +1638,15 @@ export default function NewBookingScreen() {
         {/* Submit button */}
         {formComplete && (
           <Pressable
-            style={[styles.submitBtn, { opacity: submitting ? 0.7 : 1 }]}
-            disabled={submitting}
+            style={[styles.submitBtn, { opacity: canSubmitReservation ? 1 : 0.45 }]}
+            disabled={!canSubmitReservation}
             onPress={handleSubmit}
           >
             {submitting
               ? <ActivityIndicator color="#fff" size="small" />
               : <Feather name="check-circle" size={20} color="#fff" />
             }
-            <Text style={styles.submitBtnText}>{submitting ? "Wird gesendet…" : "Reservierung absenden"}</Text>
+            <Text style={styles.submitBtnText}>{submitButtonLabel}</Text>
           </Pressable>
         )}
 
@@ -1889,6 +2078,69 @@ const styles = StyleSheet.create({
     paddingVertical: rs(15),
   },
   submitBtnText: { ...accountSheetButtonLabel, color: "#fff" },
+  medicalToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(12),
+  },
+  medicalToggleTrack: {
+    width: rs(50),
+    height: rs(28),
+    borderRadius: rs(14),
+    justifyContent: "center",
+    paddingHorizontal: rs(2),
+  },
+  medicalToggleThumb: {
+    width: rs(24),
+    height: rs(24),
+    borderRadius: rs(12),
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  medicalScanBox: {
+    marginTop: rs(12),
+    borderRadius: rs(12),
+    borderWidth: 1.5,
+    borderColor: "#93C5FD",
+    backgroundColor: "#EFF6FF",
+    padding: rs(14),
+    gap: rs(10),
+  },
+  medicalScanLabel: {
+    fontSize: rf(12),
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.4,
+  },
+  medicalScanHint: {
+    fontSize: rf(12),
+    fontFamily: "Inter_500Medium",
+    color: "#1D4ED8",
+    lineHeight: rf(18),
+  },
+  transportScanBtn: {
+    backgroundColor: "#0F766E",
+    borderRadius: rs(11),
+    paddingVertical: rs(11),
+    paddingHorizontal: rs(12),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+  },
+  transportScanBtnText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: rf(13) },
+  selfPaySwitchBtn: {
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: rs(11),
+    paddingVertical: rs(11),
+    paddingHorizontal: rs(12),
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  selfPaySwitchBtnText: { color: "#0F172A", fontFamily: "Inter_700Bold", fontSize: rf(13) },
 
   reserveBottomBar: {
     paddingTop: rs(12),
