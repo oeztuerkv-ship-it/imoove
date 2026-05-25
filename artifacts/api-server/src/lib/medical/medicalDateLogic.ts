@@ -80,28 +80,59 @@ function pickOcrRideDate(extracted: MedicalOcrExtracted): string | null {
 function evaluateToday(input: MedicalDateLogicInput): MedicalDateLogicResult {
   const now = input.now ?? new Date();
   const ride = toDate(input.rideScheduledAt);
-  const expectedDate = ride ? berlinCalendarDay(ride) : berlinCalendarDay(now);
+  const today = berlinCalendarDay(now);
+  const expectedDate = ride ? berlinCalendarDay(ride) : today;
+  const { validFrom, validUntil, transportDate } = input.extracted;
   const ocrDate = pickOcrRideDate(input.extracted);
   const warningCodes: string[] = [];
   let severity: MedicalDateLogicSeverity = "ok";
 
-  if (!ocrDate) {
-    warningCodes.push("missing_ocr_date");
-    severity = "warn";
-  } else if (ocrDate !== expectedDate) {
-    const diff = dayDiff(ocrDate, expectedDate);
-    warningCodes.push("ride_date_mismatch");
-    severity = diff != null && Math.abs(diff) <= 1 ? "warn" : "fail";
+  if (validUntil && validUntil < today) {
+    warningCodes.push("validity_expired");
+    severity = "fail";
+  }
+  if (validFrom && today < validFrom) {
+    warningCodes.push("validity_not_yet_started");
+    severity = "fail";
+  }
+
+  if (severity !== "fail") {
+    const hasValidUntil = Boolean(validUntil);
+    const todayInValidityWindow =
+      (!validFrom || validFrom <= today) && (!validUntil || today <= validUntil);
+
+    if (hasValidUntil && todayInValidityWindow) {
+      // Heute liegt im Gültigkeitsfenster — Behandlungsdatum muss nicht „heute“ sein.
+    } else if (!hasValidUntil) {
+      const refDate = transportDate ?? ocrDate;
+      if (!refDate) {
+        warningCodes.push("missing_ocr_date");
+        severity = "warn";
+      } else {
+        const diff = dayDiff(refDate, today);
+        if (diff != null && Math.abs(diff) > 1) {
+          warningCodes.push("ride_date_mismatch");
+          severity = "fail";
+        }
+      }
+    }
   }
 
   return {
     type: "today",
     passed: severity === "ok",
     severity,
-    expectedDate,
+    expectedDate: today,
     ocrDate,
     warningCodes,
-    details: { rideScheduledAt: ride?.toISOString() ?? null },
+    details: {
+      rideScheduledAt: ride?.toISOString() ?? null,
+      today,
+      validFrom,
+      validUntil,
+      transportDate,
+      checkMode: validUntil ? "validity_window" : "transport_date_tolerance",
+    },
   };
 }
 

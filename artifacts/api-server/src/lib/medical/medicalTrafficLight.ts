@@ -51,6 +51,7 @@ const DATE_LOGIC_MESSAGES: Record<string, string> = {
   return_trip_date_implausible: "Rückfahrt-Datum nicht plausibel",
   missing_validity_window: "Gültigkeitszeitraum auf dem Schein unklar",
   validity_expired: "Schein abgelaufen",
+  validity_not_yet_started: "Schein noch nicht gültig",
   ride_before_valid_from: "Fahrt vor Gültigkeitsbeginn",
   ride_after_valid_until: "Fahrt nach Gültigkeitsende",
   series_window_exceeded: "Fahrt außerhalb Serien-Zeitraum",
