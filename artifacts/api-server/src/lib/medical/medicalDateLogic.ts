@@ -21,6 +21,18 @@ export function parseMedicalDateLogicType(raw: string | undefined | null): Medic
 
 const BERLIN_TZ = "Europe/Berlin";
 
+/** Vorstationär (Muster-4): Fahrt höchstens 3 Kalendertage vor Aufnahme, nicht danach. */
+const VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION = 3;
+/** Nachstationär (Muster-4): Fahrt höchstens 7 Kalendertage nach Entlassung. */
+const NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE = 7;
+
+export const MEDICAL_STATIONAER_KONTEXT_WARNING_CODES = [
+  "vorstationaer_outside_window",
+  "nachstationaer_outside_window",
+  "vorstationaer_missing_aufnahmedatum",
+  "nachstationaer_missing_entlassungsdatum",
+] as const;
+
 export type MedicalDateLogicSeriesContext = {
   id: string;
   validFrom: Date | string | null;
@@ -77,6 +89,78 @@ function pickOcrRideDate(extracted: MedicalOcrExtracted): string | null {
   return extracted.transportDate ?? extracted.validFrom ?? null;
 }
 
+function mergeDateLogicSeverity(
+  current: MedicalDateLogicSeverity,
+  next: MedicalDateLogicSeverity,
+): MedicalDateLogicSeverity {
+  if (current === "fail" || next === "fail") return "fail";
+  if (current === "warn" || next === "warn") return "warn";
+  return "ok";
+}
+
+/**
+ * Vor-/Nachstationär nur aus OCR (`behandlungsKontext` + Aufnahme-/Entlassungsdatum).
+ * Außerhalb Fenster → fail (Ampel: block_recommended); Referenzdatum fehlt → warn.
+ */
+function evaluateStationaerKontextDateWindow(
+  extracted: MedicalOcrExtracted,
+  rideDay: string,
+): { warningCodes: string[]; severity: MedicalDateLogicSeverity; details: Record<string, unknown> } {
+  const warningCodes: string[] = [];
+  let severity: MedicalDateLogicSeverity = "ok";
+  const details: Record<string, unknown> = {
+    behandlungsKontext: extracted.behandlungsKontext,
+    rideDay,
+    aufnahmedatum: extracted.aufnahmedatum,
+    entlassungsdatum: extracted.entlassungsdatum,
+  };
+
+  if (extracted.behandlungsKontext === "vorstationaer") {
+    const admission = extracted.aufnahmedatum;
+    if (!admission) {
+      warningCodes.push("vorstationaer_missing_aufnahmedatum");
+      severity = mergeDateLogicSeverity(severity, "warn");
+    } else {
+      const diff = dayDiff(rideDay, admission);
+      details.vorstationaerDayDiff = diff;
+      if (diff == null || diff < -VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION || diff > 0) {
+        warningCodes.push("vorstationaer_outside_window");
+        severity = mergeDateLogicSeverity(severity, "fail");
+      }
+    }
+  }
+
+  if (extracted.behandlungsKontext === "nachstationaer") {
+    const discharge = extracted.entlassungsdatum;
+    if (!discharge) {
+      warningCodes.push("nachstationaer_missing_entlassungsdatum");
+      severity = mergeDateLogicSeverity(severity, "warn");
+    } else {
+      const diff = dayDiff(rideDay, discharge);
+      details.nachstationaerDayDiff = diff;
+      if (diff == null || diff < 0 || diff > NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE) {
+        warningCodes.push("nachstationaer_outside_window");
+        severity = mergeDateLogicSeverity(severity, "fail");
+      }
+    }
+  }
+
+  return { warningCodes, severity, details };
+}
+
+function applyStationaerKontextChecks(
+  input: MedicalDateLogicInput,
+  rideDay: string,
+  warningCodes: string[],
+  severity: MedicalDateLogicSeverity,
+  details: Record<string, unknown>,
+): MedicalDateLogicSeverity {
+  const stationaer = evaluateStationaerKontextDateWindow(input.extracted, rideDay);
+  warningCodes.push(...stationaer.warningCodes);
+  Object.assign(details, { stationaerKontext: stationaer.details });
+  return mergeDateLogicSeverity(severity, stationaer.severity);
+}
+
 function evaluateToday(input: MedicalDateLogicInput): MedicalDateLogicResult {
   const now = input.now ?? new Date();
   const ride = toDate(input.rideScheduledAt);
@@ -118,6 +202,16 @@ function evaluateToday(input: MedicalDateLogicInput): MedicalDateLogicResult {
     }
   }
 
+  const details: Record<string, unknown> = {
+    rideScheduledAt: ride?.toISOString() ?? null,
+    today,
+    validFrom,
+    validUntil,
+    transportDate,
+    checkMode: validUntil ? "validity_window" : "transport_date_tolerance",
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+
   return {
     type: "today",
     passed: severity === "ok",
@@ -125,14 +219,7 @@ function evaluateToday(input: MedicalDateLogicInput): MedicalDateLogicResult {
     expectedDate: today,
     ocrDate,
     warningCodes,
-    details: {
-      rideScheduledAt: ride?.toISOString() ?? null,
-      today,
-      validFrom,
-      validUntil,
-      transportDate,
-      checkMode: validUntil ? "validity_window" : "transport_date_tolerance",
-    },
+    details,
   };
 }
 
@@ -174,6 +261,15 @@ function evaluateSeries(input: MedicalDateLogicInput): MedicalDateLogicResult {
     severity = "warn";
   }
 
+  const details: Record<string, unknown> = {
+    seriesId: series?.id ?? null,
+    validFrom: series ? normalizeMedicalOcrDate(series.validFrom) : null,
+    validUntil: series ? normalizeMedicalOcrDate(series.validUntil) : null,
+    totalRides: series?.totalRides ?? null,
+    completedRides: series?.completedRides ?? null,
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+
   return {
     type: "series",
     passed: severity === "ok",
@@ -181,13 +277,7 @@ function evaluateSeries(input: MedicalDateLogicInput): MedicalDateLogicResult {
     expectedDate,
     ocrDate,
     warningCodes,
-    details: {
-      seriesId: series?.id ?? null,
-      validFrom: series ? normalizeMedicalOcrDate(series.validFrom) : null,
-      validUntil: series ? normalizeMedicalOcrDate(series.validUntil) : null,
-      totalRides: series?.totalRides ?? null,
-      completedRides: series?.completedRides ?? null,
-    },
+    details,
   };
 }
 
@@ -220,6 +310,13 @@ function evaluateReturnTrip(input: MedicalDateLogicInput): MedicalDateLogicResul
     severity = "warn";
   }
 
+  const details: Record<string, unknown> = {
+    returnRideScheduledAt: returnRide?.toISOString() ?? null,
+  };
+  if (expectedDate) {
+    severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+  }
+
   return {
     type: "return_trip",
     passed: severity === "ok",
@@ -227,9 +324,7 @@ function evaluateReturnTrip(input: MedicalDateLogicInput): MedicalDateLogicResul
     expectedDate,
     ocrDate,
     warningCodes,
-    details: {
-      returnRideScheduledAt: returnRide?.toISOString() ?? null,
-    },
+    details,
   };
 }
 
@@ -278,6 +373,13 @@ function evaluateLongTermTreatment(input: MedicalDateLogicInput): MedicalDateLog
     if (severity !== "fail") severity = "warn";
   }
 
+  const details: Record<string, unknown> = {
+    validFrom,
+    validUntil,
+    seriesId: series?.id ?? null,
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+
   return {
     type: "long_term_treatment",
     passed: severity === "ok",
@@ -285,11 +387,7 @@ function evaluateLongTermTreatment(input: MedicalDateLogicInput): MedicalDateLog
     expectedDate,
     ocrDate,
     warningCodes,
-    details: {
-      validFrom,
-      validUntil,
-      seriesId: series?.id ?? null,
-    },
+    details,
   };
 }
 
