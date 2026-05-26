@@ -257,8 +257,8 @@ function GutscheineView({ token, user }) {
                     <code style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1, color: RED, background: "#fff0f0", padding: "3px 10px", borderRadius: 6 }}>
                       {item.codeNormalized || "—"}
                     </code>
-                    <button onClick={() => copyCode(item.codeNormalized)} style={{ fontSize: 11, border: "0.5px solid rgba(0,0,0,0.15)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", background: copied === item.codeNormalizedNormalized ? "#dcfce7" : "#fff" }}>
-                      {copied === item.codeNormalizedNormalized ? "✓ Kopiert" : "Kopieren"}
+                    <button onClick={() => copyCode(item.codeNormalized)} style={{ fontSize: 12, border: copied === item.codeNormalized ? "1px solid #16a34a" : "0.5px solid rgba(0,0,0,0.15)", borderRadius: 6, padding: "4px 12px", cursor: "pointer", background: copied === item.codeNormalized ? "#dcfce7" : "#fff", color: copied === item.codeNormalized ? "#16a34a" : "inherit", fontWeight: copied === item.codeNormalized ? 600 : 400, transition: "all 0.2s" }}>
+                      {copied === item.codeNormalized ? "✓ Kopiert!" : "Kopieren"}
                     </button>
                     <span style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", marginLeft: "auto" }}>
                       {item.usesCount || 0} / {item.maxUses ?? "∞"} Nutzungen
