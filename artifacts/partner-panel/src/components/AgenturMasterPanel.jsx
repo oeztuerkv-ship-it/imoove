@@ -122,8 +122,11 @@ function GutscheineView({ token, user }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", notes: "" });
+  const [form, setForm] = useState({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", fixedDestination: "", notes: "" });
   const [copied, setCopied] = useState(null);
+  const [belegCode, setBelegCode] = useState(null);
+  const [belegRides, setBelegRides] = useState([]);
+  const [belegBusy, setBelegBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -159,7 +162,7 @@ function GutscheineView({ token, user }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Fehler");
-      setForm({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", notes: "" });
+      setForm({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", fixedDestination: "", notes: "" });
       await load();
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
@@ -180,6 +183,14 @@ function GutscheineView({ token, user }) {
     navigator.clipboard.writeText(code).then(() => { setCopied(code); setTimeout(() => setCopied(null), 2000); });
   };
 
+  const loadBeleg = async (item) => {
+    setBelegCode(item); setBelegRides([]); setBelegBusy(true);
+    try {
+      const res = await fetch(`${PANEL}/rides?accessCodeId=${encodeURIComponent(item.id)}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json().catch(() => ({}));
+      setBelegRides(Array.isArray(data.rides) ? data.rides : []);
+    } catch {/**/ } finally { setBelegBusy(false); }
+  };
   const statusInfo = (row) => {
     if (!row.isActive) return { label: "Deaktiviert", tone: "muted" };
     if (row.maxUses != null && (row.usesCount || 0) >= row.maxUses) return { label: "Aufgebraucht", tone: "warn" };
