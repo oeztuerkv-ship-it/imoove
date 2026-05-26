@@ -218,6 +218,10 @@ export default function AppOperationalTariffsPage() {
   const [wcForm, setWcForm] = useState(() => tierDefaults());
   const [xlSurchargeEur, setXlSurchargeEur] = useState("7");
   const [wcSurchargeEur, setWcSurchargeEur] = useState("0");
+  const [templates, setTemplates] = useState([]);
+  const [tplName, setTplName] = useState("");
+  const [tplBusy, setTplBusy] = useState(false);
+  const [activeTplId, setActiveTplId] = useState("");
   const [edLabel, setEdLabel] = useState("");
   const [edTerms, setEdTerms] = useState("");
   const [edActive, setEdActive] = useState(true);
@@ -241,6 +245,7 @@ export default function AppOperationalTariffsPage() {
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Laden fehlgeschlagen");
       setConfig(data.config);
       setServiceRegions(Array.isArray(data.serviceRegions) ? data.serviceRegions : []);
+      setTemplates(Array.isArray(data.config?.tariffTemplates) ? data.config.tariffTemplates : []);
       if (data.config?.tariffs && typeof data.config.tariffs === "object" && "active" in data.config.tariffs) {
         setTariffsActive(data.config.tariffs.active !== false);
       }
@@ -302,6 +307,36 @@ export default function AppOperationalTariffsPage() {
       setWcSurchargeEur(String(wcOv.surchargeEur));
     }
   }, [config, selectedRegionId, serviceRegions]);
+
+  const saveTemplates = async (newTpls) => {
+    setTplBusy(true);
+    try {
+      const res = await fetch(URL, { method: "PATCH", headers: adminApiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ tariffTemplates: newTpls }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d?.ok) throw new Error(d?.error || "Fehler");
+      setTemplates(newTpls);
+      setConfig((prev) => ({ ...(prev || {}), tariffTemplates: newTpls }));
+    } catch (e) { setError(e instanceof Error ? e.message : "Fehler"); }
+    finally { setTplBusy(false); }
+  };
+
+  const saveCurrentAsTemplate = async () => {
+    if (!tplName.trim()) { setError("Vorlagenname eingeben."); return; }
+    const t = { id: Date.now().toString(36), name: tplName.trim(), std: { ...stdForm }, xl: { ...xlForm }, wc: { ...wcForm }, xlSurchargeEur, wcSurchargeEur };
+    await saveTemplates([...templates, t]);
+    setTplName("");
+    setOk("Vorlage gespeichert: " + t.name);
+  };
+
+  const deleteTpl = async (id) => { await saveTemplates(templates.filter((t) => t.id !== id)); setOk("Vorlage gelöscht."); };
+
+  const applyTemplate = (tpl) => {
+    if (!tpl) return;
+    setStdForm({ ...tpl.std }); setXlForm({ ...tpl.xl }); setWcForm({ ...tpl.wc });
+    setXlSurchargeEur(tpl.xlSurchargeEur ?? "7"); setWcSurchargeEur(tpl.wcSurchargeEur ?? "0");
+    setActiveTplId(tpl.id);
+    setOk("Vorlage geladen: " + tpl.name + " — prüfen und speichern.");
+  };
 
   const buildRegionTariffPayload = () => {
     const prev = rawRegionTariff;
@@ -594,6 +629,26 @@ export default function AppOperationalTariffsPage() {
             </label>
           </div>
 
+          <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16, border: "0.5px solid rgba(239,29,38,0.25)", background: "rgba(239,29,38,0.02)" }}>
+            <div className="admin-panel-card__title" style={{ color: "#EF1D26" }}>Tarif-Vorlagen</div>
+            <p className="admin-table-sub" style={{ marginTop: 2 }}>Einmal definieren — per Klick auf jede Region anwenden.</p>
+            {templates.length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                {templates.map((tpl) => (
+                  <div key={tpl.id} style={{ display: "flex", alignItems: "center", gap: 8, background: activeTplId === tpl.id ? "rgba(239,29,38,0.08)" : "rgba(0,0,0,0.04)", borderRadius: 10, padding: "7px 14px", border: activeTplId === tpl.id ? "1px solid rgba(239,29,38,0.3)" : "0.5px solid rgba(0,0,0,0.12)" }}>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{tpl.name}</span>
+                    <button type="button" className="admin-c-btn-sec" style={{ fontSize: 12, padding: "3px 10px" }} onClick={() => applyTemplate(tpl)}>Laden</button>
+                    <button type="button" style={{ border: "none", background: "none", cursor: "pointer", color: "rgba(0,0,0,0.3)", fontSize: 18, lineHeight: 1, padding: "0 2px" }} onClick={() => void deleteTpl(tpl.id)}>x</button>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="admin-table-sub" style={{ marginTop: 8, fontStyle: "italic" }}>Noch keine Vorlagen — Tarif ausfüllen, dann hier speichern.</p>}
+            <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <input className="admin-input" style={{ maxWidth: 300 }} placeholder="Name z. B. TTO Esslingen 2022" value={tplName} onChange={(e) => setTplName(e.target.value)} />
+              <button type="button" className="admin-m-btn-pri" onClick={() => void saveCurrentAsTemplate()} disabled={tplBusy}>{tplBusy ? "..." : "Aktuelle Werte als Vorlage speichern"}</button>
+            </div>
+            <p className="admin-table-sub" style={{ marginTop: 6 }}>Tipp: Erst unten Tarif-Felder ausfüllen — dann hier als Vorlage speichern.</p>
+          </div>
           <TarifBlock title="STANDARD" hint="Normales Taxi — gilt für die Standard-Fahrzeugklasse." value={stdForm} onChange={setStdForm} />
           <TarifBlock title="XL" hint="Größeres Fahrzeug — eigene Preise." value={xlForm} onChange={setXlForm} surchargeEur={xlSurchargeEur} onSurchargeChange={setXlSurchargeEur} />
           <TarifBlock title="ROLLSTUHL" hint="Rollstuhlfahrten — eigene Preise." value={wcForm} onChange={setWcForm} surchargeEur={wcSurchargeEur} onSurchargeChange={setWcSurchargeEur} />
