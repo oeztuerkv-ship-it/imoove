@@ -1,16 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray } from "drizzle-orm";
+import { findCompanyById } from "./adminData.js";
 import { getDb } from "./client";
+import { sendInvoiceReminderMail } from "../lib/invoiceReminderMail.js";
 import {
   buildInvoicePaymentReference,
   resolveInvoicePaymentReference,
 } from "../lib/invoicePaymentReference.js";
+import { isOnrodaSmtpConfigured } from "../lib/onrodaSmtpMail.js";
 import {
   resolveInvoiceWorkflowStatus,
   workflowStatusLabelDe,
   type InvoiceWorkflowStatus,
 } from "../lib/invoiceWorkflow.js";
 import {
+  adminCompaniesTable,
+  billingAccountsTable,
   financialAuditLogTable,
   invoicesTable,
   paymentsTable,
@@ -205,57 +210,158 @@ export async function adminMarkInvoicePaid(input: {
   }
 }
 
-/** Admin: Zahlungserinnerung verbuchen (Status + Audit; E-Mail später). */
+function pickBillingEmail(...candidates: Array<string | null | undefined>): string | null {
+  for (const raw of candidates) {
+    const t = String(raw ?? "").trim();
+    if (t.includes("@")) return t;
+  }
+  return null;
+}
+
+/** Rechnungs-E-Mail: billing_accounts → Unternehmens-E-Mail → Support-E-Mail. */
+export async function resolveInvoiceBillingEmail(companyId: string): Promise<string | null> {
+  const db = getDb();
+  if (!db || !companyId.trim()) return null;
+
+  const billingRows = await db
+    .select({ billing_email: billingAccountsTable.billing_email })
+    .from(billingAccountsTable)
+    .where(and(eq(billingAccountsTable.company_id, companyId), eq(billingAccountsTable.is_active, true)))
+    .limit(5);
+
+  for (const row of billingRows) {
+    const email = pickBillingEmail(row.billing_email);
+    if (email) return email;
+  }
+
+  const companyRows = await db
+    .select({ email: adminCompaniesTable.email, support_email: adminCompaniesTable.support_email })
+    .from(adminCompaniesTable)
+    .where(eq(adminCompaniesTable.id, companyId))
+    .limit(1);
+  const company = companyRows[0];
+  if (!company) return null;
+  return pickBillingEmail(company.email, company.support_email);
+}
+
+export type AdminSendInvoiceReminderResult =
+  | {
+      ok: true;
+      idempotent?: boolean;
+      message: string;
+      mail_to: string | null;
+      mail_status: "sent" | "skipped_idempotent" | "not_sent";
+      reminder_mail_sent_at?: string | null;
+      reminder_mail_to?: string | null;
+      reminder_mail_status?: string | null;
+    }
+  | { ok: false; error: string };
+
+/** Admin: Zahlungserinnerung (Status + Audit + E-Mail über bestehenden SMTP-Stack). */
 export async function adminSendInvoicePaymentReminder(input: {
   invoiceId: string;
   actorLabel: string;
-}): Promise<
-  | { ok: true; idempotent?: boolean }
-  | { ok: false; error: string }
-> {
+}): Promise<AdminSendInvoiceReminderResult> {
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
   const invoiceId = input.invoiceId.trim();
   if (!invoiceId) return { ok: false, error: "invoice_id_required" };
 
+  const invRows = await db.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).limit(1);
+  const inv = invRows[0];
+  if (!inv) return { ok: false, error: "invoice_not_found" };
+  if (inv.status === "paid") return { ok: false, error: "invoice_already_paid" };
+  if (inv.status === "cancelled") return { ok: false, error: "invoice_cancelled" };
+  if (inv.status === "draft") return { ok: false, error: "invoice_draft" };
+
+  const prevMeta =
+    inv.metadata_json && typeof inv.metadata_json === "object"
+      ? (inv.metadata_json as Record<string, unknown>)
+      : {};
+
+  if (inv.status === "reminder_sent") {
+    const mailTo = typeof prevMeta.reminder_mail_to === "string" ? prevMeta.reminder_mail_to : null;
+    const mailStatus =
+      typeof prevMeta.reminder_mail_status === "string" ? prevMeta.reminder_mail_status : "sent";
+    return {
+      ok: true,
+      idempotent: true,
+      message: mailTo
+        ? `Erinnerung war bereits verbucht (E-Mail an ${mailTo}).`
+        : "Erinnerung war bereits verbucht.",
+      mail_to: mailTo,
+      mail_status: "skipped_idempotent",
+      reminder_mail_sent_at:
+        typeof prevMeta.reminder_mail_sent_at === "string" ? prevMeta.reminder_mail_sent_at : null,
+      reminder_mail_to: mailTo,
+      reminder_mail_status: mailStatus,
+    };
+  }
+
+  const companyId = String(inv.company_id ?? "").trim();
+  if (!companyId) return { ok: false, error: "company_missing" };
+
+  const mailTo = await resolveInvoiceBillingEmail(companyId);
+  if (!mailTo) return { ok: false, error: "billing_email_missing" };
+  if (!isOnrodaSmtpConfigured()) return { ok: false, error: "smtp_not_configured" };
+
+  const company = await findCompanyById(companyId);
+  const companyName = company?.billing_name?.trim() || company?.name?.trim() || companyId;
+  const paymentReference = resolveInvoicePaymentReference({
+    invoiceNumber: inv.invoice_number,
+    storedReference: inv.payment_reference,
+  });
+
+  const mailResult = await sendInvoiceReminderMail({
+    to: mailTo,
+    companyName,
+    invoiceNumber: inv.invoice_number,
+    paymentReference,
+    totalGross: Number(inv.total_gross),
+    dueDate: inv.due_date ? String(inv.due_date) : null,
+    periodFrom: String(inv.billing_period_start),
+    periodTo: String(inv.billing_period_end),
+  });
+
+  if (!mailResult.ok) {
+    return {
+      ok: false,
+      error: mailResult.reason === "smtp_not_configured" ? "smtp_not_configured" : "mail_send_failed",
+    };
+  }
+
+  const sentAt = new Date().toISOString();
+  const reminderCount = Number(prevMeta.reminder_count ?? 0) + 1;
+  const priorHistory = Array.isArray(prevMeta.reminder_history)
+    ? (prevMeta.reminder_history as Array<Record<string, unknown>>)
+    : [];
+  const reminder_history = [
+    ...priorHistory,
+    {
+      sentAt,
+      sentBy: input.actorLabel,
+      sequence: reminderCount,
+      mailTo,
+      mailStatus: "sent",
+    },
+  ];
+
   try {
-    return await db.transaction(async (tx) => {
-      const invRows = await tx
+    await db.transaction(async (tx) => {
+      const locked = await tx
         .select()
         .from(invoicesTable)
         .where(eq(invoicesTable.id, invoiceId))
         .for("update")
         .limit(1);
-      const inv = invRows[0];
-      if (!inv) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
-
-      if (inv.status === "paid") {
-        throw Object.assign(new Error("paid"), { code: "invoice_already_paid" });
-      }
-      if (inv.status === "cancelled") {
+      const current = locked[0];
+      if (!current) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
+      if (current.status === "paid") throw Object.assign(new Error("paid"), { code: "invoice_already_paid" });
+      if (current.status === "cancelled") {
         throw Object.assign(new Error("cancelled"), { code: "invoice_cancelled" });
       }
-      if (inv.status === "draft") {
-        throw Object.assign(new Error("draft"), { code: "invoice_draft" });
-      }
-
-      if (inv.status === "reminder_sent") {
-        return { ok: true as const, idempotent: true };
-      }
-
-      const sentAt = new Date().toISOString();
-      const prevMeta =
-        inv.metadata_json && typeof inv.metadata_json === "object"
-          ? (inv.metadata_json as Record<string, unknown>)
-          : {};
-      const reminderCount = Number(prevMeta.reminder_count ?? 0) + 1;
-      const priorHistory = Array.isArray(prevMeta.reminder_history)
-        ? (prevMeta.reminder_history as Array<Record<string, unknown>>)
-        : [];
-      const reminder_history = [
-        ...priorHistory,
-        { sentAt, sentBy: input.actorLabel, sequence: reminderCount },
-      ];
+      if (current.status === "draft") throw Object.assign(new Error("draft"), { code: "invoice_draft" });
+      if (current.status === "reminder_sent") return;
 
       await tx
         .update(invoicesTable)
@@ -268,6 +374,9 @@ export async function adminSendInvoicePaymentReminder(input: {
             reminder_count: reminderCount,
             last_reminder_by: input.actorLabel,
             reminder_history,
+            reminder_mail_sent_at: sentAt,
+            reminder_mail_to: mailTo,
+            reminder_mail_status: "sent",
           },
         })
         .where(eq(invoicesTable.id, invoiceId));
@@ -276,13 +385,18 @@ export async function adminSendInvoicePaymentReminder(input: {
         entityType: "invoice",
         entityId: invoiceId,
         action: "invoice_reminder_sent",
-        oldValue: { status: inv.status },
-        newValue: { status: "reminder_sent", reminder_sent_at: sentAt, reminder_count: reminderCount },
+        oldValue: { status: current.status },
+        newValue: {
+          status: "reminder_sent",
+          reminder_sent_at: sentAt,
+          reminder_count: reminderCount,
+          reminder_mail_sent_at: sentAt,
+          reminder_mail_to: mailTo,
+          reminder_mail_status: "sent",
+        },
         actorType: "admin",
         actorId: input.actorLabel,
       });
-
-      return { ok: true as const };
     });
   } catch (e: unknown) {
     const err = e as Error & { code?: string };
@@ -292,6 +406,16 @@ export async function adminSendInvoicePaymentReminder(input: {
     if (err.code === "invoice_draft") return { ok: false, error: "invoice_draft" };
     throw e;
   }
+
+  return {
+    ok: true,
+    message: `Erinnerung gesendet an ${mailTo}.`,
+    mail_to: mailTo,
+    mail_status: "sent",
+    reminder_mail_sent_at: sentAt,
+    reminder_mail_to: mailTo,
+    reminder_mail_status: "sent",
+  };
 }
 
 function readInvoiceMeta(inv: typeof invoicesTable.$inferSelect): Record<string, unknown> {

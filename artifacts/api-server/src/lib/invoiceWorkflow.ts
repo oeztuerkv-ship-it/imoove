@@ -165,14 +165,18 @@ export function buildPartnerPaymentUi(input: {
     : "—";
 
   if (input.workflowStatus === "overdue" || input.workflowStatus === "reminder_sent") {
+    const amount = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(
+      input.totalGross,
+    );
     return {
       kind: "reminder",
       title: "Zahlungserinnerung",
       bodyLines: [
-        `Diese Rechnung ist seit dem ${dueFmt} offen.`,
-        "Bitte verwenden Sie als Verwendungszweck:",
+        `Zu Rechnung ${input.invoiceNumber} (${amount}) liegt noch kein Zahlungseingang vor.`,
+        input.dueDate ? `Fällig war: ${dueFmt}.` : "",
+        "Bitte überweisen Sie mit folgendem Verwendungszweck:",
         ref,
-      ],
+      ].filter(Boolean),
       showPaymentDetails: true,
     };
   }

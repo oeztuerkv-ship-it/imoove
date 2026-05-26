@@ -281,6 +281,13 @@ export default function FinanceInvoicesPage() {
     }
   }
 
+  function reminderErrorMessage(code) {
+    if (code === "smtp_not_configured") return "SMTP nicht konfiguriert.";
+    if (code === "billing_email_missing") return "Keine Rechnungs-E-Mail hinterlegt.";
+    if (code === "mail_send_failed") return "E-Mail-Versand fehlgeschlagen.";
+    return code || "Erinnerung fehlgeschlagen.";
+  }
+
   async function sendReminder(id) {
     const targetId = id ?? detail?.id;
     if (!targetId) return;
@@ -293,8 +300,19 @@ export default function FinanceInvoicesPage() {
         body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-      setActionMsg(data.idempotent ? "Erinnerung war bereits verbucht." : "Zahlungserinnerung gesendet.");
+      if (!res.ok) {
+        setActionMsg(reminderErrorMessage(data?.error));
+        return;
+      }
+      setActionMsg(
+        typeof data.message === "string" && data.message.trim()
+          ? data.message
+          : data.idempotent
+            ? "Erinnerung war bereits verbucht."
+            : data.mail_to
+              ? `Erinnerung gesendet an ${data.mail_to}.`
+              : "Zahlungserinnerung gesendet.",
+      );
       await openDetail(targetId);
       await load();
       await loadKpis();

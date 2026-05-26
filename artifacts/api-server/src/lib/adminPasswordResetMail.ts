@@ -1,21 +1,4 @@
-import nodemailer from "nodemailer";
-import { logger } from "./logger";
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function resolveSmtpUrl(): string {
-  return (process.env.ADMIN_AUTH_MAIL_SMTP_URL ?? process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
-}
-
-function resolveMailFrom(): string {
-  return (process.env.ADMIN_AUTH_MAIL_FROM ?? process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
-}
+import { escapeHtmlMail, sendOnrodaMail } from "./onrodaSmtpMail.js";
 
 /** Öffentliche Admin-Passwort-Reset-Seite (ohne Query); Default produktiv admin.onroda.de + Vite-Base `/partners/`. */
 export function adminPasswordResetPageBaseUrl(): string {
@@ -42,24 +25,15 @@ export async function sendAdminPasswordResetMail(input: {
   username: string;
   expiresAt: Date;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const smtpUrl = resolveSmtpUrl();
-  const from = resolveMailFrom();
   const to = input.to.trim();
   if (!to || !to.includes("@")) {
     return { ok: false, reason: "invalid_to" };
-  }
-  if (!smtpUrl || !from) {
-    logger.info(
-      { to: to.replace(/(.{2}).*(@.*)/, "$1…$2") },
-      "admin password reset mail skipped (set ADMIN_AUTH_MAIL_SMTP_URL + ADMIN_AUTH_MAIL_FROM, or PARTNER_REGISTRATION_*)",
-    );
-    return { ok: false, reason: "smtp_not_configured" };
   }
 
   const subject = "Passwort zurücksetzen";
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
-  const resetLinkEsc = escapeHtml(input.resetLink);
+  const resetLinkEsc = escapeHtmlMail(input.resetLink);
 
   const text = [
     "Du hast eine Anfrage zum Zurücksetzen deines Passworts für die Admin-Konsole gestellt.",
@@ -94,7 +68,7 @@ export async function sendAdminPasswordResetMail(input: {
         </a>
       </div>
       <p style="font-size:12px;color:#888;margin:0;line-height:1.5;">
-        Dieser Link ist ${ttlMinutes} Minuten gültig (bis ${escapeHtml(until)}, Europe/Berlin).
+        Dieser Link ist ${ttlMinutes} Minuten gültig (bis ${escapeHtmlMail(until)}, Europe/Berlin).
       </p>
       <p style="font-size:12px;color:#888;margin:12px 0 0;line-height:1.5;">
         Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.
@@ -103,13 +77,11 @@ export async function sendAdminPasswordResetMail(input: {
   </div>
 </body></html>`;
 
-  try {
-    const transport = nodemailer.createTransport(smtpUrl);
-    await transport.sendMail({ from, to, subject, text, html });
-    logger.info({ event: "admin.auth.password_reset_mail.sent" }, "admin password reset mail sent");
-    return { ok: true };
-  } catch (err) {
-    logger.warn({ err }, "admin password reset mail failed");
-    return { ok: false, reason: "send_failed" };
-  }
+  return sendOnrodaMail({
+    to,
+    subject,
+    text,
+    html,
+    logEvent: "admin.auth.password_reset_mail.sent",
+  });
 }

@@ -486,6 +486,11 @@ export async function findInvoiceAdmin(invoiceId: string) {
     paid_at: typeof meta.paid_at === "string" ? meta.paid_at : null,
     paid_by_admin: typeof meta.paid_by_admin === "string" ? meta.paid_by_admin : null,
     reminder_sent_at: typeof meta.reminder_sent_at === "string" ? meta.reminder_sent_at : null,
+    reminder_mail_sent_at:
+      typeof meta.reminder_mail_sent_at === "string" ? meta.reminder_mail_sent_at : null,
+    reminder_mail_to: typeof meta.reminder_mail_to === "string" ? meta.reminder_mail_to : null,
+    reminder_mail_status:
+      typeof meta.reminder_mail_status === "string" ? meta.reminder_mail_status : null,
     payment_reverted_at: typeof meta.payment_reverted_at === "string" ? meta.payment_reverted_at : null,
     payment_reverted_by_admin:
       typeof meta.payment_reverted_by_admin === "string" ? meta.payment_reverted_by_admin : null,

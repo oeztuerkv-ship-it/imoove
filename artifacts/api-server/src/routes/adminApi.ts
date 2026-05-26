@@ -1334,13 +1334,28 @@ adminJson.post("/finance/invoices/:invoiceId/send-reminder", async (req, res, ne
       const st =
         out.error === "invoice_not_found"
           ? 404
-          : out.error === "invoice_cancelled" || out.error === "invoice_already_paid"
-            ? 409
-            : 400;
+          : out.error === "smtp_not_configured"
+            ? 503
+            : out.error === "billing_email_missing"
+              ? 422
+              : out.error === "mail_send_failed"
+                ? 502
+                : out.error === "invoice_cancelled" || out.error === "invoice_already_paid"
+                  ? 409
+                  : 400;
       res.status(st).json({ error: out.error });
       return;
     }
-    res.json({ ok: true, idempotent: out.idempotent === true });
+    res.json({
+      ok: true,
+      idempotent: out.idempotent === true,
+      message: out.message,
+      mail_to: out.mail_to,
+      mail_status: out.mail_status,
+      reminder_mail_sent_at: out.reminder_mail_sent_at ?? null,
+      reminder_mail_to: out.reminder_mail_to ?? null,
+      reminder_mail_status: out.reminder_mail_status ?? null,
+    });
   } catch (e) {
     next(e);
   }

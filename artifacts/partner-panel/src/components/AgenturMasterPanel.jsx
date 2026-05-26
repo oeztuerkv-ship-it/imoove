@@ -409,7 +409,7 @@ function paymentStatusLabelDe(paymentStatus, statusLabelDe) {
 function paymentStatusTone(paymentStatus) {
   if (paymentStatus === "paid") return "ok";
   if (paymentStatus === "overdue" || paymentStatus === "cancelled") return "err";
-  if (paymentStatus === "reminder_sent") return "warn";
+  if (paymentStatus === "reminder_sent") return "muted";
   if (
     paymentStatus === "open" ||
     paymentStatus === "issued" ||
