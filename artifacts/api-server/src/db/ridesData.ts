@@ -37,7 +37,7 @@ import {
   isAuthorizationSource,
   normalizeAccessCodeInput,
 } from "../domain/rideAuthorization";
-import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
+import { redeemAccessCodeInTransaction, redeemAccessCodeMemory, decrementAccessCodeUsage } from "./accessCodesData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
@@ -1517,6 +1517,15 @@ export async function applyRideMutationPersistence(
       actorId: actor.actorId,
       payload: {},
     });
+  }
+  const CANCEL_STATUSES = new Set(["cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"]);
+  if (
+    cur.status !== next.status &&
+    CANCEL_STATUSES.has(next.status) &&
+    !CANCEL_STATUSES.has(cur.status) &&
+    cur.accessCodeId
+  ) {
+    await decrementAccessCodeUsage(cur.accessCodeId).catch(() => {});
   }
 }
 

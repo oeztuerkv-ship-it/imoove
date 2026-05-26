@@ -96,7 +96,7 @@ function DashboardView({ token, company }) {
         {[
           { label: "Aktive Gutscheine", value: loading ? "…" : activeCodes },
           { label: "Fahrten diesen Monat", value: loading ? "…" : ridesThisMonth },
-          { label: "Gesamtumsatz", value: loading ? "…" : fmtMoney(totalSpent) },
+          { label: "Offene Kosten", value: loading ? "…" : fmtMoney(totalSpent) },
         ].map(s => (
           <Card key={s.label} style={{ textAlign: "center" }}>
             <p style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", margin: "0 0 6px" }}>{s.label}</p>

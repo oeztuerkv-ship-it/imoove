@@ -324,6 +324,16 @@ function memToAdmin(m: MemRow): AdminAccessCodeRow {
   };
 }
 
+export async function decrementAccessCodeUsage(id: string): Promise<void> {
+  const mem = MEM_CODES.find ? Array.from(MEM_CODES.values ? MEM_CODES.values() : []).find((m: MemRow) => m.id === id) : null;
+  if (mem) { mem.uses_count = Math.max(0, mem.uses_count - 1); }
+  const db = getDb();
+  if (!db) return;
+  await db.update(accessCodesTable)
+    .set({ uses_count: sql`GREATEST(0, ${accessCodesTable.uses_count} - 1)` })
+    .where(eq(accessCodesTable.id, id));
+}
+
 /** Partner-Panel: gleiche Struktur ohne interne Notiz. */
 export function accessCodeRowForPanel(row: AdminAccessCodeRow): AdminAccessCodeRow {
   return row;
