@@ -7,10 +7,12 @@ const RED = "#EF1D26";
 const BG = "#F2F2F7";
 
 const NAV = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "gutscheine", label: "Gutscheine" },
-  { key: "fahrten", label: "Fahrten" },
-  { key: "abrechnung", label: "Abrechnung" },
+  { key: "dashboard", label: "Übersicht", icon: "🏨" },
+  { key: "gutscheine", label: "Gutscheine", icon: "🎟️" },
+  { key: "fahrten", label: "Fahrten", icon: "🚕" },
+  { key: "abrechnung", label: "Abrechnung", icon: "🧾" },
+  { key: "support", label: "Support", icon: "💬" },
+  { key: "einstellungen", label: "Einstellungen", icon: "⚙️" },
 ];
 
 function Badge({ tone, children }) {
@@ -399,6 +401,79 @@ function AbrechnungView({ token }) {
 }
 
 /* ── MAIN ──────────────────────────────────────────────── */
+function SupportView() {
+  return (
+    <div>
+      <Section title="Support & Hilfe">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Card>
+            <p style={{ margin: "0 0 6px", fontWeight: 700 }}>Schnelle Hilfe</p>
+            <p style={{ margin: 0, fontSize: 13, color: "rgba(0,0,0,0.55)", lineHeight: 1.6 }}>
+              Fragen zu Gutscheinen, Fahrten oder Abrechnung können direkt an den ONRODA-Support weitergegeben werden.
+            </p>
+          </Card>
+          <Card>
+            <p style={{ margin: "0 0 6px", fontWeight: 700 }}>Fahrt prüfen lassen</p>
+            <p style={{ margin: 0, fontSize: 13, color: "rgba(0,0,0,0.55)", lineHeight: 1.6 }}>
+              Bei Unklarheiten zu einer Fahrt bitte die Fahrt öffnen und die Referenz angeben.
+            </p>
+          </Card>
+        </div>
+      </Section>
+
+      <Section title="Typische Anliegen" defaultOpen={false}>
+        <div style={{ display: "grid", gap: 10, fontSize: 13, color: "rgba(0,0,0,0.65)" }}>
+          <p style={{ margin: 0 }}>• Gutschein wurde nicht akzeptiert</p>
+          <p style={{ margin: 0 }}>• Gast hat Fahrt nicht gefunden</p>
+          <p style={{ margin: 0 }}>• Rechnung oder Einzelaufstellung benötigt</p>
+          <p style={{ margin: 0 }}>• Fahrt wurde falsch zugeordnet</p>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function EinstellungenView({ company, user }) {
+  return (
+    <div>
+      <Section title="Hotel-/Partnerprofil">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Card>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Partner</p>
+            <p style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{company?.name || user?.companyName || "Hotel / Partner"}</p>
+          </Card>
+          <Card>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Status</p>
+            <Badge tone="ok">Aktiv</Badge>
+          </Card>
+        </div>
+      </Section>
+
+      <Section title="Passwort ändern" defaultOpen={false}>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "rgba(0,0,0,0.6)", lineHeight: 1.6 }}>
+          Passwort-Änderung wird hier vorbereitet. Falls noch kein API-Endpunkt existiert, muss dieser sauber unter /panel/v1 ergänzt werden.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <input type="password" placeholder="Aktuelles Passwort" style={inp} />
+          <input type="password" placeholder="Neues Passwort" style={inp} />
+        </div>
+        <button type="button" disabled style={{ ...btn, marginTop: 12, background: "#9ca3af", cursor: "not-allowed" }}>
+          Passwort ändern
+        </button>
+      </Section>
+
+      <Section title="Rechnung & Benachrichtigungen" defaultOpen={false}>
+        <div style={{ display: "grid", gap: 10, fontSize: 13, color: "rgba(0,0,0,0.65)" }}>
+          <p style={{ margin: 0 }}>• Rechnungsadresse anzeigen/bearbeiten</p>
+          <p style={{ margin: 0 }}>• E-Mail für Monatsrechnung verwalten</p>
+          <p style={{ margin: 0 }}>• Benachrichtigungen für neue Fahrten aktivieren</p>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+
 export default function AgenturMasterPanel({ company, onLogout }) {
   const { token, user } = usePanelAuth();
   const [active, setActive] = useState("dashboard");
@@ -416,13 +491,23 @@ export default function AgenturMasterPanel({ company, onLogout }) {
         <nav style={{ display: "flex", gap: 2, marginLeft: 28 }}>
           {NAV.map(n => (
             <button key={n.key} onClick={() => setActive(n.key)} style={{
-              padding: "6px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13,
-              fontWeight: active === n.key ? 600 : 400,
-              background: active === n.key ? RED : "transparent",
-              color: active === n.key ? "#fff" : "rgba(0,0,0,0.6)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "9px 14px",
+              borderRadius: 999,
+              border: active === n.key ? "none" : "0.5px solid rgba(0,0,0,0.08)",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: active === n.key ? 700 : 500,
+              background: active === n.key ? RED : "#fff",
+              color: active === n.key ? "#fff" : "rgba(0,0,0,0.65)",
+              boxShadow: active === n.key ? "0 10px 22px rgba(239,29,38,0.22)" : "0 4px 12px rgba(15,23,42,0.04)",
               transition: "all 0.15s",
-              fontSize: 14,
-            }}>{n.label}</button>
+            }}>
+              <span>{n.icon}</span>
+              <span>{n.label}</span>
+            </button>
           ))}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
@@ -435,6 +520,8 @@ export default function AgenturMasterPanel({ company, onLogout }) {
         {active === "gutscheine" && <GutscheineView token={token} user={user} />}
         {active === "fahrten" && <FahrtenView token={token} />}
         {active === "abrechnung" && <AbrechnungView token={token} />}
+        {active === "support" && <SupportView />}
+        {active === "einstellungen" && <EinstellungenView company={company} user={user} />}
       </div>
     </div>
   );
