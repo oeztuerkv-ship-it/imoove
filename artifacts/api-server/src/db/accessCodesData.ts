@@ -320,6 +320,7 @@ function memToAdmin(m: MemRow): AdminAccessCodeRow {
     isActive: m.is_active,
     createdAt: m.created_at.toISOString(),
     internalNote: internalNoteFromMeta(m.meta),
+    fixedDestination: m.meta && typeof (m.meta as Record<string,unknown>).fixedDestination === "string" ? String((m.meta as Record<string,unknown>).fixedDestination).trim() || null : null,
   };
 }
 
@@ -445,6 +446,7 @@ export async function insertAccessCodeAdmin(body: {
   validUntil?: string | null;
   /** Nur Plattform-Admin: interner Zweck / Kontext (Meta.internalNote). */
   internalNote?: string | null;
+  fixedDestination?: string | null;
 }): Promise<InsertAccessCodeAdminResult> {
   if (!isAccessCodeType(body.codeType)) return { ok: false, error: "code_type_invalid" };
 
@@ -452,7 +454,9 @@ export async function insertAccessCodeAdmin(body: {
   const rawNote = typeof body.internalNote === "string" ? body.internalNote.trim() : "";
   const internalNoteMeta =
     rawNote.length > 2000 ? rawNote.slice(0, 2000) : rawNote.length > 0 ? rawNote : null;
+  const fixedDest = typeof body.fixedDestination === "string" ? body.fixedDestination.trim() : "";
   const meta: Record<string, unknown> = internalNoteMeta ? { internalNote: internalNoteMeta } : {};
+  if (fixedDest) meta.fixedDestination = fixedDest;
   const companyId =
     typeof body.companyId === "string" && body.companyId.trim() ? body.companyId.trim() : null;
   const maxUses =

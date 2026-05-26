@@ -252,6 +252,7 @@ function GutscheineView({ token, user }) {
                         {item.isActive ? "Deaktivieren" : "Aktivieren"}
                       </button>
                     )}
+                    <button onClick={() => loadBeleg(item)} style={{ fontSize: 11, border: "0.5px solid rgba(0,0,0,0.2)", borderRadius: 6, padding: "3px 10px", cursor: "pointer", background: "transparent" }}>Belege</button>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
                     <code style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1, color: RED, background: "#fff0f0", padding: "3px 10px", borderRadius: 6 }}>
@@ -272,6 +273,30 @@ function GutscheineView({ token, user }) {
           </div>
         )}
       </Section>
+      {belegCode && (
+        <Section title={`Belege: ${belegCode.label}`}>
+          <button onClick={() => setBelegCode(null)} style={{ fontSize: 12, border: "0.5px solid rgba(0,0,0,0.2)", borderRadius: 6, padding: "3px 10px", cursor: "pointer", background: "transparent", marginBottom: 12 }}>✕ Schliessen</button>
+          {belegBusy ? <p style={{ fontSize: 13, color: "rgba(0,0,0,0.4)" }}>Laden …</p> : belegRides.length === 0 ? (
+            <p style={{ fontSize: 13, color: "rgba(0,0,0,0.4)" }}>Keine Fahrten mit diesem Code gefunden.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {belegRides.map((r, i) => (
+                <div key={r.id || i} style={{ border: "0.5px solid rgba(0,0,0,0.08)", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtDate(r.createdAt || r.created_at)}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: RED }}>{fmtMoney(r.finalFare || r.estimatedFare)}</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: "rgba(0,0,0,0.6)", margin: "4px 0 0" }}>
+                    {String(r.fromFull || r.from || "—").split(",")[0]} → {String(r.toFull || r.to || "—").split(",")[0]}
+                  </p>
+                  {r.distanceKm != null && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", margin: "2px 0 0" }}>{Number(r.distanceKm).toFixed(1)} km</p>}
+                </div>
+              ))}
+              <p style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", fontWeight: 600, marginTop: 4 }}>Gesamt: {fmtMoney(belegRides.reduce((s, r) => s + (Number(r.finalFare) || Number(r.estimatedFare) || 0), 0))}</p>
+            </div>
+          )}
+        </Section>
+      )}
     </div>
   );
 }
