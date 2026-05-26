@@ -81,11 +81,7 @@ export async function createPartnerMonthlyInvoice(
         billingPeriodEnd: input.billingPeriodEnd,
       });
 
-      const paymentReference = buildInvoicePaymentReference({
-        companyDisplayName: company.billingName?.trim() || company.name,
-        billingPeriodEnd: input.billingPeriodEnd,
-        invoiceNumber: allocated.invoiceNumber,
-      });
+      const paymentReference = buildInvoicePaymentReference({ invoiceNumber: allocated.invoiceNumber });
 
       const invoiceId = `inv-${randomUUID()}`;
       const status = input.status ?? "issued";

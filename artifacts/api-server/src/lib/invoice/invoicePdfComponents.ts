@@ -335,11 +335,7 @@ export function drawBankSection(
   doc.font("Helvetica-Bold").fontSize(10);
   hexColor(doc, ONRODA_INVOICE_BRAND.accent);
   doc.text(paymentReference, ctx.contentLeft, ly, { width: ctx.contentWidth });
-  ly += doc.heightOfString(paymentReference, { width: ctx.contentWidth }) + 6;
-  doc.font("Helvetica").fontSize(8);
-  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-  doc.text(`Rechnungsnummer: ${opts.invoiceNumber}`, ctx.contentLeft, ly, { width: ctx.contentWidth });
-  ly += 14;
+  ly += doc.heightOfString(paymentReference, { width: ctx.contentWidth }) + 8;
   if (opts.notes?.trim()) {
     doc.font("Helvetica").fontSize(9).fillColor(ONRODA_INVOICE_BRAND.muted);
     doc.text(`Hinweis: ${opts.notes.trim()}`, ctx.contentLeft, ly, { width: ctx.contentWidth });

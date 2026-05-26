@@ -71,7 +71,7 @@ async function main() {
     totalGross,
     taxRatePercent: 19,
     notes: "Bitte überweisen mit Verwendungszweck. Vielen Dank für die Zusammenarbeit — Grüße aus Leinfelden-Echterdingen.",
-    paymentReference: "ONRODA Hotel Koenigliche Residenz 2026-04 ONR-2026-STRESS-001",
+    paymentReference: "ONR-2026-STRESS-001", // = invoice_number (Verwendungszweck)
   });
 
   const out = process.argv[2] ?? "/tmp/onroda-invoice-stress.pdf";

@@ -1,67 +1,46 @@
 /**
- * Verwendungszweck für Überweisungen (SEPA, max. 140 Zeichen).
- * Menschenlesbar: Marke + Unternehmensname + Abrechnungsmonat + Rechnungsnummer —
- * **keine** interne `company_id` (z. B. co-demo-1).
+ * SEPA-Verwendungszweck = Rechnungsnummer (z. B. ONR-HOT-2026-04-001).
+ * Mandantenart steckt im Prefix (HOT, MED, …); company_code/company_id nur intern.
  */
+
+import { parseInvoiceNumber } from "./invoiceNumbering.js";
 
 const SEPA_MAX_LEN = 140;
 
-export function sanitizePaymentReferencePart(value: string, maxLen: number): string {
-  const normalized = value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9 .\-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return normalized.slice(0, maxLen);
+/** Banktaugliche Rechnungsnummer (ONR-PREFIX-YYYY-MM-SEQ). */
+export function normalizePaymentReferenceFromInvoiceNumber(invoiceNumber: string): string {
+  const trimmed = String(invoiceNumber ?? "").trim().toUpperCase();
+  const parsed = parseInvoiceNumber(trimmed);
+  if (parsed) return parsed.invoiceNumber.slice(0, SEPA_MAX_LEN);
+  return trimmed.replace(/[^A-Z0-9-]/g, "").replace(/-+/g, "-").slice(0, SEPA_MAX_LEN);
 }
 
-export function billingPeriodYearMonth(isoDate: string): string {
-  const t = String(isoDate ?? "").trim();
-  const m = t.match(/^(\d{4})-(\d{2})/);
-  if (m) return `${m[1]}-${m[2]}`;
-  const d = new Date(t.includes("T") ? t : `${t}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return "";
-  const y = d.getUTCFullYear();
-  const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
-  return `${y}-${mo}`;
+/** Verwendungszweck für neue Rechnungen und Anzeige — immer die Rechnungsnummer. */
+export function buildInvoicePaymentReference(input: { invoiceNumber: string }): string {
+  const ref = normalizePaymentReferenceFromInvoiceNumber(input.invoiceNumber);
+  if (!ref) throw new Error("invoice_number_required");
+  return ref;
 }
 
-/** Entfernt interne Mandanten-IDs aus Anzeigenamen (z. B. „Hotel (co-demo-1)“). */
-export function stripInternalCompanyIdFromDisplayName(name: string): string {
-  return name
-    .replace(/\(\s*co-[a-z0-9][a-z0-9-]*\s*\)/gi, " ")
-    .replace(/\bco-[a-z0-9][a-z0-9-]*\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export function buildInvoicePaymentReference(input: {
-  companyDisplayName: string;
-  billingPeriodEnd: string;
-  invoiceNumber: string;
-}): string {
-  const display = stripInternalCompanyIdFromDisplayName(input.companyDisplayName.trim()) || "Mandant";
-  const company = sanitizePaymentReferencePart(display, 48);
-  const period = billingPeriodYearMonth(input.billingPeriodEnd);
-  const invoiceNumber = sanitizePaymentReferencePart(input.invoiceNumber.trim(), 40);
-  const parts = ["ONRODA", company];
-  if (period) parts.push(period);
-  if (invoiceNumber) parts.push(invoiceNumber);
-  return parts.join(" ").replace(/\s+/g, " ").trim().slice(0, SEPA_MAX_LEN);
-}
-
+/**
+ * Liefert den banktauglichen Verwendungszweck.
+ * Legacy-Werte in `payment_reference` (lange ONRODA-…-Texte) werden durch die Rechnungsnummer ersetzt.
+ */
 export function resolveInvoicePaymentReference(args: {
-  storedReference?: string | null;
-  companyDisplayName: string;
-  billingPeriodEnd: string;
   invoiceNumber: string;
+  storedReference?: string | null;
 }): string {
+  const fromNumber = buildInvoicePaymentReference({ invoiceNumber: args.invoiceNumber });
   const stored = String(args.storedReference ?? "").trim();
-  if (stored) return stored;
-  return buildInvoicePaymentReference({
-    companyDisplayName: args.companyDisplayName,
-    billingPeriodEnd: args.billingPeriodEnd,
-    invoiceNumber: args.invoiceNumber,
-  });
+  if (!stored) return fromNumber;
+  if (stored === fromNumber) return stored;
+  if (parseInvoiceNumber(stored)) return stored;
+  return fromNumber;
+}
+
+/** Bankmatching: Verwendungszweck → strukturierte Rechnungsnummer (oder null). */
+export function lookupPaymentReferenceForBankMatching(reference: string) {
+  const trimmed = String(reference ?? "").trim();
+  if (!trimmed) return null;
+  return parseInvoiceNumber(trimmed) ?? parseInvoiceNumber(normalizePaymentReferenceFromInvoiceNumber(trimmed));
 }

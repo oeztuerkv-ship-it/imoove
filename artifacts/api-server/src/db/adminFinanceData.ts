@@ -349,6 +349,16 @@ export function parseInvoiceNumberForLookup(invoiceNumber: string) {
   return parseInvoiceNumber(invoiceNumber);
 }
 
+/** Bankmatching: Verwendungszweck = Rechnungsnummer (inkl. Legacy-Auflösung). */
+export async function findInvoiceByPaymentReference(reference: string) {
+  const { lookupPaymentReferenceForBankMatching } = await import("../lib/invoicePaymentReference.js");
+  const parsed = lookupPaymentReferenceForBankMatching(reference);
+  if (parsed) return findInvoiceByInvoiceNumber(parsed.invoiceNumber);
+  const trimmed = reference.trim();
+  if (!trimmed) return null;
+  return findInvoiceByInvoiceNumber(trimmed);
+}
+
 export async function findInvoiceAdmin(invoiceId: string) {
   const db = getDb();
   if (!db) return null;

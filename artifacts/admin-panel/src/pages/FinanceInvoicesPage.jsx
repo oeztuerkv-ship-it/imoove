@@ -250,9 +250,9 @@ export default function FinanceInvoicesPage() {
                   <strong>Brutto:</strong> {money(detail.total_gross)}
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <strong>Verwendungszweck (Überweisung):</strong>
+                  <strong>Verwendungszweck (= Rechnungsnummer):</strong>
                   <div className="admin-mono" style={{ marginTop: 6, fontSize: 13, wordBreak: "break-word" }}>
-                    {detail.payment_reference || "—"}
+                    {detail.payment_reference || detail.invoice_number || "—"}
                   </div>
                 </div>
               </div>

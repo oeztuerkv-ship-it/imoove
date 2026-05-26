@@ -55,10 +55,8 @@ export function enrichInvoiceAdminRow(
   companyName: string | null,
 ): typeof row & { company_name: string | null; payment_reference: string; status_label_de: string } {
   const payment_reference = resolveInvoicePaymentReference({
-    storedReference: row.payment_reference,
-    companyDisplayName: companyName ?? "Mandant",
-    billingPeriodEnd: String(row.billing_period_end),
     invoiceNumber: row.invoice_number,
+    storedReference: row.payment_reference,
   });
   return {
     ...row,
@@ -137,11 +135,7 @@ export async function adminMarkInvoicePaid(input: {
       if (!paymentReference) {
         const [{ getPanelCompanyById }] = await Promise.all([import("./panelCompanyData.js")]);
         const company = inv.company_id ? await getPanelCompanyById(inv.company_id) : null;
-        paymentReference = buildInvoicePaymentReference({
-          companyDisplayName: company?.name ?? company?.billingName ?? "Mandant",
-          billingPeriodEnd: String(inv.billing_period_end),
-          invoiceNumber: inv.invoice_number,
-        });
+        paymentReference = buildInvoicePaymentReference({ invoiceNumber: inv.invoice_number });
       }
 
       const pid = `pay-${randomUUID()}`;

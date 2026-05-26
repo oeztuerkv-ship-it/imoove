@@ -119,17 +119,11 @@ function mapItem(row: typeof invoiceItemsTable.$inferSelect): PanelInvoiceItem {
   };
 }
 
-function mapSummary(
-  row: typeof invoicesTable.$inferSelect,
-  itemCount: number,
-  companyDisplayName: string,
-): PanelInvoiceSummary {
+function mapSummary(row: typeof invoicesTable.$inferSelect, itemCount: number): PanelInvoiceSummary {
   const paymentStatus = derivePaymentStatus(row);
   const paymentReference = resolveInvoicePaymentReference({
-    storedReference: row.payment_reference,
-    companyDisplayName,
-    billingPeriodEnd: String(row.billing_period_end),
     invoiceNumber: row.invoice_number,
+    storedReference: row.payment_reference,
   });
   return {
     id: row.id,
@@ -169,9 +163,7 @@ export async function listPanelInvoicesForCompany(companyId: string): Promise<Pa
     .where(eq(invoicesTable.company_id, companyId))
     .groupBy(invoicesTable.id)
     .orderBy(desc(invoicesTable.created_at));
-  const company = await getPanelCompanyById(companyId);
-  const companyDisplayName = company?.billingName?.trim() || company?.name || companyId;
-  return rows.map((r) => mapSummary(r.invoice, Number(r.itemCount ?? 0), companyDisplayName));
+  return rows.map((r) => mapSummary(r.invoice, Number(r.itemCount ?? 0)));
 }
 
 export async function getPanelInvoiceForCompany(
@@ -203,9 +195,8 @@ export async function getPanelInvoiceForCompany(
     : [];
   const meta = row.metadata_json && typeof row.metadata_json === "object" ? row.metadata_json : {};
   const notes = typeof meta.notes === "string" ? meta.notes : null;
-  const companyDisplayName = company?.billingName?.trim() || company?.name || companyId;
   return {
-    ...mapSummary(row, items.length, companyDisplayName),
+    ...mapSummary(row, items.length),
     notes,
     pdfStorageKey: row.pdf_storage_key ?? "",
     items: items.map(mapItem),

@@ -661,7 +661,7 @@ function AbrechnungView({ token }) {
                 {(detail?.paymentReference || selectedSummary.paymentReference) ? (
                   <p style={{ margin: "10px 0 0", wordBreak: "break-word" }}>
                     <span style={{ display: "block", fontSize: 11, color: "rgba(0,0,0,0.45)", marginBottom: 4 }}>
-                      Verwendungszweck (bitte exakt bei Überweisung)
+                      Verwendungszweck (= Rechnungsnummer, bitte exakt bei Überweisung)
                     </span>
                     <strong style={{ color: "#1c1c1e" }}>
                       {detail?.paymentReference || selectedSummary.paymentReference}
