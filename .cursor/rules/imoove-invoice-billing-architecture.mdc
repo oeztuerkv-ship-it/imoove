@@ -20,7 +20,8 @@ Vollständige Architektur: **`docs/onroda-invoice-billing-architecture.md`**.
 - **Workflow-Status (Anzeige/Filter):** `draft`, `issued`, `due`, `overdue`, `reminder_sent`, `partially_paid`, `paid`, `cancelled` — `due`/`overdue` aus `due_date` abgeleitet; PDF immer neutral („Rechnung“).
 - **Partner-Zahlungshinweis:** API-Feld `paymentUi` (`open_payment` / `reminder`) in `panelInvoicesData.ts`; kein aggressives „Überfällig“ im PDF.
 - **Rücknahme Bezahlung:** `POST …/revert-payment` — Payments → `reversed` (nicht löschen), Audit `invoice_payment_reverted`, Status aus `status_before_paid` (z. B. `reminder_sent` bleibt erhalten).
-- **Später:** Payment-History-Panel / Timeline (erstellt → Erinnerung → bezahlt → zurückgenommen); Revert-Grund per Modal statt `prompt()`.
+- **Admin Rechnungen:** KPIs (`GET …/invoices/kpis`), Timeline im Detail (`timeline` + `reminder_history`), CSV (`GET …/invoices/export`), Bankmatching (`GET …/invoices/lookup?reference=`).
+- **Später:** DATEV-Export, Bankimport, Revert-Grund per Modal; dedizierte Payment-History-Seite.
 - **Rechnungsnummern:** `ONR-{PREFIX}-{YYYY}-{MM}-{SEQ}` (z. B. `ONR-HOT-2026-04-001`); Sequenz in `invoice_number_sequences`; Prefix aus `admin_companies.invoice_prefix` (Default je `company_kind`); **öffentlicher** `company_code` (UNIQUE), intern.
 - **Verwendungszweck (SEPA):** identisch mit `invoice_number` — kurz, banktauglich; Bankmatching über `lookupPaymentReferenceForBankMatching` / `findInvoiceByPaymentReference`.
 - **Mandantenfilter:** Partner-Routen **immer** `company_id` aus Panel-JWT.

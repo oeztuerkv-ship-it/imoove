@@ -12,6 +12,12 @@ import {
 } from "./schema";
 import { enrichInvoiceAdminRow } from "./adminInvoiceFinanceData.js";
 import { parseInvoiceNumber } from "../lib/invoiceNumbering.js";
+import {
+  buildInvoiceTimeline,
+  parseReminderHistory,
+  type InvoiceTimelineEvent,
+  type ReminderHistoryEntry,
+} from "../lib/invoiceTimeline.js";
 import type { InvoiceWorkflowFilter } from "../lib/invoiceWorkflow.js";
 
 export type FinanceSummary = {
@@ -47,7 +53,7 @@ function escapeIlikePattern(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
-async function companyNameMap(): Promise<Map<string, string>> {
+export async function companyNameMap(): Promise<Map<string, string>> {
   const db = getDb();
   if (!db) return new Map();
   const companies = await db
@@ -268,6 +274,8 @@ export type InvoiceAdminListFilters = {
   type?: string;
   companyCode?: string;
   invoicePrefix?: string;
+  /** Bankmatching / Suche: Rechnungsnummer oder Verwendungszweck (Teilstring). */
+  invoiceNumber?: string;
 };
 
 function appendInvoiceWorkflowFilter(cond: SQL[], filter: InvoiceWorkflowFilter | undefined): void {
@@ -312,7 +320,7 @@ function appendInvoiceWorkflowFilter(cond: SQL[], filter: InvoiceWorkflowFilter 
   }
 }
 
-function buildInvoiceAdminWhere(filters: InvoiceAdminListFilters): SQL[] {
+export function buildInvoiceAdminWhere(filters: InvoiceAdminListFilters): SQL[] {
   const cond: SQL[] = [];
   if (filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, filters.companyId.trim()));
   if (filters.workflowFilter) {
@@ -331,6 +339,10 @@ function buildInvoiceAdminWhere(filters: InvoiceAdminListFilters): SQL[] {
   if (filters.invoicePrefix?.trim()) {
     const p = filters.invoicePrefix.trim().toUpperCase();
     cond.push(sql`${invoicesTable.invoice_number} like ${`ONR-${p}-%`}`);
+  }
+  if (filters.invoiceNumber?.trim()) {
+    const q = `%${filters.invoiceNumber.trim().replace(/%/g, "\\%")}%`;
+    cond.push(sql`${invoicesTable.invoice_number} ilike ${q}`);
   }
   return cond;
 }
@@ -372,7 +384,7 @@ export async function listInvoicesAdmin(args: {
   });
 }
 
-async function companyCodeMap(): Promise<Map<string, string>> {
+export async function companyCodeMap(): Promise<Map<string, string>> {
   const db = getDb();
   if (!db) return new Map();
   const companies = await db
@@ -432,12 +444,45 @@ export async function findInvoiceAdmin(invoiceId: string) {
     row.metadata_json && typeof row.metadata_json === "object"
       ? (row.metadata_json as Record<string, unknown>)
       : {};
+  const reminder_history: ReminderHistoryEntry[] = parseReminderHistory(meta);
+  const timeline: InvoiceTimelineEvent[] = buildInvoiceTimeline({
+    invoiceId: row.id,
+    invoiceNumber: row.invoice_number,
+    createdAt: row.created_at,
+    issueDate: String(row.issue_date),
+    auditEntries: audit_entries.map((a) => ({
+      id: a.id,
+      action: a.action,
+      created_at: a.created_at,
+      actor_id: a.actor_id,
+      new_value_json:
+        a.new_value_json && typeof a.new_value_json === "object"
+          ? (a.new_value_json as Record<string, unknown>)
+          : {},
+    })),
+    payments: linkedPayments.map((p) => ({
+      id: p.id,
+      status: p.status,
+      amount: Number(p.amount),
+      paid_at: p.paid_at,
+      reference: p.reference,
+      created_at: p.created_at,
+      metadata_json:
+        p.metadata_json && typeof p.metadata_json === "object"
+          ? (p.metadata_json as Record<string, unknown>)
+          : {},
+    })),
+    reminderHistory: reminder_history,
+  });
   return {
     ...enrichInvoiceAdminRow(row, companyName),
     company_code: row.company_id ? codes.get(row.company_id) ?? "" : "",
     items,
     payments: linkedPayments,
+    payment_history: linkedPayments,
     audit_entries,
+    timeline,
+    reminder_history,
     paid_at: typeof meta.paid_at === "string" ? meta.paid_at : null,
     paid_by_admin: typeof meta.paid_by_admin === "string" ? meta.paid_by_admin : null,
     reminder_sent_at: typeof meta.reminder_sent_at === "string" ? meta.reminder_sent_at : null,

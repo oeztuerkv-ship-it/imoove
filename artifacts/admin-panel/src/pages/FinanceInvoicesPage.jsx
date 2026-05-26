@@ -3,6 +3,9 @@ import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const LIST_URL = `${API_BASE}/admin/finance/invoices`;
+const KPIS_URL = `${API_BASE}/admin/finance/invoices/kpis`;
+const LOOKUP_URL = `${API_BASE}/admin/finance/invoices/lookup`;
+const EXPORT_URL = `${API_BASE}/admin/finance/invoices/export`;
 const PAGE_SIZE = 20;
 
 const WORKFLOW_TABS = [
@@ -10,7 +13,7 @@ const WORKFLOW_TABS = [
   { v: "open", label: "Offen" },
   { v: "due", label: "Fällig" },
   { v: "overdue", label: "Überfällig" },
-  { v: "reminder_sent", label: "Zahlungserinnerung gesendet" },
+  { v: "reminder_sent", label: "Erinnerung" },
   { v: "paid", label: "Bezahlt" },
   { v: "cancelled", label: "Storniert" },
 ];
@@ -28,6 +31,19 @@ function fmtDate(iso) {
   return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(String(iso).includes("T") ? iso : `${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function statusPillClass(workflowOrStatus) {
   const s = String(workflowOrStatus ?? "").toLowerCase();
   if (s === "paid") return "admin-status-pill admin-status-pill--ok";
@@ -39,13 +55,11 @@ function statusPillClass(workflowOrStatus) {
   return "admin-status-pill";
 }
 
-function auditActionLabel(action) {
-  const m = {
-    invoice_marked_paid: "Als bezahlt markiert",
-    invoice_reminder_sent: "Zahlungserinnerung gesendet",
-    invoice_payment_reverted: "Zahlung zurückgenommen",
-  };
-  return m[action] ?? action;
+function timelineKindClass(kind) {
+  if (kind === "marked_paid" || kind === "payment_booked") return "admin-finance-timeline__dot--ok";
+  if (kind === "payment_reverted" || kind === "payment_reversed") return "admin-finance-timeline__dot--warn";
+  if (kind === "reminder_sent") return "admin-finance-timeline__dot--info";
+  return "";
 }
 
 export default function FinanceInvoicesPage() {
@@ -54,17 +68,35 @@ export default function FinanceInvoicesPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [kpis, setKpis] = useState(null);
+  const [kpisLoading, setKpisLoading] = useState(true);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [markBusy, setMarkBusy] = useState(false);
   const [reminderBusy, setReminderBusy] = useState(false);
   const [revertBusy, setRevertBusy] = useState(false);
+  const [lookupBusy, setLookupBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState("");
 
   const [workflowFilter, setWorkflowFilter] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [companyCode, setCompanyCode] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("");
+  const [bankReference, setBankReference] = useState("");
+
+  const loadKpis = useCallback(async () => {
+    setKpisLoading(true);
+    try {
+      const res = await fetch(KPIS_URL, { headers: adminApiHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data?.ok) setKpis(data.kpis);
+    } catch {
+      setKpis(null);
+    } finally {
+      setKpisLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +109,7 @@ export default function FinanceInvoicesPage() {
       if (companyId.trim()) q.set("company_id", companyId.trim());
       if (companyCode.trim()) q.set("company_code", companyCode.trim());
       if (invoicePrefix.trim()) q.set("invoice_prefix", invoicePrefix.trim());
+      if (bankReference.trim()) q.set("invoice_number", bankReference.trim());
       const res = await fetch(`${LIST_URL}?${q.toString()}`, { headers: adminApiHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -90,7 +123,11 @@ export default function FinanceInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, workflowFilter, companyId, companyCode, invoicePrefix]);
+  }, [page, workflowFilter, companyId, companyCode, invoicePrefix, bankReference]);
+
+  useEffect(() => {
+    void loadKpis();
+  }, [loadKpis]);
 
   useEffect(() => {
     void load();
@@ -112,6 +149,51 @@ export default function FinanceInvoicesPage() {
     }
   }
 
+  async function bankLookup() {
+    const ref = bankReference.trim();
+    if (!ref) return;
+    setLookupBusy(true);
+    setActionMsg("");
+    try {
+      const res = await fetch(`${LOOKUP_URL}?${new URLSearchParams({ reference: ref })}`, {
+        headers: adminApiHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionMsg(data.error === "not_found" ? `Keine Rechnung für „${ref}".` : "Lookup fehlgeschlagen.");
+        return;
+      }
+      if (data.invoice?.id) {
+        setDetail(data.invoice);
+        setActionMsg(`Bankmatching: ${data.invoice.invoice_number} (${data.invoice.company_name || "—"})`);
+      }
+    } catch {
+      setActionMsg("Bankmatching fehlgeschlagen.");
+    } finally {
+      setLookupBusy(false);
+    }
+  }
+
+  async function exportCsv() {
+    const q = new URLSearchParams();
+    if (workflowFilter) q.set("workflow_filter", workflowFilter);
+    if (companyId.trim()) q.set("company_id", companyId.trim());
+    if (companyCode.trim()) q.set("company_code", companyCode.trim());
+    if (invoicePrefix.trim()) q.set("invoice_prefix", invoicePrefix.trim());
+    try {
+      const res = await fetch(`${EXPORT_URL}?${q.toString()}`, { headers: adminApiHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "onroda-rechnungen.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.alert("CSV-Export fehlgeschlagen.");
+    }
+  }
+
   async function markPaid(id) {
     const targetId = id ?? detail?.id;
     if (!targetId || detail?.workflow_status === "paid") return;
@@ -128,6 +210,7 @@ export default function FinanceInvoicesPage() {
       setActionMsg(data.idempotent ? "War bereits als bezahlt verbucht." : "Als bezahlt markiert.");
       await openDetail(targetId);
       await load();
+      await loadKpis();
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : "Markieren fehlgeschlagen.");
     } finally {
@@ -139,7 +222,7 @@ export default function FinanceInvoicesPage() {
     const targetId = id ?? detail?.id;
     if (!targetId) return;
     const reason = window.prompt(
-      "Grund für die Rücknahme (optional, z. B. „Versehentlich als bezahlt markiert“):",
+      "Grund für die Rücknahme (optional):",
       "Versehentlich als bezahlt markiert",
     );
     if (reason === null) return;
@@ -156,11 +239,12 @@ export default function FinanceInvoicesPage() {
       setActionMsg(
         data.idempotent
           ? "Rechnung war bereits nicht mehr als bezahlt verbucht."
-          : `Zahlung zurückgenommen (Status: ${data.restoredStatus || data.invoice?.status || "offen"}).`,
+          : `Zahlung zurückgenommen (Status: ${data.restoredStatus || "offen"}).`,
       );
       if (data.invoice) setDetail(data.invoice);
       else await openDetail(targetId);
       await load();
+      await loadKpis();
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : "Rücknahme fehlgeschlagen.");
     } finally {
@@ -184,6 +268,7 @@ export default function FinanceInvoicesPage() {
       setActionMsg(data.idempotent ? "Erinnerung war bereits verbucht." : "Zahlungserinnerung gesendet.");
       await openDetail(targetId);
       await load();
+      await loadKpis();
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : "Erinnerung fehlgeschlagen.");
     } finally {
@@ -205,9 +290,7 @@ export default function FinanceInvoicesPage() {
         a.click();
         URL.revokeObjectURL(a.href);
       })
-      .catch(() => {
-        window.alert("PDF konnte nicht geladen werden.");
-      });
+      .catch(() => window.alert("PDF konnte nicht geladen werden."));
   }
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -223,19 +306,59 @@ export default function FinanceInvoicesPage() {
     !("error" in detail) &&
     !["paid", "cancelled", "draft"].includes(detail.workflow_status ?? detail.status);
   const canRevert =
-    detail &&
-    !("error" in detail) &&
-    (detail.workflow_status === "paid" || detail.status === "paid");
+    detail && !("error" in detail) && (detail.workflow_status === "paid" || detail.status === "paid");
+
+  const kpiCards = [
+    { label: "Offene Summe", value: money(kpis?.openTotalGross) },
+    { label: "Überfällige Summe", value: money(kpis?.overdueTotalGross) },
+    { label: "Bezahlt (Monat)", value: money(kpis?.paidThisMonthGross) },
+    { label: "Offene Rechnungen", value: String(kpis?.openCount ?? "—") },
+    { label: "Überfällige Rechnungen", value: String(kpis?.overdueCount ?? "—") },
+  ];
 
   return (
     <div className="admin-page admin-page--loose">
       {error ? <div className="admin-error-banner">{error}</div> : null}
+
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Rechnungs-KPIs (Plattform)</div>
+        <div className="finance-kpi-grid">
+          {kpiCards.map((c) => (
+            <div key={c.label} className="finance-kpi-card">
+              <div className="finance-kpi-card__label">{c.label}</div>
+              <div className="finance-kpi-card__value admin-crisp-numeric">
+                {kpisLoading ? "…" : c.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="admin-panel-card">
         <div className="admin-panel-card__title">Plattform-Rechnungen (B2B)</div>
         <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--admin-muted, #6b7280)" }}>
-          Einheitlicher Workflow für Hotel, Medical, Corporate und Taxi — Verwendungszweck = Rechnungsnummer (z. B.{" "}
-          <span className="admin-mono">ONR-HOT-2026-04-001</span>).
+          Verwendungszweck = Rechnungsnummer (z. B. <span className="admin-mono">ONR-HOT-2026-04-001</span>). PDF
+          bleibt neutral („Rechnung“).
         </p>
+
+        <div className="admin-table-toolbar" style={{ marginBottom: 12 }}>
+          <input
+            className="admin-input admin-mono"
+            placeholder="Bankmatching: Rechnungsnr. / Verwendungszweck"
+            value={bankReference}
+            onChange={(e) => {
+              setBankReference(e.target.value);
+              setPage(1);
+            }}
+            style={{ minWidth: 260, flex: 1 }}
+          />
+          <button type="button" className="admin-page-btn admin-page-btn--compact" disabled={lookupBusy} onClick={() => void bankLookup()}>
+            {lookupBusy ? "Suche …" : "Finden"}
+          </button>
+          <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => void exportCsv()}>
+            CSV-Export
+          </button>
+        </div>
 
         <div className="admin-finance-tabs" role="tablist" aria-label="Rechnungsstatus">
           {WORKFLOW_TABS.map((tab) => (
@@ -258,13 +381,13 @@ export default function FinanceInvoicesPage() {
         <div className="admin-table-toolbar" style={{ marginTop: 12 }}>
           <input
             className="admin-input"
-            placeholder="Mandanten-ID (intern)"
+            placeholder="Mandanten-ID"
             value={companyId}
             onChange={(e) => {
               setCompanyId(e.target.value);
               setPage(1);
             }}
-            style={{ minWidth: 140 }}
+            style={{ minWidth: 120 }}
           />
           <input
             className="admin-input admin-mono"
@@ -274,22 +397,24 @@ export default function FinanceInvoicesPage() {
               setCompanyCode(e.target.value);
               setPage(1);
             }}
-            style={{ minWidth: 120 }}
+            style={{ minWidth: 110 }}
           />
           <input
             className="admin-input admin-mono"
-            placeholder="Prefix (HOT)"
+            placeholder="Prefix HOT"
             value={invoicePrefix}
             onChange={(e) => {
               setInvoicePrefix(e.target.value);
               setPage(1);
             }}
-            style={{ minWidth: 100 }}
+            style={{ minWidth: 90 }}
           />
           <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
+
+        {actionMsg && !detail ? <div className="admin-info-banner" style={{ marginTop: 12 }}>{actionMsg}</div> : null}
 
         <div className="admin-table-card" style={{ marginTop: 14 }}>
           <div className="admin-table-scroll">
@@ -303,15 +428,11 @@ export default function FinanceInvoicesPage() {
             </div>
             {items.map((x) => {
               const wf = x.workflow_status || x.status;
-              const label = x.status_label_de || wf;
               return (
                 <div className="admin-table-row admin-finance-inv-row" key={x.id}>
                   <div>
                     <div className="admin-mono" style={{ fontWeight: 700 }}>
                       {x.invoice_number}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--admin-muted,#6b7280)", marginTop: 4 }}>
-                      {fmtDate(x.billing_period_start)} – {fmtDate(x.billing_period_end)}
                     </div>
                   </div>
                   <div>
@@ -323,43 +444,15 @@ export default function FinanceInvoicesPage() {
                     ) : null}
                   </div>
                   <div style={{ fontWeight: 700 }}>{money(x.total_gross)}</div>
-                  <div style={{ fontSize: 13 }}>{fmtDate(x.due_date)}</div>
+                  <div>{fmtDate(x.due_date)}</div>
                   <div>
-                    <span className={statusPillClass(wf)}>{label}</span>
+                    <span className={statusPillClass(wf)}>{x.status_label_de || wf}</span>
                   </div>
                   <div className="admin-finance-inv-actions">
-                    <button
-                      type="button"
-                      className="admin-page-btn admin-page-btn--compact"
-                      onClick={() => downloadPdf(x.id, x.invoice_number)}
-                    >
+                    <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => downloadPdf(x.id, x.invoice_number)}>
                       PDF
                     </button>
-                    {wf !== "paid" && wf !== "cancelled" && wf !== "draft" ? (
-                      <button
-                        type="button"
-                        className="admin-page-btn admin-page-btn--compact"
-                        disabled={reminderBusy}
-                        onClick={() => void sendReminder(x.id)}
-                      >
-                        Erinnerung
-                      </button>
-                    ) : null}
-                    {wf !== "paid" && wf !== "cancelled" ? (
-                      <button
-                        type="button"
-                        className="admin-page-btn admin-page-btn--compact"
-                        disabled={markBusy}
-                        onClick={() => void markPaid(x.id)}
-                      >
-                        Bezahlt
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="admin-page-btn admin-page-btn--compact"
-                      onClick={() => void openDetail(x.id)}
-                    >
+                    <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => void openDetail(x.id)}>
                       Details
                     </button>
                   </div>
@@ -391,7 +484,7 @@ export default function FinanceInvoicesPage() {
 
       {detail && !detailLoading ? (
         <div className="admin-panel-card">
-          <div className="admin-panel-card__title">Rechnungsdetail</div>
+          <div className="admin-panel-card__title">Rechnungsdetail · {detail.invoice_number}</div>
           {actionMsg ? <div className="admin-info-banner" style={{ marginBottom: 12 }}>{actionMsg}</div> : null}
           {"error" in detail ? (
             <div className="admin-error-banner">{detail.error}</div>
@@ -399,29 +492,23 @@ export default function FinanceInvoicesPage() {
             <>
               <div className="finance-detail-grid">
                 <div>
-                  <strong>Rechnungsnr.:</strong> {detail.invoice_number}
-                </div>
-                <div>
                   <strong>Unternehmen:</strong> {detail.company_name || "—"}
                 </div>
                 <div>
                   <strong>Status:</strong>{" "}
                   <span className={statusPillClass(detail.workflow_status || detail.status)}>
-                    {detail.status_label_de || detail.workflow_status}
+                    {detail.status_label_de}
                   </span>
-                </div>
-                <div>
-                  <strong>Fällig:</strong> {fmtDate(detail.due_date)}
                 </div>
                 <div>
                   <strong>Brutto:</strong> {money(detail.total_gross)}
                 </div>
                 <div>
-                  <strong>Bezahlt am:</strong> {detail.paid_at ? fmtDate(detail.paid_at) : "—"}
+                  <strong>Fällig:</strong> {fmtDate(detail.due_date)}
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
                   <strong>Verwendungszweck:</strong>
-                  <div className="admin-mono" style={{ marginTop: 6, fontSize: 13, wordBreak: "break-word" }}>
+                  <div className="admin-mono" style={{ marginTop: 6, wordBreak: "break-word" }}>
                     {detail.payment_reference || detail.invoice_number}
                   </div>
                 </div>
@@ -442,12 +529,7 @@ export default function FinanceInvoicesPage() {
                   </button>
                 ) : null}
                 {canRevert ? (
-                  <button
-                    type="button"
-                    className="admin-page-btn admin-page-btn--compact"
-                    onClick={() => void revertPayment()}
-                    disabled={revertBusy}
-                  >
+                  <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => void revertPayment()} disabled={revertBusy}>
                     {revertBusy ? "Rücknahme …" : "Zahlung zurücknehmen"}
                   </button>
                 ) : null}
@@ -456,24 +538,49 @@ export default function FinanceInvoicesPage() {
                 </button>
               </div>
 
-              {detail.payment_reverted_at ? (
-                <p style={{ marginTop: 12, fontSize: 13, color: "var(--admin-muted,#6b7280)" }}>
-                  Zuletzt zurückgenommen: {fmtDate(detail.payment_reverted_at)}
-                  {detail.payment_reverted_by_admin ? ` · ${detail.payment_reverted_by_admin}` : null}
-                  {detail.payment_revert_reason ? ` · „${detail.payment_revert_reason}"` : null}
-                </p>
+              {Array.isArray(detail.timeline) && detail.timeline.length > 0 ? (
+                <div style={{ marginTop: 24 }}>
+                  <strong>Timeline / Zahlungshistorie</strong>
+                  <ul className="admin-finance-timeline">
+                    {detail.timeline.map((ev) => (
+                      <li key={ev.id} className="admin-finance-timeline__item">
+                        <span className={"admin-finance-timeline__dot " + timelineKindClass(ev.kind)} aria-hidden />
+                        <div className="admin-finance-timeline__body">
+                          <div className="admin-finance-timeline__title">{ev.title}</div>
+                          <div className="admin-finance-timeline__meta">
+                            {fmtDateTime(ev.at)}
+                            {ev.actor ? ` · ${ev.actor}` : null}
+                          </div>
+                          {ev.detail ? <div className="admin-finance-timeline__detail">{ev.detail}</div> : null}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ) : null}
 
-              {Array.isArray(detail.payments) && detail.payments.length > 0 ? (
+              {Array.isArray(detail.reminder_history) && detail.reminder_history.length > 0 ? (
                 <div style={{ marginTop: 20 }}>
-                  <strong>Zahlungen</strong>
+                  <strong>Reminder-Historie</strong>
                   <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13 }}>
-                    {detail.payments.map((p) => (
+                    {detail.reminder_history.map((r) => (
+                      <li key={`${r.sentAt}-${r.sequence}`}>
+                        #{r.sequence} · {fmtDateTime(r.sentAt)}
+                        {r.sentBy ? ` · ${r.sentBy}` : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {Array.isArray(detail.payment_history) && detail.payment_history.length > 0 ? (
+                <div style={{ marginTop: 20 }}>
+                  <strong>Payments (vollständig)</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13 }}>
+                    {detail.payment_history.map((p) => (
                       <li key={p.id}>
-                        {money(p.amount)} · <strong>{p.status}</strong> · {p.reference || "—"} ·{" "}
-                        {p.paid_at ? fmtDate(p.paid_at) : "offen"}
-                        {p.status === "reversed" ? " (zurückgenommen)" : null}
-                        {detail.paid_by_admin && p.status === "booked" ? ` · Admin: ${detail.paid_by_admin}` : null}
+                        <strong>{p.status}</strong> · {money(p.amount)} · {p.reference || "—"} ·{" "}
+                        {p.paid_at ? fmtDateTime(p.paid_at) : "—"}
                       </li>
                     ))}
                   </ul>
@@ -482,11 +589,11 @@ export default function FinanceInvoicesPage() {
 
               {Array.isArray(detail.audit_entries) && detail.audit_entries.length > 0 ? (
                 <div style={{ marginTop: 20 }}>
-                  <strong>Verlauf / Audit</strong>
-                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13 }}>
+                  <strong>Audit (Rohdaten)</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12, color: "#64748b" }}>
                     {detail.audit_entries.map((a) => (
                       <li key={a.id}>
-                        {fmtDate(a.created_at)} · {auditActionLabel(a.action)}
+                        {fmtDateTime(a.created_at)} · <code>{a.action}</code>
                         {a.actor_id ? ` · ${a.actor_id}` : null}
                       </li>
                     ))}

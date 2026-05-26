@@ -249,6 +249,13 @@ export async function adminSendInvoicePaymentReminder(input: {
           ? (inv.metadata_json as Record<string, unknown>)
           : {};
       const reminderCount = Number(prevMeta.reminder_count ?? 0) + 1;
+      const priorHistory = Array.isArray(prevMeta.reminder_history)
+        ? (prevMeta.reminder_history as Array<Record<string, unknown>>)
+        : [];
+      const reminder_history = [
+        ...priorHistory,
+        { sentAt, sentBy: input.actorLabel, sequence: reminderCount },
+      ];
 
       await tx
         .update(invoicesTable)
@@ -260,6 +267,7 @@ export async function adminSendInvoicePaymentReminder(input: {
             reminder_sent_at: sentAt,
             reminder_count: reminderCount,
             last_reminder_by: input.actorLabel,
+            reminder_history,
           },
         })
         .where(eq(invoicesTable.id, invoiceId));

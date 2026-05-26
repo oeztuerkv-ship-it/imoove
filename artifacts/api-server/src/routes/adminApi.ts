@@ -33,6 +33,7 @@ import {
   countRideFinancialsAdmin,
   countSettlementsAdmin,
   findInvoiceAdmin,
+  findInvoiceByPaymentReference,
   findSettlementAdmin,
   getAdminFinanceSummary,
   getFinanceEligibilitySummaryForRide,
@@ -43,6 +44,7 @@ import {
   listRideFinancialsAdmin,
   listSettlementsAdmin,
 } from "../db/adminFinanceData";
+import { exportInvoicesAdminCsv, getAdminInvoiceFinanceKpis } from "../db/adminInvoiceBillingOps.js";
 import {
   adminCreateSettlementWithRideAllocations,
   adminRecordSettlementPayoutAttempt,
@@ -1040,6 +1042,7 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       "cancelled",
     ];
     const workflowFilter = workflowFilters.includes(workflowRaw) ? workflowRaw : undefined;
+    const refSearch = (q.invoice_number ?? q.reference ?? "").trim();
     const filters = {
       companyId: q.company_id,
       status: workflowFilter && workflowFilter !== "all" ? undefined : q.status,
@@ -1047,6 +1050,7 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       type: q.invoice_type,
       companyCode: q.company_code,
       invoicePrefix: q.invoice_prefix,
+      invoiceNumber: refSearch || undefined,
     };
     const { page, pageSize, offset } = parsePagination(req);
     const [total, items] = await Promise.all([
@@ -1054,6 +1058,76 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       listInvoicesAdmin({ filters, limit: pageSize, offset }),
     ]);
     res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/invoices/kpis", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const kpis = await getAdminInvoiceFinanceKpis();
+    res.json({ ok: true, kpis });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/invoices/export", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const workflowRaw = (q.workflow_filter ?? "").trim() as InvoiceWorkflowFilter;
+    const workflowFilters: InvoiceWorkflowFilter[] = [
+      "all",
+      "open",
+      "due",
+      "overdue",
+      "reminder_sent",
+      "paid",
+      "cancelled",
+    ];
+    const workflowFilter = workflowFilters.includes(workflowRaw) ? workflowRaw : undefined;
+    const csv = await exportInvoicesAdminCsv({
+      companyId: q.company_id,
+      workflowFilter: workflowFilter && workflowFilter !== "all" ? workflowFilter : undefined,
+      status: workflowFilter ? undefined : q.status,
+      companyCode: q.company_code,
+      invoicePrefix: q.invoice_prefix,
+      invoiceNumber: (q.invoice_number ?? "").trim() || undefined,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="onroda-rechnungen.csv"');
+    res.send(csv);
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/invoices/lookup", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const reference = (q.reference ?? q.invoice_number ?? "").trim();
+    if (!reference) {
+      res.status(400).json({ error: "reference_required" });
+      return;
+    }
+    const item = await findInvoiceByPaymentReference(reference);
+    if (!item) {
+      res.status(404).json({ ok: false, error: "not_found", reference });
+      return;
+    }
+    res.json({ ok: true, reference, invoice: item });
   } catch (e) {
     next(e);
   }
