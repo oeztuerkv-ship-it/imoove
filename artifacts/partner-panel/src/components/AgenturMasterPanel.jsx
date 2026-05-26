@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import {
+  downloadPanelInvoicePdf,
+  fetchPanelInvoice,
+  fetchPanelInvoices,
+} from "../lib/panelInvoicesApi.js";
 
 const PANEL = `${API_BASE}/panel/v1`;
 const RED = "#EF1D26";
@@ -383,24 +388,347 @@ function FahrtenView({ token }) {
 }
 
 /* ── ABRECHNUNG ────────────────────────────────────────── */
+
+function paymentStatusLabelDe(paymentStatus) {
+  const m = {
+    draft: "Entwurf",
+    open: "Offen",
+    due: "Fällig",
+    overdue: "Überfällig",
+    partial: "Teilweise bezahlt",
+    paid: "Bezahlt",
+    cancelled: "Storniert",
+  };
+  return m[paymentStatus] || paymentStatus || "—";
+}
+
+function paymentStatusTone(paymentStatus) {
+  if (paymentStatus === "paid") return "ok";
+  if (paymentStatus === "overdue" || paymentStatus === "cancelled") return "err";
+  if (paymentStatus === "open" || paymentStatus === "due" || paymentStatus === "partial") return "warn";
+  return "muted";
+}
+
+function periodLabel(from, to) {
+  if (!from && !to) return "—";
+  return `${fmtDate(from)} – ${fmtDate(to)}`;
+}
+
+function safePdfFilename(invoiceNumber, invoiceId) {
+  const base = String(invoiceNumber || invoiceId || "rechnung").replace(/[^\wäöüÄÖÜß.-]+/g, "-");
+  return `ONRODA-Rechnung-${base}.pdf`;
+}
+
+/** Blob-Download (Desktop + die meisten Mobile-Browser). */
+function triggerPdfDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+}
+
 function AbrechnungView({ token }) {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [pdfBusyId, setPdfBusyId] = useState(null);
+
+  const loadInvoices = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      setInvoices([]);
+      setSelectedId(null);
+      setDetail(null);
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchPanelInvoices(API_BASE, token);
+      const list = Array.isArray(data.invoices) ? data.invoices : [];
+      setInvoices(list);
+      const preferred = list.find((inv) => inv.id === "inv-apr-2026-demo") || list[0];
+      setSelectedId(preferred?.id ?? null);
+    } catch (e) {
+      setInvoices([]);
+      setSelectedId(null);
+      setError(e instanceof Error ? e.message : "Rechnungen konnten nicht geladen werden.");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void loadInvoices();
+  }, [loadInvoices]);
+
+  useEffect(() => {
+    if (!token || !selectedId) {
+      setDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailLoading(true);
+    fetchPanelInvoice(API_BASE, selectedId, token)
+      .then((data) => {
+        if (!cancelled) setDetail(data.invoice ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, selectedId]);
+
+  const selectedSummary = invoices.find((inv) => inv.id === selectedId) ?? null;
+
+  const handlePdfDownload = async (invoice) => {
+    if (!token || !invoice?.id) return;
+    setPdfBusyId(invoice.id);
+    try {
+      const blob = await downloadPanelInvoicePdf(API_BASE, invoice.id, token);
+      triggerPdfDownload(blob, safePdfFilename(invoice.invoiceNumber, invoice.id));
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "PDF konnte nicht geladen werden.");
+    } finally {
+      setPdfBusyId(null);
+    }
+  };
+
+  if (!token) {
+    return (
+      <Card>
+        <p style={{ margin: 0, fontSize: 14, color: "rgba(0,0,0,0.55)" }}>Bitte melden Sie sich an, um Rechnungen zu sehen.</p>
+      </Card>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <p style={{ margin: 0, fontSize: 14, color: "rgba(0,0,0,0.55)" }}>Rechnungen werden geladen …</p>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <p style={{ margin: "0 0 12px", color: "#991b1b", fontSize: 14 }}>{error}</p>
+        <button type="button" onClick={() => void loadInvoices()} style={{ ...btn, background: RED }}>
+          Erneut laden
+        </button>
+      </Card>
+    );
+  }
+
+  if (invoices.length === 0) {
+    return (
+      <Card style={{ textAlign: "center", padding: "32px 24px" }}>
+        <p style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "#1c1c1e" }}>Noch keine Rechnungen</p>
+        <p style={{ margin: 0, fontSize: 14, color: "rgba(0,0,0,0.55)", lineHeight: 1.6, maxWidth: 420, marginInline: "auto" }}>
+          Sobald ONRODA eine Monatsabrechnung für Ihr Hotel erstellt hat, erscheint sie hier — inklusive PDF-Download und Einzelaufstellung.
+        </p>
+      </Card>
+    );
+  }
+
+  const detailItems = Array.isArray(detail?.items) ? detail.items : [];
+
   return (
-    <div>
-      <Section title="Abrechnungsmodell">
-        <div style={{ fontSize: 13, color: "rgba(0,0,0,0.65)", lineHeight: 1.8 }}>
-          <p style={{ margin: "0 0 8px" }}><strong>Monatliche Sammelrechnung</strong> — alle Fahrten die über Ihre Gutschein-Codes gebucht wurden, werden einmal im Monat in Rechnung gestellt.</p>
-          <p style={{ margin: "0 0 8px" }}><strong>Zahlungsziel:</strong> 14 Tage nach Rechnungsdatum.</p>
-          <p style={{ margin: 0 }}><strong>Format:</strong> PDF-Rechnung mit Einzelaufstellung aller Fahrten, Datum, Strecke und Preis.</p>
+    <div style={{ display: "grid", gap: 18 }}>
+      <Section title="Ihre Rechnungen">
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid rgba(0,0,0,0.1)", textAlign: "left" }}>
+                {["Rechnungsnr.", "Zeitraum", "Status", "Betrag", "Fällig", "Pos.", ""].map((h) => (
+                  <th key={h} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 600, color: "rgba(0,0,0,0.45)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((inv) => {
+                const active = inv.id === selectedId;
+                return (
+                  <tr
+                    key={inv.id}
+                    onClick={() => setSelectedId(inv.id)}
+                    style={{
+                      borderBottom: "0.5px solid rgba(0,0,0,0.06)",
+                      cursor: "pointer",
+                      background: active ? "rgba(239,29,38,0.06)" : "transparent",
+                    }}
+                  >
+                    <td style={{ padding: "12px 10px", fontWeight: 600, color: active ? RED : "#1c1c1e", wordBreak: "break-word", maxWidth: 140 }} title={inv.invoiceNumber}>
+                      {inv.invoiceNumber || "—"}
+                    </td>
+                    <td style={{ padding: "12px 10px", color: "rgba(0,0,0,0.65)" }}>{periodLabel(inv.periodFrom, inv.periodTo)}</td>
+                    <td style={{ padding: "12px 10px" }}>
+                      <Badge tone={paymentStatusTone(inv.paymentStatus)}>{paymentStatusLabelDe(inv.paymentStatus)}</Badge>
+                    </td>
+                    <td style={{ padding: "12px 10px", fontWeight: 600 }}>{fmtMoney(inv.totalGross)}</td>
+                    <td style={{ padding: "12px 10px", color: "rgba(0,0,0,0.65)" }}>{fmtDate(inv.dueDate)}</td>
+                    <td style={{ padding: "12px 10px", color: "rgba(0,0,0,0.55)" }}>{inv.itemCount ?? "—"}</td>
+                    <td style={{ padding: "12px 10px" }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handlePdfDownload(inv);
+                        }}
+                        disabled={pdfBusyId === inv.id}
+                        style={{ ...btn, background: RED, padding: "6px 12px", fontSize: 12, opacity: pdfBusyId === inv.id ? 0.7 : 1 }}
+                      >
+                        {pdfBusyId === inv.id ? "…" : "PDF"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </Section>
-      <Section title="Rechnungen" defaultOpen={false}>
-        <p style={{ fontSize: 13, color: "rgba(0,0,0,0.4)" }}>Rechnungen werden hier angezeigt sobald verfügbar.</p>
+
+      {selectedSummary && (
+        <Section title={`Rechnung ${selectedSummary.invoiceNumber}`}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+            <Card>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Rechnungsnummer</p>
+                  <h3 style={{ margin: 0, fontSize: 22, wordBreak: "break-word" }}>{selectedSummary.invoiceNumber}</h3>
+                  <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>{periodLabel(selectedSummary.periodFrom, selectedSummary.periodTo)}</p>
+                </div>
+                <Badge tone={paymentStatusTone(selectedSummary.paymentStatus)}>
+                  {paymentStatusLabelDe(selectedSummary.paymentStatus)}
+                </Badge>
+              </div>
+
+              <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Positionen</p>
+                  <strong style={{ fontSize: 18 }}>{selectedSummary.itemCount ?? detailItems.length}</strong>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Fällig am</p>
+                  <strong style={{ fontSize: 18 }}>{fmtDate(selectedSummary.dueDate)}</strong>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Zu zahlen</p>
+                  <strong style={{ fontSize: 20, color: RED }}>{fmtMoney(selectedSummary.totalGross)}</strong>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => void handlePdfDownload(selectedSummary)}
+                  disabled={pdfBusyId === selectedSummary.id}
+                  style={{ ...btn, background: RED, flex: 1, opacity: pdfBusyId === selectedSummary.id ? 0.7 : 1 }}
+                >
+                  {pdfBusyId === selectedSummary.id ? "PDF wird geladen …" : "PDF-Rechnung herunterladen"}
+                </button>
+              </div>
+
+              <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f8fafc", fontSize: 13, color: "rgba(0,0,0,0.62)", lineHeight: 1.6 }}>
+                Rechnungsdatum: <strong>{fmtDate(selectedSummary.issueDate)}</strong>
+                {selectedSummary.subtotalNet != null && (
+                  <>
+                    {" "}
+                    · Netto {fmtMoney(selectedSummary.subtotalNet)} · MwSt. {fmtMoney(selectedSummary.vatTotal)}
+                  </>
+                )}
+              </div>
+            </Card>
+
+            <Card>
+              <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: 15 }}>Einzelaufstellung</p>
+              {detailLoading ? (
+                <p style={{ margin: 0, fontSize: 13, color: "rgba(0,0,0,0.5)" }}>Positionen werden geladen …</p>
+              ) : detailItems.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 13, color: "rgba(0,0,0,0.5)" }}>
+                  Für diese Rechnung sind noch keine Positionen hinterlegt.
+                </p>
+              ) : (
+                <div style={{ display: "grid", gap: 10, maxHeight: 320, overflowY: "auto" }}>
+                  {detailItems.map((item, i) => (
+                    <div
+                      key={item.id || i}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "28px 1fr auto",
+                        gap: 10,
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        background: "#f8fafc",
+                        fontSize: 13,
+                      }}
+                    >
+                      <span style={{ color: "rgba(0,0,0,0.45)" }}>{i + 1}.</span>
+                      <span>
+                        <span style={{ display: "block", fontWeight: 500, wordBreak: "break-word" }}>
+                          {item.description || "Position"}
+                        </span>
+                        {item.rideId ? (
+                          <span style={{ fontSize: 11, color: "rgba(0,0,0,0.45)" }}>Fahrt {item.rideId}</span>
+                        ) : null}
+                      </span>
+                      <strong style={{ whiteSpace: "nowrap" }}>{fmtMoney(item.lineGross)}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+        </Section>
+      )}
+
+      <Section title="Zahlungsstatus" defaultOpen={false}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <Card>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Status</p>
+            {selectedSummary ? (
+              <Badge tone={paymentStatusTone(selectedSummary.paymentStatus)}>
+                {paymentStatusLabelDe(selectedSummary.paymentStatus)}
+              </Badge>
+            ) : (
+              <span>—</span>
+            )}
+          </Card>
+          <Card>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Zahlungsziel</p>
+            <strong>{selectedSummary?.dueDate ? fmtDate(selectedSummary.dueDate) : "—"}</strong>
+          </Card>
+          <Card>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Zahlart</p>
+            <strong>Überweisung</strong>
+          </Card>
+        </div>
       </Section>
     </div>
   );
 }
 
-/* ── MAIN ──────────────────────────────────────────────── */
 function SupportView() {
   return (
     <div>
