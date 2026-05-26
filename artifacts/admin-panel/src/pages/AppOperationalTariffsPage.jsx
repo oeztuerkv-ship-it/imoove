@@ -217,6 +217,7 @@ export default function AppOperationalTariffsPage() {
   const [xlForm, setXlForm] = useState(() => tierDefaults());
   const [wcForm, setWcForm] = useState(() => tierDefaults());
   const [xlSurchargeEur, setXlSurchargeEur] = useState("7");
+  const [wcSurchargeEur, setWcSurchargeEur] = useState("0");
   const [edLabel, setEdLabel] = useState("");
   const [edTerms, setEdTerms] = useState("");
   const [edActive, setEdActive] = useState(true);
@@ -297,6 +298,9 @@ export default function AppOperationalTariffsPage() {
     if (lv && typeof lv === "object" && lv.amountEur != null) {
       setXlSurchargeEur(String(lv.amountEur));
     }
+    if (wcOv && wcOv.surchargeEur != null) {
+      setWcSurchargeEur(String(wcOv.surchargeEur));
+    }
   }, [config, selectedRegionId, serviceRegions]);
 
   const buildRegionTariffPayload = () => {
@@ -330,7 +334,7 @@ export default function AppOperationalTariffsPage() {
       rounding: typeof preserved.rounding === "string" ? preserved.rounding : "ceil_tenth",
       vehicleTariffOverrides: {
         xl: buildTwoTierPayload(xlForm),
-        wheelchair: buildTwoTierPayload(wcForm),
+        wheelchair: { ...buildTwoTierPayload(wcForm), surchargeEur: n(wcSurchargeEur) },
       },
     };
     return out;
@@ -592,7 +596,7 @@ export default function AppOperationalTariffsPage() {
 
           <TarifBlock title="STANDARD" hint="Normales Taxi — gilt für die Standard-Fahrzeugklasse." value={stdForm} onChange={setStdForm} />
           <TarifBlock title="XL" hint="Größeres Fahrzeug — eigene Preise." value={xlForm} onChange={setXlForm} surchargeEur={xlSurchargeEur} onSurchargeChange={setXlSurchargeEur} />
-          <TarifBlock title="ROLLSTUHL" hint="Rollstuhlfahrten — eigene Preise." value={wcForm} onChange={setWcForm} />
+          <TarifBlock title="ROLLSTUHL" hint="Rollstuhlfahrten — eigene Preise." value={wcForm} onChange={setWcForm} surchargeEur={wcSurchargeEur} onSurchargeChange={setWcSurchargeEur} />
 
           <div style={{ marginBottom: 20 }}>
             <button type="button" className="admin-m-btn-pri" onClick={saveTariffs}>
