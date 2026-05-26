@@ -16,6 +16,7 @@ import SupportShell from "../support/SupportShell.jsx";
 import { hasPanelModule } from "../lib/panelNavigation.js";
 import GlobalCreateMenu from "./GlobalCreateMenu.jsx";
 import TaxiUserMenu from "./TaxiUserMenu.jsx";
+import { pushPartnerPanelModuleHistory } from "../lib/panelHistoryGuard.js";
 
 function hasPerm(user, key) {
   return Array.isArray(user?.permissions) && user.permissions.includes(key);
@@ -88,27 +89,41 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
     return s;
   }, []);
 
-  const navigateTaxiModule = useCallback((key, opts) => {
-    if (opts && typeof opts.settingsTab === "string") setSettingsTabIntent(opts.settingsTab);
-    setActiveTaxiModule(key);
-  }, []);
-
-  /** Ermöglicht `?taxiModule=…` für Tests; unterstützt Legacy `stammdaten` → Einstellungen. */
-  useEffect(() => {
+  const readTaxiModuleFromUrl = useCallback(() => {
     try {
       const u = new URL(window.location.href);
       let m = u.searchParams.get("taxiModule");
       if (m === "stammdaten") m = "einstellungen";
-      if (m && routeKeys.has(m)) {
-        setActiveTaxiModule(m);
-        u.searchParams.delete("taxiModule");
-        const next = `${u.pathname}${u.search}${u.hash}`;
-        window.history.replaceState({}, "", next || u.pathname);
-      }
+      if (m && routeKeys.has(m)) return m;
     } catch {
       /* ignore */
     }
+    return null;
   }, [routeKeys]);
+
+  const navigateTaxiModule = useCallback(
+    (key, opts) => {
+      if (opts && typeof opts.settingsTab === "string") setSettingsTabIntent(opts.settingsTab);
+      setActiveTaxiModule(key);
+      pushPartnerPanelModuleHistory(key, { paramName: "taxiModule", omitWhen: "dashboard" });
+    },
+    [],
+  );
+
+  /** Ermöglicht `?taxiModule=…` für Tests; unterstützt Legacy `stammdaten` → Einstellungen. */
+  useEffect(() => {
+    const m = readTaxiModuleFromUrl();
+    if (m) setActiveTaxiModule(m);
+  }, [readTaxiModuleFromUrl]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const m = readTaxiModuleFromUrl();
+      if (m && routeKeys.has(m)) setActiveTaxiModule(m);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [readTaxiModuleFromUrl, routeKeys]);
 
   useEffect(() => {
     if (!routeKeys.has(activeTaxiModule)) {

@@ -8,11 +8,14 @@ import "./styles/panel-ui.css";
 import "./styles/partner-workspace.css";
 import App from "./App.jsx";
 import { PanelAuthProvider } from "./context/PanelAuthContext.jsx";
+import PanelHistoryGuard from "./components/PanelHistoryGuard.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <PanelAuthProvider>
-      <App />
+      <PanelHistoryGuard>
+        <App />
+      </PanelHistoryGuard>
     </PanelAuthProvider>
   </StrictMode>,
 );

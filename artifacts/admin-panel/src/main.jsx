@@ -9,6 +9,9 @@ import "./admin-ui.css";
 import "./admin-dashboard.css";
 import "./admin-finance.css";
 import App from "./App.jsx";
+import { redirectPartnerSessionAwayFromAdmin } from "./lib/redirectPartnerSessionFromAdmin.js";
+
+redirectPartnerSessionAwayFromAdmin();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

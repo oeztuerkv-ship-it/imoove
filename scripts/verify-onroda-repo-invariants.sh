@@ -106,5 +106,6 @@ grep -q '/panel/v1/access-codes' "$PANEL_API" || err "panelApi.ts: /panel/v1/acc
 
 bash "${ROOT}/scripts/verify-onroda-nginx-example-invariants.sh"
 bash "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh"
+node "${ROOT}/scripts/verify-partner-admin-panel-separation.mjs"
 
 echo "verify-onroda-repo-invariants: OK"
