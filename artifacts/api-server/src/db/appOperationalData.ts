@@ -785,6 +785,16 @@ export async function insertServiceRegion(input: InsertServiceRegionInput): Prom
   return id;
 }
 
+export async function deleteServiceRegionById(id: string): Promise<boolean> {
+  const idx = MEM_REGIONS.findIndex((r) => r.id === id);
+  if (idx !== -1) MEM_REGIONS.splice(idx, 1);
+  if (!isPostgresConfigured()) return true;
+  const db = getDb();
+  if (!db) return true;
+  const result = await db.delete(appServiceRegionsTable).where(eq(appServiceRegionsTable.id, id));
+  return true;
+}
+
 /** Öffentliche, App-taugliche Konfiguration (camelCase, keine Admin-Interna). */
 export type AppConfigPublic = {
   ok: true;

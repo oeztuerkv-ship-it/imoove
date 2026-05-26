@@ -86,6 +86,7 @@ import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepa
 import {
   getOperationalConfigPayload,
   insertServiceRegion,
+  deleteServiceRegionById,
   listServiceRegionsForApi,
   updateOperationalConfigPayload,
   updateServiceRegionById,
@@ -2683,6 +2684,26 @@ adminJson.post("/app-operational/service-regions", async (req, res, next) => {
       meta: { id, serviceRegion },
     });
     res.status(201).json({ ok: true, id, serviceRegion });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.delete("/app-operational/service-regions/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const id = req.params.id;
+    if (!id) { res.status(400).json({ error: "id_required" }); return; }
+    await deleteServiceRegionById(id);
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.service_region_deleted",
+      meta: { id },
+    });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

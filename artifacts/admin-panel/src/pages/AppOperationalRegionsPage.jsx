@@ -92,6 +92,18 @@ export default function AppOperationalRegionsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const deleteRegion = async (id, label) => {
+    if (!window.confirm(`Region "${label}" wirklich löschen?`)) return;
+    setError(""); setOkMsg("");
+    try {
+      const res = await fetch(`${BASE_URL}/service-regions/${encodeURIComponent(id)}`, { method: "DELETE", headers: adminApiHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Fehler");
+      setRegions((prev) => prev.filter((r) => r.id !== id));
+      setOkMsg(`"${label}" gelöscht.`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Fehler"); }
+  };
+
   const saveRegion = async (r) => {
     setError(""); setOkMsg("");
     try {
@@ -225,7 +237,7 @@ export default function AppOperationalRegionsPage() {
         {loading ? <p className="admin-table-sub" style={{ marginTop: 12 }}>Laden ...</p> : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
             {regions.length === 0 ? <p className="admin-table-sub">Noch keine Regionen angelegt.</p> : regions.map((r) => (
-              <AppRegionCard key={r.id} initial={r} onSave={saveRegion} />
+              <AppRegionCard key={r.id} initial={r} onSave={saveRegion} onDelete={deleteRegion} />
             ))}
           </div>
         )}
@@ -275,7 +287,7 @@ export default function AppOperationalRegionsPage() {
   );
 }
 
-function AppRegionCard({ initial, onSave }) {
+function AppRegionCard({ initial, onSave, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const [label, setLabel] = useState(initial.label || "");
   const [mode, setMode] = useState(String(initial.matchMode || "substring").toLowerCase() === "radius" ? "radius" : "substring");
@@ -326,6 +338,7 @@ function AppRegionCard({ initial, onSave }) {
         <button type="button" className="admin-c-btn-sec" style={{ fontSize: 12, padding: "4px 10px" }} onClick={() => setExpanded((v) => !v)}>
           {expanded ? "Schliessen" : "Bearbeiten"}
         </button>
+        {onDelete ? <button type="button" style={{ border: "none", background: "none", cursor: "pointer", color: "rgba(200,0,0,0.5)", fontSize: 18, lineHeight: 1, padding: "0 2px" }} onClick={() => onDelete(initial.id, label)}>×</button> : null}
       </div>
       <p style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", margin: "4px 0 0 18px" }}>
         {mode === "radius" ? `${centerLat}, ${centerLng}` : termsStr || "—"}
