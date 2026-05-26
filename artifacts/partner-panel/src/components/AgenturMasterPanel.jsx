@@ -255,10 +255,10 @@ function GutscheineView({ token, user }) {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
                     <code style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1, color: RED, background: "#fff0f0", padding: "3px 10px", borderRadius: 6 }}>
-                      {item.code || "—"}
+                      {item.codeNormalized || "—"}
                     </code>
-                    <button onClick={() => copyCode(item.code)} style={{ fontSize: 11, border: "0.5px solid rgba(0,0,0,0.15)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", background: copied === item.code ? "#dcfce7" : "#fff" }}>
-                      {copied === item.code ? "✓ Kopiert" : "Kopieren"}
+                    <button onClick={() => copyCode(item.codeNormalized)} style={{ fontSize: 11, border: "0.5px solid rgba(0,0,0,0.15)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", background: copied === item.codeNormalizedNormalized ? "#dcfce7" : "#fff" }}>
+                      {copied === item.codeNormalizedNormalized ? "✓ Kopiert" : "Kopieren"}
                     </button>
                     <span style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", marginLeft: "auto" }}>
                       {item.usesCount || 0} / {item.maxUses ?? "∞"} Nutzungen
