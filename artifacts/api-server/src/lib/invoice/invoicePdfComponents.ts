@@ -1,5 +1,6 @@
 import type PDFDocument from "pdfkit";
 import { ONRODA_INVOICE_BRAND, ONRODA_INVOICE_SELLER, sellerAddressLines } from "./invoiceBrand";
+import { getOnrodaInvoiceLogoBuffer } from "./invoiceLogoAsset.js";
 import {
   INVOICE_LAYOUT,
   INVOICE_MARGINS,
@@ -62,6 +63,25 @@ function drawOnrodaWordmark(doc: PDFDocument, x: number, y: number, scale = 1) {
     x,
     y + onSize + 2,
   );
+  return y + onSize + 14;
+}
+
+/** App-Logo (PNG/JPEG) + Unterzeile; Fallback auf Text-Wordmark. Gibt Y unter dem Block zurück. */
+function drawOnrodaLogoBlock(doc: PDFDocument, x: number, y: number, scale = 1): number {
+  const logoMaxW = 128 * scale;
+  const logoMaxH = 42 * scale;
+  const buf = getOnrodaInvoiceLogoBuffer();
+
+  if (buf) {
+    doc.image(buf, x, y, { fit: [logoMaxW, logoMaxH], align: "left", valign: "top" });
+    const subtitleY = y + logoMaxH + 4;
+    doc.font("Helvetica");
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    doc.fontSize(9 * scale).text(`Plattform · ${ONRODA_INVOICE_SELLER.tradingName}`, x, subtitleY);
+    return subtitleY + 12;
+  }
+
+  return drawOnrodaWordmark(doc, x, y, scale);
 }
 
 /** Großes Logo + RECHNUNG-Titel (Seite 1 oder Folgeseiten kompakt). */
@@ -76,11 +96,8 @@ export function drawInvoicePageHeader(
   const left = ctx.contentLeft;
   const right = ctx.contentRight;
 
-  if (!compact) {
-    drawOnrodaWordmark(doc, left, top, 1);
-  } else {
-    drawOnrodaWordmark(doc, left, top - 4, 0.72);
-  }
+  const logoScale = compact ? 0.72 : 1;
+  const logoBottom = drawOnrodaLogoBlock(doc, left, compact ? top - 4 : top, logoScale);
 
   const titleX = right - 160;
   doc.font("Helvetica-Bold").fontSize(compact ? 11 : 14);
@@ -98,7 +115,7 @@ export function drawInvoicePageHeader(
     doc.text(meta.statusLabel.toUpperCase(), right - 92, badgeY + 6, { width: 92, align: "center" });
   }
 
-  const lineY = top + (compact ? 36 : INVOICE_LAYOUT.headerHeight - 8);
+  const lineY = Math.max(logoBottom + 6, top + (compact ? 36 : INVOICE_LAYOUT.headerHeight - 8));
   doc.moveTo(left, lineY).lineTo(right, lineY).lineWidth(0.5).strokeColor(ONRODA_INVOICE_BRAND.border).stroke();
 
   return lineY + INVOICE_LAYOUT.sectionGap;
