@@ -49,6 +49,7 @@ export type PartnerInvoicePdfDocumentInput = {
   taxRatePercent?: number;
   notes?: string | null;
   segmentLabel?: string;
+  paymentReference: string;
 };
 
 function fmtDateDe(iso: string): string {
@@ -225,7 +226,11 @@ export function renderPartnerInvoicePdfWithMeta(
     });
 
     ensureSpace(state, 80, true);
-    state.ctx.y = drawBankSection(state.ctx, input.invoiceNumber, input.notes);
+    state.ctx.y = drawBankSection(state.ctx, {
+      paymentReference: input.paymentReference,
+      invoiceNumber: input.invoiceNumber,
+      notes: input.notes,
+    });
 
     drawInvoiceFooterOnCurrentPage(state.ctx, state.pageCount, state.pageCount);
 

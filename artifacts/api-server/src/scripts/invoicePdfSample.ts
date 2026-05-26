@@ -39,6 +39,7 @@ async function main() {
     totalGross: 63.0,
     taxRatePercent: 19,
     notes: "Vielen Dank für die Zusammenarbeit.",
+    paymentReference: "ONRODA Hotel Beispiel GmbH 2026-04 ONR-2026-0001",
   });
 
   const out = process.argv[2] ?? "/tmp/onroda-invoice-sample.pdf";

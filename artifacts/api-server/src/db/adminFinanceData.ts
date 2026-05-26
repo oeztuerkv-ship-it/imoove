@@ -10,6 +10,7 @@ import {
   rideFinancialsTable,
   settlementsTable,
 } from "./schema";
+import { enrichInvoiceAdminRow } from "./adminInvoiceFinanceData.js";
 
 export type FinanceSummary = {
   totalRevenue: number;
@@ -291,7 +292,9 @@ export async function listInvoicesAdmin(args: {
     .limit(args.limit)
     .offset(args.offset);
   const map = await companyNameMap();
-  return rows.map((r) => ({ ...r, company_name: r.company_id ? map.get(r.company_id) ?? null : null }));
+  return rows.map((r) =>
+    enrichInvoiceAdminRow(r, r.company_id ? map.get(r.company_id) ?? null : null),
+  );
 }
 
 export async function findInvoiceAdmin(invoiceId: string) {
@@ -302,10 +305,16 @@ export async function findInvoiceAdmin(invoiceId: string) {
   if (!row) return null;
   const map = await companyNameMap();
   const items = await db.select().from(invoiceItemsTable).where(eq(invoiceItemsTable.invoice_id, invoiceId));
+  const companyName = row.company_id ? map.get(row.company_id) ?? null : null;
+  const linkedPayments = await db
+    .select()
+    .from(paymentsTable)
+    .where(and(eq(paymentsTable.target_type, "invoice"), eq(paymentsTable.target_id, invoiceId)))
+    .orderBy(desc(paymentsTable.created_at));
   return {
-    ...row,
-    company_name: row.company_id ? map.get(row.company_id) ?? null : null,
+    ...enrichInvoiceAdminRow(row, companyName),
     items,
+    payments: linkedPayments,
   };
 }
 

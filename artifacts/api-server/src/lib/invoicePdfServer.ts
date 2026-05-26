@@ -40,6 +40,7 @@ export type PartnerInvoicePdfInput = {
   taxRatePercent?: number;
   notes?: string | null;
   segmentLabel?: string;
+  paymentReference: string;
 };
 
 function pdfEscape(text: string): string {
@@ -111,6 +112,7 @@ function toDocumentInput(input: PartnerInvoicePdfInput): PartnerInvoicePdfDocume
     taxRatePercent: input.taxRatePercent,
     notes: input.notes,
     segmentLabel: input.segmentLabel,
+    paymentReference: input.paymentReference,
   };
 }
 

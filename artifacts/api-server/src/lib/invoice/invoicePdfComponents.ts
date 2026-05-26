@@ -303,9 +303,13 @@ export function drawInvoiceTotalsCard(ctx: InvoicePdfContext, totals: InvoiceTot
   return y + cardH + INVOICE_LAYOUT.sectionGap;
 }
 
-export function drawBankSection(ctx: InvoicePdfContext, invoiceNumber: string, notes?: string | null): number {
+export function drawBankSection(
+  ctx: InvoicePdfContext,
+  opts: { paymentReference: string; invoiceNumber: string; notes?: string | null },
+): number {
   const { doc } = ctx;
   const y = ctx.y;
+  const paymentReference = opts.paymentReference.trim() || opts.invoiceNumber.trim();
   doc
     .moveTo(ctx.contentLeft, y)
     .lineTo(ctx.contentRight, y)
@@ -320,16 +324,25 @@ export function drawBankSection(ctx: InvoicePdfContext, invoiceNumber: string, n
   ly += 16;
   doc.font("Helvetica").fontSize(9);
   hexColor(doc, "#4B5563");
-  doc.text(
-    `IBAN: ${ONRODA_INVOICE_SELLER.iban} · ${ONRODA_INVOICE_SELLER.legalName}\nVerwendungszweck: ${invoiceNumber}`,
-    ctx.contentLeft,
-    ly,
-    { width: ctx.contentWidth },
-  );
-  ly += 28;
-  if (notes?.trim()) {
+  doc.text(`IBAN: ${ONRODA_INVOICE_SELLER.iban} · ${ONRODA_INVOICE_SELLER.legalName}`, ctx.contentLeft, ly, {
+    width: ctx.contentWidth,
+  });
+  ly += 14;
+  doc.font("Helvetica-Bold").fontSize(9);
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.text("Verwendungszweck", ctx.contentLeft, ly);
+  ly += 12;
+  doc.font("Helvetica-Bold").fontSize(10);
+  hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+  doc.text(paymentReference, ctx.contentLeft, ly, { width: ctx.contentWidth });
+  ly += doc.heightOfString(paymentReference, { width: ctx.contentWidth }) + 6;
+  doc.font("Helvetica").fontSize(8);
+  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+  doc.text(`Rechnungsnummer: ${opts.invoiceNumber}`, ctx.contentLeft, ly, { width: ctx.contentWidth });
+  ly += 14;
+  if (opts.notes?.trim()) {
     doc.font("Helvetica").fontSize(9).fillColor(ONRODA_INVOICE_BRAND.muted);
-    doc.text(`Hinweis: ${notes.trim()}`, ctx.contentLeft, ly, { width: ctx.contentWidth });
+    doc.text(`Hinweis: ${opts.notes.trim()}`, ctx.contentLeft, ly, { width: ctx.contentWidth });
     ly += 20;
   }
   return ly;

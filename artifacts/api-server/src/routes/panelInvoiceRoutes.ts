@@ -116,6 +116,7 @@ router.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, re
         totalGross: invoice.totalGross,
         taxRatePercent,
         notes: invoice.notes,
+        paymentReference: invoice.paymentReference,
       });
       if (!storageKey) {
         storageKey = defaultMonthlyPdfKey(ctx.claims.companyId, invoice.invoiceNumber);

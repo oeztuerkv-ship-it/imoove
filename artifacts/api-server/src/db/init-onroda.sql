@@ -629,6 +629,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   issue_date DATE NOT NULL,
   due_date DATE,
   status TEXT NOT NULL DEFAULT 'draft',
+  payment_reference TEXT NOT NULL DEFAULT '',
   pdf_storage_key TEXT NOT NULL DEFAULT '',
   metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

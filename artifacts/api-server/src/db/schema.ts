@@ -690,6 +690,8 @@ export const invoicesTable = pgTable("invoices", {
   issue_date: date("issue_date").notNull(),
   due_date: date("due_date"),
   status: text("status").notNull().default("draft"),
+  /** SEPA-Verwendungszweck (ohne company_id; siehe buildInvoicePaymentReference). */
+  payment_reference: text("payment_reference").notNull().default(""),
   pdf_storage_key: text("pdf_storage_key").notNull().default(""),
   metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

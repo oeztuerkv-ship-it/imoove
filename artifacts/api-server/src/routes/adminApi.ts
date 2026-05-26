@@ -47,6 +47,7 @@ import {
   adminCreateSettlementWithRideAllocations,
   adminRecordSettlementPayoutAttempt,
 } from "../db/financeSettlementsData";
+import { adminMarkInvoicePaid } from "../db/adminInvoiceFinanceData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { insertPanelAuditLog, listPanelAuditForCompany } from "../db/panelAuditData";
 import {
@@ -1048,6 +1049,46 @@ adminJson.get("/finance/invoices/:invoiceId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Eingang verbuchen: Status `paid`, Zahlungszeile, Audit (Plattform-Operator). */
+adminJson.post("/finance/invoices/:invoiceId/mark-paid", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body as Record<string, unknown>;
+    const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
+    const bankReference = typeof body.bankReference === "string" ? body.bankReference : "";
+    const paidAtRaw = typeof body.paidAt === "string" ? body.paidAt.trim() : "";
+    const paidAt = paidAtRaw ? new Date(paidAtRaw) : new Date();
+    if (Number.isNaN(paidAt.getTime())) {
+      res.status(400).json({ error: "invalid_paid_at" });
+      return;
+    }
+    const out = await adminMarkInvoicePaid({
+      invoiceId: req.params.invoiceId,
+      actorLabel: `admin_console:${role}`,
+      paidAt,
+      amount: Number.isFinite(amount) ? amount : null,
+      bankReference,
+    });
+    if (!out.ok) {
+      const st =
+        out.error === "invoice_not_found"
+          ? 404
+          : out.error === "invoice_cancelled"
+            ? 409
+            : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    res.json({ ok: true, paymentId: out.paymentId, idempotent: out.idempotent === true });
   } catch (e) {
     next(e);
   }

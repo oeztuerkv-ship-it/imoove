@@ -513,6 +513,13 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'invoices' AND column_name = 'payment_reference'
+  ) THEN
+    errs := array_append(errs, 'invoices.payment_reference (Migration 079)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'invoice_items'
   ) THEN

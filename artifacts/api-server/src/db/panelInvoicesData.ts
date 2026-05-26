@@ -1,4 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
+import { resolveInvoicePaymentReference } from "../lib/invoicePaymentReference.js";
 import { getDb } from "./client";
 import { getPanelCompanyById } from "./panelCompanyData";
 import { invoiceItemsTable, invoicesTable } from "./schema";
@@ -28,6 +29,7 @@ export type PanelInvoiceSummary = {
   dueDate: string | null;
   pdfAvailable: boolean;
   itemCount: number;
+  paymentReference: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -120,8 +122,15 @@ function mapItem(row: typeof invoiceItemsTable.$inferSelect): PanelInvoiceItem {
 function mapSummary(
   row: typeof invoicesTable.$inferSelect,
   itemCount: number,
+  companyDisplayName: string,
 ): PanelInvoiceSummary {
   const paymentStatus = derivePaymentStatus(row);
+  const paymentReference = resolveInvoicePaymentReference({
+    storedReference: row.payment_reference,
+    companyDisplayName,
+    billingPeriodEnd: String(row.billing_period_end),
+    invoiceNumber: row.invoice_number,
+  });
   return {
     id: row.id,
     invoiceNumber: row.invoice_number,
@@ -137,6 +146,7 @@ function mapSummary(
     dueDate: row.due_date ? String(row.due_date) : null,
     pdfAvailable: Boolean(row.pdf_storage_key?.trim()),
     itemCount,
+    paymentReference,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
   };
@@ -159,7 +169,9 @@ export async function listPanelInvoicesForCompany(companyId: string): Promise<Pa
     .where(eq(invoicesTable.company_id, companyId))
     .groupBy(invoicesTable.id)
     .orderBy(desc(invoicesTable.created_at));
-  return rows.map((r) => mapSummary(r.invoice, Number(r.itemCount ?? 0)));
+  const company = await getPanelCompanyById(companyId);
+  const companyDisplayName = company?.billingName?.trim() || company?.name || companyId;
+  return rows.map((r) => mapSummary(r.invoice, Number(r.itemCount ?? 0), companyDisplayName));
 }
 
 export async function getPanelInvoiceForCompany(
@@ -191,8 +203,9 @@ export async function getPanelInvoiceForCompany(
     : [];
   const meta = row.metadata_json && typeof row.metadata_json === "object" ? row.metadata_json : {};
   const notes = typeof meta.notes === "string" ? meta.notes : null;
+  const companyDisplayName = company?.billingName?.trim() || company?.name || companyId;
   return {
-    ...mapSummary(row, items.length),
+    ...mapSummary(row, items.length, companyDisplayName),
     notes,
     pdfStorageKey: row.pdf_storage_key ?? "",
     items: items.map(mapItem),

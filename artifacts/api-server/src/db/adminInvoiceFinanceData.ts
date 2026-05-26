@@ -1,0 +1,202 @@
+import { randomUUID } from "node:crypto";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { getDb } from "./client";
+import {
+  buildInvoicePaymentReference,
+  resolveInvoicePaymentReference,
+} from "../lib/invoicePaymentReference.js";
+import {
+  financialAuditLogTable,
+  invoicesTable,
+  paymentsTable,
+} from "./schema";
+
+type ExecDb = NonNullable<ReturnType<typeof getDb>>;
+
+async function insertFinancialAuditInTx(
+  tx: ExecDb,
+  input: {
+    entityType: string;
+    entityId: string;
+    action: string;
+    newValue: Record<string, unknown>;
+    oldValue?: Record<string, unknown>;
+    actorType: string;
+    actorId?: string | null;
+  },
+): Promise<void> {
+  await tx.insert(financialAuditLogTable).values({
+    id: `fal-${randomUUID()}`,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    action: input.action,
+    old_value_json: input.oldValue ?? {},
+    new_value_json: input.newValue,
+    actor_type: input.actorType,
+    actor_id: input.actorId ?? null,
+  });
+}
+
+export function adminInvoiceStatusLabelDe(status: string): string {
+  const s = status.trim().toLowerCase();
+  const m: Record<string, string> = {
+    draft: "Entwurf",
+    issued: "Offen",
+    partially_paid: "Teilweise bezahlt",
+    paid: "Bezahlt",
+    overdue: "Überfällig",
+    cancelled: "Storniert",
+  };
+  return m[s] ?? status;
+}
+
+export function enrichInvoiceAdminRow(
+  row: typeof invoicesTable.$inferSelect,
+  companyName: string | null,
+): typeof row & { company_name: string | null; payment_reference: string; status_label_de: string } {
+  const payment_reference = resolveInvoicePaymentReference({
+    storedReference: row.payment_reference,
+    companyDisplayName: companyName ?? "Mandant",
+    billingPeriodEnd: String(row.billing_period_end),
+    invoiceNumber: row.invoice_number,
+  });
+  return {
+    ...row,
+    company_name: companyName,
+    payment_reference,
+    status_label_de: adminInvoiceStatusLabelDe(row.status),
+  };
+}
+
+/** Admin: Rechnung als bezahlt verbuchen (+ Zahlungszeile + Audit). */
+export async function adminMarkInvoicePaid(input: {
+  invoiceId: string;
+  actorLabel: string;
+  paidAt?: Date | null;
+  amount?: number | null;
+  bankReference?: string | null;
+}): Promise<
+  | { ok: true; paymentId: string; idempotent?: boolean }
+  | { ok: false; error: string }
+> {
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const invoiceId = input.invoiceId.trim();
+  if (!invoiceId) return { ok: false, error: "invoice_id_required" };
+
+  try {
+    return await db.transaction(async (tx) => {
+      const invRows = await tx
+        .select()
+        .from(invoicesTable)
+        .where(eq(invoicesTable.id, invoiceId))
+        .for("update")
+        .limit(1);
+      const inv = invRows[0];
+      if (!inv) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
+
+      if (inv.status === "paid") {
+        const existing = await tx
+          .select()
+          .from(paymentsTable)
+          .where(and(eq(paymentsTable.target_type, "invoice"), eq(paymentsTable.target_id, invoiceId)))
+          .orderBy(desc(paymentsTable.created_at))
+          .limit(1);
+        return {
+          ok: true as const,
+          paymentId: existing[0]?.id ?? invoiceId,
+          idempotent: true,
+        };
+      }
+
+      if (inv.status === "cancelled") {
+        throw Object.assign(new Error("cancelled"), { code: "invoice_cancelled" });
+      }
+
+      const openpay = await tx
+        .select()
+        .from(paymentsTable)
+        .where(
+          and(
+            eq(paymentsTable.target_type, "invoice"),
+            eq(paymentsTable.target_id, invoiceId),
+            inArray(paymentsTable.status, ["pending", "booked"]),
+          ),
+        )
+        .orderBy(desc(paymentsTable.created_at))
+        .limit(1);
+      if (openpay[0]) {
+        return { ok: true as const, paymentId: openpay[0].id, idempotent: true };
+      }
+
+      const paidAt = input.paidAt ?? new Date();
+      const amount = Number.isFinite(Number(input.amount)) ? Number(input.amount) : Number(inv.total_gross);
+      const bankRef = String(input.bankReference ?? "").trim();
+
+      let paymentReference = String(inv.payment_reference ?? "").trim();
+      if (!paymentReference) {
+        const [{ getPanelCompanyById }] = await Promise.all([import("./panelCompanyData.js")]);
+        const company = inv.company_id ? await getPanelCompanyById(inv.company_id) : null;
+        paymentReference = buildInvoicePaymentReference({
+          companyDisplayName: company?.name ?? company?.billingName ?? "Mandant",
+          billingPeriodEnd: String(inv.billing_period_end),
+          invoiceNumber: inv.invoice_number,
+        });
+      }
+
+      const pid = `pay-${randomUUID()}`;
+      await tx.insert(paymentsTable).values({
+        id: pid,
+        target_type: "invoice",
+        target_id: invoiceId,
+        company_id: inv.company_id,
+        payment_method: "bank_transfer",
+        amount,
+        paid_at: paidAt,
+        reference: bankRef || paymentReference,
+        status: "booked",
+        metadata_json: { createdByActor: input.actorLabel, invoiceNumber: inv.invoice_number },
+      });
+
+      const oldStatus = inv.status;
+      await tx
+        .update(invoicesTable)
+        .set({
+          status: "paid",
+          payment_reference: paymentReference,
+          updated_at: new Date(),
+          metadata_json: {
+            ...(inv.metadata_json && typeof inv.metadata_json === "object"
+              ? (inv.metadata_json as Record<string, unknown>)
+              : {}),
+            paid_at: paidAt.toISOString(),
+            paid_by: input.actorLabel,
+          },
+        })
+        .where(eq(invoicesTable.id, invoiceId));
+
+      await insertFinancialAuditInTx(tx, {
+        entityType: "invoice",
+        entityId: invoiceId,
+        action: "invoice_marked_paid",
+        oldValue: { status: oldStatus },
+        newValue: {
+          status: "paid",
+          paymentId: pid,
+          amount,
+          reference: bankRef || paymentReference,
+          paidAt: paidAt.toISOString(),
+        },
+        actorType: "admin",
+        actorId: input.actorLabel,
+      });
+
+      return { ok: true as const, paymentId: pid };
+    });
+  } catch (e: unknown) {
+    const err = e as Error & { code?: string };
+    if (err.code === "invoice_not_found") return { ok: false, error: "invoice_not_found" };
+    if (err.code === "invoice_cancelled") return { ok: false, error: "invoice_cancelled" };
+    throw e;
+  }
+}
