@@ -41,7 +41,7 @@ function Section({ title, children, defaultOpen = true }) {
   return (
     <Card style={{ marginBottom: 14 }}>
       <button type="button" onClick={() => setOpen(v => !v)} style={{ display: "flex", width: "100%", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-        <span style={{ fontSize: 15, fontWeight: 600, color: "#1c1c1e" }}>{title}</span>
+        <span style={{ fontSize: 16, fontWeight: 600, color: "#1c1c1e" }}>{title}</span>
         <span style={{ marginLeft: "auto", fontSize: 13, color: "rgba(0,0,0,0.3)", transform: open ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-block", transition: "transform 0.2s" }}>▼</span>
       </button>
       {open && <div style={{ marginTop: 14 }}>{children}</div>}
@@ -338,9 +338,12 @@ export default function AgenturMasterPanel({ company, onLogout }) {
   return (
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.1)", padding: "0 24px", display: "flex", alignItems: "center", height: 56, position: "sticky", top: 0, zIndex: 100 }}>
-        <span style={{ color: RED, fontWeight: 700, fontSize: 18, letterSpacing: -0.5 }}>ONRODA</span>
-        <span style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", marginLeft: 6, background: "#F2F2F7", padding: "2px 8px", borderRadius: 6 }}>
-          {company?.company_kind === "hotel" ? "Hotel" : company?.company_kind === "travel" ? "Reisebüro" : "Agentur"}
+        <span style={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+          <span style={{ color: RED, fontWeight: 800, fontSize: 20, letterSpacing: -1 }}>on</span>
+          <span style={{ color: "#1c1c1e", fontWeight: 800, fontSize: 20, letterSpacing: -1 }}>roda</span>
+        </span>
+        <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", marginLeft: 8, background: "#F2F2F7", padding: "3px 10px", borderRadius: 20, fontWeight: 500 }}>
+          {company?.company_kind === "hotel" ? "🏨 Hotel" : company?.company_kind === "travel" ? "✈️ Reisebüro" : "🏢 Agentur"}
         </span>
         <nav style={{ display: "flex", gap: 2, marginLeft: 28 }}>
           {NAV.map(n => (
@@ -348,13 +351,14 @@ export default function AgenturMasterPanel({ company, onLogout }) {
               padding: "6px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13,
               fontWeight: active === n.key ? 600 : 400,
               background: active === n.key ? RED : "transparent",
-              color: active === n.key ? "#fff" : "rgba(0,0,0,0.55)",
+              color: active === n.key ? "#fff" : "rgba(0,0,0,0.6)",
               transition: "all 0.15s",
+              fontSize: 14,
             }}>{n.label}</button>
           ))}
         </nav>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 12, color: "rgba(0,0,0,0.4)" }}>{company?.name || user?.companyName || ""}</span>
+          <span style={{ fontSize: 13, color: "rgba(0,0,0,0.5)", fontWeight: 500 }}>{company?.name || user?.companyName || ""}</span>
           {onLogout && <button onClick={onLogout} style={{ border: "0.5px solid rgba(0,0,0,0.2)", borderRadius: 8, padding: "5px 12px", fontSize: 12, cursor: "pointer", background: "transparent" }}>Abmelden</button>}
         </div>
       </div>
@@ -368,5 +372,5 @@ export default function AgenturMasterPanel({ company, onLogout }) {
   );
 }
 
-const inp = { display: "block", width: "100%", marginTop: 4, padding: "8px 10px", border: "0.5px solid rgba(0,0,0,0.18)", borderRadius: 8, fontSize: 13, boxSizing: "border-box", background: "#fff" };
+const inp = { display: "block", width: "100%", marginTop: 4, padding: "9px 12px", border: "0.5px solid rgba(0,0,0,0.18)", borderRadius: 8, fontSize: 14, boxSizing: "border-box", background: "#fff" };
 const btn = { padding: "10px 20px", border: "none", borderRadius: 10, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" };
