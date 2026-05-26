@@ -122,7 +122,7 @@ function GutscheineView({ token, user }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", fixedDestination: "", notes: "" });
+  const [form, setForm] = useState({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", fixedPickup: "", fixedDestination: "", notes: "" });
   const [copied, setCopied] = useState(null);
   const [belegCode, setBelegCode] = useState(null);
   const [belegRides, setBelegRides] = useState([]);
@@ -150,6 +150,8 @@ function GutscheineView({ token, user }) {
         codeType: "voucher",
         generateCode: form.codeMode === "generate",
         maxUses: form.maxUses ? Number(form.maxUses) : null,
+        fixedPickup: form.fixedPickup.trim() || undefined,
+        fixedDestination: form.fixedDestination.trim() || undefined,
         internalNote: form.notes.trim() || undefined,
       };
       if (form.codeMode === "custom" && form.customCode.trim()) body.code = form.customCode.trim();
@@ -162,7 +164,7 @@ function GutscheineView({ token, user }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Fehler");
-      setForm({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", fixedDestination: "", notes: "" });
+      setForm({ label: "", codeMode: "generate", customCode: "", maxUses: "1", validFrom: "", validUntil: "", fixedPickup: "", fixedDestination: "", notes: "" });
       await load();
     } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
@@ -222,6 +224,14 @@ function GutscheineView({ token, user }) {
             </label>
           </div>
           <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
+            Start (optional)
+            <input value={form.fixedPickup} onChange={e => setForm(f => ({ ...f, fixedPickup: e.target.value }))} placeholder="z. B. Hotel Marriott, Lobby" style={inp} />
+          </label>
+          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
+            Ziel (optional)
+            <input value={form.fixedDestination} onChange={e => setForm(f => ({ ...f, fixedDestination: e.target.value }))} placeholder="z. B. Flughafen Stuttgart Terminal 1" style={inp} />
+          </label>
+          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
             Code-Typ
             <select value={form.codeMode} onChange={e => setForm(f => ({ ...f, codeMode: e.target.value }))} style={inp}>
               <option value="generate">Automatisch generieren</option>
@@ -277,7 +287,9 @@ function GutscheineView({ token, user }) {
                       {item.validUntil ? ` · bis ${fmtDate(item.validUntil)}` : ""}
                     </span>
                   </div>
-                  {item.notes && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", margin: "6px 0 0" }}>{item.notes}</p>}
+                  {item.fixedPickup && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", margin: "5px 0 0" }}>🚩 Start: <strong>{item.fixedPickup}</strong></p>}
+                {item.fixedDestination && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", margin: "3px 0 0" }}>📍 Ziel: <strong>{item.fixedDestination}</strong></p>}
+                {item.notes && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", margin: "6px 0 0" }}>{item.notes}</p>}
                 </div>
               );
             })}

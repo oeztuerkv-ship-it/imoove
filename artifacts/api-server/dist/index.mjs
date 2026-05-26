@@ -42470,7 +42470,8 @@ function memToAdmin(m) {
     validUntil: m.valid_until ? m.valid_until.toISOString() : null,
     isActive: m.is_active,
     createdAt: m.created_at.toISOString(),
-    internalNote: internalNoteFromMeta(m.meta)
+    internalNote: internalNoteFromMeta(m.meta),
+    fixedDestination: m.meta && typeof m.meta.fixedDestination === "string" ? String(m.meta.fixedDestination).trim() || null : null
   };
 }
 function accessCodeRowForPanel(row) {
@@ -42551,7 +42552,9 @@ async function insertAccessCodeAdmin(body) {
   const label = typeof body.label === "string" ? body.label.trim() : "";
   const rawNote = typeof body.internalNote === "string" ? body.internalNote.trim() : "";
   const internalNoteMeta = rawNote.length > 2e3 ? rawNote.slice(0, 2e3) : rawNote.length > 0 ? rawNote : null;
+  const fixedDest = typeof body.fixedDestination === "string" ? body.fixedDestination.trim() : "";
   const meta = internalNoteMeta ? { internalNote: internalNoteMeta } : {};
+  if (fixedDest) meta.fixedDestination = fixedDest;
   const companyId = typeof body.companyId === "string" && body.companyId.trim() ? body.companyId.trim() : null;
   const maxUses = typeof body.maxUses === "number" && Number.isFinite(body.maxUses) && body.maxUses > 0 ? Math.floor(body.maxUses) : null;
   const validFrom = typeof body.validFrom === "string" && body.validFrom.trim() ? new Date(body.validFrom.trim()) : null;
@@ -45943,6 +45946,7 @@ __export(appOperationalData_exports, {
   assertCustomerRideOperational: () => assertCustomerRideOperational,
   assertPlatformNewRideAllowed: () => assertPlatformNewRideAllowed,
   checkCustomerRideServiceArea: () => checkCustomerRideServiceArea,
+  deleteServiceRegionById: () => deleteServiceRegionById,
   evaluateCustomerCancellationFeeEur: () => evaluateCustomerCancellationFeeEur,
   findFirstServiceRegionMatchForAddress: () => findFirstServiceRegionMatchForAddress,
   getAppConfigForPublic: () => getAppConfigForPublic,
@@ -46373,6 +46377,15 @@ async function insertServiceRegion(input) {
     sort_order: Number(sortOrder) + 1
   });
   return id;
+}
+async function deleteServiceRegionById(id) {
+  const idx = MEM_REGIONS.findIndex((r) => r.id === id);
+  if (idx !== -1) MEM_REGIONS.splice(idx, 1);
+  if (!isPostgresConfigured()) return true;
+  const db2 = getDb();
+  if (!db2) return true;
+  const result = await db2.delete(appServiceRegionsTable).where(eq(appServiceRegionsTable.id, id));
+  return true;
 }
 async function getAppConfigForPublic() {
   const payload = await getOperationalConfigPayload();
@@ -67996,6 +68009,28 @@ adminJson.post("/app-operational/service-regions", async (req, res, next) => {
     next(e);
   }
 });
+adminJson.delete("/app-operational/service-regions/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const id = req.params.id;
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    await deleteServiceRegionById(id);
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.service_region_deleted",
+      meta: { id }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.post("/app-operational/preview-tariff-estimate", async (req, res, next) => {
   try {
     if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
@@ -73191,6 +73226,7 @@ router14.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
       companyId: ctx.claims.companyId,
       label: typeof body.label === "string" ? body.label : void 0,
       internalNote: typeof body.internalNote === "string" ? body.internalNote : void 0,
+      fixedDestination: typeof body.fixedDestination === "string" ? body.fixedDestination : void 0,
       maxUses: typeof body.maxUses === "number" ? body.maxUses : void 0,
       validFrom: typeof body.validFrom === "string" ? body.validFrom : void 0,
       validUntil: typeof body.validUntil === "string" ? body.validUntil : void 0
@@ -73806,6 +73842,7 @@ var MEDICAL_OCR_EXTRACTED_FIELDS = [
   "pflegegrad",
   "merkzeichen",
   "dauerhafteMobilitaetsbeeintraechtigung",
+  "fernbehandlungErkannt",
   "genehmigungsnummer"
 ];
 var EMPTY_EXTRACTED = {
@@ -73826,6 +73863,7 @@ var EMPTY_EXTRACTED = {
   pflegegrad: "unbekannt",
   merkzeichen: "unbekannt",
   dauerhafteMobilitaetsbeeintraechtigung: false,
+  fernbehandlungErkannt: false,
   genehmigungsnummer: null
 };
 function isRecord2(v) {
@@ -73934,6 +73972,33 @@ function parseMedicalMerkzeichen(raw) {
   if (upper.includes("BL")) return "Bl";
   if (/\bH\b/.test(v)) return "H";
   return "unbekannt";
+}
+function parseFernbehandlungErkannt(raw) {
+  if (typeof raw === "boolean") return raw;
+  if (raw == null) return false;
+  const v = normalizeOcrToken(raw);
+  if (!v) return false;
+  if (v === "true" || v === "ja" || v === "yes" || v === "1") return true;
+  return v.includes("videosprechstunde") || v.includes("video-sprechstunde") || v.includes("video sprechstunde") || v.includes("telefonisch") || v.includes("fernbehandlung") || v.includes("fernsprechstunde") || v.includes("fern sprechstunde");
+}
+function inferFernbehandlungFromNested(nested) {
+  const explicit = parseFernbehandlungErkannt(
+    nested.fernbehandlungErkannt ?? nested.fernbehandlung_erkannt ?? nested.remoteTreatment ?? nested.remote_treatment
+  );
+  if (explicit) return true;
+  const hint = normalizeOcrToken(
+    pickString(nested, [
+      "ausstellungsArt",
+      "ausstellungs_art",
+      "verordnungsart",
+      "behandlungsform",
+      "ausstellungsform",
+      "scheinHinweis",
+      "verordnungstext",
+      "notes"
+    ])
+  );
+  return parseFernbehandlungErkannt(hint);
 }
 function parseDauerhafteMobilitaetsbeeintraechtigung(raw) {
   if (typeof raw === "boolean") return raw;
@@ -74101,6 +74166,7 @@ function normalizeMedicalOcrPayload(raw) {
   const dauerhafteMobilitaetsbeeintraechtigung = parseDauerhafteMobilitaetsbeeintraechtigung(
     nested.dauerhafteMobilitaetsbeeintraechtigung ?? nested.dauerhafte_mobilitaetsbeeintraechtigung ?? nested.dauerhafteMobilitaetsbeeintraechtigungCheckbox ?? nested.mobilitaetsbeeintraechtigung_dauerhaft
   );
+  const fernbehandlungErkannt = inferFernbehandlungFromNested(nested);
   const genehmigungsnummer = normalizeGenehmigungsnummer(
     nested.genehmigungsnummer ?? nested.genehmigungs_nummer ?? nested.approvalNumber ?? nested.approval_number ?? nested.kk_genehmigungsnummer
   );
@@ -74124,6 +74190,7 @@ function normalizeMedicalOcrPayload(raw) {
       pflegegrad,
       merkzeichen,
       dauerhafteMobilitaetsbeeintraechtigung,
+      fernbehandlungErkannt,
       genehmigungsnummer
     },
     confidence
@@ -74741,6 +74808,7 @@ Antworte ausschlie\xDFlich mit einem JSON-Objekt (kein Markdown, kein Flie\xDFte
   "pflegegrad": "3" | "4" | "5" | "keins" | "unbekannt",
   "merkzeichen": "aG" | "Bl" | "H" | "G" | "keins" | "unbekannt",
   "dauerhafteMobilitaetsbeeintraechtigung": boolean,
+  "fernbehandlungErkannt": boolean,
   "genehmigungsnummer": string | null,
   "hasSignatureOnDocument": boolean,
   "confidence": {
@@ -74759,6 +74827,7 @@ Antworte ausschlie\xDFlich mit einem JSON-Objekt (kein Markdown, kein Flie\xDFte
     "pflegegrad": number,
     "merkzeichen": number,
     "dauerhafteMobilitaetsbeeintraechtigung": number,
+    "fernbehandlungErkannt": number,
     "genehmigungsnummer": number
   }
 }
@@ -74775,6 +74844,7 @@ Regeln:
 - merkzeichen: aG, Bl, H oder G (Gehbehinderung) wenn angekreuzt; G nicht mit aG verwechseln; sonst "keins" oder "unbekannt".
 - genehmigungsnummer: KK-Genehmigungsnummer falls lesbar, sonst null.
 - validFrom/validUntil: G\xFCltigkeitszeitraum/Dauerverordnung falls lesbar.
+- fernbehandlungErkannt: true wenn \u201EVideosprechstunde\u201C, \u201Etelefonisch\u201C, Fernbehandlung o. \xC4. auf dem Schein erkennbar (\xA72 Abs. 5).
 - hasSignatureOnDocument: true wenn Patientenunterschrift sichtbar.
 - confidence: 0.0\u20131.0 pro Feld; bei Unsicherheit niedrig w\xE4hlen.
 - Wenn das Bild kein Transportschein ist: documentKind "other", sonstige Felder leer lassen.`;
@@ -75030,6 +75100,78 @@ function evaluateMedicalInsuranceRules(normalizedOcr, companyProfile, rideContex
   };
 }
 
+// src/lib/medical/medicalCopayment.ts
+var COPAYMENT_MIN_EUR = 5;
+var COPAYMENT_MAX_EUR = 10;
+var COPAYMENT_PERCENT = 0.1;
+var MEDICAL_COPAYMENT_RULE_DE = "10 % der Fahrtkosten, mindestens 5 \u20AC, h\xF6chstens 10 \u20AC (bei Befreiung 0 \u20AC)";
+function calculateMedicalCopaymentEur(fullFare, isExempted) {
+  if (isExempted) return 0;
+  if (!Number.isFinite(fullFare) || fullFare < 0) return 0;
+  let copayment = fullFare * COPAYMENT_PERCENT;
+  if (copayment < COPAYMENT_MIN_EUR) {
+    copayment = COPAYMENT_MIN_EUR;
+  } else if (copayment > COPAYMENT_MAX_EUR) {
+    copayment = COPAYMENT_MAX_EUR;
+  }
+  if (fullFare < COPAYMENT_MIN_EUR) {
+    copayment = fullFare;
+  }
+  return Math.round(copayment * 100) / 100;
+}
+function parseMedicalScanCopaymentInput(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { estimatedFare: null, copaymentExempt: false };
+  }
+  const body = raw;
+  const fareRaw = body.estimatedFare ?? body.estimated_fare;
+  let estimatedFare = null;
+  if (typeof fareRaw === "number" && Number.isFinite(fareRaw) && fareRaw >= 0) {
+    estimatedFare = fareRaw;
+  } else if (typeof fareRaw === "string" && fareRaw.trim()) {
+    const n4 = Number(fareRaw.replace(",", "."));
+    if (Number.isFinite(n4) && n4 >= 0) estimatedFare = n4;
+  }
+  const copaymentExempt = body.copaymentExempt === true || body.copayment_exempt === true;
+  return { estimatedFare, copaymentExempt };
+}
+function buildMedicalScanCopayment(input) {
+  const exemptDeclared = input.copaymentExempt === true;
+  const fare = typeof input.estimatedFare === "number" && Number.isFinite(input.estimatedFare) && input.estimatedFare >= 0 ? input.estimatedFare : null;
+  if (exemptDeclared) {
+    return {
+      required: "no",
+      amountEstimated: 0,
+      amountMinEur: COPAYMENT_MIN_EUR,
+      amountMaxEur: COPAYMENT_MAX_EUR,
+      ruleDe: MEDICAL_COPAYMENT_RULE_DE,
+      exemptDeclared: true,
+      noteDe: "Zuzahlungsbefreiung angegeben \u2014 Eigenanteil 0,00 \u20AC (Nachweis bereithalten)."
+    };
+  }
+  if (fare != null) {
+    const amountEstimated = calculateMedicalCopaymentEur(fare, false);
+    return {
+      required: "yes",
+      amountEstimated,
+      amountMinEur: COPAYMENT_MIN_EUR,
+      amountMaxEur: COPAYMENT_MAX_EUR,
+      ruleDe: MEDICAL_COPAYMENT_RULE_DE,
+      exemptDeclared: false,
+      noteDe: `Gesch\xE4tzter Eigenanteil (Zuzahlung): ${amountEstimated.toFixed(2).replace(".", ",")} \u20AC`
+    };
+  }
+  return {
+    required: "yes",
+    amountEstimated: null,
+    amountMinEur: COPAYMENT_MIN_EUR,
+    amountMaxEur: COPAYMENT_MAX_EUR,
+    ruleDe: MEDICAL_COPAYMENT_RULE_DE,
+    exemptDeclared: false,
+    noteDe: `Zuzahlung voraussichtlich ${COPAYMENT_MIN_EUR}\u2013${COPAYMENT_MAX_EUR} \u20AC (${MEDICAL_COPAYMENT_RULE_DE}). Betrag nach Fahrpreis-Sch\xE4tzung.`
+  };
+}
+
 // src/lib/medical/medicalTrafficLight.ts
 var CONFIDENCE_WARN_THRESHOLD = 0.55;
 var MEDICAL_DATE_LOGIC_MESSAGES_DE = {
@@ -75075,6 +75217,7 @@ var DATE_LOGIC_CODE_SEVERITY = {
 };
 var PG3_GENEHMIGUNG_ERFORDERLICH_HINT_DE = "Pflegegrad 3: nur mit dauerhafter Mobilit\xE4tsbeeintr\xE4chtigung oder Merkzeichen G genehmigungsfrei \u2014 KK-Genehmigung pr\xFCfen";
 var CUSTOMER_MISSING_SIGNATURE_HINT_DE = "Bitte Fahrer zeigen \u2014 Unterschrift und Stempel vor Ort pr\xFCfen";
+var FERNBEHANDLUNG_SCHEIN_HINT_DE = "Schein per Fernbehandlung ausgestellt \u2014 Fahrer pr\xFCft Original";
 function dateLogicSeverityToWarning(severity) {
   if (severity === "fail") return "block_recommended";
   if (severity === "warn") return "warn";
@@ -75247,6 +75390,16 @@ function evaluateBehandlungsArtRules(extracted, input) {
   });
   return warnings;
 }
+function evaluateFernbehandlungRules(extracted) {
+  if (!extracted.fernbehandlungErkannt) return [];
+  return [
+    {
+      code: "fernbehandlung_schein",
+      message: FERNBEHANDLUNG_SCHEIN_HINT_DE,
+      severity: "warn"
+    }
+  ];
+}
 function evaluateMedicalTrafficLight(input) {
   const warnings = [];
   const { extracted, confidence, dateLogicResult } = input;
@@ -75266,6 +75419,7 @@ function evaluateMedicalTrafficLight(input) {
     });
   }
   warnings.push(...evaluateBehandlungsArtRules(extracted, input));
+  warnings.push(...evaluateFernbehandlungRules(extracted));
   for (const code of dateLogicResult.warningCodes) {
     warnings.push({
       code,
@@ -75368,6 +75522,10 @@ async function runMedicalTransportDocumentScanForCustomerBooking(input) {
     insuranceRideId: `customer-booking:${scanId}`,
     omitPartnerIkWarnings: true
   });
+  const copayment = buildMedicalScanCopayment({
+    estimatedFare: input.estimatedFare ?? null,
+    copaymentExempt: input.copaymentExempt
+  });
   const scannedAt = (/* @__PURE__ */ new Date()).toISOString();
   const primaryReasonDe = pickPrimaryCustomerScanReasonDe(
     pipeline.trafficLight,
@@ -75392,11 +75550,13 @@ async function runMedicalTransportDocumentScanForCustomerBooking(input) {
     primaryReasonDe,
     snapshotJson: {
       ...customerTransportScanMetaToPartnerJson(meta),
+      copayment,
       evaluation: {
         warnings: pipeline.warnings,
         extracted: pipeline.extracted,
         dateLogic: pipeline.dateLogic,
-        insuranceRules: pipeline.insuranceRules
+        insuranceRules: pipeline.insuranceRules,
+        copayment
       }
     },
     storageKey: rel,
@@ -75410,7 +75570,8 @@ async function runMedicalTransportDocumentScanForCustomerBooking(input) {
     scanId: inserted.id,
     trafficLight: pipeline.trafficLight,
     primaryReasonDe,
-    scannedAt
+    scannedAt,
+    copayment
   };
 }
 function isMedicalTestScanEnabled() {
@@ -75526,7 +75687,9 @@ async function runMedicalTransportDocumentScanTest(input) {
     imageBase64: input.imageBase64,
     companyId,
     partnerIkSnapshot: await resolvePartnerIk(companyId),
-    insuranceRideId: "test"
+    insuranceRideId: "test",
+    estimatedFare: input.estimatedFare,
+    copaymentExempt: input.copaymentExempt
   });
 }
 async function runMedicalTransportDocumentScanTestForCustomer(input) {
@@ -75546,7 +75709,9 @@ async function runMedicalTransportDocumentScanTestForCustomer(input) {
     companyId: "",
     partnerIkSnapshot: "",
     insuranceRideId: `customer-test:${customerPassengerId2}`,
-    omitPartnerIkWarnings: true
+    omitPartnerIkWarnings: true,
+    estimatedFare: input.estimatedFare,
+    copaymentExempt: input.copaymentExempt
   });
 }
 async function runMedicalTransportDocumentScanTestCore(input) {
@@ -75569,6 +75734,10 @@ async function runMedicalTransportDocumentScanTestCore(input) {
     insuranceRideId: input.insuranceRideId,
     omitPartnerIkWarnings: input.omitPartnerIkWarnings
   });
+  const copayment = buildMedicalScanCopayment({
+    estimatedFare: input.estimatedFare ?? null,
+    copaymentExempt: input.copaymentExempt
+  });
   return {
     ok: true,
     testMode: true,
@@ -75577,7 +75746,8 @@ async function runMedicalTransportDocumentScanTestCore(input) {
     warnings: pipeline.warnings,
     extracted: pipeline.extracted,
     dateLogic: pipeline.dateLogic,
-    insuranceRules: pipeline.insuranceRules
+    insuranceRules: pipeline.insuranceRules,
+    copayment
   };
 }
 async function runMedicalTransportDocumentScan(input) {
@@ -75662,6 +75832,11 @@ async function runMedicalTransportDocumentScan(input) {
     returnRideScheduledAt,
     completedRidesInSeries
   });
+  const fareForCopayment = input.estimatedFare ?? (Number.isFinite(ride.estimatedFare) ? ride.estimatedFare : null);
+  const copayment = buildMedicalScanCopayment({
+    estimatedFare: fareForCopayment,
+    copaymentExempt: input.copaymentExempt
+  });
   const dateLogicContextJson = {
     dateLogicType,
     seriesId,
@@ -75728,6 +75903,7 @@ async function runMedicalTransportDocumentScan(input) {
     extracted: pipeline.extracted,
     dateLogic: pipeline.dateLogic,
     insuranceRules: pipeline.insuranceRules,
+    copayment,
     storageKey: rel
   };
 }
@@ -78011,9 +78187,12 @@ router21.post("/customer/v1/medical/scan-test", requireCustomerSession, async (r
     }
     const body = req.body;
     const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const copay = parseMedicalScanCopaymentInput(body);
     const result = await runMedicalTransportDocumentScanTestForCustomer({
       customerPassengerId: customerPassengerId(sess),
-      imageBase64
+      imageBase64,
+      estimatedFare: copay.estimatedFare,
+      copaymentExempt: copay.copaymentExempt
     });
     if (!result.ok) {
       res.status(result.status).json({ ok: false, error: result.error });
@@ -78027,7 +78206,8 @@ router21.post("/customer/v1/medical/scan-test", requireCustomerSession, async (r
       warnings: result.warnings,
       extracted: result.extracted,
       dateLogic: result.dateLogic,
-      insuranceRules: result.insuranceRules
+      insuranceRules: result.insuranceRules,
+      copayment: result.copayment
     });
   } catch (err) {
     next(err);
@@ -78042,9 +78222,12 @@ router21.post("/customer/v1/medical/scan", requireCustomerSession, async (req, r
     }
     const body = req.body;
     const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const copay = parseMedicalScanCopaymentInput(body);
     const result = await runMedicalTransportDocumentScanForCustomerBooking({
       customerPassengerId: customerPassengerId(sess),
-      imageBase64
+      imageBase64,
+      estimatedFare: copay.estimatedFare,
+      copaymentExempt: copay.copaymentExempt
     });
     if (!result.ok) {
       res.status(result.status).json({ ok: false, error: result.error });
@@ -78055,7 +78238,8 @@ router21.post("/customer/v1/medical/scan", requireCustomerSession, async (req, r
       scanId: result.scanId,
       trafficLight: result.trafficLight,
       primaryReasonDe: result.primaryReasonDe || null,
-      scannedAt: result.scannedAt
+      scannedAt: result.scannedAt,
+      copayment: result.copayment
     });
   } catch (err) {
     next(err);
