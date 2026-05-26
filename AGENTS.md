@@ -41,6 +41,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-mobile-notifications-push-knowledge.mdc` — **Mobile Push/Banner/Ton:** Kunde vs Fahrer, Token-Exklusivität, `suppressDriverInstantOffer`
 - `.cursor/rules/imoove-mobile-destination-navigation.mdc` — **Mobile:** Orte → Ziel → `/ride-select` (keine URL-Params auf `/`)
 - `.cursor/rules/imoove-mobile-live-ride-flows.mdc` — **Mobile:** Live-Fahrt Kunde (`/status`) + Fahrer-Navi (Stack `dismissTo`, Session-Restore, Debug-Tabelle)
+- `.cursor/rules/imoove-invoice-billing-architecture.mdc` — **Rechnungen/Abrechnung:** `invoices`/`invoice_items` (028), Panel-PDF-API, kein `onroda_invoices`-WIP; **`docs/onroda-invoice-billing-architecture.md`**
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds
 - `.cursor/rules/imoove-server-infrastructure-onroda.mdc` — Domains, Port 3000, Nginx, **Panel-Postmortem** (scrypt `maxmem`, `rides.company_id` TEXT, serverseitiger API-Build)
 - **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`** — produktiver Nginx-/TLS-/Domain-Referenzstand (z. B. `sites-enabled/final-try`, `api.onroda.de`-SAN, Panel-`/partners`-Redirect)

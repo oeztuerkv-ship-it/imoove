@@ -82,11 +82,20 @@ Datenzugriff: `db/adminFinanceData.ts`
 - `POST /api/admin/invoices/generate` — Monatslauf aus `ride_financials` + abgeschlossenen Fahrten
 - `POST /api/admin/invoices/:id/mark-paid` — Status + optional `payments`-Zeile
 
-## PDF
+## PDF (Corporate B2B-Layout)
 
-- **Nur serverseitig** (`invoicePdfServer.ts`)
-- Partner-Download liefert gespeichertes PDF (`pdf_storage_key`) oder erzeugt on-the-fly und cached auf Disk
-- Inhalt: Rechnungsnummer, Empfänger (Stammdaten `billing_*`), Zeitraum, Positionen, Summen, Status, ONRODA-Branding (Text-PDF; Layout-Ausbau später z. B. PDFKit)
+- **Nur serverseitig** — `pdfkit` + modulare Komponenten unter `artifacts/api-server/src/lib/invoice/`
+- **Referenz-Optik:** Admin `InvoicesPage` Print-View (ONRODA-Wortmarke, Karten, rote Summe, Tabellenzeilen)
+- **Zentral:** `invoiceBrand.ts` (Rechnungssteller Vedat Öztürk, IBAN, St.-Nr., Farben)
+- **Komponenten:** `invoicePdfComponents.ts` (Kopf, Meta-Leiste, Parteien, Tabelle, Summen, Bank, Footer)
+- **Mehrseitig:** `partnerInvoicePdf.ts` — Tabellenzeilen mit Seitenumbruch + kompakter Folgekopf
+- Partner-Download: gespeichertes PDF (`pdf_storage_key`) oder on-the-fly + optional Disk-Cache
+- **Kein** dauerhaftes Frontend-Fake-PDF (Hotel-Demo nur Übergang)
+
+Lokale Probe-PDF: `pnpm --filter @workspace/api-server run test:invoice-pdf-sample`  
+Layout-Stress (Mehrseiten, Umlaute, lange Texte): `pnpm --filter @workspace/api-server run test:invoice-pdf-stress`
+
+**Roadmap (nicht Phase 1):** Logo-Asset, Status bezahlt/offen/überfällig + Admin mark-paid, Zahlungs-Historie, PDF-Regeneration, DATEV/CSV, Mahnlogik, Verwendungszweck-Matching; Partner-UI: Demo-Abrechnung entfernen → echte `/panel/v1/invoices`.
 
 **Hotel-Panel:** Der lokale Demo-PDF-Button in `AgenturMasterPanel.jsx` ist **UX-Prototyp** — Ziel-Anbindung: `GET …/invoices/:id/pdf` via `partner-panel/src/lib/panelInvoicesApi.js`.
 
@@ -127,7 +136,12 @@ flowchart LR
 |------|--------|
 | `db/panelInvoicesData.ts` | Partner-Queries + DTO-Mapping |
 | `db/adminFinanceData.ts` | Admin-Listen/Detail |
-| `lib/invoicePdfServer.ts` | PDF-Erzeugung |
+| `lib/invoicePdfServer.ts` | Öffentliche API (`buildPartnerMonthlyInvoicePdf`) |
+| `lib/invoice/invoiceBrand.ts` | Logo-Farben, Rechnungssteller |
+| `lib/invoice/invoiceLayout.ts` | A4, DIN-Ränder, Seitenkontext |
+| `lib/invoice/invoicePdfComponents.ts` | Kopf, Footer, Tabelle, Summen, Bank |
+| `lib/invoice/partnerInvoicePdf.ts` | Mehrseitiges Dokument |
+| `lib/invoice/mapInvoiceItemForPdf.ts` | DB-Zeile → PDF-Zeile |
 | `routes/panelInvoiceRoutes.ts` | Partner-HTTP |
 | `routes/panelRouteContext.ts` | Gemeinsame Panel-Auth-Helfer |
 | `routes/panelApi.ts` | Einzelfahrt-Rechnung (bestehend) |

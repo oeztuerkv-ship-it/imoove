@@ -1,12 +1,27 @@
 /**
  * Serverseitige PDF-Erzeugung für Monats-/Partner-Rechnungen (`invoices` / `invoice_items`).
- * Kein Browser-Fake-PDF — Auslieferung über GET /panel/v1/invoices/:id/pdf.
+ * Layout-Referenz: Admin `InvoicesPage` Print-View + `docs/onroda-invoice-billing-architecture.md`
  */
 
+import {
+  renderPartnerInvoicePdf,
+  type PartnerInvoicePdfDocumentInput,
+  type PartnerInvoicePdfLineItem,
+} from "./invoice/partnerInvoicePdf.js";
+
+export type { PartnerInvoicePdfDocumentInput, PartnerInvoicePdfLineItem };
+
+/** @deprecated Nutze PartnerInvoicePdfLineItem — Alias für bestehende Aufrufer. */
 export type PartnerInvoicePdfItem = {
   description: string;
   detail?: string;
   lineGross: number;
+  quantity?: number;
+  unitNet?: number;
+  vatRate?: number;
+  lineNet?: number;
+  lineVat?: number;
+  position?: number;
 };
 
 export type PartnerInvoicePdfInput = {
@@ -22,18 +37,16 @@ export type PartnerInvoicePdfInput = {
   subtotalNet: number;
   vatTotal: number;
   totalGross: number;
+  taxRatePercent?: number;
   notes?: string | null;
+  segmentLabel?: string;
 };
 
 function pdfEscape(text: string): string {
   return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-function moneyDe(n: number): string {
-  return `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`;
-}
-
-function buildPdfFromLines(lines: string[]): Buffer {
+function buildLegacyTextPdf(lines: string[]): Buffer {
   const content = [
     "BT",
     "/F1 11 Tf",
@@ -67,38 +80,46 @@ function buildPdfFromLines(lines: string[]): Buffer {
   return Buffer.from(pdf, "utf8");
 }
 
-/** Einfaches Text-PDF (z. B. Einzelfahrt-Rechnung im Panel). */
-export function buildSimpleTextInvoicePdf(lines: string[]): Buffer {
-  return buildPdfFromLines(lines);
+function mapLineItems(items: PartnerInvoicePdfItem[]): PartnerInvoicePdfLineItem[] {
+  return items.map((item, index) => ({
+    position: item.position ?? index + 1,
+    description: item.description,
+    subline: item.detail,
+    quantity: item.quantity ?? 1,
+    unitNet: item.unitNet ?? item.lineGross,
+    vatRate: item.vatRate ?? 0,
+    lineNet: item.lineNet ?? item.lineGross,
+    lineVat: item.lineVat ?? 0,
+    lineGross: item.lineGross,
+  }));
 }
 
-export function buildPartnerMonthlyInvoicePdf(input: PartnerInvoicePdfInput): Buffer {
-  const lines: string[] = [
-    "ONRODA — Monatsrechnung",
-    `Rechnungsnummer: ${input.invoiceNumber}`,
-    `Status: ${input.statusLabel}`,
-    `Rechnungsdatum: ${input.issueDate}`,
-    `Zahlungsziel: ${input.dueDate ?? "—"}`,
-    `Abrechnungszeitraum: ${input.periodFrom} bis ${input.periodTo}`,
-    "",
-    "Rechnungsempfaenger:",
-    input.recipientName,
-    ...input.recipientLines.filter(Boolean),
-    "",
-    "Positionen:",
-  ];
-  for (const item of input.items) {
-    lines.push(`- ${item.description}${item.detail ? ` (${item.detail})` : ""}: ${moneyDe(item.lineGross)}`);
-  }
-  lines.push(
-    "",
-    `Netto: ${moneyDe(input.subtotalNet)}`,
-    `MwSt.: ${moneyDe(input.vatTotal)}`,
-    `Gesamt brutto: ${moneyDe(input.totalGross)}`,
-  );
-  if (input.notes?.trim()) {
-    lines.push("", `Hinweis: ${input.notes.trim()}`);
-  }
-  lines.push("", "Erstellt ueber api.onroda.de — Plattform ONRODA");
-  return buildPdfFromLines(lines);
+function toDocumentInput(input: PartnerInvoicePdfInput): PartnerInvoicePdfDocumentInput {
+  return {
+    invoiceNumber: input.invoiceNumber,
+    statusLabel: input.statusLabel,
+    issueDate: input.issueDate,
+    dueDate: input.dueDate,
+    periodFrom: input.periodFrom,
+    periodTo: input.periodTo,
+    recipientName: input.recipientName,
+    recipientLines: input.recipientLines,
+    items: mapLineItems(input.items),
+    subtotalNet: input.subtotalNet,
+    vatTotal: input.vatTotal,
+    totalGross: input.totalGross,
+    taxRatePercent: input.taxRatePercent,
+    notes: input.notes,
+    segmentLabel: input.segmentLabel,
+  };
+}
+
+/** Einfaches Text-PDF (z. B. Einzelfahrt-Rechnung im Panel) — bewusst schlicht. */
+export function buildSimpleTextInvoicePdf(lines: string[]): Buffer {
+  return buildLegacyTextPdf(lines);
+}
+
+/** B2B-Monatsrechnung (Hotel / Corporate / Medical / Voucher) — ONRODA Corporate Layout. */
+export async function buildPartnerMonthlyInvoicePdf(input: PartnerInvoicePdfInput): Promise<Buffer> {
+  return renderPartnerInvoicePdf(toDocumentInput(input));
 }

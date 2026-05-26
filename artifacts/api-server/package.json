@@ -12,6 +12,8 @@
     "test:admin-password-reset": "node ./scripts/test-admin-password-reset-flow.mjs",
     "test:email-verification-unit": "pnpm run build && node ./dist/scripts/emailVerificationSelftest.mjs",
     "test:email-verification-http": "node ./scripts/test-email-verification-http.mjs",
+    "test:invoice-pdf-sample": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfSample.mjs",
+    "test:invoice-pdf-stress": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfStressTest.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -25,8 +27,9 @@
     "google-auth-library": "^9.15.1",
     "jose": "^6.2.2",
     "nodemailer": "^6.10.1",
-    "pino": "^9",
+    "pdfkit": "^0.18.0",
     "pg": "^8.14.1",
+    "pino": "^9",
     "pino-http": "^10",
     "socket.io": "^4.8.3",
     "ws": "^8.20.0",
@@ -38,6 +41,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
     "@types/nodemailer": "^6.4.17",
+    "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.11.11",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",

@@ -18,7 +18,7 @@ Vollständige Architektur: **`docs/onroda-invoice-billing-architecture.md`**.
 - **Partner-API:** `GET /panel/v1/invoices`, `…/:id`, `…/:id/pdf` in `routes/panelInvoiceRoutes.ts`; Daten `db/panelInvoicesData.ts`; PDF `lib/invoicePdfServer.ts`.
 - **Admin-API:** `GET /api/admin/finance/invoices` (+ Detail) via `adminFinanceData.ts`.
 - **Mandantenfilter:** Partner-Routen **immer** `company_id` aus Panel-JWT.
-- **PDF:** nur serverseitig; kein dauerhaftes Frontend-Fake-PDF (Hotel-Demo-Button ist Übergang).
+- **PDF:** nur serverseitig (`lib/invoice/*`, PDFKit, A4); Branding in `invoiceBrand.ts`; kein Frontend-Fake-PDF (Hotel-Demo nur Übergang).
 - **Kein WIP auf main:** keine Imports nach `export default router`; keine Migration ohne Schema + Drizzle + Verify-Eintrag.
 
 ## Getrennt von

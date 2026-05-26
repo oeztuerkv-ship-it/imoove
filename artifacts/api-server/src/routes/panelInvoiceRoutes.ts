@@ -8,7 +8,8 @@ import {
   listPanelInvoicesForCompany,
   panelInvoiceStatusLabel,
 } from "../db/panelInvoicesData";
-import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer";
+import { mapPanelInvoiceItemsForPdf } from "../lib/invoice/mapInvoiceItemForPdf.js";
+import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
 import { assertActivePanelProfile, denyUnlessPanelModule } from "./panelRouteContext";
 
 const router: IRouter = Router();
@@ -96,7 +97,11 @@ router.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, re
     }
 
     if (!pdfBuffer) {
-      pdfBuffer = buildPartnerMonthlyInvoicePdf({
+      const taxRatePercent =
+        invoice.subtotalNet > 0
+          ? Math.round((invoice.vatTotal / invoice.subtotalNet) * 10000) / 100
+          : 19;
+      pdfBuffer = await buildPartnerMonthlyInvoicePdf({
         invoiceNumber: invoice.invoiceNumber,
         statusLabel: panelInvoiceStatusLabel(invoice.paymentStatus),
         issueDate: invoice.issueDate,
@@ -105,14 +110,11 @@ router.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, re
         periodTo: invoice.periodTo,
         recipientName: invoice.recipient.billingName,
         recipientLines: invoice.recipient.billingLines,
-        items: invoice.items.map((item) => ({
-          description: item.description,
-          detail: item.rideId ? `Fahrt ${item.rideId}` : undefined,
-          lineGross: item.lineGross,
-        })),
+        items: mapPanelInvoiceItemsForPdf(invoice.items),
         subtotalNet: invoice.subtotalNet,
         vatTotal: invoice.vatTotal,
         totalGross: invoice.totalGross,
+        taxRatePercent,
         notes: invoice.notes,
       });
       if (!storageKey) {

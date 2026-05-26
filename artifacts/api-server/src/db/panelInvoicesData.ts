@@ -43,6 +43,7 @@ export type PanelInvoiceItem = {
   lineNet: number;
   lineVat: number;
   lineGross: number;
+  metadata: Record<string, unknown>;
   createdAt: string;
 };
 
@@ -86,8 +87,8 @@ function statusLabelDe(paymentStatus: PanelInvoicePaymentStatus): string {
   const m: Record<PanelInvoicePaymentStatus, string> = {
     draft: "Entwurf",
     open: "Offen",
-    due: "Faellig",
-    overdue: "Ueberfaellig",
+    due: "Fällig",
+    overdue: "Überfällig",
     partial: "Teilweise bezahlt",
     paid: "Bezahlt",
     cancelled: "Storniert",
@@ -96,6 +97,10 @@ function statusLabelDe(paymentStatus: PanelInvoicePaymentStatus): string {
 }
 
 function mapItem(row: typeof invoiceItemsTable.$inferSelect): PanelInvoiceItem {
+  const metadata =
+    row.metadata_json && typeof row.metadata_json === "object"
+      ? (row.metadata_json as Record<string, unknown>)
+      : {};
   return {
     id: row.id,
     rideId: row.ride_id ?? null,
@@ -107,6 +112,7 @@ function mapItem(row: typeof invoiceItemsTable.$inferSelect): PanelInvoiceItem {
     lineNet: Number(row.line_net),
     lineVat: Number(row.line_vat),
     lineGross: Number(row.line_gross),
+    metadata,
     createdAt: new Date(row.created_at).toISOString(),
   };
 }
