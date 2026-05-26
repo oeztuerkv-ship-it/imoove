@@ -1,3 +1,4 @@
+import CollapsibleCard from "../components/CollapsibleCard.jsx";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
