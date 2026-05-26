@@ -93,7 +93,8 @@ export default function AppOperationalBookingRulesPage() {
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
-      <CollapsibleCard title="Buchungsregeln">
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Buchungsregeln</div>
         <p className="admin-table-sub" style={{ maxWidth: 720, lineHeight: 1.5 }}>
           <strong>Telefon</strong> optional, bis Kunden-App <code>customerPhone</code> mitsendet. <strong>Diagnosen</strong> in
           Krankenfahrt nicht speichern — Policy-Flag; Implementierung: keine Speicherung sensibler Freitexte.
@@ -149,7 +150,7 @@ export default function AppOperationalBookingRulesPage() {
         <p className="admin-table-sub" style={{ marginTop: 8 }}>
           Öffentlich: <code>GET {API_BASE}/app/config</code> → <code>bookingRules</code>
         </p>
-      </CollapsibleCard>
+      </div>
     </div>
   );
 }

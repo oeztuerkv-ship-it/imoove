@@ -47,7 +47,8 @@ export default function FinanceAuditPage() {
   return (
     <div className="admin-page admin-page--loose">
       {error ? <div className="admin-error-banner">{error}</div> : null}
-      <CollapsibleCard title="Finance Audit (read only)">
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Finance Audit (read only)</div>
         <div className="admin-table-toolbar">
           <input className="admin-input" placeholder="entity_type (z. B. ride_financial)" value={entityType} onChange={(e) => { setEntityType(e.target.value); setPage(1); }} />
           <input className="admin-input" placeholder="action (z. B. snapshot_updated)" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} />
@@ -77,7 +78,7 @@ export default function FinanceAuditPage() {
           <span className="admin-page-dots">Seite {page} / {pages}</span>
           <button className="admin-page-btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Weiter</button>
         </div>
-      </CollapsibleCard>
+      </div>
     </div>
   );
 }

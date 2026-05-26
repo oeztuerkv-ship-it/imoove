@@ -162,7 +162,8 @@ export default function AccessCodesPage() {
         </div>
       ) : null}
 
-      <CollapsibleCard title="Zugangscode anlegen">
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Zugangscode anlegen</div>
         <form onSubmit={handleCreate} className="admin-form-vertical">
           <div className="admin-inline-check">
             <input
@@ -277,9 +278,10 @@ export default function AccessCodesPage() {
             </button>
           </div>
         </form>
-      </CollapsibleCard>
+      </div>
 
-      <CollapsibleCard title="Alle Codes">
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Alle Codes</div>
         {loading ? (
           <div className="admin-muted">Wird geladen …</div>
         ) : (
@@ -318,7 +320,7 @@ export default function AccessCodesPage() {
             ))}
           </div>
         )}
-      </CollapsibleCard>
+      </div>
     </div>
   );
 }

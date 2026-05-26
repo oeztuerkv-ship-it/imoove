@@ -62,7 +62,8 @@ export default function FinanceDashboardPage() {
 
   return (
     <div className="admin-page admin-page--loose">
-      <CollapsibleCard title="KPI-Summary">
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">KPI-Summary</div>
         <div className="admin-table-toolbar">
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <label className="admin-form-pair">
@@ -87,7 +88,7 @@ export default function FinanceDashboardPage() {
             </div>
           ))}
         </div>
-      </CollapsibleCard>
+      </div>
     </div>
   );
 }

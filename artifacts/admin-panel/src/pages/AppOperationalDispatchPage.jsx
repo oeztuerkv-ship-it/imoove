@@ -88,7 +88,8 @@ export default function AppOperationalDispatchPage() {
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
-      <CollapsibleCard title="Dispatch (Kunden-App / Plattform)">
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Dispatch (Kunden-App / Plattform)</div>
         <p className="admin-table-sub">Landet in <code>GET {API_BASE}/app/config</code> → <code>dispatch</code>. Der Dispatch-Service darf die Werte unabhängig von der App auswerten (Server-Quelle).</p>
         <div style={{ maxWidth: 420 }}>
           {b("active", "Dispatch-Modul aktiv (semantik je nach Hintergrund-Dispatcher)")}
@@ -110,7 +111,7 @@ export default function AppOperationalDispatchPage() {
         <button type="button" className="admin-btn admin-btn--primary" style={{ marginTop: 20 }} onClick={save}>
           Speichern
         </button>
-      </CollapsibleCard>
+      </div>
     </div>
   );
 }

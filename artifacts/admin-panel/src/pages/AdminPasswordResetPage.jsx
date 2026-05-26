@@ -61,7 +61,8 @@ export default function AdminPasswordResetPage() {
 
   return (
     <div className="admin-page" style={{ maxWidth: 460, margin: "40px auto" }}>
-      <CollapsibleCard title="Neues Passwort setzen">
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Neues Passwort setzen</div>
         <p className="admin-table-sub" style={{ marginBottom: 14 }}>
           Geben Sie den Token aus der E-Mail ein (oder nutzen Sie den Link aus der Nachricht) und wählen Sie ein neues Passwort.
         </p>
@@ -104,7 +105,7 @@ export default function AdminPasswordResetPage() {
             ← Zurück zum Admin-Login
           </a>
         </p>
-      </CollapsibleCard>
+      </div>
     </div>
   );
 }
