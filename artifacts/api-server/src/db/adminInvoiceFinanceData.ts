@@ -159,6 +159,10 @@ export async function adminMarkInvoicePaid(input: {
       });
 
       const oldStatus = inv.status;
+      const prevMeta =
+        inv.metadata_json && typeof inv.metadata_json === "object"
+          ? (inv.metadata_json as Record<string, unknown>)
+          : {};
       await tx
         .update(invoicesTable)
         .set({
@@ -166,9 +170,8 @@ export async function adminMarkInvoicePaid(input: {
           payment_reference: paymentReference,
           updated_at: new Date(),
           metadata_json: {
-            ...(inv.metadata_json && typeof inv.metadata_json === "object"
-              ? (inv.metadata_json as Record<string, unknown>)
-              : {}),
+            ...prevMeta,
+            status_before_paid: oldStatus,
             paid_at: paidAt.toISOString(),
             paid_by_admin: input.actorLabel,
             zahlungsreferenz: bankRef || paymentReference,
@@ -279,6 +282,155 @@ export async function adminSendInvoicePaymentReminder(input: {
     if (err.code === "invoice_cancelled") return { ok: false, error: "invoice_cancelled" };
     if (err.code === "invoice_already_paid") return { ok: false, error: "invoice_already_paid" };
     if (err.code === "invoice_draft") return { ok: false, error: "invoice_draft" };
+    throw e;
+  }
+}
+
+function readInvoiceMeta(inv: typeof invoicesTable.$inferSelect): Record<string, unknown> {
+  return inv.metadata_json && typeof inv.metadata_json === "object"
+    ? (inv.metadata_json as Record<string, unknown>)
+    : {};
+}
+
+async function resolveStatusAfterPaymentRevert(
+  tx: ExecDb,
+  invoiceId: string,
+  meta: Record<string, unknown>,
+): Promise<string> {
+  const fromMeta = meta.status_before_paid;
+  if (typeof fromMeta === "string") {
+    const s = fromMeta.trim().toLowerCase();
+    if (s && s !== "paid" && s !== "cancelled") return s;
+  }
+  const audits = await tx
+    .select()
+    .from(financialAuditLogTable)
+    .where(
+      and(
+        eq(financialAuditLogTable.entity_type, "invoice"),
+        eq(financialAuditLogTable.entity_id, invoiceId),
+        eq(financialAuditLogTable.action, "invoice_marked_paid"),
+      ),
+    )
+    .orderBy(desc(financialAuditLogTable.created_at))
+    .limit(1);
+  const oldStatus = audits[0]?.old_value_json?.status;
+  if (typeof oldStatus === "string") {
+    const s = oldStatus.trim().toLowerCase();
+    if (s && s !== "paid" && s !== "cancelled") return s;
+  }
+  return "issued";
+}
+
+/** Admin: Bezahlstatus zurücknehmen (Payment → reversed, Rechnung wieder offen, Audit). */
+export async function adminRevertInvoicePayment(input: {
+  invoiceId: string;
+  actorLabel: string;
+  reason?: string | null;
+}): Promise<
+  | { ok: true; invoiceId: string; restoredStatus: string; idempotent?: boolean }
+  | { ok: false; error: string }
+> {
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const invoiceId = input.invoiceId.trim();
+  if (!invoiceId) return { ok: false, error: "invoice_id_required" };
+
+  try {
+    return await db.transaction(async (tx) => {
+      const invRows = await tx
+        .select()
+        .from(invoicesTable)
+        .where(eq(invoicesTable.id, invoiceId))
+        .for("update")
+        .limit(1);
+      const inv = invRows[0];
+      if (!inv) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
+
+      if (inv.status !== "paid") {
+        return { ok: true as const, invoiceId, restoredStatus: inv.status, idempotent: true };
+      }
+
+      const prevMeta = readInvoiceMeta(inv);
+      const restoredStatus = await resolveStatusAfterPaymentRevert(tx, invoiceId, prevMeta);
+      const revertedAt = new Date();
+      const reason = String(input.reason ?? "").trim();
+
+      const bookedPayments = await tx
+        .select()
+        .from(paymentsTable)
+        .where(
+          and(
+            eq(paymentsTable.target_type, "invoice"),
+            eq(paymentsTable.target_id, invoiceId),
+            eq(paymentsTable.status, "booked"),
+          ),
+        )
+        .orderBy(desc(paymentsTable.created_at));
+
+      const reversedPaymentIds: string[] = [];
+      for (const pay of bookedPayments) {
+        const payMeta =
+          pay.metadata_json && typeof pay.metadata_json === "object"
+            ? (pay.metadata_json as Record<string, unknown>)
+            : {};
+        await tx
+          .update(paymentsTable)
+          .set({
+            status: "reversed",
+            updated_at: revertedAt,
+            metadata_json: {
+              ...payMeta,
+              reversed_at: revertedAt.toISOString(),
+              reversed_by_admin: input.actorLabel,
+              revert_reason: reason || null,
+            },
+          })
+          .where(eq(paymentsTable.id, pay.id));
+        reversedPaymentIds.push(pay.id);
+      }
+
+      await tx
+        .update(invoicesTable)
+        .set({
+          status: restoredStatus,
+          updated_at: revertedAt,
+          metadata_json: {
+            ...prevMeta,
+            payment_reverted_at: revertedAt.toISOString(),
+            payment_reverted_by_admin: input.actorLabel,
+            payment_revert_reason: reason || null,
+            last_restored_status: restoredStatus,
+          },
+        })
+        .where(eq(invoicesTable.id, invoiceId));
+
+      await insertFinancialAuditInTx(tx, {
+        entityType: "invoice",
+        entityId: invoiceId,
+        action: "invoice_payment_reverted",
+        oldValue: {
+          status: "paid",
+          paymentIds: reversedPaymentIds,
+          paid_at: prevMeta.paid_at ?? null,
+          paid_by_admin: prevMeta.paid_by_admin ?? null,
+        },
+        newValue: {
+          status: restoredStatus,
+          reversedPaymentIds,
+          revertedAt: revertedAt.toISOString(),
+          revertedByAdmin: input.actorLabel,
+          reason: reason || null,
+        },
+        actorType: "admin",
+        actorId: input.actorLabel,
+      });
+
+      return { ok: true as const, invoiceId, restoredStatus };
+    });
+  } catch (e: unknown) {
+    const err = e as Error & { code?: string };
+    if (err.code === "invoice_not_found") return { ok: false, error: "invoice_not_found" };
     throw e;
   }
 }

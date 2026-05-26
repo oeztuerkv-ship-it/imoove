@@ -43,6 +43,7 @@ function auditActionLabel(action) {
   const m = {
     invoice_marked_paid: "Als bezahlt markiert",
     invoice_reminder_sent: "Zahlungserinnerung gesendet",
+    invoice_payment_reverted: "Zahlung zurückgenommen",
   };
   return m[action] ?? action;
 }
@@ -57,6 +58,7 @@ export default function FinanceInvoicesPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [markBusy, setMarkBusy] = useState(false);
   const [reminderBusy, setReminderBusy] = useState(false);
+  const [revertBusy, setRevertBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState("");
 
   const [workflowFilter, setWorkflowFilter] = useState("");
@@ -133,6 +135,39 @@ export default function FinanceInvoicesPage() {
     }
   }
 
+  async function revertPayment(id) {
+    const targetId = id ?? detail?.id;
+    if (!targetId) return;
+    const reason = window.prompt(
+      "Grund für die Rücknahme (optional, z. B. „Versehentlich als bezahlt markiert“):",
+      "Versehentlich als bezahlt markiert",
+    );
+    if (reason === null) return;
+    setRevertBusy(true);
+    setActionMsg("");
+    try {
+      const res = await fetch(`${LIST_URL}/${encodeURIComponent(targetId)}/revert-payment`, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      setActionMsg(
+        data.idempotent
+          ? "Rechnung war bereits nicht mehr als bezahlt verbucht."
+          : `Zahlung zurückgenommen (Status: ${data.restoredStatus || data.invoice?.status || "offen"}).`,
+      );
+      if (data.invoice) setDetail(data.invoice);
+      else await openDetail(targetId);
+      await load();
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : "Rücknahme fehlgeschlagen.");
+    } finally {
+      setRevertBusy(false);
+    }
+  }
+
   async function sendReminder(id) {
     const targetId = id ?? detail?.id;
     if (!targetId) return;
@@ -187,6 +222,10 @@ export default function FinanceInvoicesPage() {
     detail &&
     !("error" in detail) &&
     !["paid", "cancelled", "draft"].includes(detail.workflow_status ?? detail.status);
+  const canRevert =
+    detail &&
+    !("error" in detail) &&
+    (detail.workflow_status === "paid" || detail.status === "paid");
 
   return (
     <div className="admin-page admin-page--loose">
@@ -402,10 +441,28 @@ export default function FinanceInvoicesPage() {
                     {markBusy ? "Speichere …" : "Als bezahlt markieren"}
                   </button>
                 ) : null}
+                {canRevert ? (
+                  <button
+                    type="button"
+                    className="admin-page-btn admin-page-btn--compact"
+                    onClick={() => void revertPayment()}
+                    disabled={revertBusy}
+                  >
+                    {revertBusy ? "Rücknahme …" : "Zahlung zurücknehmen"}
+                  </button>
+                ) : null}
                 <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => setDetail(null)}>
                   Schließen
                 </button>
               </div>
+
+              {detail.payment_reverted_at ? (
+                <p style={{ marginTop: 12, fontSize: 13, color: "var(--admin-muted,#6b7280)" }}>
+                  Zuletzt zurückgenommen: {fmtDate(detail.payment_reverted_at)}
+                  {detail.payment_reverted_by_admin ? ` · ${detail.payment_reverted_by_admin}` : null}
+                  {detail.payment_revert_reason ? ` · „${detail.payment_revert_reason}"` : null}
+                </p>
+              ) : null}
 
               {Array.isArray(detail.payments) && detail.payments.length > 0 ? (
                 <div style={{ marginTop: 20 }}>
@@ -413,8 +470,10 @@ export default function FinanceInvoicesPage() {
                   <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13 }}>
                     {detail.payments.map((p) => (
                       <li key={p.id}>
-                        {money(p.amount)} · {p.status} · {p.reference || "—"} · {p.paid_at ? fmtDate(p.paid_at) : "offen"}
-                        {detail.paid_by_admin ? ` · Admin: ${detail.paid_by_admin}` : null}
+                        {money(p.amount)} · <strong>{p.status}</strong> · {p.reference || "—"} ·{" "}
+                        {p.paid_at ? fmtDate(p.paid_at) : "offen"}
+                        {p.status === "reversed" ? " (zurückgenommen)" : null}
+                        {detail.paid_by_admin && p.status === "booked" ? ` · Admin: ${detail.paid_by_admin}` : null}
                       </li>
                     ))}
                   </ul>

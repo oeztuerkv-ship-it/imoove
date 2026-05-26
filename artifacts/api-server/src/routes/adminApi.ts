@@ -47,7 +47,11 @@ import {
   adminCreateSettlementWithRideAllocations,
   adminRecordSettlementPayoutAttempt,
 } from "../db/financeSettlementsData";
-import { adminMarkInvoicePaid, adminSendInvoicePaymentReminder } from "../db/adminInvoiceFinanceData";
+import {
+  adminMarkInvoicePaid,
+  adminRevertInvoicePayment,
+  adminSendInvoicePaymentReminder,
+} from "../db/adminInvoiceFinanceData";
 import { mapPanelInvoiceItemsForPdf } from "../lib/invoice/mapInvoiceItemForPdf.js";
 import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
 import { invoicePdfNeutralStatusLabel, type InvoiceWorkflowFilter } from "../lib/invoiceWorkflow.js";
@@ -1172,6 +1176,37 @@ adminJson.post("/finance/invoices/:invoiceId/mark-paid", async (req, res, next) 
       return;
     }
     res.json({ ok: true, paymentId: out.paymentId, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/finance/invoices/:invoiceId/revert-payment", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body as Record<string, unknown>;
+    const reason = typeof body.reason === "string" ? body.reason : "";
+    const out = await adminRevertInvoicePayment({
+      invoiceId: req.params.invoiceId,
+      actorLabel: `admin_console:${role}`,
+      reason,
+    });
+    if (!out.ok) {
+      const st = out.error === "invoice_not_found" ? 404 : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    const item = await findInvoiceAdmin(req.params.invoiceId);
+    res.json({
+      ok: true,
+      idempotent: out.idempotent === true,
+      restoredStatus: out.restoredStatus,
+      invoice: item,
+    });
   } catch (e) {
     next(e);
   }
