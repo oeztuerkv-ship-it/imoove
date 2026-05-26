@@ -27,6 +27,11 @@ import {
   evaluateMedicalInsuranceRules,
   type MedicalInsuranceRuleResult,
 } from "./medicalInsuranceRules";
+import {
+  buildMedicalScanCopayment,
+  parseMedicalScanCopaymentInput,
+  type MedicalScanCopaymentDto,
+} from "./medicalCopayment";
 import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument, type MedicalOcrExtracted } from "./medicalOcrNormalize";
 import { evaluateMedicalTrafficLight, type MedicalWarning } from "./medicalTrafficLight";
 import {
@@ -48,7 +53,7 @@ export const MEDICAL_RIDE_UPLOAD_ROOT =
 export const MEDICAL_TEST_SCAN_DISCLAIMER =
   "Testprüfung ohne Fahrt – nicht abrechnungsrelevant.";
 
-export type MedicalScanServiceInput = {
+export type MedicalScanServiceInput = MedicalScanCopaymentOptions & {
   fleetDriverId: string;
   companyId: string;
   rideId: string;
@@ -58,18 +63,23 @@ export type MedicalScanServiceInput = {
   returnRideId?: string;
 };
 
-export type MedicalScanTestServiceInput = {
+export type MedicalScanTestServiceInput = MedicalScanCopaymentOptions & {
   fleetDriverId: string;
   companyId: string;
   imageBase64: string;
 };
 
-export type MedicalScanCustomerTestServiceInput = {
+export type MedicalScanCustomerTestServiceInput = MedicalScanCopaymentOptions & {
   customerPassengerId: string;
   imageBase64: string;
 };
 
-export type MedicalScanCustomerBookingServiceInput = {
+export type MedicalScanCopaymentOptions = {
+  estimatedFare?: number | null;
+  copaymentExempt?: boolean;
+};
+
+export type MedicalScanCustomerBookingServiceInput = MedicalScanCopaymentOptions & {
   customerPassengerId: string;
   imageBase64: string;
 };
@@ -81,6 +91,7 @@ export type MedicalScanCustomerBookingServiceResult =
       trafficLight: "green" | "yellow" | "red";
       primaryReasonDe: string;
       scannedAt: string;
+      copayment: MedicalScanCopaymentDto;
     }
   | { ok: false; error: string; status: number };
 
@@ -132,6 +143,11 @@ export async function runMedicalTransportDocumentScanForCustomerBooking(
     omitPartnerIkWarnings: true,
   });
 
+  const copayment = buildMedicalScanCopayment({
+    estimatedFare: input.estimatedFare ?? null,
+    copaymentExempt: input.copaymentExempt,
+  });
+
   const scannedAt = new Date().toISOString();
   const primaryReasonDe = pickPrimaryCustomerScanReasonDe(
     pipeline.trafficLight,
@@ -157,11 +173,13 @@ export async function runMedicalTransportDocumentScanForCustomerBooking(
     primaryReasonDe,
     snapshotJson: {
       ...customerTransportScanMetaToPartnerJson(meta),
+      copayment,
       evaluation: {
         warnings: pipeline.warnings,
         extracted: pipeline.extracted,
         dateLogic: pipeline.dateLogic,
         insuranceRules: pipeline.insuranceRules,
+        copayment,
       },
     },
     storageKey: rel,
@@ -178,6 +196,7 @@ export async function runMedicalTransportDocumentScanForCustomerBooking(
     trafficLight: pipeline.trafficLight,
     primaryReasonDe,
     scannedAt,
+    copayment,
   };
 }
 
@@ -193,6 +212,7 @@ type MedicalScanEvaluationCore = {
   extracted: MedicalOcrExtracted;
   dateLogic: MedicalDateLogicResult;
   insuranceRules: MedicalInsuranceRuleResult;
+  copayment: MedicalScanCopaymentDto;
 };
 
 type MedicalOcrPipelineResult = MedicalScanEvaluationCore & {
@@ -382,6 +402,8 @@ export async function runMedicalTransportDocumentScanTest(
     companyId,
     partnerIkSnapshot: await resolvePartnerIk(companyId),
     insuranceRideId: "test",
+    estimatedFare: input.estimatedFare,
+    copaymentExempt: input.copaymentExempt,
   });
 }
 
@@ -409,6 +431,8 @@ export async function runMedicalTransportDocumentScanTestForCustomer(
     partnerIkSnapshot: "",
     insuranceRideId: `customer-test:${customerPassengerId}`,
     omitPartnerIkWarnings: true,
+    estimatedFare: input.estimatedFare,
+    copaymentExempt: input.copaymentExempt,
   });
 }
 
@@ -418,6 +442,8 @@ async function runMedicalTransportDocumentScanTestCore(input: {
   partnerIkSnapshot: string;
   insuranceRideId: string;
   omitPartnerIkWarnings?: boolean;
+  estimatedFare?: number | null;
+  copaymentExempt?: boolean;
 }): Promise<MedicalScanTestServiceResult> {
   const b64 = input.imageBase64.trim();
   if (!b64) {
@@ -442,6 +468,11 @@ async function runMedicalTransportDocumentScanTestCore(input: {
     omitPartnerIkWarnings: input.omitPartnerIkWarnings,
   });
 
+  const copayment = buildMedicalScanCopayment({
+    estimatedFare: input.estimatedFare ?? null,
+    copaymentExempt: input.copaymentExempt,
+  });
+
   return {
     ok: true,
     testMode: true,
@@ -451,6 +482,7 @@ async function runMedicalTransportDocumentScanTestCore(input: {
     extracted: pipeline.extracted,
     dateLogic: pipeline.dateLogic,
     insuranceRules: pipeline.insuranceRules,
+    copayment,
   };
 }
 
@@ -555,6 +587,13 @@ export async function runMedicalTransportDocumentScan(
     completedRidesInSeries,
   });
 
+  const fareForCopayment =
+    input.estimatedFare ?? (Number.isFinite(ride.estimatedFare) ? ride.estimatedFare : null);
+  const copayment = buildMedicalScanCopayment({
+    estimatedFare: fareForCopayment,
+    copaymentExempt: input.copaymentExempt,
+  });
+
   const dateLogicContextJson: Record<string, unknown> = {
     dateLogicType,
     seriesId,
@@ -628,6 +667,7 @@ export async function runMedicalTransportDocumentScan(
     extracted: pipeline.extracted,
     dateLogic: pipeline.dateLogic,
     insuranceRules: pipeline.insuranceRules,
+    copayment,
     storageKey: rel,
   };
 }

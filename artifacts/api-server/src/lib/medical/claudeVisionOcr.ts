@@ -49,6 +49,7 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
   "pflegegrad": "3" | "4" | "5" | "keins" | "unbekannt",
   "merkzeichen": "aG" | "Bl" | "H" | "G" | "keins" | "unbekannt",
   "dauerhafteMobilitaetsbeeintraechtigung": boolean,
+  "fernbehandlungErkannt": boolean,
   "genehmigungsnummer": string | null,
   "hasSignatureOnDocument": boolean,
   "confidence": {
@@ -67,6 +68,7 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
     "pflegegrad": number,
     "merkzeichen": number,
     "dauerhafteMobilitaetsbeeintraechtigung": number,
+    "fernbehandlungErkannt": number,
     "genehmigungsnummer": number
   }
 }
@@ -83,6 +85,7 @@ Regeln:
 - merkzeichen: aG, Bl, H oder G (Gehbehinderung) wenn angekreuzt; G nicht mit aG verwechseln; sonst "keins" oder "unbekannt".
 - genehmigungsnummer: KK-Genehmigungsnummer falls lesbar, sonst null.
 - validFrom/validUntil: Gültigkeitszeitraum/Dauerverordnung falls lesbar.
+- fernbehandlungErkannt: true wenn „Videosprechstunde“, „telefonisch“, Fernbehandlung o. Ä. auf dem Schein erkennbar (§2 Abs. 5).
 - hasSignatureOnDocument: true wenn Patientenunterschrift sichtbar.
 - confidence: 0.0–1.0 pro Feld; bei Unsicherheit niedrig wählen.
 - Wenn das Bild kein Transportschein ist: documentKind "other", sonstige Felder leer lassen.`;

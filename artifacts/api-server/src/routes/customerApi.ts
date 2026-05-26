@@ -7,7 +7,11 @@ import { upsertPassengerExpoPushToken } from "../db/passengerExpoPushData";
 import { createAppHelpTicket, parseAppHelpCategory } from "../db/appHelpTicketsData";
 import { isPostgresConfigured } from "../db/client";
 import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
-import { runMedicalTransportDocumentScanTestForCustomer, runMedicalTransportDocumentScanForCustomerBooking } from "../lib/medical/medicalScanService";
+import { parseMedicalScanCopaymentInput } from "../lib/medical/medicalCopayment";
+import {
+  runMedicalTransportDocumentScanTestForCustomer,
+  runMedicalTransportDocumentScanForCustomerBooking,
+} from "../lib/medical/medicalScanService";
 import {
   customerPassengerId,
   requireCustomerSession,
@@ -341,11 +345,14 @@ router.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req
       res.status(401).json({ ok: false, error: "unauthorized" });
       return;
     }
-    const body = req.body as { imageBase64?: unknown };
+    const body = req.body as Record<string, unknown>;
     const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const copay = parseMedicalScanCopaymentInput(body);
     const result = await runMedicalTransportDocumentScanTestForCustomer({
       customerPassengerId: customerPassengerId(sess),
       imageBase64,
+      estimatedFare: copay.estimatedFare,
+      copaymentExempt: copay.copaymentExempt,
     });
     if (!result.ok) {
       res.status(result.status).json({ ok: false, error: result.error });
@@ -360,6 +367,7 @@ router.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req
       extracted: result.extracted,
       dateLogic: result.dateLogic,
       insuranceRules: result.insuranceRules,
+      copayment: result.copayment,
     });
   } catch (err) {
     next(err);
@@ -374,11 +382,14 @@ router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res
       res.status(401).json({ ok: false, error: "unauthorized" });
       return;
     }
-    const body = req.body as { imageBase64?: unknown };
+    const body = req.body as Record<string, unknown>;
     const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const copay = parseMedicalScanCopaymentInput(body);
     const result = await runMedicalTransportDocumentScanForCustomerBooking({
       customerPassengerId: customerPassengerId(sess),
       imageBase64,
+      estimatedFare: copay.estimatedFare,
+      copaymentExempt: copay.copaymentExempt,
     });
     if (!result.ok) {
       res.status(result.status).json({ ok: false, error: result.error });
@@ -390,6 +401,7 @@ router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res
       trafficLight: result.trafficLight,
       primaryReasonDe: result.primaryReasonDe || null,
       scannedAt: result.scannedAt,
+      copayment: result.copayment,
     });
   } catch (err) {
     next(err);

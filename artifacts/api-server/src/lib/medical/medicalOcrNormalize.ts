@@ -21,6 +21,7 @@ export const MEDICAL_OCR_EXTRACTED_FIELDS = [
   "pflegegrad",
   "merkzeichen",
   "dauerhafteMobilitaetsbeeintraechtigung",
+  "fernbehandlungErkannt",
   "genehmigungsnummer",
 ] as const;
 
@@ -49,6 +50,8 @@ export type MedicalOcrExtracted = {
   pflegegrad: MedicalPflegegrad;
   merkzeichen: MedicalMerkzeichen;
   dauerhafteMobilitaetsbeeintraechtigung: boolean;
+  /** §2 Abs. 5 — Videosprechstunde / telefonische Ausstellung erkannt. */
+  fernbehandlungErkannt: boolean;
   genehmigungsnummer: string | null;
 };
 
@@ -72,6 +75,7 @@ const EMPTY_EXTRACTED: MedicalOcrExtracted = {
   pflegegrad: "unbekannt",
   merkzeichen: "unbekannt",
   dauerhafteMobilitaetsbeeintraechtigung: false,
+  fernbehandlungErkannt: false,
   genehmigungsnummer: null,
 };
 
@@ -231,6 +235,46 @@ export function parseMedicalMerkzeichen(raw: unknown): MedicalMerkzeichen {
   if (/\bH\b/.test(v)) return "H";
 
   return "unbekannt";
+}
+
+export function parseFernbehandlungErkannt(raw: unknown): boolean {
+  if (typeof raw === "boolean") return raw;
+  if (raw == null) return false;
+  const v = normalizeOcrToken(raw);
+  if (!v) return false;
+  if (v === "true" || v === "ja" || v === "yes" || v === "1") return true;
+  return (
+    v.includes("videosprechstunde") ||
+    v.includes("video-sprechstunde") ||
+    v.includes("video sprechstunde") ||
+    v.includes("telefonisch") ||
+    v.includes("fernbehandlung") ||
+    v.includes("fernsprechstunde") ||
+    v.includes("fern sprechstunde")
+  );
+}
+
+function inferFernbehandlungFromNested(nested: Record<string, unknown>): boolean {
+  const explicit = parseFernbehandlungErkannt(
+    nested.fernbehandlungErkannt ??
+      nested.fernbehandlung_erkannt ??
+      nested.remoteTreatment ??
+      nested.remote_treatment,
+  );
+  if (explicit) return true;
+  const hint = normalizeOcrToken(
+    pickString(nested, [
+      "ausstellungsArt",
+      "ausstellungs_art",
+      "verordnungsart",
+      "behandlungsform",
+      "ausstellungsform",
+      "scheinHinweis",
+      "verordnungstext",
+      "notes",
+    ]),
+  );
+  return parseFernbehandlungErkannt(hint);
 }
 
 export function parseDauerhafteMobilitaetsbeeintraechtigung(raw: unknown): boolean {
@@ -482,6 +526,8 @@ export function normalizeMedicalOcrPayload(raw: unknown): {
       nested.mobilitaetsbeeintraechtigung_dauerhaft,
   );
 
+  const fernbehandlungErkannt = inferFernbehandlungFromNested(nested);
+
   const genehmigungsnummer = normalizeGenehmigungsnummer(
     nested.genehmigungsnummer ??
       nested.genehmigungs_nummer ??
@@ -511,6 +557,7 @@ export function normalizeMedicalOcrPayload(raw: unknown): {
       pflegegrad,
       merkzeichen,
       dauerhafteMobilitaetsbeeintraechtigung,
+      fernbehandlungErkannt,
       genehmigungsnummer,
     },
     confidence,

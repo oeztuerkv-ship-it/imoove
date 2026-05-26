@@ -98,6 +98,10 @@ export const PG3_GENEHMIGUNG_ERFORDERLICH_HINT_DE =
 export const CUSTOMER_MISSING_SIGNATURE_HINT_DE =
   "Bitte Fahrer zeigen — Unterschrift und Stempel vor Ort prüfen";
 
+/** §2 Abs. 5 Muster-4 — Fernbehandlung / Videosprechstunde / telefonisch. */
+export const FERNBEHANDLUNG_SCHEIN_HINT_DE =
+  "Schein per Fernbehandlung ausgestellt — Fahrer prüft Original";
+
 function dateLogicSeverityToWarning(severity: MedicalDateLogicResult["severity"]): MedicalWarningSeverity {
   if (severity === "fail") return "block_recommended";
   if (severity === "warn") return "warn";
@@ -314,6 +318,18 @@ function evaluateBehandlungsArtRules(
   return warnings;
 }
 
+/** §2 Abs. 5 — Videosprechstunde / telefonisch → Gelb. */
+function evaluateFernbehandlungRules(extracted: MedicalOcrExtracted): MedicalWarning[] {
+  if (!extracted.fernbehandlungErkannt) return [];
+  return [
+    {
+      code: "fernbehandlung_schein",
+      message: FERNBEHANDLUNG_SCHEIN_HINT_DE,
+      severity: "warn",
+    },
+  ];
+}
+
 /**
  * Ampel-Regelwerk Phase 1 — nur Empfehlung, keine Auto-Freigabe.
  * Rot = Ablehnen empfohlen; Gelb = mit Warnung weiter möglich.
@@ -340,6 +356,7 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
   }
 
   warnings.push(...evaluateBehandlungsArtRules(extracted, input));
+  warnings.push(...evaluateFernbehandlungRules(extracted));
 
   for (const code of dateLogicResult.warningCodes) {
     warnings.push({

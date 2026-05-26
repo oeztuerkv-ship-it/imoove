@@ -54131,12 +54131,25 @@ function calculateMedicalBillingReadiness(meta) {
 }
 
 // src/lib/medical/customerTransportScanSnapshot.ts
+var PARTNER_IK_WARNING_CODES = /* @__PURE__ */ new Set(["stationaer_missing_taxi_ik", "missing_partner_ik"]);
+function isWarningIrrelevantForCustomerScan(item) {
+  if (item.code && PARTNER_IK_WARNING_CODES.has(item.code)) return true;
+  const m = (item.message ?? "").toLowerCase();
+  return m.includes("leistungserbringer-ik") || m.includes("partner-ik");
+}
+function filterWarningsForCustomerScan(items) {
+  return items.filter((w) => !isWarningIrrelevantForCustomerScan(w));
+}
 function pickPrimaryCustomerScanReasonDe(trafficLight, warnings, insuranceRules) {
-  const visible = warnings.filter((w) => w.severity !== "info" && (w.message?.trim() || w.code));
-  const fromWarning = visible.find((w) => w.severity === "block_recommended") ?? visible[0];
+  const visible = filterWarningsForCustomerScan(
+    warnings.filter((w) => w.severity !== "info" && (w.message?.trim() || w.code))
+  );
+  const fromWarning = visible.find((w) => w.code === "customer_missing_signature") ?? visible.find((w) => w.severity === "block_recommended") ?? visible[0];
   if (fromWarning?.message?.trim()) return fromWarning.message.trim();
-  const fromRules = insuranceRules?.warnings.find((w) => w.trim());
-  if (fromRules?.trim()) return fromRules.trim();
+  const fromRules = filterWarningsForCustomerScan(
+    (insuranceRules?.warnings ?? []).map((message2) => ({ message: message2 }))
+  ).find((w) => w.message?.trim());
+  if (fromRules?.message?.trim()) return fromRules.message.trim();
   const summary = insuranceRules?.summary?.trim();
   if (summary) return summary;
   if (trafficLight === "yellow") return "Der Schein konnte nicht vollst\xE4ndig gepr\xFCft werden.";
@@ -54145,15 +54158,17 @@ function pickPrimaryCustomerScanReasonDe(trafficLight, warnings, insuranceRules)
 }
 function buildDriverHintLines(warnings, insuranceRules) {
   const lines = [];
-  for (const w of warnings) {
+  for (const w of filterWarningsForCustomerScan(warnings)) {
     if (w.severity === "info") continue;
     const msg = w.message?.trim();
     if (msg && !lines.includes(msg)) lines.push(msg);
     if (lines.length >= 3) break;
   }
   if (lines.length < 3 && insuranceRules) {
-    for (const w of insuranceRules.warnings) {
-      const t = w.trim();
+    for (const w of filterWarningsForCustomerScan(
+      insuranceRules.warnings.map((message2) => ({ message: message2 }))
+    )) {
+      const t = w.message?.trim() ?? "";
       if (t && !lines.includes(t)) lines.push(t);
       if (lines.length >= 3) break;
     }
@@ -57715,7 +57730,10 @@ router2.post("/rides", async (req, res, next) => {
       normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
     }
     let medicalScanConsume = null;
-    if (rideKind === "medical" && normalizedPartnerMeta.medical_demo_mode !== true) {
+    const paymentMethodRaw = String(raw.paymentMethod ?? "").trim();
+    const isKrankenkassePayment = paymentMethodRaw.toLowerCase().includes("krankenkasse");
+    const requiresCustomerTransportScan = rideKind === "medical" && normalizedPartnerMeta.medical_demo_mode !== true || rideKind === "standard" && isKrankenkassePayment;
+    if (requiresCustomerTransportScan) {
       const passengerIdForScan = String(raw.passengerId ?? "").trim();
       const customerMedicalScanId = parseCustomerMedicalScanIdFromBody(raw);
       if (!customerMedicalScanId) {
@@ -57737,21 +57755,29 @@ router2.post("/rides", async (req, res, next) => {
         });
         return;
       }
-      normalizedPartnerMeta = {
-        ...normalizedPartnerMeta,
-        customer_transport_scan: customerTransportScanMetaToPartnerJson(scanBooking.meta),
-        transport_document_status: scanBooking.trafficLight === "green" ? "verified" : "uploaded",
-        transport_document_recognition_status: scanBooking.trafficLight === "green" ? "recognized" : "unclear",
-        transport_document_file_key: scanBooking.meta.storageKey,
-        transport_document_uploaded_at: scanBooking.meta.scannedAt,
-        approval_proof_mode: "customer_scan"
-      };
-      if (scanBooking.trafficLight === "green") {
-        normalizedPartnerMeta.approval_status = "approved";
+      const scanMetaJson = customerTransportScanMetaToPartnerJson(scanBooking.meta);
+      if (rideKind === "medical") {
+        normalizedPartnerMeta = {
+          ...normalizedPartnerMeta,
+          customer_transport_scan: scanMetaJson,
+          transport_document_status: scanBooking.trafficLight === "green" ? "verified" : "uploaded",
+          transport_document_recognition_status: scanBooking.trafficLight === "green" ? "recognized" : "unclear",
+          transport_document_file_key: scanBooking.meta.storageKey,
+          transport_document_uploaded_at: scanBooking.meta.scannedAt,
+          approval_proof_mode: "customer_scan"
+        };
+        if (scanBooking.trafficLight === "green") {
+          normalizedPartnerMeta.approval_status = "approved";
+        }
+        const readyAfterScan = calculateMedicalBillingReadiness(normalizedPartnerMeta);
+        normalizedPartnerMeta.billing_ready = readyAfterScan.billingReady;
+        normalizedPartnerMeta.billing_missing_reasons = readyAfterScan.missingReasons;
+      } else {
+        normalizedPartnerMeta = {
+          ...normalizedPartnerMeta,
+          customer_transport_scan: scanMetaJson
+        };
       }
-      const readyAfterScan = calculateMedicalBillingReadiness(normalizedPartnerMeta);
-      normalizedPartnerMeta.billing_ready = readyAfterScan.billingReady;
-      normalizedPartnerMeta.billing_missing_reasons = readyAfterScan.missingReasons;
       medicalScanConsume = { scanId: customerMedicalScanId, passengerId: passengerIdForScan };
     }
     const customerDriverNoteFromBody = extractCustomerDriverNoteFromRawBody(raw);
@@ -73771,10 +73797,15 @@ var MEDICAL_OCR_EXTRACTED_FIELDS = [
   "transportDate",
   "validFrom",
   "validUntil",
+  "aufnahmedatum",
+  "entlassungsdatum",
   "documentKind",
   "behandlungsArt",
+  "behandlungsKontext",
+  "behandlungsFrequenz",
   "pflegegrad",
   "merkzeichen",
+  "dauerhafteMobilitaetsbeeintraechtigung",
   "genehmigungsnummer"
 ];
 var EMPTY_EXTRACTED = {
@@ -73786,14 +73817,22 @@ var EMPTY_EXTRACTED = {
   transportDate: null,
   validFrom: null,
   validUntil: null,
+  aufnahmedatum: null,
+  entlassungsdatum: null,
   documentKind: "transport_sheet",
   behandlungsArt: "unbekannt",
+  behandlungsKontext: "standard",
+  behandlungsFrequenz: "keine",
   pflegegrad: "unbekannt",
   merkzeichen: "unbekannt",
+  dauerhafteMobilitaetsbeeintraechtigung: false,
   genehmigungsnummer: null
 };
 function isRecord2(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function normalizeOcrToken(raw) {
+  return String(raw ?? "").trim().toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
 }
 function pickString(raw, keys) {
   for (const k of keys) {
@@ -73832,13 +73871,40 @@ function parseDocumentKind(raw) {
   return "transport_sheet";
 }
 function parseMedicalBehandlungsArt(raw) {
-  const v = String(raw ?? "").trim().toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+  const v = normalizeOcrToken(raw);
   if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
   if (v === "ambulant" || v.includes("ambulant") || v === "outpatient") {
     return "ambulant";
   }
-  if (v === "stationaer" || v === "station\xE4r" || v.includes("stationaer") || v.includes("stationar") || v === "inpatient") {
+  if (v === "stationaer" || v.includes("stationaer") || v.includes("stationar") || v === "inpatient") {
     return "stationaer";
+  }
+  return "unbekannt";
+}
+function parseMedicalBehandlungsKontext(raw) {
+  const v = normalizeOcrToken(raw);
+  if (!v || v === "standard" || v === "normal") return "standard";
+  if (v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v === "vorstationaer" || v.includes("vorstationaer") || v.includes("vor-stationaer") || v.includes("vor stationaer") || v.includes("voraufnahme") || v.includes("aufnahme") && !v.includes("nach")) {
+    return "vorstationaer";
+  }
+  if (v === "nachstationaer" || v.includes("nachstationaer") || v.includes("nach-stationaer") || v.includes("nach stationaer") || v.includes("entlassung") || v.includes("nachentlassung")) {
+    return "nachstationaer";
+  }
+  return "unbekannt";
+}
+function parseMedicalBehandlungsFrequenz(raw) {
+  const v = normalizeOcrToken(raw);
+  if (!v || v === "keine" || v === "none" || v === "nein" || v === "normal") return "keine";
+  if (v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v.includes("dialyse") || v.includes("haemodialyse") || v.includes("hemodialyse")) {
+    return "dialyse";
+  }
+  if (v.includes("chemo") || v.includes("chemotherapie") || v.includes("zytostat")) {
+    return "chemo";
+  }
+  if (v.includes("strahlen") || v.includes("strahlentherapie") || v.includes("radioonkologie") || v.includes("bestrahlung")) {
+    return "strahlen";
   }
   return "unbekannt";
 }
@@ -73854,21 +73920,56 @@ function parseMedicalMerkzeichen(raw) {
   const v = String(raw ?? "").trim();
   if (!v || v.toLowerCase() === "unbekannt" || v.toLowerCase() === "unknown") return "unbekannt";
   if (v.toLowerCase() === "keins" || v.toLowerCase() === "keine" || v.toLowerCase() === "none") return "keins";
+  const normalized = normalizeOcrToken(v);
+  if (normalized.includes("gehbehinderung")) return "G";
   const compact = v.replace(/\s+/g, "");
+  if (/^G$/i.test(compact)) return "G";
   if (/^aG$/i.test(compact) || compact.toLowerCase() === "ag") return "aG";
   if (/^Bl$/i.test(compact) || compact.toLowerCase() === "bl") return "Bl";
   if (compact === "H" || compact.toLowerCase() === "h") return "H";
   const upper = v.toUpperCase();
+  if (/\bG\b/.test(v) && !upper.includes("AG") && !upper.includes("BL")) return "G";
+  if (upper.includes("GEHBEHINDERUNG")) return "G";
   if (upper.includes("AG") && !upper.includes("BL")) return "aG";
   if (upper.includes("BL")) return "Bl";
   if (/\bH\b/.test(v)) return "H";
   return "unbekannt";
+}
+function parseDauerhafteMobilitaetsbeeintraechtigung(raw) {
+  if (typeof raw === "boolean") return raw;
+  if (raw == null) return false;
+  const v = normalizeOcrToken(raw);
+  if (!v) return false;
+  if (v === "true" || v === "ja" || v === "yes" || v === "1" || v === "x" || v === "angekreuzt") {
+    return true;
+  }
+  return v.includes("dauerhafte mobilitaetsbeeintraechtigung") || v.includes("dauerhaft mobilitaetsbeeintraechtigt") || v.includes("mobilitaetsbeeintraechtigung dauerhaft");
 }
 function normalizeGenehmigungsnummer(raw) {
   if (raw == null) return null;
   const s = String(raw).trim();
   if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "unbekannt") return null;
   return s.slice(0, 64);
+}
+function isHochfrequenteBehandlung(extracted) {
+  return extracted.behandlungsFrequenz === "dialyse" || extracted.behandlungsFrequenz === "chemo" || extracted.behandlungsFrequenz === "strahlen";
+}
+function isAmbulantGenehmigungsfreiPg45(extracted) {
+  return extracted.pflegegrad === "4" || extracted.pflegegrad === "5";
+}
+function isAmbulantGenehmigungsfreiMerkzeichen(extracted) {
+  return extracted.merkzeichen === "aG" || extracted.merkzeichen === "Bl" || extracted.merkzeichen === "H" || extracted.merkzeichen === "G";
+}
+function isAmbulantGenehmigungsfreiPg3(extracted) {
+  if (extracted.pflegegrad !== "3") return false;
+  return extracted.dauerhafteMobilitaetsbeeintraechtigung || extracted.merkzeichen === "G";
+}
+function isAmbulantGenehmigungsfrei(extracted) {
+  if (isHochfrequenteBehandlung(extracted)) return false;
+  return isAmbulantGenehmigungsfreiPg45(extracted) || isAmbulantGenehmigungsfreiMerkzeichen(extracted) || isAmbulantGenehmigungsfreiPg3(extracted);
+}
+function hasGenehmigungsnummer(extracted) {
+  return Boolean(extracted.genehmigungsnummer?.trim());
 }
 function parseHasSignatureOnDocument(raw) {
   if (!isRecord2(raw)) return void 0;
@@ -73889,6 +73990,42 @@ function pickConfidence(raw) {
     }
   }
   return out;
+}
+function inferBehandlungsKontextFromNested(nested) {
+  const explicit = parseMedicalBehandlungsKontext(
+    nested.behandlungsKontext ?? nested.behandlungs_kontext ?? nested.treatmentContext ?? nested.treatment_context
+  );
+  if (explicit !== "unbekannt") return explicit;
+  const hint = normalizeOcrToken(
+    pickString(nested, [
+      "behandlungsKontextHint",
+      "behandlungs_kontext_hint",
+      "transportReason",
+      "transport_reason",
+      "verordnungstyp",
+      "notes"
+    ])
+  );
+  if (!hint) return "standard";
+  return parseMedicalBehandlungsKontext(hint);
+}
+function inferBehandlungsFrequenzFromNested(nested) {
+  const explicit = parseMedicalBehandlungsFrequenz(
+    nested.behandlungsFrequenz ?? nested.behandlungs_frequenz ?? nested.treatmentFrequency ?? nested.treatment_frequency
+  );
+  if (explicit !== "unbekannt") return explicit;
+  const hint = normalizeOcrToken(
+    pickString(nested, [
+      "behandlungsFrequenzHint",
+      "behandlungs_frequenz_hint",
+      "treatmentHint",
+      "treatment_hint",
+      "notes"
+    ])
+  );
+  if (!hint) return "keine";
+  const fromHint = parseMedicalBehandlungsFrequenz(hint);
+  return fromHint === "unbekannt" ? "keine" : fromHint;
 }
 function normalizeMedicalOcrPayload(raw) {
   if (!isRecord2(raw)) {
@@ -73941,17 +74078,28 @@ function normalizeMedicalOcrPayload(raw) {
   const validUntil = normalizeMedicalOcrDate(
     nested.validUntil ?? nested.valid_until ?? nested.gueltig_bis ?? nested.gueltigBis
   );
+  const aufnahmedatum = normalizeMedicalOcrDate(
+    nested.aufnahmedatum ?? nested.aufnahme_datum ?? nested.admissionDate ?? nested.admission_date
+  );
+  const entlassungsdatum = normalizeMedicalOcrDate(
+    nested.entlassungsdatum ?? nested.entlassung_datum ?? nested.dischargeDate ?? nested.discharge_date
+  );
   const documentKind = parseDocumentKind(
     pickString(nested, ["documentKind", "document_kind", "documentType", "document_type"])
   );
   const behandlungsArt = parseMedicalBehandlungsArt(
     nested.behandlungsArt ?? nested.behandlungs_art ?? nested.behandlungsart ?? nested.treatmentType ?? nested.treatment_type
   );
+  const behandlungsKontext = inferBehandlungsKontextFromNested(nested);
+  const behandlungsFrequenz = inferBehandlungsFrequenzFromNested(nested);
   const pflegegrad = parseMedicalPflegegrad(
     nested.pflegegrad ?? nested.pflegegrad_level ?? nested.careLevel ?? nested.care_level
   );
   const merkzeichen = parseMedicalMerkzeichen(
     nested.merkzeichen ?? nested.merkzeichen_code ?? nested.disabilityMark ?? nested.disability_mark
+  );
+  const dauerhafteMobilitaetsbeeintraechtigung = parseDauerhafteMobilitaetsbeeintraechtigung(
+    nested.dauerhafteMobilitaetsbeeintraechtigung ?? nested.dauerhafte_mobilitaetsbeeintraechtigung ?? nested.dauerhafteMobilitaetsbeeintraechtigungCheckbox ?? nested.mobilitaetsbeeintraechtigung_dauerhaft
   );
   const genehmigungsnummer = normalizeGenehmigungsnummer(
     nested.genehmigungsnummer ?? nested.genehmigungs_nummer ?? nested.approvalNumber ?? nested.approval_number ?? nested.kk_genehmigungsnummer
@@ -73967,14 +74115,24 @@ function normalizeMedicalOcrPayload(raw) {
       transportDate,
       validFrom,
       validUntil,
+      aufnahmedatum,
+      entlassungsdatum,
       documentKind,
       behandlungsArt,
+      behandlungsKontext,
+      behandlungsFrequenz,
       pflegegrad,
       merkzeichen,
+      dauerhafteMobilitaetsbeeintraechtigung,
       genehmigungsnummer
     },
     confidence
   };
+}
+function medicalOcrHasMinimalExtract(extracted) {
+  return Boolean(
+    extracted.insuranceName || extracted.insuranceIk || extracted.partnerIkNumber || extracted.transportDate || extracted.validFrom || extracted.validUntil || extracted.aufnahmedatum || extracted.entlassungsdatum || extracted.patientDisplayName || extracted.patientReference || extracted.behandlungsArt !== "unbekannt" || extracted.behandlungsKontext !== "standard" || isHochfrequenteBehandlung(extracted) || extracted.genehmigungsnummer
+  );
 }
 
 // src/lib/medical/medicalDateLogic.ts
@@ -73992,6 +74150,8 @@ function parseMedicalDateLogicType(raw) {
   return isMedicalDateLogicType(v) ? v : "today";
 }
 var BERLIN_TZ2 = "Europe/Berlin";
+var VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION = 3;
+var NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE = 7;
 function berlinCalendarDay(d) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: BERLIN_TZ2,
@@ -74015,29 +74175,108 @@ function dayDiff(a, b) {
 function pickOcrRideDate(extracted) {
   return extracted.transportDate ?? extracted.validFrom ?? null;
 }
+function mergeDateLogicSeverity(current, next) {
+  if (current === "fail" || next === "fail") return "fail";
+  if (current === "warn" || next === "warn") return "warn";
+  return "ok";
+}
+function evaluateStationaerKontextDateWindow(extracted, rideDay) {
+  const warningCodes = [];
+  let severity = "ok";
+  const details = {
+    behandlungsKontext: extracted.behandlungsKontext,
+    rideDay,
+    aufnahmedatum: extracted.aufnahmedatum,
+    entlassungsdatum: extracted.entlassungsdatum
+  };
+  if (extracted.behandlungsKontext === "vorstationaer") {
+    const admission = extracted.aufnahmedatum;
+    if (!admission) {
+      warningCodes.push("vorstationaer_missing_aufnahmedatum");
+      severity = mergeDateLogicSeverity(severity, "warn");
+    } else {
+      const diff = dayDiff(rideDay, admission);
+      details.vorstationaerDayDiff = diff;
+      if (diff == null || diff < -VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION || diff > 0) {
+        warningCodes.push("vorstationaer_outside_window");
+        severity = mergeDateLogicSeverity(severity, "fail");
+      }
+    }
+  }
+  if (extracted.behandlungsKontext === "nachstationaer") {
+    const discharge = extracted.entlassungsdatum;
+    if (!discharge) {
+      warningCodes.push("nachstationaer_missing_entlassungsdatum");
+      severity = mergeDateLogicSeverity(severity, "warn");
+    } else {
+      const diff = dayDiff(rideDay, discharge);
+      details.nachstationaerDayDiff = diff;
+      if (diff == null || diff < 0 || diff > NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE) {
+        warningCodes.push("nachstationaer_outside_window");
+        severity = mergeDateLogicSeverity(severity, "fail");
+      }
+    }
+  }
+  return { warningCodes, severity, details };
+}
+function applyStationaerKontextChecks(input, rideDay, warningCodes, severity, details) {
+  const stationaer = evaluateStationaerKontextDateWindow(input.extracted, rideDay);
+  warningCodes.push(...stationaer.warningCodes);
+  Object.assign(details, { stationaerKontext: stationaer.details });
+  return mergeDateLogicSeverity(severity, stationaer.severity);
+}
 function evaluateToday(input) {
   const now = input.now ?? /* @__PURE__ */ new Date();
   const ride = toDate(input.rideScheduledAt);
-  const expectedDate = ride ? berlinCalendarDay(ride) : berlinCalendarDay(now);
+  const today = berlinCalendarDay(now);
+  const expectedDate = ride ? berlinCalendarDay(ride) : today;
+  const { validFrom, validUntil, transportDate } = input.extracted;
   const ocrDate = pickOcrRideDate(input.extracted);
   const warningCodes = [];
   let severity = "ok";
-  if (!ocrDate) {
-    warningCodes.push("missing_ocr_date");
-    severity = "warn";
-  } else if (ocrDate !== expectedDate) {
-    const diff = dayDiff(ocrDate, expectedDate);
-    warningCodes.push("ride_date_mismatch");
-    severity = diff != null && Math.abs(diff) <= 1 ? "warn" : "fail";
+  if (validUntil && validUntil < today) {
+    warningCodes.push("validity_expired");
+    severity = "fail";
   }
+  if (validFrom && today < validFrom) {
+    warningCodes.push("validity_not_yet_started");
+    severity = "fail";
+  }
+  if (severity !== "fail") {
+    const hasValidUntil = Boolean(validUntil);
+    const todayInValidityWindow = (!validFrom || validFrom <= today) && (!validUntil || today <= validUntil);
+    if (hasValidUntil && todayInValidityWindow) {
+    } else if (!hasValidUntil) {
+      const refDate = transportDate ?? ocrDate;
+      if (!refDate) {
+        warningCodes.push("missing_ocr_date");
+        severity = "warn";
+      } else {
+        const diff = dayDiff(refDate, today);
+        if (diff != null && Math.abs(diff) > 1) {
+          warningCodes.push("ride_date_mismatch");
+          severity = "fail";
+        }
+      }
+    }
+  }
+  const details = {
+    rideScheduledAt: ride?.toISOString() ?? null,
+    today,
+    validFrom,
+    validUntil,
+    transportDate,
+    checkMode: validUntil ? "validity_window" : "transport_date_tolerance"
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
   return {
     type: "today",
     passed: severity === "ok",
     severity,
-    expectedDate,
+    expectedDate: today,
     ocrDate,
     warningCodes,
-    details: { rideScheduledAt: ride?.toISOString() ?? null }
+    details
   };
 }
 function evaluateSeries(input) {
@@ -74075,6 +74314,14 @@ function evaluateSeries(input) {
     warningCodes.push("ride_date_mismatch");
     severity = "warn";
   }
+  const details = {
+    seriesId: series?.id ?? null,
+    validFrom: series ? normalizeMedicalOcrDate(series.validFrom) : null,
+    validUntil: series ? normalizeMedicalOcrDate(series.validUntil) : null,
+    totalRides: series?.totalRides ?? null,
+    completedRides: series?.completedRides ?? null
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
   return {
     type: "series",
     passed: severity === "ok",
@@ -74082,13 +74329,7 @@ function evaluateSeries(input) {
     expectedDate,
     ocrDate,
     warningCodes,
-    details: {
-      seriesId: series?.id ?? null,
-      validFrom: series ? normalizeMedicalOcrDate(series.validFrom) : null,
-      validUntil: series ? normalizeMedicalOcrDate(series.validUntil) : null,
-      totalRides: series?.totalRides ?? null,
-      completedRides: series?.completedRides ?? null
-    }
+    details
   };
 }
 function evaluateReturnTrip(input) {
@@ -74117,6 +74358,12 @@ function evaluateReturnTrip(input) {
     warningCodes.push("ride_date_mismatch");
     severity = "warn";
   }
+  const details = {
+    returnRideScheduledAt: returnRide?.toISOString() ?? null
+  };
+  if (expectedDate) {
+    severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+  }
   return {
     type: "return_trip",
     passed: severity === "ok",
@@ -74124,9 +74371,7 @@ function evaluateReturnTrip(input) {
     expectedDate,
     ocrDate,
     warningCodes,
-    details: {
-      returnRideScheduledAt: returnRide?.toISOString() ?? null
-    }
+    details
   };
 }
 function evaluateLongTermTreatment(input) {
@@ -74167,6 +74412,12 @@ function evaluateLongTermTreatment(input) {
     warningCodes.push("missing_ocr_date");
     if (severity !== "fail") severity = "warn";
   }
+  const details = {
+    validFrom,
+    validUntil,
+    seriesId: series?.id ?? null
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
   return {
     type: "long_term_treatment",
     passed: severity === "ok",
@@ -74174,11 +74425,7 @@ function evaluateLongTermTreatment(input) {
     expectedDate,
     ocrDate,
     warningCodes,
-    details: {
-      validFrom,
-      validUntil,
-      seriesId: series?.id ?? null
-    }
+    details
   };
 }
 function evaluateMedicalDateLogic(input) {
@@ -74473,7 +74720,7 @@ function resolveMedicalOcrModel() {
   const configured = (process.env.MEDICAL_OCR_MODEL ?? "").trim();
   return configured || DEFAULT_MEDICAL_OCR_MODEL;
 }
-var EXTRACTION_PROMPT = `Du analysierst ein Foto eines deutschen Krankenfahrt-Transportscheins (Verordnung/Schein).
+var EXTRACTION_PROMPT = `Du analysierst ein Foto eines deutschen Krankenfahrt-Transportscheins (AOK Muster 4 / vergleichbar).
 Extrahiere NUR abrechnungsrelevante Felder \u2014 KEINE Diagnosen, KEINE ICD-Codes, KEINE medizinischen Befunde.
 
 Antworte ausschlie\xDFlich mit einem JSON-Objekt (kein Markdown, kein Flie\xDFtext) in exakt dieser Struktur:
@@ -74485,10 +74732,15 @@ Antworte ausschlie\xDFlich mit einem JSON-Objekt (kein Markdown, kein Flie\xDFte
   "transportDate": "YYYY-MM-DD" | null,
   "validFrom": "YYYY-MM-DD" | null,
   "validUntil": "YYYY-MM-DD" | null,
+  "aufnahmedatum": "YYYY-MM-DD" | null,
+  "entlassungsdatum": "YYYY-MM-DD" | null,
   "documentKind": "transport_sheet" | "signature_image" | "other",
   "behandlungsArt": "stationaer" | "ambulant" | "unbekannt",
+  "behandlungsKontext": "standard" | "vorstationaer" | "nachstationaer" | "unbekannt",
+  "behandlungsFrequenz": "keine" | "dialyse" | "chemo" | "strahlen" | "unbekannt",
   "pflegegrad": "3" | "4" | "5" | "keins" | "unbekannt",
-  "merkzeichen": "aG" | "Bl" | "H" | "keins" | "unbekannt",
+  "merkzeichen": "aG" | "Bl" | "H" | "G" | "keins" | "unbekannt",
+  "dauerhafteMobilitaetsbeeintraechtigung": boolean,
   "genehmigungsnummer": string | null,
   "hasSignatureOnDocument": boolean,
   "confidence": {
@@ -74499,21 +74751,31 @@ Antworte ausschlie\xDFlich mit einem JSON-Objekt (kein Markdown, kein Flie\xDFte
     "transportDate": number,
     "validFrom": number,
     "validUntil": number,
+    "aufnahmedatum": number,
+    "entlassungsdatum": number,
     "behandlungsArt": number,
+    "behandlungsKontext": number,
+    "behandlungsFrequenz": number,
     "pflegegrad": number,
     "merkzeichen": number,
+    "dauerhafteMobilitaetsbeeintraechtigung": number,
     "genehmigungsnummer": number
   }
 }
 
 Regeln:
-- Fehlende Werte als leerer String "" oder null bei Datumsfeldern.
-- insuranceIk: nur Ziffern (Institutionskennzeichen IK der Krankenkasse).
-- behandlungsArt: erkenne angekreuztes Feld ambulant vs. station\xE4r auf dem Schein.
-- pflegegrad: nur 3, 4, 5 wenn angekreuzt/lesbar, sonst "keins" oder "unbekannt".
-- merkzeichen: aG, Bl oder H wenn angekreuzt, sonst "keins" oder "unbekannt".
+- Fehlende Werte als leerer String "" oder null bei Datumsfeldern; boolean false wenn nicht angekreuzt.
+- insuranceIk: nur Ziffern (IK der Krankenkasse).
+- behandlungsArt: angekreuztes Feld ambulant vs. station\xE4r.
+- behandlungsKontext: "vorstationaer" bei Vorstation\xE4r/Aufnahme vor station\xE4rer Behandlung; "nachstationaer" bei Entlassung/nachstation\xE4r; sonst "standard".
+- aufnahmedatum: geplantes Aufnahmedatum bei vorstation\xE4r; entlassungsdatum: Entlassungsdatum bei nachstation\xE4r.
+- behandlungsFrequenz: "dialyse" (Dialyse/H\xE4modialyse), "chemo" (Chemotherapie), "strahlen" (Strahlentherapie) wenn angekreuzt/genannt; sonst "keine".
+- pflegegrad: nur 3, 4, 5 wenn angekreuzt \u2014 PG3 ist NICHT automatisch genehmigungsfrei.
+- dauerhafteMobilitaetsbeeintraechtigung: true nur wenn Checkbox/Text \u201Edauerhafte Mobilit\xE4tsbeeintr\xE4chtigung" auf dem Schein erkennbar.
+- merkzeichen: aG, Bl, H oder G (Gehbehinderung) wenn angekreuzt; G nicht mit aG verwechseln; sonst "keins" oder "unbekannt".
 - genehmigungsnummer: KK-Genehmigungsnummer falls lesbar, sonst null.
-- hasSignatureOnDocument: true wenn Patientenunterschrift auf dem Schein sichtbar.
+- validFrom/validUntil: G\xFCltigkeitszeitraum/Dauerverordnung falls lesbar.
+- hasSignatureOnDocument: true wenn Patientenunterschrift sichtbar.
 - confidence: 0.0\u20131.0 pro Feld; bei Unsicherheit niedrig w\xE4hlen.
 - Wenn das Bild kein Transportschein ist: documentKind "other", sonstige Felder leer lassen.`;
 function isRecord3(v) {
@@ -74575,7 +74837,7 @@ async function runClaudeVisionMedicalOcr(input) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1200,
+        max_tokens: 1400,
         messages: [
           {
             role: "user",
@@ -74745,8 +75007,10 @@ function evaluateMedicalInsuranceRules(normalizedOcr, companyProfile, rideContex
   if (!detectedInsuranceName && !detectedInsuranceIk) {
     warnings.push("Keine Krankenkasse auf dem Transportschein erkannt.");
   }
-  const partnerWarn = partnerIkWarning(normalizedOcr, companyProfile);
-  if (partnerWarn) warnings.push(partnerWarn);
+  if (!rideContext.omitPartnerIkWarnings) {
+    const partnerWarn = partnerIkWarning(normalizedOcr, companyProfile);
+    if (partnerWarn) warnings.push(partnerWarn);
+  }
   if (profile === "UNKNOWN") {
     warnings.push("Profilzuordnung unsicher \u2014 keine automatische Kassenregel anwendbar.");
   }
@@ -74764,6 +75028,303 @@ function evaluateMedicalInsuranceRules(normalizedOcr, companyProfile, rideContex
     detectedInsuranceName,
     detectedInsuranceIk
   };
+}
+
+// src/lib/medical/medicalTrafficLight.ts
+var CONFIDENCE_WARN_THRESHOLD = 0.55;
+var MEDICAL_DATE_LOGIC_MESSAGES_DE = {
+  missing_ocr_date: "Fahrtdatum auf dem Schein nicht erkannt",
+  ride_date_mismatch: "Fahrtdatum weicht von der geplanten Fahrt ab",
+  missing_series: "Serienfahrt nicht zugeordnet",
+  series_before_valid_from: "Fahrt liegt vor Serien-Beginn",
+  series_after_valid_until: "Fahrt liegt nach Serien-Ende",
+  series_quota_exhausted: "Serien-Kontingent ausgesch\xF6pft",
+  missing_return_ride: "R\xFCckfahrt nicht verkn\xFCpft",
+  return_trip_date_implausible: "R\xFCckfahrt-Datum nicht plausibel",
+  missing_validity_window: "G\xFCltigkeitszeitraum auf dem Schein unklar",
+  validity_expired: "Schein abgelaufen",
+  validity_not_yet_started: "Schein noch nicht g\xFCltig",
+  ride_before_valid_from: "Fahrt vor G\xFCltigkeitsbeginn",
+  ride_after_valid_until: "Fahrt nach G\xFCltigkeitsende",
+  series_window_exceeded: "Fahrt au\xDFerhalb Serien-Zeitraum",
+  vorstationaer_missing_aufnahmedatum: "Vorstation\xE4r: Aufnahmedatum auf dem Schein nicht erkannt",
+  nachstationaer_missing_entlassungsdatum: "Nachstation\xE4r: Entlassungsdatum auf dem Schein nicht erkannt",
+  vorstationaer_outside_window: "Vorstation\xE4r: Fahrt liegt nicht innerhalb von 3 Tagen vor dem Aufnahmedatum",
+  nachstationaer_outside_window: "Nachstation\xE4r: Fahrt liegt nicht innerhalb von 7 Tagen nach dem Entlassungsdatum",
+  customer_missing_signature: "Bitte Fahrer zeigen \u2014 Unterschrift und Stempel vor Ort pr\xFCfen"
+};
+var DATE_LOGIC_CODE_SEVERITY = {
+  vorstationaer_missing_aufnahmedatum: "warn",
+  nachstationaer_missing_entlassungsdatum: "warn",
+  missing_ocr_date: "warn",
+  missing_return_ride: "warn",
+  missing_validity_window: "warn",
+  series_quota_exhausted: "warn",
+  vorstationaer_outside_window: "block_recommended",
+  nachstationaer_outside_window: "block_recommended",
+  ride_date_mismatch: "block_recommended",
+  missing_series: "block_recommended",
+  series_before_valid_from: "block_recommended",
+  series_after_valid_until: "block_recommended",
+  return_trip_date_implausible: "block_recommended",
+  validity_expired: "block_recommended",
+  validity_not_yet_started: "block_recommended",
+  ride_before_valid_from: "block_recommended",
+  ride_after_valid_until: "block_recommended",
+  series_window_exceeded: "block_recommended"
+};
+var PG3_GENEHMIGUNG_ERFORDERLICH_HINT_DE = "Pflegegrad 3: nur mit dauerhafter Mobilit\xE4tsbeeintr\xE4chtigung oder Merkzeichen G genehmigungsfrei \u2014 KK-Genehmigung pr\xFCfen";
+var CUSTOMER_MISSING_SIGNATURE_HINT_DE = "Bitte Fahrer zeigen \u2014 Unterschrift und Stempel vor Ort pr\xFCfen";
+function dateLogicSeverityToWarning(severity) {
+  if (severity === "fail") return "block_recommended";
+  if (severity === "warn") return "warn";
+  return "info";
+}
+function warningSeverityForDateLogicCode(code, overall) {
+  return DATE_LOGIC_CODE_SEVERITY[code] ?? dateLogicSeverityToWarning(overall);
+}
+function trafficLightFromWarnings(warnings) {
+  if (warnings.some((w) => w.severity === "block_recommended")) return "red";
+  if (warnings.some((w) => w.severity === "warn")) return "yellow";
+  return "green";
+}
+function pushMissingSignatureWarning(warnings, input) {
+  if (input.hasSignatureOnDocument !== false) return;
+  if (warnings.some(
+    (w) => w.code === "stationaer_missing_signature" || w.code === "customer_missing_signature"
+  )) {
+    return;
+  }
+  if (input.omitPartnerIkWarnings) {
+    warnings.push({
+      code: "customer_missing_signature",
+      message: CUSTOMER_MISSING_SIGNATURE_HINT_DE,
+      severity: "warn"
+    });
+    return;
+  }
+  warnings.push({
+    code: "stationaer_missing_signature",
+    message: "Station\xE4r: Unterschrift auf dem Schein nicht erkennbar",
+    severity: "warn"
+  });
+}
+function hasTransportDate(extracted) {
+  return Boolean(extracted.transportDate || extracted.validFrom);
+}
+function hasDauerverordnung(extracted) {
+  return Boolean(extracted.validFrom && extracted.validUntil);
+}
+function hochfrequenteBehandlungLabel(frequenz) {
+  if (frequenz === "dialyse") return "Dialyse";
+  if (frequenz === "chemo") return "Chemotherapie";
+  if (frequenz === "strahlen") return "Strahlentherapie";
+  return "Hochfrequente Behandlung";
+}
+function evaluateBehandlungsFrequenzRules(extracted) {
+  if (!isHochfrequenteBehandlung(extracted)) return [];
+  const warnings = [];
+  const label = hochfrequenteBehandlungLabel(extracted.behandlungsFrequenz);
+  if (hasGenehmigungsnummer(extracted) || hasDauerverordnung(extracted)) {
+    warnings.push({
+      code: "hochfrequent_approval_ok",
+      message: `${label}: Genehmigung oder Dauerverordnung erkannt \u2014 Fahrer pr\xFCft vor Ort.`,
+      severity: "info"
+    });
+    return warnings;
+  }
+  if (extracted.validFrom || extracted.validUntil || extracted.genehmigungsnummer) {
+    warnings.push({
+      code: "hochfrequent_genehmigung_pruefen",
+      message: `${label}: KK-Genehmigung oder Dauerverordnung unvollst\xE4ndig \u2014 letzte Entscheidung beim Fahrer.`,
+      severity: "warn"
+    });
+    return warnings;
+  }
+  warnings.push({
+    code: "hochfrequent_missing_approval",
+    message: `${label}: Genehmigung der Krankenkasse oder Dauerverordnung fehlt.`,
+    severity: "block_recommended"
+  });
+  return warnings;
+}
+function ambulantGenehmigungsfreiMessageDe(extracted) {
+  if (isAmbulantGenehmigungsfreiPg3(extracted)) {
+    return "Ambulant genehmigungsfrei (Pflegegrad 3 mit dauerhafter Mobilit\xE4tsbeeintr\xE4chtigung oder Merkzeichen G)";
+  }
+  if (isAmbulantGenehmigungsfreiPg45(extracted)) {
+    return "Ambulant genehmigungsfrei (Pflegegrad 4 oder 5)";
+  }
+  if (isAmbulantGenehmigungsfreiMerkzeichen(extracted)) {
+    return `Ambulant genehmigungsfrei (Merkzeichen ${extracted.merkzeichen})`;
+  }
+  return "Ambulant genehmigungsfrei";
+}
+function evaluateBehandlungsArtRules(extracted, input) {
+  const warnings = [];
+  const art = extracted.behandlungsArt;
+  if (art === "unbekannt") {
+    warnings.push({
+      code: "behandlungsart_unbekannt",
+      message: "Ambulant oder station\xE4r nicht eindeutig erkennbar",
+      severity: "warn"
+    });
+    return warnings;
+  }
+  if (art === "stationaer") {
+    if (!hasTransportDate(extracted)) {
+      warnings.push({
+        code: "stationaer_missing_date",
+        message: "Station\xE4r: Fahrtdatum auf dem Schein fehlt",
+        severity: "warn"
+      });
+    }
+    if (!input.omitPartnerIkWarnings && !input.partnerIkSnapshot.trim()) {
+      warnings.push({
+        code: "stationaer_missing_taxi_ik",
+        message: "Station\xE4r: Leistungserbringer-IK (Taxi) nicht erkennbar",
+        severity: "warn"
+      });
+    }
+    if (input.hasSignatureOnDocument === false) {
+      pushMissingSignatureWarning(warnings, input);
+    }
+    const taxiIkSatisfied = input.omitPartnerIkWarnings || Boolean(input.partnerIkSnapshot.trim());
+    const signatureOkForStationaerSummary = input.omitPartnerIkWarnings || input.hasSignatureOnDocument !== false;
+    if (hasTransportDate(extracted) && taxiIkSatisfied && signatureOkForStationaerSummary) {
+      warnings.push({
+        code: "stationaer_checks_ok",
+        message: "Station\xE4r: Datum, Taxi-IK und Unterschrift \u2014 keine KK-Genehmigungsnummer n\xF6tig",
+        severity: "info"
+      });
+    }
+    return warnings;
+  }
+  const freqWarnings = evaluateBehandlungsFrequenzRules(extracted);
+  warnings.push(...freqWarnings);
+  if (freqWarnings.some((w) => w.severity === "block_recommended")) {
+    return warnings;
+  }
+  if (isHochfrequenteBehandlung(extracted)) {
+    return warnings;
+  }
+  if (extracted.pflegegrad === "3" && !isAmbulantGenehmigungsfreiPg3(extracted) && !isAmbulantGenehmigungsfreiPg45(extracted) && !isAmbulantGenehmigungsfreiMerkzeichen(extracted)) {
+    warnings.push({
+      code: "pg3_genehmigung_erforderlich",
+      message: PG3_GENEHMIGUNG_ERFORDERLICH_HINT_DE,
+      severity: "warn"
+    });
+    if (!hasGenehmigungsnummer(extracted)) {
+      warnings.push({
+        code: "missing_genehmigungsnummer",
+        message: "Pflegegrad 3 ohne Mobilit\xE4tsbeeintr\xE4chtigung/Merkzeichen G: Genehmigungsnummer der Krankenkasse fehlt",
+        severity: "block_recommended"
+      });
+      return warnings;
+    }
+    return warnings;
+  }
+  if (isAmbulantGenehmigungsfrei(extracted)) {
+    warnings.push({
+      code: "ambulant_genehmigungsfrei",
+      message: ambulantGenehmigungsfreiMessageDe(extracted),
+      severity: "info"
+    });
+    return warnings;
+  }
+  if (!hasGenehmigungsnummer(extracted)) {
+    warnings.push({
+      code: "missing_genehmigungsnummer",
+      message: "Ambulant ohne Pflegegrad/Merkzeichen: Genehmigungsnummer der Krankenkasse fehlt",
+      severity: "block_recommended"
+    });
+    return warnings;
+  }
+  warnings.push({
+    code: "ambulant_genehmigungsnummer_ok",
+    message: "Ambulant: Genehmigungsnummer der Krankenkasse erkannt",
+    severity: "info"
+  });
+  return warnings;
+}
+function evaluateMedicalTrafficLight(input) {
+  const warnings = [];
+  const { extracted, confidence, dateLogicResult } = input;
+  const ocrOk = input.ocrProviderSucceeded !== false;
+  if (!ocrOk) {
+    warnings.push({
+      code: "ocr_failed",
+      message: "OCR-Auswertung fehlgeschlagen",
+      severity: "block_recommended"
+    });
+  }
+  if (!medicalOcrHasMinimalExtract(extracted)) {
+    warnings.push({
+      code: "ocr_no_fields",
+      message: "Keine auswertbaren Felder erkannt",
+      severity: "block_recommended"
+    });
+  }
+  warnings.push(...evaluateBehandlungsArtRules(extracted, input));
+  for (const code of dateLogicResult.warningCodes) {
+    warnings.push({
+      code,
+      message: MEDICAL_DATE_LOGIC_MESSAGES_DE[code] ?? `Datumspr\xFCfung: ${code}`,
+      severity: warningSeverityForDateLogicCode(code, dateLogicResult.severity)
+    });
+  }
+  if (!extracted.insuranceName.trim()) {
+    warnings.push({
+      code: "missing_insurance_name",
+      message: "Krankenkasse nicht erkannt",
+      severity: "warn"
+    });
+  }
+  if (!extracted.insuranceIk.trim()) {
+    warnings.push({
+      code: "missing_insurance_ik",
+      message: "Kassen-IK nicht erkannt",
+      severity: "warn"
+    });
+  }
+  if (!input.omitPartnerIkWarnings && !input.partnerIkSnapshot.trim()) {
+    warnings.push({
+      code: "missing_partner_ik",
+      message: "Leistungserbringer-IK (Unternehmen) nicht hinterlegt",
+      severity: "warn"
+    });
+  }
+  for (const field of [
+    "insuranceIk",
+    "transportDate",
+    "behandlungsArt",
+    "behandlungsFrequenz",
+    "behandlungsKontext",
+    "pflegegrad",
+    "merkzeichen",
+    "genehmigungsnummer"
+  ]) {
+    const c = confidence[field];
+    if (typeof c === "number" && c < CONFIDENCE_WARN_THRESHOLD) {
+      warnings.push({
+        code: `low_confidence_${field}`,
+        message: `Unsichere Erkennung: ${field}`,
+        severity: "warn"
+      });
+    }
+  }
+  if (!extracted.transportDate && !extracted.validFrom && !extracted.validUntil && !extracted.aufnahmedatum && !extracted.entlassungsdatum) {
+    warnings.push({
+      code: "missing_date_fields",
+      message: "Kein Datum auf dem Schein erkannt",
+      severity: "warn"
+    });
+  }
+  if (input.omitPartnerIkWarnings) {
+    pushMissingSignatureWarning(warnings, input);
+  }
+  const trafficLight = trafficLightFromWarnings(warnings);
+  return { trafficLight, warnings };
 }
 
 // src/lib/medical/medicalScanService.ts
@@ -74804,7 +75365,8 @@ async function runMedicalTransportDocumentScanForCustomerBooking(input) {
     partnerIkSnapshot: "",
     dateLogicType: "today",
     rideScheduledAt: null,
-    insuranceRideId: `customer-booking:${scanId}`
+    insuranceRideId: `customer-booking:${scanId}`,
+    omitPartnerIkWarnings: true
   });
   const scannedAt = (/* @__PURE__ */ new Date()).toISOString();
   const primaryReasonDe = pickPrimaryCustomerScanReasonDe(
@@ -74919,16 +75481,22 @@ async function runMedicalOcrPipeline(input) {
     partnerIkSnapshot: input.partnerIkSnapshot,
     dateLogicResult,
     ocrProviderSucceeded: ocrResult.ok,
-    hasSignatureOnDocument: ocrResult.ok ? parseHasSignatureOnDocument(ocrResult.rawJson.extracted ?? ocrResult.rawJson) : void 0
+    hasSignatureOnDocument: ocrResult.ok ? parseHasSignatureOnDocument(ocrResult.rawJson.extracted ?? ocrResult.rawJson) : void 0,
+    omitPartnerIkWarnings: input.omitPartnerIkWarnings
   });
-  const insuranceRules = evaluateMedicalInsuranceRules(normalized.extracted, {
-    companyId: input.companyId,
-    partnerIkNumber: input.partnerIkSnapshot
-  }, {
-    rideId: input.insuranceRideId,
-    scheduledAt: input.rideScheduledAt,
-    dateLogicType: input.dateLogicType
-  });
+  const insuranceRules = evaluateMedicalInsuranceRules(
+    normalized.extracted,
+    {
+      companyId: input.companyId,
+      partnerIkNumber: input.partnerIkSnapshot
+    },
+    {
+      rideId: input.insuranceRideId,
+      scheduledAt: input.rideScheduledAt,
+      dateLogicType: input.dateLogicType,
+      omitPartnerIkWarnings: input.omitPartnerIkWarnings
+    }
+  );
   return {
     trafficLight: traffic.trafficLight,
     warnings: traffic.warnings,
@@ -74977,7 +75545,8 @@ async function runMedicalTransportDocumentScanTestForCustomer(input) {
     imageBase64: input.imageBase64,
     companyId: "",
     partnerIkSnapshot: "",
-    insuranceRideId: `customer-test:${customerPassengerId2}`
+    insuranceRideId: `customer-test:${customerPassengerId2}`,
+    omitPartnerIkWarnings: true
   });
 }
 async function runMedicalTransportDocumentScanTestCore(input) {
@@ -74997,7 +75566,8 @@ async function runMedicalTransportDocumentScanTestCore(input) {
     partnerIkSnapshot: input.partnerIkSnapshot,
     dateLogicType: "today",
     rideScheduledAt: null,
-    insuranceRideId: input.insuranceRideId
+    insuranceRideId: input.insuranceRideId,
+    omitPartnerIkWarnings: input.omitPartnerIkWarnings
   });
   return {
     ok: true,
@@ -77620,15 +78190,41 @@ app.use(
     maxAge: 86400
   })
 );
+function requestPathname(req) {
+  const raw = (req.originalUrl ?? req.url ?? req.path ?? "").split("?")[0] ?? "";
+  return raw.startsWith("/") ? raw : `/${raw}`;
+}
+function isMedicalLargeJsonPost(pathname) {
+  return /\/fleet-driver\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/customer\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/rides\/[^/]+\/medical\/(?:transport-document|signature)\/?$/.test(pathname);
+}
+var jsonBodyDefault = import_express24.default.json({ limit: "200kb" });
+var jsonBodyMedical = import_express24.default.json({ limit: "10mb" });
+var jsonBodyPartnerRegInitial = import_express24.default.json({ limit: "25mb" });
+var jsonBodyPartnerRegDoc = import_express24.default.json({ limit: "12mb" });
+var urlencodedDefault = import_express24.default.urlencoded({ extended: true, limit: "200kb" });
 app.use((req, res, next) => {
-  const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
-  const medicalUpload = req.method === "POST" && (u.includes("/fleet-driver/v1/medical/scan") || u.includes("/fleet-driver/v1/medical/scan-test") || u.includes("/customer/v1/medical/scan-test") || u.includes("/rides/") && (u.includes("/medical/transport-document") || u.includes("/medical/signature")));
-  const partnerRegInitialPost = req.method === "POST" && /\/panel-auth\/registration-request\/?$/.test(u);
-  const partnerRegDocPost = req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(u);
-  const limit = medicalUpload ? "10mb" : partnerRegInitialPost ? "25mb" : partnerRegDocPost ? "12mb" : "200kb";
-  import_express24.default.json({ limit })(req, res, next);
+  if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") {
+    return jsonBodyDefault(req, res, next);
+  }
+  const pathname = requestPathname(req);
+  if (isMedicalLargeJsonPost(pathname)) {
+    return jsonBodyMedical(req, res, next);
+  }
+  if (/\/panel-auth\/registration-request\/?$/.test(pathname)) {
+    return jsonBodyPartnerRegInitial(req, res, next);
+  }
+  if (/\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(pathname)) {
+    return jsonBodyPartnerRegDoc(req, res, next);
+  }
+  return jsonBodyDefault(req, res, next);
 });
-app.use(import_express24.default.urlencoded({ extended: true, limit: "200kb" }));
+app.use((req, res, next) => {
+  const ct = String(req.headers["content-type"] ?? "").toLowerCase();
+  if (ct.includes("application/json")) {
+    return next();
+  }
+  return urlencodedDefault(req, res, next);
+});
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">
+  <!-- Pin Ring oben -->
+  <path d="M100 15 C60 15 28 47 28 87 C28 107 36 125 49 138 L100 195 L151 138 C164 125 172 107 172 87 C172 47 140 15 100 15 Z" fill="none" stroke="#EF3A3A" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Innerer Kreis -->
+  <circle cx="100" cy="83" r="18" fill="#EF3A3A"/>
+  <!-- ONRODA Text -->
+  <text x="100" y="228" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="46" fill="#2D2D3A" letter-spacing="2">ONRODA</text>
+</svg>

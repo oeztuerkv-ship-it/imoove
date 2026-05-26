@@ -1,0 +1,65 @@
+---
+description: Verbindliche Mobile-Typografie und Eingabe-Rahmen für Hilfe, Konto, Geldbörse, Meine Fahrten — keine freien Schriftgrößen.
+globs:
+  - artifacts/mobile/app/help.tsx
+  - artifacts/mobile/app/profile.tsx
+  - artifacts/mobile/app/wallet.tsx
+  - artifacts/mobile/app/my-rides.tsx
+  - artifacts/mobile/app/sponsors.tsx
+  - artifacts/mobile/constants/accountSheetTypography.ts
+  - artifacts/mobile/constants/homeSheetChrome.ts
+  - artifacts/mobile/components/SectionHeadingPill.tsx
+alwaysApply: false
+---
+
+# Mobile: Account-Sheet-Design (festgelegt)
+
+Wenn der Nutzer **Schrift**, **Größe**, **Design**, **Rahmen** oder **Typografie** erwähnt: **an diesen Stand anpassen**, nicht neu erfinden.
+
+## Quelle der Wahrheit
+
+1. **Typografie:** `artifacts/mobile/constants/accountSheetTypography.ts`
+2. **Farben / Flächen:** `artifacts/mobile/constants/homeSheetChrome.ts`
+3. **Sektions-Pills:** `SectionHeadingPill` → `accountSheetPrimaryLabel`
+
+**Schriftfamilie:** nur **Inter** (`Inter_400Regular`, `Inter_500Medium`, `Inter_600SemiBold`, `Inter_700Bold`) aus `app/_layout.tsx`.
+
+**Skalierung:** `rf()` für Schrift, `rs()` für Abstände — keine festen px ohne `rf`/`rs`.
+
+## Typografie (Kurz)
+
+| Rolle | Konstante |
+|--------|-----------|
+| Zeilen / FAQ-Frage | `accountSheetPrimaryLabel` (15 Medium) |
+| Hinweise / FAQ-Antwort | `accountSheetSecondaryLabel` (13 Regular) |
+| Screen-Titel | `accountSheetHeaderTitle` (17 SemiBold) |
+| Karten-Titel / Modal-Titel | `accountSheetCardTitle` (16 SemiBold) |
+| Eingabe Hilfe | `accountSheetInputText` (15, lineHeight 21) |
+| Eingabe Notiz-Modal | `accountSheetInputTextRelaxed` (lineHeight **24**) |
+| Hinweis unter Modal-Titel | `accountSheetModalHint` (lineHeight 22) |
+| Toolbar Abbrechen/Fertig | `accountSheetToolbarAction` (14 SemiBold) |
+| Kompakte Modal-Buttons | `accountSheetToolbarAction` (nicht `accountSheetButtonLabel`) |
+| Senden / große CTA | `accountSheetButtonLabel` (15 SemiBold) |
+
+## Eingabe-Rahmen (verbindlich)
+
+Aus `accountSheetTypography.ts`:
+
+- **Normal:** `borderWidth: 1`, `borderColor: ACCOUNT_SHEET_FIELD_BORDER` (`#3F3F46`)
+- **Fokus:** `borderWidth: 1.5`, `borderColor: ACCOUNT_SHEET_FIELD_BORDER_FOCUS` (`#111111`)
+- **Nicht** `StyleSheet.hairlineWidth` für sichtbare Textfeld-Ränder (zu schwach)
+- Box-Layout: `accountSheetInputFieldBox` (minHeight 120, padding 12/14, radius 12)
+
+Referenz: Hilfe `messageInput` + **Notiz an Fahrer**-Modal in `my-rides.tsx`.
+
+## Compose-Modals
+
+- **Hilfe:** `KeyboardAvoidingView`, optional Toolbar bei Fokus, iOS `InputAccessoryView` „Fertig“
+- **Notiz an Fahrer:** nur **Abbrechen / Speichern** unten — **kein** Toolbar über dem Feld, **kein** `InputAccessoryView` / „Fertig“ über der Tastatur (Tipp außerhalb schließt)
+- Keine Buttons hinter der Tastatur verstecken (`KeyboardAvoidingView`)
+
+## Agent-Verhalten
+
+- **Keine** neuen `fontSize` / `fontFamily` in Screens, wenn eine Konstante passt
+- **Keine** „Verbesserungen“ an Header/Tabs/Abständen ohne expliziten Auftrag
+- Abweichung nur, wenn der Nutzer **ausdrücklich** etwas anderes will — dann kurz begründen
