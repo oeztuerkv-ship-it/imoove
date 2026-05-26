@@ -244,8 +244,7 @@ export default function HomepageContentPage() {
       {error ? <div className="admin-error-banner">{error}</div> : null}
       {okMsg ? <div className="admin-info-banner">{okMsg}</div> : null}
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Homepage-Inhalte (Marketing)</div>
+      <CollapsibleCard title="Homepage-Inhalte (Marketing)">
         <form className="admin-form-vertical" onSubmit={onSave}>
           <label className="admin-form-pair">
             <span className="admin-field-label">Section 2 Titel (Für wen)</span>
@@ -652,10 +651,9 @@ export default function HomepageContentPage() {
             </button>
           </div>
         </form>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Homepage FAQ (modular)</div>
+      <CollapsibleCard title="Homepage FAQ (modular)">
         <div className="admin-form-vertical">
           {faqItems.map((item) => (
             <div key={item.id} className="admin-panel-card" style={{ padding: 12 }}>
@@ -759,10 +757,9 @@ export default function HomepageContentPage() {
             </button>
           </div>
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">So funktioniert ONRODA (3 Schritte)</div>
+      <CollapsibleCard title="So funktioniert ONRODA (3 Schritte)">
         <div className="admin-form-vertical">
           {howItems.map((item) => (
             <div key={item.id} className="admin-panel-card" style={{ padding: 12 }}>
@@ -805,10 +802,9 @@ export default function HomepageContentPage() {
             <button className="admin-btn-primary" type="button" onClick={async () => { try { await createModuleItem(HOW_URL, howDraft); setHowDraft({ icon: "1", title: "", body: "", sortOrder: 10, isActive: true }); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "Schritt erstellen fehlgeschlagen"); } }}>Schritt hinzufügen</button>
           </div>
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Trust-Zahlen (KPI-Kacheln)</div>
+      <CollapsibleCard title="Trust-Zahlen (KPI-Kacheln)">
         <div className="admin-form-vertical">
           {trustItems.map((item) => (
             <div key={item.id} className="admin-panel-card" style={{ padding: 12 }}>
@@ -845,7 +841,7 @@ export default function HomepageContentPage() {
             <button className="admin-btn-primary" type="button" onClick={async () => { try { await createModuleItem(TRUST_URL, trustDraft); setTrustDraft({ value: "", label: "", description: "", sortOrder: 10, isActive: true }); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "KPI erstellen fehlgeschlagen"); } }}>KPI hinzufügen</button>
           </div>
         </div>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

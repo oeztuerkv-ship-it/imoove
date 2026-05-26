@@ -151,8 +151,7 @@ export default function AppOperationalCommissionPage() {
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {okMsg ? <div className="admin-info-banner admin-info-banner--ok">{okMsg}</div> : null}
-      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Standard-Provision &amp; Schalter</div>
+      <CollapsibleCard title="Standard-Provision &amp; Schalter">
         <p className="admin-table-sub" style={{ marginBottom: 12 }}>
           Verbindlicher Provisionssatz pro Unternehmen: Mandantenzentrale → Mandant bearbeiten →{" "}
           <strong>ONRODA Provision (Mandant)</strong> (<code>admin_companies.commission_rate</code>). Die Werte
@@ -185,10 +184,9 @@ export default function AppOperationalCommissionPage() {
             <span>Provision-Modul aktiv (Auswertung/Reports)</span>
           </label>
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Pro Fahrtart</div>
+      <CollapsibleCard title="Pro Fahrtart">
         <p className="admin-table-sub">Fahrtarten entsprechen <code>rideKind</code> (standard, medical, voucher, company).</p>
         <div className="admin-table-wrap" style={{ marginTop: 8 }}>
           <table className="admin-table">
@@ -227,10 +225,9 @@ export default function AppOperationalCommissionPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Pro Stadt (Service-Gebiet)</div>
+      <CollapsibleCard title="Pro Stadt (Service-Gebiet)">
         <p className="admin-table-sub">Werte überschreiben den Standard, wenn pro Region gepflegt.</p>
         {serviceRegions.length ? (
           <div className="admin-table-wrap">
@@ -296,10 +293,9 @@ export default function AppOperationalCommissionPage() {
         ) : (
           <p className="admin-table-sub">Keine Service-Gebiete geladen.</p>
         )}
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Pro Firma (Partner-Mandant)</div>
+      <CollapsibleCard title="Pro Firma (Partner-Mandant)">
         <p className="admin-table-sub">
           JSON-Objekt, Schlüssel = <code>admin_companies.id</code> (z. B. <code>co-demo-1</code>), Wert:{" "}
           <code>{`{ "defaultRate": 0.07, "active": true }`}</code>
@@ -311,7 +307,7 @@ export default function AppOperationalCommissionPage() {
           value={byCompanyJson}
           onChange={(e) => setByCompanyJson(e.target.value)}
         />
-      </div>
+      </CollapsibleCard>
 
       <div className="admin-panel-card">
         <button type="button" className="admin-btn admin-btn--primary" onClick={save} disabled={saving}>

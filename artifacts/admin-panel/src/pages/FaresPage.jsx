@@ -316,8 +316,7 @@ export default function FaresPage() {
         </div>
       </div>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">{editingId ? "Gebiet bearbeiten" : "Gebiet hinzufügen"}</div>
+      <CollapsibleCard title="{editingId ? 'Gebiet bearbeiten' : 'Gebiet hinzufügen'}">
         {activeProfile ? (
           <div className="admin-info-banner" style={{ marginBottom: 12 }}>
             <p style={{ margin: "0 0 8px" }}>
@@ -510,10 +509,9 @@ export default function FaresPage() {
             ) : null}
           </div>
         </form>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Aktuelle Gebiete</div>
+      <CollapsibleCard title="Aktuelle Gebiete">
 
         {loading ? (
           <div className="admin-muted">Gebiete werden geladen …</div>
@@ -571,7 +569,7 @@ export default function FaresPage() {
             </div>
           </div>
         )}
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

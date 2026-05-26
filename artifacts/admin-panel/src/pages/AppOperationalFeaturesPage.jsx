@@ -73,8 +73,7 @@ export default function AppOperationalFeaturesPage() {
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Funktionen (Feature-Toggles)</div>
+      <CollapsibleCard title="Funktionen (Feature-Toggles)">
         <p className="admin-table-sub">
           Auch in <code>{API_BASE}/app/config</code> und auf der API bei <code>POST /rides</code> geprüft (Zahlen/Arten).
         </p>
@@ -113,7 +112,7 @@ export default function AppOperationalFeaturesPage() {
         <button type="button" className="admin-btn admin-btn--primary" style={{ marginTop: 20 }} onClick={save}>
           Speichern
         </button>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

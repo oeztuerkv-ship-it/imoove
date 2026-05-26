@@ -241,14 +241,12 @@ export default function AppSponsorsPage() {
     <div className="admin-page admin-page--loose app-news-page">
       {error ? <div className="admin-error-banner">{error}</div> : null}
 
-      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Exklusive Angebote</div>
+      <CollapsibleCard title="Exklusive Angebote">
         <p className="admin-table-sub">
           Eigenständiger Bereich neben App-Neuigkeiten. Mobile nutzt <code>GET /api/app/sponsors</code> (max 10 aktiv).
         </p>
-      </div>
-      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Homepage-Hinweisblock (getrennt nach App)</div>
+      </CollapsibleCard>
+      <CollapsibleCard title="Homepage-Hinweisblock (getrennt nach App)">
         <p className="admin-table-sub">
           Auf der Startseite wird nur ein allgemeiner Hinweis gezeigt. Einzelne Angebote erscheinen erst auf der nächsten Seite <code>/sponsors</code>.
         </p>
@@ -273,7 +271,7 @@ export default function AppSponsorsPage() {
         <button type="button" className="btn btn-red" onClick={() => void saveTeaserBlock()} disabled={teaserSaving}>
           {teaserSaving ? "Speichert…" : "Hinweisblock speichern"}
         </button>
-      </div>
+      </CollapsibleCard>
 
       <div className="app-news-layout">
         <div className="app-news-main">

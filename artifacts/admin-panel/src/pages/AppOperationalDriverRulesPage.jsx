@@ -65,8 +65,7 @@ export default function AppOperationalDriverRulesPage() {
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Fahrer-Regeln (Plattform)</div>
+      <CollapsibleCard title="Fahrer-Regeln (Plattform)">
         <p className="admin-table-sub">
           Sicht: Plattform-Operator, nicht Unternehmersicht. Tiefere Durchsetzung in Fleet-/Bereitstellung im API-Bundle.
         </p>
@@ -91,7 +90,7 @@ export default function AppOperationalDriverRulesPage() {
         <p className="admin-table-sub" style={{ marginTop: 8 }}>
           Öffentlich: <code>GET {API_BASE}/app/config</code> → <code>driverRules</code>
         </p>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

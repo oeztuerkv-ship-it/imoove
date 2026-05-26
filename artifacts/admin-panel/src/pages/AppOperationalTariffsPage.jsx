@@ -141,8 +141,7 @@ function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeCha
     </label>
   );
   return (
-    <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-      <div className="admin-panel-card__title" style={{ color: "#EF1D26" }}>{title}</div>
+    <CollapsibleCard title="{title}">
       {hint ? <p className="admin-table-sub" style={{ marginTop: 2 }}>{hint}</p> : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 14, maxWidth: 500 }}>
         <div>
@@ -197,7 +196,7 @@ function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeCha
           </div>
         )}
       </div>
-    </div>
+    </CollapsibleCard>
   );
 }
 
@@ -523,15 +522,13 @@ export default function AppOperationalTariffsPage() {
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
 
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Betrieb &amp; Preise</div>
+      <CollapsibleCard title="Betrieb &amp; Preise">
         <p className="admin-table-sub" style={{ lineHeight: 1.55, maxWidth: 720 }}>
           Hier legen Sie fest, wo gefahren werden darf und was eine Fahrt kostet. Die Kunden-App fragt die Preise beim Server ab — nichts wird in der App selbst gerechnet.
         </p>
-      </div>
+      </CollapsibleCard>
 
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Wo darf gefahren werden?</div>
+      <CollapsibleCard title="Wo darf gefahren werden?">
         <p className="admin-table-sub">Ein Gebiet hat einen Namen und darunter alle Orte, die dazu gehören (eintragen wie auf einem Zettel — Komma oder neue Zeile).</p>
 
         {!hasRegions ? (
@@ -617,20 +614,18 @@ export default function AppOperationalTariffsPage() {
             </div>
           </div>
         )}
-      </div>
+      </CollapsibleCard>
 
       {hasRegions && selectedRegionId ? (
         <>
-          <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-            <div className="admin-panel-card__title">Allgemein</div>
+          <CollapsibleCard title="Allgemein">
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <input type="checkbox" checked={!!tariffsActive} onChange={(e) => setTariffsActive(e.target.checked)} />
               <span>Preise sind buchbar (wenn aus: keine neuen Fahrten über die App)</span>
             </label>
-          </div>
+          </CollapsibleCard>
 
-          <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16, border: "0.5px solid rgba(239,29,38,0.25)", background: "rgba(239,29,38,0.02)" }}>
-            <div className="admin-panel-card__title" style={{ color: "#EF1D26" }}>Tarif-Vorlagen</div>
+          <CollapsibleCard title="Tarif-Vorlagen">
             <p className="admin-table-sub" style={{ marginTop: 2 }}>Einmal definieren — per Klick auf jede Region anwenden.</p>
             {templates.length > 0 ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
@@ -648,7 +643,7 @@ export default function AppOperationalTariffsPage() {
               <button type="button" className="admin-m-btn-pri" onClick={() => void saveCurrentAsTemplate()} disabled={tplBusy}>{tplBusy ? "..." : "Aktuelle Werte als Vorlage speichern"}</button>
             </div>
             <p className="admin-table-sub" style={{ marginTop: 6 }}>Tipp: Erst unten Tarif-Felder ausfüllen — dann hier als Vorlage speichern.</p>
-          </div>
+          </CollapsibleCard>
           <TarifBlock title="STANDARD" hint="Normales Taxi — gilt für die Standard-Fahrzeugklasse." value={stdForm} onChange={setStdForm} />
           <TarifBlock title="XL" hint="Größeres Fahrzeug — eigene Preise." value={xlForm} onChange={setXlForm} surchargeEur={xlSurchargeEur} onSurchargeChange={setXlSurchargeEur} />
           <TarifBlock title="ROLLSTUHL" hint="Rollstuhlfahrten — eigene Preise." value={wcForm} onChange={setWcForm} surchargeEur={wcSurchargeEur} onSurchargeChange={setWcSurchargeEur} />
@@ -659,8 +654,7 @@ export default function AppOperationalTariffsPage() {
             </button>
           </div>
 
-          <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-            <div className="admin-panel-card__title">Kurz rechnen (Beispiel)</div>
+          <CollapsibleCard title="Kurz rechnen (Beispiel)">
             <p className="admin-table-sub">10 km, 20 Minuten Fahrt — nur zum Prüfen, nicht für Gäste sichtbar.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8, alignItems: "center" }}>
               <label>
@@ -703,7 +697,7 @@ export default function AppOperationalTariffsPage() {
                 ) : null}
               </div>
             ) : null}
-          </div>
+          </CollapsibleCard>
 
           <details className="admin-m-sec" style={{ marginTop: 8 }}>
             <summary className="admin-table-sub" style={{ cursor: "pointer", fontWeight: 600 }}>

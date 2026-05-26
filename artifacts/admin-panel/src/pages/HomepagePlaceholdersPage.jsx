@@ -265,8 +265,7 @@ export default function HomepagePlaceholdersPage() {
         </form>
       </div>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Aktuelle Hinweise</div>
+      <CollapsibleCard title="Aktuelle Hinweise">
         <div className="admin-toolbar-row">
           <button className="admin-btn-refresh" type="button" onClick={() => void loadItems()} disabled={loading}>
             Aktualisieren
@@ -302,7 +301,7 @@ export default function HomepagePlaceholdersPage() {
           ))}
           {!loading && items.length === 0 ? <div className="admin-data-table__empty">Keine Hinweise vorhanden.</div> : null}
         </div>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

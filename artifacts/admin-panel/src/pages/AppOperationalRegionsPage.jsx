@@ -178,8 +178,7 @@ export default function AppOperationalRegionsPage() {
       {error ? <div className="admin-info-banner admin-info-banner--error" style={{ marginBottom: 12 }}>{error}</div> : null}
       {okMsg ? <div className="admin-info-banner admin-info-banner--ok" style={{ marginBottom: 12 }}>{okMsg}</div> : null}
 
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title" style={{ color: "#EF1D26" }}>Region hinzufügen</div>
+      <CollapsibleCard title="Region hinzufügen">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
           {PRESETS.map((p) => (
             <button key={p.label} type="button" className="admin-btn admin-btn--small" onClick={() => { setNewLabel(p.label); setNewMode("radius"); setNewLat(p.lat); setNewLng(p.lng); setNewKm(p.km); setNewGeoQ(p.label); }}>
@@ -227,7 +226,7 @@ export default function AppOperationalRegionsPage() {
         <button type="button" className="admin-m-btn-pri" style={{ marginTop: 14 }} disabled={addBusy} onClick={addRegion}>
           {addBusy ? "Wird angelegt ..." : "Region hinzufügen"}
         </button>
-      </div>
+      </CollapsibleCard>
 
       <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
@@ -273,8 +272,7 @@ export default function AppOperationalRegionsPage() {
         ) : null}
       </div>
 
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Hinweistext (App)</div>
+      <CollapsibleCard title="Hinweistext (App)">
         <label className="admin-form-label" style={{ display: "block", marginTop: 8, maxWidth: 560 }}>
           Meldung wenn kein Einfahrtsservice
           <textarea className="admin-textarea" rows={2} style={{ display: "block", marginTop: 4, width: "100%" }} value={outOfServiceDe} onChange={(e) => setOutOfServiceDe(e.target.value)} />
@@ -282,7 +280,7 @@ export default function AppOperationalRegionsPage() {
         <button type="button" className="admin-c-btn-sec" style={{ marginTop: 8 }} disabled={savingMsg} onClick={saveMessage}>
           {savingMsg ? "..." : "Speichern"}
         </button>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

@@ -55,8 +55,7 @@ export default function AppOperationalSystemPage() {
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">System / Wartung</div>
+      <CollapsibleCard title="System / Wartung">
         <p className="admin-table-sub" style={{ lineHeight: 1.5 }}>
           <code>emergencyShutdown</code> = harte Sperrung (wirkt wie 503/400 auf Buchungs-API, siehe Rides-Route).{" "}
           <code>minAppVersionHint</code> = reiner Anzeigewert in der Kunden-App, Hard-Enforcement optional später.
@@ -110,7 +109,7 @@ export default function AppOperationalSystemPage() {
         <p className="admin-table-sub" style={{ marginTop: 8 }}>
           <code>GET {API_BASE}/app/config</code> → <code>system</code> — Apps lesen, API erzwingt.
         </p>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }
