@@ -72,7 +72,7 @@ function DashboardView({ token, company }) {
       fetch(`${PANEL}/rides`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => ({})),
     ]).then(([c, r]) => {
       if (cancelled) return;
-      setCodes(Array.isArray(c.codes) ? c.codes : []);
+      setCodes(Array.isArray(c.items) ? c.items : []);
       setRides(Array.isArray(r.rides) ? r.rides : []);
       setLoading(false);
     });
@@ -131,7 +131,7 @@ function GutscheineView({ token, user }) {
     try {
       const res = await fetch(`${PANEL}/access-codes`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json().catch(() => ({}));
-      setItems(Array.isArray(data.codes) ? data.codes : []);
+      setItems(Array.isArray(data.items) ? data.items : []);
     } catch { setErr("Laden fehlgeschlagen."); }
     finally { setLoading(false); }
   }, [token]);
@@ -147,7 +147,7 @@ function GutscheineView({ token, user }) {
         codeType: "voucher",
         generateCode: form.codeMode === "generate",
         maxUses: form.maxUses ? Number(form.maxUses) : null,
-        notes: form.notes.trim() || undefined,
+        internalNote: form.notes.trim() || undefined,
       };
       if (form.codeMode === "custom" && form.customCode.trim()) body.code = form.customCode.trim();
       if (form.validFrom) body.validFrom = new Date(form.validFrom).toISOString();
