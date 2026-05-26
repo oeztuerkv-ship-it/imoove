@@ -114,7 +114,7 @@ function preservedAdvancedTariffKeys(prev) {
   return out;
 }
 
-function TarifBlock({ title, hint, value, onChange }) {
+function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeChange }) {
   const ch = (key) => (e) => onChange({ ...value, [key]: e.target.value });
   const tripPerHour = (() => {
     const v = parseFloat(String(value.tripMin).replace(",", "."));
@@ -175,6 +175,27 @@ function TarifBlock({ title, hint, value, onChange }) {
             <Field label="Wartezeit (Stau / Halt)" fieldKey="waitH" unit="€/Std" />
           </FieldRow>
         </div>
+        {onSurchargeChange !== undefined && (
+          <div style={{ borderTop: "0.5px solid rgba(0,0,0,0.08)", paddingTop: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(0,0,0,0.35)", marginBottom: 8 }}>Zuschlag</p>
+            <div style={{ maxWidth: 220 }}>
+              <label className="admin-form-label" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span style={{ fontSize: 12 }}>Großraumzuschlag (≥ 5 Pers.)</span>
+                <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(0,0,0,0.18)", borderRadius: 8, overflow: "hidden", background: "var(--admin-input-bg, #fff)" }}>
+                  <input
+                    className="admin-input"
+                    style={{ border: "none", outline: "none", padding: "7px 10px", flex: 1, minWidth: 0, background: "transparent" }}
+                    value={surchargeEur ?? ""}
+                    onChange={(e) => onSurchargeChange(e.target.value)}
+                    inputMode="decimal"
+                  />
+                  <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", paddingRight: 10 }}>€</span>
+                </div>
+                <span style={{ fontSize: 11, color: "rgba(0,0,0,0.38)" }}>Laut TTO Esslingen: 7,00 €</span>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -195,6 +216,7 @@ export default function AppOperationalTariffsPage() {
   const [stdForm, setStdForm] = useState(() => tierDefaults());
   const [xlForm, setXlForm] = useState(() => tierDefaults());
   const [wcForm, setWcForm] = useState(() => tierDefaults());
+  const [xlSurchargeEur, setXlSurchargeEur] = useState("7");
   const [edLabel, setEdLabel] = useState("");
   const [edTerms, setEdTerms] = useState("");
   const [edActive, setEdActive] = useState(true);
@@ -271,6 +293,10 @@ export default function AppOperationalTariffsPage() {
     const wcOv = vto.wheelchair && typeof vto.wheelchair === "object" ? /** @type {Record<string, unknown>} */ (vto.wheelchair) : null;
     setXlForm(sliceToTierForm(xlOv || merged));
     setWcForm(sliceToTierForm(wcOv || merged));
+    const lv = existingFull.largeVehicleSurcharge;
+    if (lv && typeof lv === "object" && lv.amountEur != null) {
+      setXlSurchargeEur(String(lv.amountEur));
+    }
   }, [config, selectedRegionId, serviceRegions]);
 
   const buildRegionTariffPayload = () => {
@@ -296,10 +322,7 @@ export default function AppOperationalTariffsPage() {
       holidaySurchargePercent: sh.enabled ? n(sh.percent) : 0,
       active: true,
       ...std,
-      largeVehicleSurcharge:
-        prev.largeVehicleSurcharge && typeof prev.largeVehicleSurcharge === "object"
-          ? prev.largeVehicleSurcharge
-          : { minPassengers: 5, amountEur: 0 },
+      largeVehicleSurcharge: { minPassengers: 5, amountEur: n(xlSurchargeEur) },
       vehicleClassMultipliers: { standard: 1, xl: 1, wheelchair: 1 },
       xlPricingMode: "multiplier",
       xlFixedSurchargeEur: 0,
@@ -568,7 +591,7 @@ export default function AppOperationalTariffsPage() {
           </div>
 
           <TarifBlock title="STANDARD" hint="Normales Taxi — gilt für die Standard-Fahrzeugklasse." value={stdForm} onChange={setStdForm} />
-          <TarifBlock title="XL" hint="Größeres Fahrzeug — eigene Preise." value={xlForm} onChange={setXlForm} />
+          <TarifBlock title="XL" hint="Größeres Fahrzeug — eigene Preise." value={xlForm} onChange={setXlForm} surchargeEur={xlSurchargeEur} onSurchargeChange={setXlSurchargeEur} />
           <TarifBlock title="ROLLSTUHL" hint="Rollstuhlfahrten — eigene Preise." value={wcForm} onChange={setWcForm} />
 
           <div style={{ marginBottom: 20 }}>
