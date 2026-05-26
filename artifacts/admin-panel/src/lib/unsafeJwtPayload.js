@@ -18,3 +18,13 @@ export function isLikelyAdminSessionJwt(jwt) {
   const p = readJwtPayloadUnsafe(jwt);
   return p?.kind === "admin_panel";
 }
+
+/** @returns {"session"|"foreign_jwt"|"invalid"} */
+export function classifyAdminStoredToken(jwt) {
+  const t = typeof jwt === "string" ? jwt.trim() : "";
+  if (!t) return "invalid";
+  const p = readJwtPayloadUnsafe(t);
+  if (!p) return "invalid";
+  if (p.kind === "admin_panel") return "session";
+  return "foreign_jwt";
+}

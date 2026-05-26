@@ -442,19 +442,32 @@ router.post("/admin/auth/login", async (req, res) => {
 });
 
 router.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
-  const role = req.adminAuth?.role ?? "admin";
-  const username = req.adminAuth?.username ?? "admin";
+  const principal = req.adminAuth;
+  if (!principal || principal.kind !== "session") {
+    res.status(403).json({
+      error: "session_required",
+      hint: "Plattform-Konsole erfordert Login per /admin/auth/login (kein statischer API-Bearer).",
+      authKind: principal?.kind ?? null,
+    });
+    return;
+  }
+  const role = principal.role ?? "admin";
+  const username = principal.username ?? "admin";
   const scopeCompanyId =
-    typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim()
-      ? req.adminAuth.scopeCompanyId.trim()
+    typeof principal.scopeCompanyId === "string" && principal.scopeCompanyId.trim()
+      ? principal.scopeCompanyId.trim()
       : null;
-  res.json({ ok: true, user: { username, role, scopeCompanyId } });
+  res.json({ ok: true, authKind: "session", user: { username, role, scopeCompanyId } });
 });
 
 router.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
-    res.status(403).json({ error: "session_required" });
+    res.status(403).json({
+      error: "session_required",
+      hint: "Passwortänderung nur mit Session-JWT nach /admin/auth/login — kein ADMIN_API_BEARER_TOKEN.",
+      authKind: principal?.kind ?? null,
+    });
     return;
   }
   const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
@@ -485,7 +498,8 @@ router.post("/admin/auth/change-password", requireAdminApiBearer, async (req, re
     username: principal.username,
     action: "admin.auth.password_changed",
   });
-  res.json({ ok: true });
+  const token = await signAdminSessionJwt({ username: principal.username, role: principal.role });
+  res.json({ ok: true, token });
 });
 
 router.post("/admin/auth/password-reset/request", async (req, res) => {
@@ -4950,3 +4964,47 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
 router.use("/admin", adminJson);
 
 export default router;
+
+// ── RECHNUNGEN ────────────────────────────────────────────────────────────
+import {
+  createInvoice,
+  listAllInvoices,
+  markInvoicePaid,
+  getInvoiceById,
+} from "../db/invoicesData.js";
+
+adminJson.get("/invoices", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) { res.status(403).json({ error: "forbidden" }); return; }
+    const invoices = await listAllInvoices();
+    res.json({ ok: true, invoices });
+  } catch (e) { next(e); }
+});
+
+adminJson.post("/invoices", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) { res.status(403).json({ error: "forbidden" }); return; }
+    const b = req.body as Record<string, unknown>;
+    if (!b.companyId || !b.periodFrom || !b.periodTo || !Array.isArray(b.lineItems)) {
+      res.status(400).json({ error: "missing_fields" }); return;
+    }
+    const invoice = await createInvoice({
+      companyId: String(b.companyId),
+      periodFrom: String(b.periodFrom),
+      periodTo: String(b.periodTo),
+      lineItems: b.lineItems as any,
+      notes: typeof b.notes === "string" ? b.notes : undefined,
+      taxRate: typeof b.taxRate === "number" ? b.taxRate : 19,
+    });
+    res.status(201).json({ ok: true, invoice });
+  } catch (e) { next(e); }
+});
+
+adminJson.patch("/invoices/:id/paid", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) { res.status(403).json({ error: "forbidden" }); return; }
+    const invoice = await markInvoicePaid(req.params.id);
+    if (!invoice) { res.status(404).json({ error: "not_found" }); return; }
+    res.json({ ok: true, invoice });
+  } catch (e) { next(e); }
+});

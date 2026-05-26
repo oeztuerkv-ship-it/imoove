@@ -1,4 +1,4 @@
-import { isLikelyAdminSessionJwt } from "./unsafeJwtPayload.js";
+import { classifyAdminStoredToken, isLikelyAdminSessionJwt } from "./unsafeJwtPayload.js";
 
 const SESSION_KEY = "onroda_admin_token";
 const LEGACY_SESSION_KEY = "onrodaAdminSessionToken";
@@ -47,7 +47,8 @@ export function setAdminSessionToken(token) {
 }
 
 export function isAdminSessionConfigured() {
-  return getAdminSessionToken().length > 0;
+  const t = getAdminSessionToken();
+  return t.length > 0 && classifyAdminStoredToken(t) === "session";
 }
 
 export function adminApiHeaders(extra = {}) {

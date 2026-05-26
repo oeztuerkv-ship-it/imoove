@@ -78,6 +78,10 @@ async function main() {
     (await login(TEST_USER, TEST_PASS)).token,
   );
   assertOk(changed.res.ok && changed.data?.ok, `Passwortwechsel fehlgeschlagen: ${changed.res.status} ${JSON.stringify(changed.data)}`);
+  assertOk(
+    typeof changed.data?.token === "string" && changed.data.token.length > 0,
+    "Passwortwechsel soll neues Session-JWT liefern (session_version bump)",
+  );
 
   const loginOld = await post("/admin/auth/login", { username: TEST_USER, password: TEST_PASS });
   assertOk(loginOld.res.status === 401, "Altes Passwort funktioniert noch (sollte 401 sein)");

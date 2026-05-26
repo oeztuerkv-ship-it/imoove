@@ -79,7 +79,6 @@ Ein statischer Build-Bearer im Frontend wird nicht mehr verwendet.
 cd /root/imoove
 git pull origin main
 pnpm install --frozen-lockfile
-export VITE_ADMIN_API_BEARER_TOKEN='…'   # identisch mit ADMIN_API_BEARER_TOKEN der API
 pnpm --filter @workspace/api-server run build
 pnpm --filter admin-panel run build
 pm2 restart <api-prozess>

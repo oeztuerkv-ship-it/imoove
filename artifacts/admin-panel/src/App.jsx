@@ -492,10 +492,18 @@ export default function App() {
       try {
         const res = await fetch(`${API_BASE}/admin/auth/me`, { headers: adminApiHeaders() });
         const data = await res.json().catch(() => ({}));
-        if (!cancelled && res.ok && data?.ok && data?.user) {
-          setAuthUser(data.user);
+        if (!cancelled && res.ok && data?.ok && data?.user && data?.authKind === "session") {
+          if (data.user.username === "api_bearer") {
+            setAdminSessionToken("");
+            setAuthUser(null);
+          } else {
+            setAuthUser(data.user);
+          }
         } else if (!cancelled && (res.status === 401 || res.status === 403)) {
           setAdminSessionToken("");
+          if (data?.error === "session_required" && import.meta.env.DEV) {
+            console.warn("[admin] /auth/me: session_required", data);
+          }
         }
       } finally {
         if (!cancelled) setAuthBooting(false);
