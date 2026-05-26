@@ -47,7 +47,10 @@ import {
   adminCreateSettlementWithRideAllocations,
   adminRecordSettlementPayoutAttempt,
 } from "../db/financeSettlementsData";
-import { adminMarkInvoicePaid } from "../db/adminInvoiceFinanceData";
+import { adminMarkInvoicePaid, adminSendInvoicePaymentReminder } from "../db/adminInvoiceFinanceData";
+import { mapPanelInvoiceItemsForPdf } from "../lib/invoice/mapInvoiceItemForPdf.js";
+import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
+import { invoicePdfNeutralStatusLabel, type InvoiceWorkflowFilter } from "../lib/invoiceWorkflow.js";
 import { createPartnerMonthlyInvoice } from "../db/partnerInvoiceGeneratorData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { insertPanelAuditLog, listPanelAuditForCompany } from "../db/panelAuditData";
@@ -1022,9 +1025,21 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       return;
     }
     const q = req.query as Record<string, string | undefined>;
+    const workflowRaw = (q.workflow_filter ?? q.workflowFilter ?? "").trim() as InvoiceWorkflowFilter;
+    const workflowFilters: InvoiceWorkflowFilter[] = [
+      "all",
+      "open",
+      "due",
+      "overdue",
+      "reminder_sent",
+      "paid",
+      "cancelled",
+    ];
+    const workflowFilter = workflowFilters.includes(workflowRaw) ? workflowRaw : undefined;
     const filters = {
       companyId: q.company_id,
-      status: q.status,
+      status: workflowFilter && workflowFilter !== "all" ? undefined : q.status,
+      workflowFilter: workflowFilter && workflowFilter !== "all" ? workflowFilter : undefined,
       type: q.invoice_type,
       companyCode: q.company_code,
       invoicePrefix: q.invoice_prefix,
@@ -1157,6 +1172,108 @@ adminJson.post("/finance/invoices/:invoiceId/mark-paid", async (req, res, next) 
       return;
     }
     res.json({ ok: true, paymentId: out.paymentId, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/finance/invoices/:invoiceId/send-reminder", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const out = await adminSendInvoicePaymentReminder({
+      invoiceId: req.params.invoiceId,
+      actorLabel: `admin_console:${role}`,
+    });
+    if (!out.ok) {
+      const st =
+        out.error === "invoice_not_found"
+          ? 404
+          : out.error === "invoice_cancelled" || out.error === "invoice_already_paid"
+            ? 409
+            : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    res.json({ ok: true, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/invoices/:invoiceId/pdf", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const invoice = await findInvoiceAdmin(req.params.invoiceId);
+    if (!invoice) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const company = invoice.company_id ? await findCompanyById(invoice.company_id) : null;
+    const recipientLines = company
+      ? [
+          company.billing_address_line1,
+          company.billing_address_line2,
+          [company.billing_postal_code, company.billing_city].filter(Boolean).join(" "),
+          company.billing_country,
+        ].filter((x) => x && String(x).trim().length > 0)
+      : [];
+    const meta =
+      invoice.metadata_json && typeof invoice.metadata_json === "object"
+        ? (invoice.metadata_json as Record<string, unknown>)
+        : {};
+    const notes = typeof meta.notes === "string" ? meta.notes : null;
+    const taxRatePercent =
+      invoice.subtotal_net > 0
+        ? Math.round((invoice.vat_total / invoice.subtotal_net) * 10000) / 100
+        : 19;
+    const pdfBuffer = await buildPartnerMonthlyInvoicePdf({
+      invoiceNumber: invoice.invoice_number,
+      statusLabel: invoicePdfNeutralStatusLabel(),
+      issueDate: String(invoice.issue_date),
+      dueDate: invoice.due_date ? String(invoice.due_date) : null,
+      periodFrom: String(invoice.billing_period_start),
+      periodTo: String(invoice.billing_period_end),
+      recipientName: company?.billing_name?.trim() || company?.name || invoice.company_name || "Empfänger",
+      recipientLines: recipientLines.map(String),
+      items: mapPanelInvoiceItemsForPdf(
+        (invoice.items ?? []).map((row) => ({
+          id: row.id,
+          rideId: row.ride_id ?? null,
+          itemType: row.item_type,
+          description: row.description,
+          quantity: Number(row.quantity),
+          unitNet: Number(row.unit_net),
+          vatRate: Number(row.vat_rate),
+          lineNet: Number(row.line_net),
+          lineVat: Number(row.line_vat),
+          lineGross: Number(row.line_gross),
+          metadata:
+            row.metadata_json && typeof row.metadata_json === "object"
+              ? (row.metadata_json as Record<string, unknown>)
+              : {},
+          createdAt: "",
+        })),
+      ),
+      subtotalNet: Number(invoice.subtotal_net),
+      vatTotal: Number(invoice.vat_total),
+      totalGross: Number(invoice.total_gross),
+      taxRatePercent,
+      notes,
+      paymentReference: invoice.payment_reference || invoice.invoice_number,
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="ONRODA-Rechnung-${invoice.invoice_number}.pdf"`,
+    );
+    res.send(pdfBuffer);
   } catch (e) {
     next(e);
   }

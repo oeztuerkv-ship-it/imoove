@@ -389,13 +389,17 @@ function FahrtenView({ token }) {
 
 /* ── ABRECHNUNG ────────────────────────────────────────── */
 
-function paymentStatusLabelDe(paymentStatus) {
+function paymentStatusLabelDe(paymentStatus, statusLabelDe) {
+  if (statusLabelDe) return statusLabelDe;
   const m = {
     draft: "Entwurf",
     open: "Offen",
+    issued: "Offen",
     due: "Fällig",
     overdue: "Überfällig",
+    reminder_sent: "Zahlungserinnerung",
     partial: "Teilweise bezahlt",
+    partially_paid: "Teilweise bezahlt",
     paid: "Bezahlt",
     cancelled: "Storniert",
   };
@@ -405,8 +409,81 @@ function paymentStatusLabelDe(paymentStatus) {
 function paymentStatusTone(paymentStatus) {
   if (paymentStatus === "paid") return "ok";
   if (paymentStatus === "overdue" || paymentStatus === "cancelled") return "err";
-  if (paymentStatus === "open" || paymentStatus === "due" || paymentStatus === "partial") return "warn";
+  if (paymentStatus === "reminder_sent") return "warn";
+  if (
+    paymentStatus === "open" ||
+    paymentStatus === "issued" ||
+    paymentStatus === "due" ||
+    paymentStatus === "partial" ||
+    paymentStatus === "partially_paid"
+  ) {
+    return "warn";
+  }
   return "muted";
+}
+
+function InvoicePaymentNotice({ summary, detail, onPdf, pdfBusy }) {
+  const ui = detail?.paymentUi ?? summary?.paymentUi;
+  if (!ui || ui.kind === "none") return null;
+  const isReminder = ui.kind === "reminder";
+  const ref = detail?.paymentReference || summary?.paymentReference;
+  return (
+    <Card
+      style={{
+        border: isReminder ? "1px solid #e2e8f0" : "1px solid rgba(239,29,38,0.18)",
+        background: isReminder ? "#f8fafc" : "rgba(239,29,38,0.04)",
+        padding: "16px 18px",
+      }}
+    >
+      <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: 16, color: "#1c1c1e" }}>{ui.title}</p>
+      {ui.bodyLines.map((line, i) => {
+        const isRefLine = isReminder && i === ui.bodyLines.length - 1;
+        return (
+          <p
+            key={`${line}-${i}`}
+            style={{
+              margin: i === 0 ? 0 : "6px 0 0",
+              fontSize: 14,
+              lineHeight: 1.55,
+              color: isRefLine ? "#1c1c1e" : "rgba(0,0,0,0.62)",
+              wordBreak: "break-word",
+            }}
+          >
+            {isRefLine ? <strong>{line}</strong> : line}
+          </p>
+        );
+      })}
+      {ui.showPaymentDetails ? (
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => onPdf(summary)}
+            disabled={pdfBusy}
+            style={{ ...btn, background: RED, padding: "8px 14px", fontSize: 13, opacity: pdfBusy ? 0.7 : 1 }}
+          >
+            {pdfBusy ? "…" : "PDF herunterladen"}
+          </button>
+          {ref ? (
+            <div
+              style={{
+                flex: "1 1 200px",
+                fontSize: 13,
+                color: "rgba(0,0,0,0.62)",
+                lineHeight: 1.5,
+                padding: "8px 12px",
+                borderRadius: 10,
+                background: "#fff",
+                border: "0.5px solid rgba(0,0,0,0.08)",
+              }}
+            >
+              <span style={{ display: "block", fontSize: 11, marginBottom: 4 }}>Verwendungszweck</span>
+              <strong style={{ wordBreak: "break-word", color: "#1c1c1e" }}>{ref}</strong>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </Card>
+  );
 }
 
 function periodLabel(from, to) {
@@ -583,7 +660,9 @@ function AbrechnungView({ token }) {
                     </td>
                     <td style={{ padding: "12px 10px", color: "rgba(0,0,0,0.65)" }}>{periodLabel(inv.periodFrom, inv.periodTo)}</td>
                     <td style={{ padding: "12px 10px" }}>
-                      <Badge tone={paymentStatusTone(inv.paymentStatus)}>{paymentStatusLabelDe(inv.paymentStatus)}</Badge>
+                      <Badge tone={paymentStatusTone(inv.workflowStatus || inv.paymentStatus)}>
+                        {paymentStatusLabelDe(inv.workflowStatus || inv.paymentStatus, inv.statusLabelDe)}
+                      </Badge>
                     </td>
                     <td style={{ padding: "12px 10px", fontWeight: 600 }}>{fmtMoney(inv.totalGross)}</td>
                     <td style={{ padding: "12px 10px", color: "rgba(0,0,0,0.65)" }}>{fmtDate(inv.dueDate)}</td>
@@ -610,7 +689,14 @@ function AbrechnungView({ token }) {
       </Section>
 
       {selectedSummary && (
-        <Section title={`Rechnung ${selectedSummary.invoiceNumber}`}>
+        <>
+          <InvoicePaymentNotice
+            summary={selectedSummary}
+            detail={detail}
+            onPdf={handlePdfDownload}
+            pdfBusy={pdfBusyId === selectedSummary.id}
+          />
+          <Section title={`Rechnung ${selectedSummary.invoiceNumber}`}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
             <Card>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
@@ -619,8 +705,11 @@ function AbrechnungView({ token }) {
                   <h3 style={{ margin: 0, fontSize: 22, wordBreak: "break-word" }}>{selectedSummary.invoiceNumber}</h3>
                   <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>{periodLabel(selectedSummary.periodFrom, selectedSummary.periodTo)}</p>
                 </div>
-                <Badge tone={paymentStatusTone(selectedSummary.paymentStatus)}>
-                  {paymentStatusLabelDe(selectedSummary.paymentStatus)}
+                <Badge tone={paymentStatusTone(selectedSummary.workflowStatus || selectedSummary.paymentStatus)}>
+                  {paymentStatusLabelDe(
+                    selectedSummary.workflowStatus || selectedSummary.paymentStatus,
+                    selectedSummary.statusLabelDe,
+                  )}
                 </Badge>
               </div>
 
@@ -711,6 +800,7 @@ function AbrechnungView({ token }) {
             </Card>
           </div>
         </Section>
+        </>
       )}
 
       <Section title="Zahlungsstatus" defaultOpen={false}>
@@ -718,8 +808,11 @@ function AbrechnungView({ token }) {
           <Card>
             <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Status</p>
             {selectedSummary ? (
-              <Badge tone={paymentStatusTone(selectedSummary.paymentStatus)}>
-                {paymentStatusLabelDe(selectedSummary.paymentStatus)}
+              <Badge tone={paymentStatusTone(selectedSummary.workflowStatus || selectedSummary.paymentStatus)}>
+                {paymentStatusLabelDe(
+                  selectedSummary.workflowStatus || selectedSummary.paymentStatus,
+                  selectedSummary.statusLabelDe,
+                )}
               </Badge>
             ) : (
               <span>—</span>

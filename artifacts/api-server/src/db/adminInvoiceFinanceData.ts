@@ -6,6 +6,11 @@ import {
   resolveInvoicePaymentReference,
 } from "../lib/invoicePaymentReference.js";
 import {
+  resolveInvoiceWorkflowStatus,
+  workflowStatusLabelDe,
+  type InvoiceWorkflowStatus,
+} from "../lib/invoiceWorkflow.js";
+import {
   financialAuditLogTable,
   invoicesTable,
   paymentsTable,
@@ -38,31 +43,32 @@ async function insertFinancialAuditInTx(
 }
 
 export function adminInvoiceStatusLabelDe(status: string): string {
-  const s = status.trim().toLowerCase();
-  const m: Record<string, string> = {
-    draft: "Entwurf",
-    issued: "Offen",
-    partially_paid: "Teilweise bezahlt",
-    paid: "Bezahlt",
-    overdue: "Überfällig",
-    cancelled: "Storniert",
-  };
-  return m[s] ?? status;
+  return workflowStatusLabelDe(resolveInvoiceWorkflowStatus({ status, due_date: null }));
 }
 
 export function enrichInvoiceAdminRow(
   row: typeof invoicesTable.$inferSelect,
   companyName: string | null,
-): typeof row & { company_name: string | null; payment_reference: string; status_label_de: string } {
+): typeof row & {
+  company_name: string | null;
+  payment_reference: string;
+  workflow_status: InvoiceWorkflowStatus;
+  status_label_de: string;
+} {
   const payment_reference = resolveInvoicePaymentReference({
     invoiceNumber: row.invoice_number,
     storedReference: row.payment_reference,
+  });
+  const workflow_status = resolveInvoiceWorkflowStatus({
+    status: row.status,
+    due_date: row.due_date,
   });
   return {
     ...row,
     company_name: companyName,
     payment_reference,
-    status_label_de: adminInvoiceStatusLabelDe(row.status),
+    workflow_status,
+    status_label_de: workflowStatusLabelDe(workflow_status),
   };
 }
 
@@ -164,7 +170,8 @@ export async function adminMarkInvoicePaid(input: {
               ? (inv.metadata_json as Record<string, unknown>)
               : {}),
             paid_at: paidAt.toISOString(),
-            paid_by: input.actorLabel,
+            paid_by_admin: input.actorLabel,
+            zahlungsreferenz: bankRef || paymentReference,
           },
         })
         .where(eq(invoicesTable.id, invoiceId));
@@ -191,6 +198,87 @@ export async function adminMarkInvoicePaid(input: {
     const err = e as Error & { code?: string };
     if (err.code === "invoice_not_found") return { ok: false, error: "invoice_not_found" };
     if (err.code === "invoice_cancelled") return { ok: false, error: "invoice_cancelled" };
+    throw e;
+  }
+}
+
+/** Admin: Zahlungserinnerung verbuchen (Status + Audit; E-Mail später). */
+export async function adminSendInvoicePaymentReminder(input: {
+  invoiceId: string;
+  actorLabel: string;
+}): Promise<
+  | { ok: true; idempotent?: boolean }
+  | { ok: false; error: string }
+> {
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const invoiceId = input.invoiceId.trim();
+  if (!invoiceId) return { ok: false, error: "invoice_id_required" };
+
+  try {
+    return await db.transaction(async (tx) => {
+      const invRows = await tx
+        .select()
+        .from(invoicesTable)
+        .where(eq(invoicesTable.id, invoiceId))
+        .for("update")
+        .limit(1);
+      const inv = invRows[0];
+      if (!inv) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
+
+      if (inv.status === "paid") {
+        throw Object.assign(new Error("paid"), { code: "invoice_already_paid" });
+      }
+      if (inv.status === "cancelled") {
+        throw Object.assign(new Error("cancelled"), { code: "invoice_cancelled" });
+      }
+      if (inv.status === "draft") {
+        throw Object.assign(new Error("draft"), { code: "invoice_draft" });
+      }
+
+      if (inv.status === "reminder_sent") {
+        return { ok: true as const, idempotent: true };
+      }
+
+      const sentAt = new Date().toISOString();
+      const prevMeta =
+        inv.metadata_json && typeof inv.metadata_json === "object"
+          ? (inv.metadata_json as Record<string, unknown>)
+          : {};
+      const reminderCount = Number(prevMeta.reminder_count ?? 0) + 1;
+
+      await tx
+        .update(invoicesTable)
+        .set({
+          status: "reminder_sent",
+          updated_at: new Date(),
+          metadata_json: {
+            ...prevMeta,
+            reminder_sent_at: sentAt,
+            reminder_count: reminderCount,
+            last_reminder_by: input.actorLabel,
+          },
+        })
+        .where(eq(invoicesTable.id, invoiceId));
+
+      await insertFinancialAuditInTx(tx, {
+        entityType: "invoice",
+        entityId: invoiceId,
+        action: "invoice_reminder_sent",
+        oldValue: { status: inv.status },
+        newValue: { status: "reminder_sent", reminder_sent_at: sentAt, reminder_count: reminderCount },
+        actorType: "admin",
+        actorId: input.actorLabel,
+      });
+
+      return { ok: true as const };
+    });
+  } catch (e: unknown) {
+    const err = e as Error & { code?: string };
+    if (err.code === "invoice_not_found") return { ok: false, error: "invoice_not_found" };
+    if (err.code === "invoice_cancelled") return { ok: false, error: "invoice_cancelled" };
+    if (err.code === "invoice_already_paid") return { ok: false, error: "invoice_already_paid" };
+    if (err.code === "invoice_draft") return { ok: false, error: "invoice_draft" };
     throw e;
   }
 }

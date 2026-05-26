@@ -5,6 +5,16 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 const LIST_URL = `${API_BASE}/admin/finance/invoices`;
 const PAGE_SIZE = 20;
 
+const WORKFLOW_TABS = [
+  { v: "", label: "Alle" },
+  { v: "open", label: "Offen" },
+  { v: "due", label: "Fällig" },
+  { v: "overdue", label: "Überfällig" },
+  { v: "reminder_sent", label: "Zahlungserinnerung gesendet" },
+  { v: "paid", label: "Bezahlt" },
+  { v: "cancelled", label: "Storniert" },
+];
+
 function money(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
@@ -18,12 +28,23 @@ function fmtDate(iso) {
   return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function statusPillClass(status) {
-  const s = String(status ?? "").toLowerCase();
+function statusPillClass(workflowOrStatus) {
+  const s = String(workflowOrStatus ?? "").toLowerCase();
   if (s === "paid") return "admin-status-pill admin-status-pill--ok";
   if (s === "overdue" || s === "cancelled") return "admin-status-pill admin-status-pill--bad";
-  if (s === "issued" || s === "partially_paid" || s === "draft") return "admin-status-pill admin-status-pill--pending";
+  if (s === "reminder_sent") return "admin-status-pill admin-status-pill--warn";
+  if (["issued", "open", "due", "partially_paid", "partial", "draft"].includes(s)) {
+    return "admin-status-pill admin-status-pill--pending";
+  }
   return "admin-status-pill";
+}
+
+function auditActionLabel(action) {
+  const m = {
+    invoice_marked_paid: "Als bezahlt markiert",
+    invoice_reminder_sent: "Zahlungserinnerung gesendet",
+  };
+  return m[action] ?? action;
 }
 
 export default function FinanceInvoicesPage() {
@@ -35,9 +56,10 @@ export default function FinanceInvoicesPage() {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [markBusy, setMarkBusy] = useState(false);
+  const [reminderBusy, setReminderBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState("");
 
-  const [status, setStatus] = useState("");
+  const [workflowFilter, setWorkflowFilter] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [companyCode, setCompanyCode] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("");
@@ -49,7 +71,7 @@ export default function FinanceInvoicesPage() {
       const q = new URLSearchParams();
       q.set("page", String(page));
       q.set("pageSize", String(PAGE_SIZE));
-      if (status) q.set("status", status);
+      if (workflowFilter) q.set("workflow_filter", workflowFilter);
       if (companyId.trim()) q.set("company_id", companyId.trim());
       if (companyCode.trim()) q.set("company_code", companyCode.trim());
       if (invoicePrefix.trim()) q.set("invoice_prefix", invoicePrefix.trim());
@@ -66,7 +88,7 @@ export default function FinanceInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, companyId, companyCode, invoicePrefix]);
+  }, [page, workflowFilter, companyId, companyCode, invoicePrefix]);
 
   useEffect(() => {
     void load();
@@ -88,12 +110,13 @@ export default function FinanceInvoicesPage() {
     }
   }
 
-  async function markPaid() {
-    if (!detail?.id || detail.status === "paid") return;
+  async function markPaid(id) {
+    const targetId = id ?? detail?.id;
+    if (!targetId || detail?.workflow_status === "paid") return;
     setMarkBusy(true);
     setActionMsg("");
     try {
-      const res = await fetch(`${LIST_URL}/${encodeURIComponent(detail.id)}/mark-paid`, {
+      const res = await fetch(`${LIST_URL}/${encodeURIComponent(targetId)}/mark-paid`, {
         method: "POST",
         headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -101,7 +124,7 @@ export default function FinanceInvoicesPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       setActionMsg(data.idempotent ? "War bereits als bezahlt verbucht." : "Als bezahlt markiert.");
-      await openDetail(detail.id);
+      await openDetail(targetId);
       await load();
     } catch (e) {
       setActionMsg(e instanceof Error ? e.message : "Markieren fehlgeschlagen.");
@@ -110,7 +133,60 @@ export default function FinanceInvoicesPage() {
     }
   }
 
+  async function sendReminder(id) {
+    const targetId = id ?? detail?.id;
+    if (!targetId) return;
+    setReminderBusy(true);
+    setActionMsg("");
+    try {
+      const res = await fetch(`${LIST_URL}/${encodeURIComponent(targetId)}/send-reminder`, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      setActionMsg(data.idempotent ? "Erinnerung war bereits verbucht." : "Zahlungserinnerung gesendet.");
+      await openDetail(targetId);
+      await load();
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : "Erinnerung fehlgeschlagen.");
+    } finally {
+      setReminderBusy(false);
+    }
+  }
+
+  function downloadPdf(id, invoiceNumber) {
+    const url = `${LIST_URL}/${encodeURIComponent(id)}/pdf`;
+    fetch(url, { headers: adminApiHeaders() })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `ONRODA-Rechnung-${invoiceNumber || id}.pdf`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => {
+        window.alert("PDF konnte nicht geladen werden.");
+      });
+  }
+
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const canMarkPaid =
+    detail &&
+    !("error" in detail) &&
+    detail.workflow_status !== "paid" &&
+    detail.workflow_status !== "cancelled" &&
+    detail.status !== "paid" &&
+    detail.status !== "cancelled";
+  const canRemind =
+    detail &&
+    !("error" in detail) &&
+    !["paid", "cancelled", "draft"].includes(detail.workflow_status ?? detail.status);
 
   return (
     <div className="admin-page admin-page--loose">
@@ -118,86 +194,143 @@ export default function FinanceInvoicesPage() {
       <div className="admin-panel-card">
         <div className="admin-panel-card__title">Plattform-Rechnungen (B2B)</div>
         <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--admin-muted, #6b7280)" }}>
-          Mandantenübergreifend · Verwendungszweck eindeutig pro Unternehmen und Abrechnungsmonat (ohne interne Firmen-ID im
-          Überweisungstext).
+          Einheitlicher Workflow für Hotel, Medical, Corporate und Taxi — Verwendungszweck = Rechnungsnummer (z. B.{" "}
+          <span className="admin-mono">ONR-HOT-2026-04-001</span>).
         </p>
-        <div className="admin-table-toolbar">
-          <select className="admin-select" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-            <option value="">Status (alle)</option>
-            <option value="draft">Entwurf</option>
-            <option value="issued">Offen</option>
-            <option value="partially_paid">Teilweise bezahlt</option>
-            <option value="paid">Bezahlt</option>
-            <option value="overdue">Überfällig</option>
-            <option value="cancelled">Storniert</option>
-          </select>
+
+        <div className="admin-finance-tabs" role="tablist" aria-label="Rechnungsstatus">
+          {WORKFLOW_TABS.map((tab) => (
+            <button
+              key={tab.v || "all"}
+              type="button"
+              role="tab"
+              aria-selected={workflowFilter === tab.v}
+              className={"admin-finance-tabs__btn" + (workflowFilter === tab.v ? " admin-finance-tabs__btn--on" : "")}
+              onClick={() => {
+                setWorkflowFilter(tab.v);
+                setPage(1);
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="admin-table-toolbar" style={{ marginTop: 12 }}>
           <input
             className="admin-input"
             placeholder="Mandanten-ID (intern)"
             value={companyId}
-            onChange={(e) => { setCompanyId(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setCompanyId(e.target.value);
+              setPage(1);
+            }}
             style={{ minWidth: 140 }}
           />
           <input
             className="admin-input admin-mono"
             placeholder="Mandanten-Code"
             value={companyCode}
-            onChange={(e) => { setCompanyCode(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setCompanyCode(e.target.value);
+              setPage(1);
+            }}
             style={{ minWidth: 120 }}
           />
           <input
             className="admin-input admin-mono"
             placeholder="Prefix (HOT)"
             value={invoicePrefix}
-            onChange={(e) => { setInvoicePrefix(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setInvoicePrefix(e.target.value);
+              setPage(1);
+            }}
             style={{ minWidth: 100 }}
           />
           <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
-        <div className="admin-table-card">
+
+        <div className="admin-table-card" style={{ marginTop: 14 }}>
           <div className="admin-table-scroll">
-            <div className="admin-table-row admin-table-row--head">
-              <div>Nummer</div>
+            <div className="admin-table-row admin-table-row--head admin-finance-inv-row">
+              <div>Rechnung</div>
               <div>Unternehmen</div>
-              <div>Zeitraum</div>
-              <div>Status</div>
-              <div>Verwendungszweck</div>
               <div>Brutto</div>
-              <div />
+              <div>Fällig</div>
+              <div>Status</div>
+              <div>Aktionen</div>
             </div>
-            {items.map((x) => (
-              <div className="admin-table-row" key={x.id}>
-                <div className="admin-mono">{x.invoice_number}</div>
-                <div>
-                  {x.company_name || "—"}
-                  {x.company_code ? (
-                    <span className="admin-mono" style={{ display: "block", fontSize: 11, opacity: 0.7 }}>
-                      {x.company_code}
-                    </span>
-                  ) : null}
+            {items.map((x) => {
+              const wf = x.workflow_status || x.status;
+              const label = x.status_label_de || wf;
+              return (
+                <div className="admin-table-row admin-finance-inv-row" key={x.id}>
+                  <div>
+                    <div className="admin-mono" style={{ fontWeight: 700 }}>
+                      {x.invoice_number}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--admin-muted,#6b7280)", marginTop: 4 }}>
+                      {fmtDate(x.billing_period_start)} – {fmtDate(x.billing_period_end)}
+                    </div>
+                  </div>
+                  <div>
+                    {x.company_name || "—"}
+                    {x.company_code ? (
+                      <span className="admin-mono" style={{ display: "block", fontSize: 11, opacity: 0.7 }}>
+                        {x.company_code}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div style={{ fontWeight: 700 }}>{money(x.total_gross)}</div>
+                  <div style={{ fontSize: 13 }}>{fmtDate(x.due_date)}</div>
+                  <div>
+                    <span className={statusPillClass(wf)}>{label}</span>
+                  </div>
+                  <div className="admin-finance-inv-actions">
+                    <button
+                      type="button"
+                      className="admin-page-btn admin-page-btn--compact"
+                      onClick={() => downloadPdf(x.id, x.invoice_number)}
+                    >
+                      PDF
+                    </button>
+                    {wf !== "paid" && wf !== "cancelled" && wf !== "draft" ? (
+                      <button
+                        type="button"
+                        className="admin-page-btn admin-page-btn--compact"
+                        disabled={reminderBusy}
+                        onClick={() => void sendReminder(x.id)}
+                      >
+                        Erinnerung
+                      </button>
+                    ) : null}
+                    {wf !== "paid" && wf !== "cancelled" ? (
+                      <button
+                        type="button"
+                        className="admin-page-btn admin-page-btn--compact"
+                        disabled={markBusy}
+                        onClick={() => void markPaid(x.id)}
+                      >
+                        Bezahlt
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="admin-page-btn admin-page-btn--compact"
+                      onClick={() => void openDetail(x.id)}
+                    >
+                      Details
+                    </button>
+                  </div>
                 </div>
-                <div style={{ fontSize: 12 }}>
-                  {fmtDate(x.billing_period_start)} – {fmtDate(x.billing_period_end)}
-                </div>
-                <div>
-                  <span className={statusPillClass(x.status)}>{x.status_label_de || x.status}</span>
-                </div>
-                <div style={{ fontSize: 12, wordBreak: "break-word" }} title={x.payment_reference}>
-                  {x.payment_reference || "—"}
-                </div>
-                <div>{money(x.total_gross)}</div>
-                <div>
-                  <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => void openDetail(x.id)}>
-                    Details
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {!loading && items.length === 0 ? <div className="admin-info-banner">Keine Rechnungen gefunden.</div> : null}
           </div>
         </div>
+
         <div className="admin-pagination">
           <button className="admin-page-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
             Zurück
@@ -233,15 +366,10 @@ export default function FinanceInvoicesPage() {
                   <strong>Unternehmen:</strong> {detail.company_name || "—"}
                 </div>
                 <div>
-                  <strong>Mandanten-ID (intern):</strong>{" "}
-                  <span className="admin-mono">{detail.company_id || "—"}</span>
-                </div>
-                <div>
                   <strong>Status:</strong>{" "}
-                  <span className={statusPillClass(detail.status)}>{detail.status_label_de || detail.status}</span>
-                </div>
-                <div>
-                  <strong>Zeitraum:</strong> {fmtDate(detail.billing_period_start)} – {fmtDate(detail.billing_period_end)}
+                  <span className={statusPillClass(detail.workflow_status || detail.status)}>
+                    {detail.status_label_de || detail.workflow_status}
+                  </span>
                 </div>
                 <div>
                   <strong>Fällig:</strong> {fmtDate(detail.due_date)}
@@ -249,16 +377,27 @@ export default function FinanceInvoicesPage() {
                 <div>
                   <strong>Brutto:</strong> {money(detail.total_gross)}
                 </div>
+                <div>
+                  <strong>Bezahlt am:</strong> {detail.paid_at ? fmtDate(detail.paid_at) : "—"}
+                </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <strong>Verwendungszweck (= Rechnungsnummer):</strong>
+                  <strong>Verwendungszweck:</strong>
                   <div className="admin-mono" style={{ marginTop: 6, fontSize: 13, wordBreak: "break-word" }}>
-                    {detail.payment_reference || detail.invoice_number || "—"}
+                    {detail.payment_reference || detail.invoice_number}
                   </div>
                 </div>
               </div>
 
               <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {detail.status !== "paid" && detail.status !== "cancelled" ? (
+                <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => downloadPdf(detail.id, detail.invoice_number)}>
+                  PDF
+                </button>
+                {canRemind ? (
+                  <button type="button" className="admin-page-btn" onClick={() => void sendReminder()} disabled={reminderBusy}>
+                    {reminderBusy ? "Sende …" : "Zahlungserinnerung senden"}
+                  </button>
+                ) : null}
+                {canMarkPaid ? (
                   <button type="button" className="admin-page-btn" onClick={() => void markPaid()} disabled={markBusy}>
                     {markBusy ? "Speichere …" : "Als bezahlt markieren"}
                   </button>
@@ -274,8 +413,22 @@ export default function FinanceInvoicesPage() {
                   <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13 }}>
                     {detail.payments.map((p) => (
                       <li key={p.id}>
-                        {money(p.amount)} · {p.status} · {p.reference || "—"} ·{" "}
-                        {p.paid_at ? fmtDate(p.paid_at) : "offen"}
+                        {money(p.amount)} · {p.status} · {p.reference || "—"} · {p.paid_at ? fmtDate(p.paid_at) : "offen"}
+                        {detail.paid_by_admin ? ` · Admin: ${detail.paid_by_admin}` : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {Array.isArray(detail.audit_entries) && detail.audit_entries.length > 0 ? (
+                <div style={{ marginTop: 20 }}>
+                  <strong>Verlauf / Audit</strong>
+                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13 }}>
+                    {detail.audit_entries.map((a) => (
+                      <li key={a.id}>
+                        {fmtDate(a.created_at)} · {auditActionLabel(a.action)}
+                        {a.actor_id ? ` · ${a.actor_id}` : null}
                       </li>
                     ))}
                   </ul>

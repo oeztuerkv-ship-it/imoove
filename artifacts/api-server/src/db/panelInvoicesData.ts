@@ -1,25 +1,27 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { resolveInvoicePaymentReference } from "../lib/invoicePaymentReference.js";
+import {
+  buildPartnerPaymentUi,
+  resolveInvoiceWorkflowStatus,
+  workflowStatusLabelDe,
+  type InvoiceWorkflowStatus,
+  type PartnerPaymentUi,
+} from "../lib/invoiceWorkflow.js";
 import { getDb } from "./client";
 import { getPanelCompanyById } from "./panelCompanyData";
 import { invoiceItemsTable, invoicesTable } from "./schema";
 
-/** Partner-Panel: Zahlungslage abgeleitet aus `invoices.status` + `due_date`. */
-export type PanelInvoicePaymentStatus =
-  | "draft"
-  | "open"
-  | "due"
-  | "overdue"
-  | "partial"
-  | "paid"
-  | "cancelled";
+/** @deprecated Alias — nutze InvoiceWorkflowStatus. */
+export type PanelInvoicePaymentStatus = InvoiceWorkflowStatus | "open" | "partial";
 
 export type PanelInvoiceSummary = {
   id: string;
   invoiceNumber: string;
   invoiceType: string;
   status: string;
-  paymentStatus: PanelInvoicePaymentStatus;
+  workflowStatus: InvoiceWorkflowStatus;
+  /** Abwärtskompatibel für Partner-UI */
+  paymentStatus: string;
   periodFrom: string;
   periodTo: string;
   subtotalNet: number;
@@ -30,6 +32,8 @@ export type PanelInvoiceSummary = {
   pdfAvailable: boolean;
   itemCount: number;
   paymentReference: string;
+  statusLabelDe: string;
+  paymentUi: PartnerPaymentUi;
   createdAt: string;
   updatedAt: string;
 };
@@ -61,41 +65,10 @@ export type PanelInvoiceDetail = PanelInvoiceSummary & {
   };
 };
 
-function derivePaymentStatus(row: {
-  status: string;
-  due_date: string | Date | null;
-}): PanelInvoicePaymentStatus {
-  const status = row.status.trim().toLowerCase();
-  if (status === "paid") return "paid";
-  if (status === "cancelled") return "cancelled";
-  if (status === "draft") return "draft";
-  if (status === "partially_paid") return "partial";
-  if (status === "overdue") return "overdue";
-  const due =
-    row.due_date instanceof Date
-      ? row.due_date
-      : row.due_date
-        ? new Date(String(row.due_date))
-        : null;
-  if (due && !Number.isNaN(due.getTime()) && due < new Date()) {
-    if (status === "issued" || status === "partially_paid") return "overdue";
-    return "due";
-  }
-  if (status === "issued") return "open";
-  return "open";
-}
-
-function statusLabelDe(paymentStatus: PanelInvoicePaymentStatus): string {
-  const m: Record<PanelInvoicePaymentStatus, string> = {
-    draft: "Entwurf",
-    open: "Offen",
-    due: "Fällig",
-    overdue: "Überfällig",
-    partial: "Teilweise bezahlt",
-    paid: "Bezahlt",
-    cancelled: "Storniert",
-  };
-  return m[paymentStatus] ?? paymentStatus;
+function legacyPaymentStatus(workflow: InvoiceWorkflowStatus): string {
+  if (workflow === "issued") return "open";
+  if (workflow === "partially_paid") return "partial";
+  return workflow;
 }
 
 function mapItem(row: typeof invoiceItemsTable.$inferSelect): PanelInvoiceItem {
@@ -120,34 +93,48 @@ function mapItem(row: typeof invoiceItemsTable.$inferSelect): PanelInvoiceItem {
 }
 
 function mapSummary(row: typeof invoicesTable.$inferSelect, itemCount: number): PanelInvoiceSummary {
-  const paymentStatus = derivePaymentStatus(row);
+  const workflowStatus = resolveInvoiceWorkflowStatus({
+    status: row.status,
+    due_date: row.due_date,
+  });
   const paymentReference = resolveInvoicePaymentReference({
     invoiceNumber: row.invoice_number,
     storedReference: row.payment_reference,
   });
+  const dueDate = row.due_date ? String(row.due_date) : null;
   return {
     id: row.id,
     invoiceNumber: row.invoice_number,
     invoiceType: row.invoice_type,
     status: row.status,
-    paymentStatus,
+    workflowStatus,
+    paymentStatus: legacyPaymentStatus(workflowStatus),
     periodFrom: String(row.billing_period_start),
     periodTo: String(row.billing_period_end),
     subtotalNet: Number(row.subtotal_net),
     vatTotal: Number(row.vat_total),
     totalGross: Number(row.total_gross),
     issueDate: String(row.issue_date),
-    dueDate: row.due_date ? String(row.due_date) : null,
+    dueDate,
     pdfAvailable: Boolean(row.pdf_storage_key?.trim()),
     itemCount,
     paymentReference,
+    statusLabelDe: workflowStatusLabelDe(workflowStatus),
+    paymentUi: buildPartnerPaymentUi({
+      workflowStatus,
+      invoiceNumber: row.invoice_number,
+      totalGross: Number(row.total_gross),
+      dueDate,
+      paymentReference,
+    }),
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
   };
 }
 
-export function panelInvoiceStatusLabel(paymentStatus: PanelInvoicePaymentStatus): string {
-  return statusLabelDe(paymentStatus);
+export function panelInvoiceStatusLabel(paymentStatus: string): string {
+  const legacy = paymentStatus === "open" ? "issued" : paymentStatus === "partial" ? "partially_paid" : paymentStatus;
+  return workflowStatusLabelDe(legacy as InvoiceWorkflowStatus);
 }
 
 export async function listPanelInvoicesForCompany(companyId: string): Promise<PanelInvoiceSummary[]> {

@@ -12,6 +12,7 @@ import {
 } from "./schema";
 import { enrichInvoiceAdminRow } from "./adminInvoiceFinanceData.js";
 import { parseInvoiceNumber } from "../lib/invoiceNumbering.js";
+import type { InvoiceWorkflowFilter } from "../lib/invoiceWorkflow.js";
 
 export type FinanceSummary = {
   totalRevenue: number;
@@ -263,15 +264,62 @@ export async function getRideFinancialDetailAdmin(rideId: string) {
 export type InvoiceAdminListFilters = {
   companyId?: string;
   status?: string;
+  workflowFilter?: InvoiceWorkflowFilter;
   type?: string;
   companyCode?: string;
   invoicePrefix?: string;
 };
 
+function appendInvoiceWorkflowFilter(cond: SQL[], filter: InvoiceWorkflowFilter | undefined): void {
+  if (!filter || filter === "all") return;
+  const today = sql`CURRENT_DATE`;
+  switch (filter) {
+    case "paid":
+      cond.push(eq(invoicesTable.status, "paid"));
+      return;
+    case "cancelled":
+      cond.push(eq(invoicesTable.status, "cancelled"));
+      return;
+    case "reminder_sent":
+      cond.push(eq(invoicesTable.status, "reminder_sent"));
+      return;
+    case "due":
+      cond.push(
+        sql`${invoicesTable.status} in ('issued', 'partially_paid', 'reminder_sent') and ${invoicesTable.due_date} = ${today}`,
+      );
+      return;
+    case "overdue":
+      cond.push(
+        sql`(
+          ${invoicesTable.status} = 'overdue'
+          OR (
+            ${invoicesTable.status} in ('issued', 'partially_paid')
+            AND ${invoicesTable.due_date} is not null
+            AND ${invoicesTable.due_date} < ${today}
+          )
+        ) AND ${invoicesTable.status} <> 'reminder_sent'`,
+      );
+      return;
+    case "open":
+      cond.push(
+        sql`${invoicesTable.status} in ('issued', 'partially_paid') AND (
+          ${invoicesTable.due_date} is null OR ${invoicesTable.due_date} > ${today}
+        )`,
+      );
+      return;
+    default:
+      return;
+  }
+}
+
 function buildInvoiceAdminWhere(filters: InvoiceAdminListFilters): SQL[] {
   const cond: SQL[] = [];
   if (filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, filters.companyId.trim()));
-  if (filters.status?.trim()) cond.push(eq(invoicesTable.status, filters.status.trim()));
+  if (filters.workflowFilter) {
+    appendInvoiceWorkflowFilter(cond, filters.workflowFilter);
+  } else if (filters.status?.trim()) {
+    cond.push(eq(invoicesTable.status, filters.status.trim()));
+  }
   if (filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, filters.type.trim()));
   if (filters.companyCode?.trim()) {
     cond.push(sql`exists (
@@ -374,11 +422,25 @@ export async function findInvoiceAdmin(invoiceId: string) {
     .from(paymentsTable)
     .where(and(eq(paymentsTable.target_type, "invoice"), eq(paymentsTable.target_id, invoiceId)))
     .orderBy(desc(paymentsTable.created_at));
+  const audit_entries = await db
+    .select()
+    .from(financialAuditLogTable)
+    .where(and(eq(financialAuditLogTable.entity_type, "invoice"), eq(financialAuditLogTable.entity_id, invoiceId)))
+    .orderBy(desc(financialAuditLogTable.created_at))
+    .limit(80);
+  const meta =
+    row.metadata_json && typeof row.metadata_json === "object"
+      ? (row.metadata_json as Record<string, unknown>)
+      : {};
   return {
     ...enrichInvoiceAdminRow(row, companyName),
     company_code: row.company_id ? codes.get(row.company_id) ?? "" : "",
     items,
     payments: linkedPayments,
+    audit_entries,
+    paid_at: typeof meta.paid_at === "string" ? meta.paid_at : null,
+    paid_by_admin: typeof meta.paid_by_admin === "string" ? meta.paid_by_admin : null,
+    reminder_sent_at: typeof meta.reminder_sent_at === "string" ? meta.reminder_sent_at : null,
   };
 }
 

@@ -4,7 +4,7 @@ import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
 async function main() {
   const pdf = await buildPartnerMonthlyInvoicePdf({
     invoiceNumber: "ONR-HOT-2026-04-001",
-    statusLabel: "Offen",
+    statusLabel: "Rechnung",
     issueDate: "2026-04-30",
     dueDate: "2026-05-14",
     periodFrom: "2026-04-01",

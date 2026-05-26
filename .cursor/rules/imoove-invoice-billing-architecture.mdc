@@ -16,7 +16,9 @@ Vollständige Architektur: **`docs/onroda-invoice-billing-architecture.md`**.
 
 - **Tabellen:** `invoices` + `invoice_items` (Migration **028**) — **nicht** `onroda_invoices`.
 - **Partner-API:** `GET /panel/v1/invoices`, `…/:id`, `…/:id/pdf` in `routes/panelInvoiceRoutes.ts`; Daten `db/panelInvoicesData.ts`; PDF `lib/invoicePdfServer.ts`.
-- **Admin-API:** `GET /api/admin/finance/invoices` (+ Detail), `POST …/mark-paid`, `POST …/generate` via `adminFinanceData.ts` / `partnerInvoiceGeneratorData.ts`.
+- **Admin-API:** `GET /api/admin/finance/invoices` (`workflow_filter`), Detail inkl. Audit, `GET …/pdf`, `POST …/mark-paid`, `POST …/send-reminder`, `POST …/generate` — Logik `lib/invoiceWorkflow.ts`, Daten `adminFinanceData.ts` / `adminInvoiceFinanceData.ts`.
+- **Workflow-Status (Anzeige/Filter):** `draft`, `issued`, `due`, `overdue`, `reminder_sent`, `partially_paid`, `paid`, `cancelled` — `due`/`overdue` aus `due_date` abgeleitet; PDF immer neutral („Rechnung“).
+- **Partner-Zahlungshinweis:** API-Feld `paymentUi` (`open_payment` / `reminder`) in `panelInvoicesData.ts`; kein aggressives „Überfällig“ im PDF.
 - **Rechnungsnummern:** `ONR-{PREFIX}-{YYYY}-{MM}-{SEQ}` (z. B. `ONR-HOT-2026-04-001`); Sequenz in `invoice_number_sequences`; Prefix aus `admin_companies.invoice_prefix` (Default je `company_kind`); **öffentlicher** `company_code` (UNIQUE), intern.
 - **Verwendungszweck (SEPA):** identisch mit `invoice_number` — kurz, banktauglich; Bankmatching über `lookupPaymentReferenceForBankMatching` / `findInvoiceByPaymentReference`.
 - **Mandantenfilter:** Partner-Routen **immer** `company_id` aus Panel-JWT.

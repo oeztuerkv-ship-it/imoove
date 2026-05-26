@@ -52,7 +52,7 @@ async function main() {
 
   const { buffer, pageCount } = await renderPartnerInvoicePdfWithMeta({
     invoiceNumber: "ONR-2026-STRESS-001",
-    statusLabel: "Überfällig",
+    statusLabel: "Rechnung",
     issueDate: "2026-04-30",
     dueDate: "2026-05-14",
     periodFrom: "2026-04-01",

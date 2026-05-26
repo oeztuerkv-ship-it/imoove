@@ -3,11 +3,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
-import {
-  getPanelInvoiceForCompany,
-  listPanelInvoicesForCompany,
-  panelInvoiceStatusLabel,
-} from "../db/panelInvoicesData";
+import { getPanelInvoiceForCompany, listPanelInvoicesForCompany } from "../db/panelInvoicesData";
+import { invoicePdfNeutralStatusLabel } from "../lib/invoiceWorkflow.js";
 import { mapPanelInvoiceItemsForPdf } from "../lib/invoice/mapInvoiceItemForPdf.js";
 import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
 import { assertActivePanelProfile, denyUnlessPanelModule } from "./panelRouteContext";
@@ -103,7 +100,7 @@ router.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, re
           : 19;
       pdfBuffer = await buildPartnerMonthlyInvoicePdf({
         invoiceNumber: invoice.invoiceNumber,
-        statusLabel: panelInvoiceStatusLabel(invoice.paymentStatus),
+        statusLabel: invoicePdfNeutralStatusLabel(),
         issueDate: invoice.issueDate,
         dueDate: invoice.dueDate,
         periodFrom: invoice.periodFrom,
