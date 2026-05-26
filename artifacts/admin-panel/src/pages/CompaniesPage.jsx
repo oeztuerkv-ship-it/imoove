@@ -138,14 +138,14 @@ function StatusBadgeGroup({ v, c, t }) {
   const cb = COMPL_BADGE[c] || COMPL_BADGE.pending;
   const kb = CONTRACT_BADGE[t] || CONTRACT_BADGE.inactive;
   return (
-    <div className="admin-c-statuscol" role="group" aria-label="Status">
-      <span className={vb.cl} title={vb.label}>
+    <div className="admin-c-statuscol admin-c-statuscol--row" role="group" aria-label="Status">
+      <span className={vb.cl + " admin-c-badge--compact"} title={vb.label}>
         {vb.short}
       </span>
-      <span className={cb.cl} title={cb.label}>
+      <span className={cb.cl + " admin-c-badge--compact"} title={cb.label}>
         {cb.short}
       </span>
-      <span className={kb.cl} title={kb.label}>
+      <span className={kb.cl + " admin-c-badge--compact"} title={kb.label}>
         {kb.short}
       </span>
     </div>
@@ -762,46 +762,52 @@ export default function CompaniesPage({
         </div>
       </div>
 
-      <div>
-        <div className="admin-c-filter-legend" id="companies-type-filter-label">
-          Unternehmensart
+      <section className="admin-c-filter-panel" aria-label="Filter und Sortierung">
+        <div className="admin-c-filter-panel__grid">
+          <div className="admin-c-filter-panel__block">
+            <div className="admin-c-filter-legend" id="companies-type-filter-label">
+              Unternehmensart
+            </div>
+            <div className="admin-companies__chips admin-companies__chips--segment" role="tablist" aria-labelledby="companies-type-filter-label">
+              {KIND_TABS.map((t) => (
+                <button
+                  key={t.k}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === t.k}
+                  className={"admin-c-chip" + (activeTab === t.k ? " admin-c-chip--on" : "")}
+                  onClick={() => setTab(t.k)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="admin-c-filter-panel__block">
+            <div className="admin-c-filter-legend">Status & Freigaben</div>
+            <div className="admin-companies__chips admin-companies__chips--toggle admin-companies__chips--dense" aria-label="Zusatzfilter">
+              {EXTRA_CHIPS.map(({ k, label }) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={"admin-c-fchip" + (extra[k] ? " admin-c-fchip--on" : "")}
+                  aria-pressed={extra[k]}
+                  onClick={() => setExtraToggle(k)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="admin-companies__chips" role="tablist" aria-labelledby="companies-type-filter-label">
-          {KIND_TABS.map((t) => (
-            <button
-              key={t.k}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === t.k}
-              className={"admin-c-chip" + (activeTab === t.k ? " admin-c-chip--on" : "")}
-              onClick={() => setTab(t.k)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="admin-c-filter-legend">Status & Freigaben</div>
-        <div className="admin-companies__chips admin-companies__chips--toggle" aria-label="Zusatzfilter">
-          {EXTRA_CHIPS.map(({ k, label }) => (
-            <button
-              key={k}
-              type="button"
-              className={"admin-c-fchip" + (extra[k] ? " admin-c-fchip--on" : "")}
-              aria-pressed={extra[k]}
-              onClick={() => setExtraToggle(k)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="admin-c-filter-toolbar">
+        <div className="admin-c-filter-toolbar admin-c-filter-toolbar--in-panel">
           <div className="admin-c-filter-toolbar__row">
             <label className="admin-c-select-lbl" htmlFor="companies-sort-preset">
               Sortierung
             </label>
             <select
               id="companies-sort-preset"
-              className="admin-c-select"
+              className="admin-c-select admin-c-select--modern"
               value={sortPresetValue}
               onChange={onSortPreset}
             >
@@ -856,13 +862,27 @@ export default function CompaniesPage({
             </div>
           ) : null}
         </div>
-      </div>
+      </section>
 
       {loading && items.length === 0 ? <p className="admin-c-muted">Lade …</p> : null}
       <div className="admin-c-tablewrap">
+        <div className="admin-c-tablebar">
+          <span className="admin-c-tablebar__title">Mandantenliste</span>
+          <span className="admin-c-tablebar__meta" aria-live="polite">
+            {visibleItems.length > 0
+              ? `Nr. 1–${visibleItems.length} · ${visibleItems.length} ${visibleItems.length === 1 ? "Eintrag" : "Einträge"}`
+              : "Keine Einträge"}
+            {items.length > 0 && visibleItems.length !== items.length
+              ? ` (gefiltert von ${items.length})`
+              : null}
+          </span>
+        </div>
         <table className="admin-c-table">
           <thead>
             <tr>
+              <th className="admin-c-th admin-c-th--num" scope="col" aria-label="Laufende Nummer">
+                <span className="admin-c-th__txt">#</span>
+              </th>
               <th
                 scope="col"
                 {...sortThProps("name", "admin-c-th--name")}
@@ -934,12 +954,13 @@ export default function CompaniesPage({
           <tbody>
             {!loading && visibleItems.length === 0 ? (
               <tr>
-                <td colSpan="6" className="admin-c-td admin-c-td--empty">
+                <td colSpan="7" className="admin-c-td admin-c-td--empty">
                   {searchQuery.trim() ? "Keine Mandanten passend zur Suche / Filterkombination." : "Keine Mandanten in diesem Filter."}
                 </td>
               </tr>
             ) : null}
-            {visibleItems.map((item) => {
+            {visibleItems.map((item, rowIndex) => {
+              const rowNum = rowIndex + 1;
               const color = KIND_COLORS[item.company_kind] || KIND_COLORS.general;
               const iban = (item.bank_iban && String(item.bank_iban).trim()) || "";
               const displayKind = item.company_kind ? kindLabelForItem(item) : color.label;
@@ -956,8 +977,14 @@ export default function CompaniesPage({
                     }}
                     tabIndex={0}
                     role="button"
-                    aria-label={`Mandantenzentrale: ${item.name || item.id}`}
+                    aria-label={`Nr. ${rowNum}, Mandantenzentrale: ${item.name || item.id}`}
                   >
+                    <td className="admin-c-td admin-c-td--num">
+                      <span className="admin-c-rownum" aria-hidden>
+                        {rowNum}
+                      </span>
+                      <span className="admin-visually-hidden">Zeile {rowNum}</span>
+                    </td>
                     <td className="admin-c-td">
                       <div className="admin-c-mandant">
                         <button
@@ -1037,7 +1064,7 @@ export default function CompaniesPage({
                   </tr>
                   {selectedId === item.id && (
                     <tr className="admin-c-expand">
-                      <td colSpan="6" className="admin-c-expand__cell">
+                      <td colSpan="7" className="admin-c-expand__cell">
                         <div className="admin-c-workspace">
                           <p className="admin-table-sub" style={{ marginTop: 0 }}>
                             Erweiterte Einstellungen (Flotte, Kasse, Module) — getrennt von der Mandantenzentrale.

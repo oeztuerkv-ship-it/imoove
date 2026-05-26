@@ -26,3 +26,15 @@ Volltext und Klassenliste: **`artifacts/admin-panel/docs/admin-ui-reference.md`*
 
 - **Admin vs Partner-Panel** (Persona, Sprache, Teal vs Cyan) bleibt: **`imoove-panel-ux-separation.mdc`**.
 - Diese Regel = **innerhalb** des Admin-Panels: eine konsistente Plattform-Konsole, nicht Wildwuchs pro Screen.
+
+## Mandantenliste (`CompaniesPage.jsx`) — Roadmap (Operator-Skala)
+
+Stand: Filter-Karte, Zeilen-**#** (Support: „Mandant Nr. 12“), kompakte Status-Pills. **Nächste Ausbaustufen** (API + UI getrennt planen):
+
+1. **Sticky Tabellenkopf** bei langen Listen.
+2. **Serverseitige Pagination** (heute: Client-Filter/Sort auf geladener Liste).
+3. **Suche** erweitern: `company_code`, `invoice_prefix` (neben Name, Ansprechpartner, Ort, E-Mail).
+4. **Sortierung / Schnellfilter**: neueste, offene Rechnungen, gesperrt, nach `company_kind` (hotel/medical/corporate/…).
+5. **Schnellaktionen** pro Zeile: Mandantenzentrale, Finance, Rechnungen, Dokumente, deaktivieren — ohne Partner-Panel-UX zu vermischen.
+
+Mandanten/Unternehmen = zentraler Plattform-Bereich; Erweiterungen an **`admin-ui.css`** (`admin-c-*`) und Admin-API (`/api/admin/…`) halten, nicht Partner-Routen.

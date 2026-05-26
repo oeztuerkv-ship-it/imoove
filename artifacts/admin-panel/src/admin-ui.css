@@ -2696,6 +2696,72 @@ ul.admin-mandate-doclist {
 }
 
 /* Filter-Chips (unter Suche) */
+.admin-c-filter-panel {
+  margin-bottom: 22px;
+  padding: 18px 20px 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.admin-c-filter-panel__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 18px 28px;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 900px) {
+  .admin-c-filter-panel__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-c-filter-panel__block {
+  min-width: 0;
+}
+
+.admin-c-filter-toolbar--in-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e8edf4;
+  margin-bottom: 0;
+}
+
+.admin-companies__chips--segment {
+  padding: 4px;
+  gap: 6px;
+  margin-bottom: 0;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.admin-companies__chips--dense {
+  gap: 6px 8px;
+  margin-bottom: 0;
+}
+
+.admin-c-select--modern {
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.admin-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .admin-c-filter-legend {
   font-size: 0.7rem;
   font-weight: 800;
@@ -2901,9 +2967,46 @@ ul.admin-mandate-doclist {
   vertical-align: bottom;
 }
 
+.admin-c-th--num,
+.admin-c-td--num {
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.5rem;
+  text-align: center;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.admin-c-th--num {
+  color: #94a3b8;
+  font-size: 0.68rem;
+}
+
+.admin-c-rownum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  height: 1.65rem;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.admin-c-tr:hover .admin-c-rownum,
+.admin-c-tr:focus-visible .admin-c-rownum {
+  background: #e2e8f0;
+  color: #334155;
+}
+
 .admin-c-th--name {
-  width: 24%;
-  min-width: 200px;
+  width: 22%;
+  min-width: 180px;
 }
 
 .admin-c-th--sm {
@@ -2916,8 +3019,8 @@ ul.admin-mandate-doclist {
 }
 
 .admin-c-th--st {
-  width: 22%;
-  min-width: 160px;
+  width: 24%;
+  min-width: 200px;
 }
 
 .admin-c-th--act {
@@ -3091,13 +3194,27 @@ ul.admin-mandate-doclist {
   line-height: 1.2;
 }
 
-/* Status: untereinander, lesbar */
+/* Status: kompakt in einer Zeile */
 .admin-c-statuscol {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
   max-width: 100%;
+}
+
+.admin-c-statuscol--row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.admin-c-badge--compact {
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .admin-c-badge {
