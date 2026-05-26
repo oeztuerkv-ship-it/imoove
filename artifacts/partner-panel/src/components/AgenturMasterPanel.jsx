@@ -145,7 +145,7 @@ function GutscheineView({ token, user }) {
       const body = {
         label: form.label.trim(),
         codeType: "voucher",
-        codeMode: form.codeMode,
+        generateCode: form.codeMode === "generate",
         maxUses: form.maxUses ? Number(form.maxUses) : null,
         notes: form.notes.trim() || undefined,
       };
