@@ -292,15 +292,35 @@ function GutscheineView({ token, user }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {belegRides.map((r, i) => (
-                <div key={r.id || i} style={{ border: "0.5px solid rgba(0,0,0,0.08)", borderRadius: 10, padding: "12px 14px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtDate(r.createdAt || r.created_at)}</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: RED }}>{fmtMoney(r.finalFare || r.estimatedFare)}</span>
+                <div key={r.id || i} style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "16px 18px", background: "#fff" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+                      <span style={{ color: RED, fontWeight: 800, fontSize: 16, letterSpacing: -0.5 }}>on</span>
+                      <span style={{ color: "#1c1c1e", fontWeight: 800, fontSize: 16, letterSpacing: -0.5 }}>roda</span>
+                    </div>
+                    <span style={{ fontSize: 11, background: "#F2F2F7", color: "rgba(0,0,0,0.5)", padding: "2px 8px", borderRadius: 20 }}>Fahrtbeleg</span>
                   </div>
-                  <p style={{ fontSize: 13, color: "rgba(0,0,0,0.6)", margin: "4px 0 0" }}>
-                    {String(r.fromFull || r.from || "—").split(",")[0]} → {String(r.toFull || r.to || "—").split(",")[0]}
+                  <div style={{ borderTop: "0.5px solid rgba(0,0,0,0.08)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {[
+                      { label: "Datum", value: fmtDate(r.createdAt || r.created_at) },
+                      { label: "Abholung", value: String(r.fromFull || r.from || "—") },
+                      { label: "Ziel", value: String(r.toFull || r.to || "—") },
+                      r.distanceKm != null ? { label: "Strecke", value: Number(r.distanceKm).toFixed(1) + " km" } : null,
+                      r.durationMinutes != null ? { label: "Fahrzeit", value: r.durationMinutes + " Min." } : null,
+                    ].filter(Boolean).map(row => (
+                      <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                        <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", flexShrink: 0 }}>{row.label}</span>
+                        <span style={{ fontSize: 12, color: "#1c1c1e", textAlign: "right" }}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ borderTop: "0.5px solid rgba(0,0,0,0.08)", marginTop: 10, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>Gesamtbetrag</span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: RED }}>{fmtMoney(r.finalFare || r.estimatedFare)}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: "rgba(0,0,0,0.3)", textAlign: "center", margin: "8px 0 0" }}>
+                    Fahrtnachweis · {company?.name || "ONRODA"} · onroda.de
                   </p>
-                  {r.distanceKm != null && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", margin: "2px 0 0" }}>{Number(r.distanceKm).toFixed(1)} km</p>}
                 </div>
               ))}
               <p style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", fontWeight: 600, marginTop: 4 }}>Gesamt: {fmtMoney(belegRides.reduce((s, r) => s + (Number(r.finalFare) || Number(r.estimatedFare) || 0), 0))}</p>
