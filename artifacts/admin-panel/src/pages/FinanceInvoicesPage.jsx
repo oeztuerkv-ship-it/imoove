@@ -6,7 +6,30 @@ const LIST_URL = `${API_BASE}/admin/finance/invoices`;
 const KPIS_URL = `${API_BASE}/admin/finance/invoices/kpis`;
 const LOOKUP_URL = `${API_BASE}/admin/finance/invoices/lookup`;
 const EXPORT_URL = `${API_BASE}/admin/finance/invoices/export`;
+const MONTHLY_RUN_URL = `${API_BASE}/admin/finance/invoices/monthly-run`;
 const PAGE_SIZE = 20;
+
+function defaultPreviousMonthPeriod() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const prevEnd = new Date(y, m, 0);
+  const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
+  const fmt = (d) => {
+    const yy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yy}-${mm}-${dd}`;
+  };
+  return { periodStart: fmt(prevStart), periodEnd: fmt(prevEnd) };
+}
+
+const MONTHLY_OUTCOME_LABELS = {
+  created: "Erzeugt",
+  skipped: "Übersprungen",
+  no_rides: "Keine Fahrten",
+  error: "Fehler",
+};
 
 const WORKFLOW_TABS = [
   { v: "", label: "Alle" },
@@ -83,6 +106,12 @@ export default function FinanceInvoicesPage() {
   const [companyCode, setCompanyCode] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("");
   const [bankReference, setBankReference] = useState("");
+
+  const [monthlyRunOpen, setMonthlyRunOpen] = useState(false);
+  const [monthlyPeriodStart, setMonthlyPeriodStart] = useState(() => defaultPreviousMonthPeriod().periodStart);
+  const [monthlyPeriodEnd, setMonthlyPeriodEnd] = useState(() => defaultPreviousMonthPeriod().periodEnd);
+  const [monthlyRunBusy, setMonthlyRunBusy] = useState(false);
+  const [monthlyRunReport, setMonthlyRunReport] = useState(null);
 
   const loadKpis = useCallback(async () => {
     setKpisLoading(true);
@@ -276,6 +305,51 @@ export default function FinanceInvoicesPage() {
     }
   }
 
+  async function runMonthlyInvoiceBatch(dryRun) {
+    if (!monthlyPeriodStart.trim() || !monthlyPeriodEnd.trim()) {
+      setActionMsg("Bitte Abrechnungszeitraum (von/bis) angeben.");
+      return;
+    }
+    if (!dryRun) {
+      const ok = window.confirm(
+        `Monatslauf wirklich ausführen?\n\nZeitraum: ${monthlyPeriodStart} – ${monthlyPeriodEnd}\n\nEs werden Rechnungen erstellt und ride_financials auf „invoiced“ gesetzt. Kein E-Mail-Versand.`,
+      );
+      if (!ok) return;
+    }
+    setMonthlyRunBusy(true);
+    setActionMsg("");
+    try {
+      const res = await fetch(MONTHLY_RUN_URL, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          periodStart: monthlyPeriodStart.trim(),
+          periodEnd: monthlyPeriodEnd.trim(),
+          dryRun,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      setMonthlyRunReport(data);
+      const s = data.summary ?? {};
+      const prefix = dryRun ? "Vorschau (Dry-Run)" : "Monatslauf abgeschlossen";
+      setActionMsg(
+        `${prefix}: ${s.createdCount ?? 0} erzeugt, ${s.skippedCount ?? 0} übersprungen, ${s.noRidesCount ?? 0} ohne Fahrten, ${s.errorCount ?? 0} Fehler — Summe ${money(s.totalGrossCreated)}.`,
+      );
+      if (!dryRun) {
+        await load();
+        await loadKpis();
+      }
+    } catch (e) {
+      setActionMsg(e instanceof Error ? e.message : "Monatslauf fehlgeschlagen.");
+      setMonthlyRunReport(null);
+    } finally {
+      setMonthlyRunBusy(false);
+    }
+  }
+
   function downloadPdf(id, invoiceNumber) {
     const url = `${LIST_URL}/${encodeURIComponent(id)}/pdf`;
     fetch(url, { headers: adminApiHeaders() })
@@ -341,7 +415,20 @@ export default function FinanceInvoicesPage() {
           bleibt neutral („Rechnung“).
         </p>
 
-        <div className="admin-table-toolbar" style={{ marginBottom: 12 }}>
+        <div className="admin-table-toolbar" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="admin-page-btn"
+            onClick={() => {
+              const d = defaultPreviousMonthPeriod();
+              setMonthlyPeriodStart(d.periodStart);
+              setMonthlyPeriodEnd(d.periodEnd);
+              setMonthlyRunReport(null);
+              setMonthlyRunOpen((o) => !o);
+            }}
+          >
+            {monthlyRunOpen ? "Monatslauf schließen" : "Monatslauf starten"}
+          </button>
           <input
             className="admin-input admin-mono"
             placeholder="Bankmatching: Rechnungsnr. / Verwendungszweck"
@@ -359,6 +446,129 @@ export default function FinanceInvoicesPage() {
             CSV-Export
           </button>
         </div>
+
+        {monthlyRunOpen ? (
+          <div className="admin-finance-monthly-run">
+            <div className="admin-finance-monthly-run__head">
+              <strong>Monatslauf (manuell)</strong>
+              <span className="admin-finance-monthly-run__hint">
+                Hotel, Corporate, Medical/Kasse, Voucher — aus offenen ride_financials. Idempotent pro Mandant
+                und Zeitraum. PDF über bestehende Rechnungs-PDF-Route.
+              </span>
+            </div>
+            <div className="admin-finance-monthly-run__fields">
+              <label>
+                <span>Von</span>
+                <input
+                  type="date"
+                  className="admin-input"
+                  value={monthlyPeriodStart}
+                  onChange={(e) => setMonthlyPeriodStart(e.target.value)}
+                />
+              </label>
+              <label>
+                <span>Bis</span>
+                <input
+                  type="date"
+                  className="admin-input"
+                  value={monthlyPeriodEnd}
+                  onChange={(e) => setMonthlyPeriodEnd(e.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="admin-page-btn admin-page-btn--compact"
+                disabled={monthlyRunBusy}
+                onClick={() => void runMonthlyInvoiceBatch(true)}
+              >
+                {monthlyRunBusy ? "Läuft …" : "Vorschau (Dry-Run)"}
+              </button>
+              <button
+                type="button"
+                className="admin-page-btn"
+                disabled={monthlyRunBusy}
+                onClick={() => void runMonthlyInvoiceBatch(false)}
+              >
+                {monthlyRunBusy ? "Läuft …" : "Monatslauf ausführen"}
+              </button>
+            </div>
+            {monthlyRunReport?.summary ? (
+              <div className="admin-finance-monthly-run__summary">
+                <span>
+                  {monthlyRunReport.dryRun ? "Vorschau" : "Ergebnis"} · {monthlyRunReport.periodStart} –{" "}
+                  {monthlyRunReport.periodEnd}
+                </span>
+                <span>
+                  Mandanten: {monthlyRunReport.summary.companiesScanned} · Erzeugt:{" "}
+                  {monthlyRunReport.summary.createdCount} · Übersprungen: {monthlyRunReport.summary.skippedCount} ·
+                  Ohne Fahrten: {monthlyRunReport.summary.noRidesCount} · Fehler: {monthlyRunReport.summary.errorCount}
+                </span>
+                <span className="admin-crisp-numeric">
+                  Gesamtbetrag: {money(monthlyRunReport.summary.totalGrossCreated)}
+                </span>
+              </div>
+            ) : null}
+            {Array.isArray(monthlyRunReport?.results) && monthlyRunReport.results.length > 0 ? (
+              <div className="admin-table-card admin-finance-monthly-run__table">
+                <div className="admin-table-scroll">
+                  <div className="admin-table-row admin-table-row--head admin-finance-monthly-run-row">
+                    <div>Mandant</div>
+                    <div>Status</div>
+                    <div>Fahrten</div>
+                    <div>Netto</div>
+                    <div>MwSt</div>
+                    <div>Brutto</div>
+                    <div>Rechnung</div>
+                  </div>
+                  {monthlyRunReport.results.map((row) => {
+                    const status = row.status ?? row.outcome;
+                    return (
+                      <div className="admin-table-row admin-finance-monthly-run-row" key={row.company_id ?? row.companyId}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{row.company_name ?? row.companyName}</div>
+                          <div className="admin-mono" style={{ fontSize: 12, color: "#64748b" }}>
+                            {row.company_code ?? row.companyCode ?? "—"} · {row.company_id ?? row.companyId}
+                          </div>
+                        </div>
+                        <div>
+                          <span
+                            className={
+                              status === "error"
+                                ? "admin-status-pill admin-status-pill--bad"
+                                : status === "skipped"
+                                  ? "admin-status-pill admin-status-pill--warn"
+                                  : "admin-status-pill"
+                            }
+                          >
+                            {status === "created" && monthlyRunReport.dryRun
+                              ? "Würde erzeugen"
+                              : MONTHLY_OUTCOME_LABELS[status] || status}
+                          </span>
+                          {row.error && status !== "created" ? (
+                            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{row.error}</div>
+                          ) : null}
+                        </div>
+                        <div>{row.ride_count ?? row.rideCount ?? "—"}</div>
+                        <div className="admin-crisp-numeric">
+                          {row.subtotal_net != null ? money(row.subtotal_net) : "—"}
+                        </div>
+                        <div className="admin-crisp-numeric">
+                          {row.vat_total != null ? money(row.vat_total) : "—"}
+                        </div>
+                        <div className="admin-crisp-numeric">
+                          {row.total_gross != null ? money(row.total_gross) : "—"}
+                        </div>
+                        <div className="admin-mono" style={{ fontSize: 12 }}>
+                          {row.invoice_number ?? row.invoiceNumber ?? row.invoice_id ?? "—"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="admin-finance-tabs" role="tablist" aria-label="Rechnungsstatus">
           {WORKFLOW_TABS.map((tab) => (

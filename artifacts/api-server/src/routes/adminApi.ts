@@ -57,6 +57,7 @@ import {
 import { mapPanelInvoiceItemsForPdf } from "../lib/invoice/mapInvoiceItemForPdf.js";
 import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
 import { invoicePdfNeutralStatusLabel, type InvoiceWorkflowFilter } from "../lib/invoiceWorkflow.js";
+import { runAdminMonthlyInvoiceRun } from "../db/adminMonthlyInvoiceRunData";
 import { createPartnerMonthlyInvoice } from "../db/partnerInvoiceGeneratorData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { insertPanelAuditLog, listPanelAuditForCompany } from "../db/panelAuditData";
@@ -1210,6 +1211,38 @@ adminJson.post("/finance/invoices/generate", async (req, res, next) => {
       return;
     }
     res.status(201).json({ ok: true, ...out });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Monatslauf: alle abrechenbaren Mandanten × Zeitraum → Rechnungen aus ride_financials (idempotent). */
+adminJson.post("/finance/invoices/monthly-run", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body as Record<string, unknown>;
+    const periodStart = typeof body.periodStart === "string" ? body.periodStart.trim() : "";
+    const periodEnd = typeof body.periodEnd === "string" ? body.periodEnd.trim() : "";
+    const dryRun = body.dryRun !== false;
+
+    const out = await runAdminMonthlyInvoiceRun({
+      periodStart,
+      periodEnd,
+      dryRun,
+      actorLabel: `admin_console:${role}`,
+    });
+
+    if (!out.ok) {
+      const st = out.error === "invalid_period_dates" || out.error === "period_start_after_end" ? 400 : 503;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+
+    res.json(out);
   } catch (e) {
     next(e);
   }

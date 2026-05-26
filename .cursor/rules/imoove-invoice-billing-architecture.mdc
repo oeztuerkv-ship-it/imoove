@@ -16,7 +16,7 @@ Vollständige Architektur: **`docs/onroda-invoice-billing-architecture.md`**.
 
 - **Tabellen:** `invoices` + `invoice_items` (Migration **028**) — **nicht** `onroda_invoices`.
 - **Partner-API:** `GET /panel/v1/invoices`, `…/:id`, `…/:id/pdf` in `routes/panelInvoiceRoutes.ts`; Daten `db/panelInvoicesData.ts`; PDF `lib/invoicePdfServer.ts`.
-- **Admin-API:** `GET /api/admin/finance/invoices` (`workflow_filter`), Detail inkl. Audit, `GET …/pdf`, `POST …/mark-paid`, `POST …/revert-payment` (Payment → `reversed`, Audit `invoice_payment_reverted`), `POST …/send-reminder`, `POST …/generate` — Logik `lib/invoiceWorkflow.ts`, Daten `adminFinanceData.ts` / `adminInvoiceFinanceData.ts`.
+- **Admin-API:** `GET /api/admin/finance/invoices` (`workflow_filter`), Detail inkl. Audit, `GET …/pdf`, `POST …/mark-paid`, `POST …/revert-payment` (Payment → `reversed`, Audit `invoice_payment_reverted`), `POST …/send-reminder`, `POST …/generate`, **`POST …/monthly-run`** (`dryRun` Standard `true`) — Monatslauf aus `ride_financials` pro Mandant/Zeitraum, idempotent; Logik `db/adminMonthlyInvoiceRunData.ts`, `lib/monthlyInvoiceRun.ts`; UI Admin Finance → Rechnungen.
 - **Workflow-Status (Anzeige/Filter):** `draft`, `issued`, `due`, `overdue`, `reminder_sent`, `partially_paid`, `paid`, `cancelled` — `due`/`overdue` aus `due_date` abgeleitet; PDF immer neutral („Rechnung“).
 - **Partner-Zahlungshinweis:** API-Feld `paymentUi` (`open_payment` / `reminder`) in `panelInvoicesData.ts`; kein aggressives „Überfällig“ im PDF.
 - **Rücknahme Bezahlung:** `POST …/revert-payment` — Payments → `reversed` (nicht löschen), Audit `invoice_payment_reverted`, Status aus `status_before_paid` (z. B. `reminder_sent` bleibt erhalten).

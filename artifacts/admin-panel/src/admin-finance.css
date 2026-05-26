@@ -135,3 +135,59 @@
   margin-top: 4px;
   word-break: break-word;
 }
+
+.admin-finance-monthly-run {
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid var(--onroda-border-subtle, #e2e8f0);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.admin-finance-monthly-run__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.admin-finance-monthly-run__hint {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.admin-finance-monthly-run__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.admin-finance-monthly-run__fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.admin-finance-monthly-run__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.admin-finance-monthly-run__table {
+  margin-top: 12px;
+}
+
+.admin-finance-monthly-run-row {
+  grid-template-columns:
+    minmax(140px, 1.3fr) 110px 56px 88px 88px 88px minmax(120px, 1fr);
+  align-items: start;
+}
