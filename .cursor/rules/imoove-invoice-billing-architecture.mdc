@@ -1,0 +1,32 @@
+---
+description: ONRODA Rechnungen/Abrechnung — DB 028, Panel-API, server-PDF, kein onroda_invoices-WIP
+globs:
+  - artifacts/api-server/**/*
+  - artifacts/partner-panel/**/*
+  - artifacts/admin-panel/**/*
+  - docs/onroda-invoice-billing-architecture.md
+alwaysApply: false
+---
+
+# Rechnungs- & Abrechnungsarchitektur (verbindlich)
+
+Vollständige Architektur: **`docs/onroda-invoice-billing-architecture.md`**.
+
+## Kurz
+
+- **Tabellen:** `invoices` + `invoice_items` (Migration **028**) — **nicht** `onroda_invoices`.
+- **Partner-API:** `GET /panel/v1/invoices`, `…/:id`, `…/:id/pdf` in `routes/panelInvoiceRoutes.ts`; Daten `db/panelInvoicesData.ts`; PDF `lib/invoicePdfServer.ts`.
+- **Admin-API:** `GET /api/admin/finance/invoices` (+ Detail) via `adminFinanceData.ts`.
+- **Mandantenfilter:** Partner-Routen **immer** `company_id` aus Panel-JWT.
+- **PDF:** nur serverseitig; kein dauerhaftes Frontend-Fake-PDF (Hotel-Demo-Button ist Übergang).
+- **Kein WIP auf main:** keine Imports nach `export default router`; keine Migration ohne Schema + Drizzle + Verify-Eintrag.
+
+## Getrennt von
+
+- Einzelfahrt-Rechnung: `partner_booking_meta`, `POST /panel/v1/rides/:id/create-invoice` in `panelApi.ts`.
+- `ride_financials` — Vorstufe vor Monatsrechnung.
+
+## Vor Änderungen
+
+1. Rolle klären (Partner vs Admin).
+2. Phase 2 (generate/mark-paid) nur mit Migration + Admin-Route + Tests — nicht halb in `panelApi` anhängen.
