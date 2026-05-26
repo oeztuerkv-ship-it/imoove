@@ -173,7 +173,7 @@ export async function verifyAccessCode(
   }
   if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
   if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
-  if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
+  if (probe.max_uses != null && (probe.uses_count + (probe.reserved_count ?? 0)) >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
   if (!isAccessCodeType(probe.code_type)) return { ok: false, error: "access_code_invalid" };
   return {
     ok: true,
@@ -260,7 +260,7 @@ export async function redeemAccessCodeInTransaction(
   }
   if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
   if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
-  if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
+  if (probe.max_uses != null && (probe.uses_count + (probe.reserved_count ?? 0)) >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
   return { ok: false, error: "access_code_exhausted" };
 }
 
@@ -324,13 +324,19 @@ function memToAdmin(m: MemRow): AdminAccessCodeRow {
   };
 }
 
-export async function decrementAccessCodeUsage(id: string): Promise<void> {
-  const mem = MEM_CODES.find ? Array.from(MEM_CODES.values ? MEM_CODES.values() : []).find((m: MemRow) => m.id === id) : null;
-  if (mem) { mem.uses_count = Math.max(0, mem.uses_count - 1); }
+export async function releaseAccessCodeReservation(id: string): Promise<void> {
   const db = getDb();
   if (!db) return;
   await db.update(accessCodesTable)
-    .set({ uses_count: sql`GREATEST(0, ${accessCodesTable.uses_count} - 1)` })
+    .set({ reserved_count: sql`GREATEST(0, ${accessCodesTable.reserved_count} - 1)` })
+    .where(eq(accessCodesTable.id, id));
+}
+
+export async function completeAccessCodeUsage(id: string): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  await db.update(accessCodesTable)
+    .set({ reserved_count: sql`GREATEST(0, ${accessCodesTable.reserved_count} - 1)`, uses_count: sql`${accessCodesTable.uses_count} + 1` })
     .where(eq(accessCodesTable.id, id));
 }
 

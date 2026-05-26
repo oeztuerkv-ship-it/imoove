@@ -41415,6 +41415,7 @@ var init_schema2 = __esm({
       label: text("label").notNull().default(""),
       max_uses: integer("max_uses"),
       uses_count: integer("uses_count").notNull().default(0),
+      reserved_count: integer("reserved_count").notNull().default(0),
       valid_from: timestamp("valid_from", { withTimezone: true }),
       valid_until: timestamp("valid_until", { withTimezone: true }),
       is_active: boolean("is_active").notNull().default(true),
@@ -42372,7 +42373,7 @@ async function verifyAccessCode(plain, bookingCompanyId) {
   }
   if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
   if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
-  if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
+  if (probe.max_uses != null && probe.uses_count + (probe.reserved_count ?? 0) >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
   if (!isAccessCodeType(probe.code_type)) return { ok: false, error: "access_code_invalid" };
   return {
     ok: true,
@@ -42430,7 +42431,7 @@ async function redeemAccessCodeInTransaction(tx, normalized, bookingCompanyId) {
   }
   if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
   if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
-  if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
+  if (probe.max_uses != null && probe.uses_count + (probe.reserved_count ?? 0) >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
   return { ok: false, error: "access_code_exhausted" };
 }
 function internalNoteFromMeta(meta) {
@@ -42473,6 +42474,16 @@ function memToAdmin(m) {
     internalNote: internalNoteFromMeta(m.meta),
     fixedDestination: m.meta && typeof m.meta.fixedDestination === "string" ? String(m.meta.fixedDestination).trim() || null : null
   };
+}
+async function releaseAccessCodeReservation(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(accessCodesTable).set({ reserved_count: sql2`GREATEST(0, ${accessCodesTable.reserved_count} - 1)` }).where(eq(accessCodesTable.id, id));
+}
+async function completeAccessCodeUsage(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(accessCodesTable).set({ reserved_count: sql2`GREATEST(0, ${accessCodesTable.reserved_count} - 1)`, uses_count: sql2`${accessCodesTable.uses_count} + 1` }).where(eq(accessCodesTable.id, id));
 }
 function accessCodeRowForPanel(row) {
   return row;
@@ -43914,6 +43925,16 @@ async function applyRideMutationPersistence(rideId, cur, next, actor) {
       actorId: actor.actorId,
       payload: {}
     });
+  }
+  const CANCEL_STATUSES = /* @__PURE__ */ new Set(["cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"]);
+  if (cur.status !== next.status && cur.accessCodeId) {
+    if (CANCEL_STATUSES.has(next.status) && !CANCEL_STATUSES.has(cur.status)) {
+      await releaseAccessCodeReservation(cur.accessCodeId).catch(() => {
+      });
+    } else if (next.status === "completed" && cur.status !== "completed") {
+      await completeAccessCodeUsage(cur.accessCodeId).catch(() => {
+      });
+    }
   }
 }
 async function updateRide(id, patch, opts) {

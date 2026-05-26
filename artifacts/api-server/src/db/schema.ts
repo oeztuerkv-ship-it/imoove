@@ -198,6 +198,7 @@ export const accessCodesTable = pgTable("access_codes", {
   label: text("label").notNull().default(""),
   max_uses: integer("max_uses"),
   uses_count: integer("uses_count").notNull().default(0),
+  reserved_count: integer("reserved_count").notNull().default(0),
   valid_from: timestamp("valid_from", { withTimezone: true }),
   valid_until: timestamp("valid_until", { withTimezone: true }),
   is_active: boolean("is_active").notNull().default(true),
