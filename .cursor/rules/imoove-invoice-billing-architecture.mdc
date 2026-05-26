@@ -16,7 +16,8 @@ Vollständige Architektur: **`docs/onroda-invoice-billing-architecture.md`**.
 
 - **Tabellen:** `invoices` + `invoice_items` (Migration **028**) — **nicht** `onroda_invoices`.
 - **Partner-API:** `GET /panel/v1/invoices`, `…/:id`, `…/:id/pdf` in `routes/panelInvoiceRoutes.ts`; Daten `db/panelInvoicesData.ts`; PDF `lib/invoicePdfServer.ts`.
-- **Admin-API:** `GET /api/admin/finance/invoices` (+ Detail) via `adminFinanceData.ts`.
+- **Admin-API:** `GET /api/admin/finance/invoices` (+ Detail), `POST …/mark-paid`, `POST …/generate` via `adminFinanceData.ts` / `partnerInvoiceGeneratorData.ts`.
+- **Rechnungsnummern:** `ONR-{PREFIX}-{YYYY}-{MM}-{SEQ}` (z. B. `ONR-HOT-2026-04-001`); Sequenz in `invoice_number_sequences`; Prefix aus `admin_companies.invoice_prefix` (Default je `company_kind`); **öffentlicher** `company_code` (UNIQUE), nicht `company_id` im Nummerntext.
 - **Mandantenfilter:** Partner-Routen **immer** `company_id` aus Panel-JWT.
 - **PDF:** nur serverseitig (`lib/invoice/*`, PDFKit, A4); Branding in `invoiceBrand.ts`; kein Frontend-Fake-PDF (Hotel-Demo nur Übergang).
 - **Kein WIP auf main:** keine Imports nach `export default router`; keine Migration ohne Schema + Drizzle + Verify-Eintrag.

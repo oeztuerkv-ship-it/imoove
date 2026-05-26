@@ -1230,5 +1230,18 @@ ALTER TABLE fleet_drivers
 ALTER TABLE fleet_drivers
   ADD COLUMN IF NOT EXISTS medical_transport_inherit_from_company BOOLEAN NOT NULL DEFAULT true;
 
+ALTER TABLE admin_companies
+  ADD COLUMN IF NOT EXISTS company_code TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS invoice_prefix TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS invoice_sequence_next INTEGER NOT NULL DEFAULT 1;
+
+CREATE TABLE IF NOT EXISTS invoice_number_sequences (
+  invoice_prefix TEXT NOT NULL,
+  period_ym TEXT NOT NULL,
+  next_value INTEGER NOT NULL DEFAULT 1,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (invoice_prefix, period_ym)
+);
+
 -- Ersten Benutzer: company_id = bestehende admin_companies.id; password_hash = Ausgabe von
 -- hashPassword() (artifacts/api-server/src/lib/password.ts), Präfix v1.*.

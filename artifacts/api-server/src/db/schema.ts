@@ -74,7 +74,26 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   partner_ik_number: text("partner_ik_number").notNull().default(""),
   /** ONRODA-Admin: Krankenfahrten + Transportschein-Scanner für diesen Mandanten. */
   medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
+  /** Öffentlicher Mandanten-Code (eindeutig), nicht company_id. */
+  company_code: text("company_code").notNull().default(""),
+  /** Segment ONR-{invoice_prefix}-YYYY-MM-SEQ (z. B. HOT, MED). */
+  invoice_prefix: text("invoice_prefix").notNull().default(""),
+  /** Reserve; Laufnummer in invoice_number_sequences. */
+  invoice_sequence_next: integer("invoice_sequence_next").notNull().default(1),
 });
+
+export const invoiceNumberSequencesTable = pgTable(
+  "invoice_number_sequences",
+  {
+    invoice_prefix: text("invoice_prefix").notNull(),
+    period_ym: text("period_ym").notNull(),
+    next_value: integer("next_value").notNull().default(1),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.invoice_prefix, t.period_ym] }),
+  }),
+);
 
 /** Mandanten-Fahrer (eigenes Login / Fleet-App), nicht zu verwechseln mit rides.driver_id (Freitext/Legacy). */
 export const fleetDriversTable = pgTable("fleet_drivers", {

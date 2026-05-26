@@ -520,6 +520,27 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'company_code'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.company_code (Migration 080)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'invoice_prefix'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.invoice_prefix (Migration 080)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'invoice_number_sequences'
+  ) THEN
+    errs := array_append(errs, 'table invoice_number_sequences (Migration 080)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'invoice_items'
   ) THEN

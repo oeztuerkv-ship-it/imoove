@@ -173,6 +173,8 @@ function formFromCompany(c, billingAccountEmail) {
     dispo_phone: c.dispo_phone ?? "",
     opening_hours: c.opening_hours ?? "",
     billing_account_email: billingAccountEmail ?? "",
+    company_code: c.company_code ?? "",
+    invoice_prefix: c.invoice_prefix ?? "",
     verification_status: c.verification_status ?? "pending",
     compliance_status: c.compliance_status ?? "pending",
     contract_status: c.contract_status ?? "inactive",
@@ -560,6 +562,8 @@ export default function CompanyMandateDetailPage({
         dispo_phone: form.dispo_phone,
         opening_hours: form.opening_hours,
         billing_account_email: form.billing_account_email,
+        company_code: form.company_code,
+        invoice_prefix: form.invoice_prefix,
         verification_status: form.verification_status,
         compliance_status: form.compliance_status,
         contract_status: form.contract_status,
@@ -832,6 +836,31 @@ export default function CompanyMandateDetailPage({
               </div>
               <h3 className="admin-m-sec">3. Abrechnung</h3>
               <div className="admin-m-form">
+                <label className="admin-m-lbl">
+                  Mandanten-Code (öffentlich)
+                  <input
+                    className="admin-m-inp admin-mono"
+                    value={fVal("company_code")}
+                    onChange={onField("company_code")}
+                    placeholder="z. B. STADTMITTE"
+                    maxLength={16}
+                  />
+                </label>
+                <label className="admin-m-lbl">
+                  Rechnungs-Prefix
+                  <input
+                    className="admin-m-inp admin-mono"
+                    value={fVal("invoice_prefix")}
+                    onChange={onField("invoice_prefix")}
+                    placeholder="HOT, MED, COR, TAX …"
+                    maxLength={8}
+                  />
+                </label>
+                <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1" }}>
+                  Rechnungsnummern: <strong>ONR-&#123;Prefix&#125;-YYYY-MM-SEQ</strong> (z. B. ONR-HOT-2026-04-001).
+                  Der Prefix gilt pro Mandantenart; der Mandanten-Code ist eindeutig und erscheint nicht in der
+                  Rechnungsnummer.
+                </p>
                 <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
                   Rechnungsempfänger / Rechnungsname
                   <input className="admin-m-inp" value={fVal("billing_name")} onChange={onField("billing_name")} />

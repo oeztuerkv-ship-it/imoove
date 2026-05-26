@@ -39,6 +39,8 @@ export default function FinanceInvoicesPage() {
 
   const [status, setStatus] = useState("");
   const [companyId, setCompanyId] = useState("");
+  const [companyCode, setCompanyCode] = useState("");
+  const [invoicePrefix, setInvoicePrefix] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +51,8 @@ export default function FinanceInvoicesPage() {
       q.set("pageSize", String(PAGE_SIZE));
       if (status) q.set("status", status);
       if (companyId.trim()) q.set("company_id", companyId.trim());
+      if (companyCode.trim()) q.set("company_code", companyCode.trim());
+      if (invoicePrefix.trim()) q.set("invoice_prefix", invoicePrefix.trim());
       const res = await fetch(`${LIST_URL}?${q.toString()}`, { headers: adminApiHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -62,7 +66,7 @@ export default function FinanceInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, companyId]);
+  }, [page, status, companyId, companyCode, invoicePrefix]);
 
   useEffect(() => {
     void load();
@@ -129,10 +133,24 @@ export default function FinanceInvoicesPage() {
           </select>
           <input
             className="admin-input"
-            placeholder="Firma (company_id)"
+            placeholder="Mandanten-ID (intern)"
             value={companyId}
             onChange={(e) => { setCompanyId(e.target.value); setPage(1); }}
-            style={{ minWidth: 180 }}
+            style={{ minWidth: 140 }}
+          />
+          <input
+            className="admin-input admin-mono"
+            placeholder="Mandanten-Code"
+            value={companyCode}
+            onChange={(e) => { setCompanyCode(e.target.value); setPage(1); }}
+            style={{ minWidth: 120 }}
+          />
+          <input
+            className="admin-input admin-mono"
+            placeholder="Prefix (HOT)"
+            value={invoicePrefix}
+            onChange={(e) => { setInvoicePrefix(e.target.value); setPage(1); }}
+            style={{ minWidth: 100 }}
           />
           <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
@@ -152,7 +170,14 @@ export default function FinanceInvoicesPage() {
             {items.map((x) => (
               <div className="admin-table-row" key={x.id}>
                 <div className="admin-mono">{x.invoice_number}</div>
-                <div>{x.company_name || "—"}</div>
+                <div>
+                  {x.company_name || "—"}
+                  {x.company_code ? (
+                    <span className="admin-mono" style={{ display: "block", fontSize: 11, opacity: 0.7 }}>
+                      {x.company_code}
+                    </span>
+                  ) : null}
+                </div>
                 <div style={{ fontSize: 12 }}>
                   {fmtDate(x.billing_period_start)} – {fmtDate(x.billing_period_end)}
                 </div>

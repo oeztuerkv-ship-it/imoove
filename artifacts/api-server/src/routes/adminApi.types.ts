@@ -60,6 +60,12 @@ export interface CompanyRow {
   commission_rate: number;
   /** ONRODA-Admin: Krankenfahrten für diesen Mandanten freigeschaltet. */
   medical_transport_enabled: boolean;
+  /** Öffentlicher Mandanten-Code (eindeutig), z. B. STADTMITTE. */
+  company_code: string;
+  /** Rechnungs-Prefix ONR-{prefix}-YYYY-MM-SEQ (HOT, MED, …). */
+  invoice_prefix: string;
+  /** Reserve; Laufnummer in invoice_number_sequences. */
+  invoice_sequence_next: number;
 }
 
 export interface FareAreaRow {

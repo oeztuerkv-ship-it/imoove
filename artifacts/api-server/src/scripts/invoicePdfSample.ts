@@ -3,7 +3,7 @@ import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
 
 async function main() {
   const pdf = await buildPartnerMonthlyInvoicePdf({
-    invoiceNumber: "ONR-2026-0001",
+    invoiceNumber: "ONR-HOT-2026-04-001",
     statusLabel: "Offen",
     issueDate: "2026-04-30",
     dueDate: "2026-05-14",
@@ -39,7 +39,7 @@ async function main() {
     totalGross: 63.0,
     taxRatePercent: 19,
     notes: "Vielen Dank für die Zusammenarbeit.",
-    paymentReference: "ONRODA Hotel Beispiel GmbH 2026-04 ONR-2026-0001",
+    paymentReference: "ONRODA Hotel Beispiel GmbH 2026-04 ONR-HOT-2026-04-001",
   });
 
   const out = process.argv[2] ?? "/tmp/onroda-invoice-sample.pdf";

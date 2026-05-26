@@ -48,6 +48,7 @@ import {
   adminRecordSettlementPayoutAttempt,
 } from "../db/financeSettlementsData";
 import { adminMarkInvoicePaid } from "../db/adminInvoiceFinanceData";
+import { createPartnerMonthlyInvoice } from "../db/partnerInvoiceGeneratorData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { insertPanelAuditLog, listPanelAuditForCompany } from "../db/panelAuditData";
 import {
@@ -1025,6 +1026,8 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       companyId: q.company_id,
       status: q.status,
       type: q.invoice_type,
+      companyCode: q.company_code,
+      invoicePrefix: q.invoice_prefix,
     };
     const { page, pageSize, offset } = parsePagination(req);
     const [total, items] = await Promise.all([
@@ -1049,6 +1052,71 @@ adminJson.get("/finance/invoices/:invoiceId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Monatsrechnung mit automatischer Nummer ONR-{PREFIX}-YYYY-MM-SEQ erzeugen. */
+adminJson.post("/finance/invoices/generate", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body as Record<string, unknown>;
+    const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
+    const periodStart = typeof body.periodStart === "string" ? body.periodStart.trim() : "";
+    const periodEnd = typeof body.periodEnd === "string" ? body.periodEnd.trim() : "";
+    const issueDate = typeof body.issueDate === "string" ? body.issueDate.trim() : periodEnd;
+    const dueDate = typeof body.dueDate === "string" ? body.dueDate.trim() : null;
+    const itemsRaw = Array.isArray(body.items) ? body.items : [];
+    const items = itemsRaw
+      .map((row) => {
+        const o = row && typeof row === "object" ? (row as Record<string, unknown>) : {};
+        const lineGross = Number(o.lineGross);
+        if (!Number.isFinite(lineGross)) return null;
+        return {
+          rideId: typeof o.rideId === "string" ? o.rideId : null,
+          itemType: typeof o.itemType === "string" ? o.itemType : "ride",
+          description: typeof o.description === "string" ? o.description : "Position",
+          quantity: Number(o.quantity) || 1,
+          unitNet: Number(o.unitNet) || lineGross,
+          vatRate: Number(o.vatRate) || 0,
+          lineNet: Number(o.lineNet) || lineGross,
+          lineVat: Number(o.lineVat) || 0,
+          lineGross,
+        };
+      })
+      .filter(Boolean) as Parameters<typeof createPartnerMonthlyInvoice>[0]["items"];
+    const out = await createPartnerMonthlyInvoice({
+      companyId,
+      billingPeriodStart: periodStart,
+      billingPeriodEnd: periodEnd,
+      issueDate,
+      dueDate,
+      items,
+      notes: typeof body.notes === "string" ? body.notes : null,
+      status: body.status === "draft" ? "draft" : "issued",
+      actorLabel: `admin_console:${role}`,
+    });
+    if (!out.ok) {
+      const st =
+        out.error === "company_not_found"
+          ? 404
+          : out.error === "company_code_required"
+            ? 400
+            : out.error === "invoice_period_already_exists" || out.error === "invoice_number_conflict"
+              ? 409
+              : 400;
+      res.status(st).json({
+        error: out.error,
+        existingInvoiceId: "existingInvoiceId" in out ? out.existingInvoiceId : undefined,
+      });
+      return;
+    }
+    res.status(201).json({ ok: true, ...out });
   } catch (e) {
     next(e);
   }
@@ -2892,7 +2960,21 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
       typeof body.medical_transport_enabled === "boolean"
         ? await findCompanyById(req.params.companyId)
         : null;
-    const item = await updateAdminCompany(req.params.companyId, body);
+    let item;
+    try {
+      item = await updateAdminCompany(req.params.companyId, body);
+    } catch (e: unknown) {
+      const code = (e as Error & { code?: string }).code;
+      if (code === "company_code_duplicate") {
+        res.status(409).json({ error: code });
+        return;
+      }
+      if (code?.startsWith("company_code_") || code?.startsWith("invoice_prefix_")) {
+        res.status(400).json({ error: code });
+        return;
+      }
+      throw e;
+    }
     if (!item) {
       res.status(404).json({ error: "not_found" });
       return;

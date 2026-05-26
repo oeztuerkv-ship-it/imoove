@@ -10,6 +10,12 @@ import {
   ridesTable,
 } from "./schema";
 import { normalizeStoredPanelModules } from "../domain/panelModules";
+import {
+  defaultInvoicePrefixForCompanyKind,
+  normalizeInvoicePrefix,
+  validateCompanyCode,
+  validateInvoicePrefix,
+} from "../lib/invoiceNumbering.js";
 import { logger } from "../lib/logger";
 import type { AdminDashboardStats, CompanyRow, FareAreaRow } from "../routes/adminApi.types";
 
@@ -241,6 +247,12 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     commission_rate:
       typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
     medical_transport_enabled: Boolean(r.medical_transport_enabled),
+    company_code: r.company_code ?? "",
+    invoice_prefix: r.invoice_prefix ?? "",
+    invoice_sequence_next:
+      typeof r.invoice_sequence_next === "number" && Number.isFinite(r.invoice_sequence_next)
+        ? r.invoice_sequence_next
+        : 1,
   };
 }
 
@@ -588,6 +600,9 @@ export type AdminCompanyUpdateBody = Partial<{
   panel_modules?: string[] | null;
   /** ONRODA-Admin: Krankenfahrten für diesen Mandanten freigeschaltet. */
   medical_transport_enabled: boolean;
+  company_code: string;
+  invoice_prefix: string;
+  invoice_sequence_next: number;
   /**
    * Synchronisiert `billing_accounts.billing_email` (erste aktive Zeile, sonst Insert mit Default).
    * Nicht Teil von `CompanyRow` — nur Schreib-Seite.
@@ -679,6 +694,9 @@ function companyRowToDbValues(c: CompanyRow) {
     partner_panel_profile_locked: c.partner_panel_profile_locked,
     commission_rate: c.commission_rate,
     medical_transport_enabled: c.medical_transport_enabled,
+    company_code: c.company_code,
+    invoice_prefix: c.invoice_prefix,
+    invoice_sequence_next: c.invoice_sequence_next,
   };
 }
 
@@ -789,6 +807,26 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   }
   if (typeof body.medical_transport_enabled === "boolean") {
     next.medical_transport_enabled = body.medical_transport_enabled;
+  }
+  if (typeof body.company_code === "string") {
+    const v = validateCompanyCode(body.company_code);
+    if (!v.ok) throw Object.assign(new Error(v.error), { code: v.error });
+    next.company_code = v.code;
+  }
+  if (typeof body.invoice_prefix === "string") {
+    const v = validateInvoicePrefix(body.invoice_prefix);
+    if (!v.ok) throw Object.assign(new Error(v.error), { code: v.error });
+    next.invoice_prefix = v.prefix || defaultInvoicePrefixForCompanyKind(next.company_kind);
+  }
+  if (typeof body.company_kind === "string" && typeof body.invoice_prefix !== "string") {
+    const prevDefault = defaultInvoicePrefixForCompanyKind(cur.company_kind);
+    const curPrefix = normalizeInvoicePrefix(cur.invoice_prefix);
+    if (!curPrefix || curPrefix === prevDefault) {
+      next.invoice_prefix = defaultInvoicePrefixForCompanyKind(next.company_kind);
+    }
+  }
+  if (typeof body.invoice_sequence_next === "number" && Number.isFinite(body.invoice_sequence_next)) {
+    next.invoice_sequence_next = Math.max(1, Math.floor(body.invoice_sequence_next));
   }
   return next;
 }
@@ -925,7 +963,15 @@ export async function updateAdminCompany(
     memCompanies[idx] = next;
     return next;
   }
-  await db.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  try {
+    await db.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  } catch (e: unknown) {
+    const msg = flattenPgError(e).toLowerCase();
+    if (msg.includes("admin_companies_company_code_unique") || (msg.includes("duplicate") && msg.includes("company_code"))) {
+      throw Object.assign(new Error("company_code_duplicate"), { code: "company_code_duplicate" });
+    }
+    throw e;
+  }
   if (typeof billingAccountEmail === "string") {
     try {
       await syncCompanyBillingAccountEmail(companyId, billingAccountEmail);

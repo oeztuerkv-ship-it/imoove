@@ -11,6 +11,7 @@ import {
   settlementsTable,
 } from "./schema";
 import { enrichInvoiceAdminRow } from "./adminInvoiceFinanceData.js";
+import { parseInvoiceNumber } from "../lib/invoiceNumbering.js";
 
 export type FinanceSummary = {
   totalRevenue: number;
@@ -259,13 +260,37 @@ export async function getRideFinancialDetailAdmin(rideId: string) {
   };
 }
 
-export async function countInvoicesAdmin(filters: { companyId?: string; status?: string; type?: string }): Promise<number> {
-  const db = getDb();
-  if (!db) return 0;
+export type InvoiceAdminListFilters = {
+  companyId?: string;
+  status?: string;
+  type?: string;
+  companyCode?: string;
+  invoicePrefix?: string;
+};
+
+function buildInvoiceAdminWhere(filters: InvoiceAdminListFilters): SQL[] {
   const cond: SQL[] = [];
   if (filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, filters.companyId.trim()));
   if (filters.status?.trim()) cond.push(eq(invoicesTable.status, filters.status.trim()));
   if (filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, filters.type.trim()));
+  if (filters.companyCode?.trim()) {
+    cond.push(sql`exists (
+      select 1 from admin_companies ac
+      where ac.id = ${invoicesTable.company_id}
+        and upper(ac.company_code) = upper(${filters.companyCode!.trim()})
+    )`);
+  }
+  if (filters.invoicePrefix?.trim()) {
+    const p = filters.invoicePrefix.trim().toUpperCase();
+    cond.push(sql`${invoicesTable.invoice_number} like ${`ONR-${p}-%`}`);
+  }
+  return cond;
+}
+
+export async function countInvoicesAdmin(filters: InvoiceAdminListFilters): Promise<number> {
+  const db = getDb();
+  if (!db) return 0;
+  const cond = buildInvoiceAdminWhere(filters);
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(invoicesTable)
@@ -274,16 +299,13 @@ export async function countInvoicesAdmin(filters: { companyId?: string; status?:
 }
 
 export async function listInvoicesAdmin(args: {
-  filters: { companyId?: string; status?: string; type?: string };
+  filters: InvoiceAdminListFilters;
   limit: number;
   offset: number;
 }) {
   const db = getDb();
   if (!db) return [];
-  const cond: SQL[] = [];
-  if (args.filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, args.filters.companyId.trim()));
-  if (args.filters.status?.trim()) cond.push(eq(invoicesTable.status, args.filters.status.trim()));
-  if (args.filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, args.filters.type.trim()));
+  const cond = buildInvoiceAdminWhere(args.filters);
   const rows = await db
     .select()
     .from(invoicesTable)
@@ -292,9 +314,39 @@ export async function listInvoicesAdmin(args: {
     .limit(args.limit)
     .offset(args.offset);
   const map = await companyNameMap();
-  return rows.map((r) =>
-    enrichInvoiceAdminRow(r, r.company_id ? map.get(r.company_id) ?? null : null),
-  );
+  const codeMap = await companyCodeMap();
+  return rows.map((r) => {
+    const enriched = enrichInvoiceAdminRow(r, r.company_id ? map.get(r.company_id) ?? null : null);
+    return {
+      ...enriched,
+      company_code: r.company_id ? codeMap.get(r.company_id) ?? "" : "",
+    };
+  });
+}
+
+async function companyCodeMap(): Promise<Map<string, string>> {
+  const db = getDb();
+  if (!db) return new Map();
+  const companies = await db
+    .select({ id: adminCompaniesTable.id, company_code: adminCompaniesTable.company_code })
+    .from(adminCompaniesTable);
+  return new Map(companies.map((c) => [c.id, c.company_code ?? ""]));
+}
+
+export async function findInvoiceByInvoiceNumber(invoiceNumber: string) {
+  const db = getDb();
+  if (!db) return null;
+  const num = invoiceNumber.trim();
+  if (!num) return null;
+  const rows = await db.select().from(invoicesTable).where(eq(invoicesTable.invoice_number, num)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return findInvoiceAdmin(row.id);
+}
+
+/** Teile für Bankmatching (Prefix, Monat, SEQ) — null bei unbekanntem Format. */
+export function parseInvoiceNumberForLookup(invoiceNumber: string) {
+  return parseInvoiceNumber(invoiceNumber);
 }
 
 export async function findInvoiceAdmin(invoiceId: string) {
@@ -306,6 +358,7 @@ export async function findInvoiceAdmin(invoiceId: string) {
   const map = await companyNameMap();
   const items = await db.select().from(invoiceItemsTable).where(eq(invoiceItemsTable.invoice_id, invoiceId));
   const companyName = row.company_id ? map.get(row.company_id) ?? null : null;
+  const codes = await companyCodeMap();
   const linkedPayments = await db
     .select()
     .from(paymentsTable)
@@ -313,6 +366,7 @@ export async function findInvoiceAdmin(invoiceId: string) {
     .orderBy(desc(paymentsTable.created_at));
   return {
     ...enrichInvoiceAdminRow(row, companyName),
+    company_code: row.company_id ? codes.get(row.company_id) ?? "" : "",
     items,
     payments: linkedPayments,
   };
