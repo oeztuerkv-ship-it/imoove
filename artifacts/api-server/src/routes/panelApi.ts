@@ -75,7 +75,8 @@ import {
   resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
 import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } from "../lib/rideBookingPricing";
-import { initialPanelRideStatus } from "../lib/dispatchStatus";
+import { initialPanelRideStatus, isFarFutureReservation, RESERVATION_LEAD_MS } from "../lib/dispatchStatus";
+import { canTransitionRideStatus } from "../lib/rideStatusMachine";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
 import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
@@ -96,6 +97,47 @@ import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
 const router: IRouter = Router();
+
+/** Partner-Mobile / Hotel: max. gleichzeitig offene Fahrten pro Mandant. */
+const PARTNER_OPEN_RIDE_LIMIT = 5;
+
+const PANEL_OPEN_RIDE_TERMINAL_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
+  "completed",
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+  "expired",
+  "rejected",
+]);
+
+function countPanelOpenRides(rides: RideRequest[]): number {
+  return rides.filter((r) => !PANEL_OPEN_RIDE_TERMINAL_STATUSES.has(r.status)).length;
+}
+
+function partnerCancelTargetStatus(cur: RideRequest["status"]): RideRequest["status"] | null {
+  const candidates: RideRequest["status"][] = [
+    "cancelled_by_customer",
+    "cancelled_by_system",
+    "cancelled",
+  ];
+  for (const next of candidates) {
+    if (canTransitionRideStatus(cur, next)) return next;
+  }
+  return null;
+}
+
+function parsePartnerDriverNote(body: Record<string, unknown>): string | null {
+  const raw =
+    typeof body.driverNote === "string"
+      ? body.driverNote
+      : typeof body.bookingNote === "string"
+        ? body.bookingNote
+        : "";
+  const note = raw.trim().slice(0, 200);
+  return note.length > 0 ? note : null;
+}
+
 const INVOICE_UPLOAD_ROOT =
   (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() ||
   path.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
@@ -1101,7 +1143,75 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
     })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
-    res.json({ ok: true, rides: withTrace });
+    res.json({ ok: true, rides: withTrace     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+
+    const nextStatus = partnerCancelTargetStatus(ride.status);
+    if (!nextStatus) {
+      res.status(409).json({ error: "cancel_not_allowed", status: ride.status });
+      return;
+    }
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const reasonRaw = typeof body.reason === "string" ? body.reason : typeof body.cancelReason === "string" ? body.cancelReason : "";
+    const reason = reasonRaw.trim().slice(0, 200);
+
+    const prevMeta =
+      ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" && !Array.isArray(ride.partnerBookingMeta)
+        ? ({ ...ride.partnerBookingMeta } as Record<string, unknown>)
+        : {};
+    const nextMeta: Record<string, unknown> = {
+      ...prevMeta,
+      ...(reason ? { partner_cancel_reason: reason } : {}),
+    };
+
+    const updated = await updateRide(rideId, {
+      status: nextStatus,
+      partnerBookingMeta: nextMeta as RideRequest["partnerBookingMeta"],
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.cancelled",
+      subjectType: "ride",
+      subjectId: rideId,
+      meta: { fromStatus: ride.status, toStatus: nextStatus, reason: reason || undefined },
+    });
+
+    const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
+    res.json({ ok: true, ride: rideOut });
   } catch (e) {
     next(e);
   }
@@ -1334,6 +1444,17 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
 
+      const companyRides = await listRidesForCompany(ctx.claims.companyId);
+      const openCount = countPanelOpenRides(companyRides);
+      if (openCount >= PARTNER_OPEN_RIDE_LIMIT) {
+        res.status(409).json({
+          error: "open_rides_limit_reached",
+          openCount,
+          maxOpen: PARTNER_OPEN_RIDE_LIMIT,
+        });
+        return;
+      }
+
       const body = req.body as Record<string, unknown>;
       const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
       if (!customerName) {
@@ -1406,6 +1527,14 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
       const billingReference = parseOptionalBillingTag(body.billingReference, 256);
       const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
+      if (scheduledAtVal && !isFarFutureReservation(scheduledAtVal)) {
+        res.status(400).json({
+          error: "scheduled_at_too_soon",
+          hint: "Reservierung mindestens 60 Minuten im Voraus.",
+          minLeadMinutes: Math.round(RESERVATION_LEAD_MS / 60_000),
+        });
+        return;
+      }
       const customerPhonePanel =
         typeof body.customerPhone === "string"
           ? body.customerPhone.trim()
@@ -1513,6 +1642,11 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         pricingMode: panelBookingPricing.pricingMode,
         tariffSnapshot: panelBookingPricing.snapshot,
       };
+
+      const driverNote = parsePartnerDriverNote(body);
+      if (driverNote) {
+        newReq.partnerBookingMeta = { customer_driver_note: driverNote };
+      }
 
       const accessCodeRaw = body.accessCode;
       const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : undefined;
