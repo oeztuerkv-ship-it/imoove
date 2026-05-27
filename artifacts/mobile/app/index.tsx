@@ -3152,25 +3152,25 @@ export default function HomeScreen() {
                     />
                   </View>
                   <Pressable
-                    style={[styles.socialBtn, {
+                    style={loginActionButtonStyle({
                       backgroundColor: resetOtpDigits.length === 6 ? "#111111" : colors.muted,
                       paddingVertical: isSmallScreen ? 13 : 16,
-                    }]}
+                      borderRadius: 14,
+                      opacity: emailVerifyLoading ? 0.72 : 1,
+                    })}
                     onPress={() => void submitPasswordResetVerify()}
                     disabled={resetOtpDigits.length !== 6 || emailVerifyLoading}
                   >
                     {emailVerifyLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <LoginActionLabel color="#fff">Wird geprüft…</LoginActionLabel>
                     ) : (
-                      <Feather name="check" size={20} color={resetOtpDigits.length === 6 ? "#fff" : colors.mutedForeground} />
+                      <>
+                        <LoginActionIcon>
+                          <Feather name="check" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                        </LoginActionIcon>
+                        <LoginActionLabel color="#fff">Absenden</LoginActionLabel>
+                      </>
                     )}
-                    <Text style={[styles.socialBtnText, {
-                      color: resetOtpDigits.length === 6 ? "#fff" : colors.mutedForeground,
-                      fontSize: isSmallScreen ? 15 : 16,
-                    }]}
-                    >
-                      Code prüfen
-                    </Text>
                   </Pressable>
                   <Pressable
                     style={{ alignSelf: "center", paddingVertical: 8 }}
@@ -3213,39 +3213,29 @@ export default function HomeScreen() {
                     onSubmitPassword={() => void submitPasswordResetConfirm()}
                   />
                   <Pressable
-                    style={[styles.socialBtn, {
+                    style={loginActionButtonStyle({
                       backgroundColor: isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm)
                         ? "#111111"
                         : colors.muted,
                       paddingVertical: isSmallScreen ? 13 : 16,
-                    }]}
+                      borderRadius: 14,
+                      opacity: resetSubmitLoading ? 0.72 : 1,
+                    })}
                     onPress={() => void submitPasswordResetConfirm()}
                     disabled={
                       !isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm) || resetSubmitLoading
                     }
                   >
                     {resetSubmitLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <LoginActionLabel color="#fff">Speichern…</LoginActionLabel>
                     ) : (
-                      <Feather
-                        name="check"
-                        size={20}
-                        color={
-                          isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm)
-                            ? "#fff"
-                            : colors.mutedForeground
-                        }
-                      />
+                      <>
+                        <LoginActionIcon>
+                          <Feather name="check" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                        </LoginActionIcon>
+                        <LoginActionLabel color="#fff">Passwort speichern</LoginActionLabel>
+                      </>
                     )}
-                    <Text style={[styles.socialBtnText, {
-                      color: isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm)
-                        ? "#fff"
-                        : colors.mutedForeground,
-                      fontSize: isSmallScreen ? 15 : 16,
-                    }]}
-                    >
-                      Passwort speichern
-                    </Text>
                   </Pressable>
                 </>
               ) : null}

@@ -1478,6 +1478,9 @@ export default function ProfileScreen() {
                         <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
                       </Pressable>
                       <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Code eingeben</Text>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                        6-stelliger Code aus der E-Mail.
+                      </Text>
                       <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                         <Feather name="hash" size={16} color={colors.mutedForeground} />
                         <TextInput
@@ -1492,16 +1495,25 @@ export default function ProfileScreen() {
                         />
                       </View>
                       <Pressable
-                        style={[styles.registerBtn, {
+                        style={loginActionButtonStyle({
                           backgroundColor: pwdResetOtp.length === 6 ? "#111111" : colors.muted,
-                        }]}
+                          paddingVertical: rs(16),
+                          borderRadius: rs(14),
+                          marginTop: rs(4),
+                          opacity: emailVerifyLoading ? 0.72 : 1,
+                        })}
                         onPress={() => void verifyProfilePasswordReset()}
                         disabled={pwdResetOtp.length !== 6 || emailVerifyLoading}
                       >
                         {emailVerifyLoading ? (
-                          <ActivityIndicator size="small" color="#fff" />
+                          <LoginActionLabel color="#fff">Wird geprüft…</LoginActionLabel>
                         ) : (
-                          <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code prüfen</Text>
+                          <>
+                            <LoginActionIcon>
+                              <Feather name="check" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                            </LoginActionIcon>
+                            <LoginActionLabel color="#fff">Absenden</LoginActionLabel>
+                          </>
                         )}
                       </Pressable>
                     </View>
@@ -1531,11 +1543,15 @@ export default function ProfileScreen() {
                         onSubmitPassword={() => void confirmProfilePasswordReset()}
                       />
                       <Pressable
-                        style={[styles.registerBtn, {
+                        style={loginActionButtonStyle({
                           backgroundColor: isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
                             ? "#111111"
                             : colors.muted,
-                        }]}
+                          paddingVertical: rs(16),
+                          borderRadius: rs(14),
+                          marginTop: rs(4),
+                          opacity: pwdResetSubmitLoading ? 0.72 : 1,
+                        })}
                         onPress={() => void confirmProfilePasswordReset()}
                         disabled={
                           !isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
@@ -1543,9 +1559,14 @@ export default function ProfileScreen() {
                         }
                       >
                         {pwdResetSubmitLoading ? (
-                          <ActivityIndicator size="small" color="#fff" />
+                          <LoginActionLabel color="#fff">Speichern…</LoginActionLabel>
                         ) : (
-                          <Text style={[styles.registerBtnText, { color: "#fff" }]}>Passwort speichern</Text>
+                          <>
+                            <LoginActionIcon>
+                              <Feather name="check" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                            </LoginActionIcon>
+                            <LoginActionLabel color="#fff">Passwort speichern</LoginActionLabel>
+                          </>
                         )}
                       </Pressable>
                     </View>
@@ -1927,6 +1948,7 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
               ) : profileStep === "pwd_reset_email" ? (
+                <View style={[styles.loginCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
                 <View style={styles.signInBlock}>
                   <Pressable
                     style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}
@@ -1970,13 +1992,18 @@ export default function ProfileScreen() {
                     )}
                   </Pressable>
                 </View>
+                </View>
               ) : profileStep === "pwd_reset_verify" ? (
+                <View style={[styles.loginCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
                 <View style={styles.signInBlock}>
                   <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("pwd_reset_email")}>
                     <Feather name="arrow-left" size={16} color={colors.foreground} />
                     <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
                   </Pressable>
                   <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Code eingeben</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                    6-stelliger Code aus der E-Mail.
+                  </Text>
                   <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="hash" size={16} color={colors.mutedForeground} />
                     <TextInput
@@ -1991,18 +2018,31 @@ export default function ProfileScreen() {
                     />
                   </View>
                   <Pressable
-                    style={[styles.registerBtn, { backgroundColor: pwdResetOtp.length === 6 ? "#111111" : colors.muted }]}
+                    style={loginActionButtonStyle({
+                      backgroundColor: pwdResetOtp.length === 6 ? "#111111" : colors.muted,
+                      paddingVertical: rs(16),
+                      borderRadius: rs(14),
+                      marginTop: rs(4),
+                      opacity: emailVerifyLoading ? 0.72 : 1,
+                    })}
                     onPress={() => void verifyProfilePasswordReset()}
                     disabled={pwdResetOtp.length !== 6 || emailVerifyLoading}
                   >
                     {emailVerifyLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <LoginActionLabel color="#fff">Wird geprüft…</LoginActionLabel>
                     ) : (
-                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code prüfen</Text>
+                      <>
+                        <LoginActionIcon>
+                          <Feather name="check" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                        </LoginActionIcon>
+                        <LoginActionLabel color="#fff">Absenden</LoginActionLabel>
+                      </>
                     )}
                   </Pressable>
                 </View>
+                </View>
               ) : profileStep === "pwd_reset_new" ? (
+                <View style={[styles.loginCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
                 <View style={styles.signInBlock}>
                   <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("pwd_reset_verify")}>
                     <Feather name="arrow-left" size={16} color={colors.foreground} />
@@ -2025,11 +2065,15 @@ export default function ProfileScreen() {
                     onSubmitPassword={() => void confirmProfilePasswordReset()}
                   />
                   <Pressable
-                    style={[styles.registerBtn, {
+                    style={loginActionButtonStyle({
                       backgroundColor: isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
                         ? "#111111"
                         : colors.muted,
-                    }]}
+                      paddingVertical: rs(16),
+                      borderRadius: rs(14),
+                      marginTop: rs(4),
+                      opacity: pwdResetSubmitLoading ? 0.72 : 1,
+                    })}
                     onPress={() => void confirmProfilePasswordReset()}
                     disabled={
                       !isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
@@ -2037,11 +2081,17 @@ export default function ProfileScreen() {
                     }
                   >
                     {pwdResetSubmitLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <LoginActionLabel color="#fff">Speichern…</LoginActionLabel>
                     ) : (
-                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Passwort speichern</Text>
+                      <>
+                        <LoginActionIcon>
+                          <Feather name="check" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                        </LoginActionIcon>
+                        <LoginActionLabel color="#fff">Passwort speichern</LoginActionLabel>
+                      </>
                     )}
                   </Pressable>
+                </View>
                 </View>
               ) : regSubStep === "email" ? (
                 <View style={styles.signInBlock}>
