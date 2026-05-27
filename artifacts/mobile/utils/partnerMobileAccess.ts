@@ -29,6 +29,9 @@ export function partnerMobileAccessDeniedReason(user: PartnerMeUser | null): str
   if (!modules.includes("rides_create")) {
     return "Taxi bestellen ist für Ihr Konto nicht freigeschaltet.";
   }
+  if (!modules.includes("rides_list")) {
+    return "Fahrtenübersicht ist für Ihr Konto nicht freigeschaltet.";
+  }
   if (user.mustChangePassword) {
     return "Bitte zuerst im Partner-Portal (panel.onroda.de) Ihr Passwort ändern.";
   }

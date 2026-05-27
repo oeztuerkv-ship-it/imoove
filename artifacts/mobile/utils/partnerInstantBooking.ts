@@ -3,6 +3,7 @@ import * as Location from "expo-location";
 import { fetchFareEstimate } from "@/utils/fareEstimateApi";
 import { partnerCreateRide } from "@/utils/partnerApi";
 import type { PartnerMeUser } from "@/utils/partnerMobileAccess";
+import { RESERVATION_LEAD_MS } from "@/utils/partnerScheduling";
 
 const OPEN_DEST_SHORT = "Ziel nach Absprache";
 const OPEN_DEST_FULL = "Ziel nach Absprache (Partner)";
@@ -19,6 +20,14 @@ export type PartnerPickupPlace = {
 export type PartnerPickupResult =
   | { ok: true; place: PartnerPickupPlace }
   | { ok: false; code: "permission_denied" | "location_unavailable"; message: string };
+
+export type PartnerBookMode = "now" | "reservation";
+
+export type PartnerBookParams = {
+  mode: PartnerBookMode;
+  note?: string;
+  scheduledAt?: string | null;
+};
 
 function formatReverseGeocode(row: Location.LocationGeocodedAddress): string {
   const parts = [row.street, row.streetNumber, row.postalCode, row.city].filter(Boolean);
@@ -68,11 +77,31 @@ function openDestinationCoords(fromLat: number, fromLon: number): { toLat: numbe
   return { toLat: fromLat + 0.007, toLon: fromLon };
 }
 
-export async function createPartnerInstantTaxiRide(
+export function defaultPartnerReservationTime(): Date {
+  const d = new Date(Date.now() + RESERVATION_LEAD_MS + 30 * 60 * 1000);
+  d.setMinutes(0, 0, 0);
+  return d;
+}
+
+export async function createPartnerTaxiRide(
   token: string,
   user: PartnerMeUser,
   pickup: PartnerPickupPlace,
-): Promise<{ ok: true; rideId: string } | { ok: false; message: string; unauthorized?: boolean }> {
+  params: PartnerBookParams,
+): Promise<
+  | { ok: true; rideId: string }
+  | { ok: false; message: string; unauthorized?: boolean; limitReached?: boolean }
+> {
+  if (params.mode === "reservation") {
+    const at = params.scheduledAt ? Date.parse(params.scheduledAt) : NaN;
+    if (!Number.isFinite(at) || at < Date.now() + RESERVATION_LEAD_MS) {
+      return {
+        ok: false,
+        message: "Reservierung mindestens 60 Minuten im Voraus wählen.",
+      };
+    }
+  }
+
   const { toLat, toLon } = openDestinationCoords(pickup.lat, pickup.lon);
   const fare = await fetchFareEstimate("standard", {
     distanceKm: MIN_DISTANCE_KM,
@@ -88,7 +117,8 @@ export async function createPartnerInstantTaxiRide(
   }
 
   const customerName = (user.companyName?.trim() || user.username?.trim() || "Partner").slice(0, 120);
-  const body = {
+  const note = params.note?.trim().slice(0, 200);
+  const body: Record<string, unknown> = {
     customerName,
     from: pickup.label,
     fromFull: pickup.full,
@@ -105,6 +135,8 @@ export async function createPartnerInstantTaxiRide(
     vehicle: "standard",
     rideKind: "standard",
     payerKind: "company",
+    ...(params.mode === "reservation" && params.scheduledAt ? { scheduledAt: params.scheduledAt } : {}),
+    ...(note ? { driverNote: note } : {}),
   };
 
   const created = await partnerCreateRide(token, body);
@@ -113,6 +145,7 @@ export async function createPartnerInstantTaxiRide(
       ok: false,
       message: created.message,
       ...(created.unauthorized ? { unauthorized: true } : {}),
+      ...(created.limitReached ? { limitReached: true } : {}),
     };
   }
   return { ok: true, rideId: created.ride.id };

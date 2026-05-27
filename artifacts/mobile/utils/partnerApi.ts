@@ -8,6 +8,8 @@ export type PartnerLoginResult =
 export type PartnerRideRow = {
   id: string;
   status: string;
+  createdAt?: string;
+  scheduledAt?: string | null;
   customerName?: string;
   from?: string;
   fromFull?: string;
@@ -19,6 +21,7 @@ export type PartnerRideRow = {
   toLon?: number | null;
   driverId?: string | null;
   estimatedFare?: number | null;
+  partnerBookingMeta?: Record<string, unknown> | null;
 };
 
 export type PartnerTrackingSnapshot = {
@@ -113,7 +116,10 @@ export async function partnerFetchMe(token: string): Promise<PartnerMeUser | nul
 export async function partnerCreateRide(
   token: string,
   body: Record<string, unknown>,
-): Promise<{ ok: true; ride: PartnerRideRow } | { ok: false; message: string; unauthorized?: boolean }> {
+): Promise<
+  | { ok: true; ride: PartnerRideRow }
+  | { ok: false; message: string; unauthorized?: boolean; limitReached?: boolean }
+> {
   const base = getApiBaseUrl();
   if (!base) return { ok: false, message: "API-URL fehlt." };
 
@@ -131,8 +137,26 @@ export async function partnerCreateRide(
   if (res.status === 403) {
     return { ok: false, message: "Keine Berechtigung für diese Aktion." };
   }
-  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; ride?: PartnerRideRow; error?: string };
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    ride?: PartnerRideRow;
+    error?: string;
+    maxOpen?: number;
+  };
   if (!res.ok) {
+    if (data.error === "open_rides_limit_reached") {
+      return {
+        ok: false,
+        limitReached: true,
+        message: "Maximal 5 offene Fahrten gleichzeitig. Bitte zuerst eine Fahrt abschließen oder stornieren.",
+      };
+    }
+    if (data.error === "scheduled_at_too_soon") {
+      return {
+        ok: false,
+        message: "Reservierung mindestens 60 Minuten im Voraus wählen.",
+      };
+    }
     const hint =
       data.error === "route_fields_required"
         ? "Route unvollständig."
@@ -150,6 +174,38 @@ export async function partnerCreateRide(
   }
   if (!data.ride?.id) return { ok: false, message: "Ungültige API-Antwort." };
   return { ok: true, ride: data.ride };
+}
+
+export async function partnerFetchRides(
+  token: string,
+): Promise<PartnerApiResult<PartnerRideRow[]>> {
+  const r = await partnerAuthedJson<{ ok?: boolean; rides?: PartnerRideRow[] }>(token, "/panel/v1/rides");
+  if (!r.ok) return r;
+  if (!r.data.ok || !Array.isArray(r.data.rides)) {
+    return { ok: false, unauthorized: false, forbidden: false, message: "Fahrten konnten nicht geladen werden." };
+  }
+  return { ok: true, data: r.data.rides };
+}
+
+export async function partnerCancelRide(
+  token: string,
+  rideId: string,
+  reason?: string,
+): Promise<PartnerApiResult<PartnerRideRow>> {
+  const r = await partnerAuthedJson<{ ok?: boolean; ride?: PartnerRideRow }>(
+    token,
+    `/panel/v1/rides/${encodeURIComponent(rideId)}/cancel`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reason?.trim() ? { reason: reason.trim().slice(0, 200) } : {}),
+    },
+  );
+  if (!r.ok) return r;
+  if (!r.data.ok || !r.data.ride) {
+    return { ok: false, unauthorized: false, forbidden: false, message: "Storno fehlgeschlagen." };
+  }
+  return { ok: true, data: r.data.ride };
 }
 
 export async function partnerFetchTracking(

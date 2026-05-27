@@ -1,53 +1,117 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { PartnerOrderSheet } from "@/components/partner/PartnerOrderSheet";
+import { PartnerRideCard } from "@/components/partner/PartnerRideCard";
 import { HOME_SHEET_BG, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { usePartner } from "@/context/PartnerContext";
 import { loginActionButtonStyle, loginActionLabelStyle, LOGIN_ACTION_ICON_SIZE } from "@/src/screens/LoginScreen";
-import { createPartnerInstantTaxiRide, resolvePartnerPickupFromGps, type PartnerPickupPlace } from "@/utils/partnerInstantBooking";
+import {
+  createPartnerTaxiRide,
+  resolvePartnerPickupFromGps,
+  type PartnerPickupPlace,
+} from "@/utils/partnerInstantBooking";
+import { partnerCancelRide, partnerFetchRides, type PartnerRideRow } from "@/utils/partnerApi";
+import {
+  computePartnerHomeStats,
+  isPartnerRideActive,
+  isPartnerRideReservation,
+  PARTNER_MAX_OPEN_RIDES,
+  sortPartnerRidesNewestFirst,
+} from "@/utils/partnerRides";
 
 const PARTNER_GREEN = "#15803D";
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={[styles.statTile, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
 
 export default function PartnerHomeScreen() {
   const insets = useSafeAreaInsets();
   const { user, token, booting, logout, handleUnauthorized } = usePartner();
   const [pickup, setPickup] = useState<PartnerPickupPlace | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
+  const [rides, setRides] = useState<PartnerRideRow[]>([]);
+  const [loadingRides, setLoadingRides] = useState(true);
+  const [orderSheetOpen, setOrderSheetOpen] = useState(false);
   const [ordering, setOrdering] = useState(false);
+  const [cancelRide, setCancelRide] = useState<PartnerRideRow | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
   const logoutInFlightRef = useRef(false);
 
   const refreshPickup = useCallback(async () => {
     setLoadingLocation(true);
     const result = await resolvePartnerPickupFromGps();
-    if (result.ok) {
-      setPickup(result.place);
-    } else {
-      setPickup(null);
-    }
+    setPickup(result.ok ? result.place : null);
     setLoadingLocation(false);
   }, []);
 
-  useEffect(() => {
-    if (!booting && !token) {
-      router.replace("/partner/login");
+  const loadRides = useCallback(async () => {
+    if (!token) return;
+    setLoadingRides(true);
+    const r = await partnerFetchRides(token);
+    setLoadingRides(false);
+    if (!r.ok) {
+      if (r.unauthorized) {
+        await handleUnauthorized();
+        router.replace("/partner/login");
+      }
+      return;
     }
-  }, [booting, token]);
+    setRides(r.data);
+  }, [token, handleUnauthorized]);
 
-  useEffect(() => {
-    void refreshPickup();
-  }, [refreshPickup]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!booting && !token) {
+        router.replace("/partner/login");
+        return;
+      }
+      if (token) {
+        void loadRides();
+      }
+    }, [booting, token, loadRides]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPickup();
+    }, [refreshPickup]),
+  );
+
+  const stats = useMemo(() => computePartnerHomeStats(rides), [rides]);
+
+  const activeRides = useMemo(
+    () => rides.filter(isPartnerRideActive).sort(sortPartnerRidesNewestFirst),
+    [rides],
+  );
+  const reservationRides = useMemo(
+    () => rides.filter(isPartnerRideReservation).sort(sortPartnerRidesNewestFirst),
+    [rides],
+  );
+
+  const atOpenLimit = stats.openCount >= PARTNER_MAX_OPEN_RIDES;
 
   const handleLogout = async () => {
     if (logoutInFlightRef.current) return;
@@ -57,11 +121,16 @@ export default function PartnerHomeScreen() {
     router.replace("/");
   };
 
-  const handleOrderTaxi = async () => {
-    if (!token || !user || !pickup || ordering) return;
+  const handleOpenOrder = () => {
+    if (!pickup || atOpenLimit) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setOrderSheetOpen(true);
+  };
+
+  const handleConfirmOrder = async (mode: "now" | "reservation", note: string, scheduledAt: string | null) => {
+    if (!token || !user || !pickup) return;
     setOrdering(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const result = await createPartnerInstantTaxiRide(token, user, pickup);
+    const result = await createPartnerTaxiRide(token, user, pickup, { mode, note, scheduledAt });
     setOrdering(false);
     if (!result.ok) {
       if (result.unauthorized) {
@@ -70,14 +139,36 @@ export default function PartnerHomeScreen() {
         return;
       }
       Alert.alert("Buchung fehlgeschlagen", result.message);
+      if (!result.limitReached) return;
+      setOrderSheetOpen(false);
+      void loadRides();
       return;
     }
+    setOrderSheetOpen(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.push({ pathname: "/partner/track", params: { rideId: result.rideId } });
+    await loadRides();
   };
 
-  const companyLabel =
-    user?.companyName?.trim() || user?.username?.trim() || "Ihr Unternehmen";
+  const submitCancel = async () => {
+    if (!token || !cancelRide) return;
+    setCancelling(true);
+    const r = await partnerCancelRide(token, cancelRide.id, cancelReason);
+    setCancelling(false);
+    if (!r.ok) {
+      if (r.unauthorized) {
+        await handleUnauthorized();
+        router.replace("/partner/login");
+        return;
+      }
+      Alert.alert("Storno fehlgeschlagen", r.message);
+      return;
+    }
+    setCancelRide(null);
+    setCancelReason("");
+    await loadRides();
+  };
+
+  const companyLabel = user?.companyName?.trim() || user?.username?.trim() || "Ihr Unternehmen";
 
   if (booting) {
     return (
@@ -107,73 +198,150 @@ export default function PartnerHomeScreen() {
         <Text style={styles.companyName} numberOfLines={2}>
           {companyLabel}
         </Text>
-        <Pressable
-          style={styles.logoutBtn}
-          onPress={() => void handleLogout()}
-          accessibilityLabel="Abmelden"
-        >
+        <Pressable style={styles.logoutBtn} onPress={() => void handleLogout()} accessibilityLabel="Abmelden">
           <Feather name="log-out" size={22} color="#EF1D26" />
         </Pressable>
       </View>
 
-      <View style={[styles.pickupCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
-        <View style={styles.pickupHeaderRow}>
-          <Text style={styles.pickupLabel}>Abholadresse</Text>
-          <Pressable onPress={() => void refreshPickup()} disabled={loadingLocation}>
-            <Text style={styles.refreshLink}>{loadingLocation ? "…" : "Standort aktualisieren"}</Text>
-          </Pressable>
-        </View>
-        {loadingLocation ? (
-          <ActivityIndicator color={PARTNER_GREEN} style={{ marginVertical: 16 }} />
-        ) : pickup ? (
-          <Text style={styles.pickupValue}>{pickup.full}</Text>
-        ) : (
-          <Text style={styles.pickupValue}>
-            Standort nicht verfügbar. Bitte GPS in den Geräteeinstellungen erlauben und „Standort
-            aktualisieren“ tippen.
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.spacer} />
-
-      <Pressable
-        style={({ pressed }) => loginActionButtonStyle({
-          backgroundColor: PARTNER_GREEN,
-          paddingVertical: 16,
-          borderRadius: 14,
-          opacity: pressed || ordering || !pickup || loadingLocation ? 0.85 : 1,
-        })}
-        onPress={() => void handleOrderTaxi()}
-        disabled={ordering || !pickup || loadingLocation}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        showsVerticalScrollIndicator={false}
       >
-        {ordering ? (
-          <ActivityIndicator color="#fff" />
+        <View style={[styles.pickupCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
+          <View style={styles.pickupHeaderRow}>
+            <Text style={styles.pickupLabel}>Abholadresse</Text>
+            <Pressable onPress={() => void refreshPickup()} disabled={loadingLocation}>
+              <Text style={styles.refreshLink}>{loadingLocation ? "…" : "Standort aktualisieren"}</Text>
+            </Pressable>
+          </View>
+          {loadingLocation ? (
+            <ActivityIndicator color={PARTNER_GREEN} style={{ marginVertical: 12 }} />
+          ) : pickup ? (
+            <Text style={styles.pickupValue}>{pickup.full}</Text>
+          ) : (
+            <Text style={styles.pickupValue}>
+              Standort nicht verfügbar. Bitte GPS erlauben und „Standort aktualisieren“ tippen.
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatTile label="Aktive Fahrten" value={String(stats.activeCount)} />
+          <StatTile label="Geplante Fahrten" value={String(stats.plannedCount)} />
+          <StatTile label="Abgeschlossen heute" value={String(stats.completedToday)} />
+          <StatTile label="Offene Fahrten" value={`${stats.openCount} / ${PARTNER_MAX_OPEN_RIDES}`} />
+        </View>
+
+        {atOpenLimit ? (
+          <Text style={styles.limitBanner}>Maximal 5 offene Fahrten gleichzeitig erreicht.</Text>
+        ) : null}
+
+        <Text style={styles.sectionTitle}>Meine Fahrten</Text>
+        {loadingRides ? (
+          <ActivityIndicator color={PARTNER_GREEN} style={{ marginVertical: 16 }} />
         ) : (
           <>
-            <Feather name="navigation" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
-            <Text style={loginActionLabelStyle({ color: "#fff" })}>Taxi bestellen</Text>
+            <Text style={styles.subsectionTitle}>Aktive Fahrt</Text>
+            {activeRides.length === 0 ? (
+              <Text style={styles.emptyHint}>Keine aktive Fahrt.</Text>
+            ) : (
+              activeRides.map((ride) => (
+                <PartnerRideCard
+                  key={ride.id}
+                  ride={ride}
+                  onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
+                  onCancel={setCancelRide}
+                />
+              ))
+            )}
+
+            <Text style={[styles.subsectionTitle, { marginTop: 16 }]}>Reservierungen</Text>
+            {reservationRides.length === 0 ? (
+              <Text style={styles.emptyHint}>Keine Reservierungen.</Text>
+            ) : (
+              reservationRides.map((ride) => (
+                <PartnerRideCard
+                  key={ride.id}
+                  ride={ride}
+                  onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
+                  onCancel={setCancelRide}
+                />
+              ))
+            )}
           </>
         )}
-      </Pressable>
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12, backgroundColor: HOME_SHEET_BG }]}>
+        <Pressable
+          style={({ pressed }) =>
+            loginActionButtonStyle({
+              backgroundColor: PARTNER_GREEN,
+              paddingVertical: 18,
+              borderRadius: 14,
+              opacity: pressed || !pickup || loadingLocation || atOpenLimit ? 0.85 : 1,
+            })
+          }
+          onPress={handleOpenOrder}
+          disabled={!pickup || loadingLocation || atOpenLimit}
+        >
+          <Feather name="navigation" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+          <Text style={loginActionLabelStyle({ color: "#fff" })}>Taxi bestellen</Text>
+        </Pressable>
+      </View>
+
+      <PartnerOrderSheet
+        visible={orderSheetOpen}
+        pickupLabel={pickup?.full ?? ""}
+        submitting={ordering}
+        onClose={() => setOrderSheetOpen(false)}
+        onConfirm={(mode, note, scheduledAt) => void handleConfirmOrder(mode, note, scheduledAt)}
+      />
+
+      <Modal visible={cancelRide != null} transparent animationType="fade" onRequestClose={() => setCancelRide(null)}>
+        <View style={styles.cancelBackdrop}>
+          <View style={[styles.cancelCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
+            <Text style={styles.cancelTitle}>Fahrt wirklich stornieren?</Text>
+            <Text style={styles.cancelSub}>Grund (optional)</Text>
+            <TextInput
+              style={[styles.cancelInput, { borderColor: HOME_SHEET_RIM }]}
+              value={cancelReason}
+              onChangeText={(t) => setCancelReason(t.slice(0, 200))}
+              placeholder="z. B. Gast abgereist"
+              placeholderTextColor="#9CA3AF"
+              multiline
+            />
+            <View style={styles.cancelActions}>
+              <Pressable style={styles.cancelBackBtn} onPress={() => setCancelRide(null)} disabled={cancelling}>
+                <Text style={styles.cancelBackText}>Zurück</Text>
+              </Pressable>
+              <Pressable style={styles.cancelConfirmBtn} onPress={() => void submitCancel()} disabled={cancelling}>
+                {cancelling ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.cancelConfirmText}>Stornieren</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: 20, paddingBottom: 24 },
+  root: { flex: 1 },
+  scroll: { flex: 1, paddingHorizontal: 20 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
-  bootText: {
-    marginTop: 8,
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: "#6B7280",
-  },
+  bootText: { marginTop: 8, fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280" },
   header: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 28,
+    marginBottom: 12,
+    paddingHorizontal: 20,
   },
   logo: { width: 88, height: 36 },
   companyName: {
@@ -183,24 +351,13 @@ const styles = StyleSheet.create({
     color: "#111",
     textAlign: "right",
   },
-  logoutBtn: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pickupCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 18,
-    minHeight: 120,
-    justifyContent: "center",
-  },
+  logoutBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  pickupCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
   pickupHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 8,
     gap: 8,
   },
   pickupLabel: {
@@ -210,16 +367,74 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  refreshLink: {
-    fontSize: 13,
+  refreshLink: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: PARTNER_GREEN },
+  pickupValue: { fontSize: 16, fontFamily: "Inter_500Medium", color: "#111", lineHeight: 22 },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
+  statTile: {
+    width: "48%",
+    flexGrow: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    minWidth: "46%",
+  },
+  statValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: PARTNER_GREEN },
+  statLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 4 },
+  limitBanner: {
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-    color: PARTNER_GREEN,
+    color: "#B45309",
+    marginBottom: 12,
+    textAlign: "center",
   },
-  pickupValue: {
-    fontSize: 17,
-    fontFamily: "Inter_500Medium",
+  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#111", marginBottom: 8 },
+  subsectionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#6B7280", marginBottom: 8 },
+  emptyHint: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginBottom: 8 },
+  footer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: HOME_SHEET_RIM,
+  },
+  cancelBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    padding: 24,
+  },
+  cancelCard: { borderRadius: 16, borderWidth: 1, padding: 20 },
+  cancelTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#111", marginBottom: 12 },
+  cancelSub: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#6B7280", marginBottom: 8 },
+  cancelInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 72,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
     color: "#111",
-    lineHeight: 24,
+    textAlignVertical: "top",
   },
-  spacer: { flex: 1, minHeight: 24 },
+  cancelActions: { flexDirection: "row", gap: 10, marginTop: 16 },
+  cancelBackBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: HOME_SHEET_RIM,
+    alignItems: "center",
+  },
+  cancelBackText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#374151" },
+  cancelConfirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#EF1D26",
+    alignItems: "center",
+  },
+  cancelConfirmText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
 });
