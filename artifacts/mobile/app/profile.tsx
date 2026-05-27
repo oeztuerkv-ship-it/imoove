@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
-import { router } from "expo-router";
+import { router, usePathname } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
@@ -925,6 +925,17 @@ export default function ProfileScreen() {
   const [accountPwdFlow, setAccountPwdFlow] = useState(false);
   const [regSubStep, setRegSubStep] = useState<"email" | "verify" | "profile" | "password">("email");
 
+  const pathname = usePathname();
+  const logoutInFlightRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const resetLoginUiState = useCallback(() => {
     setProfileStep("social");
     setAccountPwdFlow(false);
@@ -940,10 +951,18 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = useCallback(async () => {
-    resetLoginUiState();
-    await logout();
-    navigateToCustomerStartScreen();
-  }, [logout, resetLoginUiState]);
+    if (logoutInFlightRef.current) return;
+    logoutInFlightRef.current = true;
+    try {
+      resetLoginUiState();
+      await logout();
+      if (isMountedRef.current) {
+        navigateToCustomerStartScreen(pathname);
+      }
+    } finally {
+      logoutInFlightRef.current = false;
+    }
+  }, [logout, resetLoginUiState, pathname]);
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");

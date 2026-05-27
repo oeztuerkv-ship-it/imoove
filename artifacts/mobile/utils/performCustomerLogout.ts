@@ -7,11 +7,9 @@ import {
 } from "@/constants/customerSessionStorage";
 import { queryClient } from "@/lib/queryClient";
 
-/**
- * Lokale Kunden-Session vollständig zurücksetzen (ohne Navigation).
- * Navigation: `navigateToCustomerStartScreen()` aus dem Aufrufer.
- */
-export async function performCustomerLogout(): Promise<void> {
+let customerLogoutInFlight: Promise<void> | null = null;
+
+async function runCustomerLogoutCleanup(): Promise<void> {
   try {
     if (typeof WebBrowser.dismissAuthSession === "function") {
       await WebBrowser.dismissAuthSession();
@@ -27,4 +25,22 @@ export async function performCustomerLogout(): Promise<void> {
   }
 
   queryClient.clear();
+}
+
+/**
+ * Lokale Kunden-Session vollständig zurücksetzen (ohne Navigation).
+ * Navigation: `navigateToCustomerStartScreen()` aus dem Aufrufer.
+ * Idempotent: parallele Aufrufe teilen dieselbe Promise.
+ */
+export async function performCustomerLogout(): Promise<void> {
+  if (customerLogoutInFlight) {
+    await customerLogoutInFlight;
+    return;
+  }
+
+  customerLogoutInFlight = runCustomerLogoutCleanup().finally(() => {
+    customerLogoutInFlight = null;
+  });
+
+  await customerLogoutInFlight;
 }
