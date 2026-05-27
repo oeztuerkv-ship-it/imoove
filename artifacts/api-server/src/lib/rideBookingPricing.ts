@@ -38,6 +38,9 @@ function compactMergedTariffAudit(merged: Record<string, unknown>): Record<strin
     "active",
     "pricingMode",
     "largeVehicleSurcharge",
+    "xlPricingMode",
+    "xlFixedSurchargeEur",
+    "vehicleClassMultipliers",
     "tariffVersion",
     "validFrom",
   ] as const;
@@ -91,6 +94,11 @@ function extractMeterTariffSnapshot(merged: Record<string, unknown>, serviceRegi
     surcharges: {
       largeVehicleFromPassengers: toPositiveInt(lvsObj.minPassengers, 5),
       largeVehicleAmountEur: Math.max(0, toNum(lvsObj.amountEur, 0)),
+      xlFixedSurchargeEur: Math.max(0, toNum(merged.xlFixedSurchargeEur, 0)),
+      xlPricingMode:
+        typeof merged.xlPricingMode === "string" && merged.xlPricingMode.trim()
+          ? merged.xlPricingMode.trim()
+          : null,
     },
   };
 }

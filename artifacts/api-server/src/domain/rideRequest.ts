@@ -26,6 +26,8 @@ export type TariffBookingSnapshotV1 = {
     minFare: number;
     surcharges: { type: string; amount: number }[];
     vehicleClassMultiplier: number;
+    xlFixedSurchargeEur?: number;
+    xlPricingMode?: "fixed" | "multiplier" | "both";
   };
   distanceKm: number;
   tripMinutes: number;

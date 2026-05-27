@@ -64,6 +64,10 @@ export function buildDriverNavigationParams(
         ride.tariffSnapshot?.breakdown?.vehicleClassMultiplier != null
           ? String(ride.tariffSnapshot.breakdown.vehicleClassMultiplier)
           : "",
+      xlFixedSurchargeEur:
+        ride.tariffSnapshot?.breakdown?.xlFixedSurchargeEur != null
+          ? String(ride.tariffSnapshot.breakdown.xlFixedSurchargeEur)
+          : "",
       driverId,
       arrived,
     };
@@ -91,6 +95,10 @@ export function buildDriverNavigationParams(
     vehicleClassMultiplier:
       ride.tariffSnapshot?.breakdown?.vehicleClassMultiplier != null
         ? String(ride.tariffSnapshot.breakdown.vehicleClassMultiplier)
+        : "",
+    xlFixedSurchargeEur:
+      ride.tariffSnapshot?.breakdown?.xlFixedSurchargeEur != null
+        ? String(ride.tariffSnapshot.breakdown.xlFixedSurchargeEur)
         : "",
     driverId,
     arrived,

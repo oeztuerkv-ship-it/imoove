@@ -115,7 +115,7 @@ function preservedAdvancedTariffKeys(prev) {
   return out;
 }
 
-function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeChange }) {
+function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeChange, surchargeLabel, surchargeHint }) {
   const ch = (key) => (e) => onChange({ ...value, [key]: e.target.value });
   const tripPerHour = (() => {
     const v = parseFloat(String(value.tripMin).replace(",", "."));
@@ -180,7 +180,7 @@ function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeCha
             <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(0,0,0,0.35)", marginBottom: 8 }}>Zuschlag</p>
             <div style={{ maxWidth: 220 }}>
               <label className="admin-form-label" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 12 }}>Großraumzuschlag (≥ 5 Pers.)</span>
+                <span style={{ fontSize: 12 }}>{surchargeLabel || "Fahrzeugaufschlag"}</span>
                 <div style={{ display: "flex", alignItems: "center", border: "1px solid rgba(0,0,0,0.18)", borderRadius: 8, overflow: "hidden", background: "var(--admin-input-bg, #fff)" }}>
                   <input
                     className="admin-input"
@@ -191,7 +191,9 @@ function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeCha
                   />
                   <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", paddingRight: 10 }}>€</span>
                 </div>
-                <span style={{ fontSize: 11, color: "rgba(0,0,0,0.38)" }}>Laut TTO Esslingen: 7,00 €</span>
+                <span style={{ fontSize: 11, color: "rgba(0,0,0,0.38)" }}>
+                  {surchargeHint || "Wird zum Standard-Tarif addiert (kein Multiplikator, sofern nicht separat konfiguriert)."}
+                </span>
               </label>
             </div>
           </div>
@@ -299,9 +301,14 @@ export default function AppOperationalTariffsPage() {
     const wcOv = vto.wheelchair && typeof vto.wheelchair === "object" ? /** @type {Record<string, unknown>} */ (vto.wheelchair) : null;
     setXlForm(sliceToTierForm(xlOv || merged));
     setWcForm(sliceToTierForm(wcOv || merged));
-    const lv = existingFull.largeVehicleSurcharge;
-    if (lv && typeof lv === "object" && lv.amountEur != null) {
-      setXlSurchargeEur(String(lv.amountEur));
+    const xlFix = existingFull.xlFixedSurchargeEur;
+    if (xlFix != null && xlFix !== "") {
+      setXlSurchargeEur(String(xlFix).replace(".", ","));
+    } else {
+      const lv = existingFull.largeVehicleSurcharge;
+      if (lv && typeof lv === "object" && lv.amountEur != null) {
+        setXlSurchargeEur(String(lv.amountEur).replace(".", ","));
+      }
     }
     if (wcOv && wcOv.surchargeEur != null) {
       setWcSurchargeEur(String(wcOv.surchargeEur));
@@ -361,10 +368,13 @@ export default function AppOperationalTariffsPage() {
       holidaySurchargePercent: sh.enabled ? n(sh.percent) : 0,
       active: true,
       ...std,
-      largeVehicleSurcharge: { minPassengers: 5, amountEur: n(xlSurchargeEur) },
+      largeVehicleSurcharge:
+        prev.largeVehicleSurcharge && typeof prev.largeVehicleSurcharge === "object"
+          ? prev.largeVehicleSurcharge
+          : { minPassengers: 5, amountEur: 0 },
       vehicleClassMultipliers: { standard: 1, xl: 1, wheelchair: 1 },
-      xlPricingMode: "multiplier",
-      xlFixedSurchargeEur: 0,
+      xlPricingMode: "fixed",
+      xlFixedSurchargeEur: n(xlSurchargeEur),
       wheelchairFixedSurchargeEur: 0,
       rounding: typeof preserved.rounding === "string" ? preserved.rounding : "ceil_tenth",
       vehicleTariffOverrides: {
@@ -646,7 +656,16 @@ export default function AppOperationalTariffsPage() {
             <p className="admin-table-sub" style={{ marginTop: 6 }}>Tipp: Erst unten Tarif-Felder ausfüllen — dann hier als Vorlage speichern.</p>
           </CollapsibleCard>
           <TarifBlock title="STANDARD" hint="Normales Taxi — gilt für die Standard-Fahrzeugklasse." value={stdForm} onChange={setStdForm} />
-          <TarifBlock title="XL" hint="Größeres Fahrzeug — eigene Preise." value={xlForm} onChange={setXlForm} surchargeEur={xlSurchargeEur} onSurchargeChange={setXlSurchargeEur} />
+          <TarifBlock
+            title="XL"
+            hint="Schätzpreis = Standard-Tarif + XL-Aufschlag (Fahrzeugklasse). Optional eigene km/Minuten in den Feldern oben."
+            value={xlForm}
+            onChange={setXlForm}
+            surchargeEur={xlSurchargeEur}
+            onSurchargeChange={setXlSurchargeEur}
+            surchargeLabel="XL-Fahrzeugaufschlag"
+            surchargeHint="z. B. 7,00 € — wird zum Standard-Schätzpreis addiert (nicht mit 5-Personen-Regel vermischt)."
+          />
           <TarifBlock title="ROLLSTUHL" hint="Rollstuhlfahrten — eigene Preise." value={wcForm} onChange={setWcForm} surchargeEur={wcSurchargeEur} onSurchargeChange={setWcSurchargeEur} />
 
           <div style={{ marginBottom: 20 }}>

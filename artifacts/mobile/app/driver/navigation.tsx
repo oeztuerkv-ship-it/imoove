@@ -164,6 +164,7 @@ export default function DriverNavigationScreen() {
     paymentMethod: string;
     vehicle?: string;
     vehicleClassMultiplier?: string;
+    xlFixedSurchargeEur?: string;
     driverId: string;
     arrived?: string;
   }>();
@@ -1052,6 +1053,11 @@ export default function DriverNavigationScreen() {
               snapshotVehicleClassMultiplier={
                 params.vehicleClassMultiplier?.trim()
                   ? Number.parseFloat(params.vehicleClassMultiplier)
+                  : null
+              }
+              snapshotXlFixedSurchargeEur={
+                params.xlFixedSurchargeEur?.trim()
+                  ? Number.parseFloat(params.xlFixedSurchargeEur)
                   : null
               }
             />

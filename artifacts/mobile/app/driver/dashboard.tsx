@@ -2412,6 +2412,7 @@ function ActiveRideScreen({
               vehicle={req.vehicle}
               mayBillPositive={mayBillPositive}
               snapshotVehicleClassMultiplier={req.tariffSnapshot?.breakdown?.vehicleClassMultiplier}
+              snapshotXlFixedSurchargeEur={req.tariffSnapshot?.breakdown?.xlFixedSurchargeEur}
             />
 
             {/* Route summary */}

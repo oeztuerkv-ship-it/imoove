@@ -4,7 +4,7 @@ export type VehicleClassId = "standard" | "xl" | "wheelchair" | "onroda";
 /** Gleiche Defaults wie `operationalTariffEngine` / `DEFAULT_PAYLOAD.tariffs`. */
 export const SERVER_DEFAULT_VEHICLE_CLASS_MULTIPLIERS: Record<VehicleClassId, number> = {
   standard: 1,
-  xl: 1.2,
+  xl: 1,
   wheelchair: 1.15,
   onroda: 1,
 };

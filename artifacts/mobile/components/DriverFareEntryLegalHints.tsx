@@ -10,6 +10,8 @@ type Props = {
   mayBillPositive: boolean;
   /** Optional: Faktor aus `tariff_snapshot` dieser Fahrt (Buchungs-Engine). */
   snapshotVehicleClassMultiplier?: number | null;
+  /** Optional: XL-Aufschlag € aus `tariff_snapshot.breakdown`. */
+  snapshotXlFixedSurchargeEur?: number | null;
 };
 
 function HintBody({ body, highlight }: { body: string; highlight?: string }) {
@@ -30,6 +32,7 @@ export function DriverFareEntryLegalHints({
   vehicle,
   mayBillPositive,
   snapshotVehicleClassMultiplier,
+  snapshotXlFixedSurchargeEur,
 }: Props) {
   const { config } = useOnrodaAppConfig();
   const hints = useMemo(() => {
@@ -38,9 +41,10 @@ export function DriverFareEntryLegalHints({
       mayBillPositive,
       tariffs: config.tariffs as Record<string, unknown>,
       snapshotVehicleClassMultiplier,
+      snapshotXlFixedSurchargeEur,
     };
     return driverFareEntryLegalHints(ctx);
-  }, [vehicle, mayBillPositive, config.tariffs, snapshotVehicleClassMultiplier]);
+  }, [vehicle, mayBillPositive, config.tariffs, snapshotVehicleClassMultiplier, snapshotXlFixedSurchargeEur]);
 
   if (!hints.length) return null;
 

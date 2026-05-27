@@ -86,10 +86,12 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     perKm: 0,
     minFare: 0,
     kmPricingModel: "two_tier" as const,
-    vehicleClassMultipliers: { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 } as Record<string, number>,
+    vehicleClassMultipliers: { standard: 1, xl: 1, wheelchair: 1.15, onroda: 1 } as Record<string, number>,
+    xlPricingMode: "fixed",
+    xlFixedSurchargeEur: 7,
     largeVehicleSurcharge: {
       minPassengers: 5,
-      amountEur: 7,
+      amountEur: 0,
     },
     surcharges: {
       night: { enabled: false, percent: 0 },

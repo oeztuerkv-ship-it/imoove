@@ -166,7 +166,7 @@ export type EstimateInputs = {
   waitingMinutes: number;
   /** Klasse, z. B. standard, xl, wheelchair, onroda */
   vehicle: string;
-  /** Optional: tatsächliche Personenanzahl für Großraumzuschlag. */
+  /** Optional: tatsächliche Personenanzahl für Großraumzuschlag (≥ minPassengers). */
   passengerCount?: number;
   at: Date;
   /** Test-Preview: Feiertagszuschlag (kein behördliches Feiertagskalender-Modell) */
@@ -174,6 +174,69 @@ export type EstimateInputs = {
   /** Flughafen-Pauschale aus `airportFlatEur`, sofern Tarif > 0 */
   applyAirportFlat?: boolean;
 };
+
+export type XlPricingMode = "fixed" | "multiplier" | "both";
+
+/** Admin: `xlFixedSurchargeEur` + `xlPricingMode`; Legacy-Feld `largeVehicleSurcharge.amountEur` = früherer XL-Aufschlag. */
+export function resolveXlPricingConfig(merged: Record<string, unknown>): {
+  mode: XlPricingMode;
+  fixedEur: number;
+  multiplier: number;
+} {
+  const multRaw = isPlainTariffObject(merged.vehicleClassMultipliers)
+    ? (merged.vehicleClassMultipliers as Record<string, unknown>)
+    : {};
+  const configuredMult = n(multRaw.xl, 1);
+
+  let fixedEur = Math.max(0, n(merged.xlFixedSurchargeEur, 0));
+  const lvs = isPlainTariffObject(merged.largeVehicleSurcharge)
+    ? (merged.largeVehicleSurcharge as Record<string, unknown>)
+    : {};
+  const legacyAdminXlAmount = Math.max(0, n(lvs.amountEur, 0));
+  if (fixedEur <= 0 && legacyAdminXlAmount > 0) {
+    fixedEur = legacyAdminXlAmount;
+  }
+
+  let mode = String(merged.xlPricingMode || "").trim().toLowerCase() as XlPricingMode | "";
+  if (mode !== "fixed" && mode !== "multiplier" && mode !== "both") {
+    mode = fixedEur > 0 ? "fixed" : configuredMult !== 1 ? "multiplier" : "fixed";
+  }
+
+  let multiplier = 1;
+  if (mode === "multiplier" || mode === "both") {
+    multiplier = configuredMult > 0 ? configuredMult : 1;
+  }
+
+  if (mode === "multiplier") {
+    return { mode, fixedEur: 0, multiplier };
+  }
+  if (mode === "both") {
+    return { mode, fixedEur, multiplier };
+  }
+  return { mode: "fixed", fixedEur, multiplier: 1 };
+}
+
+function vehicleClassMultiplierFor(
+  merged: Record<string, unknown>,
+  vClass: string,
+  xlCfg: ReturnType<typeof resolveXlPricingConfig> | null,
+): number {
+  if (vClass === "xl" && xlCfg) {
+    return xlCfg.multiplier;
+  }
+  const multRaw = isPlainTariffObject(merged.vehicleClassMultipliers)
+    ? (merged.vehicleClassMultipliers as Record<string, unknown>)
+    : {
+        standard: 1,
+        xl: 1,
+        wheelchair: 1.15,
+        onroda: 1,
+      };
+  return n(
+    multRaw[vClass] ?? (typeof multRaw.standard === "number" ? multRaw.standard : 1),
+    1,
+  );
+}
 
 /**
  * Fahrpreis aus voll mergiertem Tarif-Objekt (nur Config, keine lokalen Konstanten).
@@ -199,35 +262,22 @@ export function estimateTaxiFromMergedTariff(
     minFare: number;
     surcharges: { type: string; amount: number }[];
     vehicleClassMultiplier: number;
+    xlFixedSurchargeEur?: number;
+    xlPricingMode?: XlPricingMode;
   };
 } {
   const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
-  const m = pickTariffSliceForVehicleClass(merged, vClass);
-  const multRaw = isPlainTariffObject(merged.vehicleClassMultipliers)
-    ? (merged.vehicleClassMultipliers as Record<string, unknown>)
-    : {
-        standard: 1,
-        xl: 1.2,
-        wheelchair: 1.15,
-        onroda: 1,
-      };
-  let vehicleClassMultiplier = n(
-    multRaw[vClass] ?? (typeof multRaw["standard"] === "number" ? multRaw["standard"] : 1),
-    1,
-  );
-  /** XL: Multiplikator, fester Zuschlag oder beides (Konfig auf Root-Tarif). */
-  let xlFixedEur = 0;
-  if (vClass === "xl") {
-    const mode = String(merged.xlPricingMode || "multiplier").trim().toLowerCase();
-    const fix = Math.max(0, n(merged.xlFixedSurchargeEur, 0));
-    if (mode === "fixed") {
-      vehicleClassMultiplier = 1;
-      xlFixedEur = fix;
-    } else if (mode === "both") {
-      xlFixedEur = fix;
-    }
-  }
-  const wheelchairFixedEur = vClass === "wheelchair" ? Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) : 0;
+  const xlCfg = vClass === "xl" ? resolveXlPricingConfig(merged) : null;
+  /** XL mit festem Aufschlag: Taxameter-Basis wie Standard, dann + xlFixedSurchargeEur (Admin). */
+  const tariffSliceClass = xlCfg?.mode === "fixed" ? "standard" : vClass;
+  const m = pickTariffSliceForVehicleClass(merged, tariffSliceClass);
+  const vehicleClassMultiplier = vehicleClassMultiplierFor(merged, vClass, xlCfg);
+  const xlFixedEur = xlCfg && xlCfg.mode !== "multiplier" ? xlCfg.fixedEur : 0;
+  const wheelchairFixedEur =
+    vClass === "wheelchair"
+      ? Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) +
+        Math.max(0, n((m as { surchargeEur?: unknown }).surchargeEur, 0))
+      : 0;
   if (m.active === false) {
     return {
       subtotal: 0,
@@ -346,6 +396,9 @@ export function estimateTaxiFromMergedTariff(
       minFare,
       surcharges: sur,
       vehicleClassMultiplier,
+      ...(xlCfg
+        ? { xlFixedSurchargeEur: xlFixedEur, xlPricingMode: xlCfg.mode }
+        : {}),
     },
   };
 }

@@ -81,6 +81,8 @@ export type RideTariffSnapshot = {
   vehicle?: string;
   breakdown?: {
     vehicleClassMultiplier?: number;
+    xlFixedSurchargeEur?: number;
+    xlPricingMode?: string;
     [key: string]: unknown;
   };
   [key: string]: unknown;
