@@ -115,8 +115,8 @@ var require_package = __commonJS({
 // ../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js
 var require_main = __commonJS({
   "../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js"(exports, module) {
-    var fs3 = __require("fs");
-    var path12 = __require("path");
+    var fs4 = __require("fs");
+    var path14 = __require("path");
     var os = __require("os");
     var crypto2 = __require("crypto");
     var packageJson = require_package();
@@ -222,7 +222,7 @@ var require_main = __commonJS({
       if (options && options.path && options.path.length > 0) {
         if (Array.isArray(options.path)) {
           for (const filepath of options.path) {
-            if (fs3.existsSync(filepath)) {
+            if (fs4.existsSync(filepath)) {
               possibleVaultPath = filepath.endsWith(".vault") ? filepath : `${filepath}.vault`;
             }
           }
@@ -230,15 +230,15 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path12.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path14.resolve(process.cwd(), ".env.vault");
       }
-      if (fs3.existsSync(possibleVaultPath)) {
+      if (fs4.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
       }
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path12.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path14.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       _log("Loading env from encrypted .env.vault");
@@ -251,7 +251,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path12.resolve(process.cwd(), ".env");
+      const dotenvPath = path14.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       const debug = Boolean(options && options.debug);
       if (options && options.encoding) {
@@ -274,13 +274,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path13 of optionPaths) {
+      for (const path15 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs3.readFileSync(path13, { encoding }));
+          const parsed = DotenvModule.parse(fs4.readFileSync(path15, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug) {
-            _debug(`Failed to load ${path13} ${e.message}`);
+            _debug(`Failed to load ${path15} ${e.message}`);
           }
           lastError = e;
         }
@@ -1196,34 +1196,34 @@ var require_receiver = __commonJS({
        * @return {Buffer} The consumed bytes
        * @private
        */
-      consume(n4) {
-        this._bufferedBytes -= n4;
-        if (n4 === this._buffers[0].length) return this._buffers.shift();
-        if (n4 < this._buffers[0].length) {
+      consume(n5) {
+        this._bufferedBytes -= n5;
+        if (n5 === this._buffers[0].length) return this._buffers.shift();
+        if (n5 < this._buffers[0].length) {
           const buf = this._buffers[0];
           this._buffers[0] = new FastBuffer(
             buf.buffer,
-            buf.byteOffset + n4,
-            buf.length - n4
+            buf.byteOffset + n5,
+            buf.length - n5
           );
-          return new FastBuffer(buf.buffer, buf.byteOffset, n4);
+          return new FastBuffer(buf.buffer, buf.byteOffset, n5);
         }
-        const dst = Buffer.allocUnsafe(n4);
+        const dst = Buffer.allocUnsafe(n5);
         do {
           const buf = this._buffers[0];
-          const offset = dst.length - n4;
-          if (n4 >= buf.length) {
+          const offset = dst.length - n5;
+          if (n5 >= buf.length) {
             dst.set(this._buffers.shift(), offset);
           } else {
-            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n4), offset);
+            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n5), offset);
             this._buffers[0] = new FastBuffer(
               buf.buffer,
-              buf.byteOffset + n4,
-              buf.length - n4
+              buf.byteOffset + n5,
+              buf.length - n5
             );
           }
-          n4 -= buf.length;
-        } while (n4 > 0);
+          n5 -= buf.length;
+        } while (n5 > 0);
         return dst;
       }
       /**
@@ -4027,7 +4027,7 @@ var require_ms = __commonJS({
       if (!match) {
         return;
       }
-      var n4 = parseFloat(match[1]);
+      var n5 = parseFloat(match[1]);
       var type = (match[2] || "ms").toLowerCase();
       switch (type) {
         case "years":
@@ -4035,39 +4035,39 @@ var require_ms = __commonJS({
         case "yrs":
         case "yr":
         case "y":
-          return n4 * y;
+          return n5 * y;
         case "weeks":
         case "week":
         case "w":
-          return n4 * w;
+          return n5 * w;
         case "days":
         case "day":
         case "d":
-          return n4 * d;
+          return n5 * d;
         case "hours":
         case "hour":
         case "hrs":
         case "hr":
         case "h":
-          return n4 * h;
+          return n5 * h;
         case "minutes":
         case "minute":
         case "mins":
         case "min":
         case "m":
-          return n4 * m;
+          return n5 * m;
         case "seconds":
         case "second":
         case "secs":
         case "sec":
         case "s":
-          return n4 * s;
+          return n5 * s;
         case "milliseconds":
         case "millisecond":
         case "msecs":
         case "msec":
         case "ms":
-          return n4;
+          return n5;
         default:
           return void 0;
       }
@@ -4104,9 +4104,9 @@ var require_ms = __commonJS({
       }
       return ms + " ms";
     }
-    function plural(ms, msAbs, n4, name2) {
-      var isPlural = msAbs >= n4 * 1.5;
-      return Math.round(ms / n4) + " " + name2 + (isPlural ? "s" : "");
+    function plural(ms, msAbs, n5, name2) {
+      var isPlural = msAbs >= n5 * 1.5;
+      return Math.round(ms / n5) + " " + name2 + (isPlural ? "s" : "");
     }
   }
 });
@@ -5217,9 +5217,9 @@ var require_statuses = __commonJS({
       if (typeof code !== "string") {
         throw new TypeError("code must be a number or string");
       }
-      var n4 = parseInt(code, 10);
-      if (!isNaN(n4)) {
-        return getStatusMessage(n4);
+      var n5 = parseInt(code, 10);
+      if (!isNaN(n5)) {
+        return getStatusMessage(n5);
       }
       return getStatusCode(code);
     }
@@ -19267,11 +19267,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path12) {
-      if (!path12 || typeof path12 !== "string") {
+    function lookup(path14) {
+      if (!path14 || typeof path14 !== "string") {
         return false;
       }
-      var extension3 = extname("x." + path12).toLowerCase().slice(1);
+      var extension3 = extname("x." + path14).toLowerCase().slice(1);
       if (!extension3) {
         return false;
       }
@@ -20260,18 +20260,18 @@ var require_object_inspect = __commonJS({
       return wrapQuotes(s, "single", opts);
     }
     function lowbyte(c) {
-      var n4 = c.charCodeAt(0);
+      var n5 = c.charCodeAt(0);
       var x = {
         8: "b",
         9: "t",
         10: "n",
         12: "f",
         13: "r"
-      }[n4];
+      }[n5];
       if (x) {
         return "\\" + x;
       }
-      return "\\x" + (n4 < 16 ? "0" : "") + $toUpperCase.call(n4.toString(16));
+      return "\\x" + (n5 < 16 ? "0" : "") + $toUpperCase.call(n5.toString(16));
     }
     function markBoxed(str2) {
       return "Object(" + str2 + ")";
@@ -22485,8 +22485,8 @@ var require_escape_html = __commonJS({
   "../../node_modules/.pnpm/escape-html@1.0.3/node_modules/escape-html/index.js"(exports, module) {
     "use strict";
     var matchHtmlRegExp = /["'&<>]/;
-    module.exports = escapeHtml6;
-    function escapeHtml6(string) {
+    module.exports = escapeHtml5;
+    function escapeHtml5(string) {
       var str2 = "" + string;
       var match = matchHtmlRegExp.exec(str2);
       if (!match) {
@@ -22617,13 +22617,13 @@ var require_finalhandler = __commonJS({
     "use strict";
     var debug = require_src()("finalhandler");
     var encodeUrl = require_encodeurl();
-    var escapeHtml6 = require_escape_html();
+    var escapeHtml5 = require_escape_html();
     var onFinished = require_on_finished();
     var parseUrl = require_parseurl();
     var statuses = require_statuses();
     var isFinished = onFinished.isFinished;
     function createHtmlDocument(message2) {
-      var body = escapeHtml6(message2).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
+      var body = escapeHtml5(message2).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
       return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Error</title>\n</head>\n<body>\n<pre>' + body + "</pre>\n</body>\n</html>\n";
     }
     module.exports = finalhandler;
@@ -22743,13 +22743,13 @@ var require_view = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/view.js"(exports, module) {
     "use strict";
     var debug = require_src()("express:view");
-    var path12 = __require("node:path");
-    var fs3 = __require("node:fs");
-    var dirname = path12.dirname;
-    var basename = path12.basename;
-    var extname = path12.extname;
-    var join = path12.join;
-    var resolve = path12.resolve;
+    var path14 = __require("node:path");
+    var fs4 = __require("node:fs");
+    var dirname = path14.dirname;
+    var basename = path14.basename;
+    var extname = path14.extname;
+    var join = path14.join;
+    var resolve = path14.resolve;
     module.exports = View2;
     function View2(name2, options) {
       var opts = options || {};
@@ -22778,17 +22778,17 @@ var require_view = __commonJS({
       this.path = this.lookup(fileName);
     }
     View2.prototype.lookup = function lookup(name2) {
-      var path13;
+      var path15;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name2);
-      for (var i = 0; i < roots.length && !path13; i++) {
+      for (var i = 0; i < roots.length && !path15; i++) {
         var root = roots[i];
         var loc = resolve(root, name2);
         var dir = dirname(loc);
         var file = basename(loc);
-        path13 = this.resolve(dir, file);
+        path15 = this.resolve(dir, file);
       }
-      return path13;
+      return path15;
     };
     View2.prototype.render = function render(options, callback) {
       var sync = true;
@@ -22810,21 +22810,21 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file) {
       var ext = this.ext;
-      var path13 = join(dir, file);
-      var stat = tryStat(path13);
+      var path15 = join(dir, file);
+      var stat = tryStat(path15);
       if (stat && stat.isFile()) {
-        return path13;
+        return path15;
       }
-      path13 = join(dir, basename(file, ext), "index" + ext);
-      stat = tryStat(path13);
+      path15 = join(dir, basename(file, ext), "index" + ext);
+      stat = tryStat(path15);
       if (stat && stat.isFile()) {
-        return path13;
+        return path15;
       }
     };
-    function tryStat(path13) {
-      debug('stat "%s"', path13);
+    function tryStat(path15) {
+      debug('stat "%s"', path15);
       try {
-        return fs3.statSync(path13);
+        return fs4.statSync(path15);
       } catch (e) {
         return void 0;
       }
@@ -23960,15 +23960,15 @@ var require_dist = __commonJS({
       let index = 0;
       function consumeUntil(end) {
         const output = [];
-        let path12 = "";
+        let path14 = "";
         function writePath() {
-          if (!path12)
+          if (!path14)
             return;
           output.push({
             type: "text",
-            value: encodePath(path12)
+            value: encodePath(path14)
           });
-          path12 = "";
+          path14 = "";
         }
         while (index < chars.length) {
           const value = chars[index++];
@@ -23980,7 +23980,7 @@ var require_dist = __commonJS({
             if (index === chars.length) {
               throw new PathError(`Unexpected end after \\ at index ${index}`, str2);
             }
-            path12 += chars[index++];
+            path14 += chars[index++];
             continue;
           }
           if (value === ":" || value === "*") {
@@ -24024,7 +24024,7 @@ var require_dist = __commonJS({
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
             throw new PathError(`Unexpected ${value} at index ${index - 1}`, str2);
           }
-          path12 += value;
+          path14 += value;
         }
         if (end) {
           throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str2);
@@ -24034,17 +24034,17 @@ var require_dist = __commonJS({
       }
       return new TokenData(consumeUntil(""), str2);
     }
-    function compile(path12, options = {}) {
+    function compile(path14, options = {}) {
       const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const data = typeof path12 === "object" ? path12 : parse(path12, options);
+      const data = typeof path14 === "object" ? path14 : parse(path14, options);
       const fn = tokensToFunction(data.tokens, delimiter, encode3);
-      return function path13(params = {}) {
+      return function path15(params = {}) {
         const missing = [];
-        const path14 = fn(params, missing);
+        const path16 = fn(params, missing);
         if (missing.length) {
           throw new TypeError(`Missing parameters: ${missing.join(", ")}`);
         }
-        return path14;
+        return path16;
       };
     }
     function tokensToFunction(tokens, delimiter, encode3) {
@@ -24106,9 +24106,9 @@ var require_dist = __commonJS({
         return encodeValue(value);
       };
     }
-    function match(path12, options = {}) {
+    function match(path14, options = {}) {
       const { decode: decode2 = decodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const { regexp, keys } = pathToRegexp(path12, options);
+      const { regexp, keys } = pathToRegexp(path14, options);
       const decoders = keys.map((key) => {
         if (decode2 === false)
           return NOOP_VALUE;
@@ -24120,7 +24120,7 @@ var require_dist = __commonJS({
         const m = regexp.exec(input);
         if (!m)
           return false;
-        const path13 = m[0];
+        const path15 = m[0];
         const params = /* @__PURE__ */ Object.create(null);
         for (let i = 1; i < m.length; i++) {
           if (m[i] === void 0)
@@ -24129,21 +24129,21 @@ var require_dist = __commonJS({
           const decoder2 = decoders[i - 1];
           params[key.name] = decoder2(m[i]);
         }
-        return { path: path13, params };
+        return { path: path15, params };
       };
     }
-    function pathToRegexp(path12, options = {}) {
+    function pathToRegexp(path14, options = {}) {
       const { delimiter = DEFAULT_DELIMITER, end = true, sensitive = false, trailing = true } = options;
       const keys = [];
       let source = "";
       let combinations = 0;
-      function process2(path13) {
-        if (Array.isArray(path13)) {
-          for (const p of path13)
+      function process2(path15) {
+        if (Array.isArray(path15)) {
+          for (const p of path15)
             process2(p);
           return;
         }
-        const data = typeof path13 === "object" ? path13 : parse(path13, options);
+        const data = typeof path15 === "object" ? path15 : parse(path15, options);
         flatten(data.tokens, 0, [], (tokens) => {
           if (combinations >= 256) {
             throw new PathError("Too many path combinations", data.originalPath);
@@ -24154,7 +24154,7 @@ var require_dist = __commonJS({
           combinations++;
         });
       }
-      process2(path12);
+      process2(path14);
       let pattern = `^(?:${source})`;
       if (trailing)
         pattern += "(?:" + escape2(delimiter) + "$)?";
@@ -24294,18 +24294,18 @@ var require_layer = __commonJS({
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
     module.exports = Layer;
-    function Layer(path12, options, fn) {
+    function Layer(path14, options, fn) {
       if (!(this instanceof Layer)) {
-        return new Layer(path12, options, fn);
+        return new Layer(path14, options, fn);
       }
-      debug("new %o", path12);
+      debug("new %o", path14);
       const opts = options || {};
       this.handle = fn;
       this.keys = [];
       this.name = fn.name || "<anonymous>";
       this.params = void 0;
       this.path = void 0;
-      this.slash = path12 === "/" && opts.end === false;
+      this.slash = path14 === "/" && opts.end === false;
       function matcher(_path) {
         if (_path instanceof RegExp) {
           const keys = [];
@@ -24344,7 +24344,7 @@ var require_layer = __commonJS({
           decode: decodeParam
         });
       }
-      this.matchers = Array.isArray(path12) ? path12.map(matcher) : [matcher(path12)];
+      this.matchers = Array.isArray(path14) ? path14.map(matcher) : [matcher(path14)];
     }
     Layer.prototype.handleError = function handleError(error, req, res, next) {
       const fn = this.handle;
@@ -24384,9 +24384,9 @@ var require_layer = __commonJS({
         next(err);
       }
     };
-    Layer.prototype.match = function match(path12) {
+    Layer.prototype.match = function match(path14) {
       let match2;
-      if (path12 != null) {
+      if (path14 != null) {
         if (this.slash) {
           this.params = {};
           this.path = "";
@@ -24394,7 +24394,7 @@ var require_layer = __commonJS({
         }
         let i = 0;
         while (!match2 && i < this.matchers.length) {
-          match2 = this.matchers[i](path12);
+          match2 = this.matchers[i](path14);
           i++;
         }
       }
@@ -24422,13 +24422,13 @@ var require_layer = __commonJS({
         throw err;
       }
     }
-    function loosen(path12) {
-      if (path12 instanceof RegExp || path12 === "/") {
-        return path12;
+    function loosen(path14) {
+      if (path14 instanceof RegExp || path14 === "/") {
+        return path14;
       }
-      return Array.isArray(path12) ? path12.map(function(p) {
+      return Array.isArray(path14) ? path14.map(function(p) {
         return loosen(p);
-      }) : String(path12).replace(TRAILING_SLASH_REGEXP, "");
+      }) : String(path14).replace(TRAILING_SLASH_REGEXP, "");
     }
   }
 });
@@ -24444,9 +24444,9 @@ var require_route = __commonJS({
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
     module.exports = Route;
-    function Route(path12) {
-      debug("new %o", path12);
-      this.path = path12;
+    function Route(path14) {
+      debug("new %o", path14);
+      this.path = path14;
       this.stack = [];
       this.methods = /* @__PURE__ */ Object.create(null);
     }
@@ -24567,27 +24567,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router24;
+    module.exports = Router25;
     module.exports.Route = Route;
-    function Router24(options) {
-      if (!(this instanceof Router24)) {
-        return new Router24(options);
+    function Router25(options) {
+      if (!(this instanceof Router25)) {
+        return new Router25(options);
       }
       const opts = options || {};
-      function router24(req, res, next) {
-        router24.handle(req, res, next);
+      function router25(req, res, next) {
+        router25.handle(req, res, next);
       }
-      Object.setPrototypeOf(router24, this);
-      router24.caseSensitive = opts.caseSensitive;
-      router24.mergeParams = opts.mergeParams;
-      router24.params = {};
-      router24.strict = opts.strict;
-      router24.stack = [];
-      return router24;
+      Object.setPrototypeOf(router25, this);
+      router25.caseSensitive = opts.caseSensitive;
+      router25.mergeParams = opts.mergeParams;
+      router25.params = {};
+      router25.strict = opts.strict;
+      router25.stack = [];
+      return router25;
     }
-    Router24.prototype = function() {
+    Router25.prototype = function() {
     };
-    Router24.prototype.param = function param2(name2, fn) {
+    Router25.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -24607,7 +24607,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router24.prototype.handle = function handle(req, res, callback) {
+    Router25.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -24654,8 +24654,8 @@ var require_router = __commonJS({
         if (++sync > 100) {
           return setImmediate(next, err);
         }
-        const path12 = getPathname(req);
-        if (path12 == null) {
+        const path14 = getPathname(req);
+        if (path14 == null) {
           return done(layerError);
         }
         let layer;
@@ -24663,7 +24663,7 @@ var require_router = __commonJS({
         let route;
         while (match !== true && idx < stack.length) {
           layer = stack[idx++];
-          match = matchLayer(layer, path12);
+          match = matchLayer(layer, path14);
           route = layer.route;
           if (typeof match !== "boolean") {
             layerError = layerError || match;
@@ -24701,18 +24701,18 @@ var require_router = __commonJS({
           } else if (route) {
             layer.handleRequest(req, res, next);
           } else {
-            trimPrefix(layer, layerError, layerPath, path12);
+            trimPrefix(layer, layerError, layerPath, path14);
           }
           sync = 0;
         });
       }
-      function trimPrefix(layer, layerError, layerPath, path12) {
+      function trimPrefix(layer, layerError, layerPath, path14) {
         if (layerPath.length !== 0) {
-          if (layerPath !== path12.substring(0, layerPath.length)) {
+          if (layerPath !== path14.substring(0, layerPath.length)) {
             next(layerError);
             return;
           }
-          const c = path12[layerPath.length];
+          const c = path14[layerPath.length];
           if (c && c !== "/") {
             next(layerError);
             return;
@@ -24734,9 +24734,9 @@ var require_router = __commonJS({
         }
       }
     };
-    Router24.prototype.use = function use(handler) {
+    Router25.prototype.use = function use(handler) {
       let offset = 0;
-      let path12 = "/";
+      let path14 = "/";
       if (typeof handler !== "function") {
         let arg = handler;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -24744,7 +24744,7 @@ var require_router = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path12 = handler;
+          path14 = handler;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -24756,8 +24756,8 @@ var require_router = __commonJS({
         if (typeof fn !== "function") {
           throw new TypeError("argument handler must be a function");
         }
-        debug("use %o %s", path12, fn.name || "<anonymous>");
-        const layer = new Layer(path12, {
+        debug("use %o %s", path14, fn.name || "<anonymous>");
+        const layer = new Layer(path14, {
           sensitive: this.caseSensitive,
           strict: false,
           end: false
@@ -24767,9 +24767,9 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router24.prototype.route = function route(path12) {
-      const route2 = new Route(path12);
-      const layer = new Layer(path12, {
+    Router25.prototype.route = function route(path14) {
+      const route2 = new Route(path14);
+      const layer = new Layer(path14, {
         sensitive: this.caseSensitive,
         strict: this.strict,
         end: true
@@ -24782,8 +24782,8 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router24.prototype[method] = function(path12) {
-        const route = this.route(path12);
+      Router25.prototype[method] = function(path14) {
+        const route = this.route(path14);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
@@ -24812,9 +24812,9 @@ var require_router = __commonJS({
       const fqdnIndex = url.substring(0, pathLength).indexOf("://");
       return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
-    function matchLayer(layer, path12) {
+    function matchLayer(layer, path14) {
       try {
-        return layer.match(path12);
+        return layer.match(path14);
       } catch (err) {
         return err;
       }
@@ -24965,13 +24965,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router24 = require_router();
+    var Router25 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router24 = null;
+      var router25 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -24980,13 +24980,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router24 === null) {
-            router24 = new Router24({
+          if (router25 === null) {
+            router25 = new Router25({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router24;
+          return router25;
         }
       });
     };
@@ -25042,7 +25042,7 @@ var require_application = __commonJS({
     };
     app2.use = function use(fn) {
       var offset = 0;
-      var path12 = "/";
+      var path14 = "/";
       if (typeof fn !== "function") {
         var arg = fn;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -25050,22 +25050,22 @@ var require_application = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path12 = fn;
+          path14 = fn;
         }
       }
       var fns = flatten.call(slice.call(arguments, offset), Infinity);
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router24 = this.router;
+      var router25 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router24.use(path12, fn2);
+          return router25.use(path14, fn2);
         }
-        debug(".use app under %s", path12);
-        fn2.mountpath = path12;
+        debug(".use app under %s", path14);
+        fn2.mountpath = path14;
         fn2.parent = this;
-        router24.use(path12, function mounted_app(req, res, next) {
+        router25.use(path14, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -25077,8 +25077,8 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app2.route = function route(path12) {
-      return this.router.route(path12);
+    app2.route = function route(path14) {
+      return this.router.route(path14);
     };
     app2.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
@@ -25121,7 +25121,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app2.path = function path12() {
+    app2.path = function path14() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
     app2.enabled = function enabled(setting) {
@@ -25137,17 +25137,17 @@ var require_application = __commonJS({
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app2[method] = function(path12) {
+      app2[method] = function(path14) {
         if (method === "get" && arguments.length === 1) {
-          return this.set(path12);
+          return this.set(path14);
         }
-        var route = this.route(path12);
+        var route = this.route(path14);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
     });
-    app2.all = function all(path12) {
-      var route = this.route(path12);
+    app2.all = function all(path14) {
+      var route = this.route(path14);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
         route[methods[i]].apply(route, args);
@@ -26057,7 +26057,7 @@ var require_request = __commonJS({
       var subdomains2 = !isIP(hostname2) ? hostname2.split(".").reverse() : [hostname2];
       return subdomains2.slice(offset);
     });
-    defineGetter(req, "path", function path12() {
+    defineGetter(req, "path", function path14() {
       return parse(this).pathname;
     });
     defineGetter(req, "host", function host() {
@@ -26461,35 +26461,35 @@ var require_send = __commonJS({
     var createError = require_http_errors();
     var debug = require_src()("send");
     var encodeUrl = require_encodeurl();
-    var escapeHtml6 = require_escape_html();
+    var escapeHtml5 = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
-    var fs3 = __require("fs");
+    var fs4 = __require("fs");
     var mime = require_mime_types();
     var ms = require_ms();
     var onFinished = require_on_finished();
     var parseRange = require_range_parser();
-    var path12 = __require("path");
+    var path14 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
     var util2 = __require("util");
-    var extname = path12.extname;
-    var join = path12.join;
-    var normalize = path12.normalize;
-    var resolve = path12.resolve;
-    var sep = path12.sep;
+    var extname = path14.extname;
+    var join = path14.join;
+    var normalize = path14.normalize;
+    var resolve = path14.resolve;
+    var sep = path14.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
     module.exports = send;
-    function send(req, path13, options) {
-      return new SendStream(req, path13, options);
+    function send(req, path15, options) {
+      return new SendStream(req, path15, options);
     }
-    function SendStream(req, path13, options) {
+    function SendStream(req, path15, options) {
       Stream.call(this);
       var opts = options || {};
       this.options = opts;
-      this.path = path13;
+      this.path = path15;
       this.req = req;
       this._acceptRanges = opts.acceptRanges !== void 0 ? Boolean(opts.acceptRanges) : true;
       this._cacheControl = opts.cacheControl !== void 0 ? Boolean(opts.cacheControl) : true;
@@ -26514,7 +26514,7 @@ var require_send = __commonJS({
       }
       var res = this.res;
       var msg = statuses.message[status] || String(status);
-      var doc = createHtmlDocument("Error", escapeHtml6(msg));
+      var doc = createHtmlDocument("Error", escapeHtml5(msg));
       clearHeaders(res);
       if (err && err.headers) {
         setHeaders(res, err.headers);
@@ -26603,10 +26603,10 @@ var require_send = __commonJS({
       var lastModified = this.res.getHeader("Last-Modified");
       return parseHttpDate(lastModified) <= parseHttpDate(ifRange);
     };
-    SendStream.prototype.redirect = function redirect(path13) {
+    SendStream.prototype.redirect = function redirect(path15) {
       var res = this.res;
       if (hasListeners(this, "directory")) {
-        this.emit("directory", res, path13);
+        this.emit("directory", res, path15);
         return;
       }
       if (this.hasTrailingSlash()) {
@@ -26614,7 +26614,7 @@ var require_send = __commonJS({
         return;
       }
       var loc = encodeUrl(collapseLeadingSlashes(this.path + "/"));
-      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml6(loc));
+      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml5(loc));
       res.statusCode = 301;
       res.setHeader("Content-Type", "text/html; charset=UTF-8");
       res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -26626,38 +26626,38 @@ var require_send = __commonJS({
     SendStream.prototype.pipe = function pipe(res) {
       var root = this._root;
       this.res = res;
-      var path13 = decode2(this.path);
-      if (path13 === -1) {
+      var path15 = decode2(this.path);
+      if (path15 === -1) {
         this.error(400);
         return res;
       }
-      if (~path13.indexOf("\0")) {
+      if (~path15.indexOf("\0")) {
         this.error(400);
         return res;
       }
       var parts;
       if (root !== null) {
-        if (path13) {
-          path13 = normalize("." + sep + path13);
+        if (path15) {
+          path15 = normalize("." + sep + path15);
         }
-        if (UP_PATH_REGEXP.test(path13)) {
-          debug('malicious path "%s"', path13);
+        if (UP_PATH_REGEXP.test(path15)) {
+          debug('malicious path "%s"', path15);
           this.error(403);
           return res;
         }
-        parts = path13.split(sep);
-        path13 = normalize(join(root, path13));
+        parts = path15.split(sep);
+        path15 = normalize(join(root, path15));
       } else {
-        if (UP_PATH_REGEXP.test(path13)) {
-          debug('malicious path "%s"', path13);
+        if (UP_PATH_REGEXP.test(path15)) {
+          debug('malicious path "%s"', path15);
           this.error(403);
           return res;
         }
-        parts = normalize(path13).split(sep);
-        path13 = resolve(path13);
+        parts = normalize(path15).split(sep);
+        path15 = resolve(path15);
       }
       if (containsDotFile(parts)) {
-        debug('%s dotfile "%s"', this._dotfiles, path13);
+        debug('%s dotfile "%s"', this._dotfiles, path15);
         switch (this._dotfiles) {
           case "allow":
             break;
@@ -26671,13 +26671,13 @@ var require_send = __commonJS({
         }
       }
       if (this._index.length && this.hasTrailingSlash()) {
-        this.sendIndex(path13);
+        this.sendIndex(path15);
         return res;
       }
-      this.sendFile(path13);
+      this.sendFile(path15);
       return res;
     };
-    SendStream.prototype.send = function send2(path13, stat) {
+    SendStream.prototype.send = function send2(path15, stat) {
       var len = stat.size;
       var options = this.options;
       var opts = {};
@@ -26689,9 +26689,9 @@ var require_send = __commonJS({
         this.headersAlreadySent();
         return;
       }
-      debug('pipe "%s"', path13);
-      this.setHeader(path13, stat);
-      this.type(path13);
+      debug('pipe "%s"', path15);
+      this.setHeader(path15, stat);
+      this.type(path15);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
           this.error(412);
@@ -26740,30 +26740,30 @@ var require_send = __commonJS({
         res.end();
         return;
       }
-      this.stream(path13, opts);
+      this.stream(path15, opts);
     };
-    SendStream.prototype.sendFile = function sendFile(path13) {
+    SendStream.prototype.sendFile = function sendFile(path15) {
       var i = 0;
       var self = this;
-      debug('stat "%s"', path13);
-      fs3.stat(path13, function onstat(err, stat) {
-        var pathEndsWithSep = path13[path13.length - 1] === sep;
-        if (err && err.code === "ENOENT" && !extname(path13) && !pathEndsWithSep) {
+      debug('stat "%s"', path15);
+      fs4.stat(path15, function onstat(err, stat) {
+        var pathEndsWithSep = path15[path15.length - 1] === sep;
+        if (err && err.code === "ENOENT" && !extname(path15) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path13);
+        if (stat.isDirectory()) return self.redirect(path15);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path13, stat);
-        self.send(path13, stat);
+        self.emit("file", path15, stat);
+        self.send(path15, stat);
       });
       function next(err) {
         if (self._extensions.length <= i) {
           return err ? self.onStatError(err) : self.error(404);
         }
-        var p = path13 + "." + self._extensions[i++];
+        var p = path15 + "." + self._extensions[i++];
         debug('stat "%s"', p);
-        fs3.stat(p, function(err2, stat) {
+        fs4.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self.emit("file", p, stat);
@@ -26771,7 +26771,7 @@ var require_send = __commonJS({
         });
       }
     };
-    SendStream.prototype.sendIndex = function sendIndex(path13) {
+    SendStream.prototype.sendIndex = function sendIndex(path15) {
       var i = -1;
       var self = this;
       function next(err) {
@@ -26779,9 +26779,9 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path13, self._index[i]);
+        var p = join(path15, self._index[i]);
         debug('stat "%s"', p);
-        fs3.stat(p, function(err2, stat) {
+        fs4.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self.emit("file", p, stat);
@@ -26790,10 +26790,10 @@ var require_send = __commonJS({
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path13, options) {
+    SendStream.prototype.stream = function stream(path15, options) {
       var self = this;
       var res = this.res;
-      var stream2 = fs3.createReadStream(path13, options);
+      var stream2 = fs4.createReadStream(path15, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -26808,17 +26808,17 @@ var require_send = __commonJS({
         self.emit("end");
       });
     };
-    SendStream.prototype.type = function type(path13) {
+    SendStream.prototype.type = function type(path15) {
       var res = this.res;
       if (res.getHeader("Content-Type")) return;
-      var ext = extname(path13);
+      var ext = extname(path15);
       var type2 = mime.contentType(ext) || "application/octet-stream";
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path13, stat) {
+    SendStream.prototype.setHeader = function setHeader(path15, stat) {
       var res = this.res;
-      this.emit("headers", res, path13, stat);
+      this.emit("headers", res, path15, stat);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -26876,9 +26876,9 @@ var require_send = __commonJS({
       }
       return err instanceof Error ? createError(status, err, { expose: false }) : createError(status, err);
     }
-    function decode2(path13) {
+    function decode2(path15) {
       try {
-        return decodeURIComponent(path13);
+        return decodeURIComponent(path15);
       } catch (err) {
         return -1;
       }
@@ -27018,11 +27018,11 @@ var require_response = __commonJS({
     var createError = require_http_errors();
     var deprecate = require_depd()("express");
     var encodeUrl = require_encodeurl();
-    var escapeHtml6 = require_escape_html();
+    var escapeHtml5 = require_escape_html();
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
-    var path12 = __require("node:path");
+    var path14 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
     var sign2 = require_cookie_signature().sign;
@@ -27031,8 +27031,8 @@ var require_response = __commonJS({
     var setCharset = require_utils3().setCharset;
     var cookie = require_cookie();
     var send = require_send();
-    var extname = path12.extname;
-    var resolve = path12.resolve;
+    var extname = path14.extname;
+    var resolve = path14.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = __require("node:buffer");
     var res = Object.create(http.ServerResponse.prototype);
@@ -27178,26 +27178,26 @@ var require_response = __commonJS({
       this.type("txt");
       return this.send(body);
     };
-    res.sendFile = function sendFile(path13, options, callback) {
+    res.sendFile = function sendFile(path15, options, callback) {
       var done = callback;
       var req = this.req;
       var res2 = this;
       var next = req.next;
       var opts = options || {};
-      if (!path13) {
+      if (!path15) {
         throw new TypeError("path argument is required to res.sendFile");
       }
-      if (typeof path13 !== "string") {
+      if (typeof path15 !== "string") {
         throw new TypeError("path must be a string to res.sendFile");
       }
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      if (!opts.root && !pathIsAbsolute(path13)) {
+      if (!opts.root && !pathIsAbsolute(path15)) {
         throw new TypeError("path must be absolute or specify root to res.sendFile");
       }
-      var pathname = encodeURI(path13);
+      var pathname = encodeURI(path15);
       opts.etag = this.app.enabled("etag");
       var file = send(req, pathname, opts);
       sendfile(res2, file, opts, function(err) {
@@ -27208,7 +27208,7 @@ var require_response = __commonJS({
         }
       });
     };
-    res.download = function download(path13, filename, options, callback) {
+    res.download = function download(path15, filename, options, callback) {
       var done = callback;
       var name2 = filename;
       var opts = options || null;
@@ -27225,7 +27225,7 @@ var require_response = __commonJS({
         opts = filename;
       }
       var headers = {
-        "Content-Disposition": contentDisposition(name2 || path13)
+        "Content-Disposition": contentDisposition(name2 || path15)
       };
       if (opts && opts.headers) {
         var keys = Object.keys(opts.headers);
@@ -27238,7 +27238,7 @@ var require_response = __commonJS({
       }
       opts = Object.create(opts);
       opts.headers = headers;
-      var fullPath = !opts.root ? resolve(path13) : path13;
+      var fullPath = !opts.root ? resolve(path15) : path15;
       return this.sendFile(fullPath, opts, done);
     };
     res.contentType = res.type = function contentType(type) {
@@ -27357,7 +27357,7 @@ var require_response = __commonJS({
           body = statuses.message[status] + ". Redirecting to " + address;
         },
         html: function() {
-          var u = escapeHtml6(address);
+          var u = escapeHtml5(address);
           body = "<p>" + statuses.message[status] + ". Redirecting to " + u + "</p>";
         },
         default: function() {
@@ -27485,7 +27485,7 @@ var require_serve_static = __commonJS({
   "../../node_modules/.pnpm/serve-static@2.2.1/node_modules/serve-static/index.js"(exports, module) {
     "use strict";
     var encodeUrl = require_encodeurl();
-    var escapeHtml6 = require_escape_html();
+    var escapeHtml5 = require_escape_html();
     var parseUrl = require_parseurl();
     var resolve = __require("path").resolve;
     var send = require_send();
@@ -27521,11 +27521,11 @@ var require_serve_static = __commonJS({
         }
         var forwardError = !fallthrough;
         var originalUrl = parseUrl.original(req);
-        var path12 = parseUrl(req).pathname;
-        if (path12 === "/" && originalUrl.pathname.substr(-1) !== "/") {
-          path12 = "";
+        var path14 = parseUrl(req).pathname;
+        if (path14 === "/" && originalUrl.pathname.substr(-1) !== "/") {
+          path14 = "";
         }
-        var stream = send(req, path12, opts);
+        var stream = send(req, path14, opts);
         stream.on("directory", onDirectory);
         if (setHeaders) {
           stream.on("headers", setHeaders);
@@ -27571,7 +27571,7 @@ var require_serve_static = __commonJS({
         originalUrl.path = null;
         originalUrl.pathname = collapseLeadingSlashes(originalUrl.pathname + "/");
         var loc = encodeUrl(url.format(originalUrl));
-        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml6(loc));
+        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml5(loc));
         res.statusCode = 301;
         res.setHeader("Content-Type", "text/html; charset=UTF-8");
         res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -27592,7 +27592,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router24 = require_router();
+    var Router25 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -27614,8 +27614,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router24.Route;
-    exports.Router = Router24;
+    exports.Route = Router25.Route;
+    exports.Router = Router25;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -27659,8 +27659,8 @@ var require_object_assign = __commonJS({
         for (var i = 0; i < 10; i++) {
           test2["_" + String.fromCharCode(i)] = i;
         }
-        var order2 = Object.getOwnPropertyNames(test2).map(function(n4) {
-          return test2[n4];
+        var order2 = Object.getOwnPropertyNames(test2).map(function(n5) {
+          return test2[n5];
         });
         if (order2.join("") !== "0123456789") {
           return false;
@@ -27828,7 +27828,7 @@ var require_lib3 = __commonJS({
         return null;
       }
       function applyHeaders(headers, res) {
-        for (var i = 0, n4 = headers.length; i < n4; i++) {
+        for (var i = 0, n5 = headers.length; i < n5; i++) {
           var header = headers[i];
           if (header) {
             if (Array.isArray(header)) {
@@ -28173,8 +28173,8 @@ var require_req = __commonJS({
       if (req.originalUrl) {
         _req.url = req.originalUrl;
       } else {
-        const path12 = req.path;
-        _req.url = typeof path12 === "string" ? path12 : req.url ? req.url.path || req.url : void 0;
+        const path14 = req.path;
+        _req.url = typeof path14 === "string" ? path14 : req.url ? req.url.path || req.url : void 0;
       }
       if (req.query) {
         _req.query = req.query;
@@ -28339,14 +28339,14 @@ var require_redact = __commonJS({
       }
       return obj;
     }
-    function parsePath(path12) {
+    function parsePath(path14) {
       const parts = [];
       let current = "";
       let inBrackets = false;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path12.length; i++) {
-        const char2 = path12[i];
+      for (let i = 0; i < path14.length; i++) {
+        const char2 = path14[i];
         if (!inBrackets && char2 === ".") {
           if (current) {
             parts.push(current);
@@ -28477,10 +28477,10 @@ var require_redact = __commonJS({
       return current;
     }
     function redactPaths(obj, paths, censor, remove = false) {
-      for (const path12 of paths) {
-        const parts = parsePath(path12);
+      for (const path14 of paths) {
+        const parts = parsePath(path14);
         if (parts.includes("*")) {
-          redactWildcardPath(obj, parts, censor, path12, remove);
+          redactWildcardPath(obj, parts, censor, path14, remove);
         } else {
           if (remove) {
             removeKey(obj, parts);
@@ -28565,8 +28565,8 @@ var require_redact = __commonJS({
           }
         } else {
           if (afterWildcard.includes("*")) {
-            const wrappedCensor = typeof censor === "function" ? (value, path12) => {
-              const fullPath = [...pathArray.slice(0, pathLength), ...path12];
+            const wrappedCensor = typeof censor === "function" ? (value, path14) => {
+              const fullPath = [...pathArray.slice(0, pathLength), ...path14];
               return censor(value, fullPath);
             } : censor;
             redactWildcardPath(current, afterWildcard, wrappedCensor, originalPath, remove);
@@ -28601,8 +28601,8 @@ var require_redact = __commonJS({
         return null;
       }
       const pathStructure = /* @__PURE__ */ new Map();
-      for (const path12 of pathsToClone) {
-        const parts = parsePath(path12);
+      for (const path14 of pathsToClone) {
+        const parts = parsePath(path14);
         let current = pathStructure;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -28654,24 +28654,24 @@ var require_redact = __commonJS({
       }
       return cloneSelectively(obj, pathStructure);
     }
-    function validatePath(path12) {
-      if (typeof path12 !== "string") {
+    function validatePath(path14) {
+      if (typeof path14 !== "string") {
         throw new Error("Paths must be (non-empty) strings");
       }
-      if (path12 === "") {
+      if (path14 === "") {
         throw new Error("Invalid redaction path ()");
       }
-      if (path12.includes("..")) {
-        throw new Error(`Invalid redaction path (${path12})`);
+      if (path14.includes("..")) {
+        throw new Error(`Invalid redaction path (${path14})`);
       }
-      if (path12.includes(",")) {
-        throw new Error(`Invalid redaction path (${path12})`);
+      if (path14.includes(",")) {
+        throw new Error(`Invalid redaction path (${path14})`);
       }
       let bracketCount = 0;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path12.length; i++) {
-        const char2 = path12[i];
+      for (let i = 0; i < path14.length; i++) {
+        const char2 = path14[i];
         if ((char2 === '"' || char2 === "'") && bracketCount > 0) {
           if (!inQuotes) {
             inQuotes = true;
@@ -28685,20 +28685,20 @@ var require_redact = __commonJS({
         } else if (char2 === "]" && !inQuotes) {
           bracketCount--;
           if (bracketCount < 0) {
-            throw new Error(`Invalid redaction path (${path12})`);
+            throw new Error(`Invalid redaction path (${path14})`);
           }
         }
       }
       if (bracketCount !== 0) {
-        throw new Error(`Invalid redaction path (${path12})`);
+        throw new Error(`Invalid redaction path (${path14})`);
       }
     }
     function validatePaths(paths) {
       if (!Array.isArray(paths)) {
         throw new TypeError("paths must be an array");
       }
-      for (const path12 of paths) {
-        validatePath(path12);
+      for (const path14 of paths) {
+        validatePath(path14);
       }
     }
     function slowRedact(options = {}) {
@@ -28866,8 +28866,8 @@ var require_redaction = __commonJS({
         if (shape[k] === null) {
           o[k] = (value) => topCensor(value, [k]);
         } else {
-          const wrappedCensor = typeof censor === "function" ? (value, path12) => {
-            return censor(value, [k, ...path12]);
+          const wrappedCensor = typeof censor === "function" ? (value, path14) => {
+            return censor(value, [k, ...path14]);
           } : censor;
           o[k] = Redact({
             paths: shape[k],
@@ -29085,10 +29085,10 @@ var require_atomic_sleep = __commonJS({
 var require_sonic_boom = __commonJS({
   "../../node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js"(exports, module) {
     "use strict";
-    var fs3 = __require("fs");
+    var fs4 = __require("fs");
     var EventEmitter = __require("events");
     var inherits = __require("util").inherits;
-    var path12 = __require("path");
+    var path14 = __require("path");
     var sleep = require_atomic_sleep();
     var assert = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
@@ -29142,27 +29142,27 @@ var require_sonic_boom = __commonJS({
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
-          if (sonic.mkdir) fs3.mkdirSync(path12.dirname(file), { recursive: true });
-          const fd = fs3.openSync(file, flags, mode);
+          if (sonic.mkdir) fs4.mkdirSync(path14.dirname(file), { recursive: true });
+          const fd = fs4.openSync(file, flags, mode);
           fileOpened(null, fd);
         } catch (err) {
           fileOpened(err);
           throw err;
         }
       } else if (sonic.mkdir) {
-        fs3.mkdir(path12.dirname(file), { recursive: true }, (err) => {
+        fs4.mkdir(path14.dirname(file), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
-          fs3.open(file, flags, mode, fileOpened);
+          fs4.open(file, flags, mode, fileOpened);
         });
       } else {
-        fs3.open(file, flags, mode, fileOpened);
+        fs4.open(file, flags, mode, fileOpened);
       }
     }
     function SonicBoom(opts) {
       if (!(this instanceof SonicBoom)) {
         return new SonicBoom(opts);
       }
-      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir7, retryEAGAIN, fsync, contentMode, mode } = opts || {};
+      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir8, retryEAGAIN, fsync, contentMode, mode } = opts || {};
       fd = fd || dest;
       this._len = 0;
       this.fd = -1;
@@ -29187,7 +29187,7 @@ var require_sonic_boom = __commonJS({
       this.append = append || false;
       this.mode = mode;
       this.retryEAGAIN = retryEAGAIN || (() => true);
-      this.mkdir = mkdir7 || false;
+      this.mkdir = mkdir8 || false;
       let fsWriteSync;
       let fsWrite;
       if (contentMode === kContentModeBuffer) {
@@ -29196,8 +29196,8 @@ var require_sonic_boom = __commonJS({
         this.flush = flushBuffer;
         this.flushSync = flushBufferSync;
         this._actualWrite = actualWriteBuffer;
-        fsWriteSync = () => fs3.writeSync(this.fd, this._writingBuf);
-        fsWrite = () => fs3.write(this.fd, this._writingBuf, this.release);
+        fsWriteSync = () => fs4.writeSync(this.fd, this._writingBuf);
+        fsWrite = () => fs4.write(this.fd, this._writingBuf, this.release);
       } else if (contentMode === void 0 || contentMode === kContentModeUtf8) {
         this._writingBuf = "";
         this.write = write;
@@ -29206,15 +29206,15 @@ var require_sonic_boom = __commonJS({
         this._actualWrite = actualWrite;
         fsWriteSync = () => {
           if (Buffer.isBuffer(this._writingBuf)) {
-            return fs3.writeSync(this.fd, this._writingBuf);
+            return fs4.writeSync(this.fd, this._writingBuf);
           }
-          return fs3.writeSync(this.fd, this._writingBuf, "utf8");
+          return fs4.writeSync(this.fd, this._writingBuf, "utf8");
         };
         fsWrite = () => {
           if (Buffer.isBuffer(this._writingBuf)) {
-            return fs3.write(this.fd, this._writingBuf, this.release);
+            return fs4.write(this.fd, this._writingBuf, this.release);
           }
-          return fs3.write(this.fd, this._writingBuf, "utf8", this.release);
+          return fs4.write(this.fd, this._writingBuf, "utf8", this.release);
         };
       } else {
         throw new Error(`SonicBoom supports "${kContentModeUtf8}" and "${kContentModeBuffer}", but passed ${contentMode}`);
@@ -29230,7 +29230,7 @@ var require_sonic_boom = __commonJS({
       if (this.minLength >= this.maxWrite) {
         throw new Error(`minLength should be smaller than maxWrite (${this.maxWrite})`);
       }
-      this.release = (err, n4) => {
+      this.release = (err, n5) => {
         if (err) {
           if ((err.code === "EAGAIN" || err.code === "EBUSY") && this.retryEAGAIN(err, this._writingBuf.length, this._len - this._writingBuf.length)) {
             if (this.sync) {
@@ -29249,8 +29249,8 @@ var require_sonic_boom = __commonJS({
           }
           return;
         }
-        this.emit("write", n4);
-        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n4);
+        this.emit("write", n5);
+        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n5);
         this._len = releasedBufObj.len;
         this._writingBuf = releasedBufObj.writingBuf;
         if (this._writingBuf.length) {
@@ -29260,8 +29260,8 @@ var require_sonic_boom = __commonJS({
           }
           try {
             do {
-              const n5 = fsWriteSync();
-              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n5);
+              const n6 = fsWriteSync();
+              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n6);
               this._len = releasedBufObj2.len;
               this._writingBuf = releasedBufObj2.writingBuf;
             } while (this._writingBuf.length);
@@ -29271,7 +29271,7 @@ var require_sonic_boom = __commonJS({
           }
         }
         if (this._fsync) {
-          fs3.fsyncSync(this.fd);
+          fs4.fsyncSync(this.fd);
         }
         const len = this._len;
         if (this._reopening) {
@@ -29309,12 +29309,12 @@ var require_sonic_boom = __commonJS({
         this._periodicFlushTimer.unref();
       }
     }
-    function releaseWritingBuf(writingBuf, len, n4) {
+    function releaseWritingBuf(writingBuf, len, n5) {
       if (typeof writingBuf === "string") {
         writingBuf = Buffer.from(writingBuf);
       }
-      len = Math.max(len - n4, 0);
-      writingBuf = writingBuf.subarray(n4);
+      len = Math.max(len - n5, 0);
+      writingBuf = writingBuf.subarray(n5);
       return { writingBuf, len };
     }
     function emitDrain(sonic) {
@@ -29385,7 +29385,7 @@ var require_sonic_boom = __commonJS({
       const onDrain = () => {
         if (!this._fsync) {
           try {
-            fs3.fsync(this.fd, (err) => {
+            fs4.fsync(this.fd, (err) => {
               this._flushPending = false;
               cb(err);
             });
@@ -29487,7 +29487,7 @@ var require_sonic_boom = __commonJS({
       const fd = this.fd;
       this.once("ready", () => {
         if (fd !== this.fd) {
-          fs3.close(fd, (err) => {
+          fs4.close(fd, (err) => {
             if (err) {
               return this.emit("error", err);
             }
@@ -29536,8 +29536,8 @@ var require_sonic_boom = __commonJS({
           buf = this._bufs[0];
         }
         try {
-          const n4 = Buffer.isBuffer(buf) ? fs3.writeSync(this.fd, buf) : fs3.writeSync(this.fd, buf, "utf8");
-          const releasedBufObj = releaseWritingBuf(buf, this._len, n4);
+          const n5 = Buffer.isBuffer(buf) ? fs4.writeSync(this.fd, buf) : fs4.writeSync(this.fd, buf, "utf8");
+          const releasedBufObj = releaseWritingBuf(buf, this._len, n5);
           buf = releasedBufObj.writingBuf;
           this._len = releasedBufObj.len;
           if (buf.length <= 0) {
@@ -29552,7 +29552,7 @@ var require_sonic_boom = __commonJS({
         }
       }
       try {
-        fs3.fsyncSync(this.fd);
+        fs4.fsyncSync(this.fd);
       } catch {
       }
     }
@@ -29573,9 +29573,9 @@ var require_sonic_boom = __commonJS({
           buf = mergeBuf(this._bufs[0], this._lens[0]);
         }
         try {
-          const n4 = fs3.writeSync(this.fd, buf);
-          buf = buf.subarray(n4);
-          this._len = Math.max(this._len - n4, 0);
+          const n5 = fs4.writeSync(this.fd, buf);
+          buf = buf.subarray(n5);
+          this._len = Math.max(this._len - n5, 0);
           if (buf.length <= 0) {
             this._bufs.shift();
             this._lens.shift();
@@ -29601,13 +29601,13 @@ var require_sonic_boom = __commonJS({
       this._writingBuf = this._writingBuf.length ? this._writingBuf : this._bufs.shift() || "";
       if (this.sync) {
         try {
-          const written = Buffer.isBuffer(this._writingBuf) ? fs3.writeSync(this.fd, this._writingBuf) : fs3.writeSync(this.fd, this._writingBuf, "utf8");
+          const written = Buffer.isBuffer(this._writingBuf) ? fs4.writeSync(this.fd, this._writingBuf) : fs4.writeSync(this.fd, this._writingBuf, "utf8");
           release(null, written);
         } catch (err) {
           release(err);
         }
       } else {
-        fs3.write(this.fd, this._writingBuf, release);
+        fs4.write(this.fd, this._writingBuf, release);
       }
     }
     function actualWriteBuffer() {
@@ -29616,7 +29616,7 @@ var require_sonic_boom = __commonJS({
       this._writingBuf = this._writingBuf.length ? this._writingBuf : mergeBuf(this._bufs.shift(), this._lens.shift());
       if (this.sync) {
         try {
-          const written = fs3.writeSync(this.fd, this._writingBuf);
+          const written = fs4.writeSync(this.fd, this._writingBuf);
           release(null, written);
         } catch (err) {
           release(err);
@@ -29625,7 +29625,7 @@ var require_sonic_boom = __commonJS({
         if (kCopyBuffer) {
           this._writingBuf = Buffer.from(this._writingBuf);
         }
-        fs3.write(this.fd, this._writingBuf, release);
+        fs4.write(this.fd, this._writingBuf, release);
       }
     }
     function actualClose(sonic) {
@@ -29641,12 +29641,12 @@ var require_sonic_boom = __commonJS({
       sonic._lens = [];
       assert(typeof sonic.fd === "number", `sonic.fd must be a number, got ${typeof sonic.fd}`);
       try {
-        fs3.fsync(sonic.fd, closeWrapped);
+        fs4.fsync(sonic.fd, closeWrapped);
       } catch {
       }
       function closeWrapped() {
         if (sonic.fd !== 1 && sonic.fd !== 2) {
-          fs3.close(sonic.fd, done);
+          fs4.close(sonic.fd, done);
         } else {
           done();
         }
@@ -30497,7 +30497,7 @@ var require_tools = __commonJS({
       return function hookWrappedLog(...args) {
         hook.call(this, args, LOG, level);
       };
-      function LOG(o, ...n4) {
+      function LOG(o, ...n5) {
         if (typeof o === "object") {
           let msg = o;
           if (o !== null) {
@@ -30508,22 +30508,22 @@ var require_tools = __commonJS({
             }
           }
           let formatParams;
-          if (msg === null && n4.length === 0) {
+          if (msg === null && n5.length === 0) {
             formatParams = [null];
           } else {
-            msg = n4.shift();
-            formatParams = n4;
+            msg = n5.shift();
+            formatParams = n5;
           }
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
           this[writeSym](o, format(msg, formatParams, this[formatOptsSym]), level);
         } else {
-          let msg = o === void 0 ? n4.shift() : o;
+          let msg = o === void 0 ? n5.shift() : o;
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
-          this[writeSym](null, format(msg, n4, this[formatOptsSym]), level);
+          this[writeSym](null, format(msg, n5, this[formatOptsSym]), level);
         }
       }
     }
@@ -31081,7 +31081,7 @@ var require_proto = __commonJS({
       get levelVal() {
         return this[levelValSym];
       },
-      set levelVal(n4) {
+      set levelVal(n5) {
         throw Error("levelVal is read-only");
       },
       get msgPrefix() {
@@ -32010,9 +32010,9 @@ var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
-        const path12 = __require("path");
+        const path14 = __require("path");
         const outputDir = "/Users/vedo/Downloads/imoove/artifacts/api-server/dist";
-        return path12.resolve(outputDir, p.replace(/^\.\//, ""));
+        return path14.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
         return f(p);
@@ -34007,7 +34007,7 @@ var init_query_promise = __esm({
 function mapResultRow(columns, row, joinsNotNullableMap) {
   const nullifyMap = {};
   const result = columns.reduce(
-    (result2, { path: path12, field }, columnIndex) => {
+    (result2, { path: path14, field }, columnIndex) => {
       let decoder2;
       if (is(field, Column)) {
         decoder2 = field;
@@ -34019,8 +34019,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         decoder2 = field.sql.decoder;
       }
       let node = result2;
-      for (const [pathChunkIndex, pathChunk] of path12.entries()) {
-        if (pathChunkIndex < path12.length - 1) {
+      for (const [pathChunkIndex, pathChunk] of path14.entries()) {
+        if (pathChunkIndex < path14.length - 1) {
           if (!(pathChunk in node)) {
             node[pathChunk] = {};
           }
@@ -34028,8 +34028,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         } else {
           const rawValue = row[columnIndex];
           const value = node[pathChunk] = rawValue === null ? null : decoder2.mapFromDriverValue(rawValue);
-          if (joinsNotNullableMap && is(field, Column) && path12.length === 2) {
-            const objectName = path12[0];
+          if (joinsNotNullableMap && is(field, Column) && path14.length === 2) {
+            const objectName = path14[0];
             if (!(objectName in nullifyMap)) {
               nullifyMap[objectName] = value === null ? getTableName(field.table) : false;
             } else if (typeof nullifyMap[objectName] === "string" && nullifyMap[objectName] !== getTableName(field.table)) {
@@ -37128,13 +37128,13 @@ var init_dialect = __esm({
         return sql2`${withSql}delete from ${table}${whereSql}${returningSql}`;
       }
       buildUpdateSet(table, set) {
-        const tableColumns = table[Table.Symbol.Columns];
-        const columnNames = Object.keys(tableColumns).filter(
-          (colName) => set[colName] !== void 0 || tableColumns[colName]?.onUpdateFn !== void 0
+        const tableColumns2 = table[Table.Symbol.Columns];
+        const columnNames = Object.keys(tableColumns2).filter(
+          (colName) => set[colName] !== void 0 || tableColumns2[colName]?.onUpdateFn !== void 0
         );
         const setSize = columnNames.length;
         return sql2.join(columnNames.flatMap((colName, i) => {
-          const col = tableColumns[colName];
+          const col = tableColumns2[colName];
           const onUpdateFnResult = col.onUpdateFn?.();
           const value = set[colName] ?? (is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql2.param(onUpdateFnResult, col));
           const res = sql2`${sql2.identifier(this.casing.getColumnCasing(col))} = ${value}`;
@@ -41231,6 +41231,7 @@ __export(schema_exports, {
   insurerCostCentersTable: () => insurerCostCentersTable,
   insurerRideTransportDocumentsTable: () => insurerRideTransportDocumentsTable,
   invoiceItemsTable: () => invoiceItemsTable,
+  invoiceNumberSequencesTable: () => invoiceNumberSequencesTable,
   invoicesTable: () => invoicesTable,
   medicalCasesTable: () => medicalCasesTable,
   medicalDocumentExtractionsTable: () => medicalDocumentExtractionsTable,
@@ -41256,7 +41257,7 @@ __export(schema_exports, {
   supportMessagesTable: () => supportMessagesTable,
   supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, customerMedicalTransportScansTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
+var adminCompaniesTable, invoiceNumberSequencesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, customerMedicalTransportScansTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41322,8 +41323,26 @@ var init_schema2 = __esm({
       /** Institutionskennzeichen (IK) des Partners — Snapshot in medical_cases. */
       partner_ik_number: text("partner_ik_number").notNull().default(""),
       /** ONRODA-Admin: Krankenfahrten + Transportschein-Scanner für diesen Mandanten. */
-      medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false)
+      medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
+      /** Öffentlicher Mandanten-Code (eindeutig), nicht company_id. */
+      company_code: text("company_code").notNull().default(""),
+      /** Segment ONR-{invoice_prefix}-YYYY-MM-SEQ (z. B. HOT, MED). */
+      invoice_prefix: text("invoice_prefix").notNull().default(""),
+      /** Reserve; Laufnummer in invoice_number_sequences. */
+      invoice_sequence_next: integer("invoice_sequence_next").notNull().default(1)
     });
+    invoiceNumberSequencesTable = pgTable(
+      "invoice_number_sequences",
+      {
+        invoice_prefix: text("invoice_prefix").notNull(),
+        period_ym: text("period_ym").notNull(),
+        next_value: integer("next_value").notNull().default(1),
+        updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+      },
+      (t) => ({
+        pk: primaryKey({ columns: [t.invoice_prefix, t.period_ym] })
+      })
+    );
     fleetDriversTable = pgTable("fleet_drivers", {
       id: text("id").primaryKey(),
       company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
@@ -41815,6 +41834,8 @@ var init_schema2 = __esm({
       issue_date: date("issue_date").notNull(),
       due_date: date("due_date"),
       status: text("status").notNull().default("draft"),
+      /** SEPA-Verwendungszweck (= invoice_number, siehe buildInvoicePaymentReference). */
+      payment_reference: text("payment_reference").notNull().default(""),
       pdf_storage_key: text("pdf_storage_key").notNull().default(""),
       metadata_json: jsonb("metadata_json").$type().notNull().default({}),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -42579,9 +42600,9 @@ async function insertAccessCodeAdmin(body) {
     const maxAttempts = 12;
     for (let a = 0; a < maxAttempts; a += 1) {
       const plain = generateAccessCodePlain(12);
-      const n4 = normalizeAccessCodeInput(plain);
+      const n5 = normalizeAccessCodeInput(plain);
       const ins = await insertAccessCodeRow({
-        normalized: n4,
+        normalized: n5,
         codeType: body.codeType,
         companyId,
         label,
@@ -44065,15 +44086,31 @@ function readTariffSnapshotGrossEur(ride) {
   if (!Number.isFinite(v) || v < 0) return null;
   return roundMoney(v);
 }
+function isCompletedTaxiRide(ride) {
+  if (ride.status !== "completed") return false;
+  const mode = ride.pricingMode ?? "taxi_tariff";
+  return mode === "taxi_tariff" || mode === "hybrid" || mode == null;
+}
 function effectiveTaxiGrossEur(ride) {
+  const finalFare = ride.finalFare;
+  if (isCompletedTaxiRide(ride) && finalFare != null && Number.isFinite(Number(finalFare))) {
+    return roundMoney(Math.max(0, Number(finalFare)));
+  }
   const fromSnap = readTariffSnapshotGrossEur(ride);
   if (fromSnap !== null) return fromSnap;
   return roundMoney(
     toSafeNonNegative(
-      Number.isFinite(Number(ride.finalFare)) ? Number(ride.finalFare) : Number(ride.estimatedFare),
+      Number.isFinite(Number(finalFare)) ? Number(finalFare) : Number(ride.estimatedFare),
       0
     )
   );
+}
+function resolveGrossSource(ride, usedSnapshot) {
+  if (isCompletedTaxiRide(ride) && ride.finalFare != null && Number.isFinite(Number(ride.finalFare))) {
+    return "taxameter_final_fare";
+  }
+  if (usedSnapshot) return "tariff_snapshot";
+  return "legacy_final_or_estimate";
 }
 function derivePayerType(ride) {
   if (ride.partnerBookingMeta?.flow === "hotel_guest") return "hotel";
@@ -44105,8 +44142,8 @@ function deriveInitialSettlementStatus(ride) {
 function calculateRideFinancialsV1(input) {
   const { ride } = input;
   const pricingContext = input.pricingContext ?? null;
-  const grossFromSnapshot = readTariffSnapshotGrossEur(ride) !== null;
   const grossAmount = effectiveTaxiGrossEur(ride);
+  const grossFromSnapshot = !isCompletedTaxiRide(ride) || ride.finalFare == null || !Number.isFinite(Number(ride.finalFare)) ? readTariffSnapshotGrossEur(ride) !== null : false;
   const vatRate = toSafeNonNegative(pricingContext?.vatRate ?? DEFAULT_VAT_RATE, DEFAULT_VAT_RATE);
   const netAmount = roundMoney(grossAmount / (1 + vatRate));
   const vatAmount = roundMoney(grossAmount - netAmount);
@@ -44144,7 +44181,7 @@ function calculateRideFinancialsV1(input) {
       payerKind: ride.payerKind,
       initialBillingStatus: deriveInitialBillingStatus(ride),
       initialSettlementStatus: deriveInitialSettlementStatus(ride),
-      grossSource: grossFromSnapshot ? "tariff_snapshot" : "legacy_final_or_estimate",
+      grossSource: resolveGrossSource(ride, grossFromSnapshot),
       ...ride.tariffSnapshot && typeof ride.tariffSnapshot === "object" ? { tariffSnapshot: ride.tariffSnapshot } : {}
     }
   };
@@ -44962,6 +44999,99 @@ var init_panelModules = __esm({
   }
 });
 
+// src/lib/invoiceNumbering.ts
+var invoiceNumbering_exports = {};
+__export(invoiceNumbering_exports, {
+  INVOICE_NUMBER_BRAND: () => INVOICE_NUMBER_BRAND,
+  billingPeriodYearMonth: () => billingPeriodYearMonth,
+  defaultInvoicePrefixForCompanyKind: () => defaultInvoicePrefixForCompanyKind,
+  formatInvoiceNumber: () => formatInvoiceNumber,
+  lookupInvoiceNumberParts: () => lookupInvoiceNumberParts,
+  normalizeCompanyCode: () => normalizeCompanyCode,
+  normalizeInvoicePrefix: () => normalizeInvoicePrefix,
+  parseInvoiceNumber: () => parseInvoiceNumber,
+  resolveCompanyInvoicePrefix: () => resolveCompanyInvoicePrefix,
+  validateCompanyCode: () => validateCompanyCode,
+  validateInvoicePrefix: () => validateInvoicePrefix
+});
+function defaultInvoicePrefixForCompanyKind(companyKind) {
+  const k = String(companyKind ?? "").trim().toLowerCase();
+  return KIND_DEFAULT_PREFIX[k] ?? "GEN";
+}
+function normalizeInvoicePrefix(raw) {
+  return String(raw ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+}
+function normalizeCompanyCode(raw) {
+  return String(raw ?? "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 16);
+}
+function billingPeriodYearMonth(isoDate) {
+  const t = String(isoDate ?? "").trim();
+  const m = t.match(/^(\d{4})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}`;
+  const d = new Date(t.includes("T") ? t : `${t}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+function formatInvoiceNumber(prefix, periodYm, sequence) {
+  const p = normalizeInvoicePrefix(prefix);
+  const [y, mo] = periodYm.split("-");
+  if (!p || !y || !mo) {
+    throw new Error("invalid_invoice_number_parts");
+  }
+  const seq = Math.max(1, Math.floor(sequence));
+  if (seq > 999) {
+    throw new Error("invoice_sequence_overflow");
+  }
+  return `${INVOICE_NUMBER_BRAND}-${p}-${y}-${mo}-${String(seq).padStart(3, "0")}`;
+}
+function parseInvoiceNumber(invoiceNumber) {
+  const m = String(invoiceNumber ?? "").trim().match(/^ONR-([A-Z0-9]{2,8})-(\d{4})-(\d{2})-(\d{3})$/);
+  if (!m) return null;
+  return {
+    invoiceNumber: invoiceNumber.trim(),
+    invoicePrefix: m[1],
+    periodYm: `${m[2]}-${m[3]}`,
+    sequence: Number(m[4])
+  };
+}
+function resolveCompanyInvoicePrefix(storedPrefix, companyKind) {
+  const normalized = normalizeInvoicePrefix(storedPrefix ?? "");
+  if (normalized) return normalized;
+  return defaultInvoicePrefixForCompanyKind(companyKind);
+}
+function validateCompanyCode(raw) {
+  const code = normalizeCompanyCode(raw);
+  if (code.length < 2) return { ok: false, error: "company_code_too_short" };
+  if (code.length > 16) return { ok: false, error: "company_code_too_long" };
+  if (!COMPANY_CODE_RE.test(code)) return { ok: false, error: "company_code_invalid" };
+  return { ok: true, code };
+}
+function validateInvoicePrefix(raw) {
+  const prefix = normalizeInvoicePrefix(raw);
+  if (prefix.length < 2) return { ok: false, error: "invoice_prefix_too_short" };
+  if (prefix.length > 8) return { ok: false, error: "invoice_prefix_too_long" };
+  return { ok: true, prefix };
+}
+function lookupInvoiceNumberParts(invoiceNumber) {
+  return parseInvoiceNumber(invoiceNumber);
+}
+var INVOICE_NUMBER_BRAND, KIND_DEFAULT_PREFIX, COMPANY_CODE_RE;
+var init_invoiceNumbering = __esm({
+  "src/lib/invoiceNumbering.ts"() {
+    INVOICE_NUMBER_BRAND = "ONR";
+    KIND_DEFAULT_PREFIX = {
+      hotel: "HOT",
+      corporate: "COR",
+      medical: "MED",
+      insurer: "MED",
+      taxi: "TAX",
+      voucher_client: "VCH",
+      general: "GEN"
+    };
+    COMPANY_CODE_RE = /^[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?$/;
+  }
+});
+
 // src/lib/logger.ts
 var import_pino, isProduction, logger;
 var init_logger2 = __esm({
@@ -45072,7 +45202,8 @@ __export(operationalTariffEngine_exports, {
   mergedTariffToPublicProfile: () => mergedTariffToPublicProfile,
   pickTariffSliceForVehicleClass: () => pickTariffSliceForVehicleClass,
   resolveMergedTariff: () => resolveMergedTariff,
-  resolveTripEurPerRouteMinute: () => resolveTripEurPerRouteMinute
+  resolveTripEurPerRouteMinute: () => resolveTripEurPerRouteMinute,
+  resolveXlPricingConfig: () => resolveXlPricingConfig
 });
 function isPlainTariffObject(x) {
   return x !== null && typeof x === "object" && !Array.isArray(x);
@@ -45173,31 +45304,54 @@ function applyRounding(raw, mode) {
     return Math.floor((raw + Number.EPSILON) * 10) / 10;
   return ceilTenthEur(raw);
 }
-function estimateTaxiFromMergedTariff(merged, in_) {
-  const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
-  const m = pickTariffSliceForVehicleClass(merged, vClass);
+function resolveXlPricingConfig(merged) {
+  const multRaw = isPlainTariffObject(merged.vehicleClassMultipliers) ? merged.vehicleClassMultipliers : {};
+  const configuredMult = n(multRaw.xl, 1);
+  let fixedEur = Math.max(0, n(merged.xlFixedSurchargeEur, 0));
+  const lvs = isPlainTariffObject(merged.largeVehicleSurcharge) ? merged.largeVehicleSurcharge : {};
+  const legacyAdminXlAmount = Math.max(0, n(lvs.amountEur, 0));
+  if (fixedEur <= 0 && legacyAdminXlAmount > 0) {
+    fixedEur = legacyAdminXlAmount;
+  }
+  let mode = String(merged.xlPricingMode || "").trim().toLowerCase();
+  if (mode !== "fixed" && mode !== "multiplier" && mode !== "both") {
+    mode = fixedEur > 0 ? "fixed" : configuredMult !== 1 ? "multiplier" : "fixed";
+  }
+  let multiplier = 1;
+  if (mode === "multiplier" || mode === "both") {
+    multiplier = configuredMult > 0 ? configuredMult : 1;
+  }
+  if (mode === "multiplier") {
+    return { mode, fixedEur: 0, multiplier };
+  }
+  if (mode === "both") {
+    return { mode, fixedEur, multiplier };
+  }
+  return { mode: "fixed", fixedEur, multiplier: 1 };
+}
+function vehicleClassMultiplierFor(merged, vClass, xlCfg) {
+  if (vClass === "xl" && xlCfg) {
+    return xlCfg.multiplier;
+  }
   const multRaw = isPlainTariffObject(merged.vehicleClassMultipliers) ? merged.vehicleClassMultipliers : {
     standard: 1,
-    xl: 1.2,
+    xl: 1,
     wheelchair: 1.15,
     onroda: 1
   };
-  let vehicleClassMultiplier = n(
-    multRaw[vClass] ?? (typeof multRaw["standard"] === "number" ? multRaw["standard"] : 1),
+  return n(
+    multRaw[vClass] ?? (typeof multRaw.standard === "number" ? multRaw.standard : 1),
     1
   );
-  let xlFixedEur = 0;
-  if (vClass === "xl") {
-    const mode = String(merged.xlPricingMode || "multiplier").trim().toLowerCase();
-    const fix = Math.max(0, n(merged.xlFixedSurchargeEur, 0));
-    if (mode === "fixed") {
-      vehicleClassMultiplier = 1;
-      xlFixedEur = fix;
-    } else if (mode === "both") {
-      xlFixedEur = fix;
-    }
-  }
-  const wheelchairFixedEur = vClass === "wheelchair" ? Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) : 0;
+}
+function estimateTaxiFromMergedTariff(merged, in_) {
+  const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
+  const xlCfg = vClass === "xl" ? resolveXlPricingConfig(merged) : null;
+  const tariffSliceClass = xlCfg?.mode === "fixed" ? "standard" : vClass;
+  const m = pickTariffSliceForVehicleClass(merged, tariffSliceClass);
+  const vehicleClassMultiplier = vehicleClassMultiplierFor(merged, vClass, xlCfg);
+  const xlFixedEur = xlCfg && xlCfg.mode !== "multiplier" ? xlCfg.fixedEur : 0;
+  const wheelchairFixedEur = vClass === "wheelchair" ? Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) + Math.max(0, n(m.surchargeEur, 0)) : 0;
   if (m.active === false) {
     return {
       subtotal: 0,
@@ -45281,10 +45435,15 @@ function estimateTaxiFromMergedTariff(merged, in_) {
   const minPassengers = Math.max(1, Math.round(n(largeRaw.minPassengers, 5)));
   const largeAmount = Math.max(0, n(largeRaw.amountEur, 0));
   const passengerCountRaw = in_.passengerCount;
-  const inferredPassengerCount = Number.isFinite(passengerCountRaw) && Number(passengerCountRaw) > 0 ? Math.round(Number(passengerCountRaw)) : vClass === "xl" ? minPassengers : 1;
-  if (largeAmount > 0 && inferredPassengerCount >= minPassengers) {
+  const passengerCountExplicit = passengerCountRaw != null && Number.isFinite(Number(passengerCountRaw)) && Number(passengerCountRaw) > 0;
+  const passengerCount = passengerCountExplicit ? Math.round(Number(passengerCountRaw)) : 1;
+  const skipLargeVehicleForXlFixed = vClass === "xl" && xlCfg?.mode === "fixed" && !passengerCountExplicit;
+  if (largeAmount > 0 && passengerCount >= minPassengers && !skipLargeVehicleForXlFixed) {
     withExtra += largeAmount;
     sur.push({ type: "large_vehicle", amount: largeAmount });
+  }
+  if (xlFixedEur > 0) {
+    sur.push({ type: "xl_vehicle", amount: xlFixedEur });
   }
   const withVehicle = withExtra * vehicleClassMultiplier + xlFixedEur + wheelchairFixedEur;
   const rounding = typeof m.rounding === "string" ? m.rounding : "ceil_tenth";
@@ -45301,7 +45460,8 @@ function estimateTaxiFromMergedTariff(merged, in_) {
       airportFlatEur: airportFlat,
       minFare,
       surcharges: sur,
-      vehicleClassMultiplier
+      vehicleClassMultiplier,
+      ...xlCfg ? { xlFixedSurchargeEur: xlFixedEur, xlPricingMode: xlCfg.mode } : {}
     }
   };
 }
@@ -46584,10 +46744,12 @@ var init_appOperationalData = __esm({
         perKm: 0,
         minFare: 0,
         kmPricingModel: "two_tier",
-        vehicleClassMultipliers: { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 },
+        vehicleClassMultipliers: { standard: 1, xl: 1, wheelchair: 1.15, onroda: 1 },
+        xlPricingMode: "fixed",
+        xlFixedSurchargeEur: 7,
         largeVehicleSurcharge: {
           minPassengers: 5,
-          amountEur: 7
+          amountEur: 0
         },
         surcharges: {
           night: { enabled: false, percent: 0 },
@@ -46771,7 +46933,10 @@ function rowToCompany(r) {
     panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null,
     partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
     commission_rate: typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
-    medical_transport_enabled: Boolean(r.medical_transport_enabled)
+    medical_transport_enabled: Boolean(r.medical_transport_enabled),
+    company_code: r.company_code ?? "",
+    invoice_prefix: r.invoice_prefix ?? "",
+    invoice_sequence_next: typeof r.invoice_sequence_next === "number" && Number.isFinite(r.invoice_sequence_next) ? r.invoice_sequence_next : 1
   };
 }
 function rowToFareArea(r) {
@@ -46796,9 +46961,9 @@ function rowToFareArea(r) {
   };
 }
 function asMoney(v, fallback) {
-  const n4 = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n4)) return fallback;
-  return n4;
+  const n5 = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n5)) return fallback;
+  return n5;
 }
 async function getPublicFareProfile(fromFull, pickup) {
   const { getOperationalConfigPayload: getOperationalConfigPayload2, listServiceRegionsForApi: listServiceRegionsForApi2 } = await Promise.resolve().then(() => (init_appOperationalData(), appOperationalData_exports));
@@ -46824,8 +46989,8 @@ function isPlainObject2(x) {
   return x !== null && typeof x === "object" && !Array.isArray(x);
 }
 function num(v) {
-  const n4 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
-  return Number.isFinite(n4) ? n4 : 0;
+  const n5 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n5) ? n5 : 0;
 }
 function rideRevenueAmount(r) {
   if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
@@ -47052,7 +47217,10 @@ function companyRowToDbValues(c) {
     panel_modules: c.panel_modules ?? null,
     partner_panel_profile_locked: c.partner_panel_profile_locked,
     commission_rate: c.commission_rate,
-    medical_transport_enabled: c.medical_transport_enabled
+    medical_transport_enabled: c.medical_transport_enabled,
+    company_code: c.company_code,
+    invoice_prefix: c.invoice_prefix,
+    invoice_sequence_next: c.invoice_sequence_next
   };
 }
 function applyAdminCompanyPatch(cur, body) {
@@ -47158,6 +47326,26 @@ function applyAdminCompanyPatch(cur, body) {
   }
   if (typeof body.medical_transport_enabled === "boolean") {
     next.medical_transport_enabled = body.medical_transport_enabled;
+  }
+  if (typeof body.company_code === "string") {
+    const v = validateCompanyCode(body.company_code);
+    if (!v.ok) throw Object.assign(new Error(v.error), { code: v.error });
+    next.company_code = v.code;
+  }
+  if (typeof body.invoice_prefix === "string") {
+    const v = validateInvoicePrefix(body.invoice_prefix);
+    if (!v.ok) throw Object.assign(new Error(v.error), { code: v.error });
+    next.invoice_prefix = v.prefix || defaultInvoicePrefixForCompanyKind(next.company_kind);
+  }
+  if (typeof body.company_kind === "string" && typeof body.invoice_prefix !== "string") {
+    const prevDefault = defaultInvoicePrefixForCompanyKind(cur.company_kind);
+    const curPrefix = normalizeInvoicePrefix(cur.invoice_prefix);
+    if (!curPrefix || curPrefix === prevDefault) {
+      next.invoice_prefix = defaultInvoicePrefixForCompanyKind(next.company_kind);
+    }
+  }
+  if (typeof body.invoice_sequence_next === "number" && Number.isFinite(body.invoice_sequence_next)) {
+    next.invoice_sequence_next = Math.max(1, Math.floor(body.invoice_sequence_next));
   }
   return next;
 }
@@ -47272,7 +47460,15 @@ async function updateAdminCompany(companyId, body) {
     memCompanies[idx] = next;
     return next;
   }
-  await db2.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  try {
+    await db2.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  } catch (e) {
+    const msg = flattenPgError(e).toLowerCase();
+    if (msg.includes("admin_companies_company_code_unique") || msg.includes("duplicate") && msg.includes("company_code")) {
+      throw Object.assign(new Error("company_code_duplicate"), { code: "company_code_duplicate" });
+    }
+    throw e;
+  }
   if (typeof billingAccountEmail === "string") {
     try {
       await syncCompanyBillingAccountEmail(companyId, billingAccountEmail);
@@ -47549,6 +47745,7 @@ var init_adminData = __esm({
     init_client();
     init_schema2();
     init_panelModules();
+    init_invoiceNumbering();
     init_logger2();
     seedCompanies = [
       {
@@ -49110,6 +49307,291 @@ var init_passengerRideExpoPush = __esm({
   }
 });
 
+// src/lib/invoicePaymentReference.ts
+var invoicePaymentReference_exports = {};
+__export(invoicePaymentReference_exports, {
+  buildInvoicePaymentReference: () => buildInvoicePaymentReference,
+  lookupPaymentReferenceForBankMatching: () => lookupPaymentReferenceForBankMatching,
+  normalizePaymentReferenceFromInvoiceNumber: () => normalizePaymentReferenceFromInvoiceNumber,
+  resolveInvoicePaymentReference: () => resolveInvoicePaymentReference
+});
+function normalizePaymentReferenceFromInvoiceNumber(invoiceNumber) {
+  const trimmed = String(invoiceNumber ?? "").trim().toUpperCase();
+  const parsed = parseInvoiceNumber(trimmed);
+  if (parsed) return parsed.invoiceNumber.slice(0, SEPA_MAX_LEN);
+  return trimmed.replace(/[^A-Z0-9-]/g, "").replace(/-+/g, "-").slice(0, SEPA_MAX_LEN);
+}
+function buildInvoicePaymentReference(input) {
+  const ref = normalizePaymentReferenceFromInvoiceNumber(input.invoiceNumber);
+  if (!ref) throw new Error("invoice_number_required");
+  return ref;
+}
+function resolveInvoicePaymentReference(args) {
+  const fromNumber = buildInvoicePaymentReference({ invoiceNumber: args.invoiceNumber });
+  const stored = String(args.storedReference ?? "").trim();
+  if (!stored) return fromNumber;
+  if (stored === fromNumber) return stored;
+  if (parseInvoiceNumber(stored)) return stored;
+  return fromNumber;
+}
+function lookupPaymentReferenceForBankMatching(reference) {
+  const trimmed = String(reference ?? "").trim();
+  if (!trimmed) return null;
+  return parseInvoiceNumber(trimmed) ?? parseInvoiceNumber(normalizePaymentReferenceFromInvoiceNumber(trimmed));
+}
+var SEPA_MAX_LEN;
+var init_invoicePaymentReference = __esm({
+  "src/lib/invoicePaymentReference.ts"() {
+    init_invoiceNumbering();
+    SEPA_MAX_LEN = 140;
+  }
+});
+
+// src/db/panelCompanyData.ts
+var panelCompanyData_exports = {};
+__export(panelCompanyData_exports, {
+  getPanelCompanyById: () => getPanelCompanyById,
+  patchPanelCompanyProfile: () => patchPanelCompanyProfile
+});
+function clip(s, max2) {
+  const t = s.trim();
+  if (t.length <= max2) return t;
+  return t.slice(0, max2);
+}
+function isDbEmpty(v) {
+  return !String(v ?? "").trim();
+}
+function partnerBasicsPanelCompleteFromRow(r) {
+  return !isDbEmpty(r.name) && !isDbEmpty(r.contact_name) && !isDbEmpty(r.email) && !isDbEmpty(r.phone) && !isDbEmpty(r.address_line1) && !isDbEmpty(r.postal_code) && !isDbEmpty(r.city) && !isDbEmpty(r.country) && !isDbEmpty(r.legal_form) && !isDbEmpty(r.owner_name) && !isDbEmpty(r.concession_number) && !isDbEmpty(r.tax_id) && !isDbEmpty(r.bank_iban);
+}
+function costCenterFromFarePermissions(fp) {
+  if (!fp || typeof fp !== "object" || Array.isArray(fp)) return "";
+  const o = fp;
+  for (const k of ["cost_center", "costCenter", "kostenstelle", "Kostenstelle"]) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  }
+  return "";
+}
+function rowToPanelPublic(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    contactName: r.contact_name,
+    email: r.email,
+    phone: r.phone,
+    addressLine1: r.address_line1,
+    addressLine2: r.address_line2,
+    postalCode: r.postal_code,
+    city: r.city,
+    country: r.country,
+    vatId: r.vat_id,
+    isActive: r.is_active,
+    companyKind: r.company_kind === "taxi" || r.company_kind === "voucher_client" || r.company_kind === "insurer" || r.company_kind === "hotel" || r.company_kind === "corporate" || r.company_kind === "medical" ? r.company_kind : "general",
+    taxId: r.tax_id ?? "",
+    concessionNumber: r.concession_number ?? "",
+    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
+    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
+    legalForm: r.legal_form ?? "",
+    ownerName: r.owner_name ?? "",
+    supportEmail: r.support_email ?? "",
+    dispoPhone: r.dispo_phone ?? "",
+    logoUrl: r.logo_url ?? "",
+    openingHours: r.opening_hours ?? "",
+    businessNotes: r.business_notes ?? "",
+    billingName: r.billing_name ?? "",
+    billingAddressLine1: r.billing_address_line1 ?? "",
+    billingAddressLine2: r.billing_address_line2 ?? "",
+    billingPostalCode: r.billing_postal_code ?? "",
+    billingCity: r.billing_city ?? "",
+    billingCountry: r.billing_country ?? "",
+    bankIban: r.bank_iban ?? "",
+    bankBic: r.bank_bic ?? "",
+    costCenter: costCenterFromFarePermissions(r.fare_permissions),
+    verificationStatus: r.verification_status ?? "pending",
+    complianceStatus: r.compliance_status ?? "pending",
+    complianceBucket: "missing",
+    contractStatus: r.contract_status ?? "inactive",
+    isBlocked: Boolean(r.is_blocked),
+    maxDrivers: r.max_drivers ?? 100,
+    maxVehicles: r.max_vehicles ?? 100,
+    profileLocked: Boolean(r.partner_panel_profile_locked),
+    complianceDocuments: {
+      gewerbe: { uploadedAt: "", reviewStatus: "", reviewNote: "" },
+      insurance: { uploadedAt: "", reviewStatus: "", reviewNote: "" }
+    }
+  };
+}
+async function getPanelCompanyById(companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  const { status, complianceDocuments } = await getDerivedComplianceAndDocumentsForRow(r);
+  const pub = rowToPanelPublic(r);
+  const complianceBucket = complianceBucketFromDerived({
+    derivedStatus: status,
+    hasGewerbe: pub.hasComplianceGewerbe,
+    hasInsurance: pub.hasComplianceInsurance
+  });
+  return { ...pub, complianceStatus: status, complianceDocuments, complianceBucket };
+}
+async function patchPanelCompanyProfile(companyId, patch) {
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "database_not_configured" };
+  }
+  const db2 = getDb();
+  if (!db2) {
+    return { ok: false, error: "database_not_configured" };
+  }
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r0 = rows[0];
+  if (!r0 || !r0.is_active) {
+    return { ok: false, error: "company_not_found" };
+  }
+  const keys = Object.keys(patch).filter((k) => patch[k] !== void 0);
+  if (keys.length === 0) {
+    return { ok: false, error: "no_changes" };
+  }
+  const patchTouchesBasics = keys.some(
+    (k) => BASICS_PATCH_KEYS.includes(k)
+  );
+  if (r0.partner_panel_profile_locked && patchTouchesBasics) {
+    return { ok: false, error: "partner_basics_locked" };
+  }
+  const set = {};
+  if (patch.supportEmail !== void 0) {
+    const e = clip(patch.supportEmail, MAX.short);
+    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      return { ok: false, error: "email_invalid" };
+    }
+    set.support_email = e;
+  }
+  if (patch.dispoPhone !== void 0) {
+    set.dispo_phone = clip(patch.dispoPhone, MAX.short);
+  }
+  if (patch.logoUrl !== void 0) {
+    set.logo_url = clip(patch.logoUrl, MAX.url);
+  }
+  if (patch.openingHours !== void 0) {
+    set.opening_hours = clip(patch.openingHours, MAX.line);
+  }
+  if (patch.name !== void 0 && isDbEmpty(r0.name)) {
+    const v = clip(patch.name, MAX.name);
+    if (v) set.name = v;
+  }
+  if (patch.contactName !== void 0 && isDbEmpty(r0.contact_name)) {
+    const v = clip(patch.contactName, MAX.short);
+    if (v) set.contact_name = v;
+  }
+  if (patch.email !== void 0 && isDbEmpty(r0.email)) {
+    const e = clip(patch.email, MAX.short);
+    if (e) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+        return { ok: false, error: "email_invalid" };
+      }
+      set.email = e;
+    }
+  }
+  if (patch.phone !== void 0 && isDbEmpty(r0.phone)) {
+    const v = clip(patch.phone, MAX.short);
+    if (v) set.phone = v;
+  }
+  if (patch.addressLine1 !== void 0 && isDbEmpty(r0.address_line1)) {
+    const v = clip(patch.addressLine1, MAX.line);
+    if (v) set.address_line1 = v;
+  }
+  if (patch.addressLine2 !== void 0 && isDbEmpty(r0.address_line2)) {
+    const v = clip(patch.addressLine2, MAX.line);
+    if (v) set.address_line2 = v;
+  }
+  if (patch.postalCode !== void 0 && isDbEmpty(r0.postal_code)) {
+    const v = clip(patch.postalCode, MAX.short);
+    if (v) set.postal_code = v;
+  }
+  if (patch.city !== void 0 && isDbEmpty(r0.city)) {
+    const v = clip(patch.city, MAX.short);
+    if (v) set.city = v;
+  }
+  if (patch.country !== void 0 && isDbEmpty(r0.country)) {
+    const v = clip(patch.country, MAX.short);
+    if (v) set.country = v;
+  }
+  if (patch.legalForm !== void 0 && isDbEmpty(r0.legal_form)) {
+    const v = clip(patch.legalForm, MAX.short);
+    if (v) set.legal_form = v;
+  }
+  if (patch.ownerName !== void 0 && isDbEmpty(r0.owner_name)) {
+    const v = clip(patch.ownerName, MAX.short);
+    if (v) set.owner_name = v;
+  }
+  if (patch.concessionNumber !== void 0 && isDbEmpty(r0.concession_number)) {
+    const v = clip(patch.concessionNumber, MAX.short);
+    if (v) set.concession_number = v;
+  }
+  if (patch.taxId !== void 0 && isDbEmpty(r0.tax_id)) {
+    const v = clip(patch.taxId, MAX.short);
+    if (v) set.tax_id = v;
+  }
+  if (patch.bankIban !== void 0 && isDbEmpty(r0.bank_iban)) {
+    const v = clip(patch.bankIban, MAX.short);
+    if (v) set.bank_iban = v;
+  }
+  if (Object.keys(set).length === 0) {
+    return { ok: false, error: "no_changes" };
+  }
+  await db2.update(adminCompaniesTable).set(set).where(eq(adminCompaniesTable.id, companyId));
+  const again = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r1 = again[0];
+  if (!r1) {
+    return { ok: false, error: "company_not_found" };
+  }
+  if (!r0.partner_panel_profile_locked && partnerBasicsPanelCompleteFromRow(r1)) {
+    await db2.update(adminCompaniesTable).set({ partner_panel_profile_locked: true }).where(eq(adminCompaniesTable.id, companyId));
+    const lockedRow = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+    const r2 = lockedRow[0];
+    if (!r2) {
+      return { ok: false, error: "company_not_found" };
+    }
+  }
+  const out = await getPanelCompanyById(companyId);
+  if (!out) {
+    return { ok: false, error: "company_not_found" };
+  }
+  return { ok: true, company: out };
+}
+var MAX, BASICS_PATCH_KEYS;
+var init_panelCompanyData = __esm({
+  "src/db/panelCompanyData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_companyComplianceDocumentsData();
+    init_schema2();
+    MAX = {
+      short: 120,
+      line: 500,
+      url: 2048,
+      name: 200
+    };
+    BASICS_PATCH_KEYS = [
+      "name",
+      "contactName",
+      "email",
+      "phone",
+      "addressLine1",
+      "addressLine2",
+      "postalCode",
+      "city",
+      "country",
+      "legalForm",
+      "ownerName"
+    ];
+  }
+});
+
 // src/jobs/ghostRideRecovery.ts
 var ghostRideRecovery_exports = {};
 __export(ghostRideRecovery_exports, {
@@ -49279,14 +49761,14 @@ var import_websocket_server = __toESM(require_websocket_server(), 1);
 var wrapper_default = import_websocket.default;
 
 // src/app.ts
-var import_express24 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
-import path11 from "path";
-import { fileURLToPath as fileURLToPath5 } from "node:url";
+import path13 from "path";
+import { fileURLToPath as fileURLToPath6 } from "node:url";
 
 // src/routes/index.ts
-var import_express22 = __toESM(require_express2(), 1);
+var import_express23 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -49769,8 +50251,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path12, errorMaps, issueData } = params;
-  const fullPath = [...path12, ...issueData.path || []];
+  const { data, path: path14, errorMaps, issueData } = params;
+  const fullPath = [...path14, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -49886,11 +50368,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path12, key) {
+  constructor(parent, value, path14, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path12;
+    this._path = path14;
     this._key = key;
   }
   get path() {
@@ -53979,6 +54461,9 @@ function compactMergedTariffAudit(merged) {
     "active",
     "pricingMode",
     "largeVehicleSurcharge",
+    "xlPricingMode",
+    "xlFixedSurchargeEur",
+    "vehicleClassMultipliers",
     "tariffVersion",
     "validFrom"
   ];
@@ -53993,8 +54478,8 @@ function toNum(v, fallback = 0) {
   return Number.isFinite(x) ? x : fallback;
 }
 function toPositiveInt(v, fallback) {
-  const n4 = Math.round(toNum(v, fallback));
-  return n4 > 0 ? n4 : fallback;
+  const n5 = Math.round(toNum(v, fallback));
+  return n5 > 0 ? n5 : fallback;
 }
 function extractMeterTariffSnapshot(merged, serviceRegionId, opVersion) {
   const kmModel = merged.kmPricingModel === "single" ? "single" : "two_tier";
@@ -54025,7 +54510,9 @@ function extractMeterTariffSnapshot(merged, serviceRegionId, opVersion) {
     },
     surcharges: {
       largeVehicleFromPassengers: toPositiveInt(lvsObj.minPassengers, 5),
-      largeVehicleAmountEur: Math.max(0, toNum(lvsObj.amountEur, 0))
+      largeVehicleAmountEur: Math.max(0, toNum(lvsObj.amountEur, 0)),
+      xlFixedSurchargeEur: Math.max(0, toNum(merged.xlFixedSurchargeEur, 0)),
+      xlPricingMode: typeof merged.xlPricingMode === "string" && merged.xlPricingMode.trim() ? merged.xlPricingMode.trim() : null
     }
   };
 }
@@ -56422,8 +56909,8 @@ async function resolveRideMutateActor(req) {
   }
   try {
     const claims = await verifyFleetDriverJwt(raw);
-    const n4 = await normalizeFleetClaims(claims);
-    if (n4) return { kind: "fleet_session", fleetDriverId: n4.fleetDriverId, companyId: n4.companyId };
+    const n5 = await normalizeFleetClaims(claims);
+    if (n5) return { kind: "fleet_session", fleetDriverId: n5.fleetDriverId, companyId: n5.companyId };
   } catch {
   }
   const admin2 = await tryResolveAdminApiAuthPrincipal(raw);
@@ -56679,8 +57166,8 @@ function parseOptionalFinalFareFromBody(body) {
   if (raw == null || raw === "") return void 0;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string") {
-    const n4 = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
-    return Number.isFinite(n4) ? n4 : void 0;
+    const n5 = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(n5) ? n5 : void 0;
   }
   return void 0;
 }
@@ -56728,8 +57215,8 @@ function optCoord(v) {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   const s = String(v).trim();
   if (!s) return null;
-  const n4 = Number(s);
-  return Number.isFinite(n4) ? n4 : null;
+  const n5 = Number(s);
+  return Number.isFinite(n5) ? n5 : null;
 }
 function haversineDistanceKm2(fromLat, fromLon, toLat, toLon) {
   const toRad2 = (deg) => deg * Math.PI / 180;
@@ -58719,8 +59206,8 @@ import { createHash, randomBytes as randomBytes4 } from "crypto";
 import admin from "firebase-admin";
 function isFirebaseAdminConfigured() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
-  const path12 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
-  return raw.length > 0 || path12.length > 0;
+  const path14 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
+  return raw.length > 0 || path14.length > 0;
 }
 function ensureFirebaseApp() {
   if (admin.apps.length > 0) {
@@ -59164,8 +59651,8 @@ async function countSendsInRollingHour(normalizedEmail) {
   const r = await db2.select({ c: sql2`count(*)::int` }).from(emailVerificationCodesTable).where(
     and(eq(emailVerificationCodesTable.email, normalizedEmail), gte(emailVerificationCodesTable.created_at, hourAgo))
   );
-  const n4 = r[0]?.c;
-  return typeof n4 === "number" ? n4 : 0;
+  const n5 = r[0]?.c;
+  return typeof n5 === "number" ? n5 : 0;
 }
 async function incrementAttempts(id) {
   const db2 = getDb();
@@ -59351,15 +59838,57 @@ async function sendOnrodaVerificationEmailPlain(to, sixDigitCode) {
     );
     return { ok: false, reason: "smtp_not_configured" };
   }
-  const text2 = `Dein ONRODA Best\xE4tigungscode: ${sixDigitCode}`;
+  const text2 = `Dein ONRODA Best\xE4tigungscode: ${sixDigitCode}
+
+Der Code ist 10 Minuten g\xFCltig.
+
+Falls du diese Anfrage nicht gestellt hast, kannst du diese E-Mail ignorieren.
+
+ONRODA \xB7 Ein Angebot von \xD6zt\xFCrk Taxiunternehmen`;
+  const html = `<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F2F2F7;padding:40px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:520px;width:100%;">
+        <tr>
+          <td style="padding:32px 40px 24px;border-bottom:1px solid #f0f0f0;">
+            <div style="font-size:24px;font-weight:800;letter-spacing:-1px;">
+              <span style="color:#EF1D26;">on</span><span style="color:#1c1c1e;">roda</span>
+            </div>
+            <div style="font-size:11px;color:#999;margin-top:2px;">Ein Angebot von \xD6zt\xFCrk Taxiunternehmen</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px 24px;">
+            <p style="font-size:16px;color:#1c1c1e;margin:0 0 8px;">Hallo,</p>
+            <p style="font-size:15px;color:#444;line-height:1.6;margin:0 0 28px;">bitte best\xE4tige deine E-Mail-Adresse mit folgendem Code:</p>
+            <div style="background:#F2F2F7;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px;">
+              <div style="font-size:42px;font-weight:800;letter-spacing:10px;color:#EF1D26;">${sixDigitCode}</div>
+              <div style="font-size:12px;color:#999;margin-top:8px;">G\xFCltig f\xFCr 10 Minuten</div>
+            </div>
+            <p style="font-size:13px;color:#999;line-height:1.6;margin:0;">Falls du diese Anfrage nicht gestellt hast, kannst du diese E-Mail einfach ignorieren.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 40px;border-top:1px solid #f0f0f0;text-align:center;">
+            <p style="font-size:11px;color:#bbb;margin:0;">ONRODA \xB7 Ein Angebot von \xD6zt\xFCrk Taxiunternehmen \xB7 onroda.de</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
   try {
     const transport = nodemailer.createTransport(smtpUrl);
     await transport.sendMail({
       from,
       to: r,
       subject: "ONRODA Best\xE4tigungscode",
-      text: text2
-      /** Keine zusätzlichen sensiblen Daten im HTML-Zweig — rein textuell. */
+      text: text2,
+      html
     });
     logger.info({ to: r, event: "email_verification.sent" }, "verification email sent");
     return { ok: true };
@@ -59447,16 +59976,16 @@ async function checkCustomerRegistrationAccount(normalizedEmail) {
   }
 }
 function maxSendsEmailPerHour() {
-  const n4 = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_EMAIL_HOUR ?? "5");
-  return Number.isFinite(n4) && n4 >= 1 && n4 <= 100 ? Math.floor(n4) : 5;
+  const n5 = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_EMAIL_HOUR ?? "5");
+  return Number.isFinite(n5) && n5 >= 1 && n5 <= 100 ? Math.floor(n5) : 5;
 }
 function maxSendsIpPerHour() {
-  const n4 = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_IP_PER_HOUR ?? "30");
-  return Number.isFinite(n4) && n4 >= 1 && n4 <= 500 ? Math.floor(n4) : 30;
+  const n5 = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_IP_PER_HOUR ?? "30");
+  return Number.isFinite(n5) && n5 >= 1 && n5 <= 500 ? Math.floor(n5) : 30;
 }
 function minSecondsBetweenSends() {
-  const n4 = Number(process.env.EMAIL_VERIFICATION_MIN_SECONDS_BETWEEN_SENDS ?? "60");
-  return Number.isFinite(n4) && n4 >= 10 && n4 <= 600 ? Math.floor(n4) : 60;
+  const n5 = Number(process.env.EMAIL_VERIFICATION_MIN_SECONDS_BETWEEN_SENDS ?? "60");
+  return Number.isFinite(n5) && n5 >= 10 && n5 <= 600 ? Math.floor(n5) : 60;
 }
 function clientIpKey(reqIp) {
   return (reqIp ?? "unknown").trim() || "unknown";
@@ -59925,11 +60454,11 @@ var customerAuth_default = router5;
 
 // src/routes/adminApi.ts
 var import_express12 = __toESM(require_express2(), 1);
-import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID28 } from "node:crypto";
+import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID31 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readFile } from "node:fs/promises";
-import path6 from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+import path7 from "node:path";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // src/domain/adminCompanyKindPanelModules.ts
 init_panelModules();
@@ -60647,6 +61176,727 @@ init_adminData();
 init_drizzle_orm();
 init_client();
 init_schema2();
+
+// src/db/adminInvoiceFinanceData.ts
+init_drizzle_orm();
+init_adminData();
+init_client();
+import { randomUUID as randomUUID17 } from "node:crypto";
+
+// src/lib/onrodaSmtpMail.ts
+init_logger2();
+import nodemailer2 from "nodemailer";
+function escapeHtmlMail(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function resolveOnrodaSmtpUrl() {
+  return (process.env.ADMIN_AUTH_MAIL_SMTP_URL ?? process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+}
+function resolveOnrodaMailFrom() {
+  return (process.env.ADMIN_AUTH_MAIL_FROM ?? process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+}
+function isOnrodaSmtpConfigured() {
+  return Boolean(resolveOnrodaSmtpUrl() && resolveOnrodaMailFrom());
+}
+async function sendOnrodaMail(input) {
+  const smtpUrl = resolveOnrodaSmtpUrl();
+  const from = resolveOnrodaMailFrom();
+  const to = input.to.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!smtpUrl || !from) {
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  try {
+    const transport = nodemailer2.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject: input.subject, text: input.text, html: input.html });
+    if (input.logEvent) {
+      logger.info({ event: input.logEvent, to: to.replace(/(.{2}).*(@.*)/, "$1\u2026$2") }, "onroda mail sent");
+    }
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, event: input.logEvent ?? "onroda.mail" }, "onroda mail send failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+
+// src/lib/invoiceReminderMail.ts
+function resolvePartnerPanelUrl() {
+  const raw = process.env.PARTNER_PANEL_URL?.trim() || process.env.PARTNER_REGISTRATION_PANEL_URL?.trim() || "https://panel.onroda.de";
+  return raw.replace(/\/$/, "");
+}
+function fmtDateDe(iso) {
+  if (!iso) return "\u2014";
+  const d = new Date(String(iso).includes("T") ? iso : `${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function fmtMoneyEur(amount) {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(amount);
+}
+function buildInvoiceReminderMail(input) {
+  const company = input.companyName.trim() || "Ihr Unternehmen";
+  const ref = input.paymentReference.trim() || input.invoiceNumber;
+  const amount = fmtMoneyEur(input.totalGross);
+  const due = fmtDateDe(input.dueDate);
+  const period = `${fmtDateDe(input.periodFrom)} \u2013 ${fmtDateDe(input.periodTo)}`;
+  const panelUrl = resolvePartnerPanelUrl();
+  const subject = `Onroda: Zahlungserinnerung \u2014 Rechnung ${input.invoiceNumber}`;
+  const text2 = [
+    `Guten Tag,`,
+    "",
+    `zu Ihrer Onroda-Rechnung ${input.invoiceNumber} (${company}) haben wir noch keinen Zahlungseingang festgestellt.`,
+    "",
+    `Abrechnungszeitraum: ${period}`,
+    `Rechnungsbetrag: ${amount}`,
+    input.dueDate ? `F\xE4llig am: ${due}` : "",
+    "",
+    "Bitte \xFCberweisen Sie den offenen Betrag und geben Sie als Verwendungszweck exakt an:",
+    ref,
+    "",
+    `Rechnung und PDF finden Sie im Partner-Portal: ${panelUrl}`,
+    "(Bereich \u201EAbrechnung\u201C)",
+    "",
+    "Bei R\xFCckfragen antworten Sie gerne auf diese E-Mail.",
+    "",
+    "Mit freundlichen Gr\xFC\xDFen",
+    "Ihr Onroda-Team"
+  ].filter((line2, i, arr) => !(line2 === "" && arr[i - 1] === "")).join("\n");
+  const panelEsc = escapeHtmlMail(panelUrl);
+  const refEsc = escapeHtmlMail(ref);
+  const invEsc = escapeHtmlMail(input.invoiceNumber);
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
+  <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
+    <div style="max-width:520px;margin:auto;background:white;padding:30px;border-radius:10px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:28px;font-weight:800;letter-spacing:0.02em;line-height:1.2;">
+          <span style="color:#e30613;">On</span><span style="color:#111111;">roda</span>
+        </div>
+      </div>
+      <h2 style="text-align:center;margin:0 0 16px;font-size:20px;color:#111;">Zahlungserinnerung</h2>
+      <p style="margin:0 0 12px;line-height:1.55;color:#333;">Guten Tag,</p>
+      <p style="margin:0 0 12px;line-height:1.55;color:#333;">
+        zu Ihrer Rechnung <strong>${invEsc}</strong> (${escapeHtmlMail(company)}) haben wir noch keinen Zahlungseingang festgestellt.
+      </p>
+      <p style="margin:0 0 8px;line-height:1.5;color:#555;font-size:14px;">Abrechnungszeitraum: ${escapeHtmlMail(period)}</p>
+      <p style="margin:0 0 8px;line-height:1.5;color:#555;font-size:14px;">Rechnungsbetrag: <strong>${escapeHtmlMail(amount)}</strong></p>
+      ${input.dueDate ? `<p style="margin:0 0 12px;line-height:1.5;color:#555;font-size:14px;">F\xE4llig am: ${escapeHtmlMail(due)}</p>` : ""}
+      <p style="margin:16px 0 8px;line-height:1.55;color:#333;">Bitte verwenden Sie als <strong>Verwendungszweck</strong>:</p>
+      <p style="margin:0 0 20px;font-family:monospace;font-size:15px;font-weight:700;color:#111;">${refEsc}</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${panelEsc}"
+           style="display:inline-block;background:#e30613;color:#ffffff;padding:14px 22px;text-decoration:none;border-radius:6px;font-weight:bold;">
+          Zum Partner-Portal
+        </a>
+      </div>
+      <p style="font-size:12px;color:#888;margin:0;line-height:1.5;">
+        Unter \u201EAbrechnung\u201C k\xF6nnen Sie die Rechnung einsehen und als PDF herunterladen.
+      </p>
+    </div>
+  </div>
+</body></html>`;
+  return { subject, text: text2, html };
+}
+async function sendInvoiceReminderMail(input) {
+  const bodies = buildInvoiceReminderMail(input);
+  return sendOnrodaMail({
+    to: input.to,
+    subject: bodies.subject,
+    text: bodies.text,
+    html: bodies.html,
+    logEvent: "billing.invoice_reminder_mail.sent"
+  });
+}
+
+// src/db/adminInvoiceFinanceData.ts
+init_invoicePaymentReference();
+
+// src/lib/invoiceWorkflow.ts
+function berlinDateKey(d = /* @__PURE__ */ new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(d);
+}
+function invoiceDueDateKey(due) {
+  if (due == null || due === "") return null;
+  if (due instanceof Date) {
+    if (Number.isNaN(due.getTime())) return null;
+    return berlinDateKey(due);
+  }
+  const s = String(due).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const parsed = new Date(s.includes("T") ? s : `${s}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return berlinDateKey(parsed);
+}
+function resolveInvoiceWorkflowStatus(row, now = /* @__PURE__ */ new Date()) {
+  const stored = row.status.trim().toLowerCase();
+  if (stored === "paid") return "paid";
+  if (stored === "cancelled") return "cancelled";
+  if (stored === "draft") return "draft";
+  if (stored === "partially_paid") return "partially_paid";
+  if (stored === "reminder_sent") return "reminder_sent";
+  if (stored === "overdue") return "overdue";
+  const dueKey = invoiceDueDateKey(row.due_date);
+  const today = berlinDateKey(now);
+  if (!dueKey) return "issued";
+  if (dueKey > today) return "issued";
+  if (dueKey === today) return "due";
+  return "overdue";
+}
+function workflowStatusLabelDe(status) {
+  const m = {
+    draft: "Entwurf",
+    issued: "Offen",
+    due: "F\xE4llig",
+    overdue: "\xDCberf\xE4llig",
+    reminder_sent: "Zahlungserinnerung gesendet",
+    partially_paid: "Teilweise bezahlt",
+    paid: "Bezahlt",
+    cancelled: "Storniert"
+  };
+  return m[status] ?? status;
+}
+function invoicePdfNeutralStatusLabel() {
+  return "Rechnung";
+}
+function buildPartnerPaymentUi(input) {
+  const none = {
+    kind: "none",
+    title: "",
+    bodyLines: [],
+    showPaymentDetails: false
+  };
+  if (["paid", "cancelled", "draft"].includes(input.workflowStatus)) return none;
+  const ref = input.paymentReference || input.invoiceNumber;
+  const amount = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(
+    input.totalGross
+  );
+  const dueFmt = input.dueDate ? new Date(input.dueDate.includes("T") ? input.dueDate : `${input.dueDate}T12:00:00`).toLocaleDateString(
+    "de-DE",
+    { day: "2-digit", month: "2-digit", year: "numeric" }
+  ) : "\u2014";
+  if (input.workflowStatus === "overdue" || input.workflowStatus === "reminder_sent") {
+    const amount2 = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(
+      input.totalGross
+    );
+    return {
+      kind: "reminder",
+      title: "Zahlungserinnerung",
+      bodyLines: [
+        `Zu Rechnung ${input.invoiceNumber} (${amount2}) liegt noch kein Zahlungseingang vor.`,
+        input.dueDate ? `F\xE4llig war: ${dueFmt}.` : "",
+        "Bitte \xFCberweisen Sie mit folgendem Verwendungszweck:",
+        ref
+      ].filter(Boolean),
+      showPaymentDetails: true
+    };
+  }
+  if (["issued", "due", "partially_paid"].includes(input.workflowStatus)) {
+    return {
+      kind: "open_payment",
+      title: "Offene Zahlung",
+      bodyLines: [
+        `Rechnung: ${input.invoiceNumber}`,
+        `Betrag: ${amount}`,
+        `Zahlbar bis: ${dueFmt}`
+      ],
+      showPaymentDetails: true
+    };
+  }
+  return none;
+}
+
+// src/db/adminInvoiceFinanceData.ts
+init_schema2();
+async function insertFinancialAuditInTx(tx, input) {
+  await tx.insert(financialAuditLogTable).values({
+    id: `fal-${randomUUID17()}`,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    action: input.action,
+    old_value_json: input.oldValue ?? {},
+    new_value_json: input.newValue,
+    actor_type: input.actorType,
+    actor_id: input.actorId ?? null
+  });
+}
+function enrichInvoiceAdminRow(row, companyName) {
+  const payment_reference = resolveInvoicePaymentReference({
+    invoiceNumber: row.invoice_number,
+    storedReference: row.payment_reference
+  });
+  const workflow_status = resolveInvoiceWorkflowStatus({
+    status: row.status,
+    due_date: row.due_date
+  });
+  return {
+    ...row,
+    company_name: companyName,
+    payment_reference,
+    workflow_status,
+    status_label_de: workflowStatusLabelDe(workflow_status)
+  };
+}
+async function adminMarkInvoicePaid(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const invoiceId = input.invoiceId.trim();
+  if (!invoiceId) return { ok: false, error: "invoice_id_required" };
+  try {
+    return await db2.transaction(async (tx) => {
+      const invRows = await tx.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).for("update").limit(1);
+      const inv = invRows[0];
+      if (!inv) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
+      if (inv.status === "paid") {
+        const existing = await tx.select().from(paymentsTable).where(and(eq(paymentsTable.target_type, "invoice"), eq(paymentsTable.target_id, invoiceId))).orderBy(desc(paymentsTable.created_at)).limit(1);
+        return {
+          ok: true,
+          paymentId: existing[0]?.id ?? invoiceId,
+          idempotent: true
+        };
+      }
+      if (inv.status === "cancelled") {
+        throw Object.assign(new Error("cancelled"), { code: "invoice_cancelled" });
+      }
+      const openpay = await tx.select().from(paymentsTable).where(
+        and(
+          eq(paymentsTable.target_type, "invoice"),
+          eq(paymentsTable.target_id, invoiceId),
+          inArray(paymentsTable.status, ["pending", "booked"])
+        )
+      ).orderBy(desc(paymentsTable.created_at)).limit(1);
+      if (openpay[0]) {
+        return { ok: true, paymentId: openpay[0].id, idempotent: true };
+      }
+      const paidAt = input.paidAt ?? /* @__PURE__ */ new Date();
+      const amount = Number.isFinite(Number(input.amount)) ? Number(input.amount) : Number(inv.total_gross);
+      const bankRef = String(input.bankReference ?? "").trim();
+      let paymentReference = String(inv.payment_reference ?? "").trim();
+      if (!paymentReference) {
+        const [{ getPanelCompanyById: getPanelCompanyById2 }] = await Promise.all([Promise.resolve().then(() => (init_panelCompanyData(), panelCompanyData_exports))]);
+        const company = inv.company_id ? await getPanelCompanyById2(inv.company_id) : null;
+        paymentReference = buildInvoicePaymentReference({ invoiceNumber: inv.invoice_number });
+      }
+      const pid = `pay-${randomUUID17()}`;
+      await tx.insert(paymentsTable).values({
+        id: pid,
+        target_type: "invoice",
+        target_id: invoiceId,
+        company_id: inv.company_id,
+        payment_method: "bank_transfer",
+        amount,
+        paid_at: paidAt,
+        reference: bankRef || paymentReference,
+        status: "booked",
+        metadata_json: { createdByActor: input.actorLabel, invoiceNumber: inv.invoice_number }
+      });
+      const oldStatus = inv.status;
+      const prevMeta = inv.metadata_json && typeof inv.metadata_json === "object" ? inv.metadata_json : {};
+      await tx.update(invoicesTable).set({
+        status: "paid",
+        payment_reference: paymentReference,
+        updated_at: /* @__PURE__ */ new Date(),
+        metadata_json: {
+          ...prevMeta,
+          status_before_paid: oldStatus,
+          paid_at: paidAt.toISOString(),
+          paid_by_admin: input.actorLabel,
+          zahlungsreferenz: bankRef || paymentReference
+        }
+      }).where(eq(invoicesTable.id, invoiceId));
+      await insertFinancialAuditInTx(tx, {
+        entityType: "invoice",
+        entityId: invoiceId,
+        action: "invoice_marked_paid",
+        oldValue: { status: oldStatus },
+        newValue: {
+          status: "paid",
+          paymentId: pid,
+          amount,
+          reference: bankRef || paymentReference,
+          paidAt: paidAt.toISOString()
+        },
+        actorType: "admin",
+        actorId: input.actorLabel
+      });
+      return { ok: true, paymentId: pid };
+    });
+  } catch (e) {
+    const err = e;
+    if (err.code === "invoice_not_found") return { ok: false, error: "invoice_not_found" };
+    if (err.code === "invoice_cancelled") return { ok: false, error: "invoice_cancelled" };
+    throw e;
+  }
+}
+function pickBillingEmail(...candidates2) {
+  for (const raw of candidates2) {
+    const t = String(raw ?? "").trim();
+    if (t.includes("@")) return t;
+  }
+  return null;
+}
+async function resolveInvoiceBillingEmail(companyId) {
+  const db2 = getDb();
+  if (!db2 || !companyId.trim()) return null;
+  const billingRows = await db2.select({ billing_email: billingAccountsTable.billing_email }).from(billingAccountsTable).where(and(eq(billingAccountsTable.company_id, companyId), eq(billingAccountsTable.is_active, true))).limit(5);
+  for (const row of billingRows) {
+    const email = pickBillingEmail(row.billing_email);
+    if (email) return email;
+  }
+  const companyRows = await db2.select({ email: adminCompaniesTable.email, support_email: adminCompaniesTable.support_email }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const company = companyRows[0];
+  if (!company) return null;
+  return pickBillingEmail(company.email, company.support_email);
+}
+async function adminSendInvoicePaymentReminder(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const invoiceId = input.invoiceId.trim();
+  if (!invoiceId) return { ok: false, error: "invoice_id_required" };
+  const invRows = await db2.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).limit(1);
+  const inv = invRows[0];
+  if (!inv) return { ok: false, error: "invoice_not_found" };
+  if (inv.status === "paid") return { ok: false, error: "invoice_already_paid" };
+  if (inv.status === "cancelled") return { ok: false, error: "invoice_cancelled" };
+  if (inv.status === "draft") return { ok: false, error: "invoice_draft" };
+  const prevMeta = inv.metadata_json && typeof inv.metadata_json === "object" ? inv.metadata_json : {};
+  if (inv.status === "reminder_sent") {
+    const mailTo2 = typeof prevMeta.reminder_mail_to === "string" ? prevMeta.reminder_mail_to : null;
+    const mailStatus = typeof prevMeta.reminder_mail_status === "string" ? prevMeta.reminder_mail_status : "sent";
+    return {
+      ok: true,
+      idempotent: true,
+      message: mailTo2 ? `Erinnerung war bereits verbucht (E-Mail an ${mailTo2}).` : "Erinnerung war bereits verbucht.",
+      mail_to: mailTo2,
+      mail_status: "skipped_idempotent",
+      reminder_mail_sent_at: typeof prevMeta.reminder_mail_sent_at === "string" ? prevMeta.reminder_mail_sent_at : null,
+      reminder_mail_to: mailTo2,
+      reminder_mail_status: mailStatus
+    };
+  }
+  const companyId = String(inv.company_id ?? "").trim();
+  if (!companyId) return { ok: false, error: "company_missing" };
+  const mailTo = await resolveInvoiceBillingEmail(companyId);
+  if (!mailTo) return { ok: false, error: "billing_email_missing" };
+  if (!isOnrodaSmtpConfigured()) return { ok: false, error: "smtp_not_configured" };
+  const company = await findCompanyById(companyId);
+  const companyName = company?.billing_name?.trim() || company?.name?.trim() || companyId;
+  const paymentReference = resolveInvoicePaymentReference({
+    invoiceNumber: inv.invoice_number,
+    storedReference: inv.payment_reference
+  });
+  const mailResult = await sendInvoiceReminderMail({
+    to: mailTo,
+    companyName,
+    invoiceNumber: inv.invoice_number,
+    paymentReference,
+    totalGross: Number(inv.total_gross),
+    dueDate: inv.due_date ? String(inv.due_date) : null,
+    periodFrom: String(inv.billing_period_start),
+    periodTo: String(inv.billing_period_end)
+  });
+  if (!mailResult.ok) {
+    return {
+      ok: false,
+      error: mailResult.reason === "smtp_not_configured" ? "smtp_not_configured" : "mail_send_failed"
+    };
+  }
+  const sentAt = (/* @__PURE__ */ new Date()).toISOString();
+  const reminderCount = Number(prevMeta.reminder_count ?? 0) + 1;
+  const priorHistory = Array.isArray(prevMeta.reminder_history) ? prevMeta.reminder_history : [];
+  const reminder_history = [
+    ...priorHistory,
+    {
+      sentAt,
+      sentBy: input.actorLabel,
+      sequence: reminderCount,
+      mailTo,
+      mailStatus: "sent"
+    }
+  ];
+  try {
+    await db2.transaction(async (tx) => {
+      const locked = await tx.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).for("update").limit(1);
+      const current = locked[0];
+      if (!current) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
+      if (current.status === "paid") throw Object.assign(new Error("paid"), { code: "invoice_already_paid" });
+      if (current.status === "cancelled") {
+        throw Object.assign(new Error("cancelled"), { code: "invoice_cancelled" });
+      }
+      if (current.status === "draft") throw Object.assign(new Error("draft"), { code: "invoice_draft" });
+      if (current.status === "reminder_sent") return;
+      await tx.update(invoicesTable).set({
+        status: "reminder_sent",
+        updated_at: /* @__PURE__ */ new Date(),
+        metadata_json: {
+          ...prevMeta,
+          reminder_sent_at: sentAt,
+          reminder_count: reminderCount,
+          last_reminder_by: input.actorLabel,
+          reminder_history,
+          reminder_mail_sent_at: sentAt,
+          reminder_mail_to: mailTo,
+          reminder_mail_status: "sent"
+        }
+      }).where(eq(invoicesTable.id, invoiceId));
+      await insertFinancialAuditInTx(tx, {
+        entityType: "invoice",
+        entityId: invoiceId,
+        action: "invoice_reminder_sent",
+        oldValue: { status: current.status },
+        newValue: {
+          status: "reminder_sent",
+          reminder_sent_at: sentAt,
+          reminder_count: reminderCount,
+          reminder_mail_sent_at: sentAt,
+          reminder_mail_to: mailTo,
+          reminder_mail_status: "sent"
+        },
+        actorType: "admin",
+        actorId: input.actorLabel
+      });
+    });
+  } catch (e) {
+    const err = e;
+    if (err.code === "invoice_not_found") return { ok: false, error: "invoice_not_found" };
+    if (err.code === "invoice_cancelled") return { ok: false, error: "invoice_cancelled" };
+    if (err.code === "invoice_already_paid") return { ok: false, error: "invoice_already_paid" };
+    if (err.code === "invoice_draft") return { ok: false, error: "invoice_draft" };
+    throw e;
+  }
+  return {
+    ok: true,
+    message: `Erinnerung gesendet an ${mailTo}.`,
+    mail_to: mailTo,
+    mail_status: "sent",
+    reminder_mail_sent_at: sentAt,
+    reminder_mail_to: mailTo,
+    reminder_mail_status: "sent"
+  };
+}
+function readInvoiceMeta(inv) {
+  return inv.metadata_json && typeof inv.metadata_json === "object" ? inv.metadata_json : {};
+}
+async function resolveStatusAfterPaymentRevert(tx, invoiceId, meta) {
+  const fromMeta = meta.status_before_paid;
+  if (typeof fromMeta === "string") {
+    const s = fromMeta.trim().toLowerCase();
+    if (s && s !== "paid" && s !== "cancelled") return s;
+  }
+  const audits = await tx.select().from(financialAuditLogTable).where(
+    and(
+      eq(financialAuditLogTable.entity_type, "invoice"),
+      eq(financialAuditLogTable.entity_id, invoiceId),
+      eq(financialAuditLogTable.action, "invoice_marked_paid")
+    )
+  ).orderBy(desc(financialAuditLogTable.created_at)).limit(1);
+  const oldStatus = audits[0]?.old_value_json?.status;
+  if (typeof oldStatus === "string") {
+    const s = oldStatus.trim().toLowerCase();
+    if (s && s !== "paid" && s !== "cancelled") return s;
+  }
+  return "issued";
+}
+async function adminRevertInvoicePayment(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const invoiceId = input.invoiceId.trim();
+  if (!invoiceId) return { ok: false, error: "invoice_id_required" };
+  try {
+    return await db2.transaction(async (tx) => {
+      const invRows = await tx.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).for("update").limit(1);
+      const inv = invRows[0];
+      if (!inv) throw Object.assign(new Error("not_found"), { code: "invoice_not_found" });
+      if (inv.status !== "paid") {
+        return { ok: true, invoiceId, restoredStatus: inv.status, idempotent: true };
+      }
+      const prevMeta = readInvoiceMeta(inv);
+      const restoredStatus = await resolveStatusAfterPaymentRevert(tx, invoiceId, prevMeta);
+      const revertedAt = /* @__PURE__ */ new Date();
+      const reason = String(input.reason ?? "").trim();
+      const bookedPayments = await tx.select().from(paymentsTable).where(
+        and(
+          eq(paymentsTable.target_type, "invoice"),
+          eq(paymentsTable.target_id, invoiceId),
+          eq(paymentsTable.status, "booked")
+        )
+      ).orderBy(desc(paymentsTable.created_at));
+      const reversedPaymentIds = [];
+      for (const pay of bookedPayments) {
+        const payMeta = pay.metadata_json && typeof pay.metadata_json === "object" ? pay.metadata_json : {};
+        await tx.update(paymentsTable).set({
+          status: "reversed",
+          updated_at: revertedAt,
+          metadata_json: {
+            ...payMeta,
+            reversed_at: revertedAt.toISOString(),
+            reversed_by_admin: input.actorLabel,
+            revert_reason: reason || null
+          }
+        }).where(eq(paymentsTable.id, pay.id));
+        reversedPaymentIds.push(pay.id);
+      }
+      await tx.update(invoicesTable).set({
+        status: restoredStatus,
+        updated_at: revertedAt,
+        metadata_json: {
+          ...prevMeta,
+          payment_reverted_at: revertedAt.toISOString(),
+          payment_reverted_by_admin: input.actorLabel,
+          payment_revert_reason: reason || null,
+          last_restored_status: restoredStatus
+        }
+      }).where(eq(invoicesTable.id, invoiceId));
+      await insertFinancialAuditInTx(tx, {
+        entityType: "invoice",
+        entityId: invoiceId,
+        action: "invoice_payment_reverted",
+        oldValue: {
+          status: "paid",
+          paymentIds: reversedPaymentIds,
+          paid_at: prevMeta.paid_at ?? null,
+          paid_by_admin: prevMeta.paid_by_admin ?? null
+        },
+        newValue: {
+          status: restoredStatus,
+          reversedPaymentIds,
+          revertedAt: revertedAt.toISOString(),
+          revertedByAdmin: input.actorLabel,
+          reason: reason || null
+        },
+        actorType: "admin",
+        actorId: input.actorLabel
+      });
+      return { ok: true, invoiceId, restoredStatus };
+    });
+  } catch (e) {
+    const err = e;
+    if (err.code === "invoice_not_found") return { ok: false, error: "invoice_not_found" };
+    throw e;
+  }
+}
+
+// src/db/adminFinanceData.ts
+init_invoiceNumbering();
+
+// src/lib/invoiceTimeline.ts
+function parseIsoMs(iso) {
+  if (!iso) return 0;
+  const d = iso instanceof Date ? iso : new Date(String(iso));
+  const ms = d.getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+}
+function auditTitle(action) {
+  const m = {
+    invoice_marked_paid: "Als bezahlt markiert",
+    invoice_reminder_sent: "Zahlungserinnerung gesendet",
+    invoice_payment_reverted: "Zahlung zur\xFCckgenommen"
+  };
+  return m[action] ?? action;
+}
+function auditKind(action) {
+  if (action === "invoice_marked_paid") return "marked_paid";
+  if (action === "invoice_reminder_sent") return "reminder_sent";
+  if (action === "invoice_payment_reverted") return "payment_reverted";
+  return null;
+}
+function parseReminderHistory(meta) {
+  const raw = meta.reminder_history;
+  if (!Array.isArray(raw)) {
+    if (typeof meta.reminder_sent_at === "string") {
+      return [
+        {
+          sentAt: meta.reminder_sent_at,
+          sentBy: typeof meta.last_reminder_by === "string" ? meta.last_reminder_by : null,
+          sequence: Number(meta.reminder_count ?? 1) || 1
+        }
+      ];
+    }
+    return [];
+  }
+  return raw.map((row, i) => {
+    const o = row && typeof row === "object" ? row : {};
+    const sentAt = typeof o.sentAt === "string" ? o.sentAt : "";
+    if (!sentAt) return null;
+    return {
+      sentAt,
+      sentBy: typeof o.sentBy === "string" ? o.sentBy : null,
+      sequence: Number(o.sequence ?? i + 1) || i + 1
+    };
+  }).filter((x) => x !== null);
+}
+function buildInvoiceTimeline(input) {
+  const events = [];
+  events.push({
+    id: `created-${input.invoiceId}`,
+    at: new Date(input.createdAt).toISOString(),
+    kind: "invoice_created",
+    title: "Rechnung erstellt",
+    detail: `${input.invoiceNumber} \xB7 Ausstellungsdatum ${input.issueDate}`,
+    actor: null
+  });
+  for (const r of input.reminderHistory) {
+    events.push({
+      id: `reminder-${r.sentAt}-${r.sequence}`,
+      at: r.sentAt.includes("T") ? r.sentAt : `${r.sentAt}T12:00:00.000Z`,
+      kind: "reminder_sent",
+      title: "Zahlungserinnerung gesendet",
+      detail: r.sequence > 1 ? `Erinnerung #${r.sequence}` : null,
+      actor: r.sentBy
+    });
+  }
+  for (const a of input.auditEntries) {
+    const kind = auditKind(a.action);
+    if (!kind) continue;
+    const nv = a.new_value_json ?? {};
+    let detail = null;
+    if (kind === "marked_paid" && nv.amount != null) {
+      detail = `Betrag ${nv.amount} \u20AC \xB7 Ref. ${String(nv.reference ?? "\u2014")}`;
+    }
+    if (kind === "payment_reverted" && nv.reason) {
+      detail = String(nv.reason);
+    }
+    events.push({
+      id: `audit-${a.id}`,
+      at: new Date(a.created_at).toISOString(),
+      kind,
+      title: auditTitle(a.action),
+      detail,
+      actor: a.actor_id
+    });
+  }
+  for (const p of input.payments) {
+    const meta = p.metadata_json && typeof p.metadata_json === "object" ? p.metadata_json : {};
+    if (p.status === "booked") {
+      events.push({
+        id: `pay-booked-${p.id}`,
+        at: (p.paid_at ? new Date(p.paid_at) : new Date(p.created_at)).toISOString(),
+        kind: "payment_booked",
+        title: "Zahlung verbucht",
+        detail: `${p.amount} \u20AC \xB7 ${p.reference || "\u2014"}`,
+        actor: typeof meta.createdByActor === "string" ? meta.createdByActor : null
+      });
+    }
+    if (p.status === "reversed") {
+      const revAt = typeof meta.reversed_at === "string" ? meta.reversed_at : new Date(p.created_at).toISOString();
+      events.push({
+        id: `pay-reversed-${p.id}`,
+        at: revAt.includes("T") ? revAt : `${revAt}T12:00:00.000Z`,
+        kind: "payment_reversed",
+        title: "Zahlung zur\xFCckgenommen (Payment reversed)",
+        detail: typeof meta.revert_reason === "string" && meta.revert_reason ? meta.revert_reason : `${p.amount} \u20AC`,
+        actor: typeof meta.reversed_by_admin === "string" ? meta.reversed_by_admin : null
+      });
+    }
+  }
+  events.sort((a, b) => parseIsoMs(b.at) - parseIsoMs(a.at));
+  return events;
+}
+
+// src/db/adminFinanceData.ts
 function n2(v) {
   const x = typeof v === "number" ? v : Number(v);
   return Number.isFinite(x) ? x : 0;
@@ -60807,26 +62057,118 @@ async function getRideFinancialDetailAdmin(rideId) {
     audit_entries: auditEntries
   };
 }
+function appendInvoiceWorkflowFilter(cond, filter) {
+  if (!filter || filter === "all") return;
+  const today = sql2`CURRENT_DATE`;
+  switch (filter) {
+    case "paid":
+      cond.push(eq(invoicesTable.status, "paid"));
+      return;
+    case "cancelled":
+      cond.push(eq(invoicesTable.status, "cancelled"));
+      return;
+    case "reminder_sent":
+      cond.push(eq(invoicesTable.status, "reminder_sent"));
+      return;
+    case "due":
+      cond.push(
+        sql2`${invoicesTable.status} in ('issued', 'partially_paid', 'reminder_sent') and ${invoicesTable.due_date} = ${today}`
+      );
+      return;
+    case "overdue":
+      cond.push(
+        sql2`(
+          ${invoicesTable.status} = 'overdue'
+          OR (
+            ${invoicesTable.status} in ('issued', 'partially_paid')
+            AND ${invoicesTable.due_date} is not null
+            AND ${invoicesTable.due_date} < ${today}
+          )
+        ) AND ${invoicesTable.status} <> 'reminder_sent'`
+      );
+      return;
+    case "open":
+      cond.push(
+        sql2`${invoicesTable.status} in ('issued', 'partially_paid') AND (
+          ${invoicesTable.due_date} is null OR ${invoicesTable.due_date} > ${today}
+        )`
+      );
+      return;
+    default:
+      return;
+  }
+}
+function buildInvoiceAdminWhere(filters) {
+  const cond = [];
+  if (filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, filters.companyId.trim()));
+  if (filters.workflowFilter) {
+    appendInvoiceWorkflowFilter(cond, filters.workflowFilter);
+  } else if (filters.status?.trim()) {
+    cond.push(eq(invoicesTable.status, filters.status.trim()));
+  }
+  if (filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, filters.type.trim()));
+  if (filters.companyCode?.trim()) {
+    cond.push(sql2`exists (
+      select 1 from admin_companies ac
+      where ac.id = ${invoicesTable.company_id}
+        and upper(ac.company_code) = upper(${filters.companyCode.trim()})
+    )`);
+  }
+  if (filters.invoicePrefix?.trim()) {
+    const p = filters.invoicePrefix.trim().toUpperCase();
+    cond.push(sql2`${invoicesTable.invoice_number} like ${`ONR-${p}-%`}`);
+  }
+  if (filters.invoiceNumber?.trim()) {
+    const q = `%${filters.invoiceNumber.trim().replace(/%/g, "\\%")}%`;
+    cond.push(sql2`${invoicesTable.invoice_number} ilike ${q}`);
+  }
+  return cond;
+}
 async function countInvoicesAdmin(filters) {
   const db2 = getDb();
   if (!db2) return 0;
-  const cond = [];
-  if (filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, filters.companyId.trim()));
-  if (filters.status?.trim()) cond.push(eq(invoicesTable.status, filters.status.trim()));
-  if (filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, filters.type.trim()));
+  const cond = buildInvoiceAdminWhere(filters);
   const [row] = await db2.select({ n: sql2`count(*)::int` }).from(invoicesTable).where(cond.length ? and(...cond) : void 0);
   return n2(row?.n);
 }
 async function listInvoicesAdmin(args) {
   const db2 = getDb();
   if (!db2) return [];
-  const cond = [];
-  if (args.filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, args.filters.companyId.trim()));
-  if (args.filters.status?.trim()) cond.push(eq(invoicesTable.status, args.filters.status.trim()));
-  if (args.filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, args.filters.type.trim()));
+  const cond = buildInvoiceAdminWhere(args.filters);
   const rows = await db2.select().from(invoicesTable).where(cond.length ? and(...cond) : void 0).orderBy(desc(invoicesTable.created_at)).limit(args.limit).offset(args.offset);
   const map = await companyNameMap();
-  return rows.map((r) => ({ ...r, company_name: r.company_id ? map.get(r.company_id) ?? null : null }));
+  const codeMap = await companyCodeMap();
+  return rows.map((r) => {
+    const enriched = enrichInvoiceAdminRow(r, r.company_id ? map.get(r.company_id) ?? null : null);
+    return {
+      ...enriched,
+      company_code: r.company_id ? codeMap.get(r.company_id) ?? "" : ""
+    };
+  });
+}
+async function companyCodeMap() {
+  const db2 = getDb();
+  if (!db2) return /* @__PURE__ */ new Map();
+  const companies = await db2.select({ id: adminCompaniesTable.id, company_code: adminCompaniesTable.company_code }).from(adminCompaniesTable);
+  return new Map(companies.map((c) => [c.id, c.company_code ?? ""]));
+}
+async function findInvoiceByInvoiceNumber(invoiceNumber) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const num2 = invoiceNumber.trim();
+  if (!num2) return null;
+  const rows = await db2.select().from(invoicesTable).where(eq(invoicesTable.invoice_number, num2)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return findInvoiceAdmin(row.id);
+}
+async function findInvoiceByPaymentReference(reference) {
+  const { lookupPaymentReferenceForBankMatching: lookupPaymentReferenceForBankMatching2 } = await Promise.resolve().then(() => (init_invoicePaymentReference(), invoicePaymentReference_exports));
+  const parsed = lookupPaymentReferenceForBankMatching2(reference);
+  if (parsed) return findInvoiceByInvoiceNumber(parsed.invoiceNumber);
+  const trimmed = reference.trim();
+  if (!trimmed) return null;
+  return findInvoiceByInvoiceNumber(trimmed);
 }
 async function findInvoiceAdmin(invoiceId) {
   const db2 = getDb();
@@ -60836,10 +62178,53 @@ async function findInvoiceAdmin(invoiceId) {
   if (!row) return null;
   const map = await companyNameMap();
   const items = await db2.select().from(invoiceItemsTable).where(eq(invoiceItemsTable.invoice_id, invoiceId));
+  const companyName = row.company_id ? map.get(row.company_id) ?? null : null;
+  const codes = await companyCodeMap();
+  const linkedPayments = await db2.select().from(paymentsTable).where(and(eq(paymentsTable.target_type, "invoice"), eq(paymentsTable.target_id, invoiceId))).orderBy(desc(paymentsTable.created_at));
+  const audit_entries = await db2.select().from(financialAuditLogTable).where(and(eq(financialAuditLogTable.entity_type, "invoice"), eq(financialAuditLogTable.entity_id, invoiceId))).orderBy(desc(financialAuditLogTable.created_at)).limit(80);
+  const meta = row.metadata_json && typeof row.metadata_json === "object" ? row.metadata_json : {};
+  const reminder_history = parseReminderHistory(meta);
+  const timeline = buildInvoiceTimeline({
+    invoiceId: row.id,
+    invoiceNumber: row.invoice_number,
+    createdAt: row.created_at,
+    issueDate: String(row.issue_date),
+    auditEntries: audit_entries.map((a) => ({
+      id: a.id,
+      action: a.action,
+      created_at: a.created_at,
+      actor_id: a.actor_id,
+      new_value_json: a.new_value_json && typeof a.new_value_json === "object" ? a.new_value_json : {}
+    })),
+    payments: linkedPayments.map((p) => ({
+      id: p.id,
+      status: p.status,
+      amount: Number(p.amount),
+      paid_at: p.paid_at,
+      reference: p.reference,
+      created_at: p.created_at,
+      metadata_json: p.metadata_json && typeof p.metadata_json === "object" ? p.metadata_json : {}
+    })),
+    reminderHistory: reminder_history
+  });
   return {
-    ...row,
-    company_name: row.company_id ? map.get(row.company_id) ?? null : null,
-    items
+    ...enrichInvoiceAdminRow(row, companyName),
+    company_code: row.company_id ? codes.get(row.company_id) ?? "" : "",
+    items,
+    payments: linkedPayments,
+    payment_history: linkedPayments,
+    audit_entries,
+    timeline,
+    reminder_history,
+    paid_at: typeof meta.paid_at === "string" ? meta.paid_at : null,
+    paid_by_admin: typeof meta.paid_by_admin === "string" ? meta.paid_by_admin : null,
+    reminder_sent_at: typeof meta.reminder_sent_at === "string" ? meta.reminder_sent_at : null,
+    reminder_mail_sent_at: typeof meta.reminder_mail_sent_at === "string" ? meta.reminder_mail_sent_at : null,
+    reminder_mail_to: typeof meta.reminder_mail_to === "string" ? meta.reminder_mail_to : null,
+    reminder_mail_status: typeof meta.reminder_mail_status === "string" ? meta.reminder_mail_status : null,
+    payment_reverted_at: typeof meta.payment_reverted_at === "string" ? meta.payment_reverted_at : null,
+    payment_reverted_by_admin: typeof meta.payment_reverted_by_admin === "string" ? meta.payment_reverted_by_admin : null,
+    payment_revert_reason: typeof meta.payment_revert_reason === "string" ? meta.payment_revert_reason : null
   };
 }
 async function countSettlementsAdmin(filters) {
@@ -60962,14 +62347,149 @@ async function getFinanceEligibilitySummaryForRide(rideId) {
   };
 }
 
+// src/db/adminInvoiceBillingOps.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+function n3(v) {
+  const x = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+async function getAdminInvoiceFinanceKpis() {
+  if (!isPostgresConfigured()) {
+    return {
+      openTotalGross: 0,
+      overdueTotalGross: 0,
+      paidThisMonthGross: 0,
+      openCount: 0,
+      overdueCount: 0,
+      currency: "EUR"
+    };
+  }
+  const db2 = getDb();
+  if (!db2) {
+    return {
+      openTotalGross: 0,
+      overdueTotalGross: 0,
+      paidThisMonthGross: 0,
+      openCount: 0,
+      overdueCount: 0,
+      currency: "EUR"
+    };
+  }
+  const openWhere = buildInvoiceAdminWhere({ workflowFilter: "open" });
+  const overdueWhere = buildInvoiceAdminWhere({ workflowFilter: "overdue" });
+  const [openAgg, overdueAgg, paidMonth] = await Promise.all([
+    db2.select({
+      total: sql2`coalesce(sum(${invoicesTable.total_gross}), 0)`,
+      cnt: sql2`count(*)::int`
+    }).from(invoicesTable).where(openWhere.length ? and(...openWhere) : void 0),
+    db2.select({
+      total: sql2`coalesce(sum(${invoicesTable.total_gross}), 0)`,
+      cnt: sql2`count(*)::int`
+    }).from(invoicesTable).where(overdueWhere.length ? and(...overdueWhere) : void 0),
+    db2.select({
+      total: sql2`coalesce(sum(${paymentsTable.amount}), 0)`
+    }).from(paymentsTable).where(
+      sql2`${paymentsTable.target_type} = 'invoice'
+          AND ${paymentsTable.status} = 'booked'
+          AND ${paymentsTable.paid_at} >= date_trunc('month', CURRENT_TIMESTAMP)`
+    )
+  ]);
+  return {
+    openTotalGross: n3(openAgg[0]?.total),
+    overdueTotalGross: n3(overdueAgg[0]?.total),
+    paidThisMonthGross: n3(paidMonth[0]?.total),
+    openCount: n3(openAgg[0]?.cnt),
+    overdueCount: n3(overdueAgg[0]?.cnt),
+    currency: "EUR"
+  };
+}
+function csvEscape(v) {
+  const s = String(v ?? "");
+  if (s.includes('"') || s.includes(";") || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+async function exportInvoicesAdminCsv(filters) {
+  const rows = await listInvoicesForExport({ filters, limit: 1e4 });
+  const header = [
+    "Rechnungsnummer",
+    "Mandant",
+    "Mandanten-Code",
+    "Mandanten-ID",
+    "Netto",
+    "USt",
+    "Brutto",
+    "Status",
+    "Workflow",
+    "Status (DE)",
+    "Rechnungsdatum",
+    "F\xE4llig",
+    "Bezahlt am",
+    "Verwendungszweck"
+  ];
+  const lines = [header.join(";")];
+  for (const r of rows) {
+    lines.push(
+      [
+        csvEscape(r.invoice_number),
+        csvEscape(r.company_name),
+        csvEscape(r.company_code),
+        csvEscape(r.company_id),
+        String(r.subtotal_net).replace(".", ","),
+        String(r.vat_total).replace(".", ","),
+        String(r.total_gross).replace(".", ","),
+        csvEscape(r.status),
+        csvEscape(r.workflow_status),
+        csvEscape(r.status_label_de),
+        csvEscape(r.issue_date),
+        csvEscape(r.due_date),
+        csvEscape(r.paid_at),
+        csvEscape(r.payment_reference)
+      ].join(";")
+    );
+  }
+  return `\uFEFF${lines.join("\n")}`;
+}
+async function listInvoicesForExport(args) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cond = buildInvoiceAdminWhere(args.filters);
+  const rows = await db2.select().from(invoicesTable).where(cond.length ? and(...cond) : void 0).orderBy(desc(invoicesTable.created_at)).limit(args.limit);
+  const names = await companyNameMap();
+  const codes = await companyCodeMap();
+  return rows.map((r) => {
+    const enriched = enrichInvoiceAdminRow(r, r.company_id ? names.get(r.company_id) ?? null : null);
+    const meta = r.metadata_json && typeof r.metadata_json === "object" ? r.metadata_json : {};
+    return {
+      invoice_number: r.invoice_number,
+      company_name: enriched.company_name ?? "",
+      company_code: r.company_id ? codes.get(r.company_id) ?? "" : "",
+      company_id: r.company_id ?? "",
+      subtotal_net: Number(r.subtotal_net),
+      vat_total: Number(r.vat_total),
+      total_gross: Number(r.total_gross),
+      status: r.status,
+      workflow_status: enriched.workflow_status,
+      status_label_de: enriched.status_label_de,
+      issue_date: String(r.issue_date),
+      due_date: r.due_date ? String(r.due_date) : "",
+      paid_at: typeof meta.paid_at === "string" ? meta.paid_at.slice(0, 10) : "",
+      payment_reference: enriched.payment_reference
+    };
+  });
+}
+
 // src/db/financeSettlementsData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID17 } from "node:crypto";
-async function insertFinancialAuditInTx(tx, input) {
+import { randomUUID as randomUUID18 } from "node:crypto";
+async function insertFinancialAuditInTx2(tx, input) {
   await tx.insert(financialAuditLogTable).values({
-    id: `fal-${randomUUID17()}`,
+    id: `fal-${randomUUID18()}`,
     entity_type: input.entityType,
     entity_id: input.entityId,
     action: input.action,
@@ -61035,8 +62555,8 @@ async function adminCreateSettlementWithRideAllocations(input) {
         }
         lockedRows.push({ rideId, rf });
       }
-      const settlementNumber = `ST-${Date.now().toString(36)}-${randomUUID17().slice(0, 8)}`;
-      const settlementId = `setl-${randomUUID17().replace(/-/g, "").slice(0, 22)}`;
+      const settlementNumber = `ST-${Date.now().toString(36)}-${randomUUID18().slice(0, 8)}`;
+      const settlementId = `setl-${randomUUID18().replace(/-/g, "").slice(0, 22)}`;
       await tx.insert(settlementsTable).values({
         id: settlementId,
         company_id: companyId,
@@ -61078,7 +62598,7 @@ async function adminCreateSettlementWithRideAllocations(input) {
         payout_amount: Math.round(sumPay * 100) / 100,
         updated_at: /* @__PURE__ */ new Date()
       }).where(eq(settlementsTable.id, settlementId));
-      await insertFinancialAuditInTx(tx, {
+      await insertFinancialAuditInTx2(tx, {
         entityType: "settlement",
         entityId: settlementId,
         action: "settlement_created_with_allocations",
@@ -61142,7 +62662,7 @@ async function adminRecordSettlementPayoutAttempt(input) {
         )
       ).orderBy(desc(paymentsTable.created_at)).limit(2);
       if (openpay[0]) {
-        await insertFinancialAuditInTx(tx, {
+        await insertFinancialAuditInTx2(tx, {
           entityType: "payment",
           entityId: openpay[0].id,
           action: "settlement_payment_idempotent_skip",
@@ -61152,7 +62672,7 @@ async function adminRecordSettlementPayoutAttempt(input) {
         });
         return { ok: true, paymentId: openpay[0].id, idempotent: true };
       }
-      const pid = `pay-${randomUUID17()}`;
+      const pid = `pay-${randomUUID18()}`;
       await tx.insert(paymentsTable).values({
         id: pid,
         target_type: "settlement",
@@ -61165,7 +62685,7 @@ async function adminRecordSettlementPayoutAttempt(input) {
         status: "pending",
         metadata_json: { createdByActor: input.actorLabel }
       });
-      await insertFinancialAuditInTx(tx, {
+      await insertFinancialAuditInTx2(tx, {
         entityType: "payment",
         entityId: pid,
         action: "settlement_payment_created",
@@ -61185,6 +62705,1181 @@ async function adminRecordSettlementPayoutAttempt(input) {
     }
     throw e;
   }
+}
+
+// src/lib/invoice/mapInvoiceItemForPdf.ts
+function pickStr(meta, ...keys) {
+  for (const k of keys) {
+    const v = meta[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+function invoiceItemPdfSubline(item, meta) {
+  const m = meta ?? {};
+  const from = pickStr(m, "from", "fromFull", "pickup");
+  const to = pickStr(m, "to", "toFull", "dropoff");
+  const date2 = pickStr(m, "date", "rideDate", "serviceDate");
+  const code = pickStr(m, "code", "accessCode", "voucherCode");
+  const km = m.distanceKm ?? m.distance_km;
+  const parts = [];
+  if (date2) parts.push(date2);
+  if (from && to) parts.push(`${from} \u2192 ${to}`);
+  else if (from || to) parts.push(from || to);
+  if (typeof km === "number" && Number.isFinite(km)) parts.push(`${km.toFixed(1)} km`);
+  if (code) parts.push(`Code: ${code}`);
+  if (item.rideId) parts.push(`Fahrt ${item.rideId}`);
+  return parts.length > 0 ? parts.join(" \xB7 ") : void 0;
+}
+function mapPanelInvoiceItemsForPdf(items) {
+  return items.map((item, index) => ({
+    position: index + 1,
+    description: item.description,
+    detail: invoiceItemPdfSubline(item, item.metadata),
+    quantity: item.quantity,
+    unitNet: item.unitNet,
+    vatRate: item.vatRate,
+    lineNet: item.lineNet,
+    lineVat: item.lineVat,
+    lineGross: item.lineGross
+  }));
+}
+
+// src/lib/invoice/partnerInvoicePdf.ts
+import PDFDocument from "pdfkit";
+
+// src/lib/invoice/invoiceBrand.ts
+var ONRODA_INVOICE_BRAND = {
+  productName: "ONRODA",
+  website: "onroda.de",
+  accent: "#EF1D26",
+  text: "#1C1C1E",
+  muted: "#6B7280",
+  surface: "#F2F2F7",
+  card: "#FFFFFF",
+  border: "#E5E7EB"
+};
+var ONRODA_INVOICE_SELLER = {
+  legalName: "Vedat \xD6zt\xFCrk",
+  tradingName: "\xD6zt\xFCrk Taxiunternehmen",
+  street: "Oberdorfstr 53",
+  postalCode: "70771",
+  city: "Leinfelden-Echterdingen",
+  country: "Deutschland",
+  iban: "DE88 6115 0020 0104 7668 93",
+  taxId: "97076/11679"
+};
+function sellerAddressLines() {
+  const s = ONRODA_INVOICE_SELLER;
+  return [`${s.street}`, `${s.postalCode} ${s.city}`, s.country];
+}
+
+// src/lib/invoice/invoiceLayout.ts
+var INVOICE_PAGE = {
+  width: 595.28,
+  height: 841.89
+};
+var INVOICE_MARGINS = {
+  left: 50,
+  right: 50,
+  top: 52,
+  bottom: 56
+};
+var INVOICE_LAYOUT = {
+  headerHeight: 88,
+  footerHeight: 72,
+  metaBarHeight: 44,
+  tableHeaderHeight: 22,
+  tableRowMinHeight: 36,
+  totalsCardWidth: 220,
+  sectionGap: 14,
+  lineGap: 4
+};
+function contentTopY() {
+  return INVOICE_MARGINS.top + INVOICE_LAYOUT.headerHeight;
+}
+function contentBottomY() {
+  return INVOICE_PAGE.height - INVOICE_MARGINS.bottom - INVOICE_LAYOUT.footerHeight;
+}
+function createPdfContext(doc, pageIndex, startY) {
+  const contentLeft = INVOICE_MARGINS.left;
+  const contentRight = INVOICE_PAGE.width - INVOICE_MARGINS.right;
+  return {
+    doc,
+    pageIndex,
+    contentLeft,
+    contentRight,
+    contentWidth: contentRight - contentLeft,
+    y: startY ?? contentTopY()
+  };
+}
+function remainingHeight(ctx) {
+  return contentBottomY() - ctx.y;
+}
+
+// src/lib/invoice/invoiceLogoAsset.ts
+import fs from "node:fs";
+import path4 from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+var ONRODA_INVOICE_LOGO_FILENAME = "onroda-logo-official.png";
+var LOGO_REL = path4.join("assets", ONRODA_INVOICE_LOGO_FILENAME);
+var cachedLogoBuffer;
+function searchRoots() {
+  const roots = [];
+  if (typeof globalThis.__dirname === "string") roots.push(globalThis.__dirname);
+  try {
+    roots.push(path4.dirname(fileURLToPath2(import.meta.url)));
+  } catch {
+  }
+  return roots;
+}
+function resolveOnrodaInvoiceLogoPath() {
+  for (const start of searchRoots()) {
+    let dir = start;
+    for (let depth = 0; depth < 8; depth += 1) {
+      const candidate = path4.join(dir, LOGO_REL);
+      try {
+        if (fs.existsSync(candidate)) return candidate;
+      } catch {
+      }
+      const parent = path4.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  }
+  const mobileFallback = path4.resolve(
+    searchRoots()[0] ?? ".",
+    "..",
+    "mobile",
+    "assets",
+    "images",
+    ONRODA_INVOICE_LOGO_FILENAME
+  );
+  try {
+    if (fs.existsSync(mobileFallback)) return mobileFallback;
+  } catch {
+  }
+  return null;
+}
+function getOnrodaInvoiceLogoBuffer() {
+  if (cachedLogoBuffer !== void 0) return cachedLogoBuffer;
+  const logoPath = resolveOnrodaInvoiceLogoPath();
+  if (!logoPath) {
+    cachedLogoBuffer = null;
+    return null;
+  }
+  try {
+    cachedLogoBuffer = fs.readFileSync(logoPath);
+  } catch {
+    cachedLogoBuffer = null;
+  }
+  return cachedLogoBuffer;
+}
+
+// src/lib/invoice/invoicePdfComponents.ts
+function hexColor(doc, hex) {
+  doc.fillColor(hex);
+}
+function drawOnrodaWordmark(doc, x, y, scale = 1) {
+  const onSize = 26 * scale;
+  const rodaSize = 26 * scale;
+  doc.font("Helvetica-Bold");
+  hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+  doc.fontSize(onSize).text("on", x, y, { continued: true, lineBreak: false });
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.fontSize(rodaSize).text("roda", { continued: false, lineBreak: false });
+  doc.font("Helvetica");
+  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+  doc.fontSize(9 * scale).text(
+    `Plattform \xB7 ${ONRODA_INVOICE_SELLER.tradingName}`,
+    x,
+    y + onSize + 2
+  );
+  return y + onSize + 14;
+}
+function drawOnrodaLogoBlock(doc, x, y, scale = 1) {
+  const logoMaxW = 128 * scale;
+  const logoMaxH = 42 * scale;
+  const buf = getOnrodaInvoiceLogoBuffer();
+  if (buf) {
+    doc.image(buf, x, y, { fit: [logoMaxW, logoMaxH], align: "left", valign: "top" });
+    const subtitleY = y + logoMaxH + 4;
+    doc.font("Helvetica");
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    doc.fontSize(9 * scale).text(`Plattform \xB7 ${ONRODA_INVOICE_SELLER.tradingName}`, x, subtitleY);
+    return subtitleY + 12;
+  }
+  return drawOnrodaWordmark(doc, x, y, scale);
+}
+function drawInvoicePageHeader(ctx, meta, opts) {
+  const { doc } = ctx;
+  const compact = opts?.compact === true;
+  const top = INVOICE_MARGINS.top;
+  const left = ctx.contentLeft;
+  const right = ctx.contentRight;
+  const logoScale = compact ? 0.72 : 1;
+  const logoBottom = drawOnrodaLogoBlock(doc, left, compact ? top - 4 : top, logoScale);
+  const titleX = right - 160;
+  doc.font("Helvetica-Bold").fontSize(compact ? 11 : 14);
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.text("RECHNUNG", titleX, top, { width: 160, align: "right" });
+  doc.font("Helvetica-Bold").fontSize(compact ? 10 : 12);
+  hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+  doc.text(meta.invoiceNumber, titleX, top + (compact ? 14 : 18), { width: 160, align: "right" });
+  if (!compact) {
+    const badgeY = top + 40;
+    doc.roundedRect(right - 92, badgeY, 92, 22, 11).fillOpacity(0.08).fill(ONRODA_INVOICE_BRAND.accent).fillOpacity(1);
+    doc.font("Helvetica-Bold").fontSize(9);
+    hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+    doc.text(meta.statusLabel.toUpperCase(), right - 92, badgeY + 6, { width: 92, align: "center" });
+  }
+  const lineY = Math.max(logoBottom + 6, top + (compact ? 36 : INVOICE_LAYOUT.headerHeight - 8));
+  doc.moveTo(left, lineY).lineTo(right, lineY).lineWidth(0.5).strokeColor(ONRODA_INVOICE_BRAND.border).stroke();
+  return lineY + INVOICE_LAYOUT.sectionGap;
+}
+function drawInvoiceMetaBar(ctx, meta) {
+  const { doc } = ctx;
+  const y = ctx.y;
+  const h = INVOICE_LAYOUT.metaBarHeight;
+  doc.roundedRect(ctx.contentLeft, y, ctx.contentWidth, h, 6).fill(ONRODA_INVOICE_BRAND.surface);
+  const colW = ctx.contentWidth / 3;
+  const items = [
+    { label: "Rechnungsdatum", value: meta.issueDateLabel },
+    { label: "Leistungszeitraum", value: meta.periodLabel },
+    { label: "Zahlungsziel", value: meta.dueDateLabel }
+  ];
+  items.forEach((item, i) => {
+    const x = ctx.contentLeft + 14 + i * colW;
+    doc.font("Helvetica").fontSize(8);
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    doc.text(item.label.toUpperCase(), x, y + 10, { width: colW - 20 });
+    doc.font("Helvetica-Bold").fontSize(10);
+    hexColor(doc, ONRODA_INVOICE_BRAND.text);
+    doc.text(item.value, x, y + 22, { width: colW - 20 });
+  });
+  return y + h + INVOICE_LAYOUT.sectionGap;
+}
+function drawPartyColumns(ctx, seller, recipient) {
+  const { doc } = ctx;
+  const y = ctx.y;
+  const colW = (ctx.contentWidth - 16) / 2;
+  const drawBlock = (block, x) => {
+    let ly = y;
+    doc.font("Helvetica").fontSize(8);
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    doc.text(block.title.toUpperCase(), x, ly, { width: colW });
+    ly += 12;
+    doc.font("Helvetica-Bold").fontSize(11);
+    hexColor(doc, ONRODA_INVOICE_BRAND.text);
+    const nameH = doc.heightOfString(block.name, { width: colW });
+    doc.text(block.name, x, ly, { width: colW });
+    ly += nameH + 4;
+    doc.font("Helvetica").fontSize(10);
+    hexColor(doc, "#4B5563");
+    for (const line2 of block.lines) {
+      const lineH = doc.heightOfString(line2, { width: colW });
+      doc.text(line2, x, ly, { width: colW });
+      ly += lineH + 2;
+    }
+    if (block.title.toLowerCase().includes("steller")) {
+      doc.fontSize(9).fillColor(ONRODA_INVOICE_BRAND.muted);
+      const taxLine = `St.-Nr. ${ONRODA_INVOICE_SELLER.taxId}`;
+      const taxH = doc.heightOfString(taxLine, { width: colW });
+      doc.text(taxLine, x, ly + 2, { width: colW });
+      ly += taxH + 4;
+    }
+    return ly;
+  };
+  const leftEnd = drawBlock(seller, ctx.contentLeft);
+  const rightEnd = drawBlock(recipient, ctx.contentLeft + colW + 16);
+  return Math.max(leftEnd, rightEnd) + INVOICE_LAYOUT.sectionGap;
+}
+function measureTableRowHeight(doc, row, columns) {
+  let maxH = INVOICE_LAYOUT.tableRowMinHeight;
+  const descCol = columns.find((c) => c.key === "description");
+  const descW = descCol ? descCol.width - 8 : 200;
+  if (row.subline) {
+    doc.font("Helvetica").fontSize(8);
+    const subH = doc.heightOfString(row.subline, { width: descW });
+    maxH = Math.max(maxH, 22 + subH);
+  }
+  for (const col of columns) {
+    const text2 = row.cells[col.key] ?? "";
+    doc.font(col.align === "right" ? "Helvetica-Bold" : "Helvetica").fontSize(10);
+    const colW = col.width - 8;
+    const h = doc.heightOfString(text2, { width: colW });
+    maxH = Math.max(maxH, 16 + h);
+  }
+  return maxH;
+}
+function drawInvoiceTableHeader(ctx, columns) {
+  const { doc } = ctx;
+  const y = ctx.y;
+  doc.font("Helvetica").fontSize(8);
+  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+  let x = ctx.contentLeft;
+  for (const col of columns) {
+    doc.text(col.title.toUpperCase(), x, y, {
+      width: col.width,
+      align: col.align ?? "left"
+    });
+    x += col.width;
+  }
+  const lineY = y + INVOICE_LAYOUT.tableHeaderHeight - 6;
+  doc.moveTo(ctx.contentLeft, lineY).lineTo(ctx.contentRight, lineY).lineWidth(0.5).strokeColor(ONRODA_INVOICE_BRAND.border).stroke();
+  return lineY + 8;
+}
+function drawInvoiceTableRow(ctx, columns, row) {
+  const { doc } = ctx;
+  const y = ctx.y;
+  const rowH = row.rowHeight ?? measureTableRowHeight(doc, row, columns);
+  let x = ctx.contentLeft;
+  for (const col of columns) {
+    const align = col.align ?? "left";
+    doc.font(align === "right" ? "Helvetica-Bold" : "Helvetica").fontSize(10);
+    hexColor(doc, col.key === "pos" ? ONRODA_INVOICE_BRAND.muted : ONRODA_INVOICE_BRAND.text);
+    doc.text(row.cells[col.key] ?? "", x, y + 4, { width: col.width - 6, align });
+    x += col.width;
+  }
+  if (row.subline) {
+    doc.font("Helvetica").fontSize(8);
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    const descCol = columns.find((c) => c.key === "description");
+    const subX = descCol ? ctx.contentLeft + (columns[0]?.width ?? 0) : ctx.contentLeft + 32;
+    const subW = descCol ? descCol.width - 8 : ctx.contentWidth - 40;
+    doc.text(row.subline, subX, y + 18, { width: subW });
+  }
+  const lineY = y + rowH;
+  doc.moveTo(ctx.contentLeft, lineY).lineTo(ctx.contentRight, lineY).lineWidth(0.25).strokeColor("#F0F0F2").stroke();
+  return lineY + 4;
+}
+function drawInvoiceTotalsCard(ctx, totals) {
+  const { doc } = ctx;
+  const cardW = INVOICE_LAYOUT.totalsCardWidth;
+  const cardX = ctx.contentRight - cardW;
+  const y = ctx.y;
+  const cardH = 88;
+  doc.roundedRect(cardX, y, cardW, cardH, 8).fill(ONRODA_INVOICE_BRAND.surface);
+  const row = (label, value, yy, bold = false) => {
+    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 11 : 10);
+    hexColor(doc, bold ? ONRODA_INVOICE_BRAND.text : ONRODA_INVOICE_BRAND.muted);
+    doc.text(label, cardX + 14, yy, { width: cardW - 90, align: "left" });
+    hexColor(doc, ONRODA_INVOICE_BRAND.text);
+    doc.text(value, cardX + 14, yy, { width: cardW - 28, align: "right" });
+  };
+  row(totals.netLabel, totals.net, y + 12);
+  row(totals.vatLabel, totals.vat, y + 30);
+  doc.moveTo(cardX + 12, y + 48).lineTo(cardX + cardW - 12, y + 48).lineWidth(0.5).strokeColor(ONRODA_INVOICE_BRAND.border).stroke();
+  doc.font("Helvetica").fontSize(9);
+  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+  doc.text(totals.grossLabel, cardX + 14, y + 54, { width: cardW - 28, align: "left" });
+  doc.font("Helvetica-Bold").fontSize(16);
+  hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+  doc.text(totals.gross, cardX + 14, y + 66, { width: cardW - 28, align: "right" });
+  return y + cardH + INVOICE_LAYOUT.sectionGap;
+}
+function drawBankSection(ctx, opts) {
+  const { doc } = ctx;
+  const y = ctx.y;
+  const paymentReference = opts.paymentReference.trim() || opts.invoiceNumber.trim();
+  doc.moveTo(ctx.contentLeft, y).lineTo(ctx.contentRight, y).lineWidth(0.5).strokeColor(ONRODA_INVOICE_BRAND.border).stroke();
+  let ly = y + 12;
+  doc.font("Helvetica-Bold").fontSize(10);
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.text("Bankverbindung", ctx.contentLeft, ly);
+  ly += 16;
+  doc.font("Helvetica").fontSize(9);
+  hexColor(doc, "#4B5563");
+  doc.text(`IBAN: ${ONRODA_INVOICE_SELLER.iban} \xB7 ${ONRODA_INVOICE_SELLER.legalName}`, ctx.contentLeft, ly, {
+    width: ctx.contentWidth
+  });
+  ly += 14;
+  doc.font("Helvetica-Bold").fontSize(9);
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.text("Verwendungszweck", ctx.contentLeft, ly);
+  ly += 12;
+  doc.font("Helvetica-Bold").fontSize(10);
+  hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+  doc.text(paymentReference, ctx.contentLeft, ly, { width: ctx.contentWidth });
+  ly += doc.heightOfString(paymentReference, { width: ctx.contentWidth }) + 8;
+  if (opts.notes?.trim()) {
+    doc.font("Helvetica").fontSize(9).fillColor(ONRODA_INVOICE_BRAND.muted);
+    doc.text(`Hinweis: ${opts.notes.trim()}`, ctx.contentLeft, ly, { width: ctx.contentWidth });
+    ly += 20;
+  }
+  return ly;
+}
+function drawInvoiceFooter(ctx, pageNum, pageCount) {
+  const { doc } = ctx;
+  const y = INVOICE_PAGE.height - INVOICE_MARGINS.bottom - 28;
+  doc.font("Helvetica").fontSize(8).fillColor(ONRODA_INVOICE_BRAND.muted);
+  const center = `${ONRODA_INVOICE_BRAND.productName} \xB7 ${ONRODA_INVOICE_SELLER.tradingName} \xB7 ${ONRODA_INVOICE_BRAND.website}`;
+  doc.text(center, ctx.contentLeft, y, { width: ctx.contentWidth, align: "center" });
+  const pageLabel = pageCount > 0 && pageCount >= pageNum ? `Seite ${pageNum} / ${pageCount}` : `Seite ${pageNum}`;
+  doc.text(pageLabel, ctx.contentLeft, y + 12, { width: ctx.contentWidth, align: "right" });
+}
+function drawInvoiceFooterOnCurrentPage(ctx, pageNum, pageCount) {
+  drawInvoiceFooter(
+    { ...ctx, y: INVOICE_PAGE.height - INVOICE_MARGINS.bottom - INVOICE_LAYOUT.footerHeight },
+    pageNum,
+    pageCount
+  );
+}
+
+// src/lib/invoice/partnerInvoicePdf.ts
+function fmtDateDe2(iso) {
+  const t = iso.trim();
+  if (!t) return "\u2014";
+  const d = new Date(t.includes("T") ? t : `${t}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return t;
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function roundMoneyEur(n5) {
+  return Math.round((n5 + Number.EPSILON) * 100) / 100;
+}
+function fmtMoney(n5) {
+  return `${roundMoneyEur(n5).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20AC`;
+}
+function buildHeaderMeta(input) {
+  return {
+    invoiceNumber: input.invoiceNumber,
+    statusLabel: input.statusLabel,
+    issueDateLabel: fmtDateDe2(input.issueDate),
+    periodLabel: `${fmtDateDe2(input.periodFrom)} \u2013 ${fmtDateDe2(input.periodTo)}`,
+    dueDateLabel: input.dueDate ? fmtDateDe2(input.dueDate) : "\u2014"
+  };
+}
+function tableColumns(contentWidth) {
+  const posW = 28;
+  const amtW = 72;
+  const qtyW = 44;
+  const descW = contentWidth - posW - qtyW - amtW;
+  return [
+    { key: "pos", title: "Pos.", width: posW, align: "left" },
+    { key: "description", title: "Beschreibung", width: descW, align: "left" },
+    { key: "qty", title: "Menge", width: qtyW, align: "right" },
+    { key: "gross", title: "Betrag", width: amtW, align: "right" }
+  ];
+}
+function lineItemToRow(item) {
+  return {
+    cells: {
+      pos: String(item.position),
+      description: item.description,
+      qty: item.quantity % 1 === 0 ? String(item.quantity) : item.quantity.toFixed(2),
+      gross: fmtMoney(item.lineGross)
+    },
+    subline: item.subline
+  };
+}
+function addPage(state, compact) {
+  drawInvoiceFooterOnCurrentPage(state.ctx, state.pageCount, 0);
+  state.doc.addPage({ size: "A4", margin: 0 });
+  state.pageCount += 1;
+  state.ctx = createPdfContext(state.doc, state.pageCount - 1);
+  state.ctx.y = drawInvoicePageHeader(state.ctx, state.headerMeta, { compact });
+}
+function ensureSpace(state, needed, compactHeader = true) {
+  if (remainingHeight(state.ctx) >= needed) return;
+  addPage(state, compactHeader);
+  state.ctx.y = drawInvoiceTableHeader(state.ctx, state.columns);
+}
+function renderPartnerInvoicePdf(input) {
+  return renderPartnerInvoicePdfWithMeta(input).then((r) => r.buffer);
+}
+function renderPartnerInvoicePdfWithMeta(input) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 0, autoFirstPage: false });
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on(
+      "end",
+      () => resolve({
+        buffer: Buffer.concat(chunks),
+        pageCount: state.pageCount
+      })
+    );
+    doc.on("error", reject);
+    const headerMeta = buildHeaderMeta(input);
+    const state = {
+      doc,
+      ctx: createPdfContext(doc, 0),
+      headerMeta,
+      columns: [],
+      pageCount: 0
+    };
+    doc.addPage({ size: "A4", margin: 0 });
+    state.pageCount = 1;
+    state.ctx = createPdfContext(doc, 0);
+    state.columns = tableColumns(state.ctx.contentWidth);
+    state.ctx.y = drawInvoicePageHeader(state.ctx, headerMeta, { compact: false });
+    state.ctx.y = drawInvoiceMetaBar(state.ctx, headerMeta);
+    state.ctx.y = drawPartyColumns(
+      state.ctx,
+      {
+        title: "Rechnungssteller",
+        name: ONRODA_INVOICE_SELLER.legalName,
+        lines: sellerAddressLines()
+      },
+      {
+        title: "Rechnungsempf\xE4nger",
+        name: input.recipientName,
+        lines: input.recipientLines.filter(Boolean)
+      }
+    );
+    if (input.segmentLabel?.trim()) {
+      doc.font("Helvetica").fontSize(9).fillColor("#6B7280");
+      doc.text(`Leistungsart: ${input.segmentLabel.trim()}`, state.ctx.contentLeft, state.ctx.y);
+      state.ctx.y += 18;
+    }
+    state.ctx.y = drawInvoiceTableHeader(state.ctx, state.columns);
+    const rows = input.items.length ? input.items.map(lineItemToRow) : [
+      {
+        cells: {
+          pos: "\u2014",
+          description: "Keine Positionen erfasst",
+          qty: "\u2014",
+          gross: fmtMoney(0)
+        }
+      }
+    ];
+    for (const row of rows) {
+      const rowH = row.rowHeight ?? measureTableRowHeight(state.doc, row, state.columns);
+      ensureSpace(state, rowH + 8, true);
+      state.ctx.y = drawInvoiceTableRow(state.ctx, state.columns, { ...row, rowHeight: rowH });
+    }
+    const taxPct = input.taxRatePercent ?? (input.subtotalNet > 0 ? Math.round(input.vatTotal / input.subtotalNet * 1e4) / 100 : 19);
+    ensureSpace(state, 100, true);
+    state.ctx.y += 8;
+    state.ctx.y = drawInvoiceTotalsCard(state.ctx, {
+      netLabel: "Nettobetrag",
+      net: fmtMoney(input.subtotalNet),
+      vatLabel: `USt. ${taxPct.toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`,
+      vat: fmtMoney(input.vatTotal),
+      grossLabel: "Gesamtbetrag",
+      gross: fmtMoney(input.totalGross)
+    });
+    ensureSpace(state, 80, true);
+    state.ctx.y = drawBankSection(state.ctx, {
+      paymentReference: input.paymentReference,
+      invoiceNumber: input.invoiceNumber,
+      notes: input.notes
+    });
+    drawInvoiceFooterOnCurrentPage(state.ctx, state.pageCount, state.pageCount);
+    doc.end();
+  });
+}
+
+// src/lib/invoicePdfServer.ts
+function mapLineItems(items) {
+  return items.map((item, index) => ({
+    position: item.position ?? index + 1,
+    description: item.description,
+    subline: item.detail,
+    quantity: item.quantity ?? 1,
+    unitNet: item.unitNet ?? item.lineGross,
+    vatRate: item.vatRate ?? 0,
+    lineNet: item.lineNet ?? item.lineGross,
+    lineVat: item.lineVat ?? 0,
+    lineGross: item.lineGross
+  }));
+}
+function toDocumentInput(input) {
+  return {
+    invoiceNumber: input.invoiceNumber,
+    statusLabel: input.statusLabel,
+    issueDate: input.issueDate,
+    dueDate: input.dueDate,
+    periodFrom: input.periodFrom,
+    periodTo: input.periodTo,
+    recipientName: input.recipientName,
+    recipientLines: input.recipientLines,
+    items: mapLineItems(input.items),
+    subtotalNet: input.subtotalNet,
+    vatTotal: input.vatTotal,
+    totalGross: input.totalGross,
+    taxRatePercent: input.taxRatePercent,
+    notes: input.notes,
+    segmentLabel: input.segmentLabel,
+    paymentReference: input.paymentReference
+  };
+}
+async function buildPartnerMonthlyInvoicePdf(input) {
+  return renderPartnerInvoicePdf(toDocumentInput(input));
+}
+
+// src/db/adminMonthlyInvoiceRunData.ts
+init_drizzle_orm();
+import { randomUUID as randomUUID20 } from "node:crypto";
+
+// src/lib/monthlyInvoiceRun.ts
+var MONTHLY_INVOICE_RUN_COMPANY_KINDS = [
+  "hotel",
+  "corporate",
+  "medical",
+  "insurer",
+  "voucher_client"
+];
+var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+function parseIsoDateOnly(raw) {
+  const t = String(raw ?? "").trim();
+  if (!ISO_DATE.test(t)) return null;
+  const d = /* @__PURE__ */ new Date(`${t}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  return t;
+}
+function addCalendarDays(isoDate, days) {
+  const d = /* @__PURE__ */ new Date(`${isoDate}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function validateMonthlyRunPeriod(periodStart, periodEnd) {
+  const start = parseIsoDateOnly(periodStart);
+  const end = parseIsoDateOnly(periodEnd);
+  if (!start || !end) return { ok: false, error: "invalid_period_dates" };
+  if (start > end) return { ok: false, error: "period_start_after_end" };
+  return { ok: true };
+}
+
+// src/db/adminMonthlyInvoiceRunData.ts
+init_client();
+
+// src/db/partnerInvoiceGeneratorData.ts
+init_drizzle_orm();
+init_client();
+import { randomUUID as randomUUID19 } from "node:crypto";
+
+// src/db/invoiceNumberSequencesData.ts
+init_drizzle_orm();
+init_invoiceNumbering();
+init_schema2();
+async function allocatePartnerInvoiceNumberInTx(tx, input) {
+  const companyId = input.companyId.trim();
+  if (!companyId) throw Object.assign(new Error("company_required"), { code: "company_required" });
+  const rows = await tx.select({
+    company_kind: adminCompaniesTable.company_kind,
+    invoice_prefix: adminCompaniesTable.invoice_prefix,
+    company_code: adminCompaniesTable.company_code
+  }).from(adminCompaniesTable).where(sql2`${adminCompaniesTable.id} = ${companyId}`).for("update").limit(1);
+  const company = rows[0];
+  if (!company) throw Object.assign(new Error("company_not_found"), { code: "company_not_found" });
+  const companyCode = String(company.company_code ?? "").trim();
+  if (!companyCode) {
+    throw Object.assign(new Error("company_code_required"), { code: "company_code_required" });
+  }
+  const invoicePrefix = resolveCompanyInvoicePrefix(company.invoice_prefix, company.company_kind);
+  const periodYm = billingPeriodYearMonth(input.billingPeriodEnd);
+  if (!periodYm) throw Object.assign(new Error("invalid_billing_period"), { code: "invalid_billing_period" });
+  const inserted = await tx.execute(sql2`
+    INSERT INTO invoice_number_sequences (invoice_prefix, period_ym, next_value)
+    VALUES (${invoicePrefix}, ${periodYm}, 2)
+    ON CONFLICT (invoice_prefix, period_ym)
+    DO UPDATE SET next_value = invoice_number_sequences.next_value + 1
+    RETURNING next_value - 1 AS assigned_seq
+  `);
+  const assignedRaw = inserted.rows[0]?.assigned_seq;
+  const sequence = Number(assignedRaw);
+  if (!Number.isFinite(sequence) || sequence < 1) {
+    throw new Error("invoice_sequence_allocation_failed");
+  }
+  const invoiceNumber = formatInvoiceNumber(invoicePrefix, periodYm, sequence);
+  return { invoiceNumber, invoicePrefix, periodYm, sequence, companyCode };
+}
+
+// src/db/partnerInvoiceGeneratorData.ts
+init_invoicePaymentReference();
+init_panelCompanyData();
+init_schema2();
+async function createPartnerMonthlyInvoiceInTx(tx, input) {
+  const companyId = input.companyId.trim();
+  if (!companyId) return { ok: false, error: "company_id_required" };
+  if (!input.items.length) return { ok: false, error: "items_required" };
+  if (!input.allowDuplicatePeriod) {
+    const dup = await tx.select({ id: invoicesTable.id, invoice_number: invoicesTable.invoice_number }).from(invoicesTable).where(
+      and(
+        eq(invoicesTable.company_id, companyId),
+        eq(invoicesTable.billing_period_start, input.billingPeriodStart),
+        eq(invoicesTable.billing_period_end, input.billingPeriodEnd),
+        ne(invoicesTable.status, "cancelled")
+      )
+    ).limit(1);
+    if (dup[0]) {
+      return {
+        ok: false,
+        error: "invoice_period_already_exists",
+        existingInvoiceId: dup[0].id
+      };
+    }
+  }
+  const allocated = await allocatePartnerInvoiceNumberInTx(tx, {
+    companyId,
+    billingPeriodEnd: input.billingPeriodEnd
+  });
+  const paymentReference = buildInvoicePaymentReference({ invoiceNumber: allocated.invoiceNumber });
+  const subtotalNet = input.items.reduce((s, i) => s + Number(i.lineNet ?? i.lineGross), 0);
+  const vatTotal = input.items.reduce((s, i) => s + Number(i.lineVat ?? 0), 0);
+  const totalGross = input.items.reduce((s, i) => s + Number(i.lineGross), 0);
+  const invoiceId = `inv-${randomUUID19()}`;
+  const status = input.status ?? "issued";
+  const meta = {
+    ...input.metadataExtra ?? {}
+  };
+  if (input.notes?.trim()) meta.notes = input.notes.trim();
+  meta.invoice_prefix = allocated.invoicePrefix;
+  meta.period_ym = allocated.periodYm;
+  meta.sequence = allocated.sequence;
+  meta.created_by = input.actorLabel;
+  await tx.insert(invoicesTable).values({
+    id: invoiceId,
+    invoice_number: allocated.invoiceNumber,
+    company_id: companyId,
+    invoice_type: "partner_invoice",
+    billing_period_start: input.billingPeriodStart,
+    billing_period_end: input.billingPeriodEnd,
+    subtotal_net: subtotalNet,
+    vat_total: vatTotal,
+    total_gross: totalGross,
+    issue_date: input.issueDate,
+    due_date: input.dueDate ?? null,
+    status,
+    payment_reference: paymentReference,
+    pdf_storage_key: "",
+    metadata_json: meta
+  });
+  for (const item of input.items) {
+    await tx.insert(invoiceItemsTable).values({
+      id: `ii-${randomUUID19()}`,
+      invoice_id: invoiceId,
+      ride_id: item.rideId ?? null,
+      item_type: item.itemType,
+      description: item.description,
+      quantity: item.quantity ?? 1,
+      unit_net: item.unitNet ?? item.lineGross,
+      vat_rate: item.vatRate ?? 0,
+      line_net: item.lineNet ?? item.lineGross,
+      line_vat: item.lineVat ?? 0,
+      line_gross: item.lineGross,
+      metadata_json: item.metadata ?? {}
+    });
+  }
+  return {
+    ok: true,
+    invoiceId,
+    invoiceNumber: allocated.invoiceNumber,
+    paymentReference,
+    subtotalNet,
+    vatTotal,
+    totalGross
+  };
+}
+async function createPartnerMonthlyInvoice(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const companyId = input.companyId.trim();
+  if (!companyId) return { ok: false, error: "company_id_required" };
+  const company = await getPanelCompanyById(companyId);
+  if (!company) return { ok: false, error: "company_not_found" };
+  try {
+    return await db2.transaction(async (tx) => {
+      const out = await createPartnerMonthlyInvoiceInTx(tx, input);
+      if (!out.ok) return out;
+      return {
+        ok: true,
+        invoiceId: out.invoiceId,
+        invoiceNumber: out.invoiceNumber,
+        paymentReference: out.paymentReference
+      };
+    });
+  } catch (e) {
+    const err = e;
+    if (err.code === "company_code_required") return { ok: false, error: "company_code_required" };
+    if (err.code === "company_not_found") return { ok: false, error: "company_not_found" };
+    if (err.message === "invoice_sequence_overflow") return { ok: false, error: "invoice_sequence_overflow" };
+    const msg = String(err.message ?? "");
+    if (msg.includes("invoices_invoice_number") || msg.includes("duplicate key")) {
+      return { ok: false, error: "invoice_number_conflict" };
+    }
+    throw e;
+  }
+}
+async function ensureCompanyInvoicePrefixFromKind(companyId) {
+  const db2 = getDb();
+  if (!db2) return;
+  const { defaultInvoicePrefixForCompanyKind: defaultInvoicePrefixForCompanyKind2 } = await Promise.resolve().then(() => (init_invoiceNumbering(), invoiceNumbering_exports));
+  const rows = await db2.select({
+    company_kind: adminCompaniesTable.company_kind,
+    invoice_prefix: adminCompaniesTable.invoice_prefix
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const row = rows[0];
+  if (!row) return;
+  const current = String(row.invoice_prefix ?? "").trim();
+  if (current) return;
+  const prefix = defaultInvoicePrefixForCompanyKind2(row.company_kind);
+  await db2.update(adminCompaniesTable).set({ invoice_prefix: prefix }).where(eq(adminCompaniesTable.id, companyId));
+}
+
+// src/db/adminMonthlyInvoiceRunData.ts
+init_schema2();
+var BILLABLE_BILLING_STATUSES = ["unbilled", "queued"];
+var INVOICE_DUE_DAYS = 14;
+function formatMonthlyRunReportRow(row) {
+  return {
+    company_id: row.companyId,
+    company_code: row.companyCode,
+    company_name: row.companyName,
+    company_kind: row.companyKind,
+    status: row.outcome,
+    invoice_id: row.invoiceId ?? row.existingInvoiceId ?? null,
+    invoice_number: row.invoiceNumber ?? null,
+    subtotal_net: row.subtotalNet ?? null,
+    vat_total: row.vatTotal ?? null,
+    total_gross: row.totalGross ?? null,
+    ride_count: row.rideCount ?? null,
+    error: row.error ?? null
+  };
+}
+function sumItemTotals(items) {
+  const subtotalNet = items.reduce((s, i) => s + Number(i.lineNet ?? i.lineGross), 0);
+  const vatTotal = items.reduce((s, i) => s + Number(i.lineVat ?? 0), 0);
+  const totalGross = items.reduce((s, i) => s + Number(i.lineGross), 0);
+  return { subtotalNet, vatTotal, totalGross };
+}
+async function insertFinancialAuditInTx3(tx, input) {
+  await tx.insert(financialAuditLogTable).values({
+    id: `fal-${randomUUID20()}`,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    action: input.action,
+    old_value_json: input.oldValue ?? {},
+    new_value_json: input.newValue,
+    actor_type: input.actorType,
+    actor_id: input.actorId ?? null
+  });
+}
+async function findExistingInvoiceForPeriod(tx, companyId, periodStart, periodEnd) {
+  const rows = await tx.select({
+    id: invoicesTable.id,
+    invoice_number: invoicesTable.invoice_number,
+    subtotal_net: invoicesTable.subtotal_net,
+    vat_total: invoicesTable.vat_total,
+    total_gross: invoicesTable.total_gross
+  }).from(invoicesTable).where(
+    and(
+      eq(invoicesTable.company_id, companyId),
+      eq(invoicesTable.billing_period_start, periodStart),
+      eq(invoicesTable.billing_period_end, periodEnd),
+      ne(invoicesTable.status, "cancelled")
+    )
+  ).limit(1);
+  return rows[0] ?? null;
+}
+async function listEligibleRidesForCompany(db2, companyId, periodStart, periodEnd) {
+  const rows = await db2.select({
+    financialId: rideFinancialsTable.id,
+    rideId: rideFinancialsTable.ride_id,
+    grossAmount: rideFinancialsTable.gross_amount,
+    netAmount: rideFinancialsTable.net_amount,
+    vatAmount: rideFinancialsTable.vat_amount,
+    vatRate: rideFinancialsTable.vat_rate,
+    fromLabel: ridesTable.from_label,
+    toLabel: ridesTable.to_label
+  }).from(rideFinancialsTable).innerJoin(ridesTable, eq(rideFinancialsTable.ride_id, ridesTable.id)).where(
+    and(
+      eq(rideFinancialsTable.partner_company_id, companyId),
+      inArray(rideFinancialsTable.billing_status, [...BILLABLE_BILLING_STATUSES]),
+      eq(ridesTable.status, "completed"),
+      sql2`${rideFinancialsTable.calculated_at}::date >= ${periodStart}::date`,
+      sql2`${rideFinancialsTable.calculated_at}::date <= ${periodEnd}::date`,
+      sql2`not exists (
+          select 1 from invoice_items ii
+          where ii.ride_id = ${rideFinancialsTable.ride_id}
+        )`
+    )
+  ).orderBy(rideFinancialsTable.calculated_at);
+  return rows.map((r) => ({
+    financialId: r.financialId,
+    rideId: r.rideId,
+    grossAmount: Number(r.grossAmount) || 0,
+    netAmount: Number(r.netAmount) || 0,
+    vatAmount: Number(r.vatAmount) || 0,
+    vatRate: Number(r.vatRate) || 0,
+    fromLabel: String(r.fromLabel ?? "").trim(),
+    toLabel: String(r.toLabel ?? "").trim()
+  }));
+}
+function buildInvoiceItemsFromRides(rides) {
+  return rides.map((r) => {
+    const route = r.fromLabel && r.toLabel ? `${r.fromLabel} \u2192 ${r.toLabel}` : r.fromLabel || r.toLabel || "";
+    const description = route ? `Fahrt ${r.rideId}: ${route}` : `Fahrt ${r.rideId}`;
+    const lineGross = r.grossAmount > 0 ? r.grossAmount : r.netAmount + r.vatAmount;
+    const lineNet = r.netAmount > 0 ? r.netAmount : lineGross - r.vatAmount;
+    const lineVat = r.vatAmount > 0 ? r.vatAmount : Math.max(0, lineGross - lineNet);
+    return {
+      rideId: r.rideId,
+      itemType: "ride",
+      description,
+      quantity: 1,
+      unitNet: lineNet,
+      vatRate: r.vatRate,
+      lineNet,
+      lineVat,
+      lineGross,
+      metadata: { ride_financial_id: r.financialId }
+    };
+  });
+}
+async function listBillableCompanies(db2) {
+  return db2.select({
+    id: adminCompaniesTable.id,
+    name: adminCompaniesTable.name,
+    company_kind: adminCompaniesTable.company_kind,
+    company_code: adminCompaniesTable.company_code,
+    is_active: adminCompaniesTable.is_active
+  }).from(adminCompaniesTable).where(
+    and(
+      eq(adminCompaniesTable.is_active, true),
+      inArray(adminCompaniesTable.company_kind, [...MONTHLY_INVOICE_RUN_COMPANY_KINDS])
+    )
+  ).orderBy(adminCompaniesTable.name);
+}
+async function runAdminMonthlyInvoiceRun(input) {
+  const periodCheck = validateMonthlyRunPeriod(input.periodStart, input.periodEnd);
+  if (!periodCheck.ok) return { ok: false, error: periodCheck.error };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const periodStart = input.periodStart.trim();
+  const periodEnd = input.periodEnd.trim();
+  const issueDate = periodEnd;
+  const dueDate = addCalendarDays(issueDate, INVOICE_DUE_DAYS);
+  const companies = await listBillableCompanies(db2);
+  const results = [];
+  let createdCount = 0;
+  let skippedCount = 0;
+  let noRidesCount = 0;
+  let errorCount = 0;
+  let totalGrossCreated = 0;
+  for (const company of companies) {
+    const companyId = company.id;
+    const companyName = String(company.name ?? "").trim() || companyId;
+    const companyKind = String(company.company_kind ?? "").trim();
+    const companyCode = String(company.company_code ?? "").trim() || null;
+    const existing = await findExistingInvoiceForPeriod(db2, companyId, periodStart, periodEnd);
+    if (existing) {
+      skippedCount += 1;
+      results.push({
+        companyId,
+        companyName,
+        companyKind,
+        companyCode,
+        outcome: "skipped",
+        existingInvoiceId: existing.id,
+        invoiceNumber: existing.invoice_number,
+        subtotalNet: Number(existing.subtotal_net) || 0,
+        vatTotal: Number(existing.vat_total) || 0,
+        totalGross: Number(existing.total_gross) || 0,
+        error: "invoice_period_already_exists"
+      });
+      continue;
+    }
+    const rides = await listEligibleRidesForCompany(db2, companyId, periodStart, periodEnd);
+    if (!rides.length) {
+      noRidesCount += 1;
+      results.push({
+        companyId,
+        companyName,
+        companyKind,
+        companyCode,
+        outcome: "no_rides",
+        rideCount: 0,
+        totalGross: 0
+      });
+      continue;
+    }
+    const items = buildInvoiceItemsFromRides(rides);
+    const previewTotals = sumItemTotals(items);
+    if (input.dryRun) {
+      createdCount += 1;
+      totalGrossCreated += previewTotals.totalGross;
+      results.push({
+        companyId,
+        companyName,
+        companyKind,
+        companyCode,
+        outcome: "created",
+        rideCount: rides.length,
+        subtotalNet: previewTotals.subtotalNet,
+        vatTotal: previewTotals.vatTotal,
+        totalGross: previewTotals.totalGross
+      });
+      continue;
+    }
+    if (!companyCode) {
+      errorCount += 1;
+      results.push({
+        companyId,
+        companyName,
+        companyKind,
+        companyCode,
+        outcome: "error",
+        rideCount: rides.length,
+        subtotalNet: previewTotals.subtotalNet,
+        vatTotal: previewTotals.vatTotal,
+        totalGross: previewTotals.totalGross,
+        error: "company_code_required"
+      });
+      continue;
+    }
+    try {
+      await ensureCompanyInvoicePrefixFromKind(companyId);
+      const txResult = await db2.transaction(async (tx) => {
+        const dup = await findExistingInvoiceForPeriod(tx, companyId, periodStart, periodEnd);
+        if (dup) {
+          return {
+            ok: false,
+            error: "invoice_period_already_exists",
+            existingInvoiceId: dup.id,
+            invoiceNumber: dup.invoice_number
+          };
+        }
+        const created = await createPartnerMonthlyInvoiceInTx(tx, {
+          companyId,
+          billingPeriodStart: periodStart,
+          billingPeriodEnd: periodEnd,
+          issueDate,
+          dueDate,
+          items,
+          status: "issued",
+          actorLabel: input.actorLabel,
+          metadataExtra: {
+            monthly_run: true,
+            monthly_run_period_start: periodStart,
+            monthly_run_period_end: periodEnd,
+            ride_count: rides.length
+          }
+        });
+        if (!created.ok) return created;
+        for (const ride of rides) {
+          const prev = await tx.select({
+            id: rideFinancialsTable.id,
+            billing_status: rideFinancialsTable.billing_status
+          }).from(rideFinancialsTable).where(eq(rideFinancialsTable.id, ride.financialId)).limit(1);
+          const row = prev[0];
+          if (!row) continue;
+          await tx.update(rideFinancialsTable).set({ billing_status: "invoiced", updated_at: /* @__PURE__ */ new Date() }).where(eq(rideFinancialsTable.id, row.id));
+          await insertFinancialAuditInTx3(tx, {
+            entityType: "ride_financial",
+            entityId: row.id,
+            action: "monthly_run_invoiced",
+            oldValue: { billingStatus: row.billing_status },
+            newValue: {
+              billingStatus: "invoiced",
+              invoiceId: created.invoiceId,
+              invoiceNumber: created.invoiceNumber,
+              periodStart,
+              periodEnd
+            },
+            actorType: "admin_console",
+            actorId: input.actorLabel
+          });
+        }
+        await insertFinancialAuditInTx3(tx, {
+          entityType: "invoice",
+          entityId: created.invoiceId,
+          action: "invoice_monthly_run_created",
+          newValue: {
+            invoiceNumber: created.invoiceNumber,
+            companyId,
+            periodStart,
+            periodEnd,
+            rideCount: rides.length,
+            totalGross: created.totalGross,
+            dryRun: false
+          },
+          actorType: "admin_console",
+          actorId: input.actorLabel
+        });
+        return created;
+      });
+      if (!txResult.ok) {
+        if (txResult.error === "invoice_period_already_exists") {
+          skippedCount += 1;
+          results.push({
+            companyId,
+            companyName,
+            companyKind,
+            companyCode,
+            outcome: "skipped",
+            existingInvoiceId: txResult.existingInvoiceId,
+            invoiceNumber: "invoiceNumber" in txResult ? txResult.invoiceNumber : void 0,
+            rideCount: rides.length,
+            totalGross: previewTotals.totalGross,
+            error: txResult.error
+          });
+        } else {
+          errorCount += 1;
+          results.push({
+            companyId,
+            companyName,
+            companyKind,
+            companyCode,
+            outcome: "error",
+            rideCount: rides.length,
+            subtotalNet: previewTotals.subtotalNet,
+            vatTotal: previewTotals.vatTotal,
+            totalGross: previewTotals.totalGross,
+            error: txResult.error
+          });
+        }
+        continue;
+      }
+      createdCount += 1;
+      totalGrossCreated += txResult.totalGross;
+      results.push({
+        companyId,
+        companyName,
+        companyKind,
+        companyCode,
+        outcome: "created",
+        rideCount: rides.length,
+        subtotalNet: txResult.subtotalNet,
+        vatTotal: txResult.vatTotal,
+        totalGross: txResult.totalGross,
+        invoiceId: txResult.invoiceId,
+        invoiceNumber: txResult.invoiceNumber,
+        paymentReference: txResult.paymentReference
+      });
+    } catch (e) {
+      errorCount += 1;
+      const err = e;
+      results.push({
+        companyId,
+        companyName,
+        companyKind,
+        companyCode,
+        outcome: "error",
+        rideCount: rides.length,
+        subtotalNet: previewTotals.subtotalNet,
+        vatTotal: previewTotals.vatTotal,
+        totalGross: previewTotals.totalGross,
+        error: err.code ?? err.message ?? "monthly_run_failed"
+      });
+    }
+  }
+  return {
+    ok: true,
+    dryRun: input.dryRun,
+    periodStart,
+    periodEnd,
+    summary: {
+      companiesScanned: companies.length,
+      createdCount,
+      skippedCount,
+      noRidesCount,
+      errorCount,
+      totalGrossCreated
+    },
+    results: results.map(formatMonthlyRunReportRow)
+  };
 }
 
 // src/routes/adminApi.ts
@@ -61233,7 +63928,7 @@ async function listPanelAuditForCompany(companyId, opts) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID18 } from "node:crypto";
+import { randomUUID as randomUUID21 } from "node:crypto";
 function toPublic(r) {
   return {
     id: r.id,
@@ -61290,7 +63985,7 @@ async function insertPanelUser(input) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID18();
+  const id = randomUUID21();
   const username = input.username.trim();
   const email = input.email.trim();
   try {
@@ -61373,10 +64068,10 @@ async function panelUsernameTaken(normalized, excludeUserId) {
   if (!isPostgresConfigured()) return false;
   const db2 = getDb();
   if (!db2) return false;
-  const n4 = normalized.trim().toLowerCase();
-  if (!n4) return false;
+  const n5 = normalized.trim().toLowerCase();
+  if (!n5) return false;
   const rows = await db2.select({ id: panelUsersTable.id }).from(panelUsersTable).where(
-    excludeUserId ? and(sql2`lower(${panelUsersTable.username}) = ${n4}`, ne(panelUsersTable.id, excludeUserId)) : sql2`lower(${panelUsersTable.username}) = ${n4}`
+    excludeUserId ? and(sql2`lower(${panelUsersTable.username}) = ${n5}`, ne(panelUsersTable.id, excludeUserId)) : sql2`lower(${panelUsersTable.username}) = ${n5}`
   ).limit(1);
   return rows.length > 0;
 }
@@ -61714,7 +64409,7 @@ function parseSupportThreadStatus(raw) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID19 } from "node:crypto";
+import { randomUUID as randomUUID22 } from "node:crypto";
 var APP_HELP_TICKET_STATUSES = ["open", "in_progress", "resolved"];
 var APP_HELP_CATEGORIES = ["booking", "account", "payment", "app_issue", "other"];
 function isStatus(v) {
@@ -61744,7 +64439,7 @@ function mapRow4(r) {
 async function createAppHelpTicket(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `aht-${randomUUID19()}`;
+  const id = `aht-${randomUUID22()}`;
   const now = /* @__PURE__ */ new Date();
   const msg = input.message.trim().slice(0, 8e3);
   if (msg.length < 5) return null;
@@ -62218,7 +64913,7 @@ init_operationalTariffEngine();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID20 } from "node:crypto";
+import { randomUUID as randomUUID23 } from "node:crypto";
 var FAQ_DEFAULTS = [
   {
     id: "faq-default-1",
@@ -62287,7 +64982,7 @@ async function createHomepageFaqItem(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID20();
+  const id = randomUUID23();
   await db2.insert(homepageFaqItemsTable).values({
     id,
     question: input.question,
@@ -62339,7 +65034,7 @@ async function createHomepageHowStep(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID20();
+  const id = randomUUID23();
   await db2.insert(homepageHowStepsTable).values({
     id,
     icon: input.icon,
@@ -62393,7 +65088,7 @@ async function createHomepageTrustMetric(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID20();
+  const id = randomUUID23();
   await db2.insert(homepageTrustMetricsTable).values({
     id,
     value: input.value,
@@ -62441,7 +65136,7 @@ async function deleteHomepageTrustMetric(id) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID21 } from "node:crypto";
+import { randomUUID as randomUUID24 } from "node:crypto";
 function normalizeHomepageHintType(raw) {
   const t = String(raw ?? "").trim().toLowerCase();
   if (t === "success") return "success";
@@ -62500,7 +65195,7 @@ async function createHomepagePlaceholder(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = `hpb-${randomUUID21()}`;
+  const id = `hpb-${randomUUID24()}`;
   const storedType = normalizeHomepageHintType(input.type);
   await db2.insert(homepagePlaceholdersTable).values({
     id,
@@ -62762,7 +65457,7 @@ init_schema2();
 var OPEN_RIDE_STATUSES = ["pending", "accepted", "arrived", "in_progress"];
 var ACTIVE_RIDE_STATUSES2 = ["accepted", "arrived", "in_progress"];
 var SETTLEMENT_OPEN = ["draft", "issued", "approved"];
-function n3(v) {
+function n4(v) {
   const x = typeof v === "number" ? v : Number(v);
   return Number.isFinite(x) ? x : 0;
 }
@@ -63116,18 +65811,18 @@ async function getCompanyMandateRead(companyId) {
     completed: st.completed ?? 0,
     cancelled: st.cancelled ?? 0,
     rejected: st.rejected ?? 0,
-    revenueCompletedGross: n3(completedRevRow[0]?.rev),
+    revenueCompletedGross: n4(completedRevRow[0]?.rev),
     medicalRides: Number(medicalN[0]?.n ?? 0),
     insurancePayerRides: Number(insuranceN[0]?.n ?? 0)
   };
-  const monthCompletedRev = n3(ridesInMonthRow[0]?.monthCompletedRev);
+  const monthCompletedRev = n4(ridesInMonthRow[0]?.monthCompletedRev);
   const financials = {
     revenueCompletedGrossAllTime: ridesSummary.revenueCompletedGross,
     revenueCompletedGrossCurrentMonth: monthCompletedRev,
-    openPlatformCommissionEur: n3(finAggRow[0]?.openComm),
-    paidPlatformCommissionEur: n3(finAggRow[0]?.paidComm),
-    totalPlatformCommissionEur: n3(finAggRow[0]?.totalComm),
-    onrodaCommissionCurrentMonthEur: n3(commMonthRow[0]?.s),
+    openPlatformCommissionEur: n4(finAggRow[0]?.openComm),
+    paidPlatformCommissionEur: n4(finAggRow[0]?.paidComm),
+    totalPlatformCommissionEur: n4(finAggRow[0]?.totalComm),
+    onrodaCommissionCurrentMonthEur: n4(commMonthRow[0]?.s),
     openSettlementsCount: Number(settlementOpenRow[0]?.n ?? 0)
   };
   const kind = company.company_kind;
@@ -63299,17 +65994,17 @@ init_fleetDriverReadiness();
 
 // src/lib/persistPanelUserManualAttachment.ts
 import { mkdir as mkdir3, writeFile as writeFile3 } from "node:fs/promises";
-import path4 from "node:path";
-import { randomUUID as randomUUID22 } from "node:crypto";
+import path5 from "node:path";
+import { randomUUID as randomUUID25 } from "node:crypto";
 var MAX_BYTES = 6 * 1024 * 1024;
 function uploadsRoot() {
   const fromEnv = (process.env.PANEL_USER_MANUAL_UPLOAD_DIR ?? "").trim();
-  if (fromEnv) return path4.resolve(fromEnv);
-  return path4.resolve(process.cwd(), "artifacts/api-server/uploads/panel-user-manual");
+  if (fromEnv) return path5.resolve(fromEnv);
+  return path5.resolve(process.cwd(), "artifacts/api-server/uploads/panel-user-manual");
 }
 async function persistPanelUserManualAttachment(input) {
   const safeName = input.originalFileName.replace(/[^\w.\-]+/g, "_").slice(0, 120) || "document.bin";
-  const ext = path4.extname(safeName) || ".bin";
+  const ext = path5.extname(safeName) || ".bin";
   const cleaned = input.contentBase64.includes(",") ? input.contentBase64.split(",").pop() ?? "" : input.contentBase64;
   let buf;
   try {
@@ -63324,23 +66019,23 @@ async function persistPanelUserManualAttachment(input) {
     return { ok: false, reason: "file_too_large" };
   }
   const base = uploadsRoot();
-  const dir = path4.join(base, input.companyId, input.panelUserId);
+  const dir = path5.join(base, input.companyId, input.panelUserId);
   await mkdir3(dir, { recursive: true });
-  const fileName = `${Date.now()}-${randomUUID22()}${ext}`;
-  const absPath = path4.join(dir, fileName);
-  const baseR = path4.resolve(base);
-  const resolved = path4.resolve(absPath);
-  if (!resolved.startsWith(baseR + path4.sep)) {
+  const fileName = `${Date.now()}-${randomUUID25()}${ext}`;
+  const absPath = path5.join(dir, fileName);
+  const baseR = path5.resolve(base);
+  const resolved = path5.resolve(absPath);
+  if (!resolved.startsWith(baseR + path5.sep)) {
     return { ok: false, reason: "invalid_path" };
   }
-  const relPath = path4.relative(baseR, resolved);
+  const relPath = path5.relative(baseR, resolved);
   await writeFile3(resolved, buf);
   return { ok: true, relPath, sizeBytes: buf.byteLength };
 }
 
 // src/lib/panelUserWelcomeMail.ts
 init_logger2();
-import nodemailer2 from "nodemailer";
+import nodemailer3 from "nodemailer";
 function panelBaseUrl() {
   return (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
 }
@@ -63409,7 +66104,7 @@ async function sendPanelUserWelcomeEmail(input) {
   <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
 </body></html>`;
   try {
-    const transport = nodemailer2.createTransport(smtpUrl);
+    const transport = nodemailer3.createTransport(smtpUrl);
     await transport.sendMail({ from, to, subject, text: text2, html });
     logger.info({ to, event: "admin.panel_user.welcome_mail.sent" }, "panel user welcome mail sent");
     return { ok: true };
@@ -63502,17 +66197,6 @@ function generateTemporaryPassword(length = 14) {
 }
 
 // src/lib/adminPasswordResetMail.ts
-init_logger2();
-import nodemailer3 from "nodemailer";
-function escapeHtml4(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function resolveSmtpUrl() {
-  return (process.env.ADMIN_AUTH_MAIL_SMTP_URL ?? process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
-}
-function resolveMailFrom() {
-  return (process.env.ADMIN_AUTH_MAIL_FROM ?? process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
-}
 function adminPasswordResetPageBaseUrl() {
   const raw = process.env.ADMIN_AUTH_PASSWORD_RESET_PAGE_URL?.trim() || "https://admin.onroda.de/partners/password-reset";
   return raw.replace(/\/$/, "");
@@ -63523,23 +66207,14 @@ function buildAdminPasswordResetLink(rawToken) {
   return `${base}${sep}token=${encodeURIComponent(rawToken)}`;
 }
 async function sendAdminPasswordResetMail(input) {
-  const smtpUrl = resolveSmtpUrl();
-  const from = resolveMailFrom();
   const to = input.to.trim();
   if (!to || !to.includes("@")) {
     return { ok: false, reason: "invalid_to" };
   }
-  if (!smtpUrl || !from) {
-    logger.info(
-      { to: to.replace(/(.{2}).*(@.*)/, "$1\u2026$2") },
-      "admin password reset mail skipped (set ADMIN_AUTH_MAIL_SMTP_URL + ADMIN_AUTH_MAIL_FROM, or PARTNER_REGISTRATION_*)"
-    );
-    return { ok: false, reason: "smtp_not_configured" };
-  }
   const subject = "Passwort zur\xFCcksetzen";
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 6e4));
-  const resetLinkEsc = escapeHtml4(input.resetLink);
+  const resetLinkEsc = escapeHtmlMail(input.resetLink);
   const text2 = [
     "Du hast eine Anfrage zum Zur\xFCcksetzen deines Passworts f\xFCr die Admin-Konsole gestellt.",
     "",
@@ -63572,7 +66247,7 @@ async function sendAdminPasswordResetMail(input) {
         </a>
       </div>
       <p style="font-size:12px;color:#888;margin:0;line-height:1.5;">
-        Dieser Link ist ${ttlMinutes} Minuten g\xFCltig (bis ${escapeHtml4(until)}, Europe/Berlin).
+        Dieser Link ist ${ttlMinutes} Minuten g\xFCltig (bis ${escapeHtmlMail(until)}, Europe/Berlin).
       </p>
       <p style="font-size:12px;color:#888;margin:12px 0 0;line-height:1.5;">
         Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.
@@ -63580,15 +66255,13 @@ async function sendAdminPasswordResetMail(input) {
     </div>
   </div>
 </body></html>`;
-  try {
-    const transport = nodemailer3.createTransport(smtpUrl);
-    await transport.sendMail({ from, to, subject, text: text2, html });
-    logger.info({ event: "admin.auth.password_reset_mail.sent" }, "admin password reset mail sent");
-    return { ok: true };
-  } catch (err) {
-    logger.warn({ err }, "admin password reset mail failed");
-    return { ok: false, reason: "send_failed" };
-  }
+  return sendOnrodaMail({
+    to,
+    subject,
+    text: text2,
+    html,
+    logEvent: "admin.auth.password_reset_mail.sent"
+  });
 }
 
 // src/lib/partnerApprovalMail.ts
@@ -63611,7 +66284,7 @@ function marketingDocumentMarkUrl() {
     return "https://www.onroda.de/onroda-mark.png";
   }
 }
-function escapeHtml5(s) {
+function escapeHtml4(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function buildBodies(input) {
@@ -63644,19 +66317,19 @@ function buildBodies(input) {
   ].join("\n");
   const pwHtml = input.ownerUsername && input.ownerInitialPassword ? `<p><strong>Erstzugang Partner-Portal</strong></p>
          <ul>
-           <li>Benutzername: <code>${escapeHtml5(input.ownerUsername)}</code></li>
-           <li>Einmalpasswort: <code>${escapeHtml5(input.ownerInitialPassword)}</code></li>
+           <li>Benutzername: <code>${escapeHtml4(input.ownerUsername)}</code></li>
+           <li>Einmalpasswort: <code>${escapeHtml4(input.ownerInitialPassword)}</code></li>
          </ul>
          <p>Bitte \xE4ndern Sie das Passwort nach dem ersten Login.</p>` : `<p>Die Zugangsdaten zum Partner-Portal erhalten Sie separat von uns, falls noch nicht angelegt.</p>`;
   const logoSrc = marketingDocumentMarkUrl();
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
-  <p style="margin:0 0 16px"><img src="${escapeHtml5(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
+  <p style="margin:0 0 16px"><img src="${escapeHtml4(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
   <p>Guten Tag,</p>
-  <p>Ihre Partneranfrage f\xFCr <strong>${escapeHtml5(company)}</strong> wurde <strong>freigegeben</strong>.</p>
-  <p><a href="${escapeHtml5(panel)}">Zum Partner-Portal</a></p>
-  <p><a href="${escapeHtml5(status)}">Anfrage-Status ansehen</a></p>
+  <p>Ihre Partneranfrage f\xFCr <strong>${escapeHtml4(company)}</strong> wurde <strong>freigegeben</strong>.</p>
+  <p><a href="${escapeHtml4(panel)}">Zum Partner-Portal</a></p>
+  <p><a href="${escapeHtml4(status)}">Anfrage-Status ansehen</a></p>
   ${pwHtml}
   <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
 </body></html>`;
@@ -63712,7 +66385,7 @@ async function sendPartnerRegistrationAdminMessageEmail(input) {
     return { ok: false, reason: "smtp_not_configured" };
   }
   const status = statusPageUrl();
-  const ref = escapeHtml5(input.requestId);
+  const ref = escapeHtml4(input.requestId);
   const company = input.companyName.trim() || "Ihre Anfrage";
   const subject = `Onroda: R\xFCckmeldung zu Ihrer Partneranfrage \u2014 ${company}`;
   const text2 = [
@@ -63733,11 +66406,11 @@ async function sendPartnerRegistrationAdminMessageEmail(input) {
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
   <p>Guten Tag,</p>
   <p>Sie erhalten eine R\xFCckmeldung zu Ihrer <strong>Partner-Registrierung</strong> (Referenz: <code>${ref}</code>).</p>
-  <blockquote style="border-left:3px solid #0ea5e9;padding-left:12px;margin:12px 0;white-space:pre-wrap;">${escapeHtml5(
+  <blockquote style="border-left:3px solid #0ea5e9;padding-left:12px;margin:12px 0;white-space:pre-wrap;">${escapeHtml4(
     message2
   )}</blockquote>
-  <p><a href="${escapeHtml5(status)}">Zum Anfrage-Status (Homepage)</a></p>
-  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Absender: ${escapeHtml5(
+  <p><a href="${escapeHtml4(status)}">Zum Anfrage-Status (Homepage)</a></p>
+  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Absender: ${escapeHtml4(
     input.adminLabel
   )} \xB7 Onroda-Plattform (kein Support-Ticket-Posteingang)</p>
 </body></html>`;
@@ -63790,13 +66463,13 @@ async function sendPartnerRegistrationRejectionEmail(input) {
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
   <p>Guten Tag,</p>
-  <p>Leider wurde Ihre <strong>Registrierungsanfrage</strong> (Referenz: <code>${escapeHtml5(
+  <p>Leider wurde Ihre <strong>Registrierungsanfrage</strong> (Referenz: <code>${escapeHtml4(
     input.requestId
-  )}</code>) f\xFCr <strong>${escapeHtml5(company)}</strong> abgelehnt.</p>
-  <p style="white-space: pre-wrap; border-left:3px solid #ef4444; padding-left:12px;">${escapeHtml5(
+  )}</code>) f\xFCr <strong>${escapeHtml4(company)}</strong> abgelehnt.</p>
+  <p style="white-space: pre-wrap; border-left:3px solid #ef4444; padding-left:12px;">${escapeHtml4(
     textBody
   )}</p>
-  <p><a href="${escapeHtml5(status)}">Hinweis: Statusseite (Homepage)</a></p>
+  <p><a href="${escapeHtml4(status)}">Hinweis: Statusseite (Homepage)</a></p>
   <p style="margin-top:16px;font-size:12px;color:#6b7280;">Dieser Vorgang betrifft die Homepage-Registrierung, nicht den Mandanten-Support-Posteingang.</p>
 </body></html>`;
   try {
@@ -63823,9 +66496,9 @@ import { createReadStream, existsSync as existsSync2 } from "node:fs";
 
 // src/db/insurerRideProjectionData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID23 } from "node:crypto";
+import { randomUUID as randomUUID26 } from "node:crypto";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
-import path5 from "node:path";
+import path6 from "node:path";
 
 // src/lib/insurerRideDto.ts
 function parsePlzOrtFromLabel(label) {
@@ -63872,7 +66545,7 @@ var CANCELLED_STATUSES = [
 function insurerExportDir() {
   const fromEnv = (process.env.ONRODA_INSURER_EXPORT_DIR ?? "").trim();
   if (fromEnv) return fromEnv;
-  return path5.resolve(process.cwd(), "artifacts/api-server/uploads/insurer-exports");
+  return path6.resolve(process.cwd(), "artifacts/api-server/uploads/insurer-exports");
 }
 function rowAmountGross(r, g) {
   if (g != null && !Number.isNaN(g)) return g;
@@ -64235,7 +66908,7 @@ async function createInsurerExportBatch(input) {
   const coIds = [...new Set(visible.map((r) => r.company_id).filter(Boolean))];
   const companies = coIds.length > 0 ? await db2.select({ id: adminCompaniesTable.id, name: adminCompaniesTable.name }).from(adminCompaniesTable).where(inArray(adminCompaniesTable.id, coIds)) : [];
   const coName = new Map(companies.map((c) => [c.id, c.name]));
-  const batchId = `insx-${randomUUID23()}`;
+  const batchId = `insx-${randomUUID26()}`;
   const lines = [];
   lines.push(
     "schema_version;ref_id;company_id;company_name;driver_id;vehicle;datetime_utc;from_plz;from_ort;to_plz;to_ort;amount_gross;ride_status;settlement_status;payer_kind;passenger_pseudonym_id;billing_ref"
@@ -64269,10 +66942,10 @@ async function createInsurerExportBatch(input) {
     );
   }
   const fileName = `insurer-export-${batchId}.csv`;
-  const rel = path5.join(batchId, fileName);
+  const rel = path6.join(batchId, fileName);
   const base = insurerExportDir();
-  await mkdir4(path5.join(base, batchId), { recursive: true });
-  const abs = path5.join(base, rel);
+  await mkdir4(path6.join(base, batchId), { recursive: true });
+  const abs = path6.join(base, rel);
   await writeFile4(abs, lines.join("\n"), "utf8");
   const rideIds = visible.map((r) => r.id);
   await db2.insert(billingExportBatchesTable).values({
@@ -64291,7 +66964,7 @@ async function createInsurerExportBatch(input) {
 }
 function resolveInsurerExportFilePath(rel) {
   if (!rel?.trim()) return "";
-  return path5.join(insurerExportDir(), rel);
+  return path6.join(insurerExportDir(), rel);
 }
 async function getInsurerExportBatchById(id) {
   const db2 = getDb();
@@ -64329,9 +67002,9 @@ function parsePagination(req) {
 }
 function parseNum(v) {
   if (typeof v !== "string" || !v.trim()) return void 0;
-  const n4 = Number(v.trim().replace(",", "."));
-  if (!Number.isFinite(n4)) return void 0;
-  return n4;
+  const n5 = Number(v.trim().replace(",", "."));
+  if (!Number.isFinite(n5)) return void 0;
+  return n5;
 }
 function csvCell(v) {
   const raw = String(v ?? "");
@@ -64601,7 +67274,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID24 } from "node:crypto";
+import { randomUUID as randomUUID27 } from "node:crypto";
 var AUDIENCES = /* @__PURE__ */ new Set([
   "all",
   "customer",
@@ -64675,7 +67348,7 @@ async function findAppNewsAdmin(id) {
 async function createAppNewsItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID24();
+  const id = randomUUID27();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appNewsItemsTable).values({
     id,
@@ -64955,7 +67628,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID25 } from "node:crypto";
+import { randomUUID as randomUUID28 } from "node:crypto";
 var AUDIENCES2 = /* @__PURE__ */ new Set(["all", "customer", "driver"]);
 var CATEGORIES = /* @__PURE__ */ new Set(["sponsor", "partner", "angebot", "event"]);
 function parseAppSponsorAudience(raw) {
@@ -65030,7 +67703,7 @@ async function findAppSponsorAdmin(id) {
 async function createAppSponsorItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID25();
+  const id = randomUUID28();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appSponsorsTable).values({
     id,
@@ -65327,7 +68000,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID26 } from "node:crypto";
+import { randomUUID as randomUUID29 } from "node:crypto";
 var CATEGORIES2 = /* @__PURE__ */ new Set(["general", "payment", "driver", "booking", "account"]);
 function parseAppFaqCategory(raw) {
   const s = String(raw ?? "").trim().toLowerCase();
@@ -65376,7 +68049,7 @@ async function createAppFaqItem(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID26();
+  const id = randomUUID29();
   await db2.insert(appFaqTable).values({
     id,
     question: input.question,
@@ -65536,7 +68209,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID27 } from "node:crypto";
+import { randomUUID as randomUUID30 } from "node:crypto";
 function rowToDto(r, targetDriverLabel = null) {
   return {
     id: r.id,
@@ -65595,7 +68268,7 @@ async function dismissDriverMessage(fleetDriverId, messageId) {
 async function insertDriverMessage(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID27();
+  const id = randomUUID30();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(driverMessagesTable).values({
     id,
@@ -65955,15 +68628,28 @@ router12.post("/admin/auth/login", async (req, res) => {
   });
 });
 router12.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
-  const role = req.adminAuth?.role ?? "admin";
-  const username = req.adminAuth?.username ?? "admin";
-  const scopeCompanyId = typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim() ? req.adminAuth.scopeCompanyId.trim() : null;
-  res.json({ ok: true, user: { username, role, scopeCompanyId } });
+  const principal = req.adminAuth;
+  if (!principal || principal.kind !== "session") {
+    res.status(403).json({
+      error: "session_required",
+      hint: "Plattform-Konsole erfordert Login per /admin/auth/login (kein statischer API-Bearer).",
+      authKind: principal?.kind ?? null
+    });
+    return;
+  }
+  const role = principal.role ?? "admin";
+  const username = principal.username ?? "admin";
+  const scopeCompanyId = typeof principal.scopeCompanyId === "string" && principal.scopeCompanyId.trim() ? principal.scopeCompanyId.trim() : null;
+  res.json({ ok: true, authKind: "session", user: { username, role, scopeCompanyId } });
 });
 router12.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
-    res.status(403).json({ error: "session_required" });
+    res.status(403).json({
+      error: "session_required",
+      hint: "Passwort\xE4nderung nur mit Session-JWT nach /admin/auth/login \u2014 kein ADMIN_API_BEARER_TOKEN.",
+      authKind: principal?.kind ?? null
+    });
     return;
   }
   const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
@@ -65994,7 +68680,8 @@ router12.post("/admin/auth/change-password", requireAdminApiBearer, async (req, 
     username: principal.username,
     action: "admin.auth.password_changed"
   });
-  res.json({ ok: true });
+  const token = await signAdminSessionJwt({ username: principal.username, role: principal.role });
+  res.json({ ok: true, token });
 });
 router12.post("/admin/auth/password-reset/request", async (req, res) => {
   const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
@@ -66319,7 +69006,7 @@ adminJson.use("/customer-accounts", adminCustomerAccountsRouter_default);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter_default);
 adminJson.use("/faq", adminAppFaqRouter_default);
 adminJson.use("/driver-messages", adminDriverMessagesRouter_default);
-var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path6.join(path6.dirname(fileURLToPath2(import.meta.url)), "..", "..", "data", "fleet-uploads");
+var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path7.join(path7.dirname(fileURLToPath3(import.meta.url)), "..", "..", "data", "fleet-uploads");
 adminJson.get("/stats", async (req, res, next) => {
   try {
     if (!canAccessAdminStats(adminConsoleRole(req))) {
@@ -66472,10 +69159,26 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       return;
     }
     const q = req.query;
+    const workflowRaw = (q.workflow_filter ?? q.workflowFilter ?? "").trim();
+    const workflowFilters = [
+      "all",
+      "open",
+      "due",
+      "overdue",
+      "reminder_sent",
+      "paid",
+      "cancelled"
+    ];
+    const workflowFilter = workflowFilters.includes(workflowRaw) ? workflowRaw : void 0;
+    const refSearch = (q.invoice_number ?? q.reference ?? "").trim();
     const filters = {
       companyId: q.company_id,
-      status: q.status,
-      type: q.invoice_type
+      status: workflowFilter && workflowFilter !== "all" ? void 0 : q.status,
+      workflowFilter: workflowFilter && workflowFilter !== "all" ? workflowFilter : void 0,
+      type: q.invoice_type,
+      companyCode: q.company_code,
+      invoicePrefix: q.invoice_prefix,
+      invoiceNumber: refSearch || void 0
     };
     const { page, pageSize, offset } = parsePagination2(req);
     const [total, items] = await Promise.all([
@@ -66483,6 +69186,73 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       listInvoicesAdmin({ filters, limit: pageSize, offset })
     ]);
     res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/invoices/kpis", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const kpis = await getAdminInvoiceFinanceKpis();
+    res.json({ ok: true, kpis });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/invoices/export", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const workflowRaw = (q.workflow_filter ?? "").trim();
+    const workflowFilters = [
+      "all",
+      "open",
+      "due",
+      "overdue",
+      "reminder_sent",
+      "paid",
+      "cancelled"
+    ];
+    const workflowFilter = workflowFilters.includes(workflowRaw) ? workflowRaw : void 0;
+    const csv = await exportInvoicesAdminCsv({
+      companyId: q.company_id,
+      workflowFilter: workflowFilter && workflowFilter !== "all" ? workflowFilter : void 0,
+      status: workflowFilter ? void 0 : q.status,
+      companyCode: q.company_code,
+      invoicePrefix: q.invoice_prefix,
+      invoiceNumber: (q.invoice_number ?? "").trim() || void 0
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="onroda-rechnungen.csv"');
+    res.send(csv);
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/invoices/lookup", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const reference = (q.reference ?? q.invoice_number ?? "").trim();
+    if (!reference) {
+      res.status(400).json({ error: "reference_required" });
+      return;
+    }
+    const item = await findInvoiceByPaymentReference(reference);
+    if (!item) {
+      res.status(404).json({ ok: false, error: "not_found", reference });
+      return;
+    }
+    res.json({ ok: true, reference, invoice: item });
   } catch (e) {
     next(e);
   }
@@ -66499,6 +69269,243 @@ adminJson.get("/finance/invoices/:invoiceId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/finance/invoices/generate", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body;
+    const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
+    const periodStart = typeof body.periodStart === "string" ? body.periodStart.trim() : "";
+    const periodEnd = typeof body.periodEnd === "string" ? body.periodEnd.trim() : "";
+    const issueDate = typeof body.issueDate === "string" ? body.issueDate.trim() : periodEnd;
+    const dueDate = typeof body.dueDate === "string" ? body.dueDate.trim() : null;
+    const itemsRaw = Array.isArray(body.items) ? body.items : [];
+    const items = itemsRaw.map((row) => {
+      const o = row && typeof row === "object" ? row : {};
+      const lineGross = Number(o.lineGross);
+      if (!Number.isFinite(lineGross)) return null;
+      return {
+        rideId: typeof o.rideId === "string" ? o.rideId : null,
+        itemType: typeof o.itemType === "string" ? o.itemType : "ride",
+        description: typeof o.description === "string" ? o.description : "Position",
+        quantity: Number(o.quantity) || 1,
+        unitNet: Number(o.unitNet) || lineGross,
+        vatRate: Number(o.vatRate) || 0,
+        lineNet: Number(o.lineNet) || lineGross,
+        lineVat: Number(o.lineVat) || 0,
+        lineGross
+      };
+    }).filter(Boolean);
+    const out = await createPartnerMonthlyInvoice({
+      companyId,
+      billingPeriodStart: periodStart,
+      billingPeriodEnd: periodEnd,
+      issueDate,
+      dueDate,
+      items,
+      notes: typeof body.notes === "string" ? body.notes : null,
+      status: body.status === "draft" ? "draft" : "issued",
+      actorLabel: `admin_console:${role}`
+    });
+    if (!out.ok) {
+      const st = out.error === "company_not_found" ? 404 : out.error === "company_code_required" ? 400 : out.error === "invoice_period_already_exists" || out.error === "invoice_number_conflict" ? 409 : 400;
+      res.status(st).json({
+        error: out.error,
+        existingInvoiceId: "existingInvoiceId" in out ? out.existingInvoiceId : void 0
+      });
+      return;
+    }
+    res.status(201).json({ ok: true, ...out });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/finance/invoices/monthly-run", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body;
+    const periodStart = typeof body.periodStart === "string" ? body.periodStart.trim() : "";
+    const periodEnd = typeof body.periodEnd === "string" ? body.periodEnd.trim() : "";
+    const dryRun = body.dryRun !== false;
+    const out = await runAdminMonthlyInvoiceRun({
+      periodStart,
+      periodEnd,
+      dryRun,
+      actorLabel: `admin_console:${role}`
+    });
+    if (!out.ok) {
+      const st = out.error === "invalid_period_dates" || out.error === "period_start_after_end" ? 400 : 503;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    res.json(out);
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/finance/invoices/:invoiceId/mark-paid", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body;
+    const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
+    const bankReference = typeof body.bankReference === "string" ? body.bankReference : "";
+    const paidAtRaw = typeof body.paidAt === "string" ? body.paidAt.trim() : "";
+    const paidAt = paidAtRaw ? new Date(paidAtRaw) : /* @__PURE__ */ new Date();
+    if (Number.isNaN(paidAt.getTime())) {
+      res.status(400).json({ error: "invalid_paid_at" });
+      return;
+    }
+    const out = await adminMarkInvoicePaid({
+      invoiceId: req.params.invoiceId,
+      actorLabel: `admin_console:${role}`,
+      paidAt,
+      amount: Number.isFinite(amount) ? amount : null,
+      bankReference
+    });
+    if (!out.ok) {
+      const st = out.error === "invoice_not_found" ? 404 : out.error === "invoice_cancelled" ? 409 : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    res.json({ ok: true, paymentId: out.paymentId, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/finance/invoices/:invoiceId/revert-payment", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body;
+    const reason = typeof body.reason === "string" ? body.reason : "";
+    const out = await adminRevertInvoicePayment({
+      invoiceId: req.params.invoiceId,
+      actorLabel: `admin_console:${role}`,
+      reason
+    });
+    if (!out.ok) {
+      const st = out.error === "invoice_not_found" ? 404 : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    const item = await findInvoiceAdmin(req.params.invoiceId);
+    res.json({
+      ok: true,
+      idempotent: out.idempotent === true,
+      restoredStatus: out.restoredStatus,
+      invoice: item
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/finance/invoices/:invoiceId/send-reminder", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const out = await adminSendInvoicePaymentReminder({
+      invoiceId: req.params.invoiceId,
+      actorLabel: `admin_console:${role}`
+    });
+    if (!out.ok) {
+      const st = out.error === "invoice_not_found" ? 404 : out.error === "smtp_not_configured" ? 503 : out.error === "billing_email_missing" ? 422 : out.error === "mail_send_failed" ? 502 : out.error === "invoice_cancelled" || out.error === "invoice_already_paid" ? 409 : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      idempotent: out.idempotent === true,
+      message: out.message,
+      mail_to: out.mail_to,
+      mail_status: out.mail_status,
+      reminder_mail_sent_at: out.reminder_mail_sent_at ?? null,
+      reminder_mail_to: out.reminder_mail_to ?? null,
+      reminder_mail_status: out.reminder_mail_status ?? null
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/invoices/:invoiceId/pdf", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const invoice = await findInvoiceAdmin(req.params.invoiceId);
+    if (!invoice) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const company = invoice.company_id ? await findCompanyById(invoice.company_id) : null;
+    const recipientLines = company ? [
+      company.billing_address_line1,
+      company.billing_address_line2,
+      [company.billing_postal_code, company.billing_city].filter(Boolean).join(" "),
+      company.billing_country
+    ].filter((x) => x && String(x).trim().length > 0) : [];
+    const meta = invoice.metadata_json && typeof invoice.metadata_json === "object" ? invoice.metadata_json : {};
+    const notes = typeof meta.notes === "string" ? meta.notes : null;
+    const taxRatePercent = invoice.subtotal_net > 0 ? Math.round(invoice.vat_total / invoice.subtotal_net * 1e4) / 100 : 19;
+    const pdfBuffer = await buildPartnerMonthlyInvoicePdf({
+      invoiceNumber: invoice.invoice_number,
+      statusLabel: invoicePdfNeutralStatusLabel(),
+      issueDate: String(invoice.issue_date),
+      dueDate: invoice.due_date ? String(invoice.due_date) : null,
+      periodFrom: String(invoice.billing_period_start),
+      periodTo: String(invoice.billing_period_end),
+      recipientName: company?.billing_name?.trim() || company?.name || invoice.company_name || "Empf\xE4nger",
+      recipientLines: recipientLines.map(String),
+      items: mapPanelInvoiceItemsForPdf(
+        (invoice.items ?? []).map((row) => ({
+          id: row.id,
+          rideId: row.ride_id ?? null,
+          itemType: row.item_type,
+          description: row.description,
+          quantity: Number(row.quantity),
+          unitNet: Number(row.unit_net),
+          vatRate: Number(row.vat_rate),
+          lineNet: Number(row.line_net),
+          lineVat: Number(row.line_vat),
+          lineGross: Number(row.line_gross),
+          metadata: row.metadata_json && typeof row.metadata_json === "object" ? row.metadata_json : {},
+          createdAt: ""
+        }))
+      ),
+      subtotalNet: Number(invoice.subtotal_net),
+      vatTotal: Number(invoice.vat_total),
+      totalGross: Number(invoice.total_gross),
+      taxRatePercent,
+      notes,
+      paymentReference: invoice.payment_reference || invoice.invoice_number
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="ONRODA-Rechnung-${invoice.invoice_number}.pdf"`
+    );
+    res.send(pdfBuffer);
   } catch (e) {
     next(e);
   }
@@ -66788,7 +69795,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -66816,7 +69823,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -66836,7 +69843,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.missing_documents",
@@ -66858,7 +69865,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.approval",
@@ -66894,7 +69901,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/suspend", async
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.suspended",
@@ -66924,7 +69931,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", asyn
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.activated",
@@ -66961,7 +69968,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-overr
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.readiness_override_system",
@@ -67004,7 +70011,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/medical-transp
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.medical_transport",
@@ -67045,7 +70052,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.notes_patched",
@@ -67151,7 +70158,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -67198,7 +70205,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -67233,7 +70240,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/mark-missing
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.missing_documents",
@@ -67276,7 +70283,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", asyn
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -67313,7 +70320,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.unblocked",
@@ -67351,7 +70358,7 @@ adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", asy
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.notes_patched",
@@ -67921,6 +70928,10 @@ adminJson.patch("/app-operational", async (req, res, next) => {
     if (body.bookingRules !== void 0) patch.bookingRules = body.bookingRules;
     if (body.system !== void 0) patch.system = body.system;
     if (body.version !== void 0) patch.version = body.version;
+    if (body.tariffTemplates !== void 0) patch.tariffTemplates = body.tariffTemplates;
+    if (body.regionTariffTemplateIds !== void 0) {
+      patch.regionTariffTemplateIds = body.regionTariffTemplateIds;
+    }
     const out = await updateOperationalConfigPayload(patch);
     if ("error" in out) {
       res.status(503).json({ error: "unavailable" });
@@ -67954,8 +70965,8 @@ adminJson.patch("/app-operational/service-regions/:id", async (req, res, next) =
     const pickNum = (k) => {
       if (!(k in b)) return void 0;
       if (b[k] === null) return null;
-      const n4 = Number(b[k]);
-      return Number.isFinite(n4) ? n4 : void 0;
+      const n5 = Number(b[k]);
+      return Number.isFinite(n5) ? n5 : void 0;
     };
     const upd = await updateServiceRegionById(id, {
       label: typeof b.label === "string" ? b.label : void 0,
@@ -68167,7 +71178,21 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     if (!allowed) return;
     const body = req.body;
     const prev = typeof body.medical_transport_enabled === "boolean" ? await findCompanyById(req.params.companyId) : null;
-    const item = await updateAdminCompany(req.params.companyId, body);
+    let item;
+    try {
+      item = await updateAdminCompany(req.params.companyId, body);
+    } catch (e) {
+      const code = e.code;
+      if (code === "company_code_duplicate") {
+        res.status(409).json({ error: code });
+        return;
+      }
+      if (code?.startsWith("company_code_") || code?.startsWith("invoice_prefix_")) {
+        res.status(400).json({ error: code });
+        return;
+      }
+      throw e;
+    }
     if (!item) {
       res.status(404).json({ error: "not_found" });
       return;
@@ -68175,7 +71200,7 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     if (prev && typeof body.medical_transport_enabled === "boolean" && prev.medical_transport_enabled !== body.medical_transport_enabled && isPostgresConfigured()) {
       const adminId = await resolveAdminAuthUserIdForSupport(req);
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId: req.params.companyId,
         actorPanelUserId: null,
         action: "admin.company.medical_transport_enabled",
@@ -68340,7 +71365,7 @@ adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => 
     }
     const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
     const result = await insertAdminSupportMessage({
-      messageId: randomUUID28(),
+      messageId: randomUUID31(),
       threadId,
       body,
       senderAdminUserId
@@ -69008,7 +72033,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
           ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
         } else {
           await insertPanelAuditLog({
-            id: randomUUID28(),
+            id: randomUUID31(),
             companyId: createdCompany.id,
             actorPanelUserId: null,
             action: "admin.panel_user.created",
@@ -69164,7 +72189,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -69241,7 +72266,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -69277,7 +72302,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -69392,14 +72417,14 @@ adminJson.get("/rides/:id/medical-signature-file", async (req, res, next) => {
       res.status(404).json({ error: "signature_not_found" });
       return;
     }
-    const uploadRoot = path6.resolve(process.cwd(), "uploads", "medical-rides");
-    const normalized = path6.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
-    const filePath = path6.resolve(uploadRoot, normalized);
-    if (!filePath.startsWith(uploadRoot + path6.sep) && filePath !== uploadRoot) {
+    const uploadRoot = path7.resolve(process.cwd(), "uploads", "medical-rides");
+    const normalized = path7.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
+    const filePath = path7.resolve(uploadRoot, normalized);
+    if (!filePath.startsWith(uploadRoot + path7.sep) && filePath !== uploadRoot) {
       res.status(400).json({ error: "invalid_signature_key" });
       return;
     }
-    const ext = path6.extname(filePath).toLowerCase();
+    const ext = path7.extname(filePath).toLowerCase();
     const contentType = ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "";
     if (!contentType) {
       res.status(415).json({ error: "unsupported_signature_type" });
@@ -69476,12 +72501,12 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
     if (raw === null) {
       modules = null;
     } else if (Array.isArray(raw)) {
-      const n4 = normalizeStoredPanelModules(raw) ?? [];
-      if (n4.length === 0) {
+      const n5 = normalizeStoredPanelModules(raw) ?? [];
+      if (n5.length === 0) {
         res.status(400).json({ error: "panel_modules_empty", hint: "Mindestens ein Modul, oder panel_modules: null f\xFCr alle." });
         return;
       }
-      modules = n4;
+      modules = n5;
     } else {
       res.status(400).json({ error: "panel_modules_invalid" });
       return;
@@ -69817,7 +72842,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -69861,7 +72886,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -69891,7 +72916,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/mark-missing-documents", async (req, 
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.missing_documents",
@@ -69928,7 +72953,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID28(),
+        id: randomUUID31(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -69963,9 +72988,9 @@ adminJson.get("/fleet-vehicles/:vehicleId/documents/file", async (req, res, next
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path6.resolve(path6.join(adminFleetUploadRoot, storageKey));
-    const base = path6.resolve(adminFleetUploadRoot);
-    if (!abs.startsWith(base + path6.sep) && abs !== base) {
+    const abs = path7.resolve(path7.join(adminFleetUploadRoot, storageKey));
+    const base = path7.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path7.sep) && abs !== base) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -70001,9 +73026,9 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path6.resolve(path6.join(adminFleetUploadRoot, storageKey));
-    const base = path6.resolve(adminFleetUploadRoot);
-    if (!abs.startsWith(base + path6.sep) && abs !== base) {
+    const abs = path7.resolve(path7.join(adminFleetUploadRoot, storageKey));
+    const base = path7.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path7.sep) && abs !== base) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -70885,246 +73910,10 @@ var panelAuth_default = router13;
 var import_express14 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID30 } from "node:crypto";
+import { randomUUID as randomUUID33 } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile2, writeFile as writeFile5 } from "node:fs/promises";
-import path7 from "node:path";
-
-// src/db/panelCompanyData.ts
-init_drizzle_orm();
-init_client();
-init_companyComplianceDocumentsData();
-init_schema2();
-var MAX = {
-  short: 120,
-  line: 500,
-  url: 2048,
-  name: 200
-};
-function clip(s, max2) {
-  const t = s.trim();
-  if (t.length <= max2) return t;
-  return t.slice(0, max2);
-}
-function isDbEmpty(v) {
-  return !String(v ?? "").trim();
-}
-function partnerBasicsPanelCompleteFromRow(r) {
-  return !isDbEmpty(r.name) && !isDbEmpty(r.contact_name) && !isDbEmpty(r.email) && !isDbEmpty(r.phone) && !isDbEmpty(r.address_line1) && !isDbEmpty(r.postal_code) && !isDbEmpty(r.city) && !isDbEmpty(r.country) && !isDbEmpty(r.legal_form) && !isDbEmpty(r.owner_name) && !isDbEmpty(r.concession_number) && !isDbEmpty(r.tax_id) && !isDbEmpty(r.bank_iban);
-}
-var BASICS_PATCH_KEYS = [
-  "name",
-  "contactName",
-  "email",
-  "phone",
-  "addressLine1",
-  "addressLine2",
-  "postalCode",
-  "city",
-  "country",
-  "legalForm",
-  "ownerName"
-];
-function costCenterFromFarePermissions(fp) {
-  if (!fp || typeof fp !== "object" || Array.isArray(fp)) return "";
-  const o = fp;
-  for (const k of ["cost_center", "costCenter", "kostenstelle", "Kostenstelle"]) {
-    const v = o[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
-    if (typeof v === "number" && Number.isFinite(v)) return String(v);
-  }
-  return "";
-}
-function rowToPanelPublic(r) {
-  return {
-    id: r.id,
-    name: r.name,
-    contactName: r.contact_name,
-    email: r.email,
-    phone: r.phone,
-    addressLine1: r.address_line1,
-    addressLine2: r.address_line2,
-    postalCode: r.postal_code,
-    city: r.city,
-    country: r.country,
-    vatId: r.vat_id,
-    isActive: r.is_active,
-    companyKind: r.company_kind === "taxi" || r.company_kind === "voucher_client" || r.company_kind === "insurer" || r.company_kind === "hotel" || r.company_kind === "corporate" || r.company_kind === "medical" ? r.company_kind : "general",
-    taxId: r.tax_id ?? "",
-    concessionNumber: r.concession_number ?? "",
-    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
-    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
-    legalForm: r.legal_form ?? "",
-    ownerName: r.owner_name ?? "",
-    supportEmail: r.support_email ?? "",
-    dispoPhone: r.dispo_phone ?? "",
-    logoUrl: r.logo_url ?? "",
-    openingHours: r.opening_hours ?? "",
-    businessNotes: r.business_notes ?? "",
-    billingName: r.billing_name ?? "",
-    billingAddressLine1: r.billing_address_line1 ?? "",
-    billingAddressLine2: r.billing_address_line2 ?? "",
-    billingPostalCode: r.billing_postal_code ?? "",
-    billingCity: r.billing_city ?? "",
-    billingCountry: r.billing_country ?? "",
-    bankIban: r.bank_iban ?? "",
-    bankBic: r.bank_bic ?? "",
-    costCenter: costCenterFromFarePermissions(r.fare_permissions),
-    verificationStatus: r.verification_status ?? "pending",
-    complianceStatus: r.compliance_status ?? "pending",
-    complianceBucket: "missing",
-    contractStatus: r.contract_status ?? "inactive",
-    isBlocked: Boolean(r.is_blocked),
-    maxDrivers: r.max_drivers ?? 100,
-    maxVehicles: r.max_vehicles ?? 100,
-    profileLocked: Boolean(r.partner_panel_profile_locked),
-    complianceDocuments: {
-      gewerbe: { uploadedAt: "", reviewStatus: "", reviewNote: "" },
-      insurance: { uploadedAt: "", reviewStatus: "", reviewNote: "" }
-    }
-  };
-}
-async function getPanelCompanyById(companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  const { status, complianceDocuments } = await getDerivedComplianceAndDocumentsForRow(r);
-  const pub = rowToPanelPublic(r);
-  const complianceBucket = complianceBucketFromDerived({
-    derivedStatus: status,
-    hasGewerbe: pub.hasComplianceGewerbe,
-    hasInsurance: pub.hasComplianceInsurance
-  });
-  return { ...pub, complianceStatus: status, complianceDocuments, complianceBucket };
-}
-async function patchPanelCompanyProfile(companyId, patch) {
-  if (!isPostgresConfigured()) {
-    return { ok: false, error: "database_not_configured" };
-  }
-  const db2 = getDb();
-  if (!db2) {
-    return { ok: false, error: "database_not_configured" };
-  }
-  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const r0 = rows[0];
-  if (!r0 || !r0.is_active) {
-    return { ok: false, error: "company_not_found" };
-  }
-  const keys = Object.keys(patch).filter((k) => patch[k] !== void 0);
-  if (keys.length === 0) {
-    return { ok: false, error: "no_changes" };
-  }
-  const patchTouchesBasics = keys.some(
-    (k) => BASICS_PATCH_KEYS.includes(k)
-  );
-  if (r0.partner_panel_profile_locked && patchTouchesBasics) {
-    return { ok: false, error: "partner_basics_locked" };
-  }
-  const set = {};
-  if (patch.supportEmail !== void 0) {
-    const e = clip(patch.supportEmail, MAX.short);
-    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-      return { ok: false, error: "email_invalid" };
-    }
-    set.support_email = e;
-  }
-  if (patch.dispoPhone !== void 0) {
-    set.dispo_phone = clip(patch.dispoPhone, MAX.short);
-  }
-  if (patch.logoUrl !== void 0) {
-    set.logo_url = clip(patch.logoUrl, MAX.url);
-  }
-  if (patch.openingHours !== void 0) {
-    set.opening_hours = clip(patch.openingHours, MAX.line);
-  }
-  if (patch.name !== void 0 && isDbEmpty(r0.name)) {
-    const v = clip(patch.name, MAX.name);
-    if (v) set.name = v;
-  }
-  if (patch.contactName !== void 0 && isDbEmpty(r0.contact_name)) {
-    const v = clip(patch.contactName, MAX.short);
-    if (v) set.contact_name = v;
-  }
-  if (patch.email !== void 0 && isDbEmpty(r0.email)) {
-    const e = clip(patch.email, MAX.short);
-    if (e) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-        return { ok: false, error: "email_invalid" };
-      }
-      set.email = e;
-    }
-  }
-  if (patch.phone !== void 0 && isDbEmpty(r0.phone)) {
-    const v = clip(patch.phone, MAX.short);
-    if (v) set.phone = v;
-  }
-  if (patch.addressLine1 !== void 0 && isDbEmpty(r0.address_line1)) {
-    const v = clip(patch.addressLine1, MAX.line);
-    if (v) set.address_line1 = v;
-  }
-  if (patch.addressLine2 !== void 0 && isDbEmpty(r0.address_line2)) {
-    const v = clip(patch.addressLine2, MAX.line);
-    if (v) set.address_line2 = v;
-  }
-  if (patch.postalCode !== void 0 && isDbEmpty(r0.postal_code)) {
-    const v = clip(patch.postalCode, MAX.short);
-    if (v) set.postal_code = v;
-  }
-  if (patch.city !== void 0 && isDbEmpty(r0.city)) {
-    const v = clip(patch.city, MAX.short);
-    if (v) set.city = v;
-  }
-  if (patch.country !== void 0 && isDbEmpty(r0.country)) {
-    const v = clip(patch.country, MAX.short);
-    if (v) set.country = v;
-  }
-  if (patch.legalForm !== void 0 && isDbEmpty(r0.legal_form)) {
-    const v = clip(patch.legalForm, MAX.short);
-    if (v) set.legal_form = v;
-  }
-  if (patch.ownerName !== void 0 && isDbEmpty(r0.owner_name)) {
-    const v = clip(patch.ownerName, MAX.short);
-    if (v) set.owner_name = v;
-  }
-  if (patch.concessionNumber !== void 0 && isDbEmpty(r0.concession_number)) {
-    const v = clip(patch.concessionNumber, MAX.short);
-    if (v) set.concession_number = v;
-  }
-  if (patch.taxId !== void 0 && isDbEmpty(r0.tax_id)) {
-    const v = clip(patch.taxId, MAX.short);
-    if (v) set.tax_id = v;
-  }
-  if (patch.bankIban !== void 0 && isDbEmpty(r0.bank_iban)) {
-    const v = clip(patch.bankIban, MAX.short);
-    if (v) set.bank_iban = v;
-  }
-  if (Object.keys(set).length === 0) {
-    return { ok: false, error: "no_changes" };
-  }
-  await db2.update(adminCompaniesTable).set(set).where(eq(adminCompaniesTable.id, companyId));
-  const again = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const r1 = again[0];
-  if (!r1) {
-    return { ok: false, error: "company_not_found" };
-  }
-  if (!r0.partner_panel_profile_locked && partnerBasicsPanelCompleteFromRow(r1)) {
-    await db2.update(adminCompaniesTable).set({ partner_panel_profile_locked: true }).where(eq(adminCompaniesTable.id, companyId));
-    const lockedRow = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-    const r2 = lockedRow[0];
-    if (!r2) {
-      return { ok: false, error: "company_not_found" };
-    }
-  }
-  const out = await getPanelCompanyById(companyId);
-  if (!out) {
-    return { ok: false, error: "company_not_found" };
-  }
-  return { ok: true, company: out };
-}
-
-// src/routes/panelApi.ts
+import path8 from "node:path";
+init_panelCompanyData();
 init_companyGovernanceData();
 init_accessCodesData();
 init_ridesData();
@@ -71136,7 +73925,7 @@ init_dispatchStatus();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID29 } from "node:crypto";
+import { randomUUID as randomUUID32 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -71154,7 +73943,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID29()}`;
+  const id = `SRS-${randomUUID32()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -71287,7 +74076,7 @@ var requirePanelAuth = async (req, res, next) => {
 
 // src/routes/panelApi.ts
 var router14 = (0, import_express14.Router)();
-var INVOICE_UPLOAD_ROOT = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path7.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
+var INVOICE_UPLOAD_ROOT = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path8.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
 function invoiceLine(text2) {
   return text2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
@@ -71342,8 +74131,8 @@ function nextInvoiceNumber(existing, date2 = /* @__PURE__ */ new Date()) {
     const t = item.trim();
     if (!t.startsWith(prefix)) continue;
     const seqPart = t.slice(prefix.length);
-    const n4 = Number(seqPart);
-    if (Number.isFinite(n4) && n4 > maxSeq) maxSeq = n4;
+    const n5 = Number(seqPart);
+    if (Number.isFinite(n5) && n5 > maxSeq) maxSeq = n5;
   }
   return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
 }
@@ -71482,7 +74271,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID30()}`;
+  return `REQ-${randomUUID33()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -71583,8 +74372,8 @@ function rideRevenueEuro(r) {
   const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
   return Number.isFinite(a) ? a : 0;
 }
-function formatEuroDe(n4) {
-  return `${n4.toFixed(2).replace(".", ",")} \u20AC`;
+function formatEuroDe(n5) {
+  return `${n5.toFixed(2).replace(".", ",")} \u20AC`;
 }
 function ridePaymentLabelDe(r) {
   const pm = String(r.paymentMethod ?? "").trim().toLowerCase();
@@ -71893,7 +74682,7 @@ router14.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -71931,7 +74720,7 @@ router14.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -71943,7 +74732,7 @@ router14.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -71986,8 +74775,8 @@ router14.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
       res.status(400).json({ error: "body_invalid", hint: "max 10000" });
       return;
     }
-    const threadId = randomUUID30();
-    const messageId = randomUUID30();
+    const threadId = randomUUID33();
+    const messageId = randomUUID33();
     const created = await insertSupportThreadWithFirstMessage({
       threadId,
       messageId,
@@ -72045,7 +74834,7 @@ router14.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
       return;
     }
     const result = await insertPartnerSupportMessage({
-      messageId: randomUUID30(),
+      messageId: randomUUID33(),
       threadId,
       companyId: ctx.claims.companyId,
       panelUserId: ctx.claims.panelUserId,
@@ -72176,9 +74965,9 @@ router14.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
       "Hinweis: Rechnung im Namen des Taxiunternehmens, ohne automatische Kassen-\xDCbermittlung."
     ];
     const companyKey = ctx.claims.companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const relKey = path7.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
-    const absPath = path7.join(INVOICE_UPLOAD_ROOT, relKey);
-    await mkdir5(path7.dirname(absPath), { recursive: true });
+    const relKey = path8.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+    const absPath = path8.join(INVOICE_UPLOAD_ROOT, relKey);
+    await mkdir5(path8.dirname(absPath), { recursive: true });
     await writeFile5(absPath, buildSimpleInvoicePdf(pdfLines));
     const nextMeta = {
       ...meta,
@@ -72201,7 +74990,7 @@ router14.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "billing.invoice_created",
@@ -72240,7 +75029,7 @@ router14.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, re
       res.status(404).json({ error: "invoice_not_found" });
       return;
     }
-    const absPath = path7.join(INVOICE_UPLOAD_ROOT, fileKey);
+    const absPath = path8.join(INVOICE_UPLOAD_ROOT, fileKey);
     const buf = await readFile2(absPath).catch(() => null);
     if (!buf) {
       res.status(404).json({ error: "pdf_file_missing" });
@@ -72461,7 +75250,7 @@ router14.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -72641,7 +75430,7 @@ router14.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -72912,7 +75701,7 @@ router14.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -73136,7 +75925,7 @@ router14.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req,
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -73266,7 +76055,7 @@ router14.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -73313,7 +76102,7 @@ router14.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -73358,7 +76147,7 @@ router14.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -73427,7 +76216,7 @@ router14.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -73514,7 +76303,7 @@ router14.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -73569,7 +76358,7 @@ router14.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -73619,7 +76408,7 @@ router14.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID30(),
+      id: randomUUID33(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -73634,8 +76423,274 @@ router14.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
 });
 var panelApi_default = router14;
 
-// src/routes/fleetAuth.ts
+// src/routes/panelInvoiceRoutes.ts
 var import_express15 = __toESM(require_express2(), 1);
+import { mkdir as mkdir6, readFile as readFile3, writeFile as writeFile6 } from "node:fs/promises";
+import path9 from "node:path";
+
+// src/db/panelInvoicesData.ts
+init_drizzle_orm();
+init_invoicePaymentReference();
+init_client();
+init_panelCompanyData();
+init_schema2();
+function legacyPaymentStatus(workflow) {
+  if (workflow === "issued") return "open";
+  if (workflow === "partially_paid") return "partial";
+  return workflow;
+}
+function mapItem(row) {
+  const metadata = row.metadata_json && typeof row.metadata_json === "object" ? row.metadata_json : {};
+  return {
+    id: row.id,
+    rideId: row.ride_id ?? null,
+    itemType: row.item_type,
+    description: row.description,
+    quantity: Number(row.quantity),
+    unitNet: Number(row.unit_net),
+    vatRate: Number(row.vat_rate),
+    lineNet: Number(row.line_net),
+    lineVat: Number(row.line_vat),
+    lineGross: Number(row.line_gross),
+    metadata,
+    createdAt: new Date(row.created_at).toISOString()
+  };
+}
+function mapSummary(row, itemCount) {
+  const workflowStatus = resolveInvoiceWorkflowStatus({
+    status: row.status,
+    due_date: row.due_date
+  });
+  const paymentReference = resolveInvoicePaymentReference({
+    invoiceNumber: row.invoice_number,
+    storedReference: row.payment_reference
+  });
+  const dueDate = row.due_date ? String(row.due_date) : null;
+  return {
+    id: row.id,
+    invoiceNumber: row.invoice_number,
+    invoiceType: row.invoice_type,
+    status: row.status,
+    workflowStatus,
+    paymentStatus: legacyPaymentStatus(workflowStatus),
+    periodFrom: String(row.billing_period_start),
+    periodTo: String(row.billing_period_end),
+    subtotalNet: Number(row.subtotal_net),
+    vatTotal: Number(row.vat_total),
+    totalGross: Number(row.total_gross),
+    issueDate: String(row.issue_date),
+    dueDate,
+    pdfAvailable: Boolean(row.pdf_storage_key?.trim()),
+    itemCount,
+    paymentReference,
+    statusLabelDe: workflowStatusLabelDe(workflowStatus),
+    paymentUi: buildPartnerPaymentUi({
+      workflowStatus,
+      invoiceNumber: row.invoice_number,
+      totalGross: Number(row.total_gross),
+      dueDate,
+      paymentReference
+    }),
+    createdAt: new Date(row.created_at).toISOString(),
+    updatedAt: new Date(row.updated_at).toISOString()
+  };
+}
+async function listPanelInvoicesForCompany(companyId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({
+    invoice: invoicesTable,
+    itemCount: sql2`count(${invoiceItemsTable.id})::int`
+  }).from(invoicesTable).leftJoin(invoiceItemsTable, eq(invoiceItemsTable.invoice_id, invoicesTable.id)).where(eq(invoicesTable.company_id, companyId)).groupBy(invoicesTable.id).orderBy(desc(invoicesTable.created_at));
+  return rows.map((r) => mapSummary(r.invoice, Number(r.itemCount ?? 0)));
+}
+async function getPanelInvoiceForCompany(companyId, invoiceId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(invoicesTable).where(and(eq(invoicesTable.id, invoiceId), eq(invoicesTable.company_id, companyId))).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const items = await db2.select().from(invoiceItemsTable).where(eq(invoiceItemsTable.invoice_id, invoiceId)).orderBy(invoiceItemsTable.created_at);
+  const company = await getPanelCompanyById(companyId);
+  const billingLines = company ? [
+    company.billingAddressLine1,
+    company.billingAddressLine2,
+    [company.billingPostalCode, company.billingCity].filter(Boolean).join(" "),
+    company.billingCountry
+  ].filter((x) => x.trim().length > 0) : [];
+  const meta = row.metadata_json && typeof row.metadata_json === "object" ? row.metadata_json : {};
+  const notes = typeof meta.notes === "string" ? meta.notes : null;
+  return {
+    ...mapSummary(row, items.length),
+    notes,
+    pdfStorageKey: row.pdf_storage_key ?? "",
+    items: items.map(mapItem),
+    recipient: {
+      companyId,
+      companyName: company?.name ?? companyId,
+      billingName: company?.billingName?.trim() || company?.name || companyId,
+      billingLines
+    }
+  };
+}
+
+// src/routes/panelRouteContext.ts
+init_client();
+init_panelModules();
+function enabledPanelModules2(profile) {
+  return resolveEffectivePanelModules(profile.panelModules, profile.companyKind);
+}
+function denyUnlessPanelModule2(res, profile, mod) {
+  if (!enabledPanelModules2(profile).includes(mod)) {
+    res.status(403).json({ error: "module_disabled", hint: mod });
+    return false;
+  }
+  return true;
+}
+async function assertActivePanelProfile2(req, res, opts) {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return null;
+  }
+  const claims = req.panelAuth;
+  if (!claims) {
+    res.status(401).json({ error: "unauthorized" });
+    return null;
+  }
+  const profile = await findActivePanelUserProfileById(claims.panelUserId);
+  if (!profile || !isPanelRoleString(profile.role)) {
+    res.status(401).json({ error: "user_inactive_or_missing" });
+    return null;
+  }
+  if (profile.companyId !== claims.companyId || profile.username !== claims.username) {
+    res.status(401).json({ error: "token_out_of_sync" });
+    return null;
+  }
+  if (profile.mustChangePassword && !opts?.allowPasswordChangeRequired) {
+    res.status(403).json({ error: "password_change_required" });
+    return null;
+  }
+  return { claims, profile };
+}
+
+// src/routes/panelInvoiceRoutes.ts
+var router15 = (0, import_express15.Router)();
+var INVOICE_UPLOAD_ROOT2 = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path9.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
+function invoicePdfAbsPath(storageKey) {
+  const rel = storageKey.replace(/^\/+/, "");
+  const resolved = path9.resolve(INVOICE_UPLOAD_ROOT2, rel);
+  const root = path9.resolve(INVOICE_UPLOAD_ROOT2);
+  if (!resolved.startsWith(root)) {
+    throw new Error("invalid_storage_key");
+  }
+  return resolved;
+}
+function defaultMonthlyPdfKey(companyId, invoiceNumber) {
+  const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return path9.join(companyKey, "monthly-invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+}
+router15.get("/panel/v1/invoices", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const invoices = await listPanelInvoicesForCompany(ctx.claims.companyId);
+    res.json({ ok: true, invoices });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.get("/panel/v1/invoices/:invoiceId", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const invoiceId = String(req.params.invoiceId ?? "").trim();
+    if (!invoiceId) {
+      res.status(400).json({ error: "invoice_id_required" });
+      return;
+    }
+    const invoice = await getPanelInvoiceForCompany(ctx.claims.companyId, invoiceId);
+    if (!invoice) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, invoice });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const invoiceId = String(req.params.invoiceId ?? "").trim();
+    if (!invoiceId) {
+      res.status(400).json({ error: "invoice_id_required" });
+      return;
+    }
+    const invoice = await getPanelInvoiceForCompany(ctx.claims.companyId, invoiceId);
+    if (!invoice) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    let storageKey = invoice.pdfStorageKey.trim();
+    let pdfBuffer = null;
+    if (storageKey) {
+      try {
+        pdfBuffer = await readFile3(invoicePdfAbsPath(storageKey));
+      } catch {
+        pdfBuffer = null;
+      }
+    }
+    if (!pdfBuffer) {
+      const taxRatePercent = invoice.subtotalNet > 0 ? Math.round(invoice.vatTotal / invoice.subtotalNet * 1e4) / 100 : 19;
+      pdfBuffer = await buildPartnerMonthlyInvoicePdf({
+        invoiceNumber: invoice.invoiceNumber,
+        statusLabel: invoicePdfNeutralStatusLabel(),
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        periodFrom: invoice.periodFrom,
+        periodTo: invoice.periodTo,
+        recipientName: invoice.recipient.billingName,
+        recipientLines: invoice.recipient.billingLines,
+        items: mapPanelInvoiceItemsForPdf(invoice.items),
+        subtotalNet: invoice.subtotalNet,
+        vatTotal: invoice.vatTotal,
+        totalGross: invoice.totalGross,
+        taxRatePercent,
+        notes: invoice.notes,
+        paymentReference: invoice.paymentReference
+      });
+      if (!storageKey) {
+        storageKey = defaultMonthlyPdfKey(ctx.claims.companyId, invoice.invoiceNumber);
+        const absPath = invoicePdfAbsPath(storageKey);
+        await mkdir6(path9.dirname(absPath), { recursive: true });
+        await writeFile6(absPath, pdfBuffer);
+      }
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="ONRODA-Rechnung-${invoice.invoiceNumber}.pdf"`
+    );
+    res.send(pdfBuffer);
+  } catch (e) {
+    if (e instanceof Error && e.message === "invalid_storage_key") {
+      res.status(400).json({ error: "invalid_pdf_storage_key" });
+      return;
+    }
+    next(e);
+  }
+});
+var panelInvoiceRoutes_default = router15;
+
+// src/routes/fleetAuth.ts
+var import_express16 = __toESM(require_express2(), 1);
 init_client();
 init_fleetDriversData();
 init_companyGovernanceData();
@@ -73661,8 +76716,8 @@ function rateLimitFleetLogin(ip) {
 }
 
 // src/routes/fleetAuth.ts
-var router15 = (0, import_express15.Router)();
-router15.post("/fleet-auth/login", async (req, res) => {
+var router16 = (0, import_express16.Router)();
+router16.post("/fleet-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitFleetLogin(ip);
   if (!rl.ok) {
@@ -73743,13 +76798,13 @@ router15.post("/fleet-auth/login", async (req, res) => {
     }
   });
 });
-router15.post("/fleet-auth/logout", (_req, res) => {
+router16.post("/fleet-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
-var fleetAuth_default = router15;
+var fleetAuth_default = router16;
 
 // src/routes/fleetDriverApi.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 init_client();
 init_fleetDriversData();
 init_fleetAssignmentsData();
@@ -73836,13 +76891,13 @@ init_financeCalculationService();
 // src/lib/medical/medicalScanService.ts
 init_drizzle_orm();
 init_client();
-import { randomUUID as randomUUID34 } from "node:crypto";
-import { mkdir as mkdir6, writeFile as writeFile6 } from "node:fs/promises";
-import path8 from "node:path";
+import { randomUUID as randomUUID37 } from "node:crypto";
+import { mkdir as mkdir7, writeFile as writeFile7 } from "node:fs/promises";
+import path10 from "node:path";
 
 // src/db/medicalCasesData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID31 } from "node:crypto";
+import { randomUUID as randomUUID34 } from "node:crypto";
 
 // src/lib/medical/medicalOcrNormalize.ts
 var MEDICAL_OCR_EXTRACTED_FIELDS = [
@@ -74571,7 +77626,7 @@ async function getAdminCompanyPartnerIkNumber(companyId) {
 async function insertMedicalCase(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mc-${randomUUID31()}`;
+  const id = `mc-${randomUUID34()}`;
   const now = /* @__PURE__ */ new Date();
   const caseType = input.caseType && isCaseType(input.caseType) ? input.caseType : "transport_sheet";
   const status = input.status && isCaseStatus(input.status) ? input.status : "open";
@@ -74617,7 +77672,7 @@ async function updateMedicalCaseStatus(id, status) {
 
 // src/db/medicalDocumentsData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID32 } from "node:crypto";
+import { randomUUID as randomUUID35 } from "node:crypto";
 init_client();
 init_schema2();
 var MEDICAL_DOCUMENT_TYPES = ["transport_sheet", "signature_image", "other"];
@@ -74659,7 +77714,7 @@ function mapRow7(r) {
 async function insertMedicalDocument(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mdoc-${randomUUID32()}`;
+  const id = `mdoc-${randomUUID35()}`;
   const docType = input.documentType && isDocumentType(input.documentType) ? input.documentType : "transport_sheet";
   await db2.insert(medicalDocumentsTable).values({
     id,
@@ -74692,7 +77747,7 @@ async function findMedicalDocumentById(id) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID33 } from "node:crypto";
+import { randomUUID as randomUUID36 } from "node:crypto";
 var MEDICAL_REVIEWER_ACTOR_KINDS = ["system", "driver", "panel", "admin"];
 function isTrafficLight(v) {
   return v === "green" || v === "yellow" || v === "red";
@@ -74756,7 +77811,7 @@ function mapRow8(r) {
 async function insertMedicalReview(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mrev-${randomUUID33()}`;
+  const id = `mrev-${randomUUID36()}`;
   const reviewedAt = input.reviewedAt ?? /* @__PURE__ */ new Date();
   const actorKind = input.reviewerActorKind && isReviewerActorKind(input.reviewerActorKind) ? input.reviewerActorKind : "system";
   await db2.insert(medicalReviewsTable).values({
@@ -75150,8 +78205,8 @@ function parseMedicalScanCopaymentInput(raw) {
   if (typeof fareRaw === "number" && Number.isFinite(fareRaw) && fareRaw >= 0) {
     estimatedFare = fareRaw;
   } else if (typeof fareRaw === "string" && fareRaw.trim()) {
-    const n4 = Number(fareRaw.replace(",", "."));
-    if (Number.isFinite(n4) && n4 >= 0) estimatedFare = n4;
+    const n5 = Number(fareRaw.replace(",", "."));
+    if (Number.isFinite(n5) && n5 >= 0) estimatedFare = n5;
   }
   const copaymentExempt = body.copaymentExempt === true || body.copayment_exempt === true;
   return { estimatedFare, copaymentExempt };
@@ -75504,7 +78559,7 @@ function evaluateMedicalTrafficLight(input) {
 
 // src/lib/medical/medicalScanService.ts
 init_medicalTransportAuthorization();
-var MEDICAL_RIDE_UPLOAD_ROOT2 = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path8.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
+var MEDICAL_RIDE_UPLOAD_ROOT2 = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path10.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
 var MEDICAL_TEST_SCAN_DISCLAIMER = "Testpr\xFCfung ohne Fahrt \u2013 nicht abrechnungsrelevant.";
 async function runMedicalTransportDocumentScanForCustomerBooking(input) {
   if (!isPostgresConfigured()) {
@@ -75527,12 +78582,12 @@ async function runMedicalTransportDocumentScanForCustomerBooking(input) {
     const status = decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
     return { ok: false, error: decoded.error, status };
   }
-  const scanId = `cms-${randomUUID34()}`;
+  const scanId = `cms-${randomUUID37()}`;
   const passengerKey = customerPassengerId2.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const rel = path8.join("customer-pending", passengerKey, `${scanId}.${decoded.ext}`).replace(/\\/g, "/");
-  const dest = path8.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
-  await mkdir6(path8.dirname(dest), { recursive: true });
-  await writeFile6(dest, decoded.buffer);
+  const rel = path10.join("customer-pending", passengerKey, `${scanId}.${decoded.ext}`).replace(/\\/g, "/");
+  const dest = path10.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
+  await mkdir7(path10.dirname(dest), { recursive: true });
+  await writeFile7(dest, decoded.buffer);
   const pipeline = await runMedicalOcrPipeline({
     buffer: decoded.buffer,
     mime: decoded.mime,
@@ -75832,10 +78887,10 @@ async function runMedicalTransportDocumentScan(input) {
     }
   }
   const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const rel = path8.join(companyKey, "rides", rideId, `scan-${randomUUID34()}.${decoded.ext}`).replace(/\\/g, "/");
-  const dest = path8.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
-  await mkdir6(path8.dirname(dest), { recursive: true });
-  await writeFile6(dest, decoded.buffer);
+  const rel = path10.join(companyKey, "rides", rideId, `scan-${randomUUID37()}.${decoded.ext}`).replace(/\\/g, "/");
+  const dest = path10.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
+  await mkdir7(path10.dirname(dest), { recursive: true });
+  await writeFile7(dest, decoded.buffer);
   const partnerIkSnapshot = await resolvePartnerIk(companyId);
   let completedRidesInSeries;
   if (seriesRow) {
@@ -75931,8 +78986,8 @@ async function runMedicalTransportDocumentScan(input) {
 
 // src/routes/fleetDriverApi.ts
 init_medicalTransportAuthorization();
-var router16 = (0, import_express16.Router)();
-router16.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
+var router17 = (0, import_express17.Router)();
+router17.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -76015,7 +79070,7 @@ router16.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     } : null
   });
 });
-router16.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
+router17.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -76041,7 +79096,7 @@ router16.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth,
     next(e);
   }
 });
-router16.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
+router17.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -76072,7 +79127,7 @@ router16.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, re
   }));
   res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
 });
-router16.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
+router17.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -76122,7 +79177,7 @@ router16.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (
     } : null
   });
 });
-router16.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+router17.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -76209,7 +79264,7 @@ router16.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
     next(e);
   }
 });
-router16.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
+router17.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -76280,7 +79335,7 @@ router16.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
     next(e);
   }
 });
-router16.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
+router17.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -76297,7 +79352,7 @@ router16.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (r
     next(e);
   }
 });
-router16.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
+router17.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -76319,7 +79374,7 @@ router16.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriver
     next(e);
   }
 });
-router16.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
+router17.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -76341,7 +79396,7 @@ router16.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleet
     next(e);
   }
 });
-router16.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
+router17.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -76364,7 +79419,7 @@ router16.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async 
     next(e);
   }
 });
-router16.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
+router17.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -76374,7 +79429,7 @@ router16.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) 
   const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
   res.json({ ok: true, marketOnline });
 });
-router16.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
+router17.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -76398,7 +79453,7 @@ router16.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, a
     hasPushToken: pushTokens.length > 0
   });
 });
-router16.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
+router17.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -76429,7 +79484,7 @@ router16.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async 
   }
   res.json({ ok: true });
 });
-router16.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
+router17.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ ok: false, error: "database_not_configured" });
@@ -76476,7 +79531,7 @@ router16.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (re
     next(err);
   }
 });
-router16.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
+router17.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const auth = req.fleetDriverAuth;
     if (!auth) {
@@ -76508,7 +79563,7 @@ router16.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, asyn
     next(err);
   }
 });
-router16.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
+router17.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     const rides = await listRidesForDriver(a.fleetDriverId);
@@ -76522,16 +79577,16 @@ router16.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (
     next(err);
   }
 });
-var fleetDriverApi_default = router16;
+var fleetDriverApi_default = router17;
 
 // src/routes/fleetPanelApi.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 init_companyComplianceDocumentsData();
-import { randomUUID as randomUUID35 } from "node:crypto";
-import fs from "node:fs/promises";
+import { randomUUID as randomUUID38 } from "node:crypto";
+import fs2 from "node:fs/promises";
 import { createReadStream as createReadStream3 } from "node:fs";
-import path9 from "node:path";
-import { fileURLToPath as fileURLToPath3 } from "node:url";
+import path11 from "node:path";
+import { fileURLToPath as fileURLToPath4 } from "node:url";
 init_client();
 init_fleetDriversData();
 init_fleetVehiclesData();
@@ -76540,18 +79595,18 @@ init_companyGovernanceData();
 init_adminData();
 init_panelModules();
 init_fleetDriverReadiness();
-var router17 = (0, import_express17.Router)();
-router17.use((_req, res, next) => {
+var router18 = (0, import_express18.Router)();
+router18.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
   next();
 });
-var pkgRoot = path9.join(path9.dirname(fileURLToPath3(import.meta.url)), "..", "..");
-var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path9.join(pkgRoot, "data", "fleet-uploads");
+var pkgRoot = path11.join(path11.dirname(fileURLToPath4(import.meta.url)), "..", "..");
+var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path11.join(pkgRoot, "data", "fleet-uploads");
 var ALLOWED_VEHICLE_LEGAL_TYPES = ["taxi"];
 var ALLOWED_VEHICLE_CLASSES = ["standard", "xl", "wheelchair"];
-function enabledPanelModules2(panelModules, companyKind) {
+function enabledPanelModules3(panelModules, companyKind) {
   return resolveEffectivePanelModules(panelModules, companyKind);
 }
 async function assertFleetPanel(req, res) {
@@ -76578,7 +79633,7 @@ async function assertFleetPanel(req, res) {
     res.status(403).json({ error: "fleet_only_taxi_company" });
     return null;
   }
-  if (!enabledPanelModules2(profile.panelModules, kind).includes("taxi_fleet")) {
+  if (!enabledPanelModules3(profile.panelModules, kind).includes("taxi_fleet")) {
     res.status(403).json({ error: "module_not_enabled", module: "taxi_fleet" });
     return null;
   }
@@ -76591,7 +79646,7 @@ async function requireFleetOnboardingEntityCreateAllowed(companyId) {
   if (company.is_blocked) return { ok: false, error: "company_blocked" };
   return { ok: true, company };
 }
-router17.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
+router18.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76616,7 +79671,7 @@ router17.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router17.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router18.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76644,7 +79699,7 @@ router17.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router17.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router18.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76705,7 +79760,7 @@ router17.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID35(),
+      id: randomUUID38(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -76718,7 +79773,7 @@ router17.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router17.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
+router18.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76776,7 +79831,7 @@ router17.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
       }
     }
     await insertPanelAuditLog({
-      id: randomUUID35(),
+      id: randomUUID38(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_updated",
@@ -76789,7 +79844,7 @@ router17.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router17.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
+router18.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76800,7 +79855,7 @@ router17.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID35(),
+      id: randomUUID38(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -76813,7 +79868,7 @@ router17.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
     next(e);
   }
 });
-router17.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
+router18.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76824,7 +79879,7 @@ router17.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID35(),
+      id: randomUUID38(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -76837,7 +79892,7 @@ router17.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
     next(e);
   }
 });
-router17.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router18.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76851,7 +79906,7 @@ router17.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID35(),
+      id: randomUUID38(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -76864,10 +79919,10 @@ router17.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
     next(e);
   }
 });
-router17.post(
+router18.post(
   "/panel/v1/fleet/drivers/:id/p-schein-doc",
   requirePanelAuth,
-  import_express17.default.raw({ type: "application/pdf", limit: "6mb" }),
+  import_express18.default.raw({ type: "application/pdf", limit: "6mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -76884,10 +79939,10 @@ router17.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path9.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID35()}.pdf`);
-      const dest = path9.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path9.dirname(dest), { recursive: true });
-      await fs.writeFile(dest, buf);
+      const rel = path11.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID38()}.pdf`);
+      const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path11.dirname(dest), { recursive: true });
+      await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const pr = await patchFleetDriverProfile(id, ctx.claims.companyId, { pScheinDocStorageKey: storageKey });
       if (!pr.ok) {
@@ -76900,7 +79955,7 @@ router17.post(
     }
   }
 );
-router17.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router18.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76918,7 +79973,7 @@ router17.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router17.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router18.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -76972,7 +80027,7 @@ router17.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID35(),
+      id: randomUUID38(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -76985,7 +80040,7 @@ router17.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router17.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
+router18.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -77034,7 +80089,7 @@ router17.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router17.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router18.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -77045,7 +80100,7 @@ router17.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router17.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router18.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -77067,7 +80122,7 @@ router17.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router17.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
+router18.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -77078,10 +80133,10 @@ router17.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async
     next(e);
   }
 });
-router17.post(
+router18.post(
   "/panel/v1/fleet/vehicles/:id/documents",
   requirePanelAuth,
-  import_express17.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express18.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -77099,10 +80154,10 @@ router17.post(
         res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
         return;
       }
-      const rel = path9.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID35()}.pdf`);
-      const dest = path9.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path9.dirname(dest), { recursive: true });
-      await fs.writeFile(dest, buf);
+      const rel = path11.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID38()}.pdf`);
+      const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path11.dirname(dest), { recursive: true });
+      await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const ar = await addFleetVehicleDocumentVersion(id, ctx.claims.companyId, storageKey, {
         kind,
@@ -77114,7 +80169,7 @@ router17.post(
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID35(),
+        id: randomUUID38(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: "fleet.vehicle_document_uploaded",
@@ -77128,7 +80183,7 @@ router17.post(
     }
   }
 );
-router17.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
+router18.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -77146,7 +80201,7 @@ router17.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID35(),
+      id: randomUUID38(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_submitted_for_approval",
@@ -77159,7 +80214,7 @@ router17.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
     next(e);
   }
 });
-router17.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
+router18.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -77178,9 +80233,9 @@ router17.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path9.resolve(path9.join(FLEET_UPLOAD_ROOT, storageKey));
-    const root = path9.resolve(path9.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
-    if (!abs.startsWith(root + path9.sep) && abs !== root) {
+    const abs = path11.resolve(path11.join(FLEET_UPLOAD_ROOT, storageKey));
+    const root = path11.resolve(path11.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
+    if (!abs.startsWith(root + path11.sep) && abs !== root) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -77192,10 +80247,10 @@ router17.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
     next(e);
   }
 });
-router17.post(
+router18.post(
   "/panel/v1/fleet/compliance/:kind",
   requirePanelAuth,
-  import_express17.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express18.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -77211,10 +80266,10 @@ router17.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path9.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID35()}.pdf`);
-      const dest = path9.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path9.dirname(dest), { recursive: true });
-      await fs.writeFile(dest, buf);
+      const rel = path11.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID38()}.pdf`);
+      const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path11.dirname(dest), { recursive: true });
+      await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       if (!isPostgresConfigured()) {
         res.status(503).json({ error: "database_not_configured" });
@@ -77236,7 +80291,7 @@ router17.post(
         throw e;
       }
       await insertPanelAuditLog({
-        id: randomUUID35(),
+        id: randomUUID38(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -77250,16 +80305,16 @@ router17.post(
     }
   }
 );
-var fleetPanelApi_default = router17;
+var fleetPanelApi_default = router18;
 
 // src/routes/insurerPanelApi.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_client();
-import { randomUUID as randomUUID37 } from "node:crypto";
-import fs2 from "node:fs/promises";
+import { randomUUID as randomUUID40 } from "node:crypto";
+import fs3 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
-import path10 from "node:path";
-import { fileURLToPath as fileURLToPath4 } from "node:url";
+import path12 from "node:path";
+import { fileURLToPath as fileURLToPath5 } from "node:url";
 init_fleetDriversData();
 
 // src/db/insurerPanelData.ts
@@ -77268,7 +80323,7 @@ init_partnerBookingMeta();
 init_client();
 init_schema2();
 init_ridesData();
-import { randomUUID as randomUUID36 } from "node:crypto";
+import { randomUUID as randomUUID39 } from "node:crypto";
 var OPEN = [
   "draft",
   "scheduled",
@@ -77391,7 +80446,7 @@ async function insertInsurerCostCenter(companyId, input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const code = input.code.trim();
   if (!code) return { ok: false, error: "code_required" };
-  const id = randomUUID36();
+  const id = randomUUID39();
   const now = /* @__PURE__ */ new Date();
   try {
     await db2.insert(insurerCostCentersTable).values({
@@ -77483,7 +80538,7 @@ async function insertInsurerTransportDocument(companyId, rideId, panelUserId, in
   if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const id = randomUUID36();
+  const id = randomUUID39();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(insurerRideTransportDocumentsTable).values({
     id,
@@ -77518,10 +80573,10 @@ async function getInsurerTransportDocumentFile(companyId, docId) {
 
 // src/routes/insurerPanelApi.ts
 init_panelModules();
-var router18 = (0, import_express18.Router)();
-var pkgRoot2 = path10.join(path10.dirname(fileURLToPath4(import.meta.url)), "..", "..");
-var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path10.join(pkgRoot2, "uploads", "insurer-transport");
-router18.use((_req, res, next) => {
+var router19 = (0, import_express19.Router)();
+var pkgRoot2 = path12.join(path12.dirname(fileURLToPath5(import.meta.url)), "..", "..");
+var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path12.join(pkgRoot2, "uploads", "insurer-transport");
+router19.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -77568,7 +80623,7 @@ function denyUnlessInsurerPerm(res, role, perm) {
   if (!denyUnlessPanelPermission(res, role, perm)) return false;
   return true;
 }
-router18.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -77580,7 +80635,7 @@ router18.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router18.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -77592,7 +80647,7 @@ router18.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router18.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -77604,7 +80659,7 @@ router18.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router18.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -77623,7 +80678,7 @@ router18.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router18.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
+router19.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -77643,7 +80698,7 @@ router18.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (re
     next(e);
   }
 });
-router18.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
+router19.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -77662,7 +80717,7 @@ router18.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID37(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "insurer.ride_org_meta_patched",
@@ -77675,7 +80730,7 @@ router18.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
     next(e);
   }
 });
-router18.get(
+router19.get(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
   async (req, res, next) => {
@@ -77691,10 +80746,10 @@ router18.get(
     }
   }
 );
-router18.post(
+router19.post(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
-  import_express18.default.raw({ type: "*/*", limit: "8mb" }),
+  import_express19.default.raw({ type: "*/*", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertInsurerPanel(req, res);
@@ -77715,10 +80770,10 @@ router18.post(
       const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
       const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
       const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
-      const rel = path10.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID37()}.${ext}`);
-      const dest = path10.join(INSURER_UPLOAD_ROOT, rel);
-      await fs2.mkdir(path10.dirname(dest), { recursive: true });
-      await fs2.writeFile(dest, buf);
+      const rel = path12.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID40()}.${ext}`);
+      const dest = path12.join(INSURER_UPLOAD_ROOT, rel);
+      await fs3.mkdir(path12.dirname(dest), { recursive: true });
+      await fs3.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const out = await insertInsurerTransportDocument(
         ctx.claims.companyId,
@@ -77741,7 +80796,7 @@ router18.post(
     }
   }
 );
-router18.get(
+router19.get(
   "/panel/v1/insurer/transport-documents/:docId/file",
   requirePanelAuth,
   async (req, res, next) => {
@@ -77755,7 +80810,7 @@ router18.get(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const full = path10.join(INSURER_UPLOAD_ROOT, meta.storageKey);
+      const full = path12.join(INSURER_UPLOAD_ROOT, meta.storageKey);
       res.setHeader("Content-Type", meta.contentType);
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(meta.originalFilename)}"`);
       createReadStream4(full).pipe(res);
@@ -77764,14 +80819,14 @@ router18.get(
     }
   }
 );
-var insurerPanelApi_default = router18;
+var insurerPanelApi_default = router19;
 
 // src/routes/publicHomepageApi.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 init_client();
 init_appOperationalData();
-var router19 = (0, import_express19.Router)();
-router19.get("/public/homepage-placeholders", async (_req, res, next) => {
+var router20 = (0, import_express20.Router)();
+router20.get("/public/homepage-placeholders", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -77784,7 +80839,7 @@ router19.get("/public/homepage-placeholders", async (_req, res, next) => {
     next(e);
   }
 });
-router19.get("/public/homepage-hints", async (_req, res, next) => {
+router20.get("/public/homepage-hints", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -77797,7 +80852,7 @@ router19.get("/public/homepage-hints", async (_req, res, next) => {
     next(e);
   }
 });
-router19.get("/public/homepage-content", async (_req, res, next) => {
+router20.get("/public/homepage-content", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, item: null });
@@ -77810,7 +80865,7 @@ router19.get("/public/homepage-content", async (_req, res, next) => {
     next(e);
   }
 });
-router19.get("/public/homepage-faq", async (_req, res, next) => {
+router20.get("/public/homepage-faq", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -77823,7 +80878,7 @@ router19.get("/public/homepage-faq", async (_req, res, next) => {
     next(e);
   }
 });
-router19.get("/public/homepage-how", async (_req, res, next) => {
+router20.get("/public/homepage-how", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -77836,7 +80891,7 @@ router19.get("/public/homepage-how", async (_req, res, next) => {
     next(e);
   }
 });
-router19.get("/public/homepage-trust", async (_req, res, next) => {
+router20.get("/public/homepage-trust", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -77849,7 +80904,7 @@ router19.get("/public/homepage-trust", async (_req, res, next) => {
     next(e);
   }
 });
-router19.get("/public/app-operational", async (_req, res, next) => {
+router20.get("/public/app-operational", async (_req, res, next) => {
   try {
     const [config2, serviceRegions] = await Promise.all([
       getOperationalConfigPayload(),
@@ -77861,13 +80916,13 @@ router19.get("/public/app-operational", async (_req, res, next) => {
     next(e);
   }
 });
-var publicHomepageApi_default = router19;
+var publicHomepageApi_default = router20;
 
 // src/routes/appConfigApi.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 init_appOperationalData();
-var router20 = (0, import_express20.Router)();
-router20.get("/app/config", async (_req, res, next) => {
+var router21 = (0, import_express21.Router)();
+router21.get("/app/config", async (_req, res, next) => {
   try {
     const data = await getAppConfigForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -77876,7 +80931,7 @@ router20.get("/app/config", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/app/pricing", async (_req, res, next) => {
+router21.get("/app/pricing", async (_req, res, next) => {
   try {
     const data = await getAppPricingForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -77885,7 +80940,7 @@ router20.get("/app/pricing", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/app/news", async (req, res, next) => {
+router21.get("/app/news", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppNewsAudience(q);
@@ -77898,7 +80953,7 @@ router20.get("/app/news", async (req, res, next) => {
     next(e);
   }
 });
-router20.get("/app/faq", async (_req, res, next) => {
+router21.get("/app/faq", async (_req, res, next) => {
   try {
     const items = await listAppFaqPublic();
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
@@ -77907,7 +80962,7 @@ router20.get("/app/faq", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/app/sponsors", async (req, res, next) => {
+router21.get("/app/sponsors", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppSponsorAudience(q);
@@ -77920,16 +80975,16 @@ router20.get("/app/sponsors", async (req, res, next) => {
     next(e);
   }
 });
-var appConfigApi_default = router20;
+var appConfigApi_default = router21;
 
 // src/routes/customerApi.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 init_fleetAssignmentsData();
 init_fleetVehiclesData();
 init_ridesData();
 init_passengerExpoPushData();
 init_client();
-var router21 = (0, import_express21.Router)();
+var router22 = (0, import_express22.Router)();
 async function buildRidePlateMap(rides) {
   const companyIds = Array.from(
     new Set(
@@ -77977,7 +81032,7 @@ function attachDriverPlate(ride, plateByRideId) {
     driverPlate: plate
   };
 }
-router21.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
+router22.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -77993,7 +81048,7 @@ router21.get("/customer/v1/rides", requireCustomerSession, async (req, res, next
     next(e);
   }
 });
-router21.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
+router22.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78018,7 +81073,7 @@ router21.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, 
     next(e);
   }
 });
-router21.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
+router22.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78055,7 +81110,7 @@ router21.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, 
     next(e);
   }
 });
-router21.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
+router22.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78090,7 +81145,7 @@ router21.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (r
     next(e);
   }
 });
-router21.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
+router22.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78128,7 +81183,7 @@ router21.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, asy
     next(e);
   }
 });
-router21.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
+router22.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78179,7 +81234,7 @@ router21.post("/customer/v1/help-tickets", requireCustomerSession, async (req, r
     next(e);
   }
 });
-router21.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
+router22.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78199,7 +81254,7 @@ router21.post("/customer/v1/expo-push-token", requireCustomerSession, async (req
     next(e);
   }
 });
-router21.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req, res, next) => {
+router22.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78234,7 +81289,7 @@ router21.post("/customer/v1/medical/scan-test", requireCustomerSession, async (r
     next(err);
   }
 });
-router21.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
+router22.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -78266,31 +81321,32 @@ router21.post("/customer/v1/medical/scan", requireCustomerSession, async (req, r
     next(err);
   }
 });
-var customerApi_default = router21;
+var customerApi_default = router22;
 
 // src/routes/index.ts
-var router22 = (0, import_express22.Router)();
-router22.use(health_default);
-router22.use(appConfigApi_default);
-router22.use(auth_default);
-router22.use(emailAuth_default);
-router22.use(customerAuth_default);
-router22.use(panelAuth_default);
-router22.use(fleetAuth_default);
-router22.use(fleetDriverApi_default);
-router22.use(fleetPanelApi_default);
-router22.use(insurerPanelApi_default);
-router22.use(publicHomepageApi_default);
-router22.use(panelApi_default);
-router22.use(adminApi_default);
-router22.use(customerApi_default);
-router22.use(rides_default);
-var routes_default = router22;
+var router23 = (0, import_express23.Router)();
+router23.use(health_default);
+router23.use(appConfigApi_default);
+router23.use(auth_default);
+router23.use(emailAuth_default);
+router23.use(customerAuth_default);
+router23.use(panelAuth_default);
+router23.use(fleetAuth_default);
+router23.use(fleetDriverApi_default);
+router23.use(fleetPanelApi_default);
+router23.use(insurerPanelApi_default);
+router23.use(publicHomepageApi_default);
+router23.use(panelApi_default);
+router23.use(panelInvoiceRoutes_default);
+router23.use(adminApi_default);
+router23.use(customerApi_default);
+router23.use(rides_default);
+var routes_default = router23;
 
 // src/routes/admin.ts
-var import_express23 = __toESM(require_express2(), 1);
-var router23 = (0, import_express23.Router)();
-router23.get("/admin", (_req, res) => {
+var import_express24 = __toESM(require_express2(), 1);
+var router24 = (0, import_express24.Router)();
+router24.get("/admin", (_req, res) => {
   res.type("html").send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -78310,11 +81366,11 @@ router23.get("/admin", (_req, res) => {
 </body>
 </html>`);
 });
-var admin_default = router23;
+var admin_default = router24;
 
 // src/app.ts
 init_logger2();
-var app = (0, import_express24.default)();
+var app = (0, import_express25.default)();
 function isPanelBrowserHost(h) {
   return h === "panel.onroda.de";
 }
@@ -78402,11 +81458,11 @@ function requestPathname(req) {
 function isMedicalLargeJsonPost(pathname) {
   return /\/fleet-driver\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/customer\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/rides\/[^/]+\/medical\/(?:transport-document|signature)\/?$/.test(pathname);
 }
-var jsonBodyDefault = import_express24.default.json({ limit: "200kb" });
-var jsonBodyMedical = import_express24.default.json({ limit: "10mb" });
-var jsonBodyPartnerRegInitial = import_express24.default.json({ limit: "25mb" });
-var jsonBodyPartnerRegDoc = import_express24.default.json({ limit: "12mb" });
-var urlencodedDefault = import_express24.default.urlencoded({ extended: true, limit: "200kb" });
+var jsonBodyDefault = import_express25.default.json({ limit: "200kb" });
+var jsonBodyMedical = import_express25.default.json({ limit: "10mb" });
+var jsonBodyPartnerRegInitial = import_express25.default.json({ limit: "25mb" });
+var jsonBodyPartnerRegDoc = import_express25.default.json({ limit: "12mb" });
+var urlencodedDefault = import_express25.default.urlencoded({ extended: true, limit: "200kb" });
 app.use((req, res, next) => {
   if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") {
     return jsonBodyDefault(req, res, next);
@@ -78433,11 +81489,11 @@ app.use((req, res, next) => {
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
-var __dirname2 = path11.dirname(fileURLToPath5(import.meta.url));
-var staticRoot = path11.join(__dirname2, "../static");
-var panelPublicRoot = path11.join(__dirname2, "../../partner-panel/dist");
+var __dirname2 = path13.dirname(fileURLToPath6(import.meta.url));
+var staticRoot = path13.join(__dirname2, "../static");
+var panelPublicRoot = path13.join(__dirname2, "../../partner-panel/dist");
 function resolvePublicRoot() {
-  return path11.join(__dirname2, "../../admin-panel/dist");
+  return path13.join(__dirname2, "../../admin-panel/dist");
 }
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
@@ -78447,7 +81503,7 @@ app.use((req, res, next) => {
 var adminPublicRoot = resolvePublicRoot();
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
-  import_express24.default.static(adminPublicRoot)(req, res, (err) => {
+  import_express25.default.static(adminPublicRoot)(req, res, (err) => {
     if (err) return next(err);
     return next();
   });
@@ -78455,46 +81511,46 @@ app.use("/partners", (req, res, next) => {
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
-  res.sendFile(path11.join(adminPublicRoot, "index.html"), (err) => {
+  res.sendFile(path13.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
-  import_express24.default.static(panelPublicRoot)(req, res, next);
+  import_express25.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
   if (req.path.startsWith("/partners")) return next();
-  res.sendFile(path11.join(panelPublicRoot, "index.html"), (err) => {
+  res.sendFile(path13.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   const p = req.path;
   if (p === "/partners" || p.startsWith("/partners/")) return next();
-  import_express24.default.static(staticRoot, { index: false })(req, res, next);
+  import_express25.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path11.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path13.join(staticRoot, "index.html"));
   return next();
 });
 app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path11.join(staticRoot, "partner-status.html"), (err) => {
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path13.join(staticRoot, "partner-status.html"), (err) => {
     if (err) next(err);
   });
   return next();
 });
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path11.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path13.join(staticRoot, "index.html"));
   if (isApiHost(host)) {
     return res.json({ ok: true, service: "onroda-api" });
   }
-  if (isPanelBrowserHost(host)) return res.sendFile(path11.join(panelPublicRoot, "index.html"), (err) => {
+  if (isPanelBrowserHost(host)) return res.sendFile(path13.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
   if (isAdminBrowserHost(host)) return res.redirect(302, "/partners/");
@@ -78719,12 +81775,12 @@ httpServer.listen(port, () => {
       const db2 = getDb2();
       if (!db2) return;
       const { ridesTable: ridesTable2 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
-      const { and: and3, eq: eq2, inArray: inArray2, isNotNull: isNotNull2, lt: lt2, lte: lte2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
+      const { and: and3, eq: eq3, inArray: inArray2, isNotNull: isNotNull2, lt: lt2, lte: lte2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
       const { setReservationSuspension: setReservationSuspension2 } = await Promise.resolve().then(() => (init_fleetDriversData(), fleetDriversData_exports));
       const now = /* @__PURE__ */ new Date();
       const nowMs = now.getTime();
       const cancelThreshold = new Date(nowMs + 10 * 60 * 1e3);
-      const noDriverCancelled = await db2.update(ridesTable2).set({ status: "cancelled_by_system" }).where(and3(eq2(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lte2(ridesTable2.scheduled_at, cancelThreshold))).returning({ id: ridesTable2.id, passenger_id: ridesTable2.passenger_id });
+      const noDriverCancelled = await db2.update(ridesTable2).set({ status: "cancelled_by_system" }).where(and3(eq3(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lte2(ridesTable2.scheduled_at, cancelThreshold))).returning({ id: ridesTable2.id, passenger_id: ridesTable2.passenger_id });
       if (noDriverCancelled.length > 0) {
         logger.info({ count: noDriverCancelled.length }, "[Cron] Kein Fahrer \u2192 cancelled_by_system");
         const { notifyPassengerRideCancelledBySystem: notifyPassengerRideCancelledBySystem2 } = await Promise.resolve().then(() => (init_passengerRideExpoPush(), passengerRideExpoPush_exports));
@@ -78744,7 +81800,7 @@ httpServer.listen(port, () => {
       const activationDeadline = new Date(nowMs - 45 * 60 * 1e3);
       const missedActivation = await db2.select({ id: ridesTable2.id, driver_id: ridesTable2.driver_id, company_id: ridesTable2.company_id }).from(ridesTable2).where(
         and3(
-          eq2(ridesTable2.status, "scheduled_assigned"),
+          eq3(ridesTable2.status, "scheduled_assigned"),
           isNotNull2(ridesTable2.scheduled_at),
           lte2(ridesTable2.scheduled_at, activationDeadline)
         )
@@ -78768,11 +81824,11 @@ httpServer.listen(port, () => {
           void notifyDriverMissedActivationReservation2(did, cid, ride.id);
         }
       }
-      const expiredAssigned = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq2(ridesTable2.status, "scheduled_assigned"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
+      const expiredAssigned = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq3(ridesTable2.status, "scheduled_assigned"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
       if (expiredAssigned.length > 0) {
         logger.info({ count: expiredAssigned.length }, "[Cron] scheduled_assigned \u2192 expired");
       }
-      const expiredScheduled = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq2(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
+      const expiredScheduled = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq3(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
       if (expiredScheduled.length > 0) {
         logger.info({ count: expiredScheduled.length }, "[Cron] scheduled \u2192 expired");
       }

@@ -140,7 +140,7 @@ export default function AppOperationalRegionsPage() {
           tariffs: { ...prevTar, byServiceRegion: nextBsr },
           regionTariffTemplateIds: nextAssign,
         });
-        setOkMsg("Plattform-Standard gilt für dieses Gebiet.");
+        setOkMsg("Gespeichert.");
         return;
       }
 
@@ -165,8 +165,7 @@ export default function AppOperationalRegionsPage() {
         },
         regionTariffTemplateIds: nextAssign,
       });
-      const label = regions.find((r) => r.id === regionId)?.label || regionId;
-      setOkMsg(`Tarif „${tpl.name}“ für „${label}“ gespeichert.`);
+      setOkMsg("Gespeichert.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
@@ -255,36 +254,38 @@ export default function AppOperationalRegionsPage() {
 
   const activeCount = regions.filter((r) => r.isActive).length;
 
+  const gridCols = "1.1fr 0.45fr 1.1fr 1.3fr 0.65fr";
+
   return (
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error" style={{ marginBottom: 12 }}>{error}</div> : null}
       {okMsg ? <div className="admin-info-banner admin-info-banner--ok" style={{ marginBottom: 12 }}>{okMsg}</div> : null}
 
-      <CollapsibleCard title="Tarif-Zuordnung" defaultOpen>
-        <p className="admin-table-sub" style={{ lineHeight: 1.55, maxWidth: 720 }}>
-          <strong>Gebiet</strong> = wo gefahren wird (Matching). <strong>Tarif</strong> = Preislogik — wird unter{" "}
-          <strong>Tarife</strong> in der Navigation gepflegt. Hier nur: welcher Tarif gilt in welchem Gebiet.
-        </p>
-        {regions.length === 0 ? (
-          <p className="admin-table-sub" style={{ marginTop: 10 }}>Zuerst unten ein Gebiet anlegen.</p>
+      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
+        <div className="admin-panel-card__title">Gebiete</div>
+        {loading ? (
+          <p className="admin-table-sub" style={{ marginTop: 10 }}>Laden …</p>
+        ) : regions.length === 0 ? (
+          <p className="admin-table-sub" style={{ marginTop: 10 }}>Noch keine Gebiete.</p>
         ) : (
-          <div className="admin-table-card" style={{ marginTop: 14 }}>
+          <div className="admin-table-card" style={{ marginTop: 12 }}>
             <div className="admin-table-scroll">
-              <div
-                className="admin-table-row admin-table-row--head"
-                style={{ gridTemplateColumns: "1.2fr 0.5fr 1.2fr 1.4fr 0.7fr" }}
-              >
+              <div className="admin-table-row admin-table-row--head" style={{ gridTemplateColumns: gridCols }}>
                 <span>Gebiet</span>
-                <span>Aktiv</span>
-                <span>Aktuell</span>
-                <span>Welcher Tarif gilt hier?</span>
+                <span>aktiv</span>
+                <span>aktueller Tarif</span>
+                <span>Tarif auswählen</span>
                 <span />
               </div>
               {regions.map((r) => {
                 const display = resolveRegionTariffDisplay(config, r, tariffs);
                 const draft = tariffDrafts[r.id] ?? display.tariffId ?? "";
                 return (
-                  <div key={r.id} className="admin-table-row" style={{ gridTemplateColumns: "1.2fr 0.5fr 1.2fr 1.4fr 0.7fr", alignItems: "center" }}>
+                  <div
+                    key={r.id}
+                    className="admin-table-row"
+                    style={{ gridTemplateColumns: gridCols, alignItems: "center" }}
+                  >
                     <span style={{ fontWeight: 500 }}>{r.label}</span>
                     <span>{r.isActive ? "ja" : "nein"}</span>
                     <span style={{ fontSize: 12 }}>{display.tariffName}</span>
@@ -309,23 +310,13 @@ export default function AppOperationalRegionsPage() {
                     >
                       {assignBusy === r.id ? "…" : "Speichern"}
                     </button>
-                    {display.warning ? (
-                      <p className="admin-table-sub" style={{ gridColumn: "1 / -1", color: "#b45309", margin: "4px 0 0" }}>
-                        {display.warning}
-                      </p>
-                    ) : null}
                   </div>
                 );
               })}
             </div>
           </div>
         )}
-        {tariffs.length === 0 ? (
-          <p className="admin-table-sub" style={{ marginTop: 10, color: "#b45309" }}>
-            Noch keine Tarife im Katalog — bitte zuerst unter „Tarife“ anlegen.
-          </p>
-        ) : null}
-      </CollapsibleCard>
+      </div>
 
       <CollapsibleCard title="Region hinzufügen">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
@@ -379,16 +370,16 @@ export default function AppOperationalRegionsPage() {
 
       <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-          <div className="admin-panel-card__title">Deine Regionen</div>
-          <span className="admin-table-sub">{regions.length} gesamt · {activeCount} aktiv</span>
+          <div className="admin-panel-card__title">Regionen</div>
+          <span className="admin-table-sub">{activeCount}/{regions.length} aktiv</span>
         </div>
-        {loading ? <p className="admin-table-sub" style={{ marginTop: 12 }}>Laden ...</p> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
-            {regions.length === 0 ? <p className="admin-table-sub">Noch keine Regionen angelegt.</p> : regions.map((r) => (
+        {!loading && regions.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+            {regions.map((r) => (
               <AppRegionCard key={r.id} initial={r} onSave={saveRegion} onDelete={deleteRegion} />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>

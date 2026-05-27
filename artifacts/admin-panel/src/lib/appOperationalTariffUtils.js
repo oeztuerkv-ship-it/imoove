@@ -240,36 +240,30 @@ export function loadEditorFromTariff(tpl) {
   };
 }
 
-/**
- * @returns {{ tariffId: string; tariffName: string; applied: boolean; warning: string|null }}
- */
+/** Gespeicherte Tarif-Zuordnung für Anzeige in der Gebiete-Tabelle. */
 export function resolveRegionTariffDisplay(config, region, tariffs) {
   const bsr = getByServiceRegion(config);
   const assignments = getRegionTariffTemplateIds(config);
   const regionId = region?.id ?? "";
   const tariffId = assignments[regionId] || String(bsr[regionId]?.tariffTemplateId || "");
-  const applied = hasOwnRegionalTariff(bsr, regionId);
   const tpl = tariffId ? tariffs.find((t) => t.id === tariffId) : null;
   const tariffName = tpl?.name || (tariffId ? tariffId : "Plattform-Standard");
+  return { tariffId, tariffName };
+}
 
-  if (!tariffId) {
-    return {
-      tariffId: "",
-      tariffName: "Plattform-Standard",
-      applied: false,
-      warning:
-        region?.isActive && !applied
-          ? "Kein Tarif zugeordnet — es gilt der Plattform-Standard (Global)."
-          : null,
-    };
+/** Anzahl Gebiete, die diesen Tarif zugeordnet haben (Assignments + byServiceRegion). */
+export function countTariffUsageInRegions(config, tariffId) {
+  if (!tariffId || !config) return 0;
+  const assignments = getRegionTariffTemplateIds(config);
+  const bsr = getByServiceRegion(config);
+  const ids = new Set();
+  for (const [rid, tid] of Object.entries(assignments)) {
+    if (tid === tariffId) ids.add(rid);
   }
-  if (!applied) {
-    return {
-      tariffId,
-      tariffName,
-      applied: false,
-      warning: `Tarif „${tariffName}“ ist gewählt, aber noch nicht gespeichert — bitte „Tarif speichern“.`,
-    };
+  for (const [rid, row] of Object.entries(bsr)) {
+    if (row && typeof row === "object" && String(row.tariffTemplateId || "") === tariffId) {
+      ids.add(rid);
+    }
   }
-  return { tariffId, tariffName, applied: true, warning: null };
+  return ids.size;
 }
