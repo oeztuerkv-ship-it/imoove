@@ -98,6 +98,7 @@ import {
   resolveRideMutateActor,
   resolveCustomerActorOrNull,
   resolveFleetActorOrNull,
+  resolvePanelActorOrNull,
   extractBearerAuthorization,
 } from "../lib/rideRouteAuth";
 import {
@@ -2324,12 +2325,19 @@ router.get("/rides/:id/driver-location", async (req, res, next) => {
     }
     const fleet = await resolveFleetActorOrNull(req);
     const cust = await resolveCustomerActorOrNull(req);
+    const panel = await resolvePanelActorOrNull(req);
     const assignedDriver = (ride.driverId ?? "").trim();
     const allowedFleet =
       fleet != null && assignedDriver !== "" && assignedDriver === fleet.fleetDriverId;
     const allowedPassenger = cust != null && passengerOwnsRide(ride, cust.passengerGoogleId);
-    if (!allowedFleet && !allowedPassenger) {
-      res.status(401).json({ error: "unauthorized", hint: "Fleet driver token or passenger session required." });
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    const allowedPanel =
+      panel != null && rideCompanyId !== "" && rideCompanyId === panel.companyId.trim();
+    if (!allowedFleet && !allowedPassenger && !allowedPanel) {
+      res.status(401).json({
+        error: "unauthorized",
+        hint: "Fleet driver token, passenger session, or partner panel JWT (same company) required.",
+      });
       return;
     }
     res.json(loc);

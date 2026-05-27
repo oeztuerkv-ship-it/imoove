@@ -1,11 +1,13 @@
 import type { RideRequest } from "../domain/rideRequest";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
 import { verifyFleetDriverJwt } from "./fleetDriverJwt";
+import { isPanelJwtConfigured, verifyPanelJwt } from "./panelJwt";
 import { isSessionJwtConfigured, verifySessionJwt } from "./sessionJwt";
 
 export type WsJoinPrincipal =
   | { kind: "fleet"; fleetDriverId: string; companyId: string }
   | { kind: "customer"; passengerGoogleId: string }
+  | { kind: "panel"; companyId: string; panelUserId: string }
   | { kind: "invalid" };
 
 function stripBearer(raw: string): string {
@@ -36,6 +38,19 @@ export async function resolveWsJoinPrincipal(rawToken: unknown): Promise<WsJoinP
     /* Session prüfen */
   }
 
+  if (isPanelJwtConfigured()) {
+    try {
+      const panel = await verifyPanelJwt(token);
+      const companyId = panel.companyId?.trim();
+      const panelUserId = panel.panelUserId?.trim();
+      if (companyId && panelUserId) {
+        return { kind: "panel", companyId, panelUserId };
+      }
+    } catch {
+      /* Session prüfen */
+    }
+  }
+
   if (!isSessionJwtConfigured()) return { kind: "invalid" };
   try {
     const c = await verifySessionJwt(token);
@@ -54,6 +69,10 @@ export function wsJoinPrincipalMatchesRide(
   if (p.kind === "customer") {
     const id = ride.passengerId?.trim();
     return Boolean(id && id === p.passengerGoogleId);
+  }
+  if (p.kind === "panel") {
+    const cid = (ride.companyId ?? "").trim();
+    return cid !== "" && cid === p.companyId;
   }
   const assigned = (ride.driverId ?? "").trim();
   if (!assigned || assigned !== p.fleetDriverId) return false;

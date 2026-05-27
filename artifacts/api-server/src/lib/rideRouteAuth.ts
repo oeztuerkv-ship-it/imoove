@@ -5,6 +5,7 @@ import type { FleetDriverJwtClaims } from "./fleetDriverJwt";
 import { isSessionJwtConfigured, verifySessionJwt, type SessionClaims } from "./sessionJwt";
 import type { RideRequest } from "../domain/rideRequest";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
+import { isPanelJwtConfigured, verifyPanelJwt, type PanelJwtClaims } from "./panelJwt";
 
 export function extractBearerAuthorization(req: Request): string | null {
   const raw = req.get("authorization")?.trim();
@@ -76,6 +77,17 @@ export async function resolveCustomerActorOrNull(req: Request): Promise<{ passen
     const passengerGoogleId = c.googleId?.trim();
     if (!passengerGoogleId) return null;
     return { passengerGoogleId };
+  } catch {
+    return null;
+  }
+}
+
+/** Partner-Panel-JWT — nur für Fahrten des eigenen Mandanten (z. B. Mobile Live-Tracking). */
+export async function resolvePanelActorOrNull(req: Request): Promise<PanelJwtClaims | null> {
+  const raw = extractBearerAuthorization(req);
+  if (!raw || !isPanelJwtConfigured()) return null;
+  try {
+    return await verifyPanelJwt(raw);
   } catch {
     return null;
   }

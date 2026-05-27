@@ -5,7 +5,7 @@ import { logger } from "./lib/logger";
 import { resolveWsJoinPrincipal, wsJoinPrincipalMatchesRide } from "./lib/wsRideJoinAuth";
 import { driverLocations, customerLocations } from "./routes/rides";
 
-type SocketRole = "driver" | "customer";
+type SocketRole = "driver" | "customer" | "partner";
 
 type RideSocketMeta = { rideId: string; role: SocketRole; fleetDriverId?: string };
 
@@ -84,7 +84,12 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
             leaveRoom(socket, prev.rideId);
           }
 
-          const role: SocketRole = principal.kind === "fleet" ? "driver" : "customer";
+          const role: SocketRole =
+            principal.kind === "fleet"
+              ? "driver"
+              : principal.kind === "panel"
+                ? "partner"
+                : "customer";
           socketMeta.set(socket, {
             rideId: rideIdRaw,
             role,

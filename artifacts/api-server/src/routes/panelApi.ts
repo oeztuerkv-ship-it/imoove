@@ -49,6 +49,10 @@ import {
   loadAccessCodesForTraceByIds,
   patchAccessCodeForCompany,
 } from "../db/accessCodesData";
+import { listAssignmentsForCompany } from "../db/fleetAssignmentsData";
+import { findFleetDriverAuthRow } from "../db/fleetDriversData";
+import { findFleetVehicleInCompany } from "../db/fleetVehiclesData";
+import { getRideDriverLocation } from "../db/rideDriverLocationData";
 import {
   findRide,
   getPanelCompanyOverviewMetrics,
@@ -59,6 +63,7 @@ import {
   type CompanyRideListFilters,
   updateRide,
 } from "../db/ridesData";
+import { driverLocations } from "./rides";
 import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
   assertCustomerRideOperational,
@@ -1001,6 +1006,82 @@ router.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, as
       return;
     }
     res.status(201).json({ ok: true, message: result.message, threadStatus: result.threadStatus });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    const panelCompanyId = ctx.claims.companyId.trim();
+    if (!rideCompanyId || rideCompanyId !== panelCompanyId) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+
+    let driverName: string | null = null;
+    let driverPlate: string | null = null;
+    let driverLocation: { lat: number; lon: number } | null = null;
+
+    const driverId = (ride.driverId ?? "").trim();
+    if (driverId) {
+      const driverRow = await findFleetDriverAuthRow(driverId);
+      if (driverRow) {
+        const first = String(driverRow.first_name ?? "").trim();
+        const last = String(driverRow.last_name ?? "").trim();
+        driverName = `${first} ${last}`.trim() || null;
+        const taxiCompanyId = String(driverRow.company_id ?? "").trim();
+        if (taxiCompanyId) {
+          const assignments = await listAssignmentsForCompany(taxiCompanyId);
+          const assignment = assignments.find((a) => a.driverId === driverId);
+          if (assignment) {
+            const vehicle = await findFleetVehicleInCompany(assignment.vehicleId, taxiCompanyId);
+            const plate = vehicle?.licensePlate?.trim();
+            if (plate) driverPlate = plate;
+          }
+        }
+      }
+      const mem = driverLocations.get(rideId);
+      const dbLoc = mem ?? (await getRideDriverLocation(rideId));
+      if (dbLoc && Number.isFinite(dbLoc.lat) && Number.isFinite(dbLoc.lon)) {
+        driverLocation = { lat: dbLoc.lat, lon: dbLoc.lon };
+      }
+    }
+
+    res.json({
+      ok: true,
+      ride: {
+        id: ride.id,
+        status: ride.status,
+        pickupLabel: String(ride.fromFull || ride.from || "").trim(),
+        fromLat: ride.fromLat ?? null,
+        fromLon: ride.fromLon ?? null,
+      },
+      driver: driverId
+        ? {
+            id: driverId,
+            name: driverName,
+            plate: driverPlate,
+            location: driverLocation,
+          }
+        : null,
+    });
   } catch (e) {
     next(e);
   }
