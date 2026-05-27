@@ -1,7 +1,14 @@
 import CollapsibleCard from "../components/CollapsibleCard.jsx";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import {
+  buildRegionPayloadFromEditor,
+  getRegionTariffTemplateIds,
+  getTariffCatalog,
+  loadEditorFromTariff,
+  resolveRegionTariffDisplay,
+} from "../lib/appOperationalTariffUtils.js";
 
 const BASE_URL = `${API_BASE}/admin/app-operational`;
 const EARTH_RADIUS_KM = 6371;
@@ -59,6 +66,9 @@ export default function AppOperationalRegionsPage() {
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [regions, setRegions] = useState([]);
+  const [config, setConfig] = useState(null);
+  const [tariffDrafts, setTariffDrafts] = useState({});
+  const [assignBusy, setAssignBusy] = useState("");
   const [outOfServiceDe, setOutOfServiceDe] = useState("");
   const [savingMsg, setSavingMsg] = useState(false);
   const [showTest, setShowTest] = useState(false);
@@ -85,6 +95,9 @@ export default function AppOperationalRegionsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Fehler");
       setRegions(Array.isArray(data.serviceRegions) ? data.serviceRegions : []);
+      setConfig(data.config || null);
+      const assignments = getRegionTariffTemplateIds(data.config || {});
+      setTariffDrafts(assignments);
       const m = data.config?.messages;
       if (typeof m?.outOfServiceAreaDe === "string") setOutOfServiceDe(m.outOfServiceAreaDe);
     } catch (e) { setError(e instanceof Error ? e.message : "Fehler"); }
@@ -92,6 +105,74 @@ export default function AppOperationalRegionsPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  const tariffs = useMemo(() => getTariffCatalog(config), [config]);
+
+  const patchConfig = async (body) => {
+    const res = await fetch(BASE_URL, {
+      method: "PATCH",
+      headers: adminApiHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) throw new Error(data?.error || "Fehler");
+    setConfig(data.config);
+    setTariffDrafts(getRegionTariffTemplateIds(data.config || {}));
+    return data;
+  };
+
+  const saveRegionTariff = async (regionId) => {
+    const tariffId = tariffDrafts[regionId] ?? "";
+    setAssignBusy(regionId);
+    setError("");
+    setOkMsg("");
+    try {
+      const prevTar = config?.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
+      const prevBsr =
+        prevTar.byServiceRegion && typeof prevTar.byServiceRegion === "object" ? { ...prevTar.byServiceRegion } : {};
+      const nextAssign = { ...getRegionTariffTemplateIds(config || {}) };
+
+      if (!tariffId) {
+        delete nextAssign[regionId];
+        const nextBsr = { ...prevBsr };
+        delete nextBsr[regionId];
+        await patchConfig({
+          tariffs: { ...prevTar, byServiceRegion: nextBsr },
+          regionTariffTemplateIds: nextAssign,
+        });
+        setOkMsg("Plattform-Standard gilt für dieses Gebiet.");
+        return;
+      }
+
+      const tpl = tariffs.find((t) => t.id === tariffId);
+      if (!tpl) throw new Error("Tarif nicht gefunden — bitte unter „Tarife“ anlegen.");
+      const ed = loadEditorFromTariff(tpl);
+      const payload = buildRegionPayloadFromEditor(
+        {
+          ...ed,
+          tariffTemplateId: tpl.id,
+          tariffTemplateName: tpl.name,
+        },
+        tpl.regionPayload || {},
+      );
+      nextAssign[regionId] = tariffId;
+      await patchConfig({
+        tariffs: {
+          ...prevTar,
+          active: prevTar.active !== false,
+          pricingMode: "taxi_tariff",
+          byServiceRegion: { ...prevBsr, [regionId]: payload },
+        },
+        regionTariffTemplateIds: nextAssign,
+      });
+      const label = regions.find((r) => r.id === regionId)?.label || regionId;
+      setOkMsg(`Tarif „${tpl.name}“ für „${label}“ gespeichert.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setAssignBusy("");
+    }
+  };
 
   const deleteRegion = async (id, label) => {
     if (!window.confirm(`Region "${label}" wirklich löschen?`)) return;
@@ -178,6 +259,73 @@ export default function AppOperationalRegionsPage() {
     <div className="admin-page">
       {error ? <div className="admin-info-banner admin-info-banner--error" style={{ marginBottom: 12 }}>{error}</div> : null}
       {okMsg ? <div className="admin-info-banner admin-info-banner--ok" style={{ marginBottom: 12 }}>{okMsg}</div> : null}
+
+      <CollapsibleCard title="Tarif-Zuordnung" defaultOpen>
+        <p className="admin-table-sub" style={{ lineHeight: 1.55, maxWidth: 720 }}>
+          <strong>Gebiet</strong> = wo gefahren wird (Matching). <strong>Tarif</strong> = Preislogik — wird unter{" "}
+          <strong>Tarife</strong> in der Navigation gepflegt. Hier nur: welcher Tarif gilt in welchem Gebiet.
+        </p>
+        {regions.length === 0 ? (
+          <p className="admin-table-sub" style={{ marginTop: 10 }}>Zuerst unten ein Gebiet anlegen.</p>
+        ) : (
+          <div className="admin-table-card" style={{ marginTop: 14 }}>
+            <div className="admin-table-scroll">
+              <div
+                className="admin-table-row admin-table-row--head"
+                style={{ gridTemplateColumns: "1.2fr 0.5fr 1.2fr 1.4fr 0.7fr" }}
+              >
+                <span>Gebiet</span>
+                <span>Aktiv</span>
+                <span>Aktuell</span>
+                <span>Welcher Tarif gilt hier?</span>
+                <span />
+              </div>
+              {regions.map((r) => {
+                const display = resolveRegionTariffDisplay(config, r, tariffs);
+                const draft = tariffDrafts[r.id] ?? display.tariffId ?? "";
+                return (
+                  <div key={r.id} className="admin-table-row" style={{ gridTemplateColumns: "1.2fr 0.5fr 1.2fr 1.4fr 0.7fr", alignItems: "center" }}>
+                    <span style={{ fontWeight: 500 }}>{r.label}</span>
+                    <span>{r.isActive ? "ja" : "nein"}</span>
+                    <span style={{ fontSize: 12 }}>{display.tariffName}</span>
+                    <select
+                      className="admin-input"
+                      value={draft}
+                      onChange={(e) => setTariffDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                    >
+                      <option value="">Plattform-Standard</option>
+                      {tariffs.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="admin-m-btn-pri"
+                      style={{ fontSize: 12, padding: "6px 10px" }}
+                      disabled={assignBusy === r.id}
+                      onClick={() => void saveRegionTariff(r.id)}
+                    >
+                      {assignBusy === r.id ? "…" : "Speichern"}
+                    </button>
+                    {display.warning ? (
+                      <p className="admin-table-sub" style={{ gridColumn: "1 / -1", color: "#b45309", margin: "4px 0 0" }}>
+                        {display.warning}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {tariffs.length === 0 ? (
+          <p className="admin-table-sub" style={{ marginTop: 10, color: "#b45309" }}>
+            Noch keine Tarife im Katalog — bitte zuerst unter „Tarife“ anlegen.
+          </p>
+        ) : null}
+      </CollapsibleCard>
 
       <CollapsibleCard title="Region hinzufügen">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>

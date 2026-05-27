@@ -140,12 +140,12 @@ const PAGE_META = {
     subtitle: "Preisregeln, Zonen und Zuschläge",
   },
   "app-op-tariffs": {
-    title: "App / Betrieb — Betrieb & Preise",
-    subtitle: "Gebiet (Orte/Synonyme), Standard-Taxi-Tarif, XL/Rollstuhl; öffentlich GET /api/app/pricing, /fare-estimate und Buchung POST /rides",
+    title: "App / Betrieb — Tarife",
+    subtitle: "Preislogik (Taxameter, Zuschläge) — Tarif-Katalog; Zuordnung zu Gebieten unter „Gebiete“",
   },
   "app-op-regions": {
-    title: "App / Betrieb — Gebiete & Zonen",
-    subtitle: "Erlaubte Einfahrt-Regionen: Buchung blockieren, wenn Start/Ziel keinem aktiven Gebiet entspricht",
+    title: "App / Betrieb — Gebiete",
+    subtitle: "Wo gefahren wird (Matching), Tarif-Zuordnung, Radius/Text; Buchung nur in aktiven Gebieten",
   },
   "app-op-commission": {
     title: "App / Betrieb — Provision",
