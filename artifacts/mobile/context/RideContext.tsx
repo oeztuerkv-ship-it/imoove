@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 
+import { useUser } from "@/context/UserContext";
 import { fetchFareEstimate } from "@/utils/fareEstimateApi";
 import { type FareBreakdown } from "@/utils/fareCalculator";
 import { type GeoLocation, type RouteResult, getRoute, getRouteThrough } from "@/utils/routing";
@@ -250,6 +251,7 @@ export function effectivePricingModeForCustomerRide(_input: {
 }
 
 function RideProviderInner({ children }: { children: React.ReactNode }) {
+  const { profile } = useUser();
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
   const [viaStops, setViaStops] = useState<GeoLocation[]>([]);
   const [destination, setDestination] = useState<GeoLocation | null>(null);
@@ -424,6 +426,11 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
     setSelectedServiceClass(null);
     setWheelchairSelectCompleted(false);
   }, []);
+
+  useEffect(() => {
+    if (profile.isLoggedIn) return;
+    resetRide();
+  }, [profile.isLoggedIn, resetRide]);
 
   return (
     <RideContext.Provider value={{

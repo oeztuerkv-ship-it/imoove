@@ -1,11 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { USER_PROFILE_STORAGE_KEY } from "@/constants/customerSessionStorage";
 import {
   loginCustomerWithPassword,
   mapCustomerAuthApiError,
   registerCustomerWithPassword,
   type CustomerAuthDto,
 } from "@/utils/customerAuthApi";
+import { performCustomerLogout } from "@/utils/performCustomerLogout";
 import { syncCustomerExpoPushToken } from "@/utils/syncCustomerExpoPushToken";
 
 export interface UserProfile {
@@ -99,7 +101,7 @@ const DEFAULT_PROFILE: UserProfile = {
 interface UserContextValue {
   profile: UserProfile;
   updateProfile: (updates: Partial<UserProfile>) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   loginWithGoogle: (data: Partial<UserProfile> | Record<string, unknown>) => void;
   /** @deprecated Nur Legacy — nutze `registerCustomerAccount`. */
   registerLocalCustomer: (
@@ -130,7 +132,7 @@ interface UserContextValue {
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
-const PROFILE_KEY = "@taxi24_user_profile";
+const PROFILE_KEY = USER_PROFILE_STORAGE_KEY;
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
@@ -291,9 +293,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const logout = useCallback(() => {
-    save(DEFAULT_PROFILE);
-  }, [save]);
+  const logout = useCallback(async () => {
+    await performCustomerLogout();
+    setProfile(DEFAULT_PROFILE);
+  }, []);
 
   return (
     <UserContext.Provider

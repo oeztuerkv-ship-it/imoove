@@ -624,6 +624,14 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (profile.isLoggedIn && profile.googleId?.trim()) {
       setPassengerId(profile.googleId.trim());
+      return;
+    }
+    if (!profile.isLoggedIn) {
+      setRequests([]);
+      setScheduledPoolRequests([]);
+      setPassengerId("");
+      setCustomerRidesHydrated(true);
+      void AsyncStorage.removeItem(PASSENGER_ID_KEY);
     }
   }, [profile.isLoggedIn, profile.googleId]);
 

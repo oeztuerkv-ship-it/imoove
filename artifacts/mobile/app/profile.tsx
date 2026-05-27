@@ -55,6 +55,7 @@ import {
 } from "@/utils/emailVerificationErrors";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
+import { navigateToCustomerStartScreen } from "@/utils/navigateToCustomerStart";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
 import { rs, rf } from "@/utils/scale";
 
@@ -919,6 +920,26 @@ export default function ProfileScreen() {
   const [pwdResetCooldown, setPwdResetCooldown] = useState(0);
   const [accountPwdFlow, setAccountPwdFlow] = useState(false);
   const [regSubStep, setRegSubStep] = useState<"email" | "verify" | "profile" | "password">("email");
+
+  const resetLoginUiState = useCallback(() => {
+    setProfileStep("social");
+    setAccountPwdFlow(false);
+    setRegSubStep("email");
+    setLoginEmail("");
+    setLoginPassword("");
+    setShowLoginPassword(false);
+    setPwdResetEmail("");
+    setPwdResetOtp("");
+    setPendingPwdResetProof(undefined);
+    setPwdResetPassword("");
+    setPwdResetPasswordConfirm("");
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    resetLoginUiState();
+    await logout();
+    navigateToCustomerStartScreen();
+  }, [logout, resetLoginUiState]);
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
@@ -1610,7 +1631,7 @@ export default function ProfileScreen() {
                     onPress={() => {
                       Alert.alert(t("profile.logoutConfirmTitle"), t("profile.logoutConfirmMessage"), [
                         { text: t("common.cancel"), style: "cancel" },
-                        { text: t("profile.logout"), style: "destructive", onPress: logout },
+                        { text: t("profile.logout"), style: "destructive", onPress: () => void handleLogout() },
                       ]);
                     }}
                   />
