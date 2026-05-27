@@ -28,6 +28,7 @@ import {
   useRide,
 } from "@/context/RideContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { useColors } from "@/hooks/useColors";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
@@ -1187,7 +1188,7 @@ export default function ReserveRideScreen() {
               )}
               <View style={[styles.infoSeparator, { backgroundColor: colors.border }]} />
               <View style={styles.infoRow}>
-                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Preis</Text>
+                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Schätzpreis</Text>
                 <Text style={[styles.priceEmphasis, { color: colors.primary }]}>
                   {isLoadingRoute
                     ? "…"
@@ -1198,6 +1199,9 @@ export default function ReserveRideScreen() {
                         : "—"}
                 </Text>
               </View>
+              {fareBreakdown != null && !isLoadingRoute && !routeError ? (
+                <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />
+              ) : null}
             </View>
             {routeError ? (
               <Text style={[styles.errorText, { color: colors.destructive }]}>{routeError}</Text>

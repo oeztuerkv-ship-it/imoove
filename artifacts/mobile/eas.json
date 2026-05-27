@@ -16,6 +16,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.onroda.de"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -24,6 +27,9 @@
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.onroda.de"
+      },
       "android": {
         "buildType": "app-bundle"
       },

@@ -43,6 +43,7 @@ import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
+import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { formatEuro } from "@/utils/fareCalculator";
 import type { RideAccessibilityOptions } from "@/context/RideRequestContext";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
@@ -782,6 +783,8 @@ export default function RideScreen() {
           </View>
         ) : null}
 
+        {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" style={{ marginBottom: 4 }} /> : null}
+
         <View style={[styles.tripSummaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {[
             { icon: "map" as const, value: `${route?.distanceKm ?? 0} km`, label: "Strecke" },
@@ -945,6 +948,7 @@ export default function RideScreen() {
               {fareBreakdown ? formatEuro(calculateCopayment(fareBreakdown.total, isExempted)) : "–"}
               {isExempted ? "  (befreit)" : ""}
             </Text>
+            {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" /> : null}
             <Pressable
               style={styles.exemptRow}
               onPress={() => {
@@ -1002,6 +1006,7 @@ export default function RideScreen() {
               <Text style={[styles.bottomPrice, { color: ONRODA_MARK_RED }]}>
                 {`${Math.round(fareBreakdown.total / 1.08)}–${Math.round(fareBreakdown.total)} €`}
               </Text>
+              <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />
             </View>
           )}
           <Animated.View style={{ transform: [{ scale: btnScale }], flex: 1 }}>

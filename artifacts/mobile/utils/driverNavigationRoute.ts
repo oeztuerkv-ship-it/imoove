@@ -59,6 +59,7 @@ export function buildDriverNavigationParams(
       destName,
       estimatedFare: String(ride.estimatedFare ?? 0),
       paymentMethod: ride.paymentMethod ?? "",
+      vehicle: ride.vehicle ?? "standard",
       driverId,
       arrived,
     };
@@ -82,6 +83,7 @@ export function buildDriverNavigationParams(
     destName,
     estimatedFare: String(ride.estimatedFare ?? 0),
     paymentMethod: ride.paymentMethod ?? "",
+    vehicle: ride.vehicle ?? "standard",
     driverId,
     arrived,
   };

@@ -1,9 +1,13 @@
+/** Produktions-API, wenn EAS/TestFlight ohne EXPO_PUBLIC_API_URL gebaut wurde (lokale .env gilt dort nicht). */
+const PRODUCTION_API_HOST = "https://api.onroda.de";
+
 /**
  * REST-Basis inkl. /api-Suffix. So funktioniert die App, wenn EXPO_PUBLIC_API_URL
  * nur den Host enthält (z. B. https://example.com) oder bereits …/api.
  */
 export function getApiBaseUrl(): string {
-  const raw = (process.env.EXPO_PUBLIC_API_URL ?? "").trim().replace(/\/+$/, "");
+  const envRaw = (process.env.EXPO_PUBLIC_API_URL ?? "").trim();
+  const raw = (envRaw || PRODUCTION_API_HOST).replace(/\/+$/, "");
   if (!raw) return "";
   let normalized = raw;
   // Production safety net: marketing host does not expose full app API methods.

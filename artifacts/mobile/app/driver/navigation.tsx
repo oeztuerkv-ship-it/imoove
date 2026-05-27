@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -44,6 +45,11 @@ import {
   sendRideChat,
 } from "@/utils/socket";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
+import {
+  logDriverNavigationMapEvent,
+  logDriverNavigationOpen,
+  logDriverNavigationRouteResult,
+} from "@/utils/driverNavigationDiagnostics";
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 import {
   defaultFinalFareForDriverCompletion,
@@ -156,6 +162,7 @@ export default function DriverNavigationScreen() {
     destLat: string; destLon: string; destName: string;
     estimatedFare: string;
     paymentMethod: string;
+    vehicle?: string;
     driverId: string;
     arrived?: string;
   }>();
@@ -180,6 +187,31 @@ export default function DriverNavigationScreen() {
   const destLon    = parseFloat(params.destLon ?? "0");
   const destName   = params.destName ?? params.toName ?? "Ziel";
   const estimatedFare = parseFloat(params.estimatedFare ?? "0");
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    logDriverNavigationOpen({
+      rideId: params.rideId,
+      phase,
+      from: { lat: fromLat, lon: fromLon, name: params.fromName ?? "Start" },
+      pickup: { lat: pickupLat, lon: pickupLon, name: pickupName },
+      destination: { lat: destLat, lon: destLon, name: destName },
+      routingMethod: "routing-osrm-public",
+      routingUrl: "https://router.project-osrm.org/route/v1/driving/{lon},{lat};{lon},{lat}",
+    });
+  }, [
+    params.rideId,
+    phase,
+    fromLat,
+    fromLon,
+    params.fromName,
+    pickupLat,
+    pickupLon,
+    pickupName,
+    destLat,
+    destLon,
+    destName,
+  ]);
 
   const mapRef  = useRef<MapView>(null);
   const mapReady = useRef(false);
@@ -290,12 +322,28 @@ export default function DriverNavigationScreen() {
     const tLon = toLon || pickupLon;
     if (!fLat || !fLon || !tLat || !tLon) return;
 
+    const osrmPath = `${fLon},${fLat};${tLon},${tLat}`;
     getRouteWithSteps(
       { lat: fLat, lon: fLon, displayName: params.fromName ?? "Start" },
       { lat: tLat, lon: tLon, displayName: params.toName ?? "Ziel" }
     )
       .then((result) => {
         const coords = (result.polyline ?? []).map(([lat, lon]) => ({ latitude: lat, longitude: lon }));
+        const usedFallback =
+          result.steps.length <= 2 &&
+          (result.steps[0]?.instruction === "Fahrt beginnen" || result.steps[1]?.instruction === "Ziel erreicht") &&
+          coords.length <= 2;
+        logDriverNavigationRouteResult({
+          ok: true,
+          source: usedFallback ? "fallback" : "osrm",
+          distanceKm: result.distanceKm,
+          durationMinutes: result.durationMinutes,
+          stepCount: result.steps.length,
+          polylinePoints: coords.length,
+        });
+        if (__DEV__ && usedFallback) {
+          console.warn("[DriverNav] routing_using_haversine_fallback", { osrmPath });
+        }
         setPolyline(coords);
         setSteps(result.steps);
         const distM  = (result.distanceKm ?? 0) * 1000;
@@ -307,7 +355,13 @@ export default function DriverNavigationScreen() {
         // No auto-speak on load — only speak on explicit button presses
         if (mapReady.current && coords.length > 1) setTimeout(() => fitRoute(coords), 400);
       })
-      .catch(() => {});
+      .catch((e) => {
+        logDriverNavigationRouteResult({
+          ok: false,
+          source: "fallback",
+          error: e instanceof Error ? e.message : String(e),
+        });
+      });
   }, [fromLat, fromLon, toLat, toLon, pickupLat, pickupLon]);
 
   // Speak on step change — skip "Fahrt beginnen" (depart) instructions
@@ -675,13 +729,17 @@ export default function DriverNavigationScreen() {
 
   const handleMapReady = useCallback(() => {
     mapReady.current = true;
+    logDriverNavigationMapEvent("map_ready", {
+      polylinePoints: polyline.length,
+      steps: steps.length,
+    });
     const fLat = fromLat || driverLat;
     const fLon = fromLon || driverLon;
     setTimeout(() => {
       mapRef.current?.animateCamera({ center: { latitude: fLat, longitude: fLon }, zoom: 14, pitch: 0 });
     }, 200);
     if (polyline.length > 1) setTimeout(() => fitRoute(polyline), 600);
-  }, [fromLat, fromLon, driverLat, driverLon, polyline, fitRoute]);
+  }, [fromLat, fromLon, driverLat, driverLon, polyline, fitRoute, steps.length]);
 
   if (Platform.OS === "web") return <WebFallback />;
 
@@ -987,9 +1045,13 @@ export default function DriverNavigationScreen() {
                 )
                 : "Keine Fahrt zum Ziel — bitte 0,00 € bestätigen (Kunde wird nicht belastet)."}
             </Text>
+            <DriverFareEntryLegalHints
+              vehicle={params.vehicle}
+              mayBillPositive={driverMayBillPositiveFare(rideFleetStatus)}
+            />
             {driverMayBillPositiveFare(rideFleetStatus) ? (
               <View style={styles.fareBox}>
-                <Text style={styles.fareBoxLabel}>Fahrtpreis (€)</Text>
+                <Text style={styles.fareBoxLabel}>Taxameter-Endpreis (€)</Text>
                 <TextInput
                   style={styles.fareInput}
                   value={fareInput}

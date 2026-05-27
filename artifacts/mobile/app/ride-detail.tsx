@@ -19,6 +19,7 @@ import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { useRide, VEHICLES } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
+import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { formatEuro } from "@/utils/fareCalculator";
 import { downloadReceipt } from "@/utils/receipt";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -339,6 +340,10 @@ export default function RideDetailScreen() {
                   <Text style={[styles.k, { color: colors.mutedForeground }]}>Schätzung</Text>
                   <Text style={[styles.v, { color: colors.mutedForeground }]}>{formatEuro(enrichedHistRide.estimatedFare)}</Text>
                 </View>
+              ) : null}
+              {enrichedHistRide.estimatedFare != null &&
+              Math.abs(enrichedHistRide.estimatedFare - enrichedHistRide.totalFare) > 0.005 ? (
+                <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 4 }} />
               ) : null}
             </View>
           ) : null}

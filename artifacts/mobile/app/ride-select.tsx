@@ -6,6 +6,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, V
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { VEHICLES, useRide } from "@/context/RideContext";
@@ -219,6 +220,9 @@ export default function RideSelectScreen() {
           </View>
         ) : routeError ? (
           <Text style={{ color: colors.destructive }}>{routeError}</Text>
+        ) : null}
+        {!isLoadingRoute && !routeError && vehiclePrices.size > 0 ? (
+          <CustomerFareEstimateLegalHint align="left" />
         ) : null}
       </ScrollView>
 

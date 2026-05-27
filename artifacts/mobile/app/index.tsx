@@ -74,6 +74,7 @@ import {
   loginActionLabelStyle,
   socialLoginButtonStyle,
 } from "@/src/screens/LoginScreen";
+import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -2063,12 +2064,15 @@ export default function HomeScreen() {
                   </View>
                   <View style={[styles.routeStripDivider, styles.routeStripDividerShort, { backgroundColor: colors.border }]} />
                   <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                    <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Preis</Text>
+                    <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Schätzpreis</Text>
                     <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" }}>
                       {fareBreakdown ? formatEuro(fareBreakdown.total) : "—"}
                     </Text>
                   </View>
                 </View>
+              ) : null}
+              {fareBreakdown && route?.distanceKm != null ? (
+                <CustomerFareEstimateLegalHint align="center" style={{ marginTop: 8 }} />
               ) : null}
 
             </View>

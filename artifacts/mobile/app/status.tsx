@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { RealMapView } from "@/components/RealMapView";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
@@ -1281,6 +1282,7 @@ export default function StatusScreen() {
                 </View>
               </View>
             )}
+            {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 4 }} /> : null}
 
             {pendingBillingRequest ? (
               <View style={styles.searchPayerBox}>
@@ -1394,6 +1396,7 @@ export default function StatusScreen() {
                 </View>
               </View>
             )}
+            {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 4 }} /> : null}
 
             {pendingBillingRequest ? (
               <View style={styles.searchPayerBox}>
@@ -1525,9 +1528,12 @@ export default function StatusScreen() {
                 {driverCar ? ` · ${driverCar}` : ""}
               </Text>
               {showTripEstimate && tripEstimateEur > 0 ? (
-                <Text style={styles.trackingEstimate} numberOfLines={1}>
-                  Schätzpreis ca. {formatEuro(tripEstimateEur)}
-                </Text>
+                <>
+                  <Text style={styles.trackingEstimate} numberOfLines={1}>
+                    Schätzpreis ca. {formatEuro(tripEstimateEur)}
+                  </Text>
+                  <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 2 }} />
+                </>
               ) : null}
             </View>
           </View>

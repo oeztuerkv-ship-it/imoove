@@ -185,10 +185,21 @@ async function tryOsrmDrivingCoordPath(
         "User-Agent": "OnrodaMobile/1.0 (routing)",
       },
     });
-  } catch {
+  } catch (e) {
+    if (__DEV__) {
+      console.warn("[DriverNav] osrm_fetch_error", {
+        url: url.slice(0, 120),
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
     return null;
   }
-  if (!resp.ok) return null;
+  if (!resp.ok) {
+    if (__DEV__) {
+      console.warn("[DriverNav] osrm_http_error", { status: resp.status, url: url.slice(0, 120) });
+    }
+    return null;
+  }
 
   let data: { routes?: { distance: number; duration: number; geometry?: { coordinates?: [number, number][] }; legs?: { steps?: unknown[] }[] }[] };
   try {

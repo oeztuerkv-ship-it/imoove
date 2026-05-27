@@ -25,6 +25,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
 import { useTranslation } from "@/context/LanguageContext";
@@ -2407,6 +2408,8 @@ function ActiveRideScreen({
                 : "Keine Fahrt zum Ziel — bitte 0,00 € eingeben (Kunde wird nicht belastet)."}
             </Text>
 
+            <DriverFareEntryLegalHints vehicle={req.vehicle} mayBillPositive={mayBillPositive} />
+
             {/* Route summary */}
             <View style={activeStyles.priceModalRoute}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -2442,7 +2445,9 @@ function ActiveRideScreen({
               />
             </View>
             <Text style={activeStyles.priceInputHint}>
-              {mayBillPositive ? "Betrag in Euro (z. B. Taxameter)" : "Bei Abbruch ohne Fahrt: 0,00"}
+              {mayBillPositive
+                ? "Euro-Betrag wie auf dem Taxameter (amtlicher Endpreis)"
+                : "Bei Abbruch ohne Fahrt: 0,00"}
             </Text>
 
             {/* Buttons */}
