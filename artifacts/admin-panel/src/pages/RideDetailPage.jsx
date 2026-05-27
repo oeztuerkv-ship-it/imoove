@@ -146,6 +146,12 @@ function accessibilitySummaryDe(ao) {
   return parts.join(" · ");
 }
 
+function partnerCustomerDriverNote(meta) {
+  if (!meta || typeof meta !== "object") return "";
+  const v = meta.customer_driver_note;
+  return typeof v === "string" ? v.trim() : "";
+}
+
 function medicalMetaViewModel(meta) {
   if (!meta || typeof meta !== "object" || meta.medical_ride !== true) return null;
   const approvalStatusMap = {
@@ -328,6 +334,7 @@ export default function RideDetailPage({ rideId, onBack }) {
   const dispatchOffers = data?.dispatchOffers ?? [];
   const accessibilitySummary = accessibilitySummaryDe(r?.accessibilityOptions);
   const medicalMeta = medicalMetaViewModel(r?.partnerBookingMeta);
+  const partnerDriverNote = partnerCustomerDriverNote(r?.partnerBookingMeta);
 
   return (
     <div className="admin-page admin-taxi-fv-page">
@@ -397,6 +404,14 @@ export default function RideDetailPage({ rideId, onBack }) {
                   {r.scheduledAt ? formatDt(r.scheduledAt) : "—"} / {r.createdAt ? formatDt(r.createdAt) : "—"}
                 </span>
               </div>
+              {partnerDriverNote ? (
+                <div>
+                  <span className="admin-ride-rec-kv__k">Fahrerhinweis (Partner)</span>
+                  <span className="admin-ride-rec-kv__v" style={{ whiteSpace: "pre-wrap" }}>
+                    {partnerDriverNote}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </section>
 
