@@ -1036,7 +1036,7 @@ export default function MyRidesScreen() {
                       {
                         value:
                           Number.isFinite(req.estimatedFare) && req.estimatedFare > 0
-                            ? `ca. ${Math.round(req.estimatedFare / 1.08)}–${Math.round(req.estimatedFare)} €`
+                            ? formatEuro(req.estimatedFare)
                             : "",
                         valueColor: "#2563EB",
                       },

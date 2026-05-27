@@ -1,12 +1,15 @@
 import { Feather } from "@expo/vector-icons";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { driverFareEntryLegalHints } from "@/utils/driverFareEntryLegal";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
+import { driverFareEntryLegalHints, type DriverFareLegalHintContext } from "@/utils/driverFareEntryLegal";
 
 type Props = {
   vehicle?: string | null;
   mayBillPositive: boolean;
+  /** Optional: Faktor aus `tariff_snapshot` dieser Fahrt (Buchungs-Engine). */
+  snapshotVehicleClassMultiplier?: number | null;
 };
 
 function HintBody({ body, highlight }: { body: string; highlight?: string }) {
@@ -23,8 +26,22 @@ function HintBody({ body, highlight }: { body: string; highlight?: string }) {
   );
 }
 
-export function DriverFareEntryLegalHints({ vehicle, mayBillPositive }: Props) {
-  const hints = driverFareEntryLegalHints(vehicle, mayBillPositive);
+export function DriverFareEntryLegalHints({
+  vehicle,
+  mayBillPositive,
+  snapshotVehicleClassMultiplier,
+}: Props) {
+  const { config } = useOnrodaAppConfig();
+  const hints = useMemo(() => {
+    const ctx: DriverFareLegalHintContext = {
+      vehicle,
+      mayBillPositive,
+      tariffs: config.tariffs as Record<string, unknown>,
+      snapshotVehicleClassMultiplier,
+    };
+    return driverFareEntryLegalHints(ctx);
+  }, [vehicle, mayBillPositive, config.tariffs, snapshotVehicleClassMultiplier]);
+
   if (!hints.length) return null;
 
   return (

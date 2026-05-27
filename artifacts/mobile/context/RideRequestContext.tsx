@@ -75,6 +75,17 @@ export type RideAccessibilityOptions = {
   driverNote?: string | null;
 };
 
+/** Buchungs-Snapshot der Server-Tarif-Engine (`tariff_snapshot_json`). */
+export type RideTariffSnapshot = {
+  finalPriceEur?: number;
+  vehicle?: string;
+  breakdown?: {
+    vehicleClassMultiplier?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
 export interface RideRequest {
   id: string;
   createdAt: Date;
@@ -99,6 +110,7 @@ export interface RideRequest {
   distanceKm: number;
   durationMinutes: number;
   estimatedFare: number;
+  tariffSnapshot?: RideTariffSnapshot | null;
   pricingMode?: "taxi_tariff" | null;
   finalFare?: number | null;
   paymentMethod: string;
@@ -451,6 +463,10 @@ function normalizeRequest(r: any): RideRequest {
     distanceKm: Number(r.distanceKm ?? r.distance_km ?? 0),
     durationMinutes: Number(r.durationMinutes ?? r.duration_minutes ?? 0),
     estimatedFare: Number(r.estimatedFare ?? r.estimated_fare ?? r.totalFare ?? r.total_fare ?? 0),
+    tariffSnapshot: (() => {
+      const raw = r.tariffSnapshot ?? r.tariff_snapshot ?? r.tariff_snapshot_json;
+      return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as RideTariffSnapshot) : null;
+    })(),
     pricingMode:
       r.pricingMode === "taxi_tariff" || r.pricing_mode === "taxi_tariff"
         ? "taxi_tariff"

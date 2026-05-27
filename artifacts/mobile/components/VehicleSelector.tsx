@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import React, { useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Animated,
@@ -11,16 +11,10 @@ import {
 } from "react-native";
 
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
-import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import {
-  type AppTariffConfig,
-  appTariffFromRecord,
-  calculateFare,
-  ceilToTenth,
-  formatEuro,
-} from "@/utils/fareCalculator";
+import { fetchFareEstimate } from "@/utils/fareEstimateApi";
+import { formatEuro } from "@/utils/fareCalculator";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -29,20 +23,23 @@ interface VehicleSelectorProps {
   selected: VehicleType;
   onSelect: (v: VehicleType) => void;
   distanceKm?: number;
+  tripMinutes?: number;
+  fromFull?: string;
+  fromLat?: number;
+  fromLon?: number;
+  toFull?: string;
 }
 
 function VehicleCard({
   vehicle,
   isSelected,
   onSelect,
-  distanceKm,
-  tariff,
+  priceLabel,
 }: {
   vehicle: VehicleOption;
   isSelected: boolean;
   onSelect: () => void;
-  distanceKm?: number;
-  tariff: AppTariffConfig;
+  priceLabel: string | null;
 }) {
   const colors = useColors();
   const scale = React.useRef(new Animated.Value(1)).current;
@@ -55,12 +52,6 @@ function VehicleCard({
     ]).start();
     onSelect();
   };
-
-  const rawTotal =
-    distanceKm != null && distanceKm > 0
-      ? ceilToTenth(calculateFare(distanceKm, 0, tariff).total * vehicle.multiplier)
-      : 0;
-  const price = rawTotal > 0 ? formatEuro(rawTotal) : null;
 
   const active = ONRODA_MARK_RED;
   return (
@@ -89,14 +80,14 @@ function VehicleCard({
         >
           {vehicle.name}
         </Text>
-        {price ? (
+        {priceLabel ? (
           <Text
             style={[
               styles.cardPrice,
               { color: isSelected ? active : colors.primary },
             ]}
           >
-            {price}
+            {priceLabel}
           </Text>
         ) : (
           <Text
@@ -115,12 +106,46 @@ function VehicleCard({
   );
 }
 
-export function VehicleSelector({ selected, onSelect, distanceKm }: VehicleSelectorProps) {
-  const { config } = useOnrodaAppConfig();
-  const tariff = useMemo(
-    () => appTariffFromRecord(config.tariffs as Record<string, unknown> | undefined),
-    [config.tariffs],
-  );
+export function VehicleSelector({
+  selected,
+  onSelect,
+  distanceKm,
+  tripMinutes = 0,
+  fromFull = "",
+  fromLat,
+  fromLon,
+  toFull,
+}: VehicleSelectorProps) {
+  const [priceByVehicle, setPriceByVehicle] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (!distanceKm || distanceKm <= 0 || !fromFull.trim()) {
+      setPriceByVehicle({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const next: Record<string, string | null> = {};
+      await Promise.all(
+        VEHICLES.map(async (v) => {
+          const est = await fetchFareEstimate(v.id, {
+            distanceKm,
+            tripMinutes,
+            fromFull,
+            fromLat,
+            fromLon,
+            toFull,
+          });
+          next[v.id] = est ? formatEuro(est.total) : null;
+        }),
+      );
+      if (!cancelled) setPriceByVehicle(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [distanceKm, tripMinutes, fromFull, fromLat, fromLon, toFull]);
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {VEHICLES.map((v) => (
@@ -129,8 +154,7 @@ export function VehicleSelector({ selected, onSelect, distanceKm }: VehicleSelec
           vehicle={v}
           isSelected={selected === v.id}
           onSelect={() => onSelect(v.id)}
-          distanceKm={distanceKm}
-          tariff={tariff}
+          priceLabel={priceByVehicle[v.id] ?? null}
         />
       ))}
     </ScrollView>

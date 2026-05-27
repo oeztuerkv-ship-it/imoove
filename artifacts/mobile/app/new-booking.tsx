@@ -54,6 +54,7 @@ import {
   postCustomerMedicalTransportScan,
   type MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
+import { fetchFareEstimatesByVehicle } from "@/utils/fareEstimateApi";
 import { getRoute, fetchWithTimeout, searchLocation, type GeoLocation } from "@/utils/routing";
 import { rf, rs } from "@/utils/scale";
 
@@ -1117,8 +1118,6 @@ export default function NewBookingScreen() {
     let cancelled = false;
     setFareLoading(true);
 
-    const base = `${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://api.onroda.de/api"}`;
-
     (async () => {
       try {
         const route = await getRoute(
@@ -1126,34 +1125,16 @@ export default function NewBookingScreen() {
           { lat: to.lat!, lon: to.lon!, displayName: to.fullName || to.name },
         );
 
-        const results = await Promise.all(
-          ["standard", "xl", "wheelchair"].map(async (vehicle) => {
-            try {
-              const qs = new URLSearchParams({
-                vehicle,
-                fromLat: String(from.lat),
-                fromLng: String(from.lon),
-                fromFull: from.fullName || from.name,
-                distanceKm: String(route.distanceKm),
-                durationMinutes: String(route.durationMinutes),
-              });
-              const r = await fetch(`${base}/fare-estimate?${qs.toString()}`);
-              const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
-              if (!r.ok || j?.ok !== true) {
-                return [vehicle, null] as [string, number | null];
-              }
-              // API liefert `estimate.total` (gleiches Schema wie RideContext), nicht `est.total`.
-              const est = j?.estimate;
-              const rawTotal =
-                est && typeof est === "object" && est !== null
-                  ? (est as Record<string, unknown>).total
-                  : undefined;
-              const n = typeof rawTotal === "number" ? rawTotal : Number(rawTotal);
-              return [vehicle, Number.isFinite(n) ? n : null] as [string, number | null];
-            } catch {
-              return [vehicle, null] as [string, number | null];
-            }
-          }),
+        const estimates = await fetchFareEstimatesByVehicle(["standard", "xl", "wheelchair"], {
+          distanceKm: route.distanceKm,
+          tripMinutes: route.durationMinutes,
+          fromFull: from.fullName || from.name,
+          fromLat: from.lat!,
+          fromLon: from.lon!,
+          toFull: to.fullName || to.name,
+        });
+        const results = ["standard", "xl", "wheelchair"].map(
+          (vehicle) => [vehicle, estimates.get(vehicle) ?? null] as [string, number | null],
         );
 
         if (!cancelled) setFareEstimates(Object.fromEntries(results));

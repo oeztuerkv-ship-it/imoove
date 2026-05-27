@@ -85,19 +85,46 @@ function readTariffSnapshotGrossEur(ride: RideRequest): number | null {
   return roundMoney(v);
 }
 
+function isCompletedTaxiRide(ride: RideRequest): boolean {
+  if (ride.status !== "completed") return false;
+  const mode = ride.pricingMode ?? "taxi_tariff";
+  return mode === "taxi_tariff" || mode === "hybrid" || mode == null;
+}
+
 /**
- * Bruttobetrag für Finance: bei vorhandenem `tariffSnapshot` ausschließlich `finalPriceEur` (Buchung),
- * kein nachträglicher Taxischätz-Override. Sonst `finalFare` bzw. `estimatedFare` (Legacy).
+ * Bruttobetrag für Finance:
+ * - Abgeschlossene Taxi-Fahrt: Taxameter-`finalFare` (Fahrer-Endpreis).
+ * - Sonst Buchungs-`tariffSnapshot.finalPriceEur` (Schätzung bei Buchung) oder Legacy-Schätzung.
  */
 export function effectiveTaxiGrossEur(ride: RideRequest): number {
+  const finalFare = ride.finalFare;
+  if (
+    isCompletedTaxiRide(ride) &&
+    finalFare != null &&
+    Number.isFinite(Number(finalFare))
+  ) {
+    return roundMoney(Math.max(0, Number(finalFare)));
+  }
   const fromSnap = readTariffSnapshotGrossEur(ride);
   if (fromSnap !== null) return fromSnap;
   return roundMoney(
     toSafeNonNegative(
-      Number.isFinite(Number(ride.finalFare)) ? Number(ride.finalFare) : Number(ride.estimatedFare),
+      Number.isFinite(Number(finalFare)) ? Number(finalFare) : Number(ride.estimatedFare),
       0,
     ),
   );
+}
+
+function resolveGrossSource(ride: RideRequest, usedSnapshot: boolean): string {
+  if (
+    isCompletedTaxiRide(ride) &&
+    ride.finalFare != null &&
+    Number.isFinite(Number(ride.finalFare))
+  ) {
+    return "taxameter_final_fare";
+  }
+  if (usedSnapshot) return "tariff_snapshot";
+  return "legacy_final_or_estimate";
 }
 
 function derivePayerType(ride: RideRequest): FinancePayerType {
@@ -135,8 +162,11 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
   const { ride } = input;
   const pricingContext = input.pricingContext ?? null;
 
-  const grossFromSnapshot = readTariffSnapshotGrossEur(ride) !== null;
   const grossAmount = effectiveTaxiGrossEur(ride);
+  const grossFromSnapshot =
+    !isCompletedTaxiRide(ride) || ride.finalFare == null || !Number.isFinite(Number(ride.finalFare))
+      ? readTariffSnapshotGrossEur(ride) !== null
+      : false;
 
   const vatRate = toSafeNonNegative(pricingContext?.vatRate ?? DEFAULT_VAT_RATE, DEFAULT_VAT_RATE);
   const netAmount = roundMoney(grossAmount / (1 + vatRate));
@@ -182,9 +212,7 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
       payerKind: ride.payerKind,
       initialBillingStatus: deriveInitialBillingStatus(ride),
       initialSettlementStatus: deriveInitialSettlementStatus(ride),
-      grossSource: grossFromSnapshot
-        ? "tariff_snapshot"
-        : ("legacy_final_or_estimate" as const),
+      grossSource: resolveGrossSource(ride, grossFromSnapshot),
       ...(ride.tariffSnapshot && typeof ride.tariffSnapshot === "object"
         ? { tariffSnapshot: ride.tariffSnapshot }
         : {}),

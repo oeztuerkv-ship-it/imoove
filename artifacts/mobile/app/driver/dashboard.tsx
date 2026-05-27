@@ -2408,7 +2408,11 @@ function ActiveRideScreen({
                 : "Keine Fahrt zum Ziel — bitte 0,00 € eingeben (Kunde wird nicht belastet)."}
             </Text>
 
-            <DriverFareEntryLegalHints vehicle={req.vehicle} mayBillPositive={mayBillPositive} />
+            <DriverFareEntryLegalHints
+              vehicle={req.vehicle}
+              mayBillPositive={mayBillPositive}
+              snapshotVehicleClassMultiplier={req.tariffSnapshot?.breakdown?.vehicleClassMultiplier}
+            />
 
             {/* Route summary */}
             <View style={activeStyles.priceModalRoute}>

@@ -1004,7 +1004,7 @@ export default function RideScreen() {
             <View style={[styles.priceBox, { borderColor: ONRODA_MARK_RED + "66", backgroundColor: ONRODA_MARK_RED + "12" }]}>
               <Text style={[styles.bottomLabel, { color: ONRODA_MARK_RED }]}>Schätzpreis</Text>
               <Text style={[styles.bottomPrice, { color: ONRODA_MARK_RED }]}>
-                {`${Math.round(fareBreakdown.total / 1.08)}–${Math.round(fareBreakdown.total)} €`}
+                {formatEuro(fareBreakdown.total)}
               </Text>
               <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />
             </View>

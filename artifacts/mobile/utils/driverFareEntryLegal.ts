@@ -1,51 +1,57 @@
-import { VEHICLES } from "@/context/RideContext";
+import {
+  formatMultiplierDe,
+  normalizeDriverVehicleClass,
+  type VehicleClassId,
+  vehicleClassMultipliersFromTariffs,
+} from "@/utils/vehicleClassMultipliers";
 
 export type DriverFareLegalHintKind = "mandatory" | "surcharge";
 
 export type DriverFareLegalHint = {
   id: string;
   kind: DriverFareLegalHintKind;
-  /** Volltext; `highlight` wird fett gesetzt (z. B. „Taxameter“). */
   body: string;
   highlight?: string;
 };
 
-export type DriverVehicleFareClass = "standard" | "xl" | "wheelchair";
+export type DriverFareLegalHintContext = {
+  vehicle?: string | null;
+  mayBillPositive: boolean;
+  /** Admin-Tarif aus App-Config (`tariffs`). */
+  tariffs?: Record<string, unknown> | null;
+  /** Buchungs-Snapshot: `breakdown.vehicleClassMultiplier` (bevorzugt für diese Fahrt). */
+  snapshotVehicleClassMultiplier?: number | null;
+};
 
-/** API-/Anzeige-String → Fahrzeugklasse für Aufpreis-Hinweise. */
-export function normalizeDriverVehicleFareClass(
-  vehicle: string | null | undefined,
-): DriverVehicleFareClass {
-  const v = (vehicle ?? "").toLowerCase().trim();
-  if (v === "xl" || v.includes("xl") || v.includes("van") || v.includes("6 person")) return "xl";
-  if (v === "wheelchair" || v.includes("rollstuhl") || v.includes("wheelchair")) return "wheelchair";
-  return "standard";
+function multiplierForVehicleClass(
+  vehicleClass: VehicleClassId,
+  tariffs: Record<string, unknown> | null | undefined,
+  snapshotVehicleClassMultiplier?: number | null,
+): number {
+  if (
+    snapshotVehicleClassMultiplier != null &&
+    Number.isFinite(snapshotVehicleClassMultiplier) &&
+    snapshotVehicleClassMultiplier > 0
+  ) {
+    return snapshotVehicleClassMultiplier;
+  }
+  const mults = vehicleClassMultipliersFromTariffs(tariffs);
+  return mults[vehicleClass] ?? mults.standard;
 }
 
-function formatMultiplierDe(multiplier: number): string {
-  return multiplier.toFixed(1).replace(".", ",");
-}
-
-/** Aufpreis-Hinweis für XL / Rollstuhl (Schätzpreis ≠ Taxameter-Endpreis). */
-export function driverFareVehicleSurchargeHint(vehicle: string | null | undefined): string | null {
-  const kind = normalizeDriverVehicleFareClass(vehicle);
+/** Aufpreis-Hinweis für XL / Rollstuhl (Faktor aus Admin/API/Snapshot). */
+export function driverFareVehicleSurchargeHint(ctx: DriverFareLegalHintContext): string | null {
+  const kind = normalizeDriverVehicleClass(ctx.vehicle);
+  if (kind === "standard" || kind === "onroda") return null;
+  const mult = multiplierForVehicleClass(kind, ctx.tariffs, ctx.snapshotVehicleClassMultiplier);
   if (kind === "xl") {
-    const mult = VEHICLES.find((x) => x.id === "xl")?.multiplier ?? 1.6;
     return `XL-Fahrt: Der Schätzpreis enthält einen Aufpreis (Faktor ${formatMultiplierDe(mult)}). Am Taxameter den tatsächlichen Endpreis inkl. aller Zuschläge eintragen.`;
   }
-  if (kind === "wheelchair") {
-    const mult = VEHICLES.find((x) => x.id === "wheelchair")?.multiplier ?? 1.8;
-    return `Rollstuhl-Fahrt: Der Schätzpreis enthält einen Aufpreis (Faktor ${formatMultiplierDe(mult)}). Am Taxameter den tatsächlichen Endpreis inkl. aller Zuschläge eintragen.`;
-  }
-  return null;
+  return `Rollstuhl-Fahrt: Der Schätzpreis enthält einen Aufpreis (Faktor ${formatMultiplierDe(mult)}). Am Taxameter den tatsächlichen Endpreis inkl. aller Zuschläge eintragen.`;
 }
 
-/** Hinweise für Fahrer-Preiseingabe (nur wenn positive Abrechnung erlaubt). */
-export function driverFareEntryLegalHints(
-  vehicle: string | null | undefined,
-  mayBillPositive: boolean,
-): DriverFareLegalHint[] {
-  if (!mayBillPositive) return [];
+export function driverFareEntryLegalHints(ctx: DriverFareLegalHintContext): DriverFareLegalHint[] {
+  if (!ctx.mayBillPositive) return [];
 
   const hints: DriverFareLegalHint[] = [
     {
@@ -56,7 +62,7 @@ export function driverFareEntryLegalHints(
     },
   ];
 
-  const surcharge = driverFareVehicleSurchargeHint(vehicle);
+  const surcharge = driverFareVehicleSurchargeHint(ctx);
   if (surcharge) {
     hints.push({ id: "vehicle-surcharge", kind: "surcharge", body: surcharge, highlight: "Taxameter" });
   }

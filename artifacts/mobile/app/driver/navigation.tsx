@@ -163,6 +163,7 @@ export default function DriverNavigationScreen() {
     estimatedFare: string;
     paymentMethod: string;
     vehicle?: string;
+    vehicleClassMultiplier?: string;
     driverId: string;
     arrived?: string;
   }>();
@@ -1048,6 +1049,11 @@ export default function DriverNavigationScreen() {
             <DriverFareEntryLegalHints
               vehicle={params.vehicle}
               mayBillPositive={driverMayBillPositiveFare(rideFleetStatus)}
+              snapshotVehicleClassMultiplier={
+                params.vehicleClassMultiplier?.trim()
+                  ? Number.parseFloat(params.vehicleClassMultiplier)
+                  : null
+              }
             />
             {driverMayBillPositiveFare(rideFleetStatus) ? (
               <View style={styles.fareBox}>

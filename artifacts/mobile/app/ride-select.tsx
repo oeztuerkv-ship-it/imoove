@@ -1,18 +1,17 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { router, useLocalSearchParams, usePathname, useSegments } from "expo-router";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
-import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { VEHICLES, useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
-import { pickTariffForStartAddress } from "@/lib/appConfig";
-import { appTariffFromRecord, calculateFareFromAppConfig, ceilToTenth, formatEuro } from "@/utils/fareCalculator";
+import { fetchFareEstimatesByVehicle } from "@/utils/fareEstimateApi";
+import { formatEuro } from "@/utils/fareCalculator";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -62,8 +61,9 @@ export default function RideSelectScreen() {
     );
   }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
 
-  const { config: appCfg } = useOnrodaAppConfig();
   const mapRef = useRef<MapView>(null);
+  const [vehiclePrices, setVehiclePrices] = useState<Map<string, string>>(new Map());
+  const [fareEstimateError, setFareEstimateError] = useState<string | null>(null);
   const {
     origin,
     destination,
@@ -83,22 +83,54 @@ export default function RideSelectScreen() {
     void fetchRoute();
   }, [destination, selectedVehicle, setSelectedVehicle, fetchRoute]);
 
-  const vehiclePrices = useMemo(() => {
+  useEffect(() => {
     const km = route?.distanceKm ?? 0;
-    if (!km) return new Map<string, string>();
-    const tRaw = pickTariffForStartAddress(appCfg, origin.displayName ?? "", {
-      lat: origin.lat,
-      lon: origin.lon,
-    });
-    const tcfg = appTariffFromRecord(tRaw);
-    const baseTaxi = calculateFareFromAppConfig(km, 0, tcfg).total;
-    return new Map(
-      VEHICLES.map((v) => {
-        const total = ceilToTenth(baseTaxi * v.multiplier);
-        return [v.id, formatEuro(total)];
-      }),
-    );
-  }, [route?.distanceKm, appCfg, origin.displayName]);
+    if (!km || isLoadingRoute) {
+      setVehiclePrices(new Map());
+      setFareEstimateError(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setFareEstimateError(null);
+      const estimates = await fetchFareEstimatesByVehicle(
+        VEHICLES.map((v) => v.id),
+        {
+          distanceKm: km,
+          tripMinutes: route?.durationMinutes ?? 0,
+          fromFull: origin.displayName ?? "",
+          fromLat: origin.lat,
+          fromLon: origin.lon,
+          toFull: destination?.displayName,
+        },
+      );
+      if (cancelled) return;
+      const priced = new Map<string, string>();
+      let anyOk = false;
+      for (const v of VEHICLES) {
+        const total = estimates.get(v.id);
+        if (total != null && Number.isFinite(total)) {
+          priced.set(v.id, formatEuro(total));
+          anyOk = true;
+        }
+      }
+      setVehiclePrices(priced);
+      if (!anyOk) {
+        setFareEstimateError("Preis konnte nicht berechnet werden. Bitte Verbindung prüfen.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    route?.distanceKm,
+    route?.durationMinutes,
+    origin.displayName,
+    origin.lat,
+    origin.lon,
+    destination?.displayName,
+    isLoadingRoute,
+  ]);
 
   if (!isFocused) {
     return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
@@ -220,8 +252,10 @@ export default function RideSelectScreen() {
           </View>
         ) : routeError ? (
           <Text style={{ color: colors.destructive }}>{routeError}</Text>
+        ) : fareEstimateError ? (
+          <Text style={{ color: colors.destructive }}>{fareEstimateError}</Text>
         ) : null}
-        {!isLoadingRoute && !routeError && vehiclePrices.size > 0 ? (
+        {!isLoadingRoute && !routeError && !fareEstimateError && vehiclePrices.size > 0 ? (
           <CustomerFareEstimateLegalHint align="left" />
         ) : null}
       </ScrollView>

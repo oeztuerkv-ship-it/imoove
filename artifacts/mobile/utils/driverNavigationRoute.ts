@@ -60,6 +60,10 @@ export function buildDriverNavigationParams(
       estimatedFare: String(ride.estimatedFare ?? 0),
       paymentMethod: ride.paymentMethod ?? "",
       vehicle: ride.vehicle ?? "standard",
+      vehicleClassMultiplier:
+        ride.tariffSnapshot?.breakdown?.vehicleClassMultiplier != null
+          ? String(ride.tariffSnapshot.breakdown.vehicleClassMultiplier)
+          : "",
       driverId,
       arrived,
     };
@@ -84,6 +88,10 @@ export function buildDriverNavigationParams(
     estimatedFare: String(ride.estimatedFare ?? 0),
     paymentMethod: ride.paymentMethod ?? "",
     vehicle: ride.vehicle ?? "standard",
+    vehicleClassMultiplier:
+      ride.tariffSnapshot?.breakdown?.vehicleClassMultiplier != null
+        ? String(ride.tariffSnapshot.breakdown.vehicleClassMultiplier)
+        : "",
     driverId,
     arrived,
   };

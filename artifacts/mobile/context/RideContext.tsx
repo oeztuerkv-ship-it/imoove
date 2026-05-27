@@ -8,10 +8,8 @@ import React, {
   useState,
 } from "react";
 
-import { useOnrodaAppConfig } from "@/context/AppConfigContext";
-import { pickTariffForStartAddress } from "@/lib/appConfig";
-import { calculateFareFromAppConfig, appTariffFromRecord, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
-import { getApiBaseUrl } from "@/utils/apiBase";
+import { fetchFareEstimate } from "@/utils/fareEstimateApi";
+import { type FareBreakdown } from "@/utils/fareCalculator";
 import { type GeoLocation, type RouteResult, getRoute, getRouteThrough } from "@/utils/routing";
 
 export type VehicleType = "standard" | "xl" | "wheelchair";
@@ -22,7 +20,6 @@ export interface VehicleOption {
   id: VehicleType;
   name: string;
   description: string;
-  multiplier: number;
   minSeats: number;
   icon: string;
 }
@@ -33,7 +30,6 @@ export const VEHICLES: VehicleOption[] = [
     id: "standard",
     name: "Standard",
     description: "4 Personen",
-    multiplier: 1.0,
     minSeats: 4,
     icon: "car-side",
   },
@@ -41,7 +37,6 @@ export const VEHICLES: VehicleOption[] = [
     id: "xl",
     name: "XL",
     description: "bis zu 6 Personen",
-    multiplier: 1.6,
     minSeats: 6,
     icon: "van-passenger",
   },
@@ -49,7 +44,6 @@ export const VEHICLES: VehicleOption[] = [
     id: "wheelchair",
     name: "Rollstuhl",
     description: "Rollstuhlgerecht",
-    multiplier: 1.8,
     minSeats: 1,
     icon: "wheelchair-accessibility",
   },
@@ -150,7 +144,6 @@ interface RideContextValue extends RideState {
 const RideContext = createContext<RideContextValue | null>(null);
 const HISTORY_KEY = "@taxi_ride_history";
 const RESET_KEY   = "@Onroda_reset_v1";
-const API_BASE = getApiBaseUrl();
 
 function normalizeForMatch(value: string | null | undefined): string {
   return (value ?? "")
@@ -257,7 +250,6 @@ export function effectivePricingModeForCustomerRide(_input: {
 }
 
 function RideProviderInner({ children }: { children: React.ReactNode }) {
-  const { config: appCfg } = useOnrodaAppConfig();
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
   const [viaStops, setViaStops] = useState<GeoLocation[]>([]);
   const [destination, setDestination] = useState<GeoLocation | null>(null);
@@ -324,63 +316,34 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
         setFareBreakdown(null);
         return;
       }
-      const tcfg = appTariffFromRecord(
-        pickTariffForStartAddress(appCfg, origin.displayName ?? "", {
-          lat: origin.lat,
-          lon: origin.lon,
-        }),
-      );
-      if (API_BASE) {
-        try {
-          const u = new URL(`${API_BASE}/fare-estimate`);
-          u.searchParams.set("distanceKm", String(result.distanceKm));
-          u.searchParams.set("vehicle", selectedVehicle);
-          u.searchParams.set("fromFull", String(origin.displayName ?? ""));
-          if (Number.isFinite(origin.lat) && Number.isFinite(origin.lon)) {
-            u.searchParams.set("fromLat", String(origin.lat));
-            u.searchParams.set("fromLng", String(origin.lon));
-          }
-          if (destination?.displayName) u.searchParams.set("toFull", String(destination.displayName));
-          u.searchParams.set("tripMinutes", String(result.durationMinutes));
-          const res = await fetch(u.toString(), { cache: "no-store" });
-          const data = await res.json().catch(() => ({}));
-          if (res.ok && data?.ok && Number.isFinite(data?.estimate?.total)) {
-            const total = Number(data.estimate.total);
-            const base = Number(data.profile?.baseFareEur ?? 0);
-            setFareBreakdown({
-              baseFare: base,
-              distanceCharge: Math.max(0, ceilToTenth(total - base)),
-              waitingCharge: 0,
-              total,
-              distanceKm: Math.round(result.distanceKm * 100) / 100,
-              fareKind: "taxameter",
-            });
-            return;
-          }
-        } catch {
-          /* fallback auf Konfig-Parameter */
-        }
-      }
-      const vehicle = VEHICLES.find((v) => v.id === selectedVehicle);
-      if (!vehicle) {
+      const est = await fetchFareEstimate(selectedVehicle, {
+        distanceKm: result.distanceKm,
+        tripMinutes: result.durationMinutes,
+        fromFull: String(origin.displayName ?? ""),
+        fromLat: origin.lat,
+        fromLon: origin.lon,
+        toFull: destination?.displayName,
+      });
+      if (!est) {
         setFareBreakdown(null);
+        setRouteError("Preis konnte nicht berechnet werden. Bitte Verbindung prüfen.");
         return;
       }
-      const breakdown = calculateFareFromAppConfig(result.distanceKm, 0, tcfg);
-      const ESTIMATE_BUFFER = 1.08; // +8% Puffer über Taxameter (Schätzpreis)
-      const adjusted: FareBreakdown = {
-        ...breakdown,
-        total: ceilToTenth(breakdown.total * vehicle.multiplier * ESTIMATE_BUFFER),
-        distanceCharge: ceilToTenth(breakdown.distanceCharge * vehicle.multiplier),
+      const base = Number(est.profile?.baseFareEur ?? est.breakdown?.baseFare ?? 0);
+      setFareBreakdown({
+        baseFare: base,
+        distanceCharge: Math.max(0, est.total - base),
+        waitingCharge: 0,
+        total: est.total,
+        distanceKm: Math.round(result.distanceKm * 100) / 100,
         fareKind: "taxameter",
-      };
-      setFareBreakdown(adjusted);
+      });
     } catch {
       setRouteError("Route konnte nicht berechnet werden.");
     } finally {
       setIsLoadingRoute(false);
     }
-  }, [origin, destination, selectedVehicle, appCfg]);
+  }, [origin, destination, selectedVehicle, viaStops]);
 
   const startRide = useCallback(() => {
     if (!fareBreakdown) return;
@@ -477,7 +440,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Muss unter `AppConfigProvider` stehen (Tarif-Fallback aus `GET /api/app/config`). */
+/** Schätzpreise nur über `GET /api/fare-estimate` (unter `AppConfigProvider` für übrige App-Config). */
 export function RideProvider({ children }: { children: React.ReactNode }) {
   return <RideProviderInner>{children}</RideProviderInner>;
 }
