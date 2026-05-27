@@ -44,13 +44,14 @@ git pull origin main
 ## Änderungen einreichen
 
 ```bash
-git add .
+git add <nur-pfade-zu-diesem-thema>
 git commit -m "kurze, sinnvolle Beschreibung"
 git push origin main
 ```
 
-- Vor `git add .` kurz prüfen, dass **keine** `.env` / Secrets / `node_modules` mit dabei sind (siehe `.gitignore`).
-- Bei großen Änderungen lieber gezielt `git add <pfade>` statt blind alles.
+- **Kein blindes `git add .`**, wenn mehrere Themen im Working Tree liegen — siehe **`imoove-git-commit-atomic-scope.mdc`** (Admin ≠ E-Mail ≠ API ≠ Mobile in einem Commit).
+- Vor dem Add prüfen, dass **keine** `.env` / Secrets / `node_modules` mit dabei sind (siehe `.gitignore`).
+- Commit-Message muss zum **Diff** passen (z. B. kein „E-Mail-Design“-Titel bei nur Admin-Panel-Dateien).
 
 ## Admin-Panel (`artifacts/admin-panel`)
 

@@ -1,0 +1,51 @@
+---
+description: Commits atomar nach Domäne — kein Mischen von Admin, API, Mobile, E-Mail, dist in einem Commit.
+alwaysApply: true
+---
+
+# Git: Ein Commit = ein inhaltlicher Bereich
+
+**Ziel:** `git log` und `git bisect` bleiben nachvollziehbar. **Kein** „Nebenbei mit committed“ aus einer anderen Aufgabe.
+
+## Verbindlich vor jedem Commit
+
+1. **`git status` / `git diff`** prüfen: gehören **alle** geänderten Dateien **zum gleichen** Thema?
+2. Wenn **nein** → **nicht** alles in einen Commit packen. Stattdessen:
+   - nur die passenden Pfade `git add` (gezielt), oder
+   - `git stash push -p` / Arbeit in zwei Commits aufteilen, oder
+   - beim Nutzer kurz sagen: „X und Y sind zwei Commits — soll ich trennen?“
+3. **Commit-Message** muss zum **tatsächlichen Diff** passen (kein E-Mail-Titel bei Admin-only-Dateien).
+
+## Domänen getrennt halten (typische Pfade)
+
+| Bereich | Pfade (Beispiele) | Eigener Commit wenn … |
+|--------|-------------------|------------------------|
+| **Admin-Panel** | `artifacts/admin-panel/**` | UI/Tarife/Gebiete ≠ andere Bereiche |
+| **Partner-Panel** | `artifacts/partner-panel/**` | ≠ Admin |
+| **API** | `artifacts/api-server/src/**` | ≠ nur Panel-Build |
+| **API dist** | `artifacts/api-server/dist/**` | **Nur** wenn bewusst mit API-Build mitgeliefert — nicht mit unrelated `src` |
+| **Mobile** | `artifacts/mobile/**` | ≠ Admin/API |
+| **E-Mail / Auth-Mail** | z. B. `emailVerificationMail.ts`, Mail-Templates | ≠ Admin-Tarife |
+| **Deploy / Nginx / Skripte** | `scripts/`, `artifacts/deploy/` | klar benennen, nicht unter „UI-Fix“ mischen |
+| **Cursor-Regeln / Doku** | `.cursor/rules/`, `AGENTS.md` | optional eigener Commit „docs:“ oder mit dem **einen** Feature, das sie dokumentieren |
+
+**Nicht mischen:** z. B. `AppOperationalTariffsPage.jsx` + `emailVerificationMail.ts` + `dist/index.mjs` in einem Commit mit Message „E-Mail Design“.
+
+## Bekanntes Anti-Beispiel (nicht wiederholen)
+
+Commit mit Message zu **E-Mail**, aber Diff enthält **Admin-Tarife/Gebiete** → Historie unlesbar, Deploy-Risiko (Panel-Build ohne klaren Grund im Log).
+
+## Wenn der Nutzer „committen und pushen“ sagt
+
+- Nur den **Umfang dieser Aufgabe** committen.
+- Liegen noch **andere** lokale Änderungen im Working Tree → **nicht** `git add .` ohne Prüfung.
+- Zwei Themen in einer Session → **zwei Commits** (erst A, dann B), dann ein Push.
+
+## Historie nachträglich teilen
+
+Gemischte Commits auf **`main`**, die schon gepusht sind: **kein** `git push --force` ohne **explizite** Team-Freigabe. Stattdessen ab jetzt sauber committen; optional später `git rebase -i` / revert mit Absprache.
+
+## Für Agents
+
+- Vor Fertigmeldung „committed/pushed“: in der Antwort **kurz** die Commit-Message und die **Hauptpfade** nennen.
+- Unsicherheit → **trennen** oder nachfragen, nicht „alles in einen Commit“.

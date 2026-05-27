@@ -43,6 +43,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-mobile-live-ride-flows.mdc` — **Mobile:** Live-Fahrt Kunde (`/status`) + Fahrer-Navi (Stack `dismissTo`, Session-Restore, Debug-Tabelle)
 - `.cursor/rules/imoove-invoice-billing-architecture.mdc` — **Rechnungen/Abrechnung:** `invoices`/`invoice_items` (028), Panel-PDF-API, kein `onroda_invoices`-WIP; **`docs/onroda-invoice-billing-architecture.md`**
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds
+- `.cursor/rules/imoove-git-commit-atomic-scope.mdc` — **keine gemischten Commits** (Admin ≠ E-Mail ≠ API ≠ Mobile; gezieltes `git add`)
 - `.cursor/rules/imoove-server-infrastructure-onroda.mdc` — Domains, Port 3000, Nginx, **Panel-Postmortem** (scrypt `maxmem`, `rides.company_id` TEXT, serverseitiger API-Build)
 - **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`** — produktiver Nginx-/TLS-/Domain-Referenzstand (z. B. `sites-enabled/final-try`, `api.onroda.de`-SAN, Panel-`/partners`-Redirect)
 - **`scripts/verify-onroda-nginx-example-invariants.sh`** — wird von `verify-onroda-repo-invariants.sh` aufgerufen; hält `artifacts/deploy/nginx-onroda.example.conf` gegen harte Routing-Regressionen (Admin/Panel/API müssen `proxy_pass` haben, kein Panel→Admin-301)
