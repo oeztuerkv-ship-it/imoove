@@ -25,7 +25,13 @@
               "com.googleusercontent.apps.683656628383-s837b4fhbbrbks1thoqq56ilksg9cdjr"
             ]
           }
-        ]
+        ],
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMapsApiKey": "AIzaSyC6-pFE0kCcB-57r2ALZ81SAXys8_PpeoQ"
