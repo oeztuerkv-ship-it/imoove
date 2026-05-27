@@ -2967,6 +2967,10 @@ adminJson.patch("/app-operational", async (req, res, next) => {
     if (body.bookingRules !== undefined) patch.bookingRules = body.bookingRules as Record<string, unknown>;
     if (body.system !== undefined) patch.system = body.system as Record<string, unknown>;
     if (body.version !== undefined) patch.version = body.version;
+    if (body.tariffTemplates !== undefined) patch.tariffTemplates = body.tariffTemplates;
+    if (body.regionTariffTemplateIds !== undefined) {
+      patch.regionTariffTemplateIds = body.regionTariffTemplateIds as Record<string, unknown>;
+    }
     const out = await updateOperationalConfigPayload(patch);
     if ("error" in out) {
       res.status(503).json({ error: "unavailable" });

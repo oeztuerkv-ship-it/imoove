@@ -107,12 +107,150 @@ function preservedAdvancedTariffKeys(prev) {
     "timeTariffAmount",
     "timeTariffPerSeconds",
     "largeVehicleSurcharge",
+    "tariffTemplateId",
+    "tariffTemplateName",
   ];
   const out = {};
   for (const k of keys) {
     if (Object.prototype.hasOwnProperty.call(prev, k)) out[k] = /** @type {Record<string, unknown>} */ (prev)[k];
   }
   return out;
+}
+
+function getByServiceRegion(config) {
+  const tr = config?.tariffs && typeof config.tariffs === "object" ? config.tariffs : {};
+  const bsr = tr.byServiceRegion && typeof tr.byServiceRegion === "object" ? tr.byServiceRegion : {};
+  return /** @type {Record<string, Record<string, unknown>>} */ (bsr);
+}
+
+function getRegionTariffTemplateIds(config) {
+  const raw = config?.regionTariffTemplateIds;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return /** @type {Record<string, string>} */ (raw);
+}
+
+function hasOwnRegionalTariff(bsr, regionId) {
+  return !!(regionId && bsr[regionId] && typeof bsr[regionId] === "object");
+}
+
+/** @returns {{ mode: 'global'|'regional'|'template'; label: string; warning: string|null; templateId: string|null; templateName: string|null }} */
+function resolveRegionPricingStatus(config, region, templates) {
+  const bsr = getByServiceRegion(config);
+  const assignments = getRegionTariffTemplateIds(config);
+  const regionId = region?.id ?? "";
+  const row = hasOwnRegionalTariff(bsr, regionId) ? bsr[regionId] : null;
+  const assignedId = assignments[regionId] || (row?.tariffTemplateId ? String(row.tariffTemplateId) : "");
+  const tpl = assignedId ? templates.find((t) => t.id === assignedId) : null;
+  const templateName =
+    (row?.tariffTemplateName && String(row.tariffTemplateName)) || tpl?.name || (assignedId ? assignedId : null);
+
+  if (row && assignedId && templateName) {
+    return {
+      mode: "template",
+      label: `Vorlage: ${templateName}`,
+      warning: null,
+      templateId: assignedId,
+      templateName,
+    };
+  }
+  if (row) {
+    return {
+      mode: "regional",
+      label: "Eigener Regional-Tarif (manuell)",
+      warning: null,
+      templateId: assignedId || null,
+      templateName: templateName,
+    };
+  }
+  if (assignedId && !row) {
+    return {
+      mode: "template",
+      label: `Vorlage zugeordnet: ${templateName || assignedId}`,
+      warning: "Vorlage ist zugeordnet, aber noch nicht auf dieses Gebiet angewendet — bitte „Vorlage zuweisen & speichern“.",
+      templateId: assignedId,
+      templateName,
+    };
+  }
+  return {
+    mode: "global",
+    label: "Global-Tarif (Plattform-Standard)",
+    warning:
+      region?.isActive && !row
+        ? "Aktives Gebiet ohne eigenen Tarif — Schätzpreise nutzen den globalen Tarif aus der Plattform-Konfiguration."
+        : null,
+    templateId: null,
+    templateName: null,
+  };
+}
+
+function surchargeBlockFromRow(row) {
+  const sur =
+    row?.surcharges && typeof row.surcharges === "object"
+      ? row.surcharges
+      : { night: { ...emptySurcharge }, weekend: { ...emptySurcharge }, holiday: { ...emptySurcharge } };
+  const pick = (key) => {
+    const b = sur[key] && typeof sur[key] === "object" ? sur[key] : {};
+    return { enabled: !!b.enabled, percent: b.percent != null ? String(b.percent).replace(".", ",") : "0" };
+  };
+  return { night: pick("night"), weekend: pick("weekend"), holiday: pick("holiday") };
+}
+
+function applySurchargesToPayload(out, surchargeForms) {
+  const surcharges = {
+    night: { enabled: surchargeForms.night.enabled, percent: n(surchargeForms.night.percent) },
+    weekend: { enabled: surchargeForms.weekend.enabled, percent: n(surchargeForms.weekend.percent) },
+    holiday: { enabled: surchargeForms.holiday.enabled, percent: n(surchargeForms.holiday.percent) },
+  };
+  out.surcharges = surcharges;
+  out.nightSurchargePercent = surcharges.night.enabled ? surcharges.night.percent : 0;
+  out.weekendSurchargePercent = surcharges.weekend.enabled ? surcharges.weekend.percent : 0;
+  out.holidaySurchargePercent = surcharges.holiday.enabled ? surcharges.holiday.percent : 0;
+  if (surchargeForms.validFrom?.trim()) out.validFrom = surchargeForms.validFrom.trim();
+  return out;
+}
+
+function loadTemplateIntoEditor(tpl, setters) {
+  if (!tpl) return;
+  const {
+    setStdForm,
+    setXlForm,
+    setWcForm,
+    setXlSurchargeEur,
+    setWcSurchargeEur,
+    setTplNote,
+    setTplValidFrom,
+    setSurchargeForms,
+  } = setters;
+  const rp = tpl.regionPayload && typeof tpl.regionPayload === "object" ? tpl.regionPayload : null;
+  if (rp) {
+    const tr = {};
+    const { vehicleTariffOverrides: vtoRaw, ...sans } = rp;
+    const merged = mergedFromTariffRow(tr, sans);
+    setStdForm(sliceToTierForm(merged));
+    const vto = vtoRaw && typeof vtoRaw === "object" ? vtoRaw : {};
+    setXlForm(sliceToTierForm(vto.xl || merged));
+    setWcForm(sliceToTierForm(vto.wheelchair || merged));
+    if (rp.xlFixedSurchargeEur != null) setXlSurchargeEur(String(rp.xlFixedSurchargeEur).replace(".", ","));
+    if (vto.wheelchair?.surchargeEur != null) setWcSurchargeEur(String(vto.wheelchair.surchargeEur));
+    setTplNote(tpl.note ? String(tpl.note) : "");
+    setTplValidFrom(tpl.validFrom ? String(tpl.validFrom) : rp.validFrom ? String(rp.validFrom) : "");
+    setSurchargeForms(surchargeBlockFromRow(rp));
+    return;
+  }
+  setStdForm({ ...tpl.std });
+  setXlForm({ ...tpl.xl });
+  setWcForm({ ...tpl.wc });
+  setXlSurchargeEur(tpl.xlSurchargeEur ?? "7");
+  setWcSurchargeEur(tpl.wcSurchargeEur ?? "0");
+  setTplNote(tpl.note ? String(tpl.note) : "");
+  setTplValidFrom(tpl.validFrom ? String(tpl.validFrom) : "");
+  setSurchargeForms(
+    tpl.surchargeForms || {
+      night: { ...emptySurcharge },
+      weekend: { ...emptySurcharge },
+      holiday: { ...emptySurcharge },
+    },
+  );
 }
 
 function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeChange, surchargeLabel, surchargeHint }) {
@@ -142,7 +280,7 @@ function TarifBlock({ title, hint, value, onChange, surchargeEur, onSurchargeCha
     </label>
   );
   return (
-    <CollapsibleCard title="{title}">
+    <CollapsibleCard title={title}>
       {hint ? <p className="admin-table-sub" style={{ marginTop: 2 }}>{hint}</p> : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 14, maxWidth: 500 }}>
         <div>
@@ -237,6 +375,16 @@ export default function AppOperationalTariffsPage() {
   const [pvHoliday, setPvHoliday] = useState(false);
   const [pvAirport, setPvAirport] = useState(false);
   const [pvVehicle, setPvVehicle] = useState("standard");
+  const [regionTariffTemplateIds, setRegionTariffTemplateIds] = useState(/** @type {Record<string, string>} */ ({}));
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
+  const [tplNote, setTplNote] = useState("");
+  const [tplValidFrom, setTplValidFrom] = useState("");
+  const [editingTplId, setEditingTplId] = useState("");
+  const [surchargeForms, setSurchargeForms] = useState(() => ({
+    night: { ...emptySurcharge },
+    weekend: { ...emptySurcharge },
+    holiday: { ...emptySurcharge },
+  }));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -248,6 +396,7 @@ export default function AppOperationalTariffsPage() {
       setConfig(data.config);
       setServiceRegions(Array.isArray(data.serviceRegions) ? data.serviceRegions : []);
       setTemplates(Array.isArray(data.config?.tariffTemplates) ? data.config.tariffTemplates : []);
+      setRegionTariffTemplateIds(getRegionTariffTemplateIds(data.config || {}));
       if (data.config?.tariffs && typeof data.config.tariffs === "object" && "active" in data.config.tariffs) {
         setTariffsActive(data.config.tariffs.active !== false);
       }
@@ -313,59 +462,72 @@ export default function AppOperationalTariffsPage() {
     if (wcOv && wcOv.surchargeEur != null) {
       setWcSurchargeEur(String(wcOv.surchargeEur));
     }
+    setSurchargeForms(surchargeBlockFromRow(existingFull));
+    if (existingFull.validFrom) setTplValidFrom(String(existingFull.validFrom));
+    const assign = getRegionTariffTemplateIds(config)[selectedRegionId];
+    const rowTplId = existingFull.tariffTemplateId ? String(existingFull.tariffTemplateId) : "";
+    setSelectedAssignmentId(assign || rowTplId || "");
+    setActiveTplId(assign || rowTplId || "");
   }, [config, selectedRegionId, serviceRegions]);
+
+  const selectedRegion = useMemo(
+    () => serviceRegions.find((r) => r.id === selectedRegionId) ?? null,
+    [serviceRegions, selectedRegionId],
+  );
+
+  const regionPricingStatus = useMemo(
+    () => resolveRegionPricingStatus(config, selectedRegion, templates),
+    [config, selectedRegion, templates],
+  );
+
+  const regionOverview = useMemo(() => {
+    const bsr = getByServiceRegion(config);
+    const assignments = getRegionTariffTemplateIds(config);
+    return serviceRegions.map((r) => {
+      const st = resolveRegionPricingStatus(config, r, templates);
+      return {
+        id: r.id,
+        label: r.label,
+        isActive: !!r.isActive,
+        status: st,
+        hasRegional: hasOwnRegionalTariff(bsr, r.id),
+        assignedTemplateId: assignments[r.id] || null,
+      };
+    });
+  }, [config, serviceRegions, templates]);
 
   const saveTemplates = async (newTpls) => {
     setTplBusy(true);
     try {
-      const res = await fetch(URL, { method: "PATCH", headers: adminApiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ tariffTemplates: newTpls }) });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok || !d?.ok) throw new Error(d?.error || "Fehler");
+      await patchOperational({ tariffTemplates: newTpls });
       setTemplates(newTpls);
-      setConfig((prev) => ({ ...(prev || {}), tariffTemplates: newTpls }));
-    } catch (e) { setError(e instanceof Error ? e.message : "Fehler"); }
-    finally { setTplBusy(false); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setTplBusy(false);
+    }
   };
 
-  const saveCurrentAsTemplate = async () => {
-    if (!tplName.trim()) { setError("Vorlagenname eingeben."); return; }
-    const t = { id: Date.now().toString(36), name: tplName.trim(), std: { ...stdForm }, xl: { ...xlForm }, wc: { ...wcForm }, xlSurchargeEur, wcSurchargeEur };
-    await saveTemplates([...templates, t]);
-    setTplName("");
-    setOk("Vorlage gespeichert: " + t.name);
-  };
+  const editorSetters = useMemo(
+    () => ({
+      setStdForm,
+      setXlForm,
+      setWcForm,
+      setXlSurchargeEur,
+      setWcSurchargeEur,
+      setTplNote,
+      setTplValidFrom,
+      setSurchargeForms,
+    }),
+    [],
+  );
 
-  const deleteTpl = async (id) => { await saveTemplates(templates.filter((t) => t.id !== id)); setOk("Vorlage gelöscht."); };
-
-  const applyTemplate = (tpl) => {
-    if (!tpl) return;
-    setStdForm({ ...tpl.std }); setXlForm({ ...tpl.xl }); setWcForm({ ...tpl.wc });
-    setXlSurchargeEur(tpl.xlSurchargeEur ?? "7"); setWcSurchargeEur(tpl.wcSurchargeEur ?? "0");
-    setActiveTplId(tpl.id);
-    setOk("Vorlage geladen: " + tpl.name + " — prüfen und speichern.");
-  };
-
-  const buildRegionTariffPayload = () => {
+  const buildRegionTariffPayload = (meta = /** @type {{ templateId?: string; templateName?: string }} */ ({})) => {
     const prev = rawRegionTariff;
     const preserved = preservedAdvancedTariffKeys(prev);
-    const surcharges =
-      prev.surcharges && typeof prev.surcharges === "object"
-        ? prev.surcharges
-        : {
-            night: { ...emptySurcharge },
-            weekend: { ...emptySurcharge },
-            holiday: { ...emptySurcharge },
-          };
-    const sn = surcharges.night && typeof surcharges.night === "object" ? surcharges.night : {};
-    const swe = surcharges.weekend && typeof surcharges.weekend === "object" ? surcharges.weekend : {};
-    const sh = surcharges.holiday && typeof surcharges.holiday === "object" ? surcharges.holiday : {};
     const std = buildTwoTierPayload(stdForm);
-    const out = {
+    let out = {
       ...preserved,
-      surcharges,
-      nightSurchargePercent: sn.enabled ? n(sn.percent) : 0,
-      weekendSurchargePercent: swe.enabled ? n(swe.percent) : 0,
-      holidaySurchargePercent: sh.enabled ? n(sh.percent) : 0,
       active: true,
       ...std,
       largeVehicleSurcharge:
@@ -382,7 +544,89 @@ export default function AppOperationalTariffsPage() {
         wheelchair: { ...buildTwoTierPayload(wcForm), surchargeEur: n(wcSurchargeEur) },
       },
     };
+    out = applySurchargesToPayload(out, { ...surchargeForms, validFrom: tplValidFrom });
+    if (meta.templateId) {
+      out.tariffTemplateId = meta.templateId;
+      out.tariffTemplateName = meta.templateName ?? "";
+    }
     return out;
+  };
+
+  const buildTemplateRecord = (id, name) => {
+    const regionPayload = buildRegionTariffPayload();
+    return {
+      id,
+      name: name.trim(),
+      note: tplNote.trim(),
+      validFrom: tplValidFrom.trim(),
+      regionPayload,
+      std: { ...stdForm },
+      xl: { ...xlForm },
+      wc: { ...wcForm },
+      xlSurchargeEur,
+      wcSurchargeEur,
+      surchargeForms: { ...surchargeForms },
+      updatedAt: new Date().toISOString(),
+    };
+  };
+
+  const saveCurrentAsTemplate = async () => {
+    if (!tplName.trim()) {
+      setError("Vorlagenname eingeben.");
+      return;
+    }
+    const t = buildTemplateRecord(Date.now().toString(36), tplName);
+    await saveTemplates([...templates, t]);
+    setTplName("");
+    setEditingTplId(t.id);
+    setActiveTplId(t.id);
+    setOk("Tarif-Vorlage gespeichert: " + t.name);
+  };
+
+  const updateEditingTemplate = async () => {
+    if (!editingTplId) {
+      setError("Keine Vorlage zum Aktualisieren — zuerst Vorlage wählen oder neu anlegen.");
+      return;
+    }
+    const name = tplName.trim() || templates.find((t) => t.id === editingTplId)?.name || "Tarif";
+    const next = templates.map((t) => (t.id === editingTplId ? buildTemplateRecord(editingTplId, name) : t));
+    await saveTemplates(next);
+    setOk("Vorlage aktualisiert: " + name);
+  };
+
+  const deleteTpl = async (id) => {
+    const nextAssign = { ...regionTariffTemplateIds };
+    for (const [rid, tid] of Object.entries(nextAssign)) {
+      if (tid === id) delete nextAssign[rid];
+    }
+    await saveTemplates(templates.filter((t) => t.id !== id));
+    await patchOperational({ regionTariffTemplateIds: nextAssign });
+    setRegionTariffTemplateIds(nextAssign);
+    if (editingTplId === id) setEditingTplId("");
+    setOk("Vorlage gelöscht.");
+  };
+
+  const applyTemplate = (tpl) => {
+    if (!tpl) return;
+    loadTemplateIntoEditor(tpl, editorSetters);
+    setEditingTplId(tpl.id);
+    setActiveTplId(tpl.id);
+    setTplName(tpl.name || "");
+    setOk("Vorlage im Editor: " + tpl.name + " — zuweisen oder „Alle Preise speichern“.");
+  };
+
+  const patchOperational = async (body) => {
+    const res = await fetch(URL, {
+      method: "PATCH",
+      headers: adminApiHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) throw new Error(data?.error || "Speichern fehlgeschlagen");
+    setConfig(data.config || null);
+    if (Array.isArray(data.config?.tariffTemplates)) setTemplates(data.config.tariffTemplates);
+    setRegionTariffTemplateIds(getRegionTariffTemplateIds(data.config || {}));
+    return data;
   };
 
   const saveTariffs = async () => {
@@ -396,24 +640,96 @@ export default function AppOperationalTariffsPage() {
       setError("Konfiguration fehlt — bitte neu laden.");
       return;
     }
+    const tpl =
+      selectedAssignmentId && selectedAssignmentId !== "__global__"
+        ? templates.find((t) => t.id === selectedAssignmentId)
+        : null;
+    const meta = tpl
+      ? { templateId: tpl.id, templateName: tpl.name }
+      : editingTplId
+        ? { templateId: editingTplId, templateName: tplName.trim() || templates.find((t) => t.id === editingTplId)?.name }
+        : {};
     const prevTar = config.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
     const prevBsr = prevTar.byServiceRegion && typeof prevTar.byServiceRegion === "object" ? { ...prevTar.byServiceRegion } : {};
+    const nextAssign = { ...regionTariffTemplateIds };
+    if (tpl) nextAssign[selectedRegionId] = tpl.id;
+    else if (!editingTplId) delete nextAssign[selectedRegionId];
     const newTariffs = {
       ...prevTar,
       active: tariffsActive,
       pricingMode: "taxi_tariff",
-      byServiceRegion: { ...prevBsr, [selectedRegionId]: { ...buildRegionTariffPayload() } },
+      byServiceRegion: { ...prevBsr, [selectedRegionId]: { ...buildRegionTariffPayload(meta) } },
     };
     try {
-      const res = await fetch(URL, {
-        method: "PATCH",
-        headers: adminApiHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ tariffs: newTariffs }),
+      await patchOperational({ tariffs: newTariffs, regionTariffTemplateIds: nextAssign });
+      setRegionTariffTemplateIds(nextAssign);
+      setOk("Regionaler Tarif gespeichert — Schätzung und Buchung nutzen diese Werte für das Gebiet.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    }
+  };
+
+  const assignTemplateAndSaveRegion = async () => {
+    if (!selectedRegionId || !selectedAssignmentId || selectedAssignmentId === "__global__") {
+      setError("Bitte Gebiet und Tarif-Vorlage wählen.");
+      return;
+    }
+    const tpl = templates.find((t) => t.id === selectedAssignmentId);
+    if (!tpl) {
+      setError("Tarif-Vorlage nicht gefunden.");
+      return;
+    }
+    loadTemplateIntoEditor(tpl, editorSetters);
+    setEditingTplId(tpl.id);
+    setActiveTplId(tpl.id);
+    setTplName(tpl.name || "");
+    const payload =
+      tpl.regionPayload && typeof tpl.regionPayload === "object"
+        ? {
+            ...tpl.regionPayload,
+            tariffTemplateId: tpl.id,
+            tariffTemplateName: tpl.name,
+          }
+        : buildRegionTariffPayload({ templateId: tpl.id, templateName: tpl.name });
+    const prevTar = config?.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
+    const prevBsr = prevTar.byServiceRegion && typeof prevTar.byServiceRegion === "object" ? { ...prevTar.byServiceRegion } : {};
+    const nextAssign = { ...regionTariffTemplateIds, [selectedRegionId]: tpl.id };
+    try {
+      await patchOperational({
+        tariffs: {
+          ...prevTar,
+          active: tariffsActive,
+          pricingMode: "taxi_tariff",
+          byServiceRegion: { ...prevBsr, [selectedRegionId]: payload },
+        },
+        regionTariffTemplateIds: nextAssign,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) throw new Error(data?.error || "Speichern fehlgeschlagen");
-      setConfig(data.config || null);
-      setOk("Gespeichert. Die App nutzt weiter die Server-Preise (Schätzung und Buchung).");
+      setRegionTariffTemplateIds(nextAssign);
+      setOk(`Vorlage „${tpl.name}“ dem Gebiet zugeordnet und gespeichert.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    }
+  };
+
+  const clearRegionalTariff = async () => {
+    if (!selectedRegionId) return;
+    if (!window.confirm("Eigenen Regional-Tarif für dieses Gebiet entfernen? Es gilt dann der Global-Tarif.")) return;
+    const prevTar = config?.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
+    const prevBsr = prevTar.byServiceRegion && typeof prevTar.byServiceRegion === "object" ? { ...prevTar.byServiceRegion } : {};
+    const nextBsr = { ...prevBsr };
+    delete nextBsr[selectedRegionId];
+    const nextAssign = { ...regionTariffTemplateIds };
+    delete nextAssign[selectedRegionId];
+    try {
+      await patchOperational({
+        tariffs: { ...prevTar, byServiceRegion: nextBsr },
+        regionTariffTemplateIds: nextAssign,
+      });
+      setRegionTariffTemplateIds(nextAssign);
+      setSelectedAssignmentId("");
+      setActiveTplId("");
+      setOk("Regional-Tarif entfernt — Gebiet nutzt den Global-Tarif.");
+      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     }
@@ -535,9 +851,71 @@ export default function AppOperationalTariffsPage() {
 
       <CollapsibleCard title="Betrieb &amp; Preise">
         <p className="admin-table-sub" style={{ lineHeight: 1.55, maxWidth: 720 }}>
-          Hier legen Sie fest, wo gefahren werden darf und was eine Fahrt kostet. Die Kunden-App fragt die Preise beim Server ab — nichts wird in der App selbst gerechnet.
+          <strong>Gebiet</strong> = wo gefahren werden darf. <strong>Tarif-Vorlage</strong> = Preislogik (Taxameter-Schätzung).
+          Die API wählt beim Abholort eine Region, dann den Regional-Tarif oder den Global-Tarif.
         </p>
       </CollapsibleCard>
+
+      {hasRegions ? (
+        <CollapsibleCard title="Übersicht: Gebiete &amp; Tarife" defaultOpen>
+          <p className="admin-table-sub" style={{ marginTop: 4 }}>
+            Auf einen Blick: aktiv, Preisquelle, zugeordnete Vorlage. Klick auf eine Zeile wählt das Gebiet unten.
+          </p>
+          <div className="admin-table-card" style={{ marginTop: 12 }}>
+            <div className="admin-table-scroll">
+              <div className="admin-table-row admin-table-row--head" style={{ gridTemplateColumns: "1.4fr 0.5fr 1.6fr 0.5fr" }}>
+                <span>Gebiet</span>
+                <span>Aktiv</span>
+                <span>Preisquelle</span>
+                <span />
+              </div>
+              {regionOverview.map((row) => (
+                <div
+                  key={row.id}
+                  className="admin-table-row"
+                  style={{
+                    gridTemplateColumns: "1.4fr 0.5fr 1.6fr 0.5fr",
+                    cursor: "pointer",
+                    background: row.id === selectedRegionId ? "rgba(239,29,38,0.06)" : undefined,
+                  }}
+                  onClick={() => setSelectedRegionId(row.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setSelectedRegionId(row.id);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <span style={{ fontWeight: 500 }}>{row.label}</span>
+                  <span>{row.isActive ? "ja" : "nein"}</span>
+                  <span>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        background:
+                          row.status.mode === "global"
+                            ? "rgba(100,116,139,0.15)"
+                            : row.status.mode === "template"
+                              ? "rgba(22,163,74,0.12)"
+                              : "rgba(37,99,235,0.12)",
+                        color:
+                          row.status.mode === "global" ? "#475569" : row.status.mode === "template" ? "#15803d" : "#1d4ed8",
+                      }}
+                    >
+                      {row.status.mode === "global" ? "Global" : row.status.mode === "template" ? "Vorlage" : "Regional"}
+                    </span>{" "}
+                    <span style={{ fontSize: 12 }}>{row.status.label}</span>
+                  </span>
+                  <span style={{ fontSize: 12, color: "#b45309" }}>{row.status.warning ? "!" : ""}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CollapsibleCard>
+      ) : null}
 
       <CollapsibleCard title="Wo darf gefahren werden?">
         <p className="admin-table-sub">Ein Gebiet hat einen Namen und darunter alle Orte, die dazu gehören (eintragen wie auf einem Zettel — Komma oder neue Zeile).</p>
@@ -636,24 +1014,153 @@ export default function AppOperationalTariffsPage() {
             </label>
           </CollapsibleCard>
 
-          <CollapsibleCard title="Tarif-Vorlagen">
-            <p className="admin-table-sub" style={{ marginTop: 2 }}>Einmal definieren — per Klick auf jede Region anwenden.</p>
+          <CollapsibleCard title="Tarif-Vorlagen" defaultOpen>
+            <p className="admin-table-sub" style={{ marginTop: 2 }}>
+              Vorlagen zentral pflegen (Stuttgart, Landkreis Esslingen, …) und Gebieten zuordnen. Gespeichert in der Plattform-Konfiguration.
+            </p>
             {templates.length > 0 ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                {templates.map((tpl) => (
-                  <div key={tpl.id} style={{ display: "flex", alignItems: "center", gap: 8, background: activeTplId === tpl.id ? "rgba(239,29,38,0.08)" : "rgba(0,0,0,0.04)", borderRadius: 10, padding: "7px 14px", border: activeTplId === tpl.id ? "1px solid rgba(239,29,38,0.3)" : "0.5px solid rgba(0,0,0,0.12)" }}>
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{tpl.name}</span>
-                    <button type="button" className="admin-c-btn-sec" style={{ fontSize: 12, padding: "3px 10px" }} onClick={() => applyTemplate(tpl)}>Laden</button>
-                    <button type="button" style={{ border: "none", background: "none", cursor: "pointer", color: "rgba(0,0,0,0.3)", fontSize: 18, lineHeight: 1, padding: "0 2px" }} onClick={() => void deleteTpl(tpl.id)}>x</button>
+              <div className="admin-table-card" style={{ marginTop: 12 }}>
+                <div className="admin-table-scroll">
+                  <div className="admin-table-row admin-table-row--head" style={{ gridTemplateColumns: "1.2fr 0.8fr 0.6fr 1fr" }}>
+                    <span>Name</span>
+                    <span>gültig ab</span>
+                    <span>XL +</span>
+                    <span />
                   </div>
-                ))}
+                  {templates.map((tpl) => (
+                    <div key={tpl.id} className="admin-table-row" style={{ gridTemplateColumns: "1.2fr 0.8fr 0.6fr 1fr" }}>
+                      <span style={{ fontWeight: activeTplId === tpl.id ? 600 : 400 }}>{tpl.name}</span>
+                      <span style={{ fontSize: 12 }}>{tpl.validFrom || tpl.regionPayload?.validFrom || "—"}</span>
+                      <span style={{ fontSize: 12 }}>
+                        {tpl.regionPayload?.xlFixedSurchargeEur ?? tpl.xlSurchargeEur ?? "—"} €
+                      </span>
+                      <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button type="button" className="admin-c-btn-sec" style={{ fontSize: 12 }} onClick={() => applyTemplate(tpl)}>
+                          Bearbeiten
+                        </button>
+                        <button type="button" className="admin-c-btn-sec" style={{ fontSize: 12 }} onClick={() => { setSelectedAssignmentId(tpl.id); setOk(`Vorlage „${tpl.name}“ für Zuordnung gewählt.`); }}>
+                          Zuordnen
+                        </button>
+                        <button type="button" style={{ border: "none", background: "none", cursor: "pointer", color: "rgba(0,0,0,0.35)" }} onClick={() => void deleteTpl(tpl.id)}>
+                          Löschen
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : <p className="admin-table-sub" style={{ marginTop: 8, fontStyle: "italic" }}>Noch keine Vorlagen — Tarif ausfüllen, dann hier speichern.</p>}
-            <div style={{ display: "flex", gap: 8, marginTop: 14, alignItems: "center", flexWrap: "wrap" }}>
-              <input className="admin-input" style={{ maxWidth: 300 }} placeholder="Name z. B. TTO Esslingen 2022" value={tplName} onChange={(e) => setTplName(e.target.value)} />
-              <button type="button" className="admin-m-btn-pri" onClick={() => void saveCurrentAsTemplate()} disabled={tplBusy}>{tplBusy ? "..." : "Aktuelle Werte als Vorlage speichern"}</button>
+            ) : (
+              <p className="admin-table-sub" style={{ marginTop: 8, fontStyle: "italic" }}>
+                Noch keine Vorlagen — Tarif-Felder unten ausfüllen und als Vorlage speichern.
+              </p>
+            )}
+            <div style={{ display: "grid", gap: 10, marginTop: 16, maxWidth: 560 }}>
+              <label className="admin-form-label">
+                Vorlagenname
+                <input className="admin-input" style={{ display: "block", marginTop: 4 }} placeholder="z. B. Landkreis Esslingen Tarif" value={tplName} onChange={(e) => setTplName(e.target.value)} />
+              </label>
+              <label className="admin-form-label">
+                Interne Notiz
+                <input className="admin-input" style={{ display: "block", marginTop: 4 }} value={tplNote} onChange={(e) => setTplNote(e.target.value)} placeholder="z. B. TTO 2022, Stand Verwaltung" />
+              </label>
+              <label className="admin-form-label">
+                Gültig ab (optional)
+                <input className="admin-input" style={{ display: "block", marginTop: 4 }} value={tplValidFrom} onChange={(e) => setTplValidFrom(e.target.value)} placeholder="YYYY-MM-DD" />
+              </label>
             </div>
-            <p className="admin-table-sub" style={{ marginTop: 6 }}>Tipp: Erst unten Tarif-Felder ausfüllen — dann hier als Vorlage speichern.</p>
+            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+              <button type="button" className="admin-m-btn-pri" onClick={() => void saveCurrentAsTemplate()} disabled={tplBusy}>
+                {tplBusy ? "…" : "Neue Vorlage aus Editor"}
+              </button>
+              <button type="button" className="admin-c-btn-sec" onClick={() => void updateEditingTemplate()} disabled={tplBusy || !editingTplId}>
+                Vorlage aktualisieren
+              </button>
+            </div>
+            <div style={{ marginTop: 16, padding: 12, background: "rgba(0,0,0,0.03)", borderRadius: 8, maxWidth: 640 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(0,0,0,0.4)", marginBottom: 8 }}>
+                Zuschläge in der Vorlage
+              </p>
+              {(["night", "weekend", "holiday"]).map((key) => (
+                <label key={key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={surchargeForms[key].enabled}
+                    onChange={(e) => setSurchargeForms((s) => ({ ...s, [key]: { ...s[key], enabled: e.target.checked } }))}
+                  />
+                  <span style={{ minWidth: 88, fontSize: 13 }}>{key === "night" ? "Nacht" : key === "weekend" ? "Wochenende" : "Feiertag"}</span>
+                  <input
+                    className="admin-input"
+                    style={{ width: 72 }}
+                    value={surchargeForms[key].percent}
+                    onChange={(e) => setSurchargeForms((s) => ({ ...s, [key]: { ...s[key], percent: e.target.value } }))}
+                  />
+                  <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)" }}>%</span>
+                </label>
+              ))}
+            </div>
+          </CollapsibleCard>
+
+          <CollapsibleCard title="Tarif für ausgewähltes Gebiet" defaultOpen>
+            {selectedRegion ? (
+              <div style={{ marginTop: 8, maxWidth: 720 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, margin: "0 0 8px" }}>{selectedRegion.label}</p>
+                <p className="admin-table-sub" style={{ marginBottom: 8 }}>
+                  Gebiet {selectedRegion.isActive ? "aktiv" : "inaktiv"} · ID: <code>{selectedRegion.id}</code>
+                </p>
+                <div
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    background: regionPricingStatus.warning ? "rgba(245,158,11,0.12)" : "rgba(22,163,74,0.08)",
+                    border: `1px solid ${regionPricingStatus.warning ? "rgba(245,158,11,0.35)" : "rgba(22,163,74,0.25)"}`,
+                  }}
+                >
+                  <p style={{ fontWeight: 600, margin: 0 }}>Preisquelle: {regionPricingStatus.label}</p>
+                  {regionPricingStatus.warning ? (
+                    <p className="admin-table-sub" style={{ margin: "6px 0 0", color: "#b45309" }}>
+                      {regionPricingStatus.warning}
+                    </p>
+                  ) : (
+                    <p className="admin-table-sub" style={{ margin: "6px 0 0" }}>
+                      Schätzpreise für Abholungen in dieser Region kommen aus diesem Tarif (sonst Global).
+                    </p>
+                  )}
+                </div>
+                <label className="admin-form-label">
+                  Welcher Tarif gilt hier?
+                  <select
+                    className="admin-input"
+                    style={{ display: "block", marginTop: 4, maxWidth: 440 }}
+                    value={selectedAssignmentId || "__none__"}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSelectedAssignmentId(v === "__none__" ? "" : v);
+                      if (v && v !== "__none__" && v !== "__global__") {
+                        const t = templates.find((x) => x.id === v);
+                        if (t) applyTemplate(t);
+                      }
+                    }}
+                  >
+                    <option value="__none__">— Vorlage wählen —</option>
+                    <option value="__global__">Nur Global-Tarif (kein Regional-Tarif)</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                  <button type="button" className="admin-m-btn-pri" onClick={() => void assignTemplateAndSaveRegion()}>
+                    Vorlage zuweisen &amp; speichern
+                  </button>
+                  <button type="button" className="admin-c-btn-sec" onClick={() => void clearRegionalTariff()}>
+                    Regional-Tarif entfernen (Global)
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </CollapsibleCard>
           <TarifBlock title="STANDARD" hint="Normales Taxi — gilt für die Standard-Fahrzeugklasse." value={stdForm} onChange={setStdForm} />
           <TarifBlock
