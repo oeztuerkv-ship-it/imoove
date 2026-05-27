@@ -56,7 +56,6 @@ const KATEGORIEN: Kategorie[] = [
     subfilter: [
       { id: "alle", label: "Alle", keyword: "Apotheke" },
       { id: "notfall", label: "Notapotheke", keyword: "Notapotheke" },
-      { id: "nacht", label: "Nachtapotheke", keyword: "Nachtapotheke" },
     ],
   },
   {
@@ -165,6 +164,25 @@ function subKeywordFor(kat: Kategorie, selectedSub: string): string {
   return kat.subfilter?.find((s) => s.id === selectedSub)?.keyword ?? kat.label;
 }
 
+/** Not-/Bereitschaftsapotheken (keine normale Tagesapotheke ohne Notdienst im Namen). */
+const NOTAPOTHEKE_NAME_RE =
+  /not\s*apo|notapotheke|not[\s-]?dienst|nacht\s*apo|bereitschafts?\s*apo|apo.*notdienst/i;
+
+function isLikelyNotapotheke(place: PlaceResult): boolean {
+  return NOTAPOTHEKE_NAME_RE.test(place.name);
+}
+
+function isNotapothekeSubfilter(kat: Kategorie, subId: string): boolean {
+  return kat.id === "apotheke" && subId === "notfall";
+}
+
+function filterPlacesForSub(kat: Kategorie, subId: string, places: PlaceResult[]): PlaceResult[] {
+  if (!isNotapothekeSubfilter(kat, subId)) return places;
+  return places.filter(
+    (p) => p.opening_hours?.open_now === true && isLikelyNotapotheke(p),
+  );
+}
+
 /** Freitext mit Kategorie kombinieren, wenn nur Stadt/Ort getippt wurde (z. B. „München“ → „Flughafen München“). */
 function buildTextSearchQuery(kat: Kategorie, subKeyword: string, qTrim: string): string {
   const qLower = qTrim.toLowerCase();
@@ -185,7 +203,6 @@ export default function OrteScreen() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [notfallOnly, setNotfallOnly] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationReady, setLocationReady] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -203,7 +220,7 @@ export default function OrteScreen() {
     })();
   }, []);
 
-  const searchPlaces = useCallback(async (kat: Kategorie, subKeyword: string, q: string) => {
+  const searchPlaces = useCallback(async (kat: Kategorie, subKeyword: string, q: string, subId = "alle") => {
     if (!GOOGLE_PLACES_API_KEY) {
       setResults([]);
       return;
@@ -213,6 +230,8 @@ export default function OrteScreen() {
       const qTrim = q.trim();
       const origin = userLocation ?? FALLBACK_CENTER;
       const { lat, lng } = origin;
+      const notapothekeOnly = isNotapothekeSubfilter(kat, subId);
+      const openNowParam = notapothekeOnly ? "&opennow=true" : "";
       let url: string;
 
       if (qTrim.length >= ORTE_TEXT_SEARCH_MIN_LEN) {
@@ -220,19 +239,23 @@ export default function OrteScreen() {
         url =
           `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(textQuery)}` +
           `&type=${kat.googleType}&language=de&location=${lat},${lng}&radius=500000` +
-          `&key=${GOOGLE_PLACES_API_KEY}`;
+          `${openNowParam}&key=${GOOGLE_PLACES_API_KEY}`;
       } else {
         const keyword = qTrim || subKeyword;
         const rankByDistance = userLocation != null;
         url = rankByDistance
-          ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&rankby=distance&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`
-          : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
+          ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&rankby=distance&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de${openNowParam}&key=${GOOGLE_PLACES_API_KEY}`
+          : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de${openNowParam}&key=${GOOGLE_PLACES_API_KEY}`;
       }
 
       const res = await fetch(url);
       const data = (await res.json()) as { results?: Record<string, unknown>[]; status?: string };
       const raw = data.results ?? [];
-      const places = raw.map(normalizePlaceResult).filter((p) => p.place_id.length > 0);
+      const places = filterPlacesForSub(
+        kat,
+        subId,
+        raw.map(normalizePlaceResult).filter((p) => p.place_id.length > 0),
+      );
       setResults(withDistanceFrom(places, origin));
     } catch {
       setResults([]);
@@ -243,7 +266,7 @@ export default function OrteScreen() {
 
   React.useEffect(() => {
     if (!locationReady || !selectedKat) return;
-    searchPlaces(selectedKat, subKeywordFor(selectedKat, selectedSub), search);
+    searchPlaces(selectedKat, subKeywordFor(selectedKat, selectedSub), search, selectedSub);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur neu laden wenn Standort bereit/wechselt
   }, [locationReady, userLocation]);
 
@@ -259,13 +282,13 @@ export default function OrteScreen() {
     setSearch("");
     setResults([]);
     if (locationReady) {
-      searchPlaces(kat, kat.subfilter?.[0]?.keyword ?? kat.label, "");
+      searchPlaces(kat, kat.subfilter?.[0]?.keyword ?? kat.label, "", "alle");
     }
   };
 
   const selectSub = (sub: { id: string; keyword: string }) => {
     setSelectedSub(sub.id);
-    if (selectedKat) searchPlaces(selectedKat, sub.keyword, search);
+    if (selectedKat) searchPlaces(selectedKat, sub.keyword, search, sub.id);
   };
 
   const runSearchForKat = useCallback(
@@ -273,12 +296,12 @@ export default function OrteScreen() {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
       const subKw = subKeywordFor(kat, subId);
       if (debounceMs <= 0) {
-        void searchPlaces(kat, subKw, q);
+        void searchPlaces(kat, subKw, q, subId);
         return;
       }
       searchDebounceRef.current = setTimeout(() => {
         searchDebounceRef.current = null;
-        void searchPlaces(kat, subKw, q);
+        void searchPlaces(kat, subKw, q, subId);
       }, debounceMs);
     },
     [searchPlaces],
@@ -425,7 +448,11 @@ export default function OrteScreen() {
         })}
 
         {!loading && selectedKat && results.length === 0 && (
-          <Text style={[styles.empty, { color: colors.mutedForeground }]}>Keine Ergebnisse gefunden.</Text>
+          <Text style={[styles.empty, { color: colors.mutedForeground }]}>
+            {isNotapothekeSubfilter(selectedKat, selectedSub)
+              ? "Keine geöffnete Notapotheke in der Nähe gefunden."
+              : "Keine Ergebnisse gefunden."}
+          </Text>
         )}
 
         {!selectedKat && (
