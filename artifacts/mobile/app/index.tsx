@@ -65,6 +65,7 @@ import { useColors } from "@/hooks/useColors";
 import {
   LOGIN_ACTION_ICON_SIZE,
   LoginActionIcon,
+  LoginActionLabel,
   NeuBeiOnrodaRegisterRow,
   ONRODA_LEGAL_DOC,
   OnboardingFeatureIconsRow,
@@ -177,6 +178,8 @@ export default function HomeScreen() {
   // Responsive onboarding helpers
   const isSmallScreen = screenHeight < 700;    // iPhone SE / iPhone 8
   const isMediumScreen = screenHeight < 850;   // iPhone 13/14
+  const isNarrowScreen = screenWidth < 375;
+  const obPadH = Math.max(rs(16), Math.min(rs(24), Math.round(screenWidth * 0.055)));
   const obGap = isSmallScreen ? 14 : isMediumScreen ? 18 : 24;
   const obTitleSize = isSmallScreen ? 24 : 30;
   const obBlockPad = isSmallScreen ? 14 : 20;
@@ -2544,7 +2547,7 @@ export default function HomeScreen() {
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
-              paddingHorizontal: 24,
+              paddingHorizontal: obPadH,
               paddingTop: topPad + 16,
               paddingBottom: bottomPad + 6,
               gap: obGap,
@@ -2571,7 +2574,7 @@ export default function HomeScreen() {
             {/* ── KUNDEN-BLOCK (+ separate Fahrer-Karte wie Profil) ── */}
             {onboardingCustomerStep === "social" ? (
               <>
-                <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
+                <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: isNarrowScreen ? rs(12) : obBlockPad, gap: isSmallScreen ? 10 : 14, width: "100%" }]}>
                   <NeuBeiOnrodaRegisterRow
                     mutedColor={colors.mutedForeground}
                     marginBottom={isSmallScreen ? 6 : 10}
@@ -2614,9 +2617,9 @@ export default function HomeScreen() {
                             />
                           )}
                       </LoginActionIcon>
-                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
+                      <LoginActionLabel color={colors.foreground}>
                         {googleSignInLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
-                      </Text>
+                      </LoginActionLabel>
                     </Pressable>
                     <Pressable
                       style={[styles.socialBtn, socialLoginButtonStyle({
@@ -2639,9 +2642,9 @@ export default function HomeScreen() {
                       <LoginActionIcon>
                         <Feather name="mail" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
                       </LoginActionIcon>
-                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
+                      <LoginActionLabel color={colors.foreground}>
                         Mit E-Mail anmelden
-                      </Text>
+                      </LoginActionLabel>
                     </Pressable>
                     <Pressable
                       style={[styles.socialBtn, socialLoginButtonStyle({
@@ -2659,9 +2662,9 @@ export default function HomeScreen() {
                       <LoginActionIcon>
                         <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
                       </LoginActionIcon>
-                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
+                      <LoginActionLabel color={colors.foreground}>
                         Weiter mit Apple
-                      </Text>
+                      </LoginActionLabel>
                     </Pressable>
                   </View>
                 </View>
@@ -2688,7 +2691,7 @@ export default function HomeScreen() {
                   <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
                 </View>
 
-                <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: obBlockPad }]}>
+                <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: isNarrowScreen ? rs(12) : obBlockPad, width: "100%" }]}>
                   <Pressable
                     style={({ pressed }) => loginActionButtonStyle({
                       paddingVertical: isSmallScreen ? 14 : 16,
@@ -2701,10 +2704,12 @@ export default function HomeScreen() {
                       router.push("/driver/login" as Href);
                     }}
                   >
-                    <MaterialCommunityIcons name="steering" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
-                    <Text style={loginActionLabelStyle({ color: "#FFFFFF" })}>
+                    <View style={{ flexShrink: 0 }}>
+                      <MaterialCommunityIcons name="steering" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
+                    </View>
+                    <LoginActionLabel color="#FFFFFF">
                       Fahrer-Login
-                    </Text>
+                    </LoginActionLabel>
                   </Pressable>
                 </View>
 
@@ -3902,8 +3907,10 @@ const styles = StyleSheet.create({
   socialBtn: {
     borderRadius: 14,
     borderWidth: 1,
+    alignSelf: "stretch",
+    width: "100%",
   },
-  socialBtnText: { fontSize: 17, fontFamily: "Inter_500Medium" },
+  socialBtnText: { fontSize: 17, fontFamily: "Inter_500Medium", flexShrink: 1 },
 
   /* ── ONBOARDING ── */
   onboardingBranding: {

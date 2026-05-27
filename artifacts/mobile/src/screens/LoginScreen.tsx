@@ -3,6 +3,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { rf, rs } from "@/utils/scale";
 
 export type OnrodaLegalDocId = "agb" | "datenschutz";
 
@@ -15,16 +16,17 @@ export const ONRODA_LEGAL_DOC = {
 export const LOGIN_ACTION_GAP = 10;
 export const LOGIN_ACTION_ICON_SIZE = 18;
 
-/** Leichter Shift — Icons wirken sonst optisch etwas zu weit links. */
-export const LOGIN_ACTION_CONTENT_PAD_LEFT = 6;
-
-/** Primär-/Social-Button: Icon + Text zentriert nebeneinander. */
+/** Primär-/Social-Button: volle Breite, Label darf schrumpfen (kein Abschneiden auf schmalen Geräten). */
 export function loginActionButtonStyle(extra?: ViewStyle): ViewStyle {
   return {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: LOGIN_ACTION_GAP,
+    gap: rs(LOGIN_ACTION_GAP),
+    alignSelf: "stretch",
+    width: "100%",
+    minHeight: rs(48),
+    paddingHorizontal: rs(12),
     ...extra,
   };
 }
@@ -32,9 +34,7 @@ export function loginActionButtonStyle(extra?: ViewStyle): ViewStyle {
 /** Weiße Social-Buttons (Google / E-Mail / Apple). */
 export function socialLoginButtonStyle(extra?: ViewStyle): ViewStyle {
   return loginActionButtonStyle({
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    paddingLeft: 16 + LOGIN_ACTION_CONTENT_PAD_LEFT,
+    paddingVertical: rs(16),
     ...extra,
   });
 }
@@ -42,17 +42,44 @@ export function socialLoginButtonStyle(extra?: ViewStyle): ViewStyle {
 /** Dunkler Anmelden-Button (E-Mail-Login). */
 export function emailLoginSubmitButtonStyle(extra?: ViewStyle): ViewStyle {
   return loginActionButtonStyle({
-    paddingLeft: LOGIN_ACTION_CONTENT_PAD_LEFT,
+    paddingVertical: rs(16),
     ...extra,
   });
 }
 
 export function loginActionLabelStyle(extra?: TextStyle): TextStyle {
   return {
-    fontSize: 15,
+    fontSize: rf(15),
     fontFamily: "Inter_600SemiBold",
+    lineHeight: Math.round(rf(15) * 1.25),
     ...extra,
   };
+}
+
+/** Button-Beschriftung — flexShrink + adjustsFontSizeToFit gegen abgeschnittenen Text. */
+export function LoginActionLabel({
+  children,
+  color,
+  style,
+}: {
+  children: string;
+  color?: string;
+  style?: TextStyle;
+}) {
+  return (
+    <Text
+      style={[
+        loginActionLabelStyle({ color }),
+        { flexShrink: 1, textAlign: "center" as const },
+        style,
+      ]}
+      numberOfLines={2}
+      adjustsFontSizeToFit
+      minimumFontScale={0.82}
+    >
+      {children}
+    </Text>
+  );
 }
 
 /** Feste Icon-Box — Vektor- und PNG-Icons gleich groß. */
@@ -62,6 +89,7 @@ export function LoginActionIcon({ children }: { children: React.ReactNode }) {
       style={{
         width: LOGIN_ACTION_ICON_SIZE,
         height: LOGIN_ACTION_ICON_SIZE,
+        flexShrink: 0,
         alignItems: "center",
         justifyContent: "center",
       }}

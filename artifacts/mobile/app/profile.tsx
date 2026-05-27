@@ -18,6 +18,7 @@ import {
   Switch,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,6 +30,7 @@ import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import {
   LOGIN_ACTION_ICON_SIZE,
   LoginActionIcon,
+  LoginActionLabel,
   NeuBeiOnrodaRegisterRow,
   emailLoginSubmitButtonStyle,
   loginActionButtonStyle,
@@ -877,6 +879,8 @@ function PatientProfileModal({
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const loginPadH = Math.max(rs(16), Math.min(rs(24), Math.round(screenWidth * 0.055)));
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const { t, setLocale, languageLabel } = useTranslation();
@@ -1682,7 +1686,7 @@ export default function ProfileScreen() {
         ) : (
           /* ══ NOT LOGGED IN ══ */
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-            <View style={styles.loginSection}>
+            <View style={[styles.loginSection, { paddingHorizontal: loginPadH }]}>
               {/* App branding */}
               <View style={styles.brandBlock}>
                 <View style={{ alignSelf: "center", marginLeft: rs(22) }}>
@@ -1763,9 +1767,9 @@ export default function ProfileScreen() {
                       <LoginActionIcon>
                         <Feather name="mail" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
                       </LoginActionIcon>
-                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
+                      <LoginActionLabel color={colors.foreground}>
                         Mit E-Mail anmelden
-                      </Text>
+                      </LoginActionLabel>
                     </Pressable>
 
                     <Pressable
@@ -1788,9 +1792,9 @@ export default function ProfileScreen() {
                       <LoginActionIcon>
                         <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
                       </LoginActionIcon>
-                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
+                      <LoginActionLabel color={colors.foreground}>
                         Weiter mit Apple
-                      </Text>
+                      </LoginActionLabel>
                     </Pressable>
                   </View>
                 </View>
@@ -1830,10 +1834,12 @@ export default function ProfileScreen() {
                       router.push("/driver/login");
                     }}
                   >
-                    <MaterialCommunityIcons name="steering" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
-                    <Text style={loginActionLabelStyle({ color: "#FFFFFF" })}>
+                    <View style={{ flexShrink: 0 }}>
+                      <MaterialCommunityIcons name="steering" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
+                    </View>
+                    <LoginActionLabel color="#FFFFFF">
                       Fahrer-Login
-                    </Text>
+                    </LoginActionLabel>
                   </Pressable>
                 </View>
                 </>
@@ -2317,7 +2323,7 @@ const styles = StyleSheet.create({
     gap: rs(10),
   },
 
-  loginSection: { paddingHorizontal: rs(24), marginBottom: rs(8), gap: rs(28) },
+  loginSection: { marginBottom: rs(8), gap: rs(28) },
   brandBlock: { alignItems: "center", gap: rs(8), paddingTop: rs(12) },
   brandTitle: { fontSize: rf(22), fontFamily: "Inter_700Bold", letterSpacing: -0.4 },
   brandSub: { fontSize: rf(13), fontFamily: "Inter_400Regular", textAlign: "center" },
@@ -2333,6 +2339,8 @@ const styles = StyleSheet.create({
   socialBtn: {
     borderRadius: rs(14),
     borderWidth: 1,
+    alignSelf: "stretch",
+    width: "100%",
   },
   socialBtnText: {
     fontSize: rf(16),
