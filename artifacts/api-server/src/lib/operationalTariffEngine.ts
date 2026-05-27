@@ -369,15 +369,21 @@ export function estimateTaxiFromMergedTariff(
   const minPassengers = Math.max(1, Math.round(n(largeRaw.minPassengers, 5)));
   const largeAmount = Math.max(0, n(largeRaw.amountEur, 0));
   const passengerCountRaw = in_.passengerCount;
-  const inferredPassengerCount =
-    Number.isFinite(passengerCountRaw) && Number(passengerCountRaw) > 0
-      ? Math.round(Number(passengerCountRaw))
-      : vClass === "xl"
-        ? minPassengers
-        : 1;
-  if (largeAmount > 0 && inferredPassengerCount >= minPassengers) {
+  const passengerCountExplicit =
+    passengerCountRaw != null &&
+    Number.isFinite(Number(passengerCountRaw)) &&
+    Number(passengerCountRaw) > 0;
+  const passengerCount = passengerCountExplicit ? Math.round(Number(passengerCountRaw)) : 1;
+  /** XL mit festem Fahrzeugaufschlag: kein automatischer Großraum — nur bei expliziter Personenzahl. */
+  const skipLargeVehicleForXlFixed =
+    vClass === "xl" && xlCfg?.mode === "fixed" && !passengerCountExplicit;
+  if (largeAmount > 0 && passengerCount >= minPassengers && !skipLargeVehicleForXlFixed) {
     withExtra += largeAmount;
     sur.push({ type: "large_vehicle", amount: largeAmount });
+  }
+
+  if (xlFixedEur > 0) {
+    sur.push({ type: "xl_vehicle", amount: xlFixedEur });
   }
 
   const withVehicle = withExtra * vehicleClassMultiplier + xlFixedEur + wheelchairFixedEur;
