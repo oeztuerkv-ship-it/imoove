@@ -2691,10 +2691,21 @@ export default function HomeScreen() {
                   <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
                 </View>
 
-                <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: isNarrowScreen ? rs(12) : obBlockPad, width: "100%" }]}>
+                <View
+                  style={[
+                    styles.onboardingBlock,
+                    {
+                      backgroundColor: colors.muted,
+                      borderColor: colors.border,
+                      padding: isNarrowScreen ? rs(12) : obBlockPad,
+                      gap: isSmallScreen ? 8 : 10,
+                      width: "100%",
+                    },
+                  ]}
+                >
                   <Pressable
                     style={({ pressed }) => loginActionButtonStyle({
-                      paddingVertical: isSmallScreen ? 14 : 16,
+                      paddingVertical: isSmallScreen ? 13 : 16,
                       borderRadius: 14,
                       backgroundColor: "#111111",
                       opacity: pressed ? 0.88 : 1,
@@ -2704,11 +2715,31 @@ export default function HomeScreen() {
                       router.push("/driver/login" as Href);
                     }}
                   >
-                    <View style={{ flexShrink: 0 }}>
+                    <LoginActionIcon>
                       <MaterialCommunityIcons name="steering" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
-                    </View>
+                    </LoginActionIcon>
                     <LoginActionLabel color="#FFFFFF">
                       Fahrer-Login
+                    </LoginActionLabel>
+                  </Pressable>
+
+                  <Pressable
+                    style={({ pressed }) => loginActionButtonStyle({
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                      borderRadius: 14,
+                      backgroundColor: "#15803D",
+                      opacity: pressed ? 0.88 : 1,
+                    })}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push("/partner/login" as Href);
+                    }}
+                  >
+                    <LoginActionIcon>
+                      <MaterialCommunityIcons name="office-building" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
+                    </LoginActionIcon>
+                    <LoginActionLabel color="#FFFFFF">
+                      Partner-Login
                     </LoginActionLabel>
                   </Pressable>
                 </View>

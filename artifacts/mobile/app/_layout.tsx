@@ -89,6 +89,7 @@ function RootLayoutNav() {
       <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
       <Stack.Screen name="service-detail" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="fahrer-login" options={{ headerShown: false }} />
+      <Stack.Screen name="partner" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen
         name="driver"
         options={{
