@@ -100,6 +100,7 @@ const router: IRouter = Router();
 
 /** Partner-Mobile / Hotel: max. gleichzeitig offene Fahrten pro Mandant. */
 const PARTNER_OPEN_RIDE_LIMIT = 5;
+const PARTNER_RETRY_SEARCH_TIMEOUT_MS = 60_000;
 
 const PANEL_OPEN_RIDE_TERMINAL_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
   "completed",
@@ -125,6 +126,12 @@ function partnerCancelTargetStatus(cur: RideRequest["status"]): RideRequest["sta
     if (canTransitionRideStatus(cur, next)) return next;
   }
   return null;
+}
+
+function partnerRetrySearchTargetStatus(cur: RideRequest["status"]): RideRequest["status"] | null {
+  if (!["requested", "offered", "ready_for_dispatch", "searching_driver"].includes(cur)) return null;
+  if (cur === "searching_driver") return null;
+  return canTransitionRideStatus(cur, "searching_driver") ? "searching_driver" : null;
 }
 
 function parsePartnerDriverNote(body: Record<string, unknown>): string | null {
@@ -1210,6 +1217,65 @@ router.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res,
       meta: { fromStatus: ride.status, toStatus: nextStatus, reason: reason || undefined },
     });
 
+    const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
+    res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+    const nextStatus = partnerRetrySearchTargetStatus(ride.status);
+    if (!nextStatus) {
+      res.status(409).json({ error: "retry_search_not_allowed", status: ride.status });
+      return;
+    }
+    const createdAtMs = Date.parse(String(ride.createdAt ?? ""));
+    if (!Number.isFinite(createdAtMs) || Date.now() - createdAtMs < PARTNER_RETRY_SEARCH_TIMEOUT_MS) {
+      res.status(409).json({
+        error: "retry_search_too_early",
+        hint: "Retry erst nach 60 Sekunden ohne Fahrerannahme.",
+      });
+      return;
+    }
+    const updated = await updateRide(rideId, {
+      status: nextStatus,
+      driverId: null,
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.retry_search",
+      subjectType: "ride",
+      subjectId: rideId,
+      meta: { fromStatus: ride.status, toStatus: nextStatus },
+    });
     const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
     res.json({ ok: true, ride: rideOut });
   } catch (e) {
