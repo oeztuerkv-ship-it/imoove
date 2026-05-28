@@ -36,6 +36,11 @@ export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, onRe
   const statusVisual = partnerRideStatusVisual(ride);
   const searchPhaseText = statusVisual.loading ? partnerSearchPhaseLabel(ride) : null;
 
+  const handleRemovePress = () => {
+    console.log("[PartnerRideCard] hide pressed", ride.id);
+    onRemoveFromList(ride);
+  };
+
   return (
     <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
       <View style={styles.topRow}>
@@ -70,8 +75,14 @@ export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, onRe
             <Pressable style={styles.secondaryBtn} onPress={() => onRetrySearch(ride)}>
               <Text style={styles.secondaryBtnText}>Erneut versuchen</Text>
             </Pressable>
-            <Pressable style={styles.secondaryBtn} onPress={() => onRemoveFromList(ride)}>
-              <Text style={styles.secondaryBtnText}>Aus Liste entfernen</Text>
+            <Pressable
+              style={styles.removeBtn}
+              onPress={handleRemovePress}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Aus Liste entfernen"
+            >
+              <Text style={styles.removeBtnText}>Aus Liste entfernen</Text>
             </Pressable>
           </>
         ) : null}
@@ -128,7 +139,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   acceptedInfoLine: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151" },
-  actions: { flexDirection: "row", gap: 8, justifyContent: "flex-end" },
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "flex-end",
+    zIndex: 2,
+  },
   secondaryBtn: {
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -137,6 +154,15 @@ const styles = StyleSheet.create({
     borderColor: HOME_SHEET_RIM,
   },
   secondaryBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#374151" },
+  removeBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#EF4444",
+    backgroundColor: "#EF4444",
+  },
+  removeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
   primaryBtn: {
     flexDirection: "row",
     alignItems: "center",

@@ -252,7 +252,11 @@ export default function PartnerHomeScreen() {
   };
 
   const removeRideFromList = async (ride: PartnerRideRow) => {
-    if (!token) return;
+    console.log("[PartnerHome] hide request", ride.id);
+    if (!token) {
+      console.log("[PartnerHome] hide aborted — no token");
+      return;
+    }
     const r = await partnerHideRide(token, ride.id);
     if (!r.ok) {
       if (r.unauthorized) {
@@ -303,7 +307,7 @@ export default function PartnerHomeScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
+        contentContainerStyle={{ paddingBottom: 16 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.pickupCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
@@ -397,7 +401,10 @@ export default function PartnerHomeScreen() {
         )}
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 12, backgroundColor: HOME_SHEET_BG }]}>
+      <View
+        style={[styles.footer, { paddingBottom: insets.bottom + 12, backgroundColor: HOME_SHEET_BG }]}
+        pointerEvents="box-none"
+      >
         <Pressable
           style={({ pressed }) =>
             loginActionButtonStyle({
@@ -522,10 +529,6 @@ const styles = StyleSheet.create({
   subsectionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#6B7280", marginBottom: 8 },
   emptyHint: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginBottom: 8 },
   footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: 20,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,

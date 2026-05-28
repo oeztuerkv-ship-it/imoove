@@ -229,15 +229,21 @@ export async function partnerHideRide(
   token: string,
   rideId: string,
 ): Promise<PartnerApiResult<PartnerRideRow>> {
-  const r = await partnerAuthedJson<{ ok?: boolean; ride?: PartnerRideRow }>(
-    token,
-    `/panel/v1/rides/${encodeURIComponent(rideId)}/hide`,
-    { method: "POST" },
-  );
-  if (!r.ok) return r;
+  const base = getApiBaseUrl();
+  const path = `/panel/v1/rides/${encodeURIComponent(rideId)}/hide`;
+  const url = base ? `${base}${path}` : path;
+  console.log("[partnerApi] POST hide", url);
+
+  const r = await partnerAuthedJson<{ ok?: boolean; ride?: PartnerRideRow }>(token, path, { method: "POST" });
+  if (!r.ok) {
+    console.log("[partnerApi] POST hide failed", rideId, r.message);
+    return r;
+  }
   if (!r.data.ok || !r.data.ride) {
+    console.log("[partnerApi] POST hide invalid body", rideId);
     return { ok: false, unauthorized: false, forbidden: false, message: "Aus Liste entfernen fehlgeschlagen." };
   }
+  console.log("[partnerApi] POST hide ok", rideId);
   return { ok: true, data: r.data.ride };
 }
 
