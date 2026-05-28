@@ -7,10 +7,10 @@ import type { PartnerRideRow } from "@/utils/partnerApi";
 import {
   isPartnerRideCancellable,
   isPartnerSearchTimeout,
+  partnerSearchPhaseLabel,
   partnerRideShortId,
   partnerRideStatusHumanLabel,
   partnerRideStatusVisual,
-  partnerSearchDurationLabel,
   partnerRideDriverNote,
   partnerRideRouteLabel,
   partnerRideTimeLabel,
@@ -23,17 +23,18 @@ type Props = {
   onDetails: (rideId: string) => void;
   onCancel: (ride: PartnerRideRow) => void;
   onRetrySearch: (ride: PartnerRideRow) => void;
+  onRemoveFromList: (ride: PartnerRideRow) => void;
   acceptedInfo?: { driverName?: string | null; plate?: string | null; etaLabel?: string };
 };
 
-export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, acceptedInfo }: Props) {
+export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, onRemoveFromList, acceptedInfo }: Props) {
   const shortId = partnerRideShortId(ride.id);
   const cancellable = isPartnerRideCancellable(ride.status);
   const note = partnerRideDriverNote(ride);
   const timedOut = isPartnerSearchTimeout(ride);
   const showAcceptedInfo = ride.status === "accepted";
   const statusVisual = partnerRideStatusVisual(ride);
-  const searchDuration = statusVisual.loading ? partnerSearchDurationLabel(ride) : null;
+  const searchPhaseText = statusVisual.loading ? partnerSearchPhaseLabel(ride) : null;
 
   return (
     <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
@@ -44,8 +45,8 @@ export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, acce
           <Text style={[styles.statusText, { color: statusVisual.text }]}>{partnerRideStatusHumanLabel(ride)}</Text>
         </View>
       </View>
-      {searchDuration ? (
-        <Text style={styles.searchDuration}>Suche seit {searchDuration}</Text>
+      {searchPhaseText ? (
+        <Text style={styles.searchHint}>{searchPhaseText}</Text>
       ) : null}
       <Text style={styles.route} numberOfLines={2}>
         {partnerRideRouteLabel(ride)}
@@ -65,19 +66,26 @@ export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, acce
       ) : null}
       <View style={styles.actions}>
         {timedOut ? (
-          <Pressable style={styles.secondaryBtn} onPress={() => onRetrySearch(ride)}>
-            <Text style={styles.secondaryBtnText}>Erneut suchen</Text>
-          </Pressable>
+          <>
+            <Pressable style={styles.secondaryBtn} onPress={() => onRetrySearch(ride)}>
+              <Text style={styles.secondaryBtnText}>Erneut versuchen</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryBtn} onPress={() => onRemoveFromList(ride)}>
+              <Text style={styles.secondaryBtnText}>Aus Liste entfernen</Text>
+            </Pressable>
+          </>
         ) : null}
-        {cancellable ? (
+        {!timedOut && cancellable ? (
           <Pressable style={styles.secondaryBtn} onPress={() => onCancel(ride)}>
             <Text style={styles.secondaryBtnText}>Stornieren</Text>
           </Pressable>
         ) : null}
-        <Pressable style={styles.primaryBtn} onPress={() => onDetails(ride.id)}>
-          <Feather name="map" size={16} color="#fff" />
-          <Text style={styles.primaryBtnText}>Details</Text>
-        </Pressable>
+        {!timedOut ? (
+          <Pressable style={styles.primaryBtn} onPress={() => onDetails(ride.id)}>
+            <Feather name="map" size={16} color="#fff" />
+            <Text style={styles.primaryBtnText}>Details</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -107,7 +115,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  searchDuration: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#B45309", marginBottom: 6 },
+  searchHint: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#B45309", marginBottom: 6 },
   route: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#374151", lineHeight: 21 },
   time: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 6, marginBottom: 4 },
   note: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 10, fontStyle: "italic" },

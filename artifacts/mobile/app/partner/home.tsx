@@ -70,6 +70,7 @@ export default function PartnerHomeScreen() {
   const [trackingInfoByRideId, setTrackingInfoByRideId] = useState<
     Record<string, { driverName?: string | null; plate?: string | null; etaLabel?: string }>
   >({});
+  const [dismissedRideIds, setDismissedRideIds] = useState<Record<string, true>>({});
   const logoutInFlightRef = useRef(false);
 
   const refreshPickup = useCallback(async () => {
@@ -156,19 +157,28 @@ export default function PartnerHomeScreen() {
     }, [refreshPickup]),
   );
 
-  const stats = useMemo(() => computePartnerHomeStats(rides), [rides]);
+  const visibleRides = useMemo(
+    () => rides.filter((r) => !dismissedRideIds[r.id]),
+    [rides, dismissedRideIds],
+  );
+
+  const stats = useMemo(() => {
+    const base = computePartnerHomeStats(visibleRides);
+    const openWithoutTimeout = visibleRides.filter((r) => isPartnerRideOpen(r.status) && !isPartnerSearchTimeout(r)).length;
+    return { ...base, openCount: openWithoutTimeout };
+  }, [visibleRides]);
 
   const activeRides = useMemo(
-    () => rides.filter(isPartnerRideActive).sort(sortPartnerRidesNewestFirst),
-    [rides],
+    () => visibleRides.filter(isPartnerRideActive).sort(sortPartnerRidesNewestFirst),
+    [visibleRides],
   );
   const reservationRides = useMemo(
-    () => rides.filter(isPartnerRideReservation).sort(sortPartnerRidesNewestFirst),
-    [rides],
+    () => visibleRides.filter(isPartnerRideReservation).sort(sortPartnerRidesNewestFirst),
+    [visibleRides],
   );
 
   const atOpenLimit = stats.openCount >= PARTNER_MAX_OPEN_RIDES;
-  const hasTimeoutRide = useMemo(() => rides.some((r) => isPartnerSearchTimeout(r)), [rides]);
+  const hasTimeoutRide = useMemo(() => visibleRides.some((r) => isPartnerSearchTimeout(r)), [visibleRides]);
 
   const handleLogout = async () => {
     if (logoutInFlightRef.current) return;
@@ -234,10 +244,20 @@ export default function PartnerHomeScreen() {
         router.replace("/partner/login");
         return;
       }
-      Alert.alert("Erneut suchen fehlgeschlagen", res.message);
+      Alert.alert("Retry nicht möglich", "Neue Suche konnte nicht gestartet werden. Bitte bestellen Sie erneut.");
       return;
     }
+    setDismissedRideIds((prev) => {
+      if (!prev[ride.id]) return prev;
+      const next = { ...prev };
+      delete next[ride.id];
+      return next;
+    });
     await loadRides();
+  };
+
+  const removeRideFromList = (ride: PartnerRideRow) => {
+    setDismissedRideIds((prev) => ({ ...prev, [ride.id]: true }));
   };
 
   const companyLabel = user?.companyName?.trim() || user?.username?.trim() || "Ihr Unternehmen";
@@ -329,6 +349,7 @@ export default function PartnerHomeScreen() {
                   onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
                   onCancel={setCancelRide}
                   onRetrySearch={(r) => void submitRetrySearch(r)}
+                  onRemoveFromList={(r) => removeRideFromList(r)}
                 />
               ))
             )}
@@ -345,6 +366,7 @@ export default function PartnerHomeScreen() {
                   onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
                   onCancel={setCancelRide}
                   onRetrySearch={(r) => void submitRetrySearch(r)}
+                  onRemoveFromList={(r) => removeRideFromList(r)}
                 />
               ))
             )}

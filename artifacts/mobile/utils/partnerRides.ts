@@ -32,8 +32,20 @@ export function isPartnerRideOpen(status: string): boolean {
   return !TERMINAL_STATUSES.has(status);
 }
 
+function partnerSearchAnchorMs(ride: Pick<PartnerRideRow, "createdAt" | "partnerBookingMeta">): number | null {
+  const meta = ride.partnerBookingMeta;
+  const fromMeta =
+    meta && typeof meta === "object" && !Array.isArray(meta) && typeof (meta as Record<string, unknown>).search_started_at === "string"
+      ? String((meta as Record<string, unknown>).search_started_at)
+      : "";
+  const raw = fromMeta || String(ride.createdAt ?? "");
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 export function isPartnerRideActive(ride: PartnerRideRow): boolean {
   if (!isPartnerRideOpen(ride.status)) return false;
+  if (isPartnerSearchTimeout(ride)) return false;
   if (RESERVATION_STATUSES.has(ride.status)) return false;
   if (ride.scheduledAt) {
     const t = Date.parse(ride.scheduledAt);
@@ -44,6 +56,7 @@ export function isPartnerRideActive(ride: PartnerRideRow): boolean {
 
 export function isPartnerRideReservation(ride: PartnerRideRow): boolean {
   if (!isPartnerRideOpen(ride.status)) return false;
+  if (isPartnerSearchTimeout(ride)) return false;
   if (RESERVATION_STATUSES.has(ride.status)) return true;
   if (ride.scheduledAt) {
     const t = Date.parse(ride.scheduledAt);
@@ -90,6 +103,7 @@ export function isPartnerRideCancellable(status: string): boolean {
 }
 
 const SEARCH_TIMEOUT_MS = 60_000;
+const SEARCH_PHASE_1_MS = 15_000;
 const LIVE_CANCEL_NO_REASON_STATUSES = new Set(["accepted", "driver_arriving", "driver_waiting", "passenger_onboard", "in_progress"]);
 
 export type PartnerStatusVisual = {
@@ -110,39 +124,45 @@ export function partnerRideShortId(id: string): string {
 }
 
 export function isPartnerSearchTimeout(
-  ride: Pick<PartnerRideRow, "status" | "createdAt">,
+  ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">,
   nowMs: number = Date.now(),
 ): boolean {
   if (!["pending", "requested", "searching_driver", "offered", "ready_for_dispatch"].includes(ride.status)) {
     return false;
   }
-  const createdMs = Date.parse(ride.createdAt ?? "");
-  if (!Number.isFinite(createdMs)) return false;
-  return nowMs - createdMs >= SEARCH_TIMEOUT_MS;
+  const anchorMs = partnerSearchAnchorMs(ride);
+  if (anchorMs == null) return false;
+  return nowMs - anchorMs >= SEARCH_TIMEOUT_MS;
 }
 
-export function partnerSearchDurationLabel(ride: Pick<PartnerRideRow, "createdAt">, nowMs: number = Date.now()): string | null {
-  const createdMs = Date.parse(ride.createdAt ?? "");
-  if (!Number.isFinite(createdMs)) return null;
-  const elapsed = Math.max(0, Math.floor((nowMs - createdMs) / 1000));
-  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
-  const ss = String(elapsed % 60).padStart(2, "0");
-  return `${mm}:${ss}`;
+function partnerSearchElapsedMs(ride: Pick<PartnerRideRow, "createdAt" | "partnerBookingMeta">, nowMs: number): number | null {
+  const anchorMs = partnerSearchAnchorMs(ride);
+  if (anchorMs == null) return null;
+  return Math.max(0, nowMs - anchorMs);
+}
+
+export function partnerSearchPhaseLabel(
+  ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">,
+  nowMs: number = Date.now(),
+): string {
+  if (isPartnerSearchTimeout(ride, nowMs)) return "Momentan kein Fahrer verfügbar";
+  const elapsed = partnerSearchElapsedMs(ride, nowMs);
+  if (elapsed != null && elapsed >= SEARCH_PHASE_1_MS) return "Wir suchen einen Fahrer...";
+  return "Fahrer wird gesucht...";
 }
 
 export function partnerRideNeedsCancelReason(status: string): boolean {
   return !LIVE_CANCEL_NO_REASON_STATUSES.has(status);
 }
 
-export function partnerRideStatusHumanLabel(ride: Pick<PartnerRideRow, "status" | "createdAt">): string {
-  if (isPartnerSearchTimeout(ride)) return "Momentan kein Fahrer verfügbar";
+export function partnerRideStatusHumanLabel(ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">): string {
   switch (ride.status) {
     case "pending":
     case "requested":
     case "searching_driver":
     case "offered":
     case "ready_for_dispatch":
-      return "Fahrer wird gesucht";
+      return partnerSearchPhaseLabel(ride);
     case "accepted":
       return "Fahrer wurde zugewiesen";
     case "driver_arriving":
@@ -172,7 +192,7 @@ export function partnerRideStatusHumanLabel(ride: Pick<PartnerRideRow, "status" 
   }
 }
 
-export function partnerRideStatusVisual(ride: Pick<PartnerRideRow, "status" | "createdAt">): PartnerStatusVisual {
+export function partnerRideStatusVisual(ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">): PartnerStatusVisual {
   if (isPartnerSearchTimeout(ride)) {
     return { bg: "rgba(245, 158, 11, 0.18)", text: "#B45309", accent: "#D97706", loading: false };
   }

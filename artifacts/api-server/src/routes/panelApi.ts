@@ -129,8 +129,7 @@ function partnerCancelTargetStatus(cur: RideRequest["status"]): RideRequest["sta
 }
 
 function partnerRetrySearchTargetStatus(cur: RideRequest["status"]): RideRequest["status"] | null {
-  if (!["requested", "offered", "ready_for_dispatch", "searching_driver"].includes(cur)) return null;
-  if (cur === "searching_driver") return null;
+  if (!["pending", "requested", "offered", "ready_for_dispatch", "searching_driver"].includes(cur)) return null;
   return canTransitionRideStatus(cur, "searching_driver") ? "searching_driver" : null;
 }
 
@@ -1252,17 +1251,34 @@ router.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req
       res.status(409).json({ error: "retry_search_not_allowed", status: ride.status });
       return;
     }
-    const createdAtMs = Date.parse(String(ride.createdAt ?? ""));
-    if (!Number.isFinite(createdAtMs) || Date.now() - createdAtMs < PARTNER_RETRY_SEARCH_TIMEOUT_MS) {
+    const prevMeta =
+      ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" && !Array.isArray(ride.partnerBookingMeta)
+        ? ({ ...ride.partnerBookingMeta } as Record<string, unknown>)
+        : {};
+    const searchStartedAtRaw =
+      typeof prevMeta.search_started_at === "string" ? prevMeta.search_started_at : String(ride.createdAt ?? "");
+    const searchStartedAtMs = Date.parse(searchStartedAtRaw);
+    if (!Number.isFinite(searchStartedAtMs) || Date.now() - searchStartedAtMs < PARTNER_RETRY_SEARCH_TIMEOUT_MS) {
       res.status(409).json({
         error: "retry_search_too_early",
         hint: "Retry erst nach 60 Sekunden ohne Fahrerannahme.",
       });
       return;
     }
+    const retryAt = new Date().toISOString();
+    const nextMeta: Record<string, unknown> = {
+      ...prevMeta,
+      search_started_at: retryAt,
+      search_retry_count:
+        Number.isFinite(Number(prevMeta.search_retry_count))
+          ? Number(prevMeta.search_retry_count) + 1
+          : 1,
+      last_retry_at: retryAt,
+    };
     const updated = await updateRide(rideId, {
       status: nextStatus,
       driverId: null,
+      partnerBookingMeta: nextMeta as RideRequest["partnerBookingMeta"],
     });
     if (!updated) {
       res.status(500).json({ error: "update_failed" });

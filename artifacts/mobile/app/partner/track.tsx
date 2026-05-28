@@ -26,8 +26,8 @@ import {
 } from "@/utils/partnerRideTracking";
 import {
   isPartnerSearchTimeout,
+  partnerSearchPhaseLabel,
   partnerRideStatusVisual,
-  partnerSearchDurationLabel,
 } from "@/utils/partnerRides";
 
 const PARTNER_GREEN = "#15803D";
@@ -156,7 +156,7 @@ export default function PartnerTrackScreen() {
       : null;
   const statusRide = ride ? { status: ride.status, createdAt: ride.createdAt } : null;
   const statusVisual = statusRide ? partnerRideStatusVisual(statusRide) : null;
-  const searchDuration = statusRide && statusVisual?.loading ? partnerSearchDurationLabel(statusRide) : null;
+  const searchPhaseText = statusRide && statusVisual?.loading ? partnerSearchPhaseLabel(statusRide) : null;
   const showTimeout = statusRide ? isPartnerSearchTimeout(statusRide) : false;
 
   return (
@@ -196,7 +196,7 @@ export default function PartnerTrackScreen() {
                 {showTimeout ? "Momentan kein Fahrer verfügbar" : ride ? partnerRideStatusLabel(ride.status) : "—"}
               </Text>
             </View>
-            {searchDuration ? <Text style={styles.searchDuration}>Suche seit {searchDuration}</Text> : null}
+            {searchPhaseText ? <Text style={styles.searchHint}>{searchPhaseText}</Text> : null}
             <View style={styles.driverRow}>
               <Feather name="user" size={18} color="#6B7280" />
               <Text style={styles.driverText}>
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  searchDuration: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#B45309", marginTop: -2 },
+  searchHint: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#B45309", marginTop: -2 },
   driverRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   driverText: { fontSize: 16, fontFamily: "Inter_500Medium", color: "#111", flex: 1 },
 });
