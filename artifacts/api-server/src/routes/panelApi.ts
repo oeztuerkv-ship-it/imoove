@@ -1213,7 +1213,7 @@ router.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res,
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
-    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 
     const rideId = String(req.params.rideId ?? "").trim();
     if (!rideId) {
@@ -1281,7 +1281,7 @@ router.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
-    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 
     const rideId = String(req.params.rideId ?? "").trim();
     if (!rideId) {
@@ -1357,7 +1357,7 @@ router.post("/panel/v1/rides/:rideId/hide", requirePanelAuth, async (req, res, n
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
-    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 
     const rideId = String(req.params.rideId ?? "").trim();
     if (!rideId) {
