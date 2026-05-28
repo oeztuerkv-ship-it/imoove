@@ -16,14 +16,22 @@ export function isPartnerTrackingTerminal(status: string): boolean {
 
 export function partnerRideStatusLabel(status: string): string {
   switch (status) {
+    case "pending":
+    case "requested":
     case "searching_driver":
-      return "Suche Fahrer…";
+    case "offered":
+    case "ready_for_dispatch":
+      return "Fahrer wird gesucht";
     case "accepted":
-      return "Fahrer zugewiesen";
+      return "Fahrer wurde zugewiesen";
+    case "scheduled":
+      return "Reserviert";
+    case "scheduled_assigned":
+      return "Reservierung mit Fahrer";
     case "driver_arriving":
-      return "Fahrer unterwegs";
+      return "Fahrer ist unterwegs";
     case "driver_waiting":
-      return "Fahrer ist da";
+      return "Fahrer wartet an der Abholung";
     case "passenger_onboard":
     case "in_progress":
       return "Fahrt läuft";
@@ -35,7 +43,11 @@ export function partnerRideStatusLabel(status: string): string {
       return "Storniert (Fahrer)";
     case "cancelled_by_system":
       return "Storniert (System)";
+    case "expired":
+      return "Nicht vermittelt";
+    case "rejected":
+      return "Abgelehnt";
     default:
-      return status;
+      return "In Bearbeitung";
   }
 }

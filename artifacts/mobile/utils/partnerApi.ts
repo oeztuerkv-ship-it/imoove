@@ -208,6 +208,22 @@ export async function partnerCancelRide(
   return { ok: true, data: r.data.ride };
 }
 
+export async function partnerRetrySearch(
+  token: string,
+  rideId: string,
+): Promise<PartnerApiResult<PartnerRideRow>> {
+  const r = await partnerAuthedJson<{ ok?: boolean; ride?: PartnerRideRow }>(
+    token,
+    `/panel/v1/rides/${encodeURIComponent(rideId)}/retry-search`,
+    { method: "POST" },
+  );
+  if (!r.ok) return r;
+  if (!r.data.ok || !r.data.ride) {
+    return { ok: false, unauthorized: false, forbidden: false, message: "Erneute Suche fehlgeschlagen." };
+  }
+  return { ok: true, data: r.data.ride };
+}
+
 export async function partnerFetchTracking(
   token: string,
   rideId: string,

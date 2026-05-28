@@ -6,11 +6,13 @@ import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import type { PartnerRideRow } from "@/utils/partnerApi";
 import {
   isPartnerRideCancellable,
+  isPartnerSearchTimeout,
+  partnerRideShortId,
+  partnerRideStatusHumanLabel,
   partnerRideDriverNote,
   partnerRideRouteLabel,
   partnerRideTimeLabel,
 } from "@/utils/partnerRides";
-import { partnerRideStatusLabel } from "@/utils/partnerRideTracking";
 
 const PARTNER_GREEN = "#15803D";
 
@@ -18,19 +20,23 @@ type Props = {
   ride: PartnerRideRow;
   onDetails: (rideId: string) => void;
   onCancel: (ride: PartnerRideRow) => void;
+  onRetrySearch: (ride: PartnerRideRow) => void;
+  acceptedInfo?: { driverName?: string | null; plate?: string | null; etaLabel?: string };
 };
 
-export function PartnerRideCard({ ride, onDetails, onCancel }: Props) {
-  const shortId = ride.id.length > 8 ? ride.id.slice(0, 8).toUpperCase() : ride.id;
+export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, acceptedInfo }: Props) {
+  const shortId = partnerRideShortId(ride.id);
   const cancellable = isPartnerRideCancellable(ride.status);
   const note = partnerRideDriverNote(ride);
+  const timedOut = isPartnerSearchTimeout(ride);
+  const showAcceptedInfo = ride.status === "accepted";
 
   return (
     <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
       <View style={styles.topRow}>
         <Text style={styles.rideId}>Fahrt #{shortId}</Text>
         <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{partnerRideStatusLabel(ride.status)}</Text>
+          <Text style={styles.statusText}>{partnerRideStatusHumanLabel(ride)}</Text>
         </View>
       </View>
       <Text style={styles.route} numberOfLines={2}>
@@ -42,7 +48,19 @@ export function PartnerRideCard({ ride, onDetails, onCancel }: Props) {
           Notiz: {note}
         </Text>
       ) : null}
+      {showAcceptedInfo ? (
+        <View style={styles.acceptedInfoBox}>
+          <Text style={styles.acceptedInfoLine}>Fahrer: {acceptedInfo?.driverName?.trim() || "wird zugewiesen"}</Text>
+          <Text style={styles.acceptedInfoLine}>Kennzeichen: {acceptedInfo?.plate?.trim() || "folgt"}</Text>
+          <Text style={styles.acceptedInfoLine}>ETA: {acceptedInfo?.etaLabel || "wird berechnet"}</Text>
+        </View>
+      ) : null}
       <View style={styles.actions}>
+        {timedOut ? (
+          <Pressable style={styles.secondaryBtn} onPress={() => onRetrySearch(ride)}>
+            <Text style={styles.secondaryBtnText}>Erneut suchen</Text>
+          </Pressable>
+        ) : null}
         {cancellable ? (
           <Pressable style={styles.secondaryBtn} onPress={() => onCancel(ride)}>
             <Text style={styles.secondaryBtnText}>Stornieren</Text>
@@ -82,6 +100,15 @@ const styles = StyleSheet.create({
   route: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#374151", lineHeight: 21 },
   time: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 6, marginBottom: 4 },
   note: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 10, fontStyle: "italic" },
+  acceptedInfoBox: {
+    borderWidth: 1,
+    borderColor: HOME_SHEET_RIM,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    gap: 4,
+  },
+  acceptedInfoLine: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151" },
   actions: { flexDirection: "row", gap: 8, justifyContent: "flex-end" },
   secondaryBtn: {
     paddingVertical: 10,

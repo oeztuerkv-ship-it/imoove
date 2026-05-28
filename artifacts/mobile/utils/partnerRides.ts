@@ -89,6 +89,70 @@ export function isPartnerRideCancellable(status: string): boolean {
   );
 }
 
+const SEARCH_TIMEOUT_MS = 60_000;
+const LIVE_CANCEL_NO_REASON_STATUSES = new Set(["accepted", "driver_arriving", "driver_waiting", "passenger_onboard", "in_progress"]);
+
+export function partnerRideShortId(id: string): string {
+  const clean = id.trim();
+  if (!clean) return "—";
+  if (clean.startsWith("REQ-")) {
+    const tail = clean.slice(4).replace(/-/g, "");
+    return `REQ-${tail.slice(0, 6).toUpperCase()}`;
+  }
+  return clean.slice(0, 8).toUpperCase();
+}
+
+export function isPartnerSearchTimeout(ride: PartnerRideRow, nowMs: number = Date.now()): boolean {
+  if (!["pending", "requested", "searching_driver", "offered", "ready_for_dispatch"].includes(ride.status)) {
+    return false;
+  }
+  const createdMs = Date.parse(ride.createdAt ?? "");
+  if (!Number.isFinite(createdMs)) return false;
+  return nowMs - createdMs >= SEARCH_TIMEOUT_MS;
+}
+
+export function partnerRideNeedsCancelReason(status: string): boolean {
+  return !LIVE_CANCEL_NO_REASON_STATUSES.has(status);
+}
+
+export function partnerRideStatusHumanLabel(ride: PartnerRideRow): string {
+  if (isPartnerSearchTimeout(ride)) return "Momentan kein Fahrer verfügbar";
+  switch (ride.status) {
+    case "pending":
+    case "requested":
+    case "searching_driver":
+    case "offered":
+    case "ready_for_dispatch":
+      return "Fahrer wird gesucht";
+    case "accepted":
+      return "Fahrer wurde zugewiesen";
+    case "driver_arriving":
+      return "Fahrer ist unterwegs";
+    case "driver_waiting":
+      return "Fahrer wartet an der Abholung";
+    case "passenger_onboard":
+    case "in_progress":
+      return "Fahrt läuft";
+    case "scheduled":
+      return "Reserviert";
+    case "scheduled_assigned":
+      return "Reservierung mit Fahrer";
+    case "completed":
+      return "Abgeschlossen";
+    case "cancelled":
+    case "cancelled_by_customer":
+    case "cancelled_by_driver":
+    case "cancelled_by_system":
+      return "Storniert";
+    case "expired":
+      return "Nicht vermittelt";
+    case "rejected":
+      return "Abgelehnt";
+    default:
+      return "In Bearbeitung";
+  }
+}
+
 export type PartnerHomeStats = {
   activeCount: number;
   plannedCount: number;

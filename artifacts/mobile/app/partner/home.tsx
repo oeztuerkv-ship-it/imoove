@@ -26,10 +26,19 @@ import {
   resolvePartnerPickupFromGps,
   type PartnerPickupPlace,
 } from "@/utils/partnerInstantBooking";
-import { partnerCancelRide, partnerFetchRides, type PartnerRideRow } from "@/utils/partnerApi";
+import {
+  partnerCancelRide,
+  partnerFetchRides,
+  partnerFetchTracking,
+  partnerRetrySearch,
+  type PartnerRideRow,
+} from "@/utils/partnerApi";
 import {
   computePartnerHomeStats,
   isPartnerRideActive,
+  isPartnerRideOpen,
+  isPartnerSearchTimeout,
+  partnerRideNeedsCancelReason,
   isPartnerRideReservation,
   PARTNER_MAX_OPEN_RIDES,
   sortPartnerRidesNewestFirst,
@@ -58,6 +67,9 @@ export default function PartnerHomeScreen() {
   const [cancelRide, setCancelRide] = useState<PartnerRideRow | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [trackingInfoByRideId, setTrackingInfoByRideId] = useState<
+    Record<string, { driverName?: string | null; plate?: string | null; etaLabel?: string }>
+  >({});
   const logoutInFlightRef = useRef(false);
 
   const refreshPickup = useCallback(async () => {
@@ -66,6 +78,49 @@ export default function PartnerHomeScreen() {
     setPickup(result.ok ? result.place : null);
     setLoadingLocation(false);
   }, []);
+
+  const refreshAcceptedTrackingInfo = useCallback(
+    async (ridesInput: PartnerRideRow[]) => {
+      if (!token) return;
+      const accepted = ridesInput.filter((r) => r.status === "accepted" && isPartnerRideOpen(r.status));
+      if (accepted.length === 0) {
+        setTrackingInfoByRideId({});
+        return;
+      }
+      const rows = await Promise.all(
+        accepted.map(async (ride) => {
+          const t = await partnerFetchTracking(token, ride.id);
+          if (!t.ok) return [ride.id, null] as const;
+          const driver = t.data.driver;
+          let etaLabel = "wird berechnet";
+          if (
+            driver?.location
+            && t.data.ride.fromLat != null
+            && t.data.ride.fromLon != null
+            && Number.isFinite(driver.location.lat)
+            && Number.isFinite(driver.location.lon)
+          ) {
+            const km = approxDistanceKm(driver.location.lat, driver.location.lon, t.data.ride.fromLat, t.data.ride.fromLon);
+            etaLabel = `ca. ${Math.max(1, Math.round((km / 30) * 60))} Min`;
+          }
+          return [
+            ride.id,
+            {
+              driverName: driver?.name ?? null,
+              plate: driver?.plate ?? null,
+              etaLabel,
+            },
+          ] as const;
+        }),
+      );
+      const next: Record<string, { driverName?: string | null; plate?: string | null; etaLabel?: string }> = {};
+      for (const [rideId, info] of rows) {
+        if (info) next[rideId] = info;
+      }
+      setTrackingInfoByRideId(next);
+    },
+    [token],
+  );
 
   const loadRides = useCallback(async () => {
     if (!token) return;
@@ -80,7 +135,8 @@ export default function PartnerHomeScreen() {
       return;
     }
     setRides(r.data);
-  }, [token, handleUnauthorized]);
+    void refreshAcceptedTrackingInfo(r.data);
+  }, [token, handleUnauthorized, refreshAcceptedTrackingInfo]);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,6 +168,7 @@ export default function PartnerHomeScreen() {
   );
 
   const atOpenLimit = stats.openCount >= PARTNER_MAX_OPEN_RIDES;
+  const hasTimeoutRide = useMemo(() => rides.some((r) => isPartnerSearchTimeout(r)), [rides]);
 
   const handleLogout = async () => {
     if (logoutInFlightRef.current) return;
@@ -165,6 +222,21 @@ export default function PartnerHomeScreen() {
     }
     setCancelRide(null);
     setCancelReason("");
+    await loadRides();
+  };
+
+  const submitRetrySearch = async (ride: PartnerRideRow) => {
+    if (!token) return;
+    const res = await partnerRetrySearch(token, ride.id);
+    if (!res.ok) {
+      if (res.unauthorized) {
+        await handleUnauthorized();
+        router.replace("/partner/login");
+        return;
+      }
+      Alert.alert("Erneut suchen fehlgeschlagen", res.message);
+      return;
+    }
     await loadRides();
   };
 
@@ -236,6 +308,9 @@ export default function PartnerHomeScreen() {
         {atOpenLimit ? (
           <Text style={styles.limitBanner}>Maximal 5 offene Fahrten gleichzeitig erreicht.</Text>
         ) : null}
+        {hasTimeoutRide ? (
+          <Text style={styles.limitBanner}>Momentan kein Fahrer verfügbar</Text>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Meine Fahrten</Text>
         {loadingRides ? (
@@ -250,8 +325,10 @@ export default function PartnerHomeScreen() {
                 <PartnerRideCard
                   key={ride.id}
                   ride={ride}
+                  acceptedInfo={trackingInfoByRideId[ride.id]}
                   onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
                   onCancel={setCancelRide}
+                  onRetrySearch={(r) => void submitRetrySearch(r)}
                 />
               ))
             )}
@@ -264,8 +341,10 @@ export default function PartnerHomeScreen() {
                 <PartnerRideCard
                   key={ride.id}
                   ride={ride}
+                  acceptedInfo={trackingInfoByRideId[ride.id]}
                   onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
                   onCancel={setCancelRide}
+                  onRetrySearch={(r) => void submitRetrySearch(r)}
                 />
               ))
             )}
@@ -303,15 +382,19 @@ export default function PartnerHomeScreen() {
         <View style={styles.cancelBackdrop}>
           <View style={[styles.cancelCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
             <Text style={styles.cancelTitle}>Fahrt wirklich stornieren?</Text>
-            <Text style={styles.cancelSub}>Grund (optional)</Text>
-            <TextInput
-              style={[styles.cancelInput, { borderColor: HOME_SHEET_RIM }]}
-              value={cancelReason}
-              onChangeText={(t) => setCancelReason(t.slice(0, 200))}
-              placeholder="z. B. Gast abgereist"
-              placeholderTextColor="#9CA3AF"
-              multiline
-            />
+            {cancelRide && partnerRideNeedsCancelReason(cancelRide.status) ? (
+              <>
+                <Text style={styles.cancelSub}>Grund (optional)</Text>
+                <TextInput
+                  style={[styles.cancelInput, { borderColor: HOME_SHEET_RIM }]}
+                  value={cancelReason}
+                  onChangeText={(t) => setCancelReason(t.slice(0, 200))}
+                  placeholder="z. B. Gast abgereist"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                />
+              </>
+            ) : null}
             <View style={styles.cancelActions}>
               <Pressable style={styles.cancelBackBtn} onPress={() => setCancelRide(null)} disabled={cancelling}>
                 <Text style={styles.cancelBackText}>Zurück</Text>
@@ -438,3 +521,15 @@ const styles = StyleSheet.create({
   },
   cancelConfirmText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
 });
+
+function approxDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2)
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
