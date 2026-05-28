@@ -1118,6 +1118,7 @@ router.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res
       ride: {
         id: ride.id,
         status: ride.status,
+        createdAt: ride.createdAt,
         pickupLabel: String(ride.fromFull || ride.from || "").trim(),
         fromLat: ride.fromLat ?? null,
         fromLon: ride.fromLon ?? null,
