@@ -113,7 +113,59 @@ const PANEL_OPEN_RIDE_TERMINAL_STATUSES: ReadonlySet<RideRequest["status"]> = ne
 ]);
 
 function countPanelOpenRides(rides: RideRequest[]): number {
-  return rides.filter((r) => !PANEL_OPEN_RIDE_TERMINAL_STATUSES.has(r.status)).length;
+  return listPanelOpenRidesForLimit(rides).length;
+}
+
+function ridePartnerMetaRecord(ride: RideRequest): Record<string, unknown> {
+  const meta = ride.partnerBookingMeta;
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    return { ...(meta as Record<string, unknown>) };
+  }
+  return {};
+}
+
+function isPartnerRideHidden(meta: Record<string, unknown>): boolean {
+  return meta.partner_hidden === true || meta.partner_archived === true;
+}
+
+function rideSearchAnchorMs(ride: RideRequest, meta: Record<string, unknown>): number | null {
+  const fromMeta = typeof meta.search_started_at === "string" ? meta.search_started_at : "";
+  const raw = fromMeta || String(ride.createdAt ?? "");
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function isSearchTimeoutForLimit(ride: RideRequest, meta: Record<string, unknown>, nowMs: number = Date.now()): boolean {
+  if (!["pending", "requested", "searching_driver", "offered", "ready_for_dispatch"].includes(ride.status)) return false;
+  const anchor = rideSearchAnchorMs(ride, meta);
+  if (anchor == null) return false;
+  return nowMs - anchor >= PARTNER_RETRY_SEARCH_TIMEOUT_MS;
+}
+
+function isPanelRideOpenForLimit(ride: RideRequest): boolean {
+  if (PANEL_OPEN_RIDE_TERMINAL_STATUSES.has(ride.status)) return false;
+  if (ride.status === ("cancelled_by_partner" as RideRequest["status"])) return false;
+  const meta = ridePartnerMetaRecord(ride);
+  if (isPartnerRideHidden(meta)) return false;
+  if (isSearchTimeoutForLimit(ride, meta)) return false;
+  return true;
+}
+
+function listPanelOpenRidesForLimit(rides: RideRequest[]): RideRequest[] {
+  return rides.filter(isPanelRideOpenForLimit);
+}
+
+function rideLimitDebugRow(ride: RideRequest): Record<string, unknown> {
+  return {
+    rideId: ride.id,
+    status: ride.status,
+    created_at: ride.createdAt,
+    partner_booking_meta: ridePartnerMetaRecord(ride),
+  };
+}
+
+function visiblePartnerRideList(rides: RideRequest[]): RideRequest[] {
+  return rides.filter((ride) => !isPartnerRideHidden(ridePartnerMetaRecord(ride)));
 }
 
 function partnerCancelTargetStatus(cur: RideRequest["status"]): RideRequest["status"] | null {
@@ -1142,7 +1194,7 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
-    const rides = await listRidesForCompany(ctx.claims.companyId);
+    const rides = visiblePartnerRideList(await listRidesForCompany(ctx.claims.companyId));
     const ids = rides.map((r) => r.createdByPanelUserId).filter((x): x is string => Boolean(x));
     const names = await getPanelUsernamesInCompany(ctx.claims.companyId, ids);
     const ridesOut = rides.map((r) => ({
@@ -1292,6 +1344,59 @@ router.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req
       subjectType: "ride",
       subjectId: rideId,
       meta: { fromStatus: ride.status, toStatus: nextStatus },
+    });
+    const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
+    res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/rides/:rideId/hide", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+
+    const prevMeta = ridePartnerMetaRecord(ride);
+    const hiddenAt = new Date().toISOString();
+    const nextMeta: Record<string, unknown> = {
+      ...prevMeta,
+      partner_hidden: true,
+      partner_hidden_at: hiddenAt,
+    };
+    const updated = await updateRide(rideId, {
+      partnerBookingMeta: nextMeta as RideRequest["partnerBookingMeta"],
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.hidden_from_partner_list",
+      subjectType: "ride",
+      subjectId: rideId,
+      meta: { hiddenAt },
     });
     const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
     res.json({ ok: true, ride: rideOut });
@@ -1528,12 +1633,14 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
 
       const companyRides = await listRidesForCompany(ctx.claims.companyId);
-      const openCount = countPanelOpenRides(companyRides);
+      const openRides = listPanelOpenRidesForLimit(companyRides);
+      const openCount = openRides.length;
       if (openCount >= PARTNER_OPEN_RIDE_LIMIT) {
         res.status(409).json({
           error: "open_rides_limit_reached",
           openCount,
           maxOpen: PARTNER_OPEN_RIDE_LIMIT,
+          blockingRides: openRides.slice(0, PARTNER_OPEN_RIDE_LIMIT).map(rideLimitDebugRow),
         });
         return;
       }
