@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import type { PartnerRideRow } from "@/utils/partnerApi";
@@ -9,6 +9,8 @@ import {
   isPartnerSearchTimeout,
   partnerRideShortId,
   partnerRideStatusHumanLabel,
+  partnerRideStatusVisual,
+  partnerSearchDurationLabel,
   partnerRideDriverNote,
   partnerRideRouteLabel,
   partnerRideTimeLabel,
@@ -30,15 +32,21 @@ export function PartnerRideCard({ ride, onDetails, onCancel, onRetrySearch, acce
   const note = partnerRideDriverNote(ride);
   const timedOut = isPartnerSearchTimeout(ride);
   const showAcceptedInfo = ride.status === "accepted";
+  const statusVisual = partnerRideStatusVisual(ride);
+  const searchDuration = statusVisual.loading ? partnerSearchDurationLabel(ride) : null;
 
   return (
     <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
       <View style={styles.topRow}>
         <Text style={styles.rideId}>Fahrt #{shortId}</Text>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{partnerRideStatusHumanLabel(ride)}</Text>
+        <View style={[styles.statusPill, { backgroundColor: statusVisual.bg }]}>
+          {statusVisual.loading ? <ActivityIndicator size="small" color={statusVisual.accent} /> : null}
+          <Text style={[styles.statusText, { color: statusVisual.text }]}>{partnerRideStatusHumanLabel(ride)}</Text>
         </View>
       </View>
+      {searchDuration ? (
+        <Text style={styles.searchDuration}>Suche seit {searchDuration}</Text>
+      ) : null}
       <Text style={styles.route} numberOfLines={2}>
         {partnerRideRouteLabel(ride)}
       </Text>
@@ -91,12 +99,15 @@ const styles = StyleSheet.create({
   },
   rideId: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#111" },
   statusPill: {
-    backgroundColor: "rgba(21,128,61,0.12)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: PARTNER_GREEN },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  searchDuration: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#B45309", marginBottom: 6 },
   route: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#374151", lineHeight: 21 },
   time: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 6, marginBottom: 4 },
   note: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 10, fontStyle: "italic" },

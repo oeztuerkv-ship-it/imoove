@@ -24,6 +24,11 @@ import {
   isPartnerTrackingTerminal,
   partnerRideStatusLabel,
 } from "@/utils/partnerRideTracking";
+import {
+  isPartnerSearchTimeout,
+  partnerRideStatusVisual,
+  partnerSearchDurationLabel,
+} from "@/utils/partnerRides";
 
 const PARTNER_GREEN = "#15803D";
 const POLL_MS = 4000;
@@ -149,6 +154,10 @@ export default function PartnerTrackScreen() {
           displayName: ride.pickupLabel?.trim() || "Abholung",
         }
       : null;
+  const statusRide = ride ? { status: ride.status, createdAt: ride.createdAt } : null;
+  const statusVisual = statusRide ? partnerRideStatusVisual(statusRide) : null;
+  const searchDuration = statusRide && statusVisual?.loading ? partnerSearchDurationLabel(statusRide) : null;
+  const showTimeout = statusRide ? isPartnerSearchTimeout(statusRide) : false;
 
   return (
     <View style={[styles.root, { backgroundColor: HOME_SHEET_BG }]}>
@@ -181,7 +190,13 @@ export default function PartnerTrackScreen() {
           <ActivityIndicator color={PARTNER_GREEN} />
         ) : (
           <>
-            <Text style={styles.statusLine}>{ride ? partnerRideStatusLabel(ride.status) : "—"}</Text>
+            <View style={[styles.statusPill, { backgroundColor: statusVisual?.bg ?? "rgba(107,114,128,0.12)" }]}>
+              {statusVisual?.loading ? <ActivityIndicator size="small" color={statusVisual.accent} /> : null}
+              <Text style={[styles.statusLine, { color: statusVisual?.text ?? "#374151" }]}>
+                {showTimeout ? "Momentan kein Fahrer verfügbar" : ride ? partnerRideStatusLabel(ride.status) : "—"}
+              </Text>
+            </View>
+            {searchDuration ? <Text style={styles.searchDuration}>Suche seit {searchDuration}</Text> : null}
             <View style={styles.driverRow}>
               <Feather name="user" size={18} color="#6B7280" />
               <Text style={styles.driverText}>
@@ -231,9 +246,16 @@ const styles = StyleSheet.create({
   statusLine: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
-    color: PARTNER_GREEN,
-    marginBottom: 4,
   },
+  statusPill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  searchDuration: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#B45309", marginTop: -2 },
   driverRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   driverText: { fontSize: 16, fontFamily: "Inter_500Medium", color: "#111", flex: 1 },
 });

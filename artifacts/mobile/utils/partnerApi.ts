@@ -28,6 +28,7 @@ export type PartnerTrackingSnapshot = {
   ride: {
     id: string;
     status: string;
+    createdAt?: string;
     pickupLabel: string;
     fromLat?: number | null;
     fromLon?: number | null;
@@ -244,6 +245,7 @@ export async function partnerFetchTracking(
       ride: {
         id: ride.id,
         status: ride.status,
+        createdAt: ride.createdAt,
         pickupLabel: String(ride.pickupLabel ?? "").trim(),
         fromLat: ride.fromLat ?? null,
         fromLon: ride.fromLon ?? null,

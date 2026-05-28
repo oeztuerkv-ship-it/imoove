@@ -92,6 +92,13 @@ export function isPartnerRideCancellable(status: string): boolean {
 const SEARCH_TIMEOUT_MS = 60_000;
 const LIVE_CANCEL_NO_REASON_STATUSES = new Set(["accepted", "driver_arriving", "driver_waiting", "passenger_onboard", "in_progress"]);
 
+export type PartnerStatusVisual = {
+  bg: string;
+  text: string;
+  accent: string;
+  loading: boolean;
+};
+
 export function partnerRideShortId(id: string): string {
   const clean = id.trim();
   if (!clean) return "—";
@@ -102,7 +109,10 @@ export function partnerRideShortId(id: string): string {
   return clean.slice(0, 8).toUpperCase();
 }
 
-export function isPartnerSearchTimeout(ride: PartnerRideRow, nowMs: number = Date.now()): boolean {
+export function isPartnerSearchTimeout(
+  ride: Pick<PartnerRideRow, "status" | "createdAt">,
+  nowMs: number = Date.now(),
+): boolean {
   if (!["pending", "requested", "searching_driver", "offered", "ready_for_dispatch"].includes(ride.status)) {
     return false;
   }
@@ -111,11 +121,20 @@ export function isPartnerSearchTimeout(ride: PartnerRideRow, nowMs: number = Dat
   return nowMs - createdMs >= SEARCH_TIMEOUT_MS;
 }
 
+export function partnerSearchDurationLabel(ride: Pick<PartnerRideRow, "createdAt">, nowMs: number = Date.now()): string | null {
+  const createdMs = Date.parse(ride.createdAt ?? "");
+  if (!Number.isFinite(createdMs)) return null;
+  const elapsed = Math.max(0, Math.floor((nowMs - createdMs) / 1000));
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const ss = String(elapsed % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
 export function partnerRideNeedsCancelReason(status: string): boolean {
   return !LIVE_CANCEL_NO_REASON_STATUSES.has(status);
 }
 
-export function partnerRideStatusHumanLabel(ride: PartnerRideRow): string {
+export function partnerRideStatusHumanLabel(ride: Pick<PartnerRideRow, "status" | "createdAt">): string {
   if (isPartnerSearchTimeout(ride)) return "Momentan kein Fahrer verfügbar";
   switch (ride.status) {
     case "pending":
@@ -150,6 +169,26 @@ export function partnerRideStatusHumanLabel(ride: PartnerRideRow): string {
       return "Abgelehnt";
     default:
       return "In Bearbeitung";
+  }
+}
+
+export function partnerRideStatusVisual(ride: Pick<PartnerRideRow, "status" | "createdAt">): PartnerStatusVisual {
+  if (isPartnerSearchTimeout(ride)) {
+    return { bg: "rgba(245, 158, 11, 0.18)", text: "#B45309", accent: "#D97706", loading: false };
+  }
+  switch (ride.status) {
+    case "pending":
+    case "requested":
+    case "searching_driver":
+    case "offered":
+    case "ready_for_dispatch":
+      return { bg: "rgba(245, 158, 11, 0.16)", text: "#B45309", accent: "#D97706", loading: true };
+    case "accepted":
+      return { bg: "rgba(34, 197, 94, 0.16)", text: "#166534", accent: "#16A34A", loading: false };
+    case "driver_waiting":
+      return { bg: "rgba(99, 102, 241, 0.16)", text: "#3730A3", accent: "#6366F1", loading: false };
+    default:
+      return { bg: "rgba(107, 114, 128, 0.12)", text: "#374151", accent: "#6B7280", loading: false };
   }
 }
 
