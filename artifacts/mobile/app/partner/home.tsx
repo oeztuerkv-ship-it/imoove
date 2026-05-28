@@ -169,6 +169,10 @@ export default function PartnerHomeScreen() {
     () => visibleRides.filter(isPartnerRideActive).sort(sortPartnerRidesNewestFirst),
     [visibleRides],
   );
+  const timeoutRides = useMemo(
+    () => visibleRides.filter((r) => isPartnerSearchTimeout(r)).sort(sortPartnerRidesNewestFirst),
+    [visibleRides],
+  );
   const reservationRides = useMemo(
     () => visibleRides.filter(isPartnerRideReservation).sort(sortPartnerRidesNewestFirst),
     [visibleRides],
@@ -256,7 +260,7 @@ export default function PartnerHomeScreen() {
         router.replace("/partner/login");
         return;
       }
-      Alert.alert("Aktion fehlgeschlagen", "Fahrt konnte nicht aus der Liste entfernt werden.");
+      Alert.alert("Aktion fehlgeschlagen", r.message || "Fahrt konnte nicht aus der Liste entfernt werden.");
       return;
     }
     await loadRides();
@@ -299,7 +303,7 @@ export default function PartnerHomeScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.pickupCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
@@ -361,6 +365,23 @@ export default function PartnerHomeScreen() {
               <Text style={styles.emptyHint}>Keine Reservierungen.</Text>
             ) : (
               reservationRides.map((ride) => (
+                <PartnerRideCard
+                  key={ride.id}
+                  ride={ride}
+                  acceptedInfo={trackingInfoByRideId[ride.id]}
+                  onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
+                  onCancel={setCancelRide}
+                  onRetrySearch={(r) => void submitRetrySearch(r)}
+                  onRemoveFromList={(r) => void removeRideFromList(r)}
+                />
+              ))
+            )}
+
+            <Text style={[styles.subsectionTitle, { marginTop: 16 }]}>Nicht vermittelt</Text>
+            {timeoutRides.length === 0 ? (
+              <Text style={styles.emptyHint}>Keine Timeout-Fahrten.</Text>
+            ) : (
+              timeoutRides.map((ride) => (
                 <PartnerRideCard
                   key={ride.id}
                   ride={ride}
@@ -450,13 +471,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 20,
   },
-  logo: { width: 88, height: 36 },
+  logo: { width: 120, height: 48 },
   companyName: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: "Inter_600SemiBold",
     color: "#111",
     textAlign: "right",
+    lineHeight: 24,
+    alignSelf: "center",
+    transform: [{ translateY: 6 }],
   },
   logoutBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   pickupCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
