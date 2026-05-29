@@ -2,6 +2,27 @@ import type { PartnerRideRow } from "@/utils/partnerApi";
 
 export const PARTNER_MAX_OPEN_RIDES = 5;
 
+/** Partner-Liste: ausgeblendete/archivierte Fahrten nicht anzeigen (API filtert parallel). */
+export function isPartnerRideHiddenFromList(
+  ride: Pick<PartnerRideRow, "partnerBookingMeta">,
+): boolean {
+  const meta = ride.partnerBookingMeta;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return false;
+  const m = meta as Record<string, unknown>;
+  const hidden = m.partner_hidden;
+  const archived = m.partner_archived;
+  return (
+    hidden === true
+    || hidden === "true"
+    || archived === true
+    || archived === "true"
+  );
+}
+
+export function filterPartnerVisibleRides(rides: PartnerRideRow[]): PartnerRideRow[] {
+  return rides.filter((r) => !isPartnerRideHiddenFromList(r));
+}
+
 const TERMINAL_STATUSES = new Set([
   "completed",
   "cancelled",

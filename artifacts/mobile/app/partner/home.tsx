@@ -36,6 +36,7 @@ import {
 } from "@/utils/partnerApi";
 import {
   computePartnerHomeStats,
+  filterPartnerVisibleRides,
   isPartnerRideActive,
   isPartnerRideOpen,
   isPartnerSearchTimeout,
@@ -72,6 +73,12 @@ export default function PartnerHomeScreen() {
     Record<string, { driverName?: string | null; plate?: string | null; etaLabel?: string }>
   >({});
   const logoutInFlightRef = useRef(false);
+  const dismissedRideIdsRef = useRef(new Set<string>());
+  const loadRidesSeqRef = useRef(0);
+
+  const toUiRideList = useCallback((list: PartnerRideRow[]) => {
+    return filterPartnerVisibleRides(list).filter((r) => !dismissedRideIdsRef.current.has(r.id));
+  }, []);
 
   const refreshPickup = useCallback(async () => {
     setLoadingLocation(true);
@@ -125,8 +132,14 @@ export default function PartnerHomeScreen() {
 
   const loadRides = useCallback(async () => {
     if (!token) return;
+    const seq = ++loadRidesSeqRef.current;
     setLoadingRides(true);
     const r = await partnerFetchRides(token);
+    if (seq !== loadRidesSeqRef.current) {
+      console.log("[PartnerHome] loadRides stale skip", { seq, current: loadRidesSeqRef.current });
+      setLoadingRides(false);
+      return;
+    }
     setLoadingRides(false);
     if (!r.ok) {
       if (r.unauthorized) {
@@ -135,9 +148,11 @@ export default function PartnerHomeScreen() {
       }
       return;
     }
-    setRides(r.data);
-    void refreshAcceptedTrackingInfo(r.data);
-  }, [token, handleUnauthorized, refreshAcceptedTrackingInfo]);
+    const visible = toUiRideList(r.data);
+    console.log("[PartnerHome] loadRides count raw/visible", r.data.length, visible.length);
+    setRides(visible);
+    void refreshAcceptedTrackingInfo(visible);
+  }, [token, handleUnauthorized, refreshAcceptedTrackingInfo, toUiRideList]);
 
   useFocusEffect(
     useCallback(() => {
@@ -157,7 +172,7 @@ export default function PartnerHomeScreen() {
     }, [refreshPickup]),
   );
 
-  const visibleRides = useMemo(() => rides, [rides]);
+  const visibleRides = useMemo(() => toUiRideList(rides), [rides, toUiRideList]);
 
   const stats = useMemo(() => {
     const base = computePartnerHomeStats(visibleRides);
@@ -267,6 +282,15 @@ export default function PartnerHomeScreen() {
       Alert.alert("Aktion fehlgeschlagen", r.message || "Fahrt konnte nicht aus der Liste entfernt werden.");
       return;
     }
+    dismissedRideIdsRef.current.add(ride.id);
+    loadRidesSeqRef.current += 1;
+    setRides((prev) => {
+      const before = prev.length;
+      const next = prev.filter((r) => r.id !== ride.id);
+      console.log("[PartnerHome] hide local remove", ride.id);
+      console.log("[PartnerHome] rides before/after count", before, next.length);
+      return next;
+    });
     await loadRides();
   };
 

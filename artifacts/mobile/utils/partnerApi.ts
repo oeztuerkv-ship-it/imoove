@@ -1,5 +1,6 @@
 import { getApiBaseUrl, fetchErrorMessage } from "@/utils/apiBase";
 import type { PartnerMeUser } from "@/utils/partnerMobileAccess";
+import { filterPartnerVisibleRides } from "@/utils/partnerRides";
 
 export type PartnerLoginResult =
   | { ok: true; token: string; passwordChangeRequired: boolean }
@@ -185,7 +186,10 @@ export async function partnerFetchRides(
   if (!r.data.ok || !Array.isArray(r.data.rides)) {
     return { ok: false, unauthorized: false, forbidden: false, message: "Fahrten konnten nicht geladen werden." };
   }
-  return { ok: true, data: r.data.rides };
+  const raw = r.data.rides;
+  const visible = filterPartnerVisibleRides(raw);
+  console.log("[partnerApi] fetchRides filter", { raw: raw.length, visible: visible.length });
+  return { ok: true, data: visible };
 }
 
 export async function partnerCancelRide(
