@@ -39,6 +39,11 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
 import {
+  ensureDriverBackgroundLocationPermissions,
+  startDriverBackgroundLocation,
+  stopDriverBackgroundLocation,
+} from "@/utils/driverBackgroundLocation";
+import {
   buildDriverNavigationHref,
   replaceDriverStackExclusive,
 } from "@/utils/driverNavigationRoute";
@@ -1824,6 +1829,11 @@ function ActiveRideScreen({
       formatDriverFareInputDe(defaultFinalFareForDriverCompletion(req.status, req.estimatedFare)),
     );
   }, [showPriceModal, req.status, req.estimatedFare]);
+
+  useEffect(() => {
+    void startDriverBackgroundLocation(req.id);
+  }, [req.id]);
+
   const isKK = isKrankenkasseRide(req.paymentMethod);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
@@ -2019,6 +2029,7 @@ function ActiveRideScreen({
     try {
       setShowPriceModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await stopDriverBackgroundLocation();
       await onComplete(fare);
     } finally {
       setCompletingRide(false);
@@ -2964,6 +2975,21 @@ export default function DriverDashboard() {
     return true;
   });
   const cancelNoticeShownRef = useRef<Set<string>>(new Set());
+  const bgLocationPromptedRef = useRef(false);
+
+  useEffect(() => {
+    if (!driver?.authToken || bgLocationPromptedRef.current) return;
+    bgLocationPromptedRef.current = true;
+    void ensureDriverBackgroundLocationPermissions({ interactive: true });
+  }, [driver?.authToken]);
+
+  useEffect(() => {
+    if (!activeDriverRequest?.id) {
+      void stopDriverBackgroundLocation();
+      return;
+    }
+    void startDriverBackgroundLocation(activeDriverRequest.id);
+  }, [activeDriverRequest?.id]);
 
   useEffect(() => {
     if (!activeDriverRequest) return;
@@ -2981,6 +3007,7 @@ export default function DriverDashboard() {
     if (!myCancelled) return;
     if (cancelNoticeShownRef.current.has(myCancelled.id)) return;
     cancelNoticeShownRef.current.add(myCancelled.id);
+    void stopDriverBackgroundLocation();
     Alert.alert(
       "Kunde hat storniert",
       myCancelled.cancelReason
@@ -3123,6 +3150,7 @@ export default function DriverDashboard() {
     try {
       await completeRequest(id, finalFare);
     } finally {
+      await stopDriverBackgroundLocation();
       disconnectSocket();
       await refreshRequests();
       setActiveTab("fahrten");
@@ -3138,6 +3166,7 @@ export default function DriverDashboard() {
     setBannerRide(null);
     try {
       await driverCancelRequest(id, driverId);
+      await stopDriverBackgroundLocation();
       if (req?.scheduledAt) {
         const pickupMs = new Date(req.scheduledAt).getTime();
         const diffMin = (pickupMs - Date.now()) / 60000;
@@ -3183,6 +3212,7 @@ export default function DriverDashboard() {
               stopRideSound().catch(() => {});
               setBannerRide(null);
               await driverCancelRequest(req.id, driverId);
+              await stopDriverBackgroundLocation();
               if (nearPickup) {
                 await blockDriver48h();
               }

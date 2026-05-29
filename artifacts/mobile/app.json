@@ -3,7 +3,7 @@
     "name": "ONRODA",
     "owner": "oeztuerkv-ship-it",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "onroda",
@@ -17,8 +17,11 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
+      "buildNumber": "2",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
+        "NSLocationWhenInUseUsageDescription": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -75,7 +78,16 @@
           "recordAudioAndroid": false
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",
+          "locationWhenInUsePermission": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

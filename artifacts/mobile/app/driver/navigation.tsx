@@ -44,6 +44,10 @@ import {
   sendDriverLocation as socketSendDriver,
   sendRideChat,
 } from "@/utils/socket";
+import {
+  startDriverBackgroundLocation,
+  stopDriverBackgroundLocation,
+} from "@/utils/driverBackgroundLocation";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import {
   logDriverNavigationMapEvent,
@@ -558,6 +562,7 @@ export default function DriverNavigationScreen() {
         }
         if (payload.status !== "cancelled_by_customer") return;
         cancelHandledRef.current = true;
+        void stopDriverBackgroundLocation();
         Alert.alert(
           "Kunde hat storniert",
           payload.cancelReason ? `Grund: ${payload.cancelReason}` : "Die Fahrt wurde vom Kunden storniert.",
@@ -616,6 +621,12 @@ export default function DriverNavigationScreen() {
       });
   }, [params.rideId, rideFleetStatus, patchStatus]);
 
+  useEffect(() => {
+    const rideId = params.rideId?.trim() ?? "";
+    if (!rideId) return;
+    void startDriverBackgroundLocation(rideId);
+  }, [params.rideId]);
+
   const fareSettlementPreview = useMemo(() => {
     if (!driverMayBillPositiveFare(rideFleetStatus)) return null;
     const parsed = parseFloat(fareInput.replace(",", "."));
@@ -654,6 +665,7 @@ export default function DriverNavigationScreen() {
     setCompletingRide(true);
     try {
       await patchStatus("completed", fare);
+      await stopDriverBackgroundLocation();
       setShowFareModal(false);
       disconnectSocket();
       trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);

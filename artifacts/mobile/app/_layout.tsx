@@ -1,4 +1,5 @@
 import "react-native-gesture-handler";
+import "@/tasks/driverBackgroundLocation";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Inter_400Regular,

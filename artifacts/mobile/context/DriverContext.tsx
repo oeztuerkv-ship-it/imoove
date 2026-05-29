@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { stopDriverBackgroundLocation } from "@/utils/driverBackgroundLocation";
 import {
   syncDriverExpoPushTokenIfStale,
   syncDriverExpoPushTokenWithRetry,
@@ -448,6 +449,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    await stopDriverBackgroundLocation();
     try {
       if (driver?.authToken) {
         await fetch(`${API_BASE}/fleet-auth/logout`, {
