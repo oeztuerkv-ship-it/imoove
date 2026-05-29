@@ -10,8 +10,46 @@ export type HotelBilledTo = "guest" | "room_ledger" | "company";
 
 export type MedicalTripLeg = "outbound" | "return";
 
+/** In JSONB neben flow/hotel — Partner-Liste, Suche, Ausblenden (nicht für öffentlichen Pool). */
+export const PARTNER_OPERATIONAL_META_KEYS = [
+  "partner_hidden",
+  "partner_hidden_at",
+  "partner_archived",
+  "search_started_at",
+  "last_retry_at",
+] as const;
+
+export function mergePartnerOperationalMetaFields(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
+  const out = { ...target };
+  for (const key of PARTNER_OPERATIONAL_META_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      out[key] = source[key];
+    }
+  }
+  return out;
+}
+
+export function isPartnerRideHiddenInMeta(meta: Record<string, unknown>): boolean {
+  const hidden = meta.partner_hidden;
+  const archived = meta.partner_archived;
+  return (
+    hidden === true
+    || hidden === "true"
+    || archived === true
+    || archived === "true"
+  );
+}
+
 export interface PartnerBookingMeta {
   flow: PartnerBookingFlow;
+  partner_hidden?: boolean;
+  partner_hidden_at?: string | null;
+  partner_archived?: boolean;
+  search_started_at?: string | null;
+  last_retry_at?: string | null;
   hotel?: {
     roomNumber?: string | null;
     reservationRef?: string | null;
@@ -82,7 +120,7 @@ export function parsePartnerBookingMeta(raw: unknown): PartnerBookingMeta | null
       passengerRef: typeof ins.passengerRef === "string" ? ins.passengerRef : null,
     };
   }
-  return out;
+  return mergePartnerOperationalMetaFields(out as Record<string, unknown>, raw) as PartnerBookingMeta;
 }
 
 export function metaToJson(meta: PartnerBookingMeta | null | undefined): Record<string, unknown> {

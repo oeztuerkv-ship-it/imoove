@@ -79,6 +79,7 @@ import { initialPanelRideStatus, isFarFutureReservation, RESERVATION_LEAD_MS } f
 import { canTransitionRideStatus } from "../lib/rideStatusMachine";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
 import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBookingMeta";
+import { isPartnerRideHiddenInMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
 import { toPartnerRideView } from "../domain/ridePublic";
 import type { PanelModuleId } from "../domain/panelModules";
@@ -124,10 +125,6 @@ function ridePartnerMetaRecord(ride: RideRequest): Record<string, unknown> {
   return {};
 }
 
-function isPartnerRideHidden(meta: Record<string, unknown>): boolean {
-  return meta.partner_hidden === true || meta.partner_archived === true;
-}
-
 function rideSearchAnchorMs(ride: RideRequest, meta: Record<string, unknown>): number | null {
   const fromMeta = typeof meta.search_started_at === "string" ? meta.search_started_at : "";
   const raw = fromMeta || String(ride.createdAt ?? "");
@@ -146,7 +143,7 @@ function isPanelRideOpenForLimit(ride: RideRequest): boolean {
   if (PANEL_OPEN_RIDE_TERMINAL_STATUSES.has(ride.status)) return false;
   if (ride.status === ("cancelled_by_partner" as RideRequest["status"])) return false;
   const meta = ridePartnerMetaRecord(ride);
-  if (isPartnerRideHidden(meta)) return false;
+  if (isPartnerRideHiddenInMeta(meta)) return false;
   if (isSearchTimeoutForLimit(ride, meta)) return false;
   return true;
 }
@@ -165,7 +162,7 @@ function rideLimitDebugRow(ride: RideRequest): Record<string, unknown> {
 }
 
 function visiblePartnerRideList(rides: RideRequest[]): RideRequest[] {
-  return rides.filter((ride) => !isPartnerRideHidden(ridePartnerMetaRecord(ride)));
+  return rides.filter((ride) => !isPartnerRideHiddenInMeta(ridePartnerMetaRecord(ride)));
 }
 
 function partnerCancelTargetStatus(cur: RideRequest["status"]): RideRequest["status"] | null {
