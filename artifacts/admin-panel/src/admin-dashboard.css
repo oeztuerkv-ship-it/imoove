@@ -305,7 +305,8 @@
   border-bottom: 1px solid var(--onroda-border-subtle);
 }
 
-.admin-dashboard__recent--collapsible {
+.admin-dashboard__recent--collapsible,
+.admin-dashboard__agenda--collapsible {
   padding: 0;
   overflow: hidden;
 }
@@ -345,7 +346,8 @@
   border-radius: var(--onroda-radius-md);
 }
 
-.admin-dashboard__recent--collapsible .admin-dashboard__section-toggle[aria-expanded="true"] .admin-dashboard__section-head--toggle {
+.admin-dashboard__recent--collapsible .admin-dashboard__section-toggle[aria-expanded="true"] .admin-dashboard__section-head--toggle,
+.admin-dashboard__agenda--collapsible .admin-dashboard__section-toggle[aria-expanded="true"] .admin-dashboard__section-head--toggle {
   border-bottom-color: transparent;
   border-radius: 0;
 }

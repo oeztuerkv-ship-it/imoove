@@ -166,6 +166,7 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
   const [partnerDay, setPartnerDay] = useState([]);
   const [recentCompleted, setRecentCompleted] = useState([]);
   const [recentCompletedOpen, setRecentCompletedOpen] = useState(false);
+  const [agendaOpen, setAgendaOpen] = useState(false);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
 
@@ -548,44 +549,64 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
       {overviewError ? <div className="admin-error-banner">{overviewError}</div> : null}
 
       <div className="admin-dashboard__ops">
-        <section className="admin-dashboard__agenda" aria-labelledby="dash-agenda-title">
-          <div className="admin-dashboard__section-head">
-            <h3 id="dash-agenda-title" className="admin-dashboard__section-title">
-              Heutige Fahrten
-            </h3>
-            <p className="admin-dashboard__section-sub">Sortiert nach Fahrtzeit (geplant oder angelegt)</p>
-          </div>
-          <div className="admin-dashboard__table-wrap">
-            <div className="admin-dashboard__table admin-dashboard__table--agenda">
-              <div className="admin-dashboard__thead">
-                <div>Zeit</div>
-                <div>Partner</div>
-                <div>Strecke</div>
-                <div>Status</div>
+        <section className="admin-dashboard__agenda admin-dashboard__agenda--collapsible">
+          <button
+            type="button"
+            className="admin-dashboard__section-toggle"
+            aria-expanded={agendaOpen}
+            aria-controls="dash-agenda-body"
+            onClick={() => setAgendaOpen((v) => !v)}
+          >
+            <div className="admin-dashboard__section-head admin-dashboard__section-head--toggle">
+              <div>
+                <h3 id="dash-agenda-title" className="admin-dashboard__section-title">
+                  Heutige Fahrten
+                </h3>
+                <p className="admin-dashboard__section-sub">
+                  Sortiert nach Fahrtzeit (geplant oder angelegt)
+                  {agenda.length > 0 ? ` · ${agenda.length} Einträge` : ""}
+                </p>
               </div>
-              {agenda.length === 0 ? (
-                <div className="admin-dashboard__empty">Keine Fahrten für diesen Tag.</div>
-              ) : (
-                agenda.map((ride) => (
-                  <button
-                    key={ride.id}
-                    type="button"
-                    className="admin-dashboard__tbody-row"
-                    onClick={() => onOpenRide?.(ride.id)}
-                  >
-                    <div className="admin-dashboard__cell-time">{formatAgendaTime(ride)}</div>
-                    <div className="admin-dashboard__cell-strong admin-ellipsis" title={ride.companyName || ""}>
-                      {ride.companyName || "—"}
-                    </div>
-                    <div className="admin-dashboard__cell-route admin-ellipsis" title={routeLine(ride)}>
-                      {routeLine(ride)}
-                    </div>
-                    <div className="admin-dashboard__cell-muted">{rideStatusDe(ride.status)}</div>
-                  </button>
-                ))
-              )}
+              <span className="admin-dashboard__section-chevron" aria-hidden>
+                {agendaOpen ? "▾" : "▸"}
+              </span>
             </div>
-          </div>
+          </button>
+          {agendaOpen ? (
+            <div id="dash-agenda-body" className="admin-dashboard__recent-body">
+              <div className="admin-dashboard__table-wrap">
+                <div className="admin-dashboard__table admin-dashboard__table--agenda">
+                  <div className="admin-dashboard__thead">
+                    <div>Zeit</div>
+                    <div>Partner</div>
+                    <div>Strecke</div>
+                    <div>Status</div>
+                  </div>
+                  {agenda.length === 0 ? (
+                    <div className="admin-dashboard__empty">Keine Fahrten für diesen Tag.</div>
+                  ) : (
+                    agenda.map((ride) => (
+                      <button
+                        key={ride.id}
+                        type="button"
+                        className="admin-dashboard__tbody-row"
+                        onClick={() => onOpenRide?.(ride.id)}
+                      >
+                        <div className="admin-dashboard__cell-time">{formatAgendaTime(ride)}</div>
+                        <div className="admin-dashboard__cell-strong admin-ellipsis" title={ride.companyName || ""}>
+                          {ride.companyName || "—"}
+                        </div>
+                        <div className="admin-dashboard__cell-route admin-ellipsis" title={routeLine(ride)}>
+                          {routeLine(ride)}
+                        </div>
+                        <div className="admin-dashboard__cell-muted">{rideStatusDe(ride.status)}</div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <aside className="admin-dashboard__aside" aria-labelledby="dash-partner-title">
