@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -340,9 +341,15 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
 
   const selectedRow = driversSorted.find((d) => d.id === selId);
 
+  const resultsSubtitle = !hasSearched
+    ? "Noch keine Suche"
+    : loading
+      ? "Wird geladen …"
+      : `${stats.total} Fahrer (A–Z nach angezeigtem Namen)`;
+
   return (
-    <div className="admin-page">
-      <p className="admin-table-sub" style={{ marginTop: 0, maxWidth: 720 }}>
+    <div className="admin-page admin-page--loose">
+      <p className="admin-page-lead">
         <strong>Plattform-Übersicht</strong> — Fahrer erscheinen nach der Suche (mind. 2 Zeichen oder Filter),
         sortiert A–Z. Gesperrte Fahrer können nicht online gehen und erscheinen nicht im Markt/Dispatch.
       </p>
@@ -374,8 +381,13 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         </div>
       </div>
 
-      <div className="admin-filter-card">
-        <div className="admin-filter-grid">
+      <AdminCollapsibleSection
+        title="Suche & Filter"
+        subtitle="Mind. 2 Zeichen oder ein Filter, dann Suchen"
+        defaultOpen
+      >
+        <div className="admin-filter-card admin-filter-card--embedded">
+          <div className="admin-filter-grid">
           <div className="admin-filter-item admin-filter-item--wide">
             <label className="admin-field-label">Suche</label>
             <input
@@ -469,24 +481,36 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               <option value="no">Ohne aktive Fahrt</option>
             </select>
           </div>
-          <div className="admin-filter-item" style={{ alignSelf: "end" }}>
+          <div className="admin-filter-item admin-filter-item--action">
             <button type="button" className="admin-btn-primary" onClick={() => runSearch()}>
               Suchen
             </button>
           </div>
+          </div>
         </div>
-      </div>
+      </AdminCollapsibleSection>
 
-      {!hasSearched && !loading && !loadError ? (
-        <div className="admin-info-banner">
-          Bitte Suchbegriff (mind. 2 Zeichen) oder Filter wählen und auf <strong>Suchen</strong> klicken. Die Liste
-          wird alphabetisch nach dem angezeigten Fahrernamen sortiert (Vorname Nachname, A–Z).
-        </div>
-      ) : null}
-      {loadError ? <div className="admin-info-banner admin-info-banner--warn">{loadError}</div> : null}
-      {loading ? <div className="admin-info-banner">Fahrer werden geladen …</div> : null}
+      <AdminCollapsibleSection title="Ergebnisse" subtitle={resultsSubtitle} defaultOpen flushBody>
+        {!hasSearched && !loading && !loadError ? (
+          <div className="admin-section-block__inset">
+            <div className="admin-info-banner admin-info-banner--inline">
+              Bitte Suchbegriff (mind. 2 Zeichen) oder Filter wählen und auf <strong>Suchen</strong> klicken. Die
+              Liste wird alphabetisch nach dem angezeigten Fahrernamen sortiert (Vorname Nachname, A–Z).
+            </div>
+          </div>
+        ) : null}
+        {loadError ? (
+          <div className="admin-section-block__inset">
+            <div className="admin-info-banner admin-info-banner--warn admin-info-banner--inline">{loadError}</div>
+          </div>
+        ) : null}
+        {loading ? (
+          <div className="admin-section-block__inset">
+            <div className="admin-info-banner admin-info-banner--inline">Fahrer werden geladen …</div>
+          </div>
+        ) : null}
 
-      <div className="admin-rides-table-wrap">
+        <div className="admin-rides-table-wrap">
         <table className="admin-rides-table admin-drivers-overview-table">
           <colgroup>
             <col />
@@ -591,7 +615,8 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
             ))}
           </tbody>
         </table>
-      </div>
+        </div>
+      </AdminCollapsibleSection>
 
       {selId ? (
         <div className="admin-modal-backdrop" role="presentation" onClick={closeDetail}>

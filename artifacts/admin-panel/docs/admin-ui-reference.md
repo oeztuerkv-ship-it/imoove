@@ -20,8 +20,27 @@ Ziel: **keine** neuen Fremd- oder Einzellayouts, **keine** isolierten Sonderdesi
 |----------------|------------------------|
 | Detailseite mit Sektionen, Formular, Lesemodus | `src/pages/CompanyMandateDetailPage.jsx` |
 | Tabellen, Suche, Filter (Badges) | `src/pages/CompaniesPage.jsx` |
-| Globale Klassen | `src/admin-ui.css` (u. a. `admin-m-*`, `admin-c-*`) |
+| Listen mit KPI + aufklappbaren Blöcken | `src/pages/DriversOverviewPage.jsx` + `src/components/AdminCollapsibleSection.jsx` |
+| Globale Klassen | `src/admin-ui.css` (u. a. `admin-m-*`, `admin-c-*`, `admin-section-block*`) |
 | App-Shell, Content-Raster | `src/admin-shell.css` |
+
+## Seitenoberfläche & Blöcke (verbindlich für Listen, Dashboard, Fahrerübersicht, …)
+
+| Ebene | Klasse / Muster | Farbe / Verhalten |
+|--------|------------------|-------------------|
+| **App-Hintergrund** (bleibt sichtbar zwischen Blöcken) | Shell `admin-app__main` → `var(--onroda-bg-app)` | **Grau** — nie pro Seite eigener Vollflächen-Hintergrund |
+| **Seiten-Stack** | `admin-page` (+ optional `admin-page--loose`) | Vertikaler Abstand zwischen Blöcken |
+| **Einleitungstext** | `admin-page-lead` | Grauer Text, kein eigener Kartenrahmen |
+| **KPI-Zeile** | `admin-stat-grid` + `admin-stat-card` | Weiße Mini-Karten |
+| **Inhaltsblock** | `admin-section-block` | **Weiße Karte**, Rand `var(--onroda-border)` |
+| **Aufklappbar** | `AdminCollapsibleSection` + `admin-section-block--collapsible` | Wie Dashboard „Letzte Fahrten“ — Toggle, Chevron ▾/▸ |
+| **Filter im Block** | `admin-filter-card--embedded` + `admin-filter-grid` | Kein zweiter Kartenrahmen innerhalb des Blocks |
+| **Tabelle im Block** | `admin-section-block__body--flush` + `admin-rides-table-wrap` | Tabelle bündig am Kartenrand |
+| **Hinweis / leer** | `admin-info-banner` (+ `--inline` im Block-Stack) | Weiße oder helle Fläche, kein Inline-`#f1f5f9` |
+
+**Regel:** Neue Screens bauen **keine** eigenen grauen/weißen Hintergründe in `style={{}}`. Immer die Tokens oben; fehlende Variante zuerst in `admin-ui.css` ergänzen.
+
+**Referenz-Implementierung:** `DriversOverviewPage.jsx` (KPI → Block „Suche & Filter“ → Block „Ergebnisse“).
 
 ## Cards (Karten)
 
