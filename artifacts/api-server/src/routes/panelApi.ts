@@ -78,6 +78,12 @@ import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } fro
 import { initialPanelRideStatus, isFarFutureReservation, RESERVATION_LEAD_MS } from "../lib/dispatchStatus";
 import { canTransitionRideStatus } from "../lib/rideStatusMachine";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
+import {
+  countUnreadPartnerMessages,
+  getPartnerMessageForCompany,
+  listPartnerMessagesForCompany,
+  markPartnerMessageRead,
+} from "../db/partnerMessagesData";
 import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBookingMeta";
 import { isPartnerRideHiddenInMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
@@ -3142,6 +3148,55 @@ router.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, 
         meta: {},
       });
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/messages/unread-count", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const count = await countUnreadPartnerMessages(ctx.claims.companyId);
+    res.json({ ok: true, count });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/messages", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const items = await listPartnerMessagesForCompany(ctx.claims.companyId);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.patch("/panel/v1/messages/:messageId/read", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const messageId = String(req.params.messageId ?? "").trim();
+    if (!messageId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const existing = await getPartnerMessageForCompany(messageId, ctx.claims.companyId);
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!existing.isRead) {
+      await markPartnerMessageRead(messageId, ctx.claims.companyId);
+    }
+    const item = await getPartnerMessageForCompany(messageId, ctx.claims.companyId);
+    res.json({ ok: true, item });
   } catch (e) {
     next(e);
   }

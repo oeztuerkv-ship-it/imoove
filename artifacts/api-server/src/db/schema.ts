@@ -1204,6 +1204,20 @@ export const driverMessageDismissalsTable = pgTable("driver_message_dismissals",
   dismissed_at: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Operator → Partner: Einweg-Posteingang (je Zeile ein Mandant). */
+export const partnerMessagesTable = pgTable("partner_messages", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull().default(""),
+  body: text("body").notNull().default(""),
+  is_read: boolean("is_read").notNull().default(false),
+  read_at: timestamp("read_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  created_by_admin: text("created_by_admin").notNull().default(""),
+});
+
 export const appSponsorsTable = pgTable("app_sponsors", {
   id: text("id").primaryKey(),
   title: text("title").notNull().default(""),

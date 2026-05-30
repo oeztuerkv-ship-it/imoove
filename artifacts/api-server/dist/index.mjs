@@ -24567,27 +24567,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router25;
+    module.exports = Router26;
     module.exports.Route = Route;
-    function Router25(options) {
-      if (!(this instanceof Router25)) {
-        return new Router25(options);
+    function Router26(options) {
+      if (!(this instanceof Router26)) {
+        return new Router26(options);
       }
       const opts = options || {};
-      function router25(req, res, next) {
-        router25.handle(req, res, next);
+      function router26(req, res, next) {
+        router26.handle(req, res, next);
       }
-      Object.setPrototypeOf(router25, this);
-      router25.caseSensitive = opts.caseSensitive;
-      router25.mergeParams = opts.mergeParams;
-      router25.params = {};
-      router25.strict = opts.strict;
-      router25.stack = [];
-      return router25;
+      Object.setPrototypeOf(router26, this);
+      router26.caseSensitive = opts.caseSensitive;
+      router26.mergeParams = opts.mergeParams;
+      router26.params = {};
+      router26.strict = opts.strict;
+      router26.stack = [];
+      return router26;
     }
-    Router25.prototype = function() {
+    Router26.prototype = function() {
     };
-    Router25.prototype.param = function param2(name2, fn) {
+    Router26.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -24607,7 +24607,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router25.prototype.handle = function handle(req, res, callback) {
+    Router26.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -24734,7 +24734,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router25.prototype.use = function use(handler) {
+    Router26.prototype.use = function use(handler) {
       let offset = 0;
       let path14 = "/";
       if (typeof handler !== "function") {
@@ -24767,7 +24767,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router25.prototype.route = function route(path14) {
+    Router26.prototype.route = function route(path14) {
       const route2 = new Route(path14);
       const layer = new Layer(path14, {
         sensitive: this.caseSensitive,
@@ -24782,7 +24782,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router25.prototype[method] = function(path14) {
+      Router26.prototype[method] = function(path14) {
         const route = this.route(path14);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -24965,13 +24965,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router25 = require_router();
+    var Router26 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router25 = null;
+      var router26 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -24980,13 +24980,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router25 === null) {
-            router25 = new Router25({
+          if (router26 === null) {
+            router26 = new Router26({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router25;
+          return router26;
         }
       });
     };
@@ -25057,15 +25057,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router25 = this.router;
+      var router26 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router25.use(path14, fn2);
+          return router26.use(path14, fn2);
         }
         debug(".use app under %s", path14);
         fn2.mountpath = path14;
         fn2.parent = this;
-        router25.use(path14, function mounted_app(req, res, next) {
+        router26.use(path14, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -27592,7 +27592,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router25 = require_router();
+    var Router26 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -27614,8 +27614,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router25.Route;
-    exports.Router = Router25;
+    exports.Route = Router26.Route;
+    exports.Router = Router26;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -41239,6 +41239,7 @@ __export(schema_exports, {
   medicalReviewsTable: () => medicalReviewsTable,
   panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
+  partnerMessagesTable: () => partnerMessagesTable,
   partnerRegistrationDocumentsTable: () => partnerRegistrationDocumentsTable,
   partnerRegistrationRequestsTable: () => partnerRegistrationRequestsTable,
   partnerRegistrationTimelineTable: () => partnerRegistrationTimelineTable,
@@ -41257,7 +41258,7 @@ __export(schema_exports, {
   supportMessagesTable: () => supportMessagesTable,
   supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, invoiceNumberSequencesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, customerMedicalTransportScansTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
+var adminCompaniesTable, invoiceNumberSequencesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, customerMedicalTransportScansTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, partnerMessagesTable, appSponsorsTable, appServiceRegionsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -42211,6 +42212,16 @@ var init_schema2 = __esm({
       message_id: text("message_id").notNull(),
       dismissed_at: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow()
     });
+    partnerMessagesTable = pgTable("partner_messages", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      subject: text("subject").notNull().default(""),
+      body: text("body").notNull().default(""),
+      is_read: boolean("is_read").notNull().default(false),
+      read_at: timestamp("read_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      created_by_admin: text("created_by_admin").notNull().default("")
+    });
     appSponsorsTable = pgTable("app_sponsors", {
       id: text("id").primaryKey(),
       title: text("title").notNull().default(""),
@@ -42736,6 +42747,20 @@ var init_ridePushNotificationMarkers = __esm({
 });
 
 // src/domain/partnerBookingMeta.ts
+function mergePartnerOperationalMetaFields(target, source) {
+  const out = { ...target };
+  for (const key of PARTNER_OPERATIONAL_META_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      out[key] = source[key];
+    }
+  }
+  return out;
+}
+function isPartnerRideHiddenInMeta(meta) {
+  const hidden = meta.partner_hidden;
+  const archived = meta.partner_archived;
+  return hidden === true || hidden === "true" || archived === true || archived === "true";
+}
 function isRecord(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
@@ -42775,14 +42800,22 @@ function parsePartnerBookingMeta(raw) {
       passengerRef: typeof ins.passengerRef === "string" ? ins.passengerRef : null
     };
   }
-  return out;
+  return mergePartnerOperationalMetaFields(out, raw);
 }
 function metaToJson(meta) {
   if (!meta) return {};
   return JSON.parse(JSON.stringify(meta));
 }
+var PARTNER_OPERATIONAL_META_KEYS;
 var init_partnerBookingMeta = __esm({
   "src/domain/partnerBookingMeta.ts"() {
+    PARTNER_OPERATIONAL_META_KEYS = [
+      "partner_hidden",
+      "partner_hidden_at",
+      "partner_archived",
+      "search_started_at",
+      "last_retry_at"
+    ];
   }
 });
 
@@ -42792,31 +42825,39 @@ function isMedicalRidePartnerMeta(v) {
 }
 function parsePartnerBookingMetaFromRow(raw, parseTyped) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const rec = raw;
   if (isMedicalRidePartnerMeta(raw)) return raw;
   const typed = parseTyped(raw);
-  if (typed) return typed;
-  const rec = raw;
+  if (typed) {
+    return mergePartnerOperationalMetaFields(typed, rec);
+  }
   const v = rec.customer_driver_note ?? rec.customerDriverNote;
   if (typeof v === "string") {
     const t = v.trim();
-    if (t) return { customer_driver_note: t.slice(0, 500) };
+    if (t) {
+      return mergePartnerOperationalMetaFields({ customer_driver_note: t.slice(0, 500) }, rec);
+    }
   }
-  return null;
+  const operationalOnly = mergePartnerOperationalMetaFields({}, rec);
+  return Object.keys(operationalOnly).length > 0 ? operationalOnly : null;
 }
 function partnerBookingMetaToDbJson(meta, metaToJsonTyped) {
   if (!meta) return {};
+  const rec = meta;
+  let json2;
   if (isMedicalRidePartnerMeta(meta)) {
-    return JSON.parse(JSON.stringify(meta));
-  }
-  if (parsePartnerBookingMeta(meta) === null) {
-    const rec = meta;
+    json2 = JSON.parse(JSON.stringify(meta));
+  } else if (parsePartnerBookingMeta(meta) === null) {
     const v = rec.customer_driver_note ?? rec.customerDriverNote;
     if (typeof v === "string" && v.trim()) {
-      return { customer_driver_note: v.trim().slice(0, 500) };
+      json2 = { customer_driver_note: v.trim().slice(0, 500) };
+    } else {
+      json2 = {};
     }
-    return {};
+  } else {
+    json2 = metaToJsonTyped(meta);
   }
-  return metaToJsonTyped(meta);
+  return mergePartnerOperationalMetaFields(json2, rec);
 }
 var init_medicalRidePartnerMeta = __esm({
   "src/domain/medicalRidePartnerMeta.ts"() {
@@ -49761,14 +49802,14 @@ var import_websocket_server = __toESM(require_websocket_server(), 1);
 var wrapper_default = import_websocket.default;
 
 // src/app.ts
-var import_express25 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 import path13 from "path";
 import { fileURLToPath as fileURLToPath6 } from "node:url";
 
 // src/routes/index.ts
-var import_express23 = __toESM(require_express2(), 1);
+var import_express24 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -56881,6 +56922,68 @@ var requireAdminApiBearer = (req, res, next) => {
   });
 };
 
+// src/lib/panelJwt.ts
+function getSecretKey3() {
+  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
+  if (panel) {
+    return new TextEncoder().encode(panel);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("PANEL_JWT_SECRET is not configured (required in production for panel tokens)");
+  }
+  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!auth) {
+    throw new Error("PANEL_JWT_SECRET or AUTH_JWT_SECRET is not configured");
+  }
+  return new TextEncoder().encode(auth);
+}
+function issuer3() {
+  return (process.env.PANEL_JWT_ISSUER ?? "onroda-panel").trim() || "onroda-panel";
+}
+function isPanelJwtConfigured() {
+  if ((process.env.PANEL_JWT_SECRET ?? "").trim()) {
+    return true;
+  }
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+  return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
+}
+async function signPanelJwt(claims, expiresIn = "7d") {
+  const secret2 = getSecretKey3();
+  return new SignJWT({
+    kind: "panel",
+    companyId: claims.companyId,
+    username: claims.username,
+    email: claims.email,
+    role: claims.role
+  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer3()).setExpirationTime(expiresIn).sign(secret2);
+}
+function isPanelRole(v) {
+  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
+}
+async function verifyPanelJwt(token) {
+  const secret2 = getSecretKey3();
+  const { payload } = await jwtVerify(token, secret2, {
+    issuer: issuer3(),
+    algorithms: ["HS256"]
+  });
+  return payloadToPanelClaims(payload);
+}
+function payloadToPanelClaims(payload) {
+  const sub = typeof payload.sub === "string" ? payload.sub : "";
+  if (!sub) throw new Error("invalid panel token: missing sub");
+  if (payload.kind !== "panel") throw new Error("invalid panel token: wrong kind");
+  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
+  const username = typeof payload.username === "string" ? payload.username : "";
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const role = payload.role;
+  if (!companyId || !username || !isPanelRole(role)) {
+    throw new Error("invalid panel token: missing claims");
+  }
+  return { panelUserId: sub, companyId, username, email, role };
+}
+
 // src/lib/rideRouteAuth.ts
 function extractBearerAuthorization(req) {
   const raw = req.get("authorization")?.trim();
@@ -56935,6 +57038,15 @@ async function resolveCustomerActorOrNull(req) {
     const passengerGoogleId = c.googleId?.trim();
     if (!passengerGoogleId) return null;
     return { passengerGoogleId };
+  } catch {
+    return null;
+  }
+}
+async function resolvePanelActorOrNull(req) {
+  const raw = extractBearerAuthorization(req);
+  if (!raw || !isPanelJwtConfigured()) return null;
+  try {
+    return await verifyPanelJwt(raw);
   } catch {
     return null;
   }
@@ -58982,11 +59094,17 @@ router2.get("/rides/:id/driver-location", async (req, res, next) => {
     }
     const fleet = await resolveFleetActorOrNull(req);
     const cust = await resolveCustomerActorOrNull(req);
+    const panel = await resolvePanelActorOrNull(req);
     const assignedDriver = (ride.driverId ?? "").trim();
     const allowedFleet = fleet != null && assignedDriver !== "" && assignedDriver === fleet.fleetDriverId;
     const allowedPassenger = cust != null && passengerOwnsRide(ride, cust.passengerGoogleId);
-    if (!allowedFleet && !allowedPassenger) {
-      res.status(401).json({ error: "unauthorized", hint: "Fleet driver token or passenger session required." });
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    const allowedPanel = panel != null && rideCompanyId !== "" && rideCompanyId === panel.companyId.trim();
+    if (!allowedFleet && !allowedPassenger && !allowedPanel) {
+      res.status(401).json({
+        error: "unauthorized",
+        hint: "Fleet driver token, passenger session, or partner panel JWT (same company) required."
+      });
       return;
     }
     res.json(loc);
@@ -59904,13 +60022,13 @@ function secret() {
   if (!raw) return null;
   return new TextEncoder().encode(raw);
 }
-function issuer3() {
+function issuer4() {
   return (process.env.AUTH_JWT_ISSUER ?? "onroda-api").trim() || "onroda-api";
 }
 async function signEmailVerificationProofJwt(email, purpose, expiresIn = "24h") {
   const s = secret();
   if (!s) return null;
-  return new SignJWT({ verification_kind: "onroda_email", purpose }).setProtectedHeader({ alg: "HS256" }).setSubject(email).setIssuedAt().setIssuer(issuer3()).setExpirationTime(expiresIn).sign(s);
+  return new SignJWT({ verification_kind: "onroda_email", purpose }).setProtectedHeader({ alg: "HS256" }).setSubject(email).setIssuedAt().setIssuer(issuer4()).setExpirationTime(expiresIn).sign(s);
 }
 async function verifyEmailVerificationProofJwt(token) {
   if (!isSessionJwtConfigured()) return null;
@@ -59918,7 +60036,7 @@ async function verifyEmailVerificationProofJwt(token) {
   if (!s) return null;
   try {
     const { payload } = await jwtVerify(token, s, {
-      issuer: issuer3(),
+      issuer: issuer4(),
       algorithms: ["HS256"]
     });
     const kind = payload.verification_kind;
@@ -60453,8 +60571,8 @@ router5.post("/auth/customer/password-reset/confirm", async (req, res) => {
 var customerAuth_default = router5;
 
 // src/routes/adminApi.ts
-var import_express12 = __toESM(require_express2(), 1);
-import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID31 } from "node:crypto";
+var import_express13 = __toESM(require_express2(), 1);
+import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID32 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path7 from "node:path";
@@ -68444,6 +68562,223 @@ router11.post("/single", async (req, res, next) => {
 });
 var adminDriverMessagesRouter_default = router11;
 
+// src/routes/adminPartnerMessagesRouter.ts
+var import_express12 = __toESM(require_express2(), 1);
+init_client();
+
+// src/db/partnerMessagesData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID31 } from "node:crypto";
+var PARTNER_MESSAGE_COMPANY_KINDS = ["hotel", "corporate", "voucher_client", "general", "medical"];
+function rowToDto2(r, companyName = null) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    companyName,
+    subject: r.subject,
+    body: r.body,
+    isRead: r.is_read,
+    readAt: r.read_at ? r.read_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    createdByAdmin: r.created_by_admin
+  };
+}
+async function listPartnerMessageRecipientCompanyIds() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({ id: adminCompaniesTable.id }).from(adminCompaniesTable).where(
+    and(
+      eq(adminCompaniesTable.is_active, true),
+      eq(adminCompaniesTable.is_blocked, false),
+      inArray(adminCompaniesTable.company_kind, [...PARTNER_MESSAGE_COMPANY_KINDS])
+    )
+  );
+  return rows.map((r) => r.id);
+}
+async function partnerCompanyExistsForMessages(companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = companyId.trim();
+  if (!id) return false;
+  const rows = await db2.select({ id: adminCompaniesTable.id }).from(adminCompaniesTable).where(
+    and(
+      eq(adminCompaniesTable.id, id),
+      eq(adminCompaniesTable.is_active, true),
+      eq(adminCompaniesTable.is_blocked, false),
+      inArray(adminCompaniesTable.company_kind, [...PARTNER_MESSAGE_COMPANY_KINDS])
+    )
+  ).limit(1);
+  return rows.length > 0;
+}
+async function insertPartnerMessagesBatch(input) {
+  const db2 = getDb();
+  if (!db2 || input.companyIds.length === 0) return [];
+  const now = /* @__PURE__ */ new Date();
+  const subject = input.subject.trim();
+  const body = input.body.trim();
+  const createdByAdmin = input.createdByAdmin.trim() || "admin";
+  const values = input.companyIds.map((companyId) => ({
+    id: randomUUID31(),
+    company_id: companyId,
+    subject,
+    body,
+    is_read: false,
+    read_at: null,
+    created_at: now,
+    created_by_admin: createdByAdmin
+  }));
+  await db2.insert(partnerMessagesTable).values(values);
+  return values.map(
+    (v) => rowToDto2({
+      id: v.id,
+      company_id: v.company_id,
+      subject: v.subject,
+      body: v.body,
+      is_read: v.is_read,
+      read_at: v.read_at,
+      created_at: v.created_at,
+      created_by_admin: v.created_by_admin
+    })
+  );
+}
+async function listPartnerMessagesForCompany(companyId, limit = 100) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cid = companyId.trim();
+  if (!cid) return [];
+  const cap = Math.min(200, Math.max(1, limit));
+  const rows = await db2.select({
+    msg: partnerMessagesTable,
+    companyName: adminCompaniesTable.name
+  }).from(partnerMessagesTable).leftJoin(adminCompaniesTable, eq(partnerMessagesTable.company_id, adminCompaniesTable.id)).where(eq(partnerMessagesTable.company_id, cid)).orderBy(desc(partnerMessagesTable.created_at)).limit(cap);
+  return rows.map((r) => rowToDto2(r.msg, r.companyName ?? null));
+}
+async function countUnreadPartnerMessages(companyId) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const cid = companyId.trim();
+  if (!cid) return 0;
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(partnerMessagesTable).where(and(eq(partnerMessagesTable.company_id, cid), eq(partnerMessagesTable.is_read, false)));
+  return rows[0]?.n ?? 0;
+}
+async function markPartnerMessageRead(messageId, companyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = messageId.trim();
+  const cid = companyId.trim();
+  if (!id || !cid) return null;
+  const now = /* @__PURE__ */ new Date();
+  await db2.update(partnerMessagesTable).set({ is_read: true, read_at: now }).where(and(eq(partnerMessagesTable.id, id), eq(partnerMessagesTable.company_id, cid), eq(partnerMessagesTable.is_read, false)));
+  const rows = await db2.select().from(partnerMessagesTable).where(and(eq(partnerMessagesTable.id, id), eq(partnerMessagesTable.company_id, cid))).limit(1);
+  return rows[0] ? rowToDto2(rows[0]) : null;
+}
+async function getPartnerMessageForCompany(messageId, companyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = messageId.trim();
+  const cid = companyId.trim();
+  if (!id || !cid) return null;
+  const rows = await db2.select().from(partnerMessagesTable).where(and(eq(partnerMessagesTable.id, id), eq(partnerMessagesTable.company_id, cid))).limit(1);
+  return rows[0] ? rowToDto2(rows[0]) : null;
+}
+async function listPartnerMessagesAdmin(limit = 150) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cap = Math.min(300, Math.max(1, limit));
+  const rows = await db2.select({
+    msg: partnerMessagesTable,
+    companyName: adminCompaniesTable.name
+  }).from(partnerMessagesTable).leftJoin(adminCompaniesTable, eq(partnerMessagesTable.company_id, adminCompaniesTable.id)).orderBy(desc(partnerMessagesTable.created_at)).limit(cap);
+  return rows.map((r) => rowToDto2(r.msg, r.companyName ?? null));
+}
+
+// src/routes/adminPartnerMessagesRouter.ts
+var router12 = (0, import_express12.Router)();
+function adminRole6(req) {
+  return req.adminAuth?.role ?? "admin";
+}
+function sentByLabel2(req) {
+  return (req.adminAuth?.username ?? "admin").trim() || "admin";
+}
+function parseBody5(req) {
+  return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+}
+router12.get("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole6(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const rawLimit = req.query.limit;
+    const limit = typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim()) ? parseInt(rawLimit.trim(), 10) : 150;
+    const items = await listPartnerMessagesAdmin(limit);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router12.post("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole6(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = parseBody5(req);
+    const subject = typeof b.subject === "string" ? b.subject.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    const companyIdRaw = typeof b.companyId === "string" ? b.companyId.trim() : typeof b.company_id === "string" ? b.company_id.trim() : "";
+    if (!subject || subject.length > 200) {
+      res.status(400).json({ error: "subject_invalid", hint: "max 200" });
+      return;
+    }
+    if (!body || body.length > 2e4) {
+      res.status(400).json({ error: "body_invalid", hint: "max 20000" });
+      return;
+    }
+    const broadcast = companyIdRaw === "" || companyIdRaw.toLowerCase() === "alle" || companyIdRaw.toLowerCase() === "all";
+    let companyIds = [];
+    if (broadcast) {
+      companyIds = await listPartnerMessageRecipientCompanyIds();
+    } else {
+      const ok2 = await partnerCompanyExistsForMessages(companyIdRaw);
+      if (!ok2) {
+        res.status(404).json({ error: "company_not_found" });
+        return;
+      }
+      companyIds = [companyIdRaw];
+    }
+    if (companyIds.length === 0) {
+      res.status(400).json({ error: "no_recipients" });
+      return;
+    }
+    const items = await insertPartnerMessagesBatch({
+      companyIds,
+      subject,
+      body,
+      createdByAdmin: sentByLabel2(req)
+    });
+    res.status(201).json({
+      ok: true,
+      recipientCount: items.length,
+      broadcast,
+      items
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+var adminPartnerMessagesRouter_default = router12;
+
 // src/routes/adminApi.ts
 async function requireCompanyRowForMutation(req, res, companyId) {
   const company = await findCompanyById(companyId);
@@ -68576,8 +68911,8 @@ async function allocateUniquePanelUsername(preferred) {
 function hashResetToken(token) {
   return createHash3("sha256").update(token).digest("hex");
 }
-var router12 = (0, import_express12.Router)();
-router12.post("/admin/auth/login", async (req, res) => {
+var router13 = (0, import_express13.Router)();
+router13.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok2 = await authenticateAdminCredentials(username, password);
@@ -68627,7 +68962,7 @@ router12.post("/admin/auth/login", async (req, res) => {
     authSource: ok2.source
   });
 });
-router12.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
+router13.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
     res.status(403).json({
@@ -68642,7 +68977,7 @@ router12.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const scopeCompanyId = typeof principal.scopeCompanyId === "string" && principal.scopeCompanyId.trim() ? principal.scopeCompanyId.trim() : null;
   res.json({ ok: true, authKind: "session", user: { username, role, scopeCompanyId } });
 });
-router12.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
+router13.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
     res.status(403).json({
@@ -68683,7 +69018,7 @@ router12.post("/admin/auth/change-password", requireAdminApiBearer, async (req, 
   const token = await signAdminSessionJwt({ username: principal.username, role: principal.role });
   res.json({ ok: true, token });
 });
-router12.post("/admin/auth/password-reset/request", async (req, res) => {
+router13.post("/admin/auth/password-reset/request", async (req, res) => {
   const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
   const generic = {
     ok: true,
@@ -68746,7 +69081,7 @@ router12.post("/admin/auth/password-reset/request", async (req, res) => {
   });
   res.json(generic);
 });
-router12.post("/admin/auth/password-reset/confirm", async (req, res) => {
+router13.post("/admin/auth/password-reset/confirm", async (req, res) => {
   const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
   const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
   if (!token || newPassword.length < 10) {
@@ -68785,7 +69120,7 @@ router12.post("/admin/auth/password-reset/confirm", async (req, res) => {
   });
   res.json({ ok: true });
 });
-router12.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
+router13.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
   if (!isAdminPrincipal(req)) {
     res.status(403).json({ error: "forbidden" });
     return;
@@ -68826,7 +69161,7 @@ router12.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, as
     expiresAt: expiresAt.toISOString()
   });
 });
-router12.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router13.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -68842,7 +69177,7 @@ router12.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) 
     next(e);
   }
 });
-router12.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router13.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -68894,7 +69229,7 @@ router12.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next)
     next(e);
   }
 });
-router12.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router13.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -68951,7 +69286,7 @@ router12.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, 
     next(e);
   }
 });
-router12.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router13.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -68998,7 +69333,7 @@ router12.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res,
     next(e);
   }
 });
-var adminJson = (0, import_express12.Router)();
+var adminJson = (0, import_express13.Router)();
 adminJson.use(requireAdminApiBearer);
 adminJson.use("/insurance", adminInsuranceApi_default);
 adminJson.use("/app-news", adminAppNewsRouter_default);
@@ -69006,6 +69341,7 @@ adminJson.use("/customer-accounts", adminCustomerAccountsRouter_default);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter_default);
 adminJson.use("/faq", adminAppFaqRouter_default);
 adminJson.use("/driver-messages", adminDriverMessagesRouter_default);
+adminJson.use("/messages", adminPartnerMessagesRouter_default);
 var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path7.join(path7.dirname(fileURLToPath3(import.meta.url)), "..", "..", "data", "fleet-uploads");
 adminJson.get("/stats", async (req, res, next) => {
   try {
@@ -69795,7 +70131,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -69823,7 +70159,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -69843,7 +70179,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.missing_documents",
@@ -69865,7 +70201,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.approval",
@@ -69901,7 +70237,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/suspend", async
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.suspended",
@@ -69931,7 +70267,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", asyn
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.activated",
@@ -69968,7 +70304,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-overr
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.readiness_override_system",
@@ -70011,7 +70347,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/medical-transp
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.medical_transport",
@@ -70052,7 +70388,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.notes_patched",
@@ -70158,7 +70494,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -70205,7 +70541,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -70240,7 +70576,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/mark-missing
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.missing_documents",
@@ -70283,7 +70619,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", asyn
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -70320,7 +70656,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.unblocked",
@@ -70358,7 +70694,7 @@ adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", asy
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.notes_patched",
@@ -71200,7 +71536,7 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     if (prev && typeof body.medical_transport_enabled === "boolean" && prev.medical_transport_enabled !== body.medical_transport_enabled && isPostgresConfigured()) {
       const adminId = await resolveAdminAuthUserIdForSupport(req);
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId: req.params.companyId,
         actorPanelUserId: null,
         action: "admin.company.medical_transport_enabled",
@@ -71365,7 +71701,7 @@ adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => 
     }
     const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
     const result = await insertAdminSupportMessage({
-      messageId: randomUUID31(),
+      messageId: randomUUID32(),
       threadId,
       body,
       senderAdminUserId
@@ -72033,7 +72369,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
           ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
         } else {
           await insertPanelAuditLog({
-            id: randomUUID31(),
+            id: randomUUID32(),
             companyId: createdCompany.id,
             actorPanelUserId: null,
             action: "admin.panel_user.created",
@@ -72189,7 +72525,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -72266,7 +72602,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -72302,7 +72638,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -72842,7 +73178,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -72886,7 +73222,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -72916,7 +73252,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/mark-missing-documents", async (req, 
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.missing_documents",
@@ -72953,7 +73289,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID31(),
+        id: randomUUID32(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -73040,11 +73376,11 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
     next(e);
   }
 });
-router12.use("/admin", adminJson);
-var adminApi_default = router12;
+router13.use("/admin", adminJson);
+var adminApi_default = router13;
 
 // src/routes/panelAuth.ts
-var import_express13 = __toESM(require_express2(), 1);
+var import_express14 = __toESM(require_express2(), 1);
 
 // src/db/panelAuthData.ts
 init_drizzle_orm();
@@ -73325,68 +73661,6 @@ function toPublicPartnerRegistrationTimeline(rows) {
   return out;
 }
 
-// src/lib/panelJwt.ts
-function getSecretKey3() {
-  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
-  if (panel) {
-    return new TextEncoder().encode(panel);
-  }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("PANEL_JWT_SECRET is not configured (required in production for panel tokens)");
-  }
-  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
-  if (!auth) {
-    throw new Error("PANEL_JWT_SECRET or AUTH_JWT_SECRET is not configured");
-  }
-  return new TextEncoder().encode(auth);
-}
-function issuer4() {
-  return (process.env.PANEL_JWT_ISSUER ?? "onroda-panel").trim() || "onroda-panel";
-}
-function isPanelJwtConfigured() {
-  if ((process.env.PANEL_JWT_SECRET ?? "").trim()) {
-    return true;
-  }
-  if (process.env.NODE_ENV === "production") {
-    return false;
-  }
-  return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
-}
-async function signPanelJwt(claims, expiresIn = "7d") {
-  const secret2 = getSecretKey3();
-  return new SignJWT({
-    kind: "panel",
-    companyId: claims.companyId,
-    username: claims.username,
-    email: claims.email,
-    role: claims.role
-  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer4()).setExpirationTime(expiresIn).sign(secret2);
-}
-function isPanelRole(v) {
-  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
-}
-async function verifyPanelJwt(token) {
-  const secret2 = getSecretKey3();
-  const { payload } = await jwtVerify(token, secret2, {
-    issuer: issuer4(),
-    algorithms: ["HS256"]
-  });
-  return payloadToPanelClaims(payload);
-}
-function payloadToPanelClaims(payload) {
-  const sub = typeof payload.sub === "string" ? payload.sub : "";
-  if (!sub) throw new Error("invalid panel token: missing sub");
-  if (payload.kind !== "panel") throw new Error("invalid panel token: wrong kind");
-  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
-  const username = typeof payload.username === "string" ? payload.username : "";
-  const email = typeof payload.email === "string" ? payload.email : "";
-  const role = payload.role;
-  if (!companyId || !username || !isPanelRole(role)) {
-    throw new Error("invalid panel token: missing claims");
-  }
-  return { panelUserId: sub, companyId, username, email, role };
-}
-
 // src/routes/panelAuth.ts
 var MAX_TAXI_REG_PDF_BYTES = 4 * 1024 * 1024;
 function parseTaxiRegistrationPdfSlot(v) {
@@ -73434,8 +73708,8 @@ var TAXI_DOC_ERROR_HINTS = {
   taxi_concession_pdf_required: "Bitte laden Sie die Konzession als PDF hoch (Pflicht).",
   taxi_pdf_invalid: "Mindestens eine PDF-Datei ist ung\xFCltig oder zu gro\xDF (max. 4 MB pro Datei, nur PDF)."
 };
-var router13 = (0, import_express13.Router)();
-router13.post("/panel-auth/login", async (req, res) => {
+var router14 = (0, import_express14.Router)();
+router14.post("/panel-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPanelLogin(ip);
   if (!rl.ok) {
@@ -73542,11 +73816,11 @@ router13.post("/panel-auth/login", async (req, res) => {
     }
   });
 });
-router13.post("/panel-auth/logout", (_req, res) => {
+router14.post("/panel-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
 var PENDING_PUBLIC_REGISTRATION = /* @__PURE__ */ new Set(["open", "in_review", "documents_required"]);
-router13.post("/panel-auth/registration-request", async (req, res) => {
+router14.post("/panel-auth/registration-request", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -73709,7 +73983,7 @@ router13.post("/panel-auth/registration-request", async (req, res) => {
   );
   res.status(201).json({ ok: true, request: created });
 });
-router13.get("/panel-auth/registration-request-status", async (req, res) => {
+router14.get("/panel-auth/registration-request-status", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -73734,7 +74008,7 @@ router13.get("/panel-auth/registration-request-status", async (req, res) => {
   }
   res.json({ ok: true, request: toPublicPartnerRegistrationSnapshot(row) });
 });
-router13.get("/panel-auth/registration-request/:id", async (req, res) => {
+router14.get("/panel-auth/registration-request/:id", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -73768,7 +74042,7 @@ router13.get("/panel-auth/registration-request/:id", async (req, res) => {
     timeline: toPublicPartnerRegistrationTimeline(detail.timeline)
   });
 });
-router13.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
+router14.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -73814,7 +74088,7 @@ router13.post("/panel-auth/registration-request/:id/messages", async (req, res) 
   await addPartnerRegistrationMessage(id, "partner", email, message2);
   res.status(201).json({ ok: true });
 });
-router13.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
+router14.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -73847,7 +74121,7 @@ router13.post("/panel-auth/registration-request/:id/change-request", async (req,
   await patchPartnerRegistrationRequest(id, { status: "in_review" });
   res.status(201).json({ ok: true });
 });
-router13.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
+router14.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -73904,18 +74178,22 @@ router13.post("/panel-auth/registration-request/:id/documents", async (req, res)
   }
   res.status(201).json({ ok: true, document: toPublicPartnerRegistrationDocument(doc) });
 });
-var panelAuth_default = router13;
+var panelAuth_default = router14;
 
 // src/routes/panelApi.ts
-var import_express14 = __toESM(require_express2(), 1);
+var import_express15 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID33 } from "node:crypto";
+import { randomUUID as randomUUID34 } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile2, writeFile as writeFile5 } from "node:fs/promises";
 import path8 from "node:path";
 init_panelCompanyData();
 init_companyGovernanceData();
 init_accessCodesData();
+init_fleetAssignmentsData();
+init_fleetDriversData();
+init_fleetVehiclesData();
+init_rideDriverLocationData();
 init_ridesData();
 init_rideFinancialsData();
 init_appOperationalData();
@@ -73925,7 +74203,7 @@ init_dispatchStatus();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID32 } from "node:crypto";
+import { randomUUID as randomUUID33 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -73943,7 +74221,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID32()}`;
+  const id = `SRS-${randomUUID33()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -74005,6 +74283,7 @@ async function listPartnerRideSeriesForCompany(companyId) {
 }
 
 // src/routes/panelApi.ts
+init_partnerBookingMeta();
 init_rideAuthorization();
 
 // src/domain/accessCodeTrace.ts
@@ -74075,7 +74354,79 @@ var requirePanelAuth = async (req, res, next) => {
 };
 
 // src/routes/panelApi.ts
-var router14 = (0, import_express14.Router)();
+var router15 = (0, import_express15.Router)();
+var PARTNER_OPEN_RIDE_LIMIT = 5;
+var PARTNER_RETRY_SEARCH_TIMEOUT_MS = 6e4;
+var PANEL_OPEN_RIDE_TERMINAL_STATUSES = /* @__PURE__ */ new Set([
+  "completed",
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+  "expired",
+  "rejected"
+]);
+function ridePartnerMetaRecord(ride) {
+  const meta = ride.partnerBookingMeta;
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    return { ...meta };
+  }
+  return {};
+}
+function rideSearchAnchorMs(ride, meta) {
+  const fromMeta = typeof meta.search_started_at === "string" ? meta.search_started_at : "";
+  const raw = fromMeta || String(ride.createdAt ?? "");
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : null;
+}
+function isSearchTimeoutForLimit(ride, meta, nowMs = Date.now()) {
+  if (!["pending", "requested", "searching_driver", "offered", "ready_for_dispatch"].includes(ride.status)) return false;
+  const anchor = rideSearchAnchorMs(ride, meta);
+  if (anchor == null) return false;
+  return nowMs - anchor >= PARTNER_RETRY_SEARCH_TIMEOUT_MS;
+}
+function isPanelRideOpenForLimit(ride) {
+  if (PANEL_OPEN_RIDE_TERMINAL_STATUSES.has(ride.status)) return false;
+  if (ride.status === "cancelled_by_partner") return false;
+  const meta = ridePartnerMetaRecord(ride);
+  if (isPartnerRideHiddenInMeta(meta)) return false;
+  if (isSearchTimeoutForLimit(ride, meta)) return false;
+  return true;
+}
+function listPanelOpenRidesForLimit(rides) {
+  return rides.filter(isPanelRideOpenForLimit);
+}
+function rideLimitDebugRow(ride) {
+  return {
+    rideId: ride.id,
+    status: ride.status,
+    created_at: ride.createdAt,
+    partner_booking_meta: ridePartnerMetaRecord(ride)
+  };
+}
+function visiblePartnerRideList(rides) {
+  return rides.filter((ride) => !isPartnerRideHiddenInMeta(ridePartnerMetaRecord(ride)));
+}
+function partnerCancelTargetStatus(cur) {
+  const candidates2 = [
+    "cancelled_by_customer",
+    "cancelled_by_system",
+    "cancelled"
+  ];
+  for (const next of candidates2) {
+    if (canTransitionRideStatus(cur, next)) return next;
+  }
+  return null;
+}
+function partnerRetrySearchTargetStatus(cur) {
+  if (!["pending", "requested", "offered", "ready_for_dispatch", "searching_driver"].includes(cur)) return null;
+  return canTransitionRideStatus(cur, "searching_driver") ? "searching_driver" : null;
+}
+function parsePartnerDriverNote(body) {
+  const raw = typeof body.driverNote === "string" ? body.driverNote : typeof body.bookingNote === "string" ? body.bookingNote : "";
+  const note = raw.trim().slice(0, 200);
+  return note.length > 0 ? note : null;
+}
 var INVOICE_UPLOAD_ROOT = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path8.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
 function invoiceLine(text2) {
   return text2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
@@ -74136,7 +74487,7 @@ function nextInvoiceNumber(existing, date2 = /* @__PURE__ */ new Date()) {
   }
   return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
 }
-router14.use((_req, res, next) => {
+router15.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -74271,7 +74622,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID33()}`;
+  return `REQ-${randomUUID34()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -74557,10 +74908,10 @@ function companyRidesFiltersFromQuery(query) {
   };
   return { ok: true, filters };
 }
-router14.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
+router15.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
-router14.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
+router15.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res, {
     allowPasswordChangeRequired: true
   });
@@ -74585,7 +74936,7 @@ router14.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
     }
   });
 });
-router14.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
+router15.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res);
   if (!ctx) return;
   if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
@@ -74597,7 +74948,7 @@ router14.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
   res.json({ ok: true, company });
 });
-router14.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74611,7 +74962,7 @@ router14.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router14.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
+router15.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74682,7 +75033,7 @@ router14.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -74695,7 +75046,7 @@ router14.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
     next(e);
   }
 });
-router14.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74706,7 +75057,7 @@ router14.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router14.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74720,7 +75071,7 @@ router14.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -74732,7 +75083,7 @@ router14.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -74745,7 +75096,7 @@ router14.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
     next(e);
   }
 });
-router14.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74757,7 +75108,7 @@ router14.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router14.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74775,8 +75126,8 @@ router14.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
       res.status(400).json({ error: "body_invalid", hint: "max 10000" });
       return;
     }
-    const threadId = randomUUID33();
-    const messageId = randomUUID33();
+    const threadId = randomUUID34();
+    const messageId = randomUUID34();
     const created = await insertSupportThreadWithFirstMessage({
       threadId,
       messageId,
@@ -74795,7 +75146,7 @@ router14.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router14.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74816,7 +75167,7 @@ router14.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req
     next(e);
   }
 });
-router14.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74834,7 +75185,7 @@ router14.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
       return;
     }
     const result = await insertPartnerSupportMessage({
-      messageId: randomUUID33(),
+      messageId: randomUUID34(),
       threadId,
       companyId: ctx.claims.companyId,
       panelUserId: ctx.claims.panelUserId,
@@ -74853,13 +75204,83 @@ router14.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
     next(e);
   }
 });
-router14.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
-    const rides = await listRidesForCompany(ctx.claims.companyId);
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    const panelCompanyId = ctx.claims.companyId.trim();
+    if (!rideCompanyId || rideCompanyId !== panelCompanyId) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+    let driverName = null;
+    let driverPlate = null;
+    let driverLocation = null;
+    const driverId = (ride.driverId ?? "").trim();
+    if (driverId) {
+      const driverRow = await findFleetDriverAuthRow(driverId);
+      if (driverRow) {
+        const first = String(driverRow.first_name ?? "").trim();
+        const last = String(driverRow.last_name ?? "").trim();
+        driverName = `${first} ${last}`.trim() || null;
+        const taxiCompanyId = String(driverRow.company_id ?? "").trim();
+        if (taxiCompanyId) {
+          const assignments = await listAssignmentsForCompany(taxiCompanyId);
+          const assignment = assignments.find((a) => a.driverId === driverId);
+          if (assignment) {
+            const vehicle = await findFleetVehicleInCompany(assignment.vehicleId, taxiCompanyId);
+            const plate = vehicle?.licensePlate?.trim();
+            if (plate) driverPlate = plate;
+          }
+        }
+      }
+      const mem = driverLocations.get(rideId);
+      const dbLoc = mem ?? await getRideDriverLocation(rideId);
+      if (dbLoc && Number.isFinite(dbLoc.lat) && Number.isFinite(dbLoc.lon)) {
+        driverLocation = { lat: dbLoc.lat, lon: dbLoc.lon };
+      }
+    }
+    res.json({
+      ok: true,
+      ride: {
+        id: ride.id,
+        status: ride.status,
+        createdAt: ride.createdAt,
+        pickupLabel: String(ride.fromFull || ride.from || "").trim(),
+        fromLat: ride.fromLat ?? null,
+        fromLon: ride.fromLon ?? null
+      },
+      driver: driverId ? {
+        id: driverId,
+        name: driverName,
+        plate: driverPlate,
+        location: driverLocation
+      } : null
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const rides = visiblePartnerRideList(await listRidesForCompany(ctx.claims.companyId));
     const ids = rides.map((r) => r.createdByPanelUserId).filter((x) => Boolean(x));
     const names = await getPanelUsernamesInCompany(ctx.claims.companyId, ids);
     const ridesOut = rides.map((r) => ({
@@ -74872,7 +75293,181 @@ router14.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router14.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+    const nextStatus = partnerCancelTargetStatus(ride.status);
+    if (!nextStatus) {
+      res.status(409).json({ error: "cancel_not_allowed", status: ride.status });
+      return;
+    }
+    const body = req.body ?? {};
+    const reasonRaw = typeof body.reason === "string" ? body.reason : typeof body.cancelReason === "string" ? body.cancelReason : "";
+    const reason = reasonRaw.trim().slice(0, 200);
+    const prevMeta = ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" && !Array.isArray(ride.partnerBookingMeta) ? { ...ride.partnerBookingMeta } : {};
+    const nextMeta = {
+      ...prevMeta,
+      ...reason ? { partner_cancel_reason: reason } : {}
+    };
+    const updated = await updateRide(rideId, {
+      status: nextStatus,
+      partnerBookingMeta: nextMeta
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID34(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.cancelled",
+      subjectType: "ride",
+      subjectId: rideId,
+      meta: { fromStatus: ride.status, toStatus: nextStatus, reason: reason || void 0 }
+    });
+    const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]);
+    res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+    const nextStatus = partnerRetrySearchTargetStatus(ride.status);
+    if (!nextStatus) {
+      res.status(409).json({ error: "retry_search_not_allowed", status: ride.status });
+      return;
+    }
+    const prevMeta = ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" && !Array.isArray(ride.partnerBookingMeta) ? { ...ride.partnerBookingMeta } : {};
+    const searchStartedAtRaw = typeof prevMeta.search_started_at === "string" ? prevMeta.search_started_at : String(ride.createdAt ?? "");
+    const searchStartedAtMs = Date.parse(searchStartedAtRaw);
+    if (!Number.isFinite(searchStartedAtMs) || Date.now() - searchStartedAtMs < PARTNER_RETRY_SEARCH_TIMEOUT_MS) {
+      res.status(409).json({
+        error: "retry_search_too_early",
+        hint: "Retry erst nach 60 Sekunden ohne Fahrerannahme."
+      });
+      return;
+    }
+    const retryAt = (/* @__PURE__ */ new Date()).toISOString();
+    const nextMeta = {
+      ...prevMeta,
+      search_started_at: retryAt,
+      search_retry_count: Number.isFinite(Number(prevMeta.search_retry_count)) ? Number(prevMeta.search_retry_count) + 1 : 1,
+      last_retry_at: retryAt
+    };
+    const updated = await updateRide(rideId, {
+      status: nextStatus,
+      driverId: null,
+      partnerBookingMeta: nextMeta
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID34(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.retry_search",
+      subjectType: "ride",
+      subjectId: rideId,
+      meta: { fromStatus: ride.status, toStatus: nextStatus }
+    });
+    const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]);
+    res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.post("/panel/v1/rides/:rideId/hide", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+    const prevMeta = ridePartnerMetaRecord(ride);
+    const hiddenAt = (/* @__PURE__ */ new Date()).toISOString();
+    const nextMeta = {
+      ...prevMeta,
+      partner_hidden: true,
+      partner_hidden_at: hiddenAt
+    };
+    const updated = await updateRide(rideId, {
+      partnerBookingMeta: nextMeta
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID34(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.hidden_from_partner_list",
+      subjectType: "ride",
+      subjectId: rideId,
+      meta: { hiddenAt }
+    });
+    const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]);
+    res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74902,7 +75497,7 @@ router14.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router14.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74990,7 +75585,7 @@ router14.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "billing.invoice_created",
@@ -75011,7 +75606,7 @@ router14.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
     next(e);
   }
 });
-router14.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75043,7 +75638,7 @@ router14.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router14.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75075,12 +75670,24 @@ router14.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router14.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+    const companyRides = await listRidesForCompany(ctx.claims.companyId);
+    const openRides = listPanelOpenRidesForLimit(companyRides);
+    const openCount = openRides.length;
+    if (openCount >= PARTNER_OPEN_RIDE_LIMIT) {
+      res.status(409).json({
+        error: "open_rides_limit_reached",
+        openCount,
+        maxOpen: PARTNER_OPEN_RIDE_LIMIT,
+        blockingRides: openRides.slice(0, PARTNER_OPEN_RIDE_LIMIT).map(rideLimitDebugRow)
+      });
+      return;
+    }
     const body = req.body;
     const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
     if (!customerName) {
@@ -75133,6 +75740,14 @@ router14.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
     const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
+    if (scheduledAtVal && !isFarFutureReservation(scheduledAtVal)) {
+      res.status(400).json({
+        error: "scheduled_at_too_soon",
+        hint: "Reservierung mindestens 60 Minuten im Voraus.",
+        minLeadMinutes: Math.round(RESERVATION_LEAD_MS / 6e4)
+      });
+      return;
+    }
     const customerPhonePanel = typeof body.customerPhone === "string" ? body.customerPhone.trim() : typeof body.passengerPhone === "string" ? body.passengerPhone.trim() : "";
     const rawOperational = {
       rideKind,
@@ -75230,6 +75845,10 @@ router14.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       pricingMode: panelBookingPricing.pricingMode,
       tariffSnapshot: panelBookingPricing.snapshot
     };
+    const driverNote = parsePartnerDriverNote(body);
+    if (driverNote) {
+      newReq.partnerBookingMeta = { customer_driver_note: driverNote };
+    }
     const accessCodeRaw = body.accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
     if (accessCodePlain && accessCodePlain.trim() && !enabledPanelModules(ctx.profile).includes("access_codes")) {
@@ -75250,7 +75869,7 @@ router14.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -75269,7 +75888,7 @@ router14.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router14.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75430,7 +76049,7 @@ router14.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -75443,7 +76062,7 @@ router14.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router14.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75701,7 +76320,7 @@ router14.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -75714,7 +76333,7 @@ router14.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
     next(e);
   }
 });
-router14.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75925,7 +76544,7 @@ router14.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req,
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -75945,7 +76564,7 @@ function normalizeQueryRecord(raw) {
   }
   return q;
 }
-router14.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75974,7 +76593,7 @@ router14.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router14.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75997,7 +76616,7 @@ router14.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router14.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76009,7 +76628,7 @@ router14.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router14.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76021,7 +76640,7 @@ router14.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router14.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76055,7 +76674,7 @@ router14.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -76076,7 +76695,7 @@ router14.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router14.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
+router15.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76102,7 +76721,7 @@ router14.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -76115,7 +76734,7 @@ router14.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router14.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res, {
       allowPasswordChangeRequired: true
@@ -76147,7 +76766,7 @@ router14.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -76160,7 +76779,7 @@ router14.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router14.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76172,7 +76791,7 @@ router14.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router14.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76216,7 +76835,7 @@ router14.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -76237,7 +76856,7 @@ router14.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router14.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router15.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76303,7 +76922,7 @@ router14.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -76321,7 +76940,7 @@ router14.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
     next(e);
   }
 });
-router14.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router15.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76358,7 +76977,7 @@ router14.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -76371,7 +76990,7 @@ router14.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router14.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76408,7 +77027,7 @@ router14.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID33(),
+      id: randomUUID34(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -76421,10 +77040,56 @@ router14.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
     next(e);
   }
 });
-var panelApi_default = router14;
+router15.get("/panel/v1/messages/unread-count", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const count2 = await countUnreadPartnerMessages(ctx.claims.companyId);
+    res.json({ ok: true, count: count2 });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.get("/panel/v1/messages", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const items = await listPartnerMessagesForCompany(ctx.claims.companyId);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router15.patch("/panel/v1/messages/:messageId/read", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const messageId = String(req.params.messageId ?? "").trim();
+    if (!messageId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const existing = await getPartnerMessageForCompany(messageId, ctx.claims.companyId);
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!existing.isRead) {
+      await markPartnerMessageRead(messageId, ctx.claims.companyId);
+    }
+    const item = await getPartnerMessageForCompany(messageId, ctx.claims.companyId);
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+var panelApi_default = router15;
 
 // src/routes/panelInvoiceRoutes.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express16 = __toESM(require_express2(), 1);
 import { mkdir as mkdir6, readFile as readFile3, writeFile as writeFile6 } from "node:fs/promises";
 import path9 from "node:path";
 
@@ -76574,7 +77239,7 @@ async function assertActivePanelProfile2(req, res, opts) {
 }
 
 // src/routes/panelInvoiceRoutes.ts
-var router15 = (0, import_express15.Router)();
+var router16 = (0, import_express16.Router)();
 var INVOICE_UPLOAD_ROOT2 = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path9.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
 function invoicePdfAbsPath(storageKey) {
   const rel = storageKey.replace(/^\/+/, "");
@@ -76589,7 +77254,7 @@ function defaultMonthlyPdfKey(companyId, invoiceNumber) {
   const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
   return path9.join(companyKey, "monthly-invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
 }
-router15.get("/panel/v1/invoices", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/invoices", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile2(req, res);
     if (!ctx) return;
@@ -76601,7 +77266,7 @@ router15.get("/panel/v1/invoices", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router15.get("/panel/v1/invoices/:invoiceId", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/invoices/:invoiceId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile2(req, res);
     if (!ctx) return;
@@ -76622,7 +77287,7 @@ router15.get("/panel/v1/invoices/:invoiceId", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router15.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile2(req, res);
     if (!ctx) return;
@@ -76687,10 +77352,10 @@ router15.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, 
     next(e);
   }
 });
-var panelInvoiceRoutes_default = router15;
+var panelInvoiceRoutes_default = router16;
 
 // src/routes/fleetAuth.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 init_client();
 init_fleetDriversData();
 init_companyGovernanceData();
@@ -76716,8 +77381,8 @@ function rateLimitFleetLogin(ip) {
 }
 
 // src/routes/fleetAuth.ts
-var router16 = (0, import_express16.Router)();
-router16.post("/fleet-auth/login", async (req, res) => {
+var router17 = (0, import_express17.Router)();
+router17.post("/fleet-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitFleetLogin(ip);
   if (!rl.ok) {
@@ -76798,13 +77463,13 @@ router16.post("/fleet-auth/login", async (req, res) => {
     }
   });
 });
-router16.post("/fleet-auth/logout", (_req, res) => {
+router17.post("/fleet-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
-var fleetAuth_default = router16;
+var fleetAuth_default = router17;
 
 // src/routes/fleetDriverApi.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 init_client();
 init_fleetDriversData();
 init_fleetAssignmentsData();
@@ -76891,13 +77556,13 @@ init_financeCalculationService();
 // src/lib/medical/medicalScanService.ts
 init_drizzle_orm();
 init_client();
-import { randomUUID as randomUUID37 } from "node:crypto";
+import { randomUUID as randomUUID38 } from "node:crypto";
 import { mkdir as mkdir7, writeFile as writeFile7 } from "node:fs/promises";
 import path10 from "node:path";
 
 // src/db/medicalCasesData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID34 } from "node:crypto";
+import { randomUUID as randomUUID35 } from "node:crypto";
 
 // src/lib/medical/medicalOcrNormalize.ts
 var MEDICAL_OCR_EXTRACTED_FIELDS = [
@@ -77626,7 +78291,7 @@ async function getAdminCompanyPartnerIkNumber(companyId) {
 async function insertMedicalCase(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mc-${randomUUID34()}`;
+  const id = `mc-${randomUUID35()}`;
   const now = /* @__PURE__ */ new Date();
   const caseType = input.caseType && isCaseType(input.caseType) ? input.caseType : "transport_sheet";
   const status = input.status && isCaseStatus(input.status) ? input.status : "open";
@@ -77672,7 +78337,7 @@ async function updateMedicalCaseStatus(id, status) {
 
 // src/db/medicalDocumentsData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID35 } from "node:crypto";
+import { randomUUID as randomUUID36 } from "node:crypto";
 init_client();
 init_schema2();
 var MEDICAL_DOCUMENT_TYPES = ["transport_sheet", "signature_image", "other"];
@@ -77714,7 +78379,7 @@ function mapRow7(r) {
 async function insertMedicalDocument(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mdoc-${randomUUID35()}`;
+  const id = `mdoc-${randomUUID36()}`;
   const docType = input.documentType && isDocumentType(input.documentType) ? input.documentType : "transport_sheet";
   await db2.insert(medicalDocumentsTable).values({
     id,
@@ -77747,7 +78412,7 @@ async function findMedicalDocumentById(id) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID36 } from "node:crypto";
+import { randomUUID as randomUUID37 } from "node:crypto";
 var MEDICAL_REVIEWER_ACTOR_KINDS = ["system", "driver", "panel", "admin"];
 function isTrafficLight(v) {
   return v === "green" || v === "yellow" || v === "red";
@@ -77811,7 +78476,7 @@ function mapRow8(r) {
 async function insertMedicalReview(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mrev-${randomUUID36()}`;
+  const id = `mrev-${randomUUID37()}`;
   const reviewedAt = input.reviewedAt ?? /* @__PURE__ */ new Date();
   const actorKind = input.reviewerActorKind && isReviewerActorKind(input.reviewerActorKind) ? input.reviewerActorKind : "system";
   await db2.insert(medicalReviewsTable).values({
@@ -78582,7 +79247,7 @@ async function runMedicalTransportDocumentScanForCustomerBooking(input) {
     const status = decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
     return { ok: false, error: decoded.error, status };
   }
-  const scanId = `cms-${randomUUID37()}`;
+  const scanId = `cms-${randomUUID38()}`;
   const passengerKey = customerPassengerId2.replace(/[^a-zA-Z0-9._-]/g, "_");
   const rel = path10.join("customer-pending", passengerKey, `${scanId}.${decoded.ext}`).replace(/\\/g, "/");
   const dest = path10.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
@@ -78887,7 +79552,7 @@ async function runMedicalTransportDocumentScan(input) {
     }
   }
   const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const rel = path10.join(companyKey, "rides", rideId, `scan-${randomUUID37()}.${decoded.ext}`).replace(/\\/g, "/");
+  const rel = path10.join(companyKey, "rides", rideId, `scan-${randomUUID38()}.${decoded.ext}`).replace(/\\/g, "/");
   const dest = path10.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
   await mkdir7(path10.dirname(dest), { recursive: true });
   await writeFile7(dest, decoded.buffer);
@@ -78986,8 +79651,8 @@ async function runMedicalTransportDocumentScan(input) {
 
 // src/routes/fleetDriverApi.ts
 init_medicalTransportAuthorization();
-var router17 = (0, import_express17.Router)();
-router17.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
+var router18 = (0, import_express18.Router)();
+router18.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -79070,7 +79735,7 @@ router17.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     } : null
   });
 });
-router17.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
+router18.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -79096,7 +79761,7 @@ router17.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth,
     next(e);
   }
 });
-router17.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
+router18.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -79127,7 +79792,7 @@ router17.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, re
   }));
   res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
 });
-router17.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
+router18.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -79177,7 +79842,7 @@ router17.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (
     } : null
   });
 });
-router17.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+router18.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -79264,7 +79929,7 @@ router17.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
     next(e);
   }
 });
-router17.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
+router18.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -79335,7 +80000,7 @@ router17.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
     next(e);
   }
 });
-router17.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
+router18.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -79352,7 +80017,7 @@ router17.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (r
     next(e);
   }
 });
-router17.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
+router18.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -79374,7 +80039,7 @@ router17.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriver
     next(e);
   }
 });
-router17.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
+router18.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -79396,7 +80061,7 @@ router17.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleet
     next(e);
   }
 });
-router17.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
+router18.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -79419,7 +80084,7 @@ router17.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async 
     next(e);
   }
 });
-router17.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
+router18.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -79429,7 +80094,7 @@ router17.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) 
   const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
   res.json({ ok: true, marketOnline });
 });
-router17.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
+router18.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -79453,7 +80118,7 @@ router17.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, a
     hasPushToken: pushTokens.length > 0
   });
 });
-router17.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
+router18.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -79484,7 +80149,7 @@ router17.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async 
   }
   res.json({ ok: true });
 });
-router17.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
+router18.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ ok: false, error: "database_not_configured" });
@@ -79531,7 +80196,7 @@ router17.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (re
     next(err);
   }
 });
-router17.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
+router18.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const auth = req.fleetDriverAuth;
     if (!auth) {
@@ -79563,7 +80228,7 @@ router17.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, asyn
     next(err);
   }
 });
-router17.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
+router18.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     const rides = await listRidesForDriver(a.fleetDriverId);
@@ -79577,12 +80242,12 @@ router17.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (
     next(err);
   }
 });
-var fleetDriverApi_default = router17;
+var fleetDriverApi_default = router18;
 
 // src/routes/fleetPanelApi.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_companyComplianceDocumentsData();
-import { randomUUID as randomUUID38 } from "node:crypto";
+import { randomUUID as randomUUID39 } from "node:crypto";
 import fs2 from "node:fs/promises";
 import { createReadStream as createReadStream3 } from "node:fs";
 import path11 from "node:path";
@@ -79595,8 +80260,8 @@ init_companyGovernanceData();
 init_adminData();
 init_panelModules();
 init_fleetDriverReadiness();
-var router18 = (0, import_express18.Router)();
-router18.use((_req, res, next) => {
+var router19 = (0, import_express19.Router)();
+router19.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -79646,7 +80311,7 @@ async function requireFleetOnboardingEntityCreateAllowed(companyId) {
   if (company.is_blocked) return { ok: false, error: "company_blocked" };
   return { ok: true, company };
 }
-router18.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79671,7 +80336,7 @@ router18.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router18.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79699,7 +80364,7 @@ router18.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router18.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79760,7 +80425,7 @@ router18.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID38(),
+      id: randomUUID39(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -79773,7 +80438,7 @@ router18.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router18.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
+router19.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79831,7 +80496,7 @@ router18.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
       }
     }
     await insertPanelAuditLog({
-      id: randomUUID38(),
+      id: randomUUID39(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_updated",
@@ -79844,7 +80509,7 @@ router18.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router18.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79855,7 +80520,7 @@ router18.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID38(),
+      id: randomUUID39(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -79868,7 +80533,7 @@ router18.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
     next(e);
   }
 });
-router18.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79879,7 +80544,7 @@ router18.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID38(),
+      id: randomUUID39(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -79892,7 +80557,7 @@ router18.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
     next(e);
   }
 });
-router18.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79906,7 +80571,7 @@ router18.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID38(),
+      id: randomUUID39(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -79919,10 +80584,10 @@ router18.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
     next(e);
   }
 });
-router18.post(
+router19.post(
   "/panel/v1/fleet/drivers/:id/p-schein-doc",
   requirePanelAuth,
-  import_express18.default.raw({ type: "application/pdf", limit: "6mb" }),
+  import_express19.default.raw({ type: "application/pdf", limit: "6mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -79939,7 +80604,7 @@ router18.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path11.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID38()}.pdf`);
+      const rel = path11.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID39()}.pdf`);
       const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
       await fs2.mkdir(path11.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
@@ -79955,7 +80620,7 @@ router18.post(
     }
   }
 );
-router18.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -79973,7 +80638,7 @@ router18.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router18.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80027,7 +80692,7 @@ router18.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID38(),
+      id: randomUUID39(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -80040,7 +80705,7 @@ router18.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router18.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
+router19.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80089,7 +80754,7 @@ router18.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router18.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80100,7 +80765,7 @@ router18.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router18.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80122,7 +80787,7 @@ router18.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router18.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
+router19.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80133,10 +80798,10 @@ router18.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async
     next(e);
   }
 });
-router18.post(
+router19.post(
   "/panel/v1/fleet/vehicles/:id/documents",
   requirePanelAuth,
-  import_express18.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express19.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -80154,7 +80819,7 @@ router18.post(
         res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
         return;
       }
-      const rel = path11.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID38()}.pdf`);
+      const rel = path11.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID39()}.pdf`);
       const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
       await fs2.mkdir(path11.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
@@ -80169,7 +80834,7 @@ router18.post(
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID38(),
+        id: randomUUID39(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: "fleet.vehicle_document_uploaded",
@@ -80183,7 +80848,7 @@ router18.post(
     }
   }
 );
-router18.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
+router19.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80201,7 +80866,7 @@ router18.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID38(),
+      id: randomUUID39(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_submitted_for_approval",
@@ -80214,7 +80879,7 @@ router18.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
     next(e);
   }
 });
-router18.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
+router19.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80247,10 +80912,10 @@ router18.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
     next(e);
   }
 });
-router18.post(
+router19.post(
   "/panel/v1/fleet/compliance/:kind",
   requirePanelAuth,
-  import_express18.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express19.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -80266,7 +80931,7 @@ router18.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path11.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID38()}.pdf`);
+      const rel = path11.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID39()}.pdf`);
       const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
       await fs2.mkdir(path11.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
@@ -80291,7 +80956,7 @@ router18.post(
         throw e;
       }
       await insertPanelAuditLog({
-        id: randomUUID38(),
+        id: randomUUID39(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -80305,12 +80970,12 @@ router18.post(
     }
   }
 );
-var fleetPanelApi_default = router18;
+var fleetPanelApi_default = router19;
 
 // src/routes/insurerPanelApi.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 init_client();
-import { randomUUID as randomUUID40 } from "node:crypto";
+import { randomUUID as randomUUID41 } from "node:crypto";
 import fs3 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
 import path12 from "node:path";
@@ -80323,7 +80988,7 @@ init_partnerBookingMeta();
 init_client();
 init_schema2();
 init_ridesData();
-import { randomUUID as randomUUID39 } from "node:crypto";
+import { randomUUID as randomUUID40 } from "node:crypto";
 var OPEN = [
   "draft",
   "scheduled",
@@ -80446,7 +81111,7 @@ async function insertInsurerCostCenter(companyId, input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const code = input.code.trim();
   if (!code) return { ok: false, error: "code_required" };
-  const id = randomUUID39();
+  const id = randomUUID40();
   const now = /* @__PURE__ */ new Date();
   try {
     await db2.insert(insurerCostCentersTable).values({
@@ -80538,7 +81203,7 @@ async function insertInsurerTransportDocument(companyId, rideId, panelUserId, in
   if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const id = randomUUID39();
+  const id = randomUUID40();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(insurerRideTransportDocumentsTable).values({
     id,
@@ -80573,10 +81238,10 @@ async function getInsurerTransportDocumentFile(companyId, docId) {
 
 // src/routes/insurerPanelApi.ts
 init_panelModules();
-var router19 = (0, import_express19.Router)();
+var router20 = (0, import_express20.Router)();
 var pkgRoot2 = path12.join(path12.dirname(fileURLToPath5(import.meta.url)), "..", "..");
 var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path12.join(pkgRoot2, "uploads", "insurer-transport");
-router19.use((_req, res, next) => {
+router20.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -80623,7 +81288,7 @@ function denyUnlessInsurerPerm(res, role, perm) {
   if (!denyUnlessPanelPermission(res, role, perm)) return false;
   return true;
 }
-router19.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
+router20.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -80635,7 +81300,7 @@ router19.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router19.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
+router20.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -80647,7 +81312,7 @@ router19.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router19.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router20.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -80659,7 +81324,7 @@ router19.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router19.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router20.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -80678,7 +81343,7 @@ router19.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router19.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
+router20.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -80698,7 +81363,7 @@ router19.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (re
     next(e);
   }
 });
-router19.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
+router20.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -80717,7 +81382,7 @@ router19.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID40(),
+      id: randomUUID41(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "insurer.ride_org_meta_patched",
@@ -80730,7 +81395,7 @@ router19.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
     next(e);
   }
 });
-router19.get(
+router20.get(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
   async (req, res, next) => {
@@ -80746,10 +81411,10 @@ router19.get(
     }
   }
 );
-router19.post(
+router20.post(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
-  import_express19.default.raw({ type: "*/*", limit: "8mb" }),
+  import_express20.default.raw({ type: "*/*", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertInsurerPanel(req, res);
@@ -80770,7 +81435,7 @@ router19.post(
       const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
       const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
       const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
-      const rel = path12.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID40()}.${ext}`);
+      const rel = path12.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID41()}.${ext}`);
       const dest = path12.join(INSURER_UPLOAD_ROOT, rel);
       await fs3.mkdir(path12.dirname(dest), { recursive: true });
       await fs3.writeFile(dest, buf);
@@ -80796,7 +81461,7 @@ router19.post(
     }
   }
 );
-router19.get(
+router20.get(
   "/panel/v1/insurer/transport-documents/:docId/file",
   requirePanelAuth,
   async (req, res, next) => {
@@ -80819,14 +81484,14 @@ router19.get(
     }
   }
 );
-var insurerPanelApi_default = router19;
+var insurerPanelApi_default = router20;
 
 // src/routes/publicHomepageApi.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 init_client();
 init_appOperationalData();
-var router20 = (0, import_express20.Router)();
-router20.get("/public/homepage-placeholders", async (_req, res, next) => {
+var router21 = (0, import_express21.Router)();
+router21.get("/public/homepage-placeholders", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -80839,7 +81504,7 @@ router20.get("/public/homepage-placeholders", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/public/homepage-hints", async (_req, res, next) => {
+router21.get("/public/homepage-hints", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -80852,7 +81517,7 @@ router20.get("/public/homepage-hints", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/public/homepage-content", async (_req, res, next) => {
+router21.get("/public/homepage-content", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, item: null });
@@ -80865,7 +81530,7 @@ router20.get("/public/homepage-content", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/public/homepage-faq", async (_req, res, next) => {
+router21.get("/public/homepage-faq", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -80878,7 +81543,7 @@ router20.get("/public/homepage-faq", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/public/homepage-how", async (_req, res, next) => {
+router21.get("/public/homepage-how", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -80891,7 +81556,7 @@ router20.get("/public/homepage-how", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/public/homepage-trust", async (_req, res, next) => {
+router21.get("/public/homepage-trust", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -80904,7 +81569,7 @@ router20.get("/public/homepage-trust", async (_req, res, next) => {
     next(e);
   }
 });
-router20.get("/public/app-operational", async (_req, res, next) => {
+router21.get("/public/app-operational", async (_req, res, next) => {
   try {
     const [config2, serviceRegions] = await Promise.all([
       getOperationalConfigPayload(),
@@ -80916,13 +81581,13 @@ router20.get("/public/app-operational", async (_req, res, next) => {
     next(e);
   }
 });
-var publicHomepageApi_default = router20;
+var publicHomepageApi_default = router21;
 
 // src/routes/appConfigApi.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 init_appOperationalData();
-var router21 = (0, import_express21.Router)();
-router21.get("/app/config", async (_req, res, next) => {
+var router22 = (0, import_express22.Router)();
+router22.get("/app/config", async (_req, res, next) => {
   try {
     const data = await getAppConfigForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -80931,7 +81596,7 @@ router21.get("/app/config", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/app/pricing", async (_req, res, next) => {
+router22.get("/app/pricing", async (_req, res, next) => {
   try {
     const data = await getAppPricingForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -80940,7 +81605,7 @@ router21.get("/app/pricing", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/app/news", async (req, res, next) => {
+router22.get("/app/news", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppNewsAudience(q);
@@ -80953,7 +81618,7 @@ router21.get("/app/news", async (req, res, next) => {
     next(e);
   }
 });
-router21.get("/app/faq", async (_req, res, next) => {
+router22.get("/app/faq", async (_req, res, next) => {
   try {
     const items = await listAppFaqPublic();
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
@@ -80962,7 +81627,7 @@ router21.get("/app/faq", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/app/sponsors", async (req, res, next) => {
+router22.get("/app/sponsors", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppSponsorAudience(q);
@@ -80975,16 +81640,16 @@ router21.get("/app/sponsors", async (req, res, next) => {
     next(e);
   }
 });
-var appConfigApi_default = router21;
+var appConfigApi_default = router22;
 
 // src/routes/customerApi.ts
-var import_express22 = __toESM(require_express2(), 1);
+var import_express23 = __toESM(require_express2(), 1);
 init_fleetAssignmentsData();
 init_fleetVehiclesData();
 init_ridesData();
 init_passengerExpoPushData();
 init_client();
-var router22 = (0, import_express22.Router)();
+var router23 = (0, import_express23.Router)();
 async function buildRidePlateMap(rides) {
   const companyIds = Array.from(
     new Set(
@@ -81032,7 +81697,7 @@ function attachDriverPlate(ride, plateByRideId) {
     driverPlate: plate
   };
 }
-router22.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
+router23.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81048,7 +81713,7 @@ router22.get("/customer/v1/rides", requireCustomerSession, async (req, res, next
     next(e);
   }
 });
-router22.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
+router23.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81073,7 +81738,7 @@ router22.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, 
     next(e);
   }
 });
-router22.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
+router23.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81110,7 +81775,7 @@ router22.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, 
     next(e);
   }
 });
-router22.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
+router23.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81145,7 +81810,7 @@ router22.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (r
     next(e);
   }
 });
-router22.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
+router23.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81183,7 +81848,7 @@ router22.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, asy
     next(e);
   }
 });
-router22.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
+router23.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81234,7 +81899,7 @@ router22.post("/customer/v1/help-tickets", requireCustomerSession, async (req, r
     next(e);
   }
 });
-router22.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
+router23.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81254,7 +81919,7 @@ router22.post("/customer/v1/expo-push-token", requireCustomerSession, async (req
     next(e);
   }
 });
-router22.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req, res, next) => {
+router23.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81289,7 +81954,7 @@ router22.post("/customer/v1/medical/scan-test", requireCustomerSession, async (r
     next(err);
   }
 });
-router22.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
+router23.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81321,32 +81986,32 @@ router22.post("/customer/v1/medical/scan", requireCustomerSession, async (req, r
     next(err);
   }
 });
-var customerApi_default = router22;
+var customerApi_default = router23;
 
 // src/routes/index.ts
-var router23 = (0, import_express23.Router)();
-router23.use(health_default);
-router23.use(appConfigApi_default);
-router23.use(auth_default);
-router23.use(emailAuth_default);
-router23.use(customerAuth_default);
-router23.use(panelAuth_default);
-router23.use(fleetAuth_default);
-router23.use(fleetDriverApi_default);
-router23.use(fleetPanelApi_default);
-router23.use(insurerPanelApi_default);
-router23.use(publicHomepageApi_default);
-router23.use(panelApi_default);
-router23.use(panelInvoiceRoutes_default);
-router23.use(adminApi_default);
-router23.use(customerApi_default);
-router23.use(rides_default);
-var routes_default = router23;
+var router24 = (0, import_express24.Router)();
+router24.use(health_default);
+router24.use(appConfigApi_default);
+router24.use(auth_default);
+router24.use(emailAuth_default);
+router24.use(customerAuth_default);
+router24.use(panelAuth_default);
+router24.use(fleetAuth_default);
+router24.use(fleetDriverApi_default);
+router24.use(fleetPanelApi_default);
+router24.use(insurerPanelApi_default);
+router24.use(publicHomepageApi_default);
+router24.use(panelApi_default);
+router24.use(panelInvoiceRoutes_default);
+router24.use(adminApi_default);
+router24.use(customerApi_default);
+router24.use(rides_default);
+var routes_default = router24;
 
 // src/routes/admin.ts
-var import_express24 = __toESM(require_express2(), 1);
-var router24 = (0, import_express24.Router)();
-router24.get("/admin", (_req, res) => {
+var import_express25 = __toESM(require_express2(), 1);
+var router25 = (0, import_express25.Router)();
+router25.get("/admin", (_req, res) => {
   res.type("html").send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -81366,11 +82031,11 @@ router24.get("/admin", (_req, res) => {
 </body>
 </html>`);
 });
-var admin_default = router24;
+var admin_default = router25;
 
 // src/app.ts
 init_logger2();
-var app = (0, import_express25.default)();
+var app = (0, import_express26.default)();
 function isPanelBrowserHost(h) {
   return h === "panel.onroda.de";
 }
@@ -81458,11 +82123,11 @@ function requestPathname(req) {
 function isMedicalLargeJsonPost(pathname) {
   return /\/fleet-driver\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/customer\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/rides\/[^/]+\/medical\/(?:transport-document|signature)\/?$/.test(pathname);
 }
-var jsonBodyDefault = import_express25.default.json({ limit: "200kb" });
-var jsonBodyMedical = import_express25.default.json({ limit: "10mb" });
-var jsonBodyPartnerRegInitial = import_express25.default.json({ limit: "25mb" });
-var jsonBodyPartnerRegDoc = import_express25.default.json({ limit: "12mb" });
-var urlencodedDefault = import_express25.default.urlencoded({ extended: true, limit: "200kb" });
+var jsonBodyDefault = import_express26.default.json({ limit: "200kb" });
+var jsonBodyMedical = import_express26.default.json({ limit: "10mb" });
+var jsonBodyPartnerRegInitial = import_express26.default.json({ limit: "25mb" });
+var jsonBodyPartnerRegDoc = import_express26.default.json({ limit: "12mb" });
+var urlencodedDefault = import_express26.default.urlencoded({ extended: true, limit: "200kb" });
 app.use((req, res, next) => {
   if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") {
     return jsonBodyDefault(req, res, next);
@@ -81503,7 +82168,7 @@ app.use((req, res, next) => {
 var adminPublicRoot = resolvePublicRoot();
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
-  import_express25.default.static(adminPublicRoot)(req, res, (err) => {
+  import_express26.default.static(adminPublicRoot)(req, res, (err) => {
     if (err) return next(err);
     return next();
   });
@@ -81517,7 +82182,7 @@ app.use("/partners", (req, res, next) => {
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
-  import_express25.default.static(panelPublicRoot)(req, res, next);
+  import_express26.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
@@ -81530,7 +82195,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const p = req.path;
   if (p === "/partners" || p.startsWith("/partners/")) return next();
-  import_express25.default.static(staticRoot, { index: false })(req, res, next);
+  import_express26.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
@@ -81587,6 +82252,17 @@ async function resolveWsJoinPrincipal(rawToken) {
     return { kind: "fleet", fleetDriverId: claims.fleetDriverId, companyId: claims.companyId };
   } catch {
   }
+  if (isPanelJwtConfigured()) {
+    try {
+      const panel = await verifyPanelJwt(token);
+      const companyId = panel.companyId?.trim();
+      const panelUserId = panel.panelUserId?.trim();
+      if (companyId && panelUserId) {
+        return { kind: "panel", companyId, panelUserId };
+      }
+    } catch {
+    }
+  }
   if (!isSessionJwtConfigured()) return { kind: "invalid" };
   try {
     const c = await verifySessionJwt(token);
@@ -81601,6 +82277,10 @@ function wsJoinPrincipalMatchesRide(ride, p) {
   if (p.kind === "customer") {
     const id = ride.passengerId?.trim();
     return Boolean(id && id === p.passengerGoogleId);
+  }
+  if (p.kind === "panel") {
+    const cid = (ride.companyId ?? "").trim();
+    return cid !== "" && cid === p.companyId;
   }
   const assigned = (ride.driverId ?? "").trim();
   if (!assigned || assigned !== p.fleetDriverId) return false;
@@ -81661,7 +82341,7 @@ function registerRideWebSockets(wss2) {
           if (prev && prev.rideId !== rideIdRaw) {
             leaveRoom(socket, prev.rideId);
           }
-          const role = principal.kind === "fleet" ? "driver" : "customer";
+          const role = principal.kind === "fleet" ? "driver" : principal.kind === "panel" ? "partner" : "customer";
           socketMeta.set(socket, {
             rideId: rideIdRaw,
             role,

@@ -233,6 +233,7 @@ import adminCustomerAccountsRouter from "./adminCustomerAccountsRouter";
 import adminAppSponsorsRouter from "./adminAppSponsorsRouter";
 import adminAppFaqRouter from "./adminAppFaqRouter";
 import adminDriverMessagesRouter from "./adminDriverMessagesRouter";
+import adminPartnerMessagesRouter from "./adminPartnerMessagesRouter";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
 import {
@@ -863,6 +864,7 @@ adminJson.use("/customer-accounts", adminCustomerAccountsRouter);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter);
 adminJson.use("/faq", adminAppFaqRouter);
 adminJson.use("/driver-messages", adminDriverMessagesRouter);
+adminJson.use("/messages", adminPartnerMessagesRouter);
 
 const adminFleetUploadRoot =
   (process.env.FLEET_UPLOAD_DIR ?? "").trim() ||
