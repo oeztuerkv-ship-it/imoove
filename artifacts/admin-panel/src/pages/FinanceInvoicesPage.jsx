@@ -684,7 +684,7 @@ export default function FinanceInvoicesPage() {
                       Details
                     </button>
                   </div>
-                </div>
+              </div>
               );
             })}
             {!loading && items.length === 0 ? <div className="admin-info-banner">Keine Rechnungen gefunden.</div> : null}
@@ -718,7 +718,7 @@ export default function FinanceInvoicesPage() {
             <div className="admin-error-banner">{detail.error}</div>
           ) : (
             <>
-              <div className="finance-detail-grid">
+            <div className="finance-detail-grid">
                 <div>
                   <strong>Unternehmen:</strong> {detail.company_name || "—"}
                 </div>
@@ -826,7 +826,7 @@ export default function FinanceInvoicesPage() {
                       </li>
                     ))}
                   </ul>
-                </div>
+            </div>
               ) : null}
             </>
           )}

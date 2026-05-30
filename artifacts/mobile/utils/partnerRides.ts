@@ -64,24 +64,24 @@ function partnerSearchAnchorMs(ride: Pick<PartnerRideRow, "createdAt" | "partner
   return Number.isFinite(ms) ? ms : null;
 }
 
-export function isPartnerRideActive(ride: PartnerRideRow): boolean {
+export function isPartnerRideActive(ride: PartnerRideRow, nowMs: number = Date.now()): boolean {
   if (!isPartnerRideOpen(ride.status)) return false;
-  if (isPartnerSearchTimeout(ride)) return false;
+  if (isPartnerSearchTimeout(ride, nowMs)) return false;
   if (RESERVATION_STATUSES.has(ride.status)) return false;
   if (ride.scheduledAt) {
     const t = Date.parse(ride.scheduledAt);
-    if (Number.isFinite(t) && t > Date.now()) return false;
+    if (Number.isFinite(t) && t > nowMs) return false;
   }
   return ACTIVE_STATUSES.has(ride.status) || ride.status === "pending";
 }
 
-export function isPartnerRideReservation(ride: PartnerRideRow): boolean {
+export function isPartnerRideReservation(ride: PartnerRideRow, nowMs: number = Date.now()): boolean {
   if (!isPartnerRideOpen(ride.status)) return false;
-  if (isPartnerSearchTimeout(ride)) return false;
+  if (isPartnerSearchTimeout(ride, nowMs)) return false;
   if (RESERVATION_STATUSES.has(ride.status)) return true;
   if (ride.scheduledAt) {
     const t = Date.parse(ride.scheduledAt);
-    return Number.isFinite(t) && t > Date.now();
+    return Number.isFinite(t) && t > nowMs;
   }
   return false;
 }
@@ -176,14 +176,17 @@ export function partnerRideNeedsCancelReason(status: string): boolean {
   return !LIVE_CANCEL_NO_REASON_STATUSES.has(status);
 }
 
-export function partnerRideStatusHumanLabel(ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">): string {
+export function partnerRideStatusHumanLabel(
+  ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">,
+  nowMs: number = Date.now(),
+): string {
   switch (ride.status) {
     case "pending":
     case "requested":
     case "searching_driver":
     case "offered":
     case "ready_for_dispatch":
-      return partnerSearchPhaseLabel(ride);
+      return partnerSearchPhaseLabel(ride, nowMs);
     case "accepted":
       return "Fahrer wurde zugewiesen";
     case "driver_arriving":
@@ -213,8 +216,11 @@ export function partnerRideStatusHumanLabel(ride: Pick<PartnerRideRow, "status" 
   }
 }
 
-export function partnerRideStatusVisual(ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">): PartnerStatusVisual {
-  if (isPartnerSearchTimeout(ride)) {
+export function partnerRideStatusVisual(
+  ride: Pick<PartnerRideRow, "status" | "createdAt" | "partnerBookingMeta">,
+  nowMs: number = Date.now(),
+): PartnerStatusVisual {
+  if (isPartnerSearchTimeout(ride, nowMs)) {
     return { bg: "rgba(245, 158, 11, 0.18)", text: "#B45309", accent: "#D97706", loading: false };
   }
   switch (ride.status) {
@@ -244,8 +250,8 @@ function startOfLocalDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-export function computePartnerHomeStats(rides: PartnerRideRow[]): PartnerHomeStats {
-  const today0 = startOfLocalDay(new Date());
+export function computePartnerHomeStats(rides: PartnerRideRow[], nowMs: number = Date.now()): PartnerHomeStats {
+  const today0 = startOfLocalDay(new Date(nowMs));
   const todayEnd = today0 + 86400000;
   let activeCount = 0;
   let plannedCount = 0;
@@ -254,8 +260,8 @@ export function computePartnerHomeStats(rides: PartnerRideRow[]): PartnerHomeSta
 
   for (const r of rides) {
     if (isPartnerRideOpen(r.status)) openCount += 1;
-    if (isPartnerRideActive(r)) activeCount += 1;
-    if (isPartnerRideReservation(r)) plannedCount += 1;
+    if (isPartnerRideActive(r, nowMs)) activeCount += 1;
+    if (isPartnerRideReservation(r, nowMs)) plannedCount += 1;
     if (r.status === "completed" && r.createdAt) {
       const t = Date.parse(r.createdAt);
       if (Number.isFinite(t) && t >= today0 && t < todayEnd) completedToday += 1;

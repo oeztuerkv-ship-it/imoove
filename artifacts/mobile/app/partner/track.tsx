@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -22,11 +22,10 @@ import {
 import {
   isPartnerDriverArrived,
   isPartnerTrackingTerminal,
-  partnerRideStatusLabel,
 } from "@/utils/partnerRideTracking";
 import {
   isPartnerSearchTimeout,
-  partnerSearchPhaseLabel,
+  partnerRideStatusHumanLabel,
   partnerRideStatusVisual,
 } from "@/utils/partnerRides";
 
@@ -42,6 +41,7 @@ export default function PartnerTrackScreen() {
   const [snapshot, setSnapshot] = useState<PartnerTrackingSnapshot | null>(null);
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [statusNowMs, setStatusNowMs] = useState(() => Date.now());
   const arrivedHandledRef = useRef(false);
 
   const finishArrived = useCallback(() => {
@@ -144,6 +144,20 @@ export default function PartnerTrackScreen() {
     };
   }, [token, id, poll, handleUnauthorized]);
 
+  useEffect(() => {
+    const ride = snapshot?.ride;
+    if (!ride) return;
+    const statusRide = { status: ride.status, createdAt: ride.createdAt };
+    const active =
+      ["pending", "requested", "searching_driver", "offered", "ready_for_dispatch"].includes(ride.status)
+      && !isPartnerSearchTimeout(statusRide, Date.now());
+    if (!active) return;
+    const tick = () => setStatusNowMs(Date.now());
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [snapshot?.ride?.status, snapshot?.ride?.createdAt]);
+
   const ride = snapshot?.ride;
   const driver = snapshot?.driver;
   const pickup =
@@ -155,9 +169,14 @@ export default function PartnerTrackScreen() {
         }
       : null;
   const statusRide = ride ? { status: ride.status, createdAt: ride.createdAt } : null;
-  const statusVisual = statusRide ? partnerRideStatusVisual(statusRide) : null;
-  const searchPhaseText = statusRide && statusVisual?.loading ? partnerSearchPhaseLabel(statusRide) : null;
-  const showTimeout = statusRide ? isPartnerSearchTimeout(statusRide) : false;
+  const statusVisual = statusRide ? partnerRideStatusVisual(statusRide, statusNowMs) : null;
+  const showTimeout = statusRide ? isPartnerSearchTimeout(statusRide, statusNowMs) : false;
+
+  const statusLineText = showTimeout
+    ? "Momentan kein Fahrer verfügbar"
+    : statusRide
+      ? partnerRideStatusHumanLabel(statusRide, statusNowMs)
+      : "—";
 
   return (
     <View style={[styles.root, { backgroundColor: HOME_SHEET_BG }]}>
@@ -165,7 +184,7 @@ export default function PartnerTrackScreen() {
         <Pressable onPress={() => router.replace("/partner/home")} style={styles.iconBtn}>
           <Feather name="arrow-left" size={22} color="#111" />
         </Pressable>
-        <Text style={styles.topTitle}>Live-Tracking</Text>
+        <Text style={styles.topTitle}>Fahrerstatus</Text>
         <View style={styles.iconBtn} />
       </View>
 
@@ -191,22 +210,23 @@ export default function PartnerTrackScreen() {
         ) : (
           <>
             <View style={[styles.statusPill, { backgroundColor: statusVisual?.bg ?? "rgba(107,114,128,0.12)" }]}>
-              {statusVisual?.loading ? <ActivityIndicator size="small" color={statusVisual.accent} /> : null}
-              <Text style={[styles.statusLine, { color: statusVisual?.text ?? "#374151" }]}>
-                {showTimeout ? "Momentan kein Fahrer verfügbar" : ride ? partnerRideStatusLabel(ride.status) : "—"}
-              </Text>
+              {statusVisual?.loading ? (
+                <MaterialCommunityIcons name="taxi" size={16} color={statusVisual.accent} />
+              ) : showTimeout ? (
+                <Feather name="alert-circle" size={15} color={statusVisual?.accent ?? "#D97706"} />
+              ) : null}
+              <Text style={[styles.statusLine, { color: statusVisual?.text ?? "#374151" }]}>{statusLineText}</Text>
             </View>
-            {searchPhaseText ? <Text style={styles.searchHint}>{searchPhaseText}</Text> : null}
             <View style={styles.driverRow}>
-              <Feather name="user" size={18} color="#6B7280" />
+              <MaterialCommunityIcons name="taxi" size={18} color={PARTNER_GREEN} />
               <Text style={styles.driverText}>
                 {driver?.name?.trim() || "Fahrer wird zugewiesen…"}
               </Text>
             </View>
             <View style={styles.driverRow}>
-              <Feather name="truck" size={18} color="#6B7280" />
+              <MaterialCommunityIcons name="taxi" size={18} color="#6B7280" />
               <Text style={styles.driverText}>
-                {driver?.plate?.trim() || "Kennzeichen folgt"}
+                Kennzeichen: {driver?.plate?.trim() || "folgt"}
               </Text>
             </View>
           </>
@@ -255,7 +275,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  searchHint: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#B45309", marginTop: -2 },
   driverRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   driverText: { fontSize: 16, fontFamily: "Inter_500Medium", color: "#111", flex: 1 },
 });

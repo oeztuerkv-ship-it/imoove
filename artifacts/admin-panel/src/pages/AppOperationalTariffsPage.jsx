@@ -100,13 +100,13 @@ export default function AppOperationalTariffsPage() {
   );
 
   const patchOperational = async (body) => {
-    const res = await fetch(URL, {
-      method: "PATCH",
-      headers: adminApiHeaders({ "Content-Type": "application/json" }),
+      const res = await fetch(URL, {
+        method: "PATCH",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) throw new Error(data?.error || "Speichern fehlgeschlagen");
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Speichern fehlgeschlagen");
     setConfig(data.config);
     setTariffs(getTariffCatalog(data.config));
     return data;
@@ -446,24 +446,24 @@ export default function AppOperationalTariffsPage() {
               </label>
             ))}
           </div>
-        </CollapsibleCard>
+      </CollapsibleCard>
 
         <div style={{ marginBottom: 16 }}>
           <button type="button" className="admin-m-btn-pri" disabled={busy} onClick={() => void saveCurrentTariff()}>
             {busy ? "…" : selectedId ? "Tarif speichern" : "Tarif anlegen"}
-          </button>
-        </div>
+            </button>
+          </div>
 
         <CollapsibleCard title="Beispiel (10 km, 20 Min)">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 10, alignItems: "center" }}>
             <select className="admin-input" value={pvVehicle} onChange={(e) => setPvVehicle(e.target.value)}>
-              <option value="standard">Standard</option>
-              <option value="xl">XL</option>
-              <option value="wheelchair">Rollstuhl</option>
-            </select>
+                  <option value="standard">Standard</option>
+                  <option value="xl">XL</option>
+                  <option value="wheelchair">Rollstuhl</option>
+                </select>
             <button type="button" className="admin-c-btn-sec" onClick={() => void runPreview()} disabled={prevBusy}>
               {prevBusy ? "…" : "Rechnen"}
-            </button>
+              </button>
             {preview?.estimate ? (
               <span style={{ fontWeight: 600 }}>{String(preview.estimate.taxiTotal ?? preview.estimate.total)} €</span>
             ) : null}
@@ -472,7 +472,7 @@ export default function AppOperationalTariffsPage() {
             <p className="admin-table-sub" style={{ marginTop: 8 }}>
               Grund {String(bd.baseFare)} € · Strecke {String(bd.distanceCharge)} € · Zeit {String(bd.tripMinutesCharge)} €
             </p>
-          ) : null}
+      ) : null}
         </CollapsibleCard>
       </div>
     </div>
