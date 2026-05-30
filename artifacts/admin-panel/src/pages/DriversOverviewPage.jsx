@@ -86,8 +86,20 @@ function buildQueryParams(filters) {
   if (filters.blocked !== "all") p.set("blocked", filters.blocked);
   if (filters.documents !== "all") p.set("documents", filters.documents);
   if (filters.hasActiveRide !== "all") p.set("hasActiveRide", filters.hasActiveRide);
-  if (filters.sort === "activity") p.set("sort", "activity");
+  p.set("sort", filters.sort === "activity" ? "activity" : "name");
   return p;
+}
+
+function compareDriversByDisplayName(a, b) {
+  const key = (d) =>
+    (d.displayName || `${d.lastName || ""} ${d.firstName || ""}`.trim() || d.email || "").trim();
+  const cmp = key(a).localeCompare(key(b), "de", { sensitivity: "base" });
+  if (cmp !== 0) return cmp;
+  return (a.companyName || "").localeCompare(b.companyName || "", "de", { sensitivity: "base" });
+}
+
+function sortDriversAlphabetically(list) {
+  return [...list].sort(compareDriversByDisplayName);
 }
 
 export default function DriversOverviewPage({ userRole = "admin" }) {
@@ -132,7 +144,9 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
           setLoading(false);
           return;
         }
-        setDrivers(Array.isArray(j.drivers) ? j.drivers : []);
+        const raw = Array.isArray(j.drivers) ? j.drivers : [];
+        const sortMode = criteria.sort === "activity" ? "activity" : "name";
+        setDrivers(sortMode === "activity" ? raw : sortDriversAlphabetically(raw));
         setLoading(false);
       })
       .catch(() => {
@@ -447,7 +461,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value }))}
             >
               <option value="name">Name (A–Z)</option>
-              <option value="activity">Letzte Aktivität</option>
+              <option value="activity">Letzte Aktivität (selten)</option>
             </select>
           </div>
           <div className="admin-filter-item" style={{ alignSelf: "end" }}>
@@ -482,7 +496,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
           </colgroup>
           <thead>
             <tr>
-              <th>Fahrer</th>
+              <th>Fahrer (A–Z)</th>
               <th>Unternehmen</th>
               <th>Kontakt</th>
               <th>Status</th>

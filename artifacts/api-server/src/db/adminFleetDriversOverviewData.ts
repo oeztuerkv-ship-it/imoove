@@ -36,27 +36,6 @@ export function adminFleetDriverOverviewHasSearchCriteria(filters: AdminFleetDri
   return false;
 }
 
-function sortAdminFleetDriverOverviewRows(
-  rows: AdminFleetDriverOverviewRow[],
-  sort: AdminFleetDriverOverviewFilters["sort"],
-): void {
-  if (sort === "activity") {
-    rows.sort((a, b) => {
-      const ta = a.lastActivityAt ? Date.parse(a.lastActivityAt) : 0;
-      const tb = b.lastActivityAt ? Date.parse(b.lastActivityAt) : 0;
-      return tb - ta;
-    });
-    return;
-  }
-  rows.sort((a, b) => {
-    const last = a.lastName.localeCompare(b.lastName, "de", { sensitivity: "base" });
-    if (last !== 0) return last;
-    const first = a.firstName.localeCompare(b.firstName, "de", { sensitivity: "base" });
-    if (first !== 0) return first;
-    return a.companyName.localeCompare(b.companyName, "de", { sensitivity: "base" });
-  });
-}
-
 export type AdminFleetDriverOverviewRow = {
   id: string;
   companyId: string;
@@ -84,6 +63,37 @@ export type AdminFleetDriverOverviewRow = {
   readinessReady: boolean;
   createdAt: string;
 };
+
+function fleetDriverOverviewSortKey(
+  row: Pick<AdminFleetDriverOverviewRow, "displayName" | "lastName" | "firstName" | "email">,
+): string {
+  const dn = (row.displayName ?? "").trim();
+  if (dn) return dn;
+  const full = `${row.lastName ?? ""} ${row.firstName ?? ""}`.trim();
+  if (full) return full;
+  return (row.email ?? "").trim();
+}
+
+function sortAdminFleetDriverOverviewRows(
+  rows: AdminFleetDriverOverviewRow[],
+  sort: AdminFleetDriverOverviewFilters["sort"],
+): void {
+  if (sort === "activity") {
+    rows.sort((a, b) => {
+      const ta = a.lastActivityAt ? Date.parse(a.lastActivityAt) : 0;
+      const tb = b.lastActivityAt ? Date.parse(b.lastActivityAt) : 0;
+      return tb - ta;
+    });
+    return;
+  }
+  rows.sort((a, b) => {
+    const cmp = fleetDriverOverviewSortKey(a).localeCompare(fleetDriverOverviewSortKey(b), "de", {
+      sensitivity: "base",
+    });
+    if (cmp !== 0) return cmp;
+    return a.companyName.localeCompare(b.companyName, "de", { sensitivity: "base" });
+  });
+}
 
 function lastActivityIso(row: {
   lastLoginAt: string | null;
