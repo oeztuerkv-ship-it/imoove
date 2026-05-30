@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import { insurerRideDetailUrl, insurerRidePruefakteCsvUrl, insurerRidesUrl } from "../lib/insurerApi.js";
 
@@ -249,171 +250,138 @@ export default function InsurerRidesPage() {
     setMissingProofs(["gps", "chronology", "confirmation", "approval_reference"]);
   }
 
+  const showDetail = Boolean(selected || detailLoading || detailErr);
+
   return (
-    <div className="admin-page" style={{ padding: "20px 24px" }}>
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Krankenkassen · Fahrten</h1>
-      <p style={{ margin: "0 0 16px", color: "var(--onroda-text-muted, #64748b)", maxWidth: 800, lineHeight: 1.5 }}>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
         Prüfbare, minimierte Fahrtdaten. Keine Patientenklarnamen, keine Volladressen, keine Kartenrohdaten in dieser Ansicht.
       </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Fahrt-ID
-          <input className="admin-input" value={rideId} onChange={(e) => setRideId(e.target.value)} placeholder="REQ-…" style={{ minWidth: 170 }} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Von
-          <input className="admin-input" type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Bis
-          <input className="admin-input" type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Mandant
-          <input className="admin-input" value={companyId} onChange={(e) => setCompanyId(e.target.value)} placeholder="co-…" style={{ minWidth: 180 }} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Fahrer-ID
-          <input className="admin-input" value={driverId} onChange={(e) => setDriverId(e.target.value)} placeholder="drv-…" style={{ minWidth: 150 }} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Status
-          <input className="admin-input" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="z. B. completed" style={{ minWidth: 160 }} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Betrag min
-          <input className="admin-input" value={amountMin} onChange={(e) => setAmountMin(e.target.value)} placeholder="0" style={{ width: 90 }} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Betrag max
-          <input className="admin-input" value={amountMax} onChange={(e) => setAmountMax(e.target.value)} placeholder="999" style={{ width: 90 }} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Exportstatus
-          <select className="admin-input" value={exportStatus} onChange={(e) => setExportStatus(e.target.value)} style={{ minWidth: 130 }}>
-            <option value="any">Alle</option>
-            <option value="exported">Exportiert</option>
-            <option value="not_exported">Nicht exportiert</option>
-          </select>
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Korrekturen
-          <select className="admin-input" value={hasCorrections} onChange={(e) => setHasCorrections(e.target.value)} style={{ minWidth: 120 }}>
-            <option value="any">Alle</option>
-            <option value="true">Mit Korrektur</option>
-            <option value="false">Ohne Korrektur</option>
-          </select>
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Sortierung
-          <select className="admin-input" value={sort} onChange={(e) => setSort(e.target.value)} style={{ minWidth: 140 }}>
-            <option value="reference_time">Datum</option>
-            <option value="amount_gross">Betrag</option>
-            <option value="ride_status">Status</option>
-            <option value="company_name">Firma A-Z</option>
-          </select>
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Reihenfolge
-          <select className="admin-input" value={order} onChange={(e) => setOrder(e.target.value)} style={{ minWidth: 100 }}>
-            <option value="desc">absteigend</option>
-            <option value="asc">aufsteigend</option>
-          </select>
-        </label>
-        <div className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Fehlende Nachweise
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {[
-              ["gps", "GPS"],
-              ["chronology", "Zeit"],
-              ["confirmation", "Bestätigung"],
-              ["approval_reference", "Ref"],
-            ].map(([key, label]) => (
-              <label key={key} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <input type="checkbox" checked={missingProofs.includes(key)} onChange={() => toggleMissingProof(key)} />
-                {label}
-              </label>
-            ))}
+
+      {err ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{err}</div>
           </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="Filter" subtitle={`Gesamt: ${total}`} defaultOpen>
+        <div className="admin-filter-toolbar">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Fahrt-ID</span>
+            <input className="admin-input" value={rideId} onChange={(e) => setRideId(e.target.value)} placeholder="REQ-…" />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Von</span>
+            <input className="admin-input" type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Bis</span>
+            <input className="admin-input" type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Mandant</span>
+            <input className="admin-input" value={companyId} onChange={(e) => setCompanyId(e.target.value)} placeholder="co-…" />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Fahrer-ID</span>
+            <input className="admin-input" value={driverId} onChange={(e) => setDriverId(e.target.value)} placeholder="drv-…" />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Status</span>
+            <input className="admin-input" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="z. B. completed" />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Betrag min</span>
+            <input className="admin-input" value={amountMin} onChange={(e) => setAmountMin(e.target.value)} placeholder="0" />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Betrag max</span>
+            <input className="admin-input" value={amountMax} onChange={(e) => setAmountMax(e.target.value)} placeholder="999" />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Exportstatus</span>
+            <select className="admin-input" value={exportStatus} onChange={(e) => setExportStatus(e.target.value)}>
+              <option value="any">Alle</option>
+              <option value="exported">Exportiert</option>
+              <option value="not_exported">Nicht exportiert</option>
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Korrekturen</span>
+            <select className="admin-input" value={hasCorrections} onChange={(e) => setHasCorrections(e.target.value)}>
+              <option value="any">Alle</option>
+              <option value="true">Mit Korrektur</option>
+              <option value="false">Ohne Korrektur</option>
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Sortierung</span>
+            <select className="admin-input" value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="reference_time">Datum</option>
+              <option value="amount_gross">Betrag</option>
+              <option value="ride_status">Status</option>
+              <option value="company_name">Firma A-Z</option>
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Reihenfolge</span>
+            <select className="admin-input" value={order} onChange={(e) => setOrder(e.target.value)}>
+              <option value="desc">absteigend</option>
+              <option value="asc">aufsteigend</option>
+            </select>
+          </label>
+          <div className="admin-filter-field admin-filter-field--wide">
+            <span className="admin-field-label">Fehlende Nachweise</span>
+            <div className="admin-toolbar-inline">
+              {[
+                ["gps", "GPS"],
+                ["chronology", "Zeit"],
+                ["confirmation", "Bestätigung"],
+                ["approval_reference", "Ref"],
+              ].map(([key, label]) => (
+                <label key={key} className="admin-toolbar-inline__label">
+                  <input type="checkbox" checked={missingProofs.includes(key)} onChange={() => toggleMissingProof(key)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
+            {loading ? "Lade…" : "Aktualisieren"}
+          </button>
         </div>
-        <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
-        </button>
-        <span className="admin-table-sub">Gesamt: {total}</span>
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("open")}>
-          Offen
-        </button>
-        <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("completed")}>
-          Abgeschlossen
-        </button>
-        <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("cancelled")}>
-          Storniert
-        </button>
-        <button type="button" className="admin-btn-primary" onClick={() => applyQuickFilter("problems")}>
-          Probleme
-        </button>
-      </div>
-      {err ? <div className="admin-error-banner" style={{ marginBottom: 12 }}>{err}</div> : null}
-      <style>{`
-        .insurer-rides-cards {
-          display: grid;
-          gap: 12px;
-        }
-        .insurer-ride-card {
-          border: 1px solid var(--onroda-border-subtle, #e2e8f0);
-          border-radius: 12px;
-          padding: 12px 14px;
-          cursor: pointer;
-          transition: background-color .12s ease, border-color .12s ease;
-          background: #fff;
-        }
-        .insurer-ride-card:hover {
-          background-color: var(--onroda-surface-2, #f1f5f9);
-          border-color: #cbd5e1;
-        }
-        .insurer-ride-card--selected {
-          border-color: #38bdf8;
-          background: #e0f2fe;
-        }
-        .insurer-ride-card__row {
-          display: grid;
-          gap: 10px;
-          align-items: start;
-        }
-        .insurer-ride-card__row--top {
-          grid-template-columns: minmax(230px, 1.4fr) minmax(160px, 1fr) minmax(140px, .9fr);
-        }
-        .insurer-ride-card__row--bottom {
-          grid-template-columns: minmax(250px, 1.4fr) minmax(250px, 1.4fr) minmax(140px, .8fr);
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 1px dashed var(--onroda-border-subtle, #e2e8f0);
-        }
-        .insurer-ride-card__id {
-          font-size: 17px;
-          font-weight: 700;
-          color: var(--onroda-text-dark, #0f172a);
-          letter-spacing: -0.02em;
-        }
-        .insurer-ride-card__price {
-          text-align: right;
-          font-size: 1.05rem;
-          font-weight: 700;
-          color: var(--onroda-text-dark, #0f172a);
-          white-space: nowrap;
-        }
-        .insurer-ride-card__sub {
-          color: var(--onroda-text-muted, #64748b);
-          font-size: 12px;
-        }
-      `}</style>
-      <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr minmax(300px, 420px)" : "1fr", gap: 16, alignItems: "start" }}>
-        <div style={{ overflow: "auto", border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8 }}>
-          <div className="insurer-rides-cards" style={{ padding: 12 }}>
+        <div className="insurer-quick-filters">
+          <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("open")}>
+            Offen
+          </button>
+          <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("completed")}>
+            Abgeschlossen
+          </button>
+          <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("cancelled")}>
+            Storniert
+          </button>
+          <button type="button" className="admin-c-btn-sec" onClick={() => applyQuickFilter("problems")}>
+            Probleme
+          </button>
+        </div>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Fahrten"
+        subtitle={loading ? "Wird geladen …" : `${items.length} in dieser Seite`}
+        defaultOpen
+      >
+        <div
+          className={`admin-split-layout admin-split-layout--insurer-detail${showDetail ? "" : " admin-split-layout--single"}`}
+        >
+          <div className="admin-split-pane">
+            <div className="admin-split-pane__head">Liste</div>
+            <div className="admin-split-pane__body">
+              <div className="insurer-rides-cards">
             {items.length === 0 && !loading ? (
-              <p className="admin-table-sub" style={{ margin: 0, padding: 12 }}>Keine Fahrten im Zeitraum.</p>
+              <p className="admin-split-list-empty">Keine Fahrten im Zeitraum.</p>
             ) : (
               items.map((r) => (
                 <article
@@ -451,39 +419,33 @@ export default function InsurerRidesPage() {
                 </article>
               ))
             )}
-          </div>
-        </div>
-        {selected || detailLoading || detailErr ? (
-          <div
-            style={{
-              border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-              borderRadius: 8,
-              padding: 14,
-              position: "sticky",
-              top: 12,
-              maxHeight: "90vh",
-              overflow: "auto",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <strong>Detail (Whitelist)</strong>
-              <button
-                type="button"
-                className="admin-btn-refresh"
-                onClick={() => {
-                  setSelected(null);
-                  setDetailErr("");
-                  setDetailTab("details");
-                }}
-              >
-                Schließen
-              </button>
+              </div>
             </div>
+          </div>
+        {showDetail ? (
+          <div className="admin-split-pane insurer-rides-detail-pane">
+            <div className="admin-split-pane__head">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <span>Detail (Whitelist)</span>
+                <button
+                  type="button"
+                  className="admin-c-btn-sec admin-btn-compact"
+                  onClick={() => {
+                    setSelected(null);
+                    setDetailErr("");
+                    setDetailTab("details");
+                  }}
+                >
+                  Schließen
+                </button>
+              </div>
+            </div>
+            <div className="admin-split-pane__body">
             {detailLoading ? <p className="admin-table-sub">Lade…</p> : null}
             {detailErr ? <div className="admin-error-banner">{detailErr}</div> : null}
             {selected ? (
               <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <div className="admin-toolbar-inline" style={{ marginBottom: 10 }}>
                   <button
                     type="button"
                     className={detailTab === "details" ? "admin-btn-primary" : "admin-btn-refresh"}
@@ -505,18 +467,7 @@ export default function InsurerRidesPage() {
                     PDF vorbereiten
                   </button>
                 </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 8,
-                    marginBottom: 10,
-                    padding: 10,
-                    borderRadius: 8,
-                    background: "var(--onroda-surface-2, #f8fafc)",
-                    border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-                  }}
-                >
+                <div className="insurer-detail-actors">
                   <div>
                     <div className="admin-table-sub">erstellt von</div>
                     <div style={{ fontWeight: 600 }}>{pickDrawerActors(selected).createdBy}</div>
@@ -633,25 +584,27 @@ export default function InsurerRidesPage() {
                 )}
               </div>
             ) : null}
+            </div>
           </div>
         ) : null}
-      </div>
-      {total > 25 ? (
-        <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
-          <button type="button" className="admin-btn-refresh" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-            Zurück
-          </button>
-          <span className="admin-table-sub">Seite {page}</span>
-          <button
-            type="button"
-            className="admin-btn-refresh"
-            disabled={page * 25 >= total}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Weiter
-          </button>
         </div>
-      ) : null}
+        {total > 25 ? (
+          <div className="admin-pagination" style={{ marginTop: 12 }}>
+            <button type="button" className="admin-page-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              Zurück
+            </button>
+            <span className="admin-page-dots">Seite {page}</span>
+            <button
+              type="button"
+              className="admin-page-btn"
+              disabled={page * 25 >= total}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Weiter
+            </button>
+          </div>
+        ) : null}
+      </AdminCollapsibleSection>
     </div>
   );
 }

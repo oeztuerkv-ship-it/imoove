@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import { insurerExportDownloadUrl, insurerExportsListUrl, insurerExportsPostUrl } from "../lib/insurerApi.js";
 
@@ -101,49 +102,47 @@ export default function InsurerExportsPage() {
   }
 
   return (
-    <div className="admin-page" style={{ padding: "20px 24px", maxWidth: 1000 }}>
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Krankenkassen · Exporte</h1>
-      <p style={{ margin: "0 0 16px", color: "var(--onroda-text-muted, #64748b)", lineHeight: 1.5 }}>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
         CSV-Export (Schema <code>insurer_export_v1</code>) nur Fahrten mit <code>payer_kind = insurance</code>. Datei serverseitig abgelegt, Download mit Admin-Bearer.
       </p>
-      <div
-        style={{
-          marginBottom: 20,
-          padding: 14,
-          border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-          borderRadius: 8,
-        }}
-      >
-        <h3 className="admin-table-sub" style={{ margin: "0 0 10px" }}>
-          Neuen Export anlegen
-        </h3>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
-          <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            Von
+
+      {err ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{err}</div>
+          </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="Neuen Export anlegen" defaultOpen>
+        <div className="admin-filter-toolbar">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Von</span>
             <input className="admin-input" type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
           </label>
-          <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            Bis
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Bis</span>
             <input className="admin-input" type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
           </label>
-          <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            Mandant (optional)
-            <input className="admin-input" value={companyId} onChange={(e) => setCompanyId(e.target.value)} placeholder="co-…" style={{ minWidth: 200 }} />
+          <label className="admin-filter-field admin-filter-field--wide">
+            <span className="admin-field-label">Mandant (optional)</span>
+            <input className="admin-input" value={companyId} onChange={(e) => setCompanyId(e.target.value)} placeholder="co-…" />
           </label>
           <button type="button" className="admin-btn-primary" onClick={() => void onCreate()} disabled={busy}>
             {busy ? "Erzeuge…" : "CSV erzeugen"}
           </button>
         </div>
-        {msg ? <div className="admin-info-banner" style={{ marginTop: 10 }}>{msg}</div> : null}
-      </div>
-      {err ? <div className="admin-error-banner">{err}</div> : null}
-      <h3 className="admin-table-sub" style={{ margin: "0 0 8px" }}>
-        Letzte Batches
-      </h3>
-      <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading} style={{ marginBottom: 8 }}>
-        {loading ? "Lade…" : "Aktualisieren"}
-      </button>
-      <div style={{ overflow: "auto", border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8 }}>
+        {msg ? <div className="admin-info-banner admin-info-banner--inline" style={{ marginTop: 10 }}>{msg}</div> : null}
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection title="Letzte Batches" subtitle={`${items.length} Einträge`} defaultOpen>
+        <div className="admin-section-toolbar admin-section-toolbar--start" style={{ marginBottom: 8 }}>
+          <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
+            {loading ? "Lade…" : "Aktualisieren"}
+          </button>
+        </div>
+        <div className="admin-table-card admin-table-card--embedded">
         <table className="admin-table" style={{ minWidth: 700, width: "100%" }}>
           <thead>
             <tr>
@@ -188,7 +187,8 @@ export default function InsurerExportsPage() {
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      </AdminCollapsibleSection>
     </div>
   );
 }

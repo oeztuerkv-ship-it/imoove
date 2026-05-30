@@ -370,6 +370,100 @@
   color: var(--onroda-text-dark);
 }
 
+.admin-split-layout--insurer-detail {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+}
+
+.admin-split-layout--insurer-detail.admin-split-layout--single {
+  grid-template-columns: 1fr;
+}
+
+.insurer-rides-detail-pane .admin-split-pane__body {
+  position: sticky;
+  top: var(--onroda-space-4);
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.insurer-rides-cards {
+  display: grid;
+  gap: var(--onroda-space-4);
+}
+
+.insurer-ride-card {
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-md);
+  padding: var(--onroda-space-4) var(--onroda-space-5);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+  background: var(--onroda-bg-card);
+}
+
+.insurer-ride-card:hover {
+  background: var(--onroda-bg-light);
+  border-color: var(--onroda-border);
+}
+
+.insurer-ride-card--selected {
+  border-color: var(--onroda-red);
+  background: color-mix(in srgb, var(--onroda-red) 6%, var(--onroda-bg-card));
+}
+
+.insurer-ride-card__row {
+  display: grid;
+  gap: var(--onroda-space-4);
+  align-items: start;
+}
+
+.insurer-ride-card__row--top {
+  grid-template-columns: minmax(230px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.9fr);
+}
+
+.insurer-ride-card__row--bottom {
+  grid-template-columns: minmax(250px, 1.4fr) minmax(250px, 1.4fr) minmax(140px, 0.8fr);
+  margin-top: var(--onroda-space-4);
+  padding-top: var(--onroda-space-4);
+  border-top: 1px dashed var(--onroda-border-subtle);
+}
+
+.insurer-ride-card__id {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--onroda-text-dark);
+  letter-spacing: -0.02em;
+}
+
+.insurer-ride-card__price {
+  text-align: right;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+  white-space: nowrap;
+}
+
+.insurer-ride-card__sub {
+  color: var(--onroda-text-muted);
+  font-size: 0.8rem;
+}
+
+.insurer-detail-actors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--onroda-space-4);
+  margin-bottom: var(--onroda-space-4);
+  padding: var(--onroda-space-4);
+  border-radius: var(--onroda-radius-md);
+  background: var(--onroda-bg-light);
+  border: 1px solid var(--onroda-border-subtle);
+}
+
+.insurer-quick-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--onroda-space-3);
+  margin-top: var(--onroda-space-4);
+}
+
 .admin-placeholder-list {
   margin: 12px 0 0;
   padding-left: 1.25rem;

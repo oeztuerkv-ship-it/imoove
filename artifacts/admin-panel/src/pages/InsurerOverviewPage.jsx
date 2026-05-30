@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import { insurerSummaryUrl } from "../lib/insurerApi.js";
 
@@ -51,66 +52,72 @@ export default function InsurerOverviewPage() {
 
   const s = data;
 
+  const kpiCards = s
+    ? [
+        ["Fahrten (gezählt)", s.rideCount],
+        ["Abgeschlossen", s.completedCount],
+        ["Stornos (Zähler)", s.cancelledCount],
+        ["Summe Brutto (€)", s.totalGrossAmount?.toFixed?.(2) ?? s.totalGrossAmount],
+        ["Ø Brutto / Fahrt (€)", s.avgGrossPerRide?.toFixed?.(2) ?? s.avgGrossPerRide],
+        ["Offene Settlement-Zeilen (Fin.)", s.openSettlementCount],
+      ]
+    : [];
+
   return (
-    <div className="admin-page" style={{ padding: "20px 24px", maxWidth: 960 }}>
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Krankenkassen · Übersicht</h1>
-      <p style={{ margin: "0 0 16px", color: "var(--onroda-text-muted, #64748b)", lineHeight: 1.5, maxWidth: 720 }}>
-        Datensparsame Kennzahlen für Fahrten mit <strong>Zahler/Kontext Krankenkasse</strong> (<code>payer_kind = insurance</code>).
-        Onroda ist Vermittler; Beförderer ist das jeweilige Taxi-Unternehmen.
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
+        Datensparsame Kennzahlen für Fahrten mit <strong>Zahler/Kontext Krankenkasse</strong> (
+        <code>payer_kind = insurance</code>). Onroda ist Vermittler; Beförderer ist das jeweilige Taxi-Unternehmen.
       </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Von
-          <input className="admin-input" type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Bis
-          <input className="admin-input" type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
-        </label>
-        <label className="admin-table-sub" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Mandant (optional)
-          <input
-            className="admin-input"
-            value={companyId}
-            onChange={(e) => setCompanyId(e.target.value)}
-            placeholder="co-…"
-            style={{ minWidth: 200 }}
-          />
-        </label>
-        <button type="button" className="admin-btn-primary" onClick={() => void load()} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
-        </button>
-      </div>
-      {err ? <div className="admin-error-banner">{err}</div> : null}
-      {loading && !s ? (
-        <p className="admin-table-sub">Lade …</p>
-      ) : s ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
-          {[
-            ["Fahrten (gezählt)", s.rideCount],
-            ["Abgeschlossen", s.completedCount],
-            ["Stornos (Zähler)", s.cancelledCount],
-            ["Summe Brutto (€)", s.totalGrossAmount?.toFixed?.(2) ?? s.totalGrossAmount],
-            ["Ø Brutto / Fahrt (€)", s.avgGrossPerRide?.toFixed?.(2) ?? s.avgGrossPerRide],
-            ["Offene Settlement-Zeilen (Fin.)", s.openSettlementCount],
-          ].map(([label, val]) => (
-            <div
-              key={label}
-              style={{
-                padding: 14,
-                borderRadius: 8,
-                border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-                background: "var(--onroda-surface-2, #f8fafc)",
-              }}
-            >
-              <div className="admin-table-sub" style={{ fontSize: 11, marginBottom: 6 }}>
-                {label}
-              </div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: "var(--onroda-text-dark, #0f172a)" }}>{val}</div>
-            </div>
-          ))}
-        </div>
+
+      {err ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{err}</div>
+          </div>
+        </section>
       ) : null}
+
+      <AdminCollapsibleSection title="Zeitraum & Filter" defaultOpen>
+        <div className="admin-filter-toolbar">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Von</span>
+            <input className="admin-input" type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Bis</span>
+            <input className="admin-input" type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} />
+          </label>
+          <label className="admin-filter-field admin-filter-field--wide">
+            <span className="admin-field-label">Mandant (optional)</span>
+            <input
+              className="admin-input"
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+              placeholder="co-…"
+            />
+          </label>
+          <button type="button" className="admin-btn-primary" onClick={() => void load()} disabled={loading}>
+            {loading ? "Lade…" : "Aktualisieren"}
+          </button>
+        </div>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection title="Kennzahlen" subtitle={loading ? "Wird geladen …" : "Krankenfahrt im Zeitraum"} defaultOpen>
+        {loading && !s ? <p className="admin-table-sub">Lade …</p> : null}
+        {s ? (
+          <div className="admin-stat-grid">
+            {kpiCards.map(([label, val]) => (
+              <div key={label} className="admin-stat-card">
+                <div className="admin-stat-label">{label}</div>
+                <div className="admin-stat-value admin-crisp-numeric">{val}</div>
+              </div>
+            ))}
+          </div>
+        ) : !loading ? (
+          <p className="admin-table-sub">Keine Daten für den Zeitraum.</p>
+        ) : null}
+      </AdminCollapsibleSection>
     </div>
   );
 }
