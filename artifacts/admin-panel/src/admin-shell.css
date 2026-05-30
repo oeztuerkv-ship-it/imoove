@@ -390,24 +390,13 @@
 .admin-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: var(--onroda-space-4);
   margin-bottom: var(--onroda-space-11);
 }
 
-.admin-sidebar__brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  flex-shrink: 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-}
-
 .admin-sidebar__mark-img.admin-brand-logo {
-  height: 40px;
+  height: 56px;
   width: auto;
-  max-width: 132px;
+  max-width: 168px;
 }
 
 .admin-sidebar__logo {

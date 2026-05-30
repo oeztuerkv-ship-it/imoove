@@ -44,12 +44,7 @@ export default function Sidebar({ active, onChange, role = "admin", onCloseMobil
     <aside className="admin-sidebar" aria-label="Plattform-Navigation">
       <div className="admin-sidebar__scroll">
         <div className="admin-sidebar__brand">
-          <div className="admin-sidebar__brand-mark">
-            <OnrodaMark className="admin-sidebar__mark-img" />
-          </div>
-          <div>
-            <div className="admin-sidebar__logo-sub">Plattform-Konsole</div>
-          </div>
+          <OnrodaMark className="admin-sidebar__mark-img" />
         </div>
 
         <div className="admin-sidebar__section-title">Menü</div>

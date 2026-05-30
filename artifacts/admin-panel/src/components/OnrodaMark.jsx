@@ -7,8 +7,8 @@ export default function OnrodaMark({ className = "" }) {
       src={logoTransparent}
       alt="ONRODA"
       className={`admin-brand-logo${className ? ` ${className}` : ""}`}
-      width={124}
-      height={46}
+      width={160}
+      height={60}
       decoding="async"
     />
   );

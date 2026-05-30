@@ -55,15 +55,12 @@
   flex-shrink: 0;
 }
 
-.admin-topnav__mark {
-  flex-shrink: 0;
-}
-
 .admin-topnav__mark-img.admin-brand-logo {
-  height: 36px;
+  height: 48px;
   width: auto;
-  max-width: 120px;
+  max-width: 160px;
   display: block;
+  flex-shrink: 0;
 }
 
 .admin-topnav__brand-text {

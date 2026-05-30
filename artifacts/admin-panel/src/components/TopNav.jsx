@@ -139,12 +139,7 @@ export default function TopNav({
           </button>
         ) : null}
         <div className="admin-topnav__brand">
-          <div className="admin-topnav__mark">
-            <OnrodaMark className="admin-topnav__mark-img" />
-          </div>
-          <div className="admin-topnav__brand-text">
-            <div className="admin-topnav__logo-sub">Plattform-Konsole</div>
-          </div>
+          <OnrodaMark className="admin-topnav__mark-img" />
         </div>
         {narrow && !mobileOpen ? null : (
           <nav className="admin-topnav__main" aria-label="Hauptmenü">
