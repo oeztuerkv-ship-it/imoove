@@ -1210,6 +1210,7 @@ export const partnerMessagesTable = pgTable("partner_messages", {
   company_id: text("company_id")
     .notNull()
     .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  batch_id: text("batch_id"),
   subject: text("subject").notNull().default(""),
   body: text("body").notNull().default(""),
   is_read: boolean("is_read").notNull().default(false),

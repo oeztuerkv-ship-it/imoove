@@ -3,7 +3,7 @@ import { isPostgresConfigured } from "../db/client";
 import {
   deletePartnerMessageById,
   insertPartnerMessagesBatch,
-  listPartnerMessagesAdmin,
+  listPartnerMessagesAdminGroups,
   resolveAdminMessageRecipients,
 } from "../db/partnerMessagesData";
 import { canMutateAdminCompanies, type AdminRole } from "../lib/adminConsoleRoles";
@@ -37,8 +37,10 @@ router.get("/", async (req, res, next) => {
       typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim())
         ? parseInt(rawLimit.trim(), 10)
         : 150;
-    const items = await listPartnerMessagesAdmin(limit);
-    res.json({ ok: true, items });
+    const groups = await listPartnerMessagesAdminGroups(
+      typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim()) ? Math.min(120, parseInt(rawLimit.trim(), 10)) : 60,
+    );
+    res.json({ ok: true, groups });
   } catch (e) {
     next(e);
   }

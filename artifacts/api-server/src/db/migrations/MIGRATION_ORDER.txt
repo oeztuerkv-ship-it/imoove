@@ -79,6 +79,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Krankenfahrt-Freigabe (admin_companies + fleet_drivers medical transport flags) → 076_medical_transport_authorization.sql
   Kunden-Transportschein-Snapshot vor Buchung → 077_customer_medical_transport_scans.sql
   Partner-Posteingang (Operator → Mandant, Web + Mobile)                  → 082_partner_messages.sql
+  Partner-Nachrichten Sammel-Sendung (batch_id, Lesestatus Admin)         → 083_partner_messages_batch_id.sql
 
 Nach Migrationen Schema prüfen:
 

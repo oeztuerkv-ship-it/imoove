@@ -52,6 +52,28 @@ export type PartnerMessageDto = {
   readAt: string | null;
   createdAt: string;
   createdByAdmin: string;
+  batchId?: string | null;
+};
+
+export type PartnerMessageRecipientAdmin = {
+  id: string;
+  companyId: string;
+  companyName: string | null;
+  companyKind: string | null;
+  isRead: boolean;
+  readAt: string | null;
+};
+
+export type PartnerMessageAdminGroup = {
+  groupKey: string;
+  batchId: string | null;
+  subject: string;
+  body: string;
+  createdAt: string;
+  createdByAdmin: string;
+  recipientCount: number;
+  readCount: number;
+  recipients: PartnerMessageRecipientAdmin[];
 };
 
 function rowToDto(r: Row, companyName: string | null = null): PartnerMessageDto {
@@ -169,9 +191,11 @@ export async function insertPartnerMessagesBatch(input: {
   const subject = input.subject.trim();
   const body = input.body.trim();
   const createdByAdmin = input.createdByAdmin.trim() || "admin";
+  const batchId = randomUUID();
   const values = input.companyIds.map((companyId) => ({
     id: randomUUID(),
     company_id: companyId,
+    batch_id: batchId,
     subject,
     body,
     is_read: false,
@@ -184,6 +208,7 @@ export async function insertPartnerMessagesBatch(input: {
     rowToDto({
       id: v.id,
       company_id: v.company_id,
+      batch_id: v.batch_id,
       subject: v.subject,
       body: v.body,
       is_read: v.is_read,
@@ -192,6 +217,18 @@ export async function insertPartnerMessagesBatch(input: {
       created_by_admin: v.created_by_admin,
     }),
   );
+}
+
+function adminMessageGroupKey(msg: Row): string {
+  const bid = msg.batch_id?.trim();
+  if (bid) return `batch:${bid}`;
+  const t = msg.created_at.toISOString().slice(0, 19);
+  return `legacy:${msg.subject}\n${msg.body}\n${t}\n${msg.created_by_admin}`;
+}
+
+function sortRecipientsForAdmin(a: PartnerMessageRecipientAdmin, b: PartnerMessageRecipientAdmin): number {
+  if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+  return String(a.companyName || a.companyId).localeCompare(String(b.companyName || b.companyId), "de");
 }
 
 export async function listPartnerMessagesForCompany(companyId: string, limit = 100): Promise<PartnerMessageDto[]> {
@@ -262,19 +299,77 @@ export async function getPartnerMessageForCompany(
 }
 
 export async function listPartnerMessagesAdmin(limit = 150): Promise<PartnerMessageDto[]> {
+  const groups = await listPartnerMessagesAdminGroups(limit);
+  return groups.flatMap((g) =>
+    g.recipients.map((r) => ({
+      id: r.id,
+      companyId: r.companyId,
+      companyName: r.companyName,
+      subject: g.subject,
+      body: g.body,
+      isRead: r.isRead,
+      readAt: r.readAt,
+      createdAt: g.createdAt,
+      createdByAdmin: g.createdByAdmin,
+      batchId: g.batchId,
+    })),
+  );
+}
+
+export async function listPartnerMessagesAdminGroups(groupLimit = 60): Promise<PartnerMessageAdminGroup[]> {
   const db = getDb();
   if (!db) return [];
-  const cap = Math.min(300, Math.max(1, limit));
+  const cap = Math.min(120, Math.max(1, groupLimit));
   const rows = await db
     .select({
       msg: partnerMessagesTable,
       companyName: adminCompaniesTable.name,
+      companyKind: adminCompaniesTable.company_kind,
     })
     .from(partnerMessagesTable)
     .leftJoin(adminCompaniesTable, eq(partnerMessagesTable.company_id, adminCompaniesTable.id))
     .orderBy(desc(partnerMessagesTable.created_at))
-    .limit(cap);
-  return rows.map((r) => rowToDto(r.msg, r.companyName ?? null));
+    .limit(500);
+
+  const map = new Map<string, PartnerMessageAdminGroup>();
+  for (const row of rows) {
+    const msg = row.msg;
+    const key = adminMessageGroupKey(msg);
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        groupKey: key,
+        batchId: msg.batch_id?.trim() || null,
+        subject: msg.subject,
+        body: msg.body,
+        createdAt: msg.created_at.toISOString(),
+        createdByAdmin: msg.created_by_admin,
+        recipientCount: 0,
+        readCount: 0,
+        recipients: [],
+      };
+      map.set(key, group);
+    }
+    const recipient: PartnerMessageRecipientAdmin = {
+      id: msg.id,
+      companyId: msg.company_id,
+      companyName: row.companyName ?? null,
+      companyKind: row.companyKind ?? null,
+      isRead: msg.is_read,
+      readAt: msg.read_at ? msg.read_at.toISOString() : null,
+    };
+    group.recipients.push(recipient);
+    group.recipientCount += 1;
+    if (msg.is_read) group.readCount += 1;
+  }
+
+  return [...map.values()]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, cap)
+    .map((g) => ({
+      ...g,
+      recipients: [...g.recipients].sort(sortRecipientsForAdmin),
+    }));
 }
 
 export async function deletePartnerMessageForCompany(messageId: string, companyId: string): Promise<boolean> {

@@ -57,7 +57,8 @@ export default function PartnerMessagesPage() {
   const [companyId, setCompanyId] = useState("alle");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [history, setHistory] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [expandedGroupKey, setExpandedGroupKey] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -71,7 +72,7 @@ export default function PartnerMessagesPage() {
       const res = await adminFetch(BASE);
       const { data } = await readJson(res);
       if (!res.ok || !data?.ok) throw new Error(formatFailure(res, data));
-      setHistory(Array.isArray(data.items) ? data.items : []);
+      setGroups(Array.isArray(data.groups) ? data.groups : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
@@ -223,38 +224,132 @@ export default function PartnerMessagesPage() {
 
         <aside className="app-news-sidebar">
           <h2 className="app-news-sidebar__title">Gesendete Nachrichten</h2>
+          <p className="admin-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: 13 }}>
+            Lesestatus pro Unternehmen — „Empfänger anzeigen“ für Gelesen / Noch nicht gelesen.
+          </p>
           {loading ? <p className="admin-muted">Lädt…</p> : null}
           <div className="app-news-list">
-            {history.map((m) => (
-              <article key={m.id} className="app-news-list-card">
-                <div className="app-news-list-card__top">
-                  <div className="app-news-list-card__title">{m.subject}</div>
-                  <span
-                    className={`app-news-pill ${m.isRead ? "app-news-pill--off" : "app-news-pill--on"}`}
-                  >
-                    {m.isRead ? "Gelesen" : "Ungelesen"}
-                  </span>
-                </div>
-                <p className="app-news-list-card__body">{m.body.length > 120 ? `${m.body.slice(0, 120)}…` : m.body}</p>
-                <dl className="app-news-list-card__meta">
-                  <div>
-                    <dt>Empfänger</dt>
-                    <dd>{m.companyName || m.companyId}</dd>
+            {groups.map((g) => {
+              const unread = (g.recipients || []).filter((r) => !r.isRead);
+              const read = (g.recipients || []).filter((r) => r.isRead);
+              const expanded = expandedGroupKey === g.groupKey;
+              const multi = (g.recipientCount ?? 0) > 1;
+              return (
+                <article key={g.groupKey} className="app-news-list-card">
+                  <div className="app-news-list-card__top">
+                    <div className="app-news-list-card__title">{g.subject}</div>
+                    <span
+                      className={`app-news-pill ${
+                        g.readCount >= g.recipientCount && g.recipientCount > 0
+                          ? "app-news-pill--off"
+                          : "app-news-pill--on"
+                      }`}
+                    >
+                      {g.readCount ?? 0} / {g.recipientCount ?? 0} gelesen
+                    </span>
                   </div>
-                  <div>
-                    <dt>Gesendet</dt>
-                    <dd>{fmtDe(m.createdAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Von</dt>
-                    <dd>{m.createdByAdmin || "—"}</dd>
-                  </div>
-                </dl>
-                <button type="button" className="btn btn-outline" onClick={() => void onDelete(m.id)}>
-                  Löschen
-                </button>
-              </article>
-            ))}
+                  <p className="app-news-list-card__body">
+                    {g.body.length > 120 ? `${g.body.slice(0, 120)}…` : g.body}
+                  </p>
+                  <dl className="app-news-list-card__meta">
+                    <div>
+                      <dt>Empfänger</dt>
+                      <dd>
+                        {multi
+                          ? `${g.recipientCount} Unternehmen`
+                          : read[0]?.companyName || unread[0]?.companyName || "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Gesendet</dt>
+                      <dd>{fmtDe(g.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>Von</dt>
+                      <dd>{g.createdByAdmin || "—"}</dd>
+                    </div>
+                  </dl>
+                  {multi || unread.length > 0 || read.length > 0 ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      style={{ marginBottom: expanded ? 10 : 0 }}
+                      onClick={() => setExpandedGroupKey(expanded ? null : g.groupKey)}
+                    >
+                      {expanded ? "Empfänger ausblenden" : "Empfänger & Lesestatus"}
+                    </button>
+                  ) : null}
+                  {expanded ? (
+                    <div className="partner-msg-recipients">
+                      {unread.length > 0 ? (
+                        <div className="partner-msg-recipients__block">
+                          <h3 className="partner-msg-recipients__heading partner-msg-recipients__heading--unread">
+                            Noch nicht gelesen ({unread.length})
+                          </h3>
+                          <ul className="partner-msg-recipients__list">
+                            {unread.map((r) => (
+                              <li key={r.id} className="partner-msg-recipients__row">
+                                <span>
+                                  {r.companyName || r.companyId}
+                                  {r.companyKind ? (
+                                    <span className="admin-muted"> · {kindLabel(r.companyKind)}</span>
+                                  ) : null}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline"
+                                  onClick={() => void onDelete(r.id)}
+                                >
+                                  Löschen
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {read.length > 0 ? (
+                        <div className="partner-msg-recipients__block">
+                          <h3 className="partner-msg-recipients__heading partner-msg-recipients__heading--read">
+                            Gelesen ({read.length})
+                          </h3>
+                          <ul className="partner-msg-recipients__list">
+                            {read.map((r) => (
+                              <li key={r.id} className="partner-msg-recipients__row">
+                                <span>
+                                  {r.companyName || r.companyId}
+                                  {r.companyKind ? (
+                                    <span className="admin-muted"> · {kindLabel(r.companyKind)}</span>
+                                  ) : null}
+                                  {r.readAt ? (
+                                    <span className="admin-muted"> · {fmtDe(r.readAt)}</span>
+                                  ) : null}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline"
+                                  onClick={() => void onDelete(r.id)}
+                                >
+                                  Löschen
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {!expanded && !multi && (g.recipients || [])[0] ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => void onDelete(g.recipients[0].id)}
+                    >
+                      Löschen
+                    </button>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         </aside>
       </div>
