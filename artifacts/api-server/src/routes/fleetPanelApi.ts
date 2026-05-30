@@ -13,7 +13,9 @@ import {
   countFleetDriversPScheinExpiringSoon,
   findFleetDriverInCompany,
   getCompanyKind,
+  fleetDriverEmailConflictBody,
   insertFleetDriver,
+  isFleetDriverEmailConflictError,
   listFleetDriversForCompany,
   patchFleetDriverProfile,
   suspendFleetDriver,
@@ -246,7 +248,15 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
     });
     if (!ins.ok) {
       const code = ins.error;
-      res.status(code === "email_taken" ? 409 : 400).json({ error: code });
+      res
+        .status(isFleetDriverEmailConflictError(code) ? 409 : 400)
+        .json(
+          fleetDriverEmailConflictBody(code, {
+            existingCompanyId: ins.existingCompanyId,
+            existingCompanyName: ins.existingCompanyName,
+            existingDriverId: ins.existingDriverId,
+          }),
+        );
       return;
     }
     await insertPanelAuditLog({
@@ -308,9 +318,20 @@ router.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, n
     if (hasProfileKeys) {
       const r = await patchFleetDriverProfile(id, ctx.claims.companyId, patch);
       if (!r.ok) {
-        const st =
-          r.error === "email_taken" ? 409 : r.error === "email_invalid" ? 400 : r.error === "not_found" ? 404 : 400;
-        res.status(st).json({ error: r.error });
+        const st = isFleetDriverEmailConflictError(r.error)
+          ? 409
+          : r.error === "email_invalid"
+            ? 400
+            : r.error === "not_found"
+              ? 404
+              : 400;
+        res.status(st).json(
+          fleetDriverEmailConflictBody(r.error, {
+            existingCompanyId: r.existingCompanyId,
+            existingCompanyName: r.existingCompanyName,
+            existingDriverId: r.existingDriverId,
+          }),
+        );
         return;
       }
     }

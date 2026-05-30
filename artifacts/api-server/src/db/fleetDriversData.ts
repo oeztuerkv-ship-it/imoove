@@ -1,7 +1,81 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { findCompanyById } from "./adminData";
 import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, fleetDriversTable } from "./schema";
+
+/** Eine E-Mail → genau ein `fleet_drivers`-Datensatz → genau ein Mandant (kein zweites Konto). */
+export type FleetDriverEmailRejectReason = "email_taken_in_company" | "email_taken_other_company";
+
+export type FleetDriverEmailReject = {
+  reason: FleetDriverEmailRejectReason;
+  existingDriverId: string;
+  existingCompanyId: string;
+  existingCompanyName: string | null;
+};
+
+function normalizeFleetDriverEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function isValidFleetDriverEmail(email: string): boolean {
+  return Boolean(email) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/**
+ * Prüft, ob die E-Mail für einen Mandanten/Fahrer vergeben werden darf.
+ * `exceptDriverId`: bei Profil-Patch die eigene Zeile ignorieren.
+ */
+export async function validateFleetDriverEmailAssignment(
+  email: string,
+  companyId: string,
+  exceptDriverId?: string,
+): Promise<FleetDriverEmailReject | null> {
+  const em = normalizeFleetDriverEmail(email);
+  if (!isValidFleetDriverEmail(em)) return null;
+  const existing = await findFleetDriverByEmailNormalized(em);
+  if (!existing) return null;
+  if (exceptDriverId && existing.id === exceptDriverId) return null;
+
+  const existingCompanyId = existing.company_id;
+  let existingCompanyName: string | null = null;
+  const co = await findCompanyById(existingCompanyId);
+  if (co) existingCompanyName = co.name ?? null;
+
+  const reason: FleetDriverEmailRejectReason =
+    existingCompanyId === companyId ? "email_taken_in_company" : "email_taken_other_company";
+
+  return {
+    reason,
+    existingDriverId: existing.id,
+    existingCompanyId,
+    existingCompanyName,
+  };
+}
+
+/** JSON-Body für Panel/API bei E-Mail-Konflikt (409). */
+export function fleetDriverEmailConflictBody(
+  error: string,
+  meta?: {
+    existingCompanyId?: string;
+    existingCompanyName?: string | null;
+    existingDriverId?: string;
+  },
+): Record<string, unknown> {
+  const body: Record<string, unknown> = { error };
+  if (meta?.existingCompanyId) body.existingCompanyId = meta.existingCompanyId;
+  if (meta?.existingCompanyName) body.existingCompanyName = meta.existingCompanyName;
+  if (meta?.existingDriverId) body.existingDriverId = meta.existingDriverId;
+  return body;
+}
+
+export function isFleetDriverEmailConflictError(code: string): boolean {
+  return (
+    code === "email_taken" ||
+    code === "email_taken_in_company" ||
+    code === "email_taken_other_company"
+  );
+}
 
 export type FleetDriverAccessStatus = "active" | "suspended";
 export type FleetDriverApprovalStatus =
@@ -235,22 +309,38 @@ export async function insertFleetDriver(input: {
   driversLicenseExpiry?: string | null;
   /** Neu angelegte Fahrer gelten im Mandanten als nutzbar; Plattform prüft Einsatz über Readiness (Nachweise/Fahrzeug). */
   approvalStatus?: FleetDriverApprovalStatus;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+}): Promise<
+  | { ok: true; id: string }
+  | {
+      ok: false;
+      error: string;
+      existingCompanyId?: string;
+      existingCompanyName?: string | null;
+      existingDriverId?: string;
+    }
+> {
   if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
-  const email = input.email.trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = normalizeFleetDriverEmail(input.email);
+  if (!isValidFleetDriverEmail(email)) {
     return { ok: false, error: "email_invalid" };
   }
-  const existing = await findFleetDriverByEmailNormalized(email);
-  if (existing) {
-    return { ok: false, error: "email_taken" };
+  const emailConflict = await validateFleetDriverEmailAssignment(email, input.companyId);
+  if (emailConflict) {
+    return {
+      ok: false,
+      error: emailConflict.reason,
+      existingCompanyId: emailConflict.existingCompanyId,
+      existingCompanyName: emailConflict.existingCompanyName,
+      existingDriverId: emailConflict.existingDriverId,
+    };
   }
   const id = `fd-${randomUUID()}`;
   const pExp = input.pScheinExpiry?.trim();
   const dlExp = input.driversLicenseExpiry?.trim();
-  await db.insert(fleetDriversTable).values({
+  try {
+    await db.insert(fleetDriversTable).values({
     id,
     company_id: input.companyId,
     email,
@@ -270,7 +360,24 @@ export async function insertFleetDriver(input: {
     access_status: "active",
     approval_status: input.approvalStatus ?? "approved",
     session_version: 1,
-  });
+    });
+  } catch (e: unknown) {
+    const code = (e as { code?: string })?.code;
+    if (code === "23505") {
+      const again = await validateFleetDriverEmailAssignment(email, input.companyId);
+      if (again) {
+        return {
+          ok: false,
+          error: again.reason,
+          existingCompanyId: again.existingCompanyId,
+          existingCompanyName: again.existingCompanyName,
+          existingDriverId: again.existingDriverId,
+        };
+      }
+      return { ok: false, error: "email_taken" };
+    }
+    throw e;
+  }
   return { ok: true, id };
 }
 
@@ -292,7 +399,16 @@ export async function patchFleetDriverProfile(
     driversLicenseNumber: string;
     driversLicenseExpiry: string | null;
   }>,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      existingCompanyId?: string;
+      existingCompanyName?: string | null;
+      existingDriverId?: string;
+    }
+> {
   const cur = await findFleetDriverInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
   const db = getDb();
@@ -301,13 +417,19 @@ export async function patchFleetDriverProfile(
   let bumpSession = false;
 
   if (patch.email !== undefined) {
-    const em = patch.email.trim().toLowerCase();
-    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    const em = normalizeFleetDriverEmail(patch.email);
+    if (!isValidFleetDriverEmail(em)) {
       return { ok: false, error: "email_invalid" };
     }
-    const other = await findFleetDriverByEmailNormalized(em);
-    if (other && other.id !== id) {
-      return { ok: false, error: "email_taken" };
+    const emailConflict = await validateFleetDriverEmailAssignment(em, companyId, id);
+    if (emailConflict) {
+      return {
+        ok: false,
+        error: emailConflict.reason,
+        existingCompanyId: emailConflict.existingCompanyId,
+        existingCompanyName: emailConflict.existingCompanyName,
+        existingDriverId: emailConflict.existingDriverId,
+      };
     }
     set.email = em;
     bumpSession = true;

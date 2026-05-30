@@ -4,8 +4,16 @@ export function messageForFleetDriverCreateError(data) {
   const hint = data?.hint;
   const maxDrivers = data?.maxDrivers;
   switch (code) {
+    case "email_taken_in_company":
+      return "Diese E-Mail ist in Ihrem Unternehmen bereits einem Fahrer zugeordnet. Pro E-Mail ist nur ein Fahrer-Konto möglich.";
+    case "email_taken_other_company": {
+      const name = typeof data?.existingCompanyName === "string" ? data.existingCompanyName.trim() : "";
+      return name
+        ? `Diese E-Mail ist bereits dem Unternehmen „${name}“ zugeordnet. Eine E-Mail kann nur bei einem Mandanten registriert sein.`
+        : "Diese E-Mail ist bereits einem anderen Unternehmen auf der Plattform zugeordnet. Eine E-Mail kann nur einmal registriert werden.";
+    }
     case "email_taken":
-      return "Diese E-Mail ist bereits als Fahrer registriert (systemweit eindeutig). Mit bestehendem Konto anmelden oder andere E-Mail wählen.";
+      return "Diese E-Mail ist bereits als Fahrer registriert. Mit bestehendem Konto anmelden oder eine andere E-Mail wählen.";
     case "email_invalid":
       return "Bitte eine gültige E-Mail-Adresse eingeben.";
     case "company_profile_incomplete":

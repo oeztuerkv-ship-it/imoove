@@ -436,7 +436,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
-    return { ok: res.ok && data?.ok, error: data?.error, status: res.status };
+    return { ok: res.ok && data?.ok, ...data, status: res.status };
   }
 
   function sliceIsoDate(v) {
@@ -488,14 +488,14 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     }
     const r = await patchFleetDriver(editDriverId, body);
     if (!r.ok) {
+      const msg =
+        typeof r.error === "string"
+          ? messageForFleetDriverCreateError(r)
+          : "Speichern fehlgeschlagen.";
       setDriverEditError(
-        r.error === "email_taken"
-          ? "Diese E-Mail ist bereits vergeben."
-          : r.error === "email_invalid"
-            ? "Bitte eine gültige E-Mail eingeben."
-            : typeof r.error === "string"
-              ? `Speichern fehlgeschlagen (${r.error}).`
-              : "Speichern fehlgeschlagen.",
+        msg.startsWith("Ein unbekannter Fehler") && typeof r.error === "string"
+          ? `Speichern fehlgeschlagen (${r.error}).`
+          : msg,
       );
       return;
     }

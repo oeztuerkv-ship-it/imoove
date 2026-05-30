@@ -219,6 +219,13 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'fleet_drivers_email_lower_uidx'
+  ) THEN
+    errs := array_append(errs, 'index fleet_drivers_email_lower_uidx (Migration 022/084, E-Mail eindeutig)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'fleet_vehicles'
   ) THEN

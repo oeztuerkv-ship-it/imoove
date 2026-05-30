@@ -101,6 +101,7 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   company_id: text("company_id")
     .notNull()
     .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  /** Plattformweit eindeutig (lower(trim)); ein Datensatz = ein Mandant — Migration 022/084. */
   email: text("email").notNull(),
   first_name: text("first_name").notNull().default(""),
   last_name: text("last_name").notNull().default(""),

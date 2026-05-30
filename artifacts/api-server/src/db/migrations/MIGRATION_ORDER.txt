@@ -80,6 +80,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Kunden-Transportschein-Snapshot vor Buchung → 077_customer_medical_transport_scans.sql
   Partner-Posteingang (Operator → Mandant, Web + Mobile)                  → 082_partner_messages.sql
   Partner-Nachrichten Sammel-Sendung (batch_id, Lesestatus Admin)         → 083_partner_messages_batch_id.sql
+  Fahrer: E-Mail plattformweit eindeutig (ein Mandant pro E-Mail)           → 084_fleet_drivers_email_unique_enforce.sql
 
 Nach Migrationen Schema prüfen:
 
