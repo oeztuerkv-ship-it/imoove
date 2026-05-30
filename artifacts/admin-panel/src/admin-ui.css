@@ -1561,32 +1561,72 @@
   max-width: none;
 }
 
+.admin-companies .admin-rides-table-wrap {
+  padding: 0 8px 6px;
+}
+
 .admin-companies-table {
   table-layout: fixed;
 }
 
+.admin-companies-table.admin-rides-table thead th,
+.admin-companies-table.admin-rides-table tbody td {
+  padding: 5px 6px;
+}
+
 .admin-companies-table__col-num {
-  width: 3.25rem;
+  width: 2rem;
   text-align: center;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
 }
 
 .admin-companies-table__col-name {
-  width: 22%;
-  min-width: 160px;
+  width: 15%;
+  min-width: 0;
 }
 
 .admin-companies-table__col-kind {
-  width: 9%;
-  min-width: 80px;
+  width: 6%;
+  min-width: 0;
+}
+
+.admin-companies-table__col-city {
+  width: 8%;
+  min-width: 0;
+  max-width: 6.5rem;
 }
 
 .admin-companies-table__col-iban {
-  width: 18%;
+  width: 11%;
+  min-width: 0;
+  max-width: 8.5rem;
 }
 
 .admin-companies-table__col-status {
-  width: 24%;
-  min-width: 180px;
+  width: 15%;
+  min-width: 0;
+}
+
+.admin-companies-table .admin-rides-table__col-actions,
+.admin-companies-table__col-actions {
+  width: 1%;
+  min-width: 0;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  white-space: nowrap;
+}
+
+.admin-companies-table .admin-rides-table__actions {
+  gap: 3px;
+  flex-wrap: nowrap;
+}
+
+.admin-companies-table .admin-btn-action--table {
+  padding: 2px 5px;
+  font-size: 0.65rem;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .admin-companies-table__row {
@@ -1680,9 +1720,18 @@
 
 .admin-companies-table tbody .admin-status-pill {
   text-transform: none;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.admin-companies-table tbody .admin-status-pill--bad {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-companies .admin-c-filter-toolbar--in-panel {

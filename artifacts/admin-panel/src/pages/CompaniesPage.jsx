@@ -6,11 +6,11 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import { matchesCompanyKindListTab } from "../utils/panelModulesByCompanyKind.js";
 
 const KIND_COLORS = {
-  taxi: { bg: "#eff6ff", border: "#93c5fd", text: "#1e3a8a", label: "Taxi" },
-  hotel: { bg: "#ecfeff", border: "#67e8f9", text: "#0e7490", label: "Hotel" },
-  insurer: { bg: "#f0fdf4", border: "#86efac", text: "#14532d", label: "Krankenkasse" },
-  medical: { bg: "#f0fdf4", border: "#86efac", text: "#14532d", label: "Krankenkasse" },
-  general: { bg: "#f8fafc", border: "#e2e8f0", text: "#334155", label: "Sonstige" },
+  taxi: { bg: "#eff6ff", border: "#93c5fd", text: "#1e3a8a", label: "Taxi", tableLabel: "Taxi" },
+  hotel: { bg: "#ecfeff", border: "#67e8f9", text: "#0e7490", label: "Hotel", tableLabel: "Hotel" },
+  insurer: { bg: "#f0fdf4", border: "#86efac", text: "#14532d", label: "Krankenkasse", tableLabel: "Kasse" },
+  medical: { bg: "#f0fdf4", border: "#86efac", text: "#14532d", label: "Krankenkasse", tableLabel: "Kasse" },
+  general: { bg: "#f8fafc", border: "#e2e8f0", text: "#334155", label: "Sonstige", tableLabel: "Sonst." },
 };
 
 const VERIFY_BADGE = {
@@ -24,7 +24,7 @@ const COMPL_BADGE = {
   pending: { label: "Compliance: offen", short: "Offen", cl: "admin-status-pill admin-status-pill--pending" },
   in_review: { label: "Compliance: in Prüfung", short: "In Prüfung", cl: "admin-status-pill admin-status-pill--active" },
   compliant: { label: "Compliance: erfüllt", short: "Erfüllt", cl: "admin-status-pill admin-status-pill--ok" },
-  non_compliant: { label: "Compliance: nicht erfüllt", short: "Nicht erfüllt", cl: "admin-status-pill admin-status-pill--bad" },
+  non_compliant: { label: "Compliance: nicht erfüllt", short: "N. erfüllt", cl: "admin-status-pill admin-status-pill--bad" },
 };
 
 const CONTRACT_BADGE = {
@@ -52,6 +52,12 @@ const INITIAL_EXTRA = {
 function kindLabelForItem(item) {
   const c = item.company_kind || "general";
   return (KIND_COLORS[c] || KIND_COLORS.general).label;
+}
+
+function kindTableLabel(item) {
+  const c = item.company_kind || "general";
+  const row = KIND_COLORS[c] || KIND_COLORS.general;
+  return row.tableLabel ?? row.label;
 }
 
 function getLastChangeMs(item) {
@@ -910,7 +916,7 @@ export default function CompaniesPage({
               </th>
               <th
                 scope="col"
-                {...sortThProps("city", "")}
+                {...sortThProps("city", "admin-companies-table__col-city")}
                 onClick={() => setSortFromColumn("city")}
                 title="Nach Ort sortieren"
               >
@@ -950,7 +956,7 @@ export default function CompaniesPage({
               const rowNum = rowIndex + 1;
               const color = KIND_COLORS[item.company_kind] || KIND_COLORS.general;
               const iban = (item.bank_iban && String(item.bank_iban).trim()) || "";
-              const displayKind = item.company_kind ? kindLabelForItem(item) : color.label;
+              const displayKind = kindTableLabel(item);
               return (
                 <Fragment key={item.id}>
                   <tr
@@ -973,7 +979,7 @@ export default function CompaniesPage({
                       {rowNum}
                       <span className="admin-visually-hidden">Zeile {rowNum}</span>
                     </td>
-                    <td>
+                    <td className="admin-companies-table__col-name">
                       <div className="admin-companies-table__mandant">
                         <button
                           type="button"
@@ -991,7 +997,7 @@ export default function CompaniesPage({
                         ) : null}
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-companies-table__col-kind">
                       <span
                         className="admin-companies-table__kind"
                         style={{
@@ -1003,7 +1009,7 @@ export default function CompaniesPage({
                         {displayKind}
                       </span>
                     </td>
-                    <td className="admin-companies-table__muted admin-ellipsis" title={item.city || ""}>
+                    <td className="admin-companies-table__col-city admin-companies-table__muted admin-ellipsis" title={item.city || ""}>
                       {item.city || "—"}
                     </td>
                     <td
@@ -1012,14 +1018,14 @@ export default function CompaniesPage({
                     >
                       {iban || <span className="admin-companies-table__missing">fehlt</span>}
                     </td>
-                    <td>
+                    <td className="admin-companies-table__col-status">
                       <StatusBadgeGroup
                         v={item.verification_status}
                         c={item.compliance_status}
                         t={item.contract_status}
                       />
                     </td>
-                    <td className="admin-rides-table__col-actions" onClick={(e) => e.stopPropagation()}>
+                    <td className="admin-rides-table__col-actions admin-companies-table__col-actions" onClick={(e) => e.stopPropagation()}>
                       <div className="admin-rides-table__actions">
                         {onOpenMandateDetail ? (
                           <button
@@ -1039,7 +1045,7 @@ export default function CompaniesPage({
                             title="Partner-Portal-Zugang für diesen Mandanten anlegen (E-Mail optional)"
                             onClick={() => onOpenPanelUsersForCompany(item.id)}
                           >
-                            Partner-Zugang
+                            Zugang
                           </button>
                         ) : null}
                         <button
