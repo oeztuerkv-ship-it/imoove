@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AdminApiAuthBanner from "./components/AdminApiAuthBanner.jsx";
 import TopNav from "./components/TopNav.jsx";
 import {
@@ -7,6 +7,12 @@ import {
 } from "./config/adminNavConfig.js";
 import { API_BASE } from "./lib/apiBase.js";
 import { adminApiHeaders, getAdminSessionToken, setAdminSessionToken } from "./lib/adminApiHeaders.js";
+import {
+  adminAppHistoryHref,
+  applyAdminAppRoute,
+  buildAdminAppHash,
+  parseAdminAppHash,
+} from "./lib/adminAppHistory.js";
 
 import DashboardPage from "./pages/DashboardPage";
 import FaresPage from "./pages/FaresPage";
@@ -371,6 +377,9 @@ export default function App() {
   const [companiesExpandWorkspaceCompanyId, setCompaniesExpandWorkspaceCompanyId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [narrowNav, setNarrowNav] = useState(false);
+  /** Verhindert pushState-Schleife nach popstate / initialem Hash-Lesen */
+  const adminHistorySkipPushRef = useRef(false);
+  const adminInitialRouteAppliedRef = useRef(false);
 
   const current =
     active === "companies" && mandateDetailCompanyId
@@ -383,10 +392,57 @@ export default function App() {
         : PAGE_META[active] || PAGE_META.dashboard;
   const userRole = authUser?.role ?? "admin";
 
+  const routeSetters = useMemo(
+    () => ({
+      setActive,
+      setRideRecordId,
+      setMandateDetailCompanyId,
+      setCompaniesListTab,
+      setCompaniesExpandWorkspaceCompanyId,
+      setCompaniesInitialOpenId,
+      setPanelUsersSeedCompanyId,
+      setTaxiFleetSeedCompanyId,
+    }),
+    [],
+  );
+
+  const syncAdminHistoryPush = useCallback(() => {
+    if (typeof window === "undefined" || !authUser) return;
+    const hash = buildAdminAppHash({
+      active,
+      rideRecordId,
+      mandateDetailCompanyId,
+      companiesListTab,
+      panelUsersSeedCompanyId,
+      taxiFleetSeedCompanyId,
+      companiesExpandWorkspaceCompanyId,
+    });
+    if (window.location.hash === hash) return;
+    window.history.pushState({ adminApp: 1 }, "", adminAppHistoryHref(hash));
+  }, [
+    authUser,
+    active,
+    rideRecordId,
+    mandateDetailCompanyId,
+    companiesListTab,
+    panelUsersSeedCompanyId,
+    taxiFleetSeedCompanyId,
+    companiesExpandWorkspaceCompanyId,
+  ]);
+
+  const applyRouteFromBrowser = useCallback(
+    (hash) => {
+      adminHistorySkipPushRef.current = true;
+      applyAdminAppRoute(parseAdminAppHash(hash, userRole), routeSetters);
+    },
+    [userRole, routeSetters],
+  );
+
   const onLogout = useCallback(() => {
     setAdminSessionToken("");
     setAuthUser(null);
     setLoginRevealed(false);
+    adminInitialRouteAppliedRef.current = false;
     spacePressCountRef.current = 0;
     if (spaceResetTimerRef.current) {
       window.clearTimeout(spaceResetTimerRef.current);
@@ -397,6 +453,9 @@ export default function App() {
     setCompaniesExpandWorkspaceCompanyId(null);
     setRideRecordId(null);
     setPanelUsersSeedCompanyId(null);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
   }, []);
 
   const clearTaxiFleetSeedCompanyId = useCallback(() => setTaxiFleetSeedCompanyId(null), []);
@@ -490,6 +549,45 @@ export default function App() {
       setActive(firstAllowedAdminPage(authUser.role));
     }
   }, [authUser?.role, active, authUser]);
+
+  /** Erster Login / Reload: Hash lesen oder Dashboard in History setzen */
+  useEffect(() => {
+    if (authBooting || !authUser) return;
+    if (adminInitialRouteAppliedRef.current) return;
+    adminInitialRouteAppliedRef.current = true;
+    const hash = window.location.hash;
+    if (hash && hash !== "#") {
+      applyRouteFromBrowser(hash);
+    } else {
+      const fallback = buildAdminAppHash({
+        active: firstAllowedAdminPage(authUser.role) || "dashboard",
+        companiesListTab: "all",
+      });
+      adminHistorySkipPushRef.current = true;
+      window.history.replaceState({ adminApp: 1 }, "", adminAppHistoryHref(fallback));
+      applyRouteFromBrowser(fallback);
+    }
+  }, [authBooting, authUser, applyRouteFromBrowser]);
+
+  /** Interne Navigation → History-Eintrag (Browser-Zurück) */
+  useEffect(() => {
+    if (!authUser || authBooting) return;
+    if (adminHistorySkipPushRef.current) {
+      adminHistorySkipPushRef.current = false;
+      return;
+    }
+    syncAdminHistoryPush();
+  }, [authUser, authBooting, syncAdminHistoryPush]);
+
+  /** Browser Zurück / Vorwärts */
+  useEffect(() => {
+    if (!authUser) return undefined;
+    const onPopState = () => {
+      applyRouteFromBrowser(window.location.hash);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [authUser, applyRouteFromBrowser]);
 
   useEffect(() => {
     let cancelled = false;
@@ -585,6 +683,14 @@ export default function App() {
       }
       setAuthUser(data.user ?? null);
       setAuthForm({ username: "", password: "" });
+      adminInitialRouteAppliedRef.current = false;
+      const role = data.user?.role ?? "admin";
+      const hash = buildAdminAppHash({
+        active: firstAllowedAdminPage(role) || "dashboard",
+        companiesListTab: "all",
+      });
+      adminHistorySkipPushRef.current = true;
+      window.history.replaceState({ adminApp: 1 }, "", adminAppHistoryHref(hash));
     } catch {
       setAuthError("Login fehlgeschlagen.");
     } finally {
