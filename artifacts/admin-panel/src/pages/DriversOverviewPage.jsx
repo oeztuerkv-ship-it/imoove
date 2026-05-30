@@ -63,7 +63,6 @@ const INITIAL_FILTERS = {
   blocked: "all",
   documents: "all",
   hasActiveRide: "all",
-  sort: "name",
 };
 
 function hasDriverSearchCriteria(filters) {
@@ -86,20 +85,49 @@ function buildQueryParams(filters) {
   if (filters.blocked !== "all") p.set("blocked", filters.blocked);
   if (filters.documents !== "all") p.set("documents", filters.documents);
   if (filters.hasActiveRide !== "all") p.set("hasActiveRide", filters.hasActiveRide);
-  p.set("sort", filters.sort === "activity" ? "activity" : "name");
+  p.set("sort", "name");
   return p;
 }
 
-function compareDriversByDisplayName(a, b) {
-  const key = (d) =>
-    (d.displayName || `${d.lastName || ""} ${d.firstName || ""}`.trim() || d.email || "").trim();
-  const cmp = key(a).localeCompare(key(b), "de", { sensitivity: "base" });
+/** API-Zeile: camelCase oder snake_case → einheitlich für Sortierung. */
+function normalizeDriverOverviewRow(raw) {
+  const firstName = raw.firstName ?? raw.first_name ?? "";
+  const lastName = raw.lastName ?? raw.last_name ?? "";
+  const email = raw.email ?? "";
+  const displayName =
+    raw.displayName ??
+    raw.display_name ??
+    (`${firstName} ${lastName}`.trim() || email);
+  return {
+    ...raw,
+    firstName,
+    lastName,
+    email,
+    displayName,
+    companyName: raw.companyName ?? raw.company_name ?? "",
+  };
+}
+
+/** A–Z nach sichtbarem Namen („Vorname Nachname“), nicht nach Nachname allein. */
+function driverVisibleNameSortKey(d) {
+  const first = (d.firstName ?? "").trim();
+  const last = (d.lastName ?? "").trim();
+  const visible = `${first} ${last}`.trim();
+  if (visible) return visible;
+  return (d.displayName ?? d.email ?? "").trim();
+}
+
+function compareDriversByVisibleName(a, b) {
+  const cmp = driverVisibleNameSortKey(a).localeCompare(driverVisibleNameSortKey(b), "de", {
+    sensitivity: "base",
+    numeric: true,
+  });
   if (cmp !== 0) return cmp;
-  return (a.companyName || "").localeCompare(b.companyName || "", "de", { sensitivity: "base" });
+  return (a.email ?? "").localeCompare(b.email ?? "", "de", { sensitivity: "base" });
 }
 
 function sortDriversAlphabetically(list) {
-  return [...list].sort(compareDriversByDisplayName);
+  return list.map(normalizeDriverOverviewRow).sort(compareDriversByVisibleName);
 }
 
 export default function DriversOverviewPage({ userRole = "admin" }) {
@@ -145,8 +173,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
           return;
         }
         const raw = Array.isArray(j.drivers) ? j.drivers : [];
-        const sortMode = criteria.sort === "activity" ? "activity" : "name";
-        setDrivers(sortMode === "activity" ? raw : sortDriversAlphabetically(raw));
+        setDrivers(sortDriversAlphabetically(raw));
         setLoading(false);
       })
       .catch(() => {
@@ -182,18 +209,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
       .sort((a, b) => a.name.localeCompare(b.name, "de"));
   }, [taxiCompanies]);
 
-  const driversSorted = useMemo(() => {
-    const list = [...drivers];
-    if (searchedFilters?.sort === "activity") return list;
-    list.sort((a, b) => {
-      const last = (a.lastName || "").localeCompare(b.lastName || "", "de", { sensitivity: "base" });
-      if (last !== 0) return last;
-      const first = (a.firstName || "").localeCompare(b.firstName || "", "de", { sensitivity: "base" });
-      if (first !== 0) return first;
-      return (a.companyName || "").localeCompare(b.companyName || "", "de", { sensitivity: "base" });
-    });
-    return list;
-  }, [drivers, searchedFilters?.sort]);
+  const driversSorted = useMemo(() => sortDriversAlphabetically(drivers), [drivers]);
 
   const stats = useMemo(() => {
     let online = 0;
@@ -453,17 +469,6 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               <option value="no">Ohne aktive Fahrt</option>
             </select>
           </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Sortierung</label>
-            <select
-              className="admin-select"
-              value={filters.sort}
-              onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value }))}
-            >
-              <option value="name">Name (A–Z)</option>
-              <option value="activity">Letzte Aktivität (selten)</option>
-            </select>
-          </div>
           <div className="admin-filter-item" style={{ alignSelf: "end" }}>
             <button type="button" className="admin-btn-primary" onClick={() => runSearch()}>
               Suchen
@@ -475,7 +480,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
       {!hasSearched && !loading && !loadError ? (
         <div className="admin-info-banner">
           Bitte Suchbegriff (mind. 2 Zeichen) oder Filter wählen und auf <strong>Suchen</strong> klicken. Die Liste
-          wird alphabetisch nach Name sortiert.
+          wird alphabetisch nach dem angezeigten Fahrernamen sortiert (Vorname Nachname, A–Z).
         </div>
       ) : null}
       {loadError ? <div className="admin-info-banner admin-info-banner--warn">{loadError}</div> : null}

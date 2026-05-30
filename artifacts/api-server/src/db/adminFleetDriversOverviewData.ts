@@ -64,13 +64,16 @@ export type AdminFleetDriverOverviewRow = {
   createdAt: string;
 };
 
+/** Sortierschlüssel = sichtbarer Name in der Tabelle („Vorname Nachname“, A–Z). */
 function fleetDriverOverviewSortKey(
   row: Pick<AdminFleetDriverOverviewRow, "displayName" | "lastName" | "firstName" | "email">,
 ): string {
+  const first = (row.firstName ?? "").trim();
+  const last = (row.lastName ?? "").trim();
+  const visible = `${first} ${last}`.trim();
+  if (visible) return visible;
   const dn = (row.displayName ?? "").trim();
   if (dn) return dn;
-  const full = `${row.lastName ?? ""} ${row.firstName ?? ""}`.trim();
-  if (full) return full;
   return (row.email ?? "").trim();
 }
 
