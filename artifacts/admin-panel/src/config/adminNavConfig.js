@@ -65,6 +65,7 @@ export const ADMIN_PAGE_ROLES = {
   "app-faq": ["admin", "service"],
   "app-sponsors": ["admin", "service"],
   "app-driver-messages": ["admin", "service"],
+  "partner-messages": ["admin", "service"],
 
   "app-op-tariffs": ["admin", "service"],
   "app-op-regions": ["admin", "service"],
@@ -111,6 +112,7 @@ const ADMIN_NAV_GROUPS_RAW = [
       { pageKey: "app-faq", label: "App-FAQ", icon: "document", navOrder: 2, roles: R.adminSvc },
       { pageKey: "app-sponsors", label: "Exklusive Angebote", icon: "building", navOrder: 3, roles: R.adminSvc },
       { pageKey: "app-driver-messages", label: "Fahrer-Nachrichten", icon: "driver", navOrder: 4, roles: R.adminSvc },
+      { pageKey: "partner-messages", label: "Nachrichten an Partner", icon: "document", navOrder: 35, roles: R.adminSvc },
       { pageKey: "app-op-tariffs", label: "Tarife", icon: "map", navOrder: 5, roles: R.adminSvc },
       { pageKey: "app-op-regions", label: "Gebiete", icon: "map", navOrder: 6, roles: R.adminSvc },
       { pageKey: "app-op-commission", label: "Provision", icon: "wallet", navOrder: 7, roles: R.adminSvc },

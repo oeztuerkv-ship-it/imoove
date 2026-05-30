@@ -46,6 +46,7 @@ import AppNewsPage from "./pages/AppNewsPage.jsx";
 import AppFaqPage from "./pages/AppFaqPage.jsx";
 import AppSponsorsPage from "./pages/AppSponsorsPage.jsx";
 import DriverMessagesPage from "./pages/DriverMessagesPage.jsx";
+import PartnerMessagesPage from "./pages/PartnerMessagesPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 
@@ -314,6 +315,10 @@ const PAGE_META = {
   "app-driver-messages": {
     title: "Fahrer-Nachrichten",
     subtitle: "Push und In-App-Nachrichten an alle oder einzelne Fahrer",
+  },
+  "partner-messages": {
+    title: "Nachrichten an Partner",
+    subtitle: "Einweg-Posteingang für Hotel- und Partner-Mandanten (Web + Mobile)",
   },
   settings: {
     title: "Einstellungen",
@@ -739,6 +744,8 @@ export default function App() {
         return <AppSponsorsPage />;
       case "app-driver-messages":
         return <DriverMessagesPage />;
+      case "partner-messages":
+        return <PartnerMessagesPage />;
       case "app-op-tariffs":
         return <AppOperationalTariffsPage />;
       case "app-op-regions":
