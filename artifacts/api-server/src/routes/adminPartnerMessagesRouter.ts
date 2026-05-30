@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { isPostgresConfigured } from "../db/client";
 import {
+  deletePartnerMessageById,
   insertPartnerMessagesBatch,
   listPartnerMessageRecipientCompanyIds,
   listPartnerMessagesAdmin,
@@ -106,6 +107,32 @@ router.post("/", async (req, res, next) => {
       broadcast,
       items,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/:messageId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const messageId = String(req.params.messageId ?? "").trim();
+    if (!messageId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const ok = await deletePartnerMessageById(messageId);
+    if (!ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

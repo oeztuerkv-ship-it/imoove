@@ -3,6 +3,7 @@ import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HOME_SHEET_BG, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { usePartner } from "@/context/PartnerContext";
 import {
+  partnerDeleteMessage,
   partnerFetchMessages,
   partnerMarkMessageRead,
   type PartnerMessageRow,
@@ -62,6 +64,31 @@ export default function PartnerMessagesScreen() {
     }, [load]),
   );
 
+  const confirmDelete = (msg: PartnerMessageRow, onDone: () => void) => {
+    Alert.alert("Nachricht löschen?", "Die Mitteilung wird aus Ihrem Posteingang entfernt.", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "Löschen",
+        style: "destructive",
+        onPress: () => void (async () => {
+          if (!token) return;
+          const r = await partnerDeleteMessage(token, msg.id);
+          if (!r.ok) {
+            if (r.unauthorized) {
+              await handleUnauthorized();
+              router.replace("/partner/login");
+              return;
+            }
+            Alert.alert("Löschen fehlgeschlagen", r.message);
+            return;
+          }
+          setItems((prev) => prev.filter((row) => row.id !== msg.id));
+          onDone();
+        })(),
+      },
+    ]);
+  };
+
   const openMessage = async (msg: PartnerMessageRow) => {
     setSelected(msg);
     if (msg.isRead || !token) return;
@@ -92,7 +119,13 @@ export default function PartnerMessagesScreen() {
             <Feather name="arrow-left" size={22} color="#111" />
           </Pressable>
           <Text style={styles.topTitle}>Nachricht</Text>
-          <View style={styles.iconBtn} />
+          <Pressable
+            onPress={() => confirmDelete(selected, () => setSelected(null))}
+            style={styles.iconBtn}
+            accessibilityLabel="Nachricht löschen"
+          >
+            <Feather name="trash-2" size={20} color="#EF1D26" />
+          </Pressable>
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 24 }}>
           <View style={[styles.detailCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
@@ -139,6 +172,13 @@ export default function PartnerMessagesScreen() {
                 </Text>
                 <Text style={styles.rowDate}>{fmtDateTime(m.createdAt)}</Text>
               </View>
+              <Pressable
+                onPress={() => confirmDelete(m, () => {})}
+                hitSlop={8}
+                accessibilityLabel="Nachricht löschen"
+              >
+                <Feather name="trash-2" size={18} color="#9CA3AF" />
+              </Pressable>
               <Feather name="chevron-right" size={18} color="#9CA3AF" />
             </Pressable>
           ))}

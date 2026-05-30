@@ -72,6 +72,21 @@ export default function PartnerMessagesPage() {
       .catch(() => setCompanies([]));
   }, []);
 
+  async function onDelete(messageId) {
+    if (!window.confirm("Diese Nachricht wirklich löschen?")) return;
+    setError("");
+    setOkMsg("");
+    try {
+      const res = await adminFetch(`${BASE}/${encodeURIComponent(messageId)}`, { method: "DELETE" });
+      const { data } = await readJson(res);
+      if (!res.ok || !data?.ok) throw new Error(formatFailure(res, data));
+      setOkMsg("Nachricht gelöscht.");
+      await loadHistory();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    }
+  }
+
   async function onSend(e) {
     e.preventDefault();
     setSending(true);
@@ -188,6 +203,9 @@ export default function PartnerMessagesPage() {
                     <dd>{m.createdByAdmin || "—"}</dd>
                   </div>
                 </dl>
+                <button type="button" className="btn btn-outline" onClick={() => void onDelete(m.id)}>
+                  Löschen
+                </button>
               </article>
             ))}
           </div>

@@ -188,3 +188,28 @@ export async function listPartnerMessagesAdmin(limit = 150): Promise<PartnerMess
     .limit(cap);
   return rows.map((r) => rowToDto(r.msg, r.companyName ?? null));
 }
+
+export async function deletePartnerMessageForCompany(messageId: string, companyId: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const id = messageId.trim();
+  const cid = companyId.trim();
+  if (!id || !cid) return false;
+  const deleted = await db
+    .delete(partnerMessagesTable)
+    .where(and(eq(partnerMessagesTable.id, id), eq(partnerMessagesTable.company_id, cid)))
+    .returning({ id: partnerMessagesTable.id });
+  return deleted.length > 0;
+}
+
+export async function deletePartnerMessageById(messageId: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const id = messageId.trim();
+  if (!id) return false;
+  const deleted = await db
+    .delete(partnerMessagesTable)
+    .where(eq(partnerMessagesTable.id, id))
+    .returning({ id: partnerMessagesTable.id });
+  return deleted.length > 0;
+}

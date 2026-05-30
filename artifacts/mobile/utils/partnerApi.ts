@@ -301,6 +301,40 @@ export async function partnerMarkMessageRead(
   return { ok: true, data: r.data.item };
 }
 
+function partnerDeleteMessageErrorHint(message: string): string {
+  if (message === "not_found") return "Nachricht nicht gefunden.";
+  if (message === "id_required") return "Ungültige Nachricht.";
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("cannot delete")
+    || lower === "not found"
+    || lower === "anfrage fehlgeschlagen."
+    || lower.startsWith("<!doctype")
+    || lower.startsWith("<html")
+  ) {
+    return "Löschen ist auf dem Server noch nicht aktiv — API-Update deployen (Route DELETE /panel/v1/messages).";
+  }
+  return message;
+}
+
+export async function partnerDeleteMessage(
+  token: string,
+  messageId: string,
+): Promise<PartnerApiResult<void>> {
+  const r = await partnerAuthedJson<{ ok?: boolean }>(
+    token,
+    `/panel/v1/messages/${encodeURIComponent(messageId)}`,
+    { method: "DELETE" },
+  );
+  if (!r.ok) {
+    return { ...r, message: partnerDeleteMessageErrorHint(r.message) };
+  }
+  if (!r.data.ok) {
+    return { ok: false, unauthorized: false, forbidden: false, message: "Nachricht konnte nicht gelöscht werden." };
+  }
+  return { ok: true, data: undefined };
+}
+
 export async function partnerFetchTracking(
   token: string,
   rideId: string,
