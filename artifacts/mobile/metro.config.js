@@ -44,11 +44,15 @@ const reactDomDir = resolvePkgDir("react-dom");
 const expoMetroRuntimeDir = resolvePkgDir("@expo/metro-runtime");
 const expoClipboardDir = resolvePkgDir("expo-clipboard");
 const expoImageManipulatorDir = resolvePkgDir("expo-image-manipulator");
+const expoTaskManagerDir = resolvePkgDir("expo-task-manager");
+const expoLocationDir = resolvePkgDir("expo-location");
 if (reactDir) extra.react = reactDir;
 if (reactDomDir) extra["react-dom"] = reactDomDir;
 if (expoMetroRuntimeDir) extra["@expo/metro-runtime"] = expoMetroRuntimeDir;
 if (expoClipboardDir) extra["expo-clipboard"] = expoClipboardDir;
 if (expoImageManipulatorDir) extra["expo-image-manipulator"] = expoImageManipulatorDir;
+if (expoTaskManagerDir) extra["expo-task-manager"] = expoTaskManagerDir;
+if (expoLocationDir) extra["expo-location"] = expoLocationDir;
 
 const schedulerDir = resolvePkgDir("scheduler");
 if (schedulerDir) extra.scheduler = schedulerDir;
