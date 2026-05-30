@@ -19,7 +19,43 @@ export type AdminFleetDriverOverviewFilters = {
   blocked?: "yes" | "no" | "all";
   documents?: "complete" | "incomplete" | "all";
   hasActiveRide?: "yes" | "no" | "all";
+  /** Standard: Nachname/Vorname A–Z */
+  sort?: "name" | "activity";
 };
+
+/** Keine Vollliste ohne Suchkriterium (Performance + UX: erst suchen). */
+export function adminFleetDriverOverviewHasSearchCriteria(filters: AdminFleetDriverOverviewFilters): boolean {
+  const q = filters.q?.trim() ?? "";
+  if (q.length >= 2) return true;
+  if (filters.companyId?.trim()) return true;
+  if (filters.workflowKey?.trim()) return true;
+  if (filters.online && filters.online !== "all") return true;
+  if (filters.blocked && filters.blocked !== "all") return true;
+  if (filters.documents && filters.documents !== "all") return true;
+  if (filters.hasActiveRide && filters.hasActiveRide !== "all") return true;
+  return false;
+}
+
+function sortAdminFleetDriverOverviewRows(
+  rows: AdminFleetDriverOverviewRow[],
+  sort: AdminFleetDriverOverviewFilters["sort"],
+): void {
+  if (sort === "activity") {
+    rows.sort((a, b) => {
+      const ta = a.lastActivityAt ? Date.parse(a.lastActivityAt) : 0;
+      const tb = b.lastActivityAt ? Date.parse(b.lastActivityAt) : 0;
+      return tb - ta;
+    });
+    return;
+  }
+  rows.sort((a, b) => {
+    const last = a.lastName.localeCompare(b.lastName, "de", { sensitivity: "base" });
+    if (last !== 0) return last;
+    const first = a.firstName.localeCompare(b.firstName, "de", { sensitivity: "base" });
+    if (first !== 0) return first;
+    return a.companyName.localeCompare(b.companyName, "de", { sensitivity: "base" });
+  });
+}
 
 export type AdminFleetDriverOverviewRow = {
   id: string;
@@ -165,6 +201,7 @@ export async function listAdminFleetDriversOverview(
   filters: AdminFleetDriverOverviewFilters,
   scope?: { taxiCompanyIds?: string[] },
 ): Promise<AdminFleetDriverOverviewRow[]> {
+  if (!adminFleetDriverOverviewHasSearchCriteria(filters)) return [];
   if (!isPostgresConfigured()) return [];
   const db = getDb();
   if (!db) return [];
@@ -230,11 +267,7 @@ export async function listAdminFleetDriversOverview(
     }
   }
 
-  allRows.sort((a, b) => {
-    const ta = a.lastActivityAt ? Date.parse(a.lastActivityAt) : 0;
-    const tb = b.lastActivityAt ? Date.parse(b.lastActivityAt) : 0;
-    return tb - ta;
-  });
+  sortAdminFleetDriverOverviewRows(allRows, filters.sort ?? "name");
   return allRows;
 }
 
@@ -291,5 +324,6 @@ export function parseAdminFleetDriverOverviewFilters(
     blocked: blocked === "yes" || blocked === "no" ? blocked : "all",
     documents: documents === "complete" || documents === "incomplete" ? documents : "all",
     hasActiveRide: hasActiveRide === "yes" || hasActiveRide === "no" ? hasActiveRide : "all",
+    sort: str("sort") === "activity" ? "activity" : "name",
   };
 }

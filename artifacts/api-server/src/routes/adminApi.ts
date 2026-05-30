@@ -216,6 +216,7 @@ import {
   listAdminTaxiFleetDriverRows,
 } from "../db/fleetDriverReadiness";
 import {
+  adminFleetDriverOverviewHasSearchCriteria,
   getAdminFleetDriverOverviewDetail,
   listAdminFleetDriversOverview,
   parseAdminFleetDriverOverviewFilters,
@@ -2064,11 +2065,14 @@ adminJson.get("/fleet/drivers", async (req, res, next) => {
       return;
     }
     const filters = parseAdminFleetDriverOverviewFilters(req.query as Record<string, unknown>);
+    const searchRequired = !adminFleetDriverOverviewHasSearchCriteria(filters);
     const scopeIds = taxiCompanyScopeIdsForFleetOverview(req);
-    const drivers = await listAdminFleetDriversOverview(filters, {
-      taxiCompanyIds: scopeIds,
-    });
-    res.json({ ok: true, drivers, total: drivers.length });
+    const drivers = searchRequired
+      ? []
+      : await listAdminFleetDriversOverview(filters, {
+          taxiCompanyIds: scopeIds,
+        });
+    res.json({ ok: true, drivers, total: drivers.length, searchRequired });
   } catch (e) {
     next(e);
   }

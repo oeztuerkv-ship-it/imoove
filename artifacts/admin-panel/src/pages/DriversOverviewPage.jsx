@@ -55,6 +55,28 @@ function docsPill(row) {
   return <span className="admin-status-pill admin-status-pill--bad">Fehlt</span>;
 }
 
+const INITIAL_FILTERS = {
+  q: "",
+  companyId: "",
+  workflowKey: "",
+  online: "all",
+  blocked: "all",
+  documents: "all",
+  hasActiveRide: "all",
+  sort: "name",
+};
+
+function hasDriverSearchCriteria(filters) {
+  if (filters.q.trim().length >= 2) return true;
+  if (filters.companyId) return true;
+  if (filters.workflowKey) return true;
+  if (filters.online !== "all") return true;
+  if (filters.blocked !== "all") return true;
+  if (filters.documents !== "all") return true;
+  if (filters.hasActiveRide !== "all") return true;
+  return false;
+}
+
 function buildQueryParams(filters) {
   const p = new URLSearchParams();
   if (filters.q.trim()) p.set("q", filters.q.trim());
@@ -64,25 +86,20 @@ function buildQueryParams(filters) {
   if (filters.blocked !== "all") p.set("blocked", filters.blocked);
   if (filters.documents !== "all") p.set("documents", filters.documents);
   if (filters.hasActiveRide !== "all") p.set("hasActiveRide", filters.hasActiveRide);
+  if (filters.sort === "activity") p.set("sort", "activity");
   return p;
 }
 
 export default function DriversOverviewPage({ userRole = "admin" }) {
   const canSuspend = userRole === "admin" || userRole === "service";
 
-  const [filters, setFilters] = useState({
-    q: "",
-    companyId: "",
-    workflowKey: "",
-    online: "all",
-    blocked: "all",
-    documents: "all",
-    hasActiveRide: "all",
-  });
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [searchedFilters, setSearchedFilters] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [taxiCompanies, setTaxiCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const hasSearched = searchedFilters != null;
 
   const [selId, setSelId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -101,12 +118,12 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
       .catch(() => setTaxiCompanies([]));
   }, []);
 
-  const loadDrivers = useCallback(() => {
+  const fetchDrivers = useCallback((criteria) => {
     setLoading(true);
     setLoadError("");
-    const qs = buildQueryParams(filters);
-    const url = `${API_BASE}/admin/fleet/drivers${qs.toString() ? `?${qs}` : ""}`;
-    fetch(url, { headers: adminApiHeaders() })
+    const qs = buildQueryParams(criteria);
+    const url = `${API_BASE}/admin/fleet/drivers?${qs}`;
+    return fetch(url, { headers: adminApiHeaders() })
       .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
       .then(({ ok, j }) => {
         if (!ok) {
@@ -123,25 +140,46 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         setLoadError("Netzwerkfehler");
         setLoading(false);
       });
-  }, [filters]);
+  }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => loadDrivers(), 280);
-    return () => clearTimeout(t);
-  }, [loadDrivers]);
+  const runSearch = useCallback(() => {
+    if (!hasDriverSearchCriteria(filters)) {
+      setSearchedFilters(null);
+      setDrivers([]);
+      setLoadError(
+        "Bitte mindestens 2 Zeichen in der Suche eingeben oder einen Filter setzen (z. B. Unternehmen), dann „Suchen“.",
+      );
+      return;
+    }
+    const snapshot = { ...filters };
+    setSearchedFilters(snapshot);
+    void fetchDrivers(snapshot);
+  }, [filters, fetchDrivers]);
+
+  const reloadLastSearch = useCallback(() => {
+    if (!searchedFilters) return;
+    void fetchDrivers(searchedFilters);
+  }, [searchedFilters, fetchDrivers]);
 
   const companiesAz = useMemo(() => {
-    const m = new Map();
-    for (const c of taxiCompanies) {
-      if (c?.id) m.set(c.id, c.name || c.id);
-    }
-    for (const d of drivers) {
-      if (!m.has(d.companyId)) m.set(d.companyId, d.companyName || d.companyId);
-    }
-    return [...m.entries()]
-      .map(([id, name]) => ({ id, name }))
+    return [...taxiCompanies]
+      .filter((c) => c?.id)
+      .map((c) => ({ id: c.id, name: c.name || c.id }))
       .sort((a, b) => a.name.localeCompare(b.name, "de"));
-  }, [drivers, taxiCompanies]);
+  }, [taxiCompanies]);
+
+  const driversSorted = useMemo(() => {
+    const list = [...drivers];
+    if (searchedFilters?.sort === "activity") return list;
+    list.sort((a, b) => {
+      const last = (a.lastName || "").localeCompare(b.lastName || "", "de", { sensitivity: "base" });
+      if (last !== 0) return last;
+      const first = (a.firstName || "").localeCompare(b.firstName || "", "de", { sensitivity: "base" });
+      if (first !== 0) return first;
+      return (a.companyName || "").localeCompare(b.companyName || "", "de", { sensitivity: "base" });
+    });
+    return list;
+  }, [drivers, searchedFilters?.sort]);
 
   const stats = useMemo(() => {
     let online = 0;
@@ -242,7 +280,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         return;
       }
       setBlockOpen(false);
-      loadDrivers();
+      reloadLastSearch();
       loadDetail(detail.driver.id);
     } finally {
       setActBusy(false);
@@ -263,38 +301,46 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         window.alert(j.error || r.status);
         return;
       }
-      loadDrivers();
+      reloadLastSearch();
       if (selId === driverId) loadDetail(driverId);
     } finally {
       setActBusy(false);
     }
   }
 
-  const selectedRow = drivers.find((d) => d.id === selId);
+  const selectedRow = driversSorted.find((d) => d.id === selId);
 
   return (
     <div className="admin-page">
       <p className="admin-table-sub" style={{ marginTop: 0, maxWidth: 720 }}>
-        <strong>Plattform-Übersicht</strong> — alle Taxi-Fahrer mandantenübergreifend suchen, filtern und bei Bedarf
-        sperren. Gesperrte Fahrer können nicht online gehen und erscheinen nicht im Markt/Dispatch.
+        <strong>Plattform-Übersicht</strong> — Fahrer erscheinen nach der Suche (mind. 2 Zeichen oder Filter),
+        sortiert A–Z. Gesperrte Fahrer können nicht online gehen und erscheinen nicht im Markt/Dispatch.
       </p>
 
       <div className="admin-stat-grid">
         <div className="admin-stat-card">
           <div className="admin-stat-label">Fahrer (Filter)</div>
-          <div className="admin-stat-value admin-crisp-numeric">{loading ? "…" : stats.total}</div>
+          <div className="admin-stat-value admin-crisp-numeric">
+            {!hasSearched ? "—" : loading ? "…" : stats.total}
+          </div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Online</div>
-          <div className="admin-stat-value admin-crisp-numeric">{loading ? "…" : stats.online}</div>
+          <div className="admin-stat-value admin-crisp-numeric">
+            {!hasSearched ? "—" : loading ? "…" : stats.online}
+          </div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Gesperrt</div>
-          <div className="admin-stat-value admin-crisp-numeric">{loading ? "…" : stats.blocked}</div>
+          <div className="admin-stat-value admin-crisp-numeric">
+            {!hasSearched ? "—" : loading ? "…" : stats.blocked}
+          </div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Aktive Fahrt</div>
-          <div className="admin-stat-value admin-crisp-numeric">{loading ? "…" : stats.activeRide}</div>
+          <div className="admin-stat-value admin-crisp-numeric">
+            {!hasSearched ? "—" : loading ? "…" : stats.activeRide}
+          </div>
         </div>
       </div>
 
@@ -308,6 +354,12 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               placeholder="Name, E-Mail, Telefon, Unternehmen, Kennzeichen, Fahrer-ID …"
               value={filters.q}
               onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runSearch();
+                }
+              }}
             />
           </div>
           <div className="admin-filter-item">
@@ -387,9 +439,31 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               <option value="no">Ohne aktive Fahrt</option>
             </select>
           </div>
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Sortierung</label>
+            <select
+              className="admin-select"
+              value={filters.sort}
+              onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value }))}
+            >
+              <option value="name">Name (A–Z)</option>
+              <option value="activity">Letzte Aktivität</option>
+            </select>
+          </div>
+          <div className="admin-filter-item" style={{ alignSelf: "end" }}>
+            <button type="button" className="admin-btn-primary" onClick={() => runSearch()}>
+              Suchen
+            </button>
+          </div>
         </div>
       </div>
 
+      {!hasSearched && !loading && !loadError ? (
+        <div className="admin-info-banner">
+          Bitte Suchbegriff (mind. 2 Zeichen) oder Filter wählen und auf <strong>Suchen</strong> klicken. Die Liste
+          wird alphabetisch nach Name sortiert.
+        </div>
+      ) : null}
       {loadError ? <div className="admin-info-banner admin-info-banner--warn">{loadError}</div> : null}
       {loading ? <div className="admin-info-banner">Fahrer werden geladen …</div> : null}
 
@@ -421,14 +495,21 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
             </tr>
           </thead>
           <tbody>
-            {!loading && drivers.length === 0 ? (
+            {hasSearched && !loading && driversSorted.length === 0 ? (
               <tr>
                 <td colSpan={10} className="admin-table-empty">
                   Keine Fahrer für die aktuelle Filterung.
                 </td>
               </tr>
             ) : null}
-            {drivers.map((d) => (
+            {!hasSearched && !loading ? (
+              <tr>
+                <td colSpan={10} className="admin-table-empty">
+                  Noch keine Suche ausgeführt.
+                </td>
+              </tr>
+            ) : null}
+            {driversSorted.map((d) => (
               <tr key={d.id} className="admin-rides-table__row">
                 <td>
                   <button type="button" className="admin-link-btn" onClick={() => openDriver(d.id)}>
