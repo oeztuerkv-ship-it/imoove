@@ -1,3 +1,4 @@
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import TarifBlock from "../components/TarifBlock.jsx";
 import CollapsibleCard from "../components/CollapsibleCard.jsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -264,8 +265,8 @@ export default function AppOperationalTariffsPage() {
 
   if (loading) {
     return (
-      <div className="admin-page">
-        <p className="admin-table-sub">Laden …</p>
+      <div className="admin-page admin-page--loose">
+        <p className="admin-page-lead">Laden …</p>
       </div>
     );
   }
@@ -275,32 +276,47 @@ export default function AppOperationalTariffsPage() {
   const catalogCols = "1.1fr 1fr 0.75fr 1fr 1.35fr";
 
   return (
-    <div className="admin-page">
-      {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
-      {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
+    <div className="admin-page admin-page--loose">
+      <p className="admin-page-lead">
+        Preislogik (Taxameter, Zuschläge) — Tarif-Katalog; Zuordnung zu Gebieten unter „Gebiete“.
+      </p>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <input type="checkbox" checked={tariffsActive} onChange={(e) => setTariffsActive(e.target.checked)} />
-          <span style={{ fontSize: 13 }}>Preise buchbar</span>
-        </label>
-        <button type="button" className="admin-c-btn-sec" disabled={busy} onClick={() => void saveTariffsActive()}>
-          Speichern
-        </button>
-      </div>
-
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-          <div className="admin-panel-card__title" style={{ margin: 0 }}>
-            Tarif-Katalog
+      {error || ok ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body admin-section-block__body--stack">
+            {error ? (
+              <div className="admin-info-banner admin-info-banner--error admin-info-banner--inline">{error}</div>
+            ) : null}
+            {ok ? <div className="admin-info-banner admin-info-banner--ok admin-info-banner--inline">{ok}</div> : null}
           </div>
-          <button type="button" className="admin-m-btn-pri" style={{ marginLeft: "auto" }} onClick={startNewTariff}>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="Preise & Buchung" subtitle="Globaler Schalter für buchbare Preise" defaultOpen>
+        <div className="admin-toolbar-inline">
+          <label className="admin-toolbar-inline__label">
+            <input type="checkbox" checked={tariffsActive} onChange={(e) => setTariffsActive(e.target.checked)} />
+            Preise buchbar
+          </label>
+          <button type="button" className="admin-c-btn-sec" disabled={busy} onClick={() => void saveTariffsActive()}>
+            Speichern
+          </button>
+        </div>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Tarif-Katalog"
+        subtitle={tariffs.length ? `${tariffs.length} Tarif${tariffs.length === 1 ? "" : "e"}` : "Noch keine Tarife"}
+        defaultOpen
+      >
+        <div className="admin-section-toolbar">
+          <button type="button" className="admin-m-btn-pri" onClick={startNewTariff}>
             + Neuer Tarif
           </button>
         </div>
 
         {tariffs.length > 0 ? (
-          <div className="admin-table-card" style={{ marginTop: 12 }}>
+          <div className="admin-table-card admin-table-card--embedded">
             <div className="admin-table-scroll">
               <div className="admin-table-row admin-table-row--head" style={{ gridTemplateColumns: catalogCols }}>
                 <span>Name</span>
@@ -313,30 +329,26 @@ export default function AppOperationalTariffsPage() {
                 const usage = usageByTariff[t.id] ?? 0;
                 const useLbl = usageLabel(usage);
                 const desc = t.description || t.note || "";
+                const selected = t.id === selectedId;
                 return (
                   <div
                     key={t.id}
-                    className="admin-table-row"
-                    style={{
-                      gridTemplateColumns: catalogCols,
-                      alignItems: "center",
-                      background: t.id === selectedId ? "rgba(239,29,38,0.05)" : undefined,
-                    }}
+                    className={`admin-table-row${selected ? " admin-table-row--selected" : ""}`}
+                    style={{ gridTemplateColumns: catalogCols, alignItems: "center" }}
                   >
-                    <span style={{ fontWeight: t.id === selectedId ? 600 : 400 }}>{t.name}</span>
-                    <span style={{ fontSize: 12, color: "rgba(0,0,0,0.55)" }}>{desc || "—"}</span>
-                    <span style={{ fontSize: 12 }}>{t.validFrom || t.regionPayload?.validFrom || "—"}</span>
-                    <span style={{ fontSize: 12, color: usage > 0 ? "#15803d" : "rgba(0,0,0,0.35)" }}>
+                    <span className={selected ? "admin-table-row__name" : undefined}>{t.name}</span>
+                    <span className="admin-table-cell-muted">{desc || "—"}</span>
+                    <span className="admin-table-cell-muted">{t.validFrom || t.regionPayload?.validFrom || "—"}</span>
+                    <span className={usage > 0 ? "admin-table-cell-ok" : "admin-table-cell-muted"}>
                       {useLbl || "—"}
                     </span>
-                    <span style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      <button type="button" className="admin-c-btn-sec" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => editTariff(t.id)}>
+                    <span className="admin-table-cell-actions">
+                      <button type="button" className="admin-c-btn-sec admin-btn-compact" onClick={() => editTariff(t.id)}>
                         Bearbeiten
                       </button>
                       <button
                         type="button"
-                        className="admin-c-btn-sec"
-                        style={{ fontSize: 12, padding: "4px 8px" }}
+                        className="admin-c-btn-sec admin-btn-compact"
                         disabled={busy}
                         onClick={() => void duplicateTariff(t.id)}
                       >
@@ -344,8 +356,7 @@ export default function AppOperationalTariffsPage() {
                       </button>
                       <button
                         type="button"
-                        className="admin-c-btn-sec"
-                        style={{ fontSize: 12, padding: "4px 8px", color: "#b91c1c" }}
+                        className="admin-c-btn-sec admin-btn-compact admin-btn-compact--danger"
                         disabled={busy}
                         onClick={() => void deleteTariff(t.id)}
                       >
@@ -358,9 +369,9 @@ export default function AppOperationalTariffsPage() {
             </div>
           </div>
         ) : (
-          <p className="admin-table-sub" style={{ marginTop: 10 }}>Noch keine Tarife.</p>
+          <p className="admin-table-sub">Noch keine Tarife — „+ Neuer Tarif“ legt den ersten an.</p>
         )}
-      </div>
+      </AdminCollapsibleSection>
 
       <div ref={editorRef}>
         <CollapsibleCard title={selectedId ? "Tarif bearbeiten" : "Neuer Tarif"} defaultOpen>
@@ -448,11 +459,11 @@ export default function AppOperationalTariffsPage() {
           </div>
       </CollapsibleCard>
 
-        <div style={{ marginBottom: 16 }}>
+        <div className="admin-section-toolbar admin-section-toolbar--start">
           <button type="button" className="admin-m-btn-pri" disabled={busy} onClick={() => void saveCurrentTariff()}>
             {busy ? "…" : selectedId ? "Tarif speichern" : "Tarif anlegen"}
-            </button>
-          </div>
+          </button>
+        </div>
 
         <CollapsibleCard title="Beispiel (10 km, 20 Min)">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 10, alignItems: "center" }}>

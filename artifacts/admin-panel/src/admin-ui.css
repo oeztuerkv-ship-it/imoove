@@ -191,6 +191,74 @@
   align-self: end;
 }
 
+.admin-section-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--onroda-space-4);
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: var(--onroda-space-4);
+}
+
+.admin-section-toolbar--start {
+  justify-content: flex-start;
+}
+
+.admin-toolbar-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--onroda-space-4);
+  align-items: center;
+}
+
+.admin-toolbar-inline__label {
+  display: flex;
+  align-items: center;
+  gap: var(--onroda-space-3);
+  font-size: 0.9rem;
+  color: var(--onroda-text-dark);
+}
+
+.admin-table-card--embedded {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.admin-table-row--selected {
+  background: color-mix(in srgb, var(--onroda-red) 6%, var(--onroda-bg-card));
+}
+
+.admin-table-row--selected .admin-table-row__name {
+  font-weight: 700;
+}
+
+.admin-table-cell-muted {
+  font-size: 0.8rem;
+  color: var(--onroda-text-muted);
+}
+
+.admin-table-cell-ok {
+  font-size: 0.8rem;
+  color: #15803d;
+}
+
+.admin-table-cell-actions {
+  display: flex;
+  gap: var(--onroda-space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-btn-compact {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
+.admin-btn-compact--danger {
+  color: var(--onroda-red);
+}
+
 .admin-placeholder-list {
   margin: 12px 0 0;
   padding-left: 1.25rem;
