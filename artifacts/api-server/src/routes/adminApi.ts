@@ -202,6 +202,7 @@ import {
   adminPatchFleetDriverAdminFields,
   adminSuspendFleetDriver,
   approveFleetDriverForCompany,
+  findFleetDriverGlobal,
   markFleetDriverMissingDocumentsForCompany,
   rejectFleetDriverForCompany,
   setFleetDriverApprovalByAdmin,
@@ -214,6 +215,11 @@ import {
   getAdminTaxiFleetDriverDetail,
   listAdminTaxiFleetDriverRows,
 } from "../db/fleetDriverReadiness";
+import {
+  getAdminFleetDriverOverviewDetail,
+  listAdminFleetDriversOverview,
+  parseAdminFleetDriverOverviewFilters,
+} from "../db/adminFleetDriversOverviewData";
 import { persistPanelUserManualAttachment } from "../lib/persistPanelUserManualAttachment";
 import { sendPanelUserWelcomeEmail } from "../lib/panelUserWelcomeMail";
 import { hashPassword } from "../lib/password";
@@ -242,6 +248,7 @@ import {
   canAccessAdminDashboardOverview,
   canAccessAdminStats,
   canAdminReleaseRide,
+  canAdminGloballySuspendFleetDrivers,
   canMutateAdminCompanies,
   canMutateAdminFareAreas,
   canMutateScopedTaxiAdminCompany,
@@ -2032,6 +2039,175 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
       },
     });
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+function taxiCompanyScopeIdsForFleetOverview(req: Request): string[] | undefined {
+  const role = adminConsoleRole(req);
+  const scope = req.adminAuth?.scopeCompanyId?.trim();
+  if (role === "taxi" && scope) return [scope];
+  return undefined;
+}
+
+/** Plattform: alle Taxi-Fahrer (Suche/Filter per Query). */
+adminJson.get("/fleet/drivers", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const filters = parseAdminFleetDriverOverviewFilters(req.query as Record<string, unknown>);
+    const scopeIds = taxiCompanyScopeIdsForFleetOverview(req);
+    const drivers = await listAdminFleetDriversOverview(filters, {
+      taxiCompanyIds: scopeIds,
+    });
+    res.json({ ok: true, drivers, total: drivers.length });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/fleet/drivers/:driverId", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const driverId = String(req.params.driverId ?? "").trim();
+    const scopeIds = taxiCompanyScopeIdsForFleetOverview(req);
+    const detail = await getAdminFleetDriverOverviewDetail(driverId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (scopeIds?.length && !scopeIds.includes(detail.driver.companyId)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.json({ ok: true, ...detail });
+  } catch (e) {
+    next(e);
+  }
+});
+
+async function adminFleetDriverBlockUnblock(
+  req: Request,
+  res: Response,
+  mode: "block" | "unblock",
+): Promise<void> {
+  if (!canAdminGloballySuspendFleetDrivers(adminConsoleRole(req))) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const driverId = String(req.params.driverId ?? "").trim();
+  const row = await findFleetDriverGlobal(driverId);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const companyId = row.company_id;
+  const scopeIds = taxiCompanyScopeIdsForFleetOverview(req);
+  if (scopeIds?.length && !scopeIds.includes(companyId)) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const company = await findCompanyById(companyId);
+  if (!company || company.company_kind !== "taxi") {
+    res.status(400).json({ error: "not_taxi_company" });
+    return;
+  }
+
+  if (mode === "block") {
+    const b = (req.body ?? {}) as { reason?: unknown; adminInternalNote?: unknown };
+    const reason = typeof b.reason === "string" ? b.reason : "";
+    const adminNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : undefined;
+    const ok = await adminSuspendFleetDriver(companyId, driverId, reason);
+    if (!ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (adminNote !== undefined) {
+      await adminPatchFleetDriverAdminFields(companyId, driverId, { adminInternalNote: adminNote });
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.suspended",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { reason: String(reason).slice(0, 500), adminUserId: adminId, source: "fleet_overview" },
+    });
+    res.json({ ok: true, accessStatus: "suspended" });
+    return;
+  }
+
+  const ok = await adminActivateFleetDriver(companyId, driverId);
+  if (!ok) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const adminId = await resolveAdminAuthUserIdForSupport(req);
+  await insertPanelAuditLog({
+    id: randomUUID(),
+    companyId,
+    actorPanelUserId: null,
+    action: "admin.fleet_driver.activated",
+    subjectType: "fleet_driver",
+    subjectId: driverId,
+    meta: { adminUserId: adminId, source: "fleet_overview" },
+  });
+  res.json({ ok: true, accessStatus: "active" });
+}
+
+adminJson.patch("/fleet/drivers/:driverId/block", async (req, res, next) => {
+  try {
+    await adminFleetDriverBlockUnblock(req, res, "block");
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/fleet/drivers/:driverId/unblock", async (req, res, next) => {
+  try {
+    await adminFleetDriverBlockUnblock(req, res, "unblock");
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Alias für Clients, die status=suspended erwarten. */
+adminJson.patch("/fleet/drivers/:driverId/status", async (req, res, next) => {
+  try {
+    const raw = typeof (req.body as { status?: unknown })?.status === "string"
+      ? (req.body as { status: string }).status.trim().toLowerCase()
+      : "";
+    if (raw === "suspended" || raw === "blocked") {
+      await adminFleetDriverBlockUnblock(req, res, "block");
+      return;
+    }
+    if (raw === "active") {
+      await adminFleetDriverBlockUnblock(req, res, "unblock");
+      return;
+    }
+    res.status(400).json({ error: "status_invalid", hint: "active | suspended" });
   } catch (e) {
     next(e);
   }

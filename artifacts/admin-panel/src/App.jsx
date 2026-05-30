@@ -55,6 +55,7 @@ import DriverMessagesPage from "./pages/DriverMessagesPage.jsx";
 import PartnerMessagesPage from "./pages/PartnerMessagesPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
+import DriversOverviewPage from "./pages/DriversOverviewPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -250,8 +251,7 @@ const PAGE_META = {
   },
   "drivers-overview": {
     title: "Fahrerübersicht",
-    subtitle: "Alle aktiven Fahrer auf der Plattform.",
-    placeholder: true,
+    subtitle: "Alle Taxi-Fahrer der Plattform — suchen, filtern, sperren",
   },
   "drivers-status": {
     title: "Fahrer-Status",
@@ -795,6 +795,8 @@ export default function App() {
             onInitialCompanyConsumed={clearTaxiFleetSeedCompanyId}
           />
         );
+      case "drivers-overview":
+        return <DriversOverviewPage userRole={userRole} />;
       case "taxi-fleet-vehicles":
         return (
           <TaxiFleetVehiclesPage

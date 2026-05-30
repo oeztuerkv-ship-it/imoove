@@ -30,6 +30,11 @@ export function canMutateAdminCompanies(role: AdminRole): boolean {
   return role === "admin" || role === "service";
 }
 
+/** Plattform-Operator: globaler Fahrer-Sperr/Entsperr (nicht Taxi-Mandanten-Rolle). */
+export function canAdminGloballySuspendFleetDrivers(role: AdminRole): boolean {
+  return canMutateAdminCompanies(role);
+}
+
 /**
  * Taxi-Disposition in der Operator-Konsole: darf bestehende **Taxi-Mandanten** pflegen
  * (Stammdaten, Module, Priorität, Panel-Benutzer), nicht jedoch globale Anlage/Partner-Anfragen.

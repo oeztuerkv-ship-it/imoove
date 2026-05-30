@@ -606,6 +606,7 @@ export async function adminSuspendFleetDriver(
     .set({
       access_status: "suspended",
       is_active: true,
+      is_market_online: false,
       suspension_reason: reason,
       updated_at: new Date(),
       session_version: sql`${fleetDriversTable.session_version} + 1`,
