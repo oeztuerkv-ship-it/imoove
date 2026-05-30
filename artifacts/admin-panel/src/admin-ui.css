@@ -1616,32 +1616,105 @@
 .admin-companies-table__empty {
   text-align: center;
   color: var(--onroda-text-muted);
-  font-size: 0.9rem;
-  padding: 24px 16px !important;
-}
-
-.admin-companies-table .admin-c-rownum {
-  min-width: 1.5rem;
-  height: 1.5rem;
-  font-size: 0.72rem;
-}
-
-.admin-companies-table .admin-c-mandant__name {
   font-size: 0.82rem;
+  padding: 20px 16px !important;
 }
 
-.admin-companies-table .admin-c-kind {
-  font-size: 0.72rem;
+.admin-companies-table__mandant {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-companies-table__name {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  max-width: 100%;
+  font: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.admin-companies-table__name:hover,
+.admin-companies-table__name:focus-visible {
+  color: var(--onroda-red);
+  outline: none;
+}
+
+.admin-companies-table__kind {
+  display: inline-flex;
+  align-items: center;
   padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
-.admin-companies-table .admin-c-badge {
-  font-size: 0.68rem;
-  padding: 2px 7px;
+.admin-companies-table__statuses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-companies-table__missing {
+  color: var(--onroda-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-style: normal;
+  font-family: inherit;
+}
+
+.admin-companies-table tbody .admin-status-pill {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  font-size: 0.7rem;
 }
 
 .admin-companies .admin-c-filter-toolbar--in-panel {
   border-top-color: var(--onroda-border-subtle);
+}
+
+/* Filter-Chips: kompakter wie Fahrten-Filter */
+.admin-companies .admin-c-chip,
+.admin-companies .admin-c-fchip {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: var(--onroda-radius-md);
+}
+
+.admin-companies .admin-c-filter-legend {
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  color: var(--onroda-text-muted);
+  margin-bottom: 6px;
+}
+
+.admin-companies .admin-c-select--modern {
+  min-height: 38px;
+  font-size: 0.85rem;
+  border-radius: var(--onroda-radius-md);
+}
+
+.admin-companies .admin-c-hint {
+  font-size: 0.78rem;
+  color: var(--onroda-text-muted);
 }
 
 .admin-rides-table__actions {

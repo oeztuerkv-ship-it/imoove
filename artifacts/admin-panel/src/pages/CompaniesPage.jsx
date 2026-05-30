@@ -14,24 +14,24 @@ const KIND_COLORS = {
 };
 
 const VERIFY_BADGE = {
-  pending: { label: "Verifizierung: ausstehend", short: "Ausstehend", cl: "admin-c-badge admin-c-badge--neutral" },
-  in_review: { label: "Verifizierung: in Prüfung", short: "In Prüfung", cl: "admin-c-badge admin-c-badge--info" },
-  verified: { label: "Verifizierung: bestätigt", short: "Verifiziert", cl: "admin-c-badge admin-c-badge--ok" },
-  rejected: { label: "Verifizierung: abgelehnt", short: "Abgelehnt", cl: "admin-c-badge admin-c-badge--err" },
+  pending: { label: "Verifizierung: ausstehend", short: "Ausstehend", cl: "admin-status-pill admin-status-pill--pending" },
+  in_review: { label: "Verifizierung: in Prüfung", short: "In Prüfung", cl: "admin-status-pill admin-status-pill--active" },
+  verified: { label: "Verifizierung: bestätigt", short: "Verifiziert", cl: "admin-status-pill admin-status-pill--ok" },
+  rejected: { label: "Verifizierung: abgelehnt", short: "Abgelehnt", cl: "admin-status-pill admin-status-pill--bad" },
 };
 
 const COMPL_BADGE = {
-  pending: { label: "Compliance: offen", short: "Offen", cl: "admin-c-badge admin-c-badge--neutral" },
-  in_review: { label: "Compliance: in Prüfung", short: "In Prüfung", cl: "admin-c-badge admin-c-badge--info" },
-  compliant: { label: "Compliance: erfüllt", short: "Erfüllt", cl: "admin-c-badge admin-c-badge--ok" },
-  non_compliant: { label: "Compliance: nicht erfüllt", short: "Nicht erfüllt", cl: "admin-c-badge admin-c-badge--err" },
+  pending: { label: "Compliance: offen", short: "Offen", cl: "admin-status-pill admin-status-pill--pending" },
+  in_review: { label: "Compliance: in Prüfung", short: "In Prüfung", cl: "admin-status-pill admin-status-pill--active" },
+  compliant: { label: "Compliance: erfüllt", short: "Erfüllt", cl: "admin-status-pill admin-status-pill--ok" },
+  non_compliant: { label: "Compliance: nicht erfüllt", short: "Nicht erfüllt", cl: "admin-status-pill admin-status-pill--bad" },
 };
 
 const CONTRACT_BADGE = {
-  inactive: { label: "Vertrag: inaktiv", short: "Inaktiv", cl: "admin-c-badge admin-c-badge--neutral" },
-  active: { label: "Vertrag: aktiv", short: "Aktiv", cl: "admin-c-badge admin-c-badge--ok" },
-  suspended: { label: "Vertrag: ausgesetzt", short: "Ausgesetzt", cl: "admin-c-badge admin-c-badge--warn" },
-  terminated: { label: "Vertrag: beendet", short: "Beendet", cl: "admin-c-badge admin-c-badge--err" },
+  inactive: { label: "Vertrag: inaktiv", short: "Inaktiv", cl: "admin-status-pill admin-status-pill--pending" },
+  active: { label: "Vertrag: aktiv", short: "Aktiv", cl: "admin-status-pill admin-status-pill--ok" },
+  suspended: { label: "Vertrag: ausgesetzt", short: "Ausgesetzt", cl: "admin-status-pill admin-status-pill--active" },
+  terminated: { label: "Vertrag: beendet", short: "Beendet", cl: "admin-status-pill admin-status-pill--bad" },
 };
 
 const CONTRACT_ORDER = { active: 0, suspended: 1, terminated: 2, inactive: 3 };
@@ -138,14 +138,14 @@ function StatusBadgeGroup({ v, c, t }) {
   const cb = COMPL_BADGE[c] || COMPL_BADGE.pending;
   const kb = CONTRACT_BADGE[t] || CONTRACT_BADGE.inactive;
   return (
-    <div className="admin-c-statuscol admin-c-statuscol--row" role="group" aria-label="Status">
-      <span className={vb.cl + " admin-c-badge--compact"} title={vb.label}>
+    <div className="admin-companies-table__statuses" role="group" aria-label="Status">
+      <span className={vb.cl} title={vb.label}>
         {vb.short}
       </span>
-      <span className={cb.cl + " admin-c-badge--compact"} title={cb.label}>
+      <span className={cb.cl} title={cb.label}>
         {cb.short}
       </span>
-      <span className={kb.cl + " admin-c-badge--compact"} title={kb.label}>
+      <span className={kb.cl} title={kb.label}>
         {kb.short}
       </span>
     </div>
@@ -969,31 +969,31 @@ export default function CompaniesPage({
                     role="button"
                     aria-label={`Nr. ${rowNum}, Mandantenzentrale: ${item.name || item.id}`}
                   >
-                    <td className="admin-companies-table__col-num">
-                      <span className="admin-c-rownum" aria-hidden>
-                        {rowNum}
-                      </span>
+                    <td className="admin-companies-table__col-num admin-crisp-numeric admin-table-sub">
+                      {rowNum}
                       <span className="admin-visually-hidden">Zeile {rowNum}</span>
                     </td>
                     <td>
-                      <div className="admin-c-mandant">
+                      <div className="admin-companies-table__mandant">
                         <button
                           type="button"
-                          className="admin-c-mandant__name"
+                          className="admin-companies-table__name"
                           onClick={(e) => openMandate(e, item.id)}
                         >
-                          {item.name}
+                          <span className="admin-ellipsis" title={item.name || item.id}>
+                            {item.name}
+                          </span>
                         </button>
                         {item.is_blocked ? (
-                          <span className="admin-c-mandant__blocked">Gesperrt</span>
+                          <span className="admin-status-pill admin-status-pill--bad">Gesperrt</span>
                         ) : !item.is_active ? (
-                          <span className="admin-c-mandant__off">inaktiv</span>
+                          <span className="admin-table-sub">inaktiv</span>
                         ) : null}
                       </div>
                     </td>
                     <td>
                       <span
-                        className="admin-c-kind"
+                        className="admin-companies-table__kind"
                         style={{
                           background: color.bg,
                           borderColor: color.border,
@@ -1003,12 +1003,14 @@ export default function CompaniesPage({
                         {displayKind}
                       </span>
                     </td>
-                    <td className="admin-companies-table__muted">{item.city || "—"}</td>
+                    <td className="admin-companies-table__muted admin-ellipsis" title={item.city || ""}>
+                      {item.city || "—"}
+                    </td>
                     <td
-                      className="admin-companies-table__mono"
+                      className="admin-companies-table__mono admin-crisp-numeric"
                       title={iban || "Keine IBAN hinterlegt"}
                     >
-                      {iban || <span className="admin-c-iban-miss">fehlt</span>}
+                      {iban || <span className="admin-companies-table__missing">fehlt</span>}
                     </td>
                     <td>
                       <StatusBadgeGroup
@@ -1018,24 +1020,22 @@ export default function CompaniesPage({
                       />
                     </td>
                     <td className="admin-rides-table__col-actions" onClick={(e) => e.stopPropagation()}>
-                      <div className="admin-rides-table__actions admin-c-rowactions">
+                      <div className="admin-rides-table__actions">
                         {onOpenMandateDetail ? (
                           <button
                             type="button"
-                            className="admin-c-openhint"
+                            className="admin-btn-action admin-btn-action--table"
                             title="Zur Mandantenzentrale (wie Zeilenklick)"
                             aria-label="Mandantenzentrale in neuem Kontext"
                             onClick={() => onOpenMandateDetail(item.id)}
                           >
-                            <span className="admin-c-openhint__i" aria-hidden>
-                              ↗
-                            </span>
+                            ↗
                           </button>
                         ) : null}
                         {typeof onOpenPanelUsersForCompany === "function" ? (
                           <button
                             type="button"
-                            className="admin-c-btn-panel-access"
+                            className="admin-btn-action admin-btn-action--table"
                             title="Partner-Portal-Zugang für diesen Mandanten anlegen (E-Mail optional)"
                             onClick={() => onOpenPanelUsersForCompany(item.id)}
                           >
@@ -1044,7 +1044,7 @@ export default function CompaniesPage({
                         ) : null}
                         <button
                           type="button"
-                          className="admin-c-btn-edit"
+                          className="admin-btn-action admin-btn-action--table"
                           onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
                         >
                           {selectedId === item.id ? "Schließen" : "Bearbeiten"}
@@ -1053,8 +1053,8 @@ export default function CompaniesPage({
                     </td>
                   </tr>
                   {selectedId === item.id && (
-                    <tr className="admin-c-expand">
-                      <td colSpan="7" className="admin-c-expand__cell">
+                    <tr className="admin-rides-table__note-row">
+                      <td colSpan="7">
                         <div className="admin-c-workspace">
                           <p className="admin-table-sub" style={{ marginTop: 0 }}>
                             Erweiterte Einstellungen (Flotte, Kasse, Module) — getrennt von der Mandantenzentrale.
