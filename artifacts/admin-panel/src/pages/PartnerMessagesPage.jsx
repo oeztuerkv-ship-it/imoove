@@ -4,6 +4,30 @@ import { adminApiHeaders, adminFetch } from "../lib/adminApiHeaders.js";
 
 const BASE = `${API_BASE}/admin/messages`;
 
+const MESSAGE_COMPANY_KINDS = [
+  "taxi",
+  "hotel",
+  "insurer",
+  "medical",
+  "corporate",
+  "voucher_client",
+  "general",
+];
+
+const KIND_LABEL_DE = {
+  general: "Allgemein",
+  taxi: "Taxi / Mietwagen",
+  voucher_client: "Gutscheinpartner",
+  insurer: "Krankenkasse / Versicherung",
+  hotel: "Hotel",
+  corporate: "Unternehmen / Firma",
+  medical: "Medizinische Fahrt",
+};
+
+function kindLabel(kind) {
+  return KIND_LABEL_DE[kind] ?? kind;
+}
+
 function fmtDe(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -64,9 +88,11 @@ export default function PartnerMessagesPage() {
       .then((r) => r.json())
       .then((j) => {
         const items = Array.isArray(j.companies) ? j.companies : Array.isArray(j.items) ? j.items : [];
-        const partnerKinds = new Set(["hotel", "corporate", "voucher_client", "general", "medical"]);
+        const allowedKinds = new Set(MESSAGE_COMPANY_KINDS);
         setCompanies(
-          items.filter((c) => partnerKinds.has(c.company_kind ?? c.companyKind) && c.is_active !== false),
+          items
+            .filter((c) => allowedKinds.has(c.company_kind ?? c.companyKind) && c.is_active !== false)
+            .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id), "de")),
         );
       })
       .catch(() => setCompanies([]));
@@ -107,11 +133,17 @@ export default function PartnerMessagesPage() {
       });
       const { data } = await readJson(res);
       if (!res.ok || !data?.ok) throw new Error(formatFailure(res, data));
-      setOkMsg(
-        data.broadcast
-          ? `Nachricht an ${data.recipientCount ?? 0} Partner-Unternehmen gesendet.`
-          : "Nachricht an den Partner gesendet.",
-      );
+      const n = data.recipientCount ?? 0;
+      const label = typeof data.targetLabel === "string" ? data.targetLabel : "";
+      if (data.broadcast) {
+        setOkMsg(
+          label
+            ? `Nachricht (${label}) an ${n} Unternehmen gesendet.`
+            : `Nachricht an ${n} Unternehmen gesendet.`,
+        );
+      } else {
+        setOkMsg(n === 1 ? "Nachricht an den Partner gesendet." : `Nachricht an ${n} Partner gesendet.`);
+      }
       setSubject("");
       setBody("");
       await loadHistory();
@@ -134,8 +166,8 @@ export default function PartnerMessagesPage() {
       <div className="app-news-hero">
         <h1 className="app-news-hero__title">Nachrichten an Partner</h1>
         <p className="app-news-hero__sub">
-          Einweg-Posteingang für Hotel- und Partner-Mandanten (Web + Mobile). API:{" "}
-          <code className="app-news-hero__code">POST /api/admin/messages</code>
+          Zielgruppe wählen: alle Partner, nur eine Unternehmensart (Taxi, Hotel, Krankenkasse, …) oder ein
+          einzelnes Unternehmen. Posteingang im Partner-Panel und in der Partner-App.
         </p>
       </div>
 
@@ -143,14 +175,29 @@ export default function PartnerMessagesPage() {
         <div className="app-news-main">
           <form onSubmit={onSend} className="app-news-form">
             <label className="admin-form-pair app-news-field--full">
-              <span className="admin-field-label">Empfänger</span>
+              <span className="admin-field-label">Zielgruppe</span>
               <select className="admin-select" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
-                <option value="alle">Alle Partner-Unternehmen</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name || c.id}
-                  </option>
-                ))}
+                <optgroup label="Alle (Standard-Partner)">
+                  <option value="alle">Alle Partner (Hotel, Agentur, Medizin, Gutschein, …)</option>
+                </optgroup>
+                <optgroup label="Nur Unternehmensart">
+                  {MESSAGE_COMPANY_KINDS.map((kind) => (
+                    <option key={kind} value={`kind:${kind}`}>
+                      Alle: {kindLabel(kind)}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Einzelnes Unternehmen">
+                  {companies.map((c) => {
+                    const kind = c.company_kind ?? c.companyKind ?? "";
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.name || c.id}
+                        {kind ? ` (${kindLabel(kind)})` : ""}
+                      </option>
+                    );
+                  })}
+                </optgroup>
               </select>
             </label>
             <div className="app-news-section__grid">

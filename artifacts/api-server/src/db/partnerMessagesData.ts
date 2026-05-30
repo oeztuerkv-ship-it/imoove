@@ -5,7 +5,42 @@ import { adminCompaniesTable, partnerMessagesTable } from "./schema";
 
 type Row = typeof partnerMessagesTable.$inferSelect;
 
-const PARTNER_MESSAGE_COMPANY_KINDS = ["hotel", "corporate", "voucher_client", "general", "medical"] as const;
+/** Alle DB-`company_kind`-Werte, die als Nachrichten-Empfänger erlaubt sind. */
+export const ADMIN_MESSAGE_COMPANY_KINDS = [
+  "general",
+  "taxi",
+  "voucher_client",
+  "insurer",
+  "hotel",
+  "corporate",
+  "medical",
+] as const;
+
+/** Standard-Broadcast „Alle Partner“ (Posteingang Hotel/Agentur, ohne Taxi/Versicherer). */
+export const PARTNER_MESSAGE_DEFAULT_BROADCAST_KINDS = [
+  "hotel",
+  "corporate",
+  "voucher_client",
+  "general",
+  "medical",
+] as const;
+
+export const ADMIN_MESSAGE_KIND_LABELS_DE: Record<(typeof ADMIN_MESSAGE_COMPANY_KINDS)[number], string> = {
+  general: "Allgemein",
+  taxi: "Taxi / Mietwagen",
+  voucher_client: "Gutscheinpartner",
+  insurer: "Krankenkasse / Versicherung",
+  hotel: "Hotel",
+  corporate: "Unternehmen / Firma",
+  medical: "Medizinische Fahrt",
+};
+
+export type AdminMessageRecipientResolution = {
+  mode: "single" | "broadcast";
+  companyIds: string[];
+  targetLabel: string;
+  targetKey: string;
+};
 
 export type PartnerMessageDto = {
   id: string;
@@ -33,9 +68,17 @@ function rowToDto(r: Row, companyName: string | null = null): PartnerMessageDto 
   };
 }
 
-export async function listPartnerMessageRecipientCompanyIds(): Promise<string[]> {
+function isAdminMessageCompanyKind(kind: string): kind is (typeof ADMIN_MESSAGE_COMPANY_KINDS)[number] {
+  return (ADMIN_MESSAGE_COMPANY_KINDS as readonly string[]).includes(kind);
+}
+
+export async function listPartnerMessageRecipientCompanyIdsByKinds(
+  kinds: readonly string[],
+): Promise<string[]> {
   const db = getDb();
-  if (!db) return [];
+  if (!db || kinds.length === 0) return [];
+  const allowed = kinds.filter(isAdminMessageCompanyKind);
+  if (allowed.length === 0) return [];
   const rows = await db
     .select({ id: adminCompaniesTable.id })
     .from(adminCompaniesTable)
@@ -43,10 +86,14 @@ export async function listPartnerMessageRecipientCompanyIds(): Promise<string[]>
       and(
         eq(adminCompaniesTable.is_active, true),
         eq(adminCompaniesTable.is_blocked, false),
-        inArray(adminCompaniesTable.company_kind, [...PARTNER_MESSAGE_COMPANY_KINDS]),
+        inArray(adminCompaniesTable.company_kind, allowed),
       ),
     );
   return rows.map((r) => r.id);
+}
+
+export async function listPartnerMessageRecipientCompanyIds(): Promise<string[]> {
+  return listPartnerMessageRecipientCompanyIdsByKinds([...PARTNER_MESSAGE_DEFAULT_BROADCAST_KINDS]);
 }
 
 export async function partnerCompanyExistsForMessages(companyId: string): Promise<boolean> {
@@ -62,11 +109,52 @@ export async function partnerCompanyExistsForMessages(companyId: string): Promis
         eq(adminCompaniesTable.id, id),
         eq(adminCompaniesTable.is_active, true),
         eq(adminCompaniesTable.is_blocked, false),
-        inArray(adminCompaniesTable.company_kind, [...PARTNER_MESSAGE_COMPANY_KINDS]),
+        inArray(adminCompaniesTable.company_kind, [...ADMIN_MESSAGE_COMPANY_KINDS]),
       ),
     )
     .limit(1);
   return rows.length > 0;
+}
+
+/** Admin-POST: `alle`, `kind:taxi`, … oder konkrete Mandanten-ID. */
+export async function resolveAdminMessageRecipients(
+  companyIdRaw: string,
+): Promise<AdminMessageRecipientResolution | null> {
+  const raw = companyIdRaw.trim();
+  const lower = raw.toLowerCase();
+
+  if (lower === "alle" || lower === "all" || raw === "") {
+    const companyIds = await listPartnerMessageRecipientCompanyIdsByKinds([
+      ...PARTNER_MESSAGE_DEFAULT_BROADCAST_KINDS,
+    ]);
+    return {
+      mode: "broadcast",
+      companyIds,
+      targetLabel: "Alle Partner (Hotel, Agentur, Medizin, …)",
+      targetKey: "alle",
+    };
+  }
+
+  if (lower.startsWith("kind:")) {
+    const kind = raw.slice(5).trim().toLowerCase();
+    if (!isAdminMessageCompanyKind(kind)) return null;
+    const companyIds = await listPartnerMessageRecipientCompanyIdsByKinds([kind]);
+    return {
+      mode: "broadcast",
+      companyIds,
+      targetLabel: ADMIN_MESSAGE_KIND_LABELS_DE[kind],
+      targetKey: `kind:${kind}`,
+    };
+  }
+
+  const ok = await partnerCompanyExistsForMessages(raw);
+  if (!ok) return null;
+  return {
+    mode: "single",
+    companyIds: [raw],
+    targetLabel: "Einzelnes Unternehmen",
+    targetKey: raw,
+  };
 }
 
 export async function insertPartnerMessagesBatch(input: {

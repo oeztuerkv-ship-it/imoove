@@ -3,9 +3,8 @@ import { isPostgresConfigured } from "../db/client";
 import {
   deletePartnerMessageById,
   insertPartnerMessagesBatch,
-  listPartnerMessageRecipientCompanyIds,
   listPartnerMessagesAdmin,
-  partnerCompanyExistsForMessages,
+  resolveAdminMessageRecipients,
 } from "../db/partnerMessagesData";
 import { canMutateAdminCompanies, type AdminRole } from "../lib/adminConsoleRoles";
 
@@ -73,30 +72,19 @@ router.post("/", async (req, res, next) => {
       return;
     }
 
-    const broadcast =
-      companyIdRaw === "" ||
-      companyIdRaw.toLowerCase() === "alle" ||
-      companyIdRaw.toLowerCase() === "all";
-
-    let companyIds: string[] = [];
-    if (broadcast) {
-      companyIds = await listPartnerMessageRecipientCompanyIds();
-    } else {
-      const ok = await partnerCompanyExistsForMessages(companyIdRaw);
-      if (!ok) {
-        res.status(404).json({ error: "company_not_found" });
-        return;
-      }
-      companyIds = [companyIdRaw];
+    const resolved = await resolveAdminMessageRecipients(companyIdRaw);
+    if (!resolved) {
+      res.status(400).json({ error: "invalid_recipient", hint: "alle, kind:hotel, kind:taxi, … oder Mandanten-ID" });
+      return;
     }
 
-    if (companyIds.length === 0) {
-      res.status(400).json({ error: "no_recipients" });
+    if (resolved.companyIds.length === 0) {
+      res.status(400).json({ error: "no_recipients", target: resolved.targetKey });
       return;
     }
 
     const items = await insertPartnerMessagesBatch({
-      companyIds,
+      companyIds: resolved.companyIds,
       subject,
       body,
       createdByAdmin: sentByLabel(req),
@@ -104,7 +92,9 @@ router.post("/", async (req, res, next) => {
     res.status(201).json({
       ok: true,
       recipientCount: items.length,
-      broadcast,
+      broadcast: resolved.mode === "broadcast",
+      target: resolved.targetKey,
+      targetLabel: resolved.targetLabel,
       items,
     });
   } catch (e) {
