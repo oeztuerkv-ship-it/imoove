@@ -105,7 +105,7 @@ export function PartnerRideCard({
             ) : null}
             <Pressable style={styles.primaryBtn} onPress={() => onDetails(ride.id)}>
               <Feather name="map" size={16} color="#fff" />
-              <Text style={styles.primaryBtnText}>Details</Text>
+              <Text style={styles.primaryBtnText}>Status</Text>
             </Pressable>
           </View>
         )}

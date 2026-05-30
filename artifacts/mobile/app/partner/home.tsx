@@ -47,12 +47,54 @@ import {
 } from "@/utils/partnerRides";
 
 const PARTNER_GREEN = "#15803D";
+/** Gleiche Breite links/rechts → Firmenname bleibt optisch mittig, unabhängig von Logo/Badge. */
+const PARTNER_HEADER_SIDE_W = 124;
+const PARTNER_HEADER_H = 52;
+const PARTNER_ICON_BG = "#DCFCE7";
 
-function StatTile({ label, value }: { label: string; value: string }) {
+type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
+
+function StatTile({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: FeatherIconName;
+}) {
   return (
     <View style={[styles.statTile, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <View style={styles.statMainRow}>
+        <View style={styles.iconCircle}>
+          <Feather name={icon} size={14} color={PARTNER_GREEN} />
+        </View>
+        <Text style={styles.statValue} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+      <Text style={styles.statLabel} numberOfLines={2}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function RideListSectionHeader({
+  title,
+  icon,
+  style,
+}: {
+  title: string;
+  icon: FeatherIconName;
+  style?: object;
+}) {
+  return (
+    <View style={[styles.subsectionRow, style]}>
+      <View style={styles.iconCircle}>
+        <Feather name={icon} size={14} color={PARTNER_GREEN} />
+      </View>
+      <Text style={styles.subsectionTitle}>{title}</Text>
     </View>
   );
 }
@@ -338,29 +380,37 @@ export default function PartnerHomeScreen() {
   return (
     <View style={[styles.root, { backgroundColor: HOME_SHEET_BG, paddingTop: insets.top + 8 }]}>
       <View style={styles.header}>
-        <Image
-          source={require("../../assets/images/onroda-logo-transparent.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.companyName} numberOfLines={2}>
-          {companyLabel}
-        </Text>
-        <Pressable
-          style={styles.inboxBtn}
-          onPress={() => router.push("/partner/messages")}
-          accessibilityLabel="Posteingang"
-        >
-          <Feather name="bell" size={22} color="#111" />
-          {unreadMessages > 0 ? (
-            <View style={styles.inboxBadge}>
-              <Text style={styles.inboxBadgeText}>{unreadMessages > 99 ? "99+" : String(unreadMessages)}</Text>
-            </View>
-          ) : null}
-        </Pressable>
-        <Pressable style={styles.logoutBtn} onPress={() => void handleLogout()} accessibilityLabel="Abmelden">
-          <Feather name="log-out" size={22} color="#EF1D26" />
-        </Pressable>
+        <View style={[styles.headerSlot, styles.headerSlotLeft]}>
+          <Image
+            source={require("../../assets/images/onroda-logo-transparent.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={[styles.headerSlot, styles.headerSlotRight]}>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.inboxBtn}
+              onPress={() => router.push("/partner/messages")}
+              accessibilityLabel="Posteingang"
+            >
+              <Feather name="bell" size={22} color="#111" />
+              {unreadMessages > 0 ? (
+                <View style={styles.inboxBadge}>
+                  <Text style={styles.inboxBadgeText}>{unreadMessages > 99 ? "99+" : String(unreadMessages)}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+            <Pressable style={styles.logoutBtn} onPress={() => void handleLogout()} accessibilityLabel="Abmelden">
+              <Feather name="log-out" size={22} color="#EF1D26" />
+            </Pressable>
+          </View>
+        </View>
+        <View style={styles.headerCenterOverlay} pointerEvents="none">
+          <Text style={styles.companyName} numberOfLines={2}>
+            {companyLabel}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
@@ -369,28 +419,39 @@ export default function PartnerHomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.pickupCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
-          <View style={styles.pickupHeaderRow}>
-            <Text style={styles.pickupLabel}>Abholadresse</Text>
-            <Pressable onPress={() => void refreshPickup()} disabled={loadingLocation}>
-              <Text style={styles.refreshLink}>{loadingLocation ? "…" : "Standort aktualisieren"}</Text>
-            </Pressable>
+          <View style={styles.pickupMainRow}>
+            <View style={styles.iconCircle}>
+              <Feather name="map-pin" size={14} color={PARTNER_GREEN} />
+            </View>
+            <View style={styles.pickupBody}>
+              <View style={styles.pickupHeaderRow}>
+                <Text style={styles.pickupLabel}>Abholadresse</Text>
+                <Pressable onPress={() => void refreshPickup()} disabled={loadingLocation}>
+                  <Text style={styles.refreshLink}>{loadingLocation ? "…" : "Standort aktualisieren"}</Text>
+                </Pressable>
+              </View>
+              {loadingLocation ? (
+                <ActivityIndicator color={PARTNER_GREEN} style={styles.pickupLoader} />
+              ) : pickup ? (
+                <Text style={styles.pickupValue}>{pickup.full}</Text>
+              ) : (
+                <Text style={styles.pickupValue}>
+                  Standort nicht verfügbar. Bitte GPS erlauben und „Standort aktualisieren“ tippen.
+                </Text>
+              )}
+            </View>
           </View>
-          {loadingLocation ? (
-            <ActivityIndicator color={PARTNER_GREEN} style={{ marginVertical: 12 }} />
-          ) : pickup ? (
-            <Text style={styles.pickupValue}>{pickup.full}</Text>
-          ) : (
-            <Text style={styles.pickupValue}>
-              Standort nicht verfügbar. Bitte GPS erlauben und „Standort aktualisieren“ tippen.
-            </Text>
-          )}
         </View>
 
         <View style={styles.statsGrid}>
-          <StatTile label="Aktive Fahrten" value={String(stats.activeCount)} />
-          <StatTile label="Geplante Fahrten" value={String(stats.plannedCount)} />
-          <StatTile label="Abgeschlossen heute" value={String(stats.completedToday)} />
-          <StatTile label="Offene Fahrten" value={`${stats.openCount} / ${PARTNER_MAX_OPEN_RIDES}`} />
+          <StatTile label="Aktive Fahrten" value={String(stats.activeCount)} icon="activity" />
+          <StatTile label="Geplante Fahrten" value={String(stats.plannedCount)} icon="calendar" />
+          <StatTile label="Abgeschlossen heute" value={String(stats.completedToday)} icon="check-circle" />
+          <StatTile
+            label="Offene Fahrten"
+            value={`${stats.openCount} / ${PARTNER_MAX_OPEN_RIDES}`}
+            icon="layers"
+          />
         </View>
 
         {atOpenLimit ? (
@@ -404,58 +465,64 @@ export default function PartnerHomeScreen() {
         {loadingRides ? (
           <ActivityIndicator color={PARTNER_GREEN} style={{ marginVertical: 16 }} />
         ) : (
-          <>
-            <Text style={styles.subsectionTitle}>Aktive Fahrt</Text>
-            {activeRides.length === 0 ? (
-              <Text style={styles.emptyHint}>Keine aktive Fahrt.</Text>
-            ) : (
-              activeRides.map((ride) => (
-                <PartnerRideCard
-                  key={ride.id}
-                  ride={ride}
-                  nowMs={statusNowMs}
-                  acceptedInfo={trackingInfoByRideId[ride.id]}
-                  onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
-                  onCancel={setCancelRide}
-                  onRemoveFromList={(r) => void removeRideFromList(r)}
-                />
-              ))
-            )}
+          <View style={styles.rideSections}>
+            <View>
+              <RideListSectionHeader title="Aktive Fahrt" icon="activity" />
+              {activeRides.length === 0 ? (
+                <Text style={styles.emptyHint}>Keine aktive Fahrt.</Text>
+              ) : (
+                activeRides.map((ride) => (
+                  <PartnerRideCard
+                    key={ride.id}
+                    ride={ride}
+                    nowMs={statusNowMs}
+                    acceptedInfo={trackingInfoByRideId[ride.id]}
+                    onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
+                    onCancel={setCancelRide}
+                    onRemoveFromList={(r) => void removeRideFromList(r)}
+                  />
+                ))
+              )}
+            </View>
 
-            <Text style={[styles.subsectionTitle, { marginTop: 16 }]}>Reservierungen</Text>
-            {reservationRides.length === 0 ? (
-              <Text style={styles.emptyHint}>Keine Reservierungen.</Text>
-            ) : (
-              reservationRides.map((ride) => (
-                <PartnerRideCard
-                  key={ride.id}
-                  ride={ride}
-                  nowMs={statusNowMs}
-                  acceptedInfo={trackingInfoByRideId[ride.id]}
-                  onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
-                  onCancel={setCancelRide}
-                  onRemoveFromList={(r) => void removeRideFromList(r)}
-                />
-              ))
-            )}
+            <View>
+              <RideListSectionHeader title="Reservierungen" icon="calendar" />
+              {reservationRides.length === 0 ? (
+                <Text style={styles.emptyHint}>Keine Reservierungen.</Text>
+              ) : (
+                reservationRides.map((ride) => (
+                  <PartnerRideCard
+                    key={ride.id}
+                    ride={ride}
+                    nowMs={statusNowMs}
+                    acceptedInfo={trackingInfoByRideId[ride.id]}
+                    onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
+                    onCancel={setCancelRide}
+                    onRemoveFromList={(r) => void removeRideFromList(r)}
+                  />
+                ))
+              )}
+            </View>
 
-            <Text style={[styles.subsectionTitle, { marginTop: 16 }]}>Nicht vermittelt</Text>
-            {timeoutRides.length === 0 ? (
-              <Text style={styles.emptyHint}>Keine Timeout-Fahrten.</Text>
-            ) : (
-              timeoutRides.map((ride) => (
-                <PartnerRideCard
-                  key={ride.id}
-                  ride={ride}
-                  nowMs={statusNowMs}
-                  acceptedInfo={trackingInfoByRideId[ride.id]}
-                  onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
-                  onCancel={setCancelRide}
-                  onRemoveFromList={(r) => void removeRideFromList(r)}
-                />
-              ))
-            )}
-          </>
+            <View>
+              <RideListSectionHeader title="Nicht vermittelt" icon="alert-circle" />
+              {timeoutRides.length === 0 ? (
+                <Text style={styles.emptyHint}>Keine Timeout-Fahrten.</Text>
+              ) : (
+                timeoutRides.map((ride) => (
+                  <PartnerRideCard
+                    key={ride.id}
+                    ride={ride}
+                    nowMs={statusNowMs}
+                    acceptedInfo={trackingInfoByRideId[ride.id]}
+                    onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
+                    onCancel={setCancelRide}
+                    onRemoveFromList={(r) => void removeRideFromList(r)}
+                  />
+                ))
+              )}
+            </View>
+          </View>
         )}
       </ScrollView>
 
@@ -530,24 +597,51 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   bootText: { marginTop: 8, fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280" },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    position: "relative",
+    height: PARTNER_HEADER_H,
     marginBottom: 12,
-    paddingHorizontal: 20,
+    marginHorizontal: 20,
   },
-  logo: { width: 136, height: 54 },
+  headerSlot: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: PARTNER_HEADER_SIDE_W,
+    justifyContent: "center",
+  },
+  headerSlotLeft: {
+    left: -6,
+    alignItems: "flex-start",
+  },
+  headerSlotRight: {
+    right: 0,
+    alignItems: "flex-end",
+  },
+  logo: { width: 124, height: 46, marginLeft: -2 },
+  headerCenterOverlay: {
+    position: "absolute",
+    left: PARTNER_HEADER_SIDE_W,
+    right: PARTNER_HEADER_SIDE_W,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 6,
+  },
   companyName: {
-    flex: 1,
+    width: "100%",
     fontSize: 20,
     fontFamily: "Inter_600SemiBold",
     color: "#111",
-    textAlign: "right",
+    textAlign: "center",
     lineHeight: 26,
-    alignSelf: "center",
-    transform: [{ translateY: 4 }],
   },
-  inboxBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  inboxBtn: { width: 40, height: PARTNER_HEADER_H, alignItems: "center", justifyContent: "center" },
   inboxBadge: {
     position: "absolute",
     top: 4,
@@ -561,35 +655,78 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   inboxBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" },
-  logoutBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  pickupCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
+  logoutBtn: { width: 40, height: PARTNER_HEADER_H, alignItems: "center", justifyContent: "center" },
+  pickupCard: {
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8,
+    paddingHorizontal: 9,
+    marginBottom: 18,
+  },
+  pickupMainRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  pickupBody: { flex: 1, minWidth: 0, gap: 4 },
   pickupHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
     gap: 8,
   },
   pickupLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     color: "#6B7280",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
+    flexShrink: 1,
   },
-  refreshLink: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: PARTNER_GREEN },
-  pickupValue: { fontSize: 16, fontFamily: "Inter_500Medium", color: "#111", lineHeight: 22 },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
+  refreshLink: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: PARTNER_GREEN, flexShrink: 0 },
+  pickupLoader: { alignSelf: "flex-start", marginVertical: 4 },
+  pickupValue: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#111", lineHeight: 21 },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
   statTile: {
     width: "48%",
     flexGrow: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 8,
+    paddingHorizontal: 9,
     minWidth: "46%",
+    gap: 4,
   },
-  statValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: PARTNER_GREEN },
-  statLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 4 },
+  statMainRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 28,
+  },
+  iconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: PARTNER_ICON_BG,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  statValue: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: PARTNER_GREEN,
+    lineHeight: 22,
+  },
+  statLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 14 },
+  rideSections: { gap: 14 },
+  subsectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
   limitBanner: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
@@ -598,7 +735,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#111", marginBottom: 8 },
-  subsectionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#6B7280", marginBottom: 8 },
+  subsectionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#111", flex: 1 },
   emptyHint: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginBottom: 8 },
   footer: {
     paddingHorizontal: 20,
