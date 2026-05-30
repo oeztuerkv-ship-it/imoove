@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { partnerFetchMe, partnerPanelLogin } from "@/utils/partnerApi";
+import { partnerFetchMe, partnerFetchUnreadMessageCount, partnerPanelLogin } from "@/utils/partnerApi";
 import {
   isPartnerMobileAllowed,
   partnerMobileAccessDeniedReason,
@@ -8,10 +8,14 @@ import {
 } from "@/utils/partnerMobileAccess";
 import { clearPartnerJwt, getPartnerJwt, setPartnerJwt } from "@/utils/partnerSessionStorage";
 
+const PARTNER_MESSAGES_UNREAD_POLL_MS = 30_000;
+
 type PartnerContextValue = {
   token: string | null;
   user: PartnerMeUser | null;
   booting: boolean;
+  unreadMessageCount: number;
+  refreshUnreadMessageCount: () => Promise<void>;
   login: (username: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<boolean>;
@@ -25,6 +29,7 @@ export function PartnerProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<PartnerMeUser | null>(null);
   const [booting, setBooting] = useState(true);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   const loadSession = useCallback(async (jwt: string) => {
     const me = await partnerFetchMe(jwt);
@@ -89,10 +94,41 @@ export function PartnerProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const refreshUnreadMessageCount = useCallback(async () => {
+    if (!token) {
+      setUnreadMessageCount(0);
+      return;
+    }
+    const r = await partnerFetchUnreadMessageCount(token);
+    if (r.ok) {
+      setUnreadMessageCount(r.data);
+      return;
+    }
+    if (r.unauthorized) {
+      await clearPartnerJwt();
+      setToken(null);
+      setUser(null);
+      setUnreadMessageCount(0);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setUnreadMessageCount(0);
+      return;
+    }
+    void refreshUnreadMessageCount();
+    const id = setInterval(() => {
+      void refreshUnreadMessageCount();
+    }, PARTNER_MESSAGES_UNREAD_POLL_MS);
+    return () => clearInterval(id);
+  }, [token, refreshUnreadMessageCount]);
+
   const logout = useCallback(async () => {
     await clearPartnerJwt();
     setToken(null);
     setUser(null);
+    setUnreadMessageCount(0);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -104,11 +140,32 @@ export function PartnerProvider({ children }: { children: React.ReactNode }) {
     await clearPartnerJwt();
     setToken(null);
     setUser(null);
+    setUnreadMessageCount(0);
   }, []);
 
   const value = useMemo(
-    () => ({ token, user, booting, login, logout, refreshUser, handleUnauthorized }),
-    [token, user, booting, login, logout, refreshUser, handleUnauthorized],
+    () => ({
+      token,
+      user,
+      booting,
+      unreadMessageCount,
+      refreshUnreadMessageCount,
+      login,
+      logout,
+      refreshUser,
+      handleUnauthorized,
+    }),
+    [
+      token,
+      user,
+      booting,
+      unreadMessageCount,
+      refreshUnreadMessageCount,
+      login,
+      logout,
+      refreshUser,
+      handleUnauthorized,
+    ],
   );
 
   return <PartnerContext.Provider value={value}>{children}</PartnerContext.Provider>;

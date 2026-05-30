@@ -30,7 +30,6 @@ import {
   partnerCancelRide,
   partnerFetchRides,
   partnerFetchTracking,
-  partnerFetchUnreadMessageCount,
   partnerHideRide,
   type PartnerRideRow,
 } from "@/utils/partnerApi";
@@ -101,7 +100,7 @@ function RideListSectionHeader({
 
 export default function PartnerHomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user, token, booting, logout, handleUnauthorized } = usePartner();
+  const { user, token, booting, logout, handleUnauthorized, unreadMessageCount } = usePartner();
   const [pickup, setPickup] = useState<PartnerPickupPlace | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [rides, setRides] = useState<PartnerRideRow[]>([]);
@@ -115,7 +114,6 @@ export default function PartnerHomeScreen() {
     Record<string, { driverName?: string | null; plate?: string | null; etaLabel?: string }>
   >({});
   const [statusNowMs, setStatusNowMs] = useState(() => Date.now());
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const logoutInFlightRef = useRef(false);
   const dismissedRideIdsRef = useRef(new Set<string>());
   const loadRidesSeqRef = useRef(0);
@@ -198,19 +196,6 @@ export default function PartnerHomeScreen() {
     void refreshAcceptedTrackingInfo(visible);
   }, [token, handleUnauthorized, refreshAcceptedTrackingInfo, toUiRideList]);
 
-  const refreshUnreadMessages = useCallback(async () => {
-    if (!token) {
-      setUnreadMessages(0);
-      return;
-    }
-    const r = await partnerFetchUnreadMessageCount(token);
-    if (r.ok) {
-      setUnreadMessages(r.data);
-      return;
-    }
-    if (r.unauthorized) await handleUnauthorized();
-  }, [token, handleUnauthorized]);
-
   useFocusEffect(
     useCallback(() => {
       if (!booting && !token) {
@@ -219,9 +204,8 @@ export default function PartnerHomeScreen() {
       }
       if (token) {
         void loadRides();
-        void refreshUnreadMessages();
       }
-    }, [booting, token, loadRides, refreshUnreadMessages]),
+    }, [booting, token, loadRides]),
   );
 
   useFocusEffect(
@@ -395,9 +379,11 @@ export default function PartnerHomeScreen() {
               accessibilityLabel="Posteingang"
             >
               <Feather name="bell" size={22} color="#111" />
-              {unreadMessages > 0 ? (
+              {unreadMessageCount > 0 ? (
                 <View style={styles.inboxBadge}>
-                  <Text style={styles.inboxBadgeText}>{unreadMessages > 99 ? "99+" : String(unreadMessages)}</Text>
+                  <Text style={styles.inboxBadgeText}>
+                    {unreadMessageCount > 99 ? "99+" : String(unreadMessageCount)}
+                  </Text>
                 </View>
               ) : null}
             </Pressable>

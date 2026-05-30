@@ -10,6 +10,7 @@ import {
 const PANEL = `${API_BASE}/panel/v1`;
 const RED = "#EF1D26";
 const BG = "#F2F2F7";
+const MESSAGES_UNREAD_POLL_MS = 30_000;
 
 const NAV = [
   { key: "dashboard", label: "Übersicht", icon: "🏨" },
@@ -840,7 +841,7 @@ function AbrechnungView({ token }) {
 }
 
 /* ── POSTEINGANG (Operator → Partner) ─────────────────── */
-function PosteingangView({ token }) {
+function PosteingangView({ token, onUnreadRefresh }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -885,6 +886,7 @@ function PosteingangView({ token }) {
             ),
           );
         }
+        onUnreadRefresh?.();
       })
       .catch(() => {
         setItems((prev) =>
@@ -892,6 +894,7 @@ function PosteingangView({ token }) {
             row.id === msg.id ? { ...row, isRead: true, readAt: new Date().toISOString() } : row,
           ),
         );
+        onUnreadRefresh?.();
       });
   };
 
@@ -1067,6 +1070,31 @@ function EinstellungenView({ company, user }) {
 export default function AgenturMasterPanel({ company, onLogout }) {
   const { token, user } = usePanelAuth();
   const [active, setActive] = useState("dashboard");
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  const refreshUnreadMessageCount = useCallback(() => {
+    if (!token) {
+      setUnreadMessageCount(0);
+      return;
+    }
+    fetch(`${PANEL}/messages/unread-count`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((j) => {
+        const n = typeof j?.count === "number" ? j.count : 0;
+        setUnreadMessageCount(Math.max(0, n));
+      })
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setUnreadMessageCount(0);
+      return;
+    }
+    refreshUnreadMessageCount();
+    const id = setInterval(refreshUnreadMessageCount, MESSAGES_UNREAD_POLL_MS);
+    return () => clearInterval(id);
+  }, [token, refreshUnreadMessageCount]);
 
   return (
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
@@ -1094,9 +1122,35 @@ export default function AgenturMasterPanel({ company, onLogout }) {
               color: active === n.key ? "#fff" : "rgba(0,0,0,0.65)",
               boxShadow: active === n.key ? "0 10px 22px rgba(239,29,38,0.22)" : "0 4px 12px rgba(15,23,42,0.04)",
               transition: "all 0.15s",
+              position: "relative",
             }}>
               <span>{n.icon}</span>
               <span>{n.label}</span>
+              {n.key === "posteingang" && unreadMessageCount > 0 ? (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    right: 4,
+                    minWidth: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    background: RED,
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0 4px",
+                    lineHeight: 1,
+                    boxShadow: "0 2px 6px rgba(239,29,38,0.35)",
+                  }}
+                  aria-label={`${unreadMessageCount} ungelesene Nachrichten`}
+                >
+                  {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                </span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -1110,7 +1164,9 @@ export default function AgenturMasterPanel({ company, onLogout }) {
         {active === "gutscheine" && <GutscheineView token={token} user={user} />}
         {active === "fahrten" && <FahrtenView token={token} />}
         {active === "abrechnung" && <AbrechnungView token={token} />}
-        {active === "posteingang" && <PosteingangView token={token} />}
+        {active === "posteingang" && (
+          <PosteingangView token={token} onUnreadRefresh={refreshUnreadMessageCount} />
+        )}
         {active === "support" && <SupportView />}
         {active === "einstellungen" && <EinstellungenView company={company} user={user} />}
       </div>

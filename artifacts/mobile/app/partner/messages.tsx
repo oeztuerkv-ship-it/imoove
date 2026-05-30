@@ -38,7 +38,7 @@ function fmtDateTime(iso: string): string {
 
 export default function PartnerMessagesScreen() {
   const insets = useSafeAreaInsets();
-  const { token, handleUnauthorized } = usePartner();
+  const { token, handleUnauthorized, refreshUnreadMessageCount } = usePartner();
   const [items, setItems] = useState<PartnerMessageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<PartnerMessageRow | null>(null);
@@ -61,7 +61,8 @@ export default function PartnerMessagesScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load]),
+      void refreshUnreadMessageCount();
+    }, [load, refreshUnreadMessageCount]),
   );
 
   const confirmDelete = (msg: PartnerMessageRow, onDone: () => void) => {
@@ -83,6 +84,7 @@ export default function PartnerMessagesScreen() {
             return;
           }
           setItems((prev) => prev.filter((row) => row.id !== msg.id));
+          void refreshUnreadMessageCount();
           onDone();
         })(),
       },
@@ -96,6 +98,7 @@ export default function PartnerMessagesScreen() {
     if (r.ok) {
       setItems((prev) => prev.map((row) => (row.id === r.data.id ? r.data : row)));
       setSelected(r.data);
+      void refreshUnreadMessageCount();
       return;
     }
     if (r.unauthorized) {
@@ -109,6 +112,7 @@ export default function PartnerMessagesScreen() {
       ),
     );
     setSelected({ ...msg, isRead: true, readAt: new Date().toISOString() });
+    void refreshUnreadMessageCount();
   };
 
   if (selected) {
