@@ -16,6 +16,7 @@ const NAV = [
   { key: "gutscheine", label: "Gutscheine", icon: "🎟️" },
   { key: "fahrten", label: "Fahrten", icon: "🚕" },
   { key: "abrechnung", label: "Abrechnung", icon: "🧾" },
+  { key: "posteingang", label: "Posteingang", icon: "📬" },
   { key: "support", label: "Support", icon: "💬" },
   { key: "einstellungen", label: "Einstellungen", icon: "⚙️" },
 ];
@@ -59,6 +60,12 @@ function Section({ title, children, defaultOpen = true }) {
 function fmtDate(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 function fmtMoney(n) {
   if (n == null || !Number.isFinite(Number(n))) return "—";
@@ -500,14 +507,14 @@ function safePdfFilename(invoiceNumber, invoiceId) {
 function triggerPdfDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   try {
-    const a = document.createElement("a");
-    a.href = url;
+  const a = document.createElement("a");
+  a.href = url;
     a.download = filename;
     a.rel = "noopener";
     a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
   } finally {
     window.setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
@@ -698,32 +705,32 @@ function AbrechnungView({ token }) {
           />
           <Section title={`Rechnung ${selectedSummary.invoiceNumber}`}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-            <Card>
+          <Card>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                <div>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Rechnungsnummer</p>
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Rechnungsnummer</p>
                   <h3 style={{ margin: 0, fontSize: 22, wordBreak: "break-word" }}>{selectedSummary.invoiceNumber}</h3>
                   <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>{periodLabel(selectedSummary.periodFrom, selectedSummary.periodTo)}</p>
-                </div>
+              </div>
                 <Badge tone={paymentStatusTone(selectedSummary.workflowStatus || selectedSummary.paymentStatus)}>
                   {paymentStatusLabelDe(
                     selectedSummary.workflowStatus || selectedSummary.paymentStatus,
                     selectedSummary.statusLabelDe,
                   )}
                 </Badge>
-              </div>
+            </div>
 
-              <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                <div>
+            <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div>
                   <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Positionen</p>
                   <strong style={{ fontSize: 18 }}>{selectedSummary.itemCount ?? detailItems.length}</strong>
-                </div>
-                <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Fällig am</p>
+              </div>
+              <div>
+                <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Fällig am</p>
                   <strong style={{ fontSize: 18 }}>{fmtDate(selectedSummary.dueDate)}</strong>
-                </div>
-                <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Zu zahlen</p>
+              </div>
+              <div>
+                <p style={{ margin: "0 0 4px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>Zu zahlen</p>
                   <strong style={{ fontSize: 20, color: RED }}>{fmtMoney(selectedSummary.totalGross)}</strong>
                 </div>
               </div>
@@ -737,7 +744,7 @@ function AbrechnungView({ token }) {
                 >
                   {pdfBusyId === selectedSummary.id ? "PDF wird geladen …" : "PDF-Rechnung herunterladen"}
                 </button>
-              </div>
+            </div>
 
               <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f8fafc", fontSize: 13, color: "rgba(0,0,0,0.62)", lineHeight: 1.6 }}>
                 Rechnungsdatum: <strong>{fmtDate(selectedSummary.issueDate)}</strong>
@@ -757,11 +764,11 @@ function AbrechnungView({ token }) {
                     </strong>
                   </p>
                 ) : null}
-              </div>
-            </Card>
+            </div>
+          </Card>
 
-            <Card>
-              <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: 15 }}>Einzelaufstellung</p>
+          <Card>
+            <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: 15 }}>Einzelaufstellung</p>
               {detailLoading ? (
                 <p style={{ margin: 0, fontSize: 13, color: "rgba(0,0,0,0.5)" }}>Positionen werden geladen …</p>
               ) : detailItems.length === 0 ? (
@@ -793,13 +800,13 @@ function AbrechnungView({ token }) {
                         ) : null}
                       </span>
                       <strong style={{ whiteSpace: "nowrap" }}>{fmtMoney(item.lineGross)}</strong>
-                    </div>
-                  ))}
                 </div>
+              ))}
+            </div>
               )}
-            </Card>
-          </div>
-        </Section>
+          </Card>
+        </div>
+      </Section>
         </>
       )}
 
@@ -828,6 +835,158 @@ function AbrechnungView({ token }) {
           </Card>
         </div>
       </Section>
+    </div>
+  );
+}
+
+/* ── POSTEINGANG (Operator → Partner) ─────────────────── */
+function PosteingangView({ token }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+
+  const load = useCallback(() => {
+    if (!token) return;
+    setLoading(true);
+    fetch(`${PANEL}/messages`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((j) => {
+        const list = Array.isArray(j.items) ? j.items : [];
+        setItems(list);
+        setLoading(false);
+      })
+      .catch(() => {
+        setItems([]);
+        setLoading(false);
+      });
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const selected = items.find((m) => m.id === selectedId) ?? null;
+
+  const openMessage = (msg) => {
+    setSelectedId(msg.id);
+    if (msg.isRead) return;
+    fetch(`${PANEL}/messages/${encodeURIComponent(msg.id)}/read`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.item) {
+          setItems((prev) => prev.map((row) => (row.id === j.item.id ? j.item : row)));
+        } else {
+          setItems((prev) =>
+            prev.map((row) =>
+              row.id === msg.id ? { ...row, isRead: true, readAt: new Date().toISOString() } : row,
+            ),
+          );
+        }
+      })
+      .catch(() => {
+        setItems((prev) =>
+          prev.map((row) =>
+            row.id === msg.id ? { ...row, isRead: true, readAt: new Date().toISOString() } : row,
+          ),
+        );
+      });
+  };
+
+  if (selected) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setSelectedId(null)}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: RED,
+            fontWeight: 600,
+            fontSize: 14,
+            cursor: "pointer",
+            marginBottom: 12,
+            padding: 0,
+          }}
+        >
+          ← Zurück zur Liste
+        </button>
+        <Card>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "rgba(0,0,0,0.45)" }}>{fmtDateTime(selected.createdAt)}</p>
+          <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 700, color: "#1c1c1e" }}>{selected.subject}</h2>
+          <p style={{ margin: 0, fontSize: 15, color: "#374151", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{selected.body}</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 22, fontWeight: 700, margin: "0 0 16px", color: "#1c1c1e" }}>Posteingang</p>
+      <p style={{ margin: "0 0 16px", fontSize: 14, color: "rgba(0,0,0,0.55)" }}>
+        Mitteilungen von ONRODA an Ihr Unternehmen — keine Antwort nötig.
+      </p>
+      {loading ? (
+        <p style={{ color: "rgba(0,0,0,0.45)" }}>Lädt…</p>
+      ) : items.length === 0 ? (
+        <Card>
+          <p style={{ margin: 0, fontSize: 14, color: "rgba(0,0,0,0.55)" }}>Keine Nachrichten.</p>
+        </Card>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {items.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => openMessage(m)}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                width: "100%",
+                textAlign: "left",
+                padding: "14px 16px",
+                borderRadius: 12,
+                border: "0.5px solid rgba(0,0,0,0.08)",
+                background: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {!m.isRead ? (
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    background: RED,
+                    marginTop: 6,
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <span style={{ width: 8, flexShrink: 0 }} />
+              )}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 15,
+                    fontWeight: m.isRead ? 500 : 700,
+                    color: m.isRead ? "#6b7280" : "#1c1c1e",
+                    marginBottom: 4,
+                  }}
+                >
+                  {m.subject}
+                </span>
+                <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)" }}>{fmtDateTime(m.createdAt)}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -951,6 +1110,7 @@ export default function AgenturMasterPanel({ company, onLogout }) {
         {active === "gutscheine" && <GutscheineView token={token} user={user} />}
         {active === "fahrten" && <FahrtenView token={token} />}
         {active === "abrechnung" && <AbrechnungView token={token} />}
+        {active === "posteingang" && <PosteingangView token={token} />}
         {active === "support" && <SupportView />}
         {active === "einstellungen" && <EinstellungenView company={company} user={user} />}
       </div>
