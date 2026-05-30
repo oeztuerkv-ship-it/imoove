@@ -165,6 +165,7 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
   const [agenda, setAgenda] = useState([]);
   const [partnerDay, setPartnerDay] = useState([]);
   const [recentCompleted, setRecentCompleted] = useState([]);
+  const [recentCompletedOpen, setRecentCompletedOpen] = useState(false);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
 
@@ -629,59 +630,79 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
         </aside>
       </div>
 
-      <section className="admin-dashboard__recent" aria-labelledby="dash-recent-title">
-        <div className="admin-dashboard__section-head">
-          <h3 id="dash-recent-title" className="admin-dashboard__section-title">
-            Letzte abgeschlossene Fahrten
-          </h3>
-          <p className="admin-dashboard__section-sub">Chronologisch die jüngsten Abschlüsse (plattformweit)</p>
-        </div>
-        <div className="admin-dashboard__table-wrap">
-          <div className="admin-dashboard__table admin-dashboard__table--recent">
-            <div className="admin-dashboard__thead">
-              <div>Name / Mandant</div>
-              <div className="admin-dashboard__num">Betrag</div>
-              <div>Zeit</div>
-              <div>Status</div>
+      <section className="admin-dashboard__recent admin-dashboard__recent--collapsible">
+        <button
+          type="button"
+          className="admin-dashboard__section-toggle"
+          aria-expanded={recentCompletedOpen}
+          aria-controls="dash-recent-body"
+          onClick={() => setRecentCompletedOpen((v) => !v)}
+        >
+          <div className="admin-dashboard__section-head admin-dashboard__section-head--toggle">
+            <div>
+              <h3 id="dash-recent-title" className="admin-dashboard__section-title">
+                Letzte abgeschlossene Fahrten
+              </h3>
+              <p className="admin-dashboard__section-sub">
+                Chronologisch die jüngsten Abschlüsse (plattformweit)
+                {recentCompleted.length > 0 ? ` · ${recentCompleted.length} Einträge` : ""}
+              </p>
             </div>
-            {recentCompleted.length === 0 ? (
-              <div className="admin-dashboard__empty">Keine Daten.</div>
-            ) : (
-              recentCompleted.map((ride) => {
-                const amt = amountForRide(ride);
-                return (
-                  <button
-                    key={ride.id}
-                    type="button"
-                    className="admin-dashboard__tbody-row"
-                    onClick={() => onOpenRide?.(ride.id)}
-                  >
-                    <div>
-                      <div className="admin-dashboard__cell-strong admin-ellipsis" title={ride.customerName || ""}>
-                        {ride.customerName || "—"}
-                      </div>
-                      <div className="admin-dashboard__cell-sub admin-ellipsis" title={ride.companyName || ""}>
-                        {ride.companyName || "—"}
-                      </div>
-                    </div>
-                    <div className="admin-dashboard__num">{amt != null ? formatMoneyEUR(amt) : "—"}</div>
-                    <div className="admin-dashboard__cell-muted">
-                      {ride.createdAt
-                        ? new Date(ride.createdAt).toLocaleString("de-DE", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
-                    </div>
-                    <div className="admin-dashboard__cell-muted">{rideStatusDe(ride.status)}</div>
-                  </button>
-                );
-              })
-            )}
+            <span className="admin-dashboard__section-chevron" aria-hidden>
+              {recentCompletedOpen ? "▾" : "▸"}
+            </span>
           </div>
-        </div>
+        </button>
+        {recentCompletedOpen ? (
+          <div id="dash-recent-body" className="admin-dashboard__recent-body">
+            <div className="admin-dashboard__table-wrap">
+              <div className="admin-dashboard__table admin-dashboard__table--recent">
+                <div className="admin-dashboard__thead">
+                  <div>Name / Mandant</div>
+                  <div className="admin-dashboard__num">Betrag</div>
+                  <div>Zeit</div>
+                  <div>Status</div>
+                </div>
+                {recentCompleted.length === 0 ? (
+                  <div className="admin-dashboard__empty">Keine Daten.</div>
+                ) : (
+                  recentCompleted.map((ride) => {
+                    const amt = amountForRide(ride);
+                    return (
+                      <button
+                        key={ride.id}
+                        type="button"
+                        className="admin-dashboard__tbody-row"
+                        onClick={() => onOpenRide?.(ride.id)}
+                      >
+                        <div>
+                          <div className="admin-dashboard__cell-strong admin-ellipsis" title={ride.customerName || ""}>
+                            {ride.customerName || "—"}
+                          </div>
+                          <div className="admin-dashboard__cell-sub admin-ellipsis" title={ride.companyName || ""}>
+                            {ride.companyName || "—"}
+                          </div>
+                        </div>
+                        <div className="admin-dashboard__num">{amt != null ? formatMoneyEUR(amt) : "—"}</div>
+                        <div className="admin-dashboard__cell-muted">
+                          {ride.createdAt
+                            ? new Date(ride.createdAt).toLocaleString("de-DE", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "—"}
+                        </div>
+                        <div className="admin-dashboard__cell-muted">{rideStatusDe(ride.status)}</div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <div className="admin-dashboard__metrics-strip">
