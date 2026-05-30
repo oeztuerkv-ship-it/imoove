@@ -3860,6 +3860,49 @@ ul.admin-mandate-doclist {
   border-bottom: 1px solid #e2e8f0;
 }
 
+.admin-m-card__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.admin-m-card__toggle:hover {
+  background: #f1f5f9;
+}
+
+.admin-m-card__toggle:focus-visible {
+  outline: 2px solid var(--onroda-red, #dc2626);
+  outline-offset: -2px;
+}
+
+.admin-m-card__toggle-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.admin-m-card__chevron {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.admin-m-card__body {
+  padding: 12px 14px 14px;
+}
+
 .admin-m-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

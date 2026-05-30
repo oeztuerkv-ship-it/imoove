@@ -214,6 +214,7 @@ export default function CompanyMandateDetailPage({
   const [saveErr, setSaveErr] = useState("");
   const [form, setForm] = useState(null);
   const [taxiFleetBusy, setTaxiFleetBusy] = useState("");
+  const [recentRidesOpen, setRecentRidesOpen] = useState(false);
 
   const loadMandate = useCallback(() => {
     setLoading(true);
@@ -1906,54 +1907,74 @@ export default function CompanyMandateDetailPage({
             </p>
           </section>
 
-          <section className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-            <div className="admin-m-card__h">
+          <section className="admin-panel-card admin-m-card admin-m-card--collapsible" style={{ marginBottom: 16 }}>
+            <button
+              type="button"
+              className="admin-m-card__toggle"
+              aria-expanded={recentRidesOpen}
+              aria-controls="admin-mandate-recent-rides"
+              onClick={() => setRecentRidesOpen((v) => !v)}
+            >
               <span className="admin-panel-card__title" style={{ margin: 0 }}>
                 Letzte Fahrten (max. 20, jüngste zuerst)
               </span>
-            </div>
-            {isInsurerLike ? (
-              <p className="admin-table-sub" style={{ marginBottom: 8 }}>
-                Krankenkasse: sichtbar sind Fahrt, Kostenstelle, Referenz, Status und Betrag – keine medizinischen
-                Befunde.
-              </p>
-            ) : null}
-            {!(data.recentRides && data.recentRides.length) ? (
-              <p className="admin-table-sub">Keine Fahrten.</p>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ minWidth: 880, width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>
-                      <th className="admin-mandate-th">Status</th>
-                      <th className="admin-mandate-th">Anlage / Datum</th>
-                      <th className="admin-mandate-th">Start</th>
-                      <th className="admin-mandate-th">Ziel</th>
-                      <th className="admin-mandate-th">Betrag</th>
-                      <th className="admin-mandate-th">Zahlungsart</th>
-                      <th className="admin-mandate-th">Fahrer</th>
-                      <th className="admin-mandate-th">Kostenstelle / Ref.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentRides.map((r) => (
-                      <tr key={r.id}>
-                        <td className="admin-mandate-td">{r.status}</td>
-                        <td className="admin-mandate-td">{fmtDateDay(r.createdAt)}</td>
-                        <td className="admin-mandate-tdMono">{r.fromLabel}</td>
-                        <td className="admin-mandate-tdMono">{r.toLabel}</td>
-                        <td className="admin-mandate-td">{eur(r.amountEur)}</td>
-                        <td className="admin-mandate-td">{r.paymentMethod || NA}</td>
-                        <td className="admin-mandate-td">{r.driverLabel || NA}</td>
-                        <td className="admin-mandate-td">
-                          {r.costCenterId || "—"} / {r.billingReference || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <span className="admin-m-card__toggle-meta">
+                {data.recentRides?.length ? (
+                  <span className="admin-table-sub" style={{ margin: 0 }}>
+                    {data.recentRides.length} Einträge
+                  </span>
+                ) : null}
+                <span className="admin-m-card__chevron" aria-hidden>
+                  {recentRidesOpen ? "▾" : "▸"}
+                </span>
+              </span>
+            </button>
+            {recentRidesOpen ? (
+              <div id="admin-mandate-recent-rides" className="admin-m-card__body">
+                {isInsurerLike ? (
+                  <p className="admin-table-sub" style={{ marginBottom: 8 }}>
+                    Krankenkasse: sichtbar sind Fahrt, Kostenstelle, Referenz, Status und Betrag – keine medizinischen
+                    Befunde.
+                  </p>
+                ) : null}
+                {!(data.recentRides && data.recentRides.length) ? (
+                  <p className="admin-table-sub">Keine Fahrten.</p>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ minWidth: 880, width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th className="admin-mandate-th">Status</th>
+                          <th className="admin-mandate-th">Anlage / Datum</th>
+                          <th className="admin-mandate-th">Start</th>
+                          <th className="admin-mandate-th">Ziel</th>
+                          <th className="admin-mandate-th">Betrag</th>
+                          <th className="admin-mandate-th">Zahlungsart</th>
+                          <th className="admin-mandate-th">Fahrer</th>
+                          <th className="admin-mandate-th">Kostenstelle / Ref.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.recentRides.map((r) => (
+                          <tr key={r.id}>
+                            <td className="admin-mandate-td">{r.status}</td>
+                            <td className="admin-mandate-td">{fmtDateDay(r.createdAt)}</td>
+                            <td className="admin-mandate-tdMono">{r.fromLabel}</td>
+                            <td className="admin-mandate-tdMono">{r.toLabel}</td>
+                            <td className="admin-mandate-td">{eur(r.amountEur)}</td>
+                            <td className="admin-mandate-td">{r.paymentMethod || NA}</td>
+                            <td className="admin-mandate-td">{r.driverLabel || NA}</td>
+                            <td className="admin-mandate-td">
+                              {r.costCenterId || "—"} / {r.billingReference || "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            )}
+            ) : null}
           </section>
 
           <section className="admin-panel-card admin-m-card">

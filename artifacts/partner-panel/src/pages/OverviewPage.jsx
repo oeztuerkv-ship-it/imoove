@@ -124,6 +124,7 @@ export default function OverviewPage() {
   const [rideMetrics, setRideMetrics] = useState(null);
   const [rides, setRides] = useState([]);
   const [ridesErr, setRidesErr] = useState("");
+  const [lastRidesOpen, setLastRidesOpen] = useState(true);
 
   useEffect(() => {
     if (!token || !hasPanelModule(user?.panelModules, "taxi_fleet")) return;
@@ -288,40 +289,59 @@ export default function OverviewPage() {
 
       {hasPanelModule(user?.panelModules, "rides_list") && hasPerm(user?.permissions, "rides.read") ? (
         <>
-          <section className="panel-dash-section">
-            <div className="panel-dash-section__head">
-              <h3 className="panel-dash-section__title">Letzte Fahrten</h3>
-              <p className="panel-dash-section__hint">Seitenleiste: Meine Fahrten</p>
-            </div>
-            {ridesErr ? <p className="panel-page__warn">{ridesErr}</p> : null}
-            <div className="panel-dash-table-wrap">
-              {rideSlices.last.length === 0 ? (
-                <p className="panel-dash-empty">Keine Fahrten geladen.</p>
-              ) : (
-                <table className="panel-dash-table">
-                  <thead>
-                    <tr>
-                      <th>Zeit</th>
-                      <th>Route</th>
-                      <th>Status</th>
-                      <th>Betrag</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rideSlices.last.map((r) => (
-                      <tr key={r.id}>
-                        <td>{formatShortDt(r.createdAt)}</td>
-                        <td>
-                          <span className="panel-dash-table__muted">{r.from ?? "—"}</span> → {r.to ?? "—"}
-                        </td>
-                        <td>{statusDe(r.status)}</td>
-                        <td>{fareCell(r)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+          <section className="panel-dash-section panel-dash-section--collapsible">
+            <button
+              type="button"
+              className="panel-dash-section__toggle"
+              aria-expanded={lastRidesOpen}
+              aria-controls="panel-last-rides-body"
+              onClick={() => setLastRidesOpen((v) => !v)}
+            >
+              <div className="panel-dash-section__head">
+                <h3 className="panel-dash-section__title">Letzte Fahrten</h3>
+                <p className="panel-dash-section__hint">
+                  {rideSlices.last.length > 0
+                    ? `${rideSlices.last.length} Einträge · Seitenleiste: Meine Fahrten`
+                    : "Seitenleiste: Meine Fahrten"}
+                </p>
+              </div>
+              <span className="panel-dash-section__chevron" aria-hidden>
+                {lastRidesOpen ? "▾" : "▸"}
+              </span>
+            </button>
+            {lastRidesOpen ? (
+              <div id="panel-last-rides-body" className="panel-dash-section__body">
+                {ridesErr ? <p className="panel-page__warn">{ridesErr}</p> : null}
+                <div className="panel-dash-table-wrap">
+                  {rideSlices.last.length === 0 ? (
+                    <p className="panel-dash-empty">Keine Fahrten geladen.</p>
+                  ) : (
+                    <table className="panel-dash-table">
+                      <thead>
+                        <tr>
+                          <th>Zeit</th>
+                          <th>Route</th>
+                          <th>Status</th>
+                          <th>Betrag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rideSlices.last.map((r) => (
+                          <tr key={r.id}>
+                            <td>{formatShortDt(r.createdAt)}</td>
+                            <td>
+                              <span className="panel-dash-table__muted">{r.from ?? "—"}</span> → {r.to ?? "—"}
+                            </td>
+                            <td>{statusDe(r.status)}</td>
+                            <td>{fareCell(r)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section className="panel-dash-section">
