@@ -1,5 +1,11 @@
 /* Listen, Filter, Tabellen — nur var(--onroda-*) aus onroda-brand.css */
 
+.admin-brand-logo {
+  display: block;
+  width: auto;
+  object-fit: contain;
+}
+
 /* Tabellenzeilen: Modifier setzen Spalten (Tokens in onroda-brand.css). */
 .admin-cs-grid {
   grid-template-columns: var(--admin-grid-cols);

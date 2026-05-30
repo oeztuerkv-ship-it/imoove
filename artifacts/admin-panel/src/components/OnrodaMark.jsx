@@ -1,12 +1,15 @@
-/** Schriftzug „onroda“ — kein Bild-Logo in der Operator-Konsole. */
+import logoTransparent from "../assets/onroda-logo-transparent.png";
+
+/** Marken-Logo (PNG wie Partner-App-Header), kein Schriftzug „onroda“. */
 export default function OnrodaMark({ className = "" }) {
   return (
-    <span
-      className={`onroda-ui-wordmark${className ? ` ${className}` : ""}`}
-      aria-label="onroda"
-    >
-      <span className="onroda-ui-wordmark__on">on</span>
-      <span className="onroda-ui-wordmark__rest">roda</span>
-    </span>
+    <img
+      src={logoTransparent}
+      alt="ONRODA"
+      className={`admin-brand-logo${className ? ` ${className}` : ""}`}
+      width={124}
+      height={46}
+      decoding="async"
+    />
   );
 }

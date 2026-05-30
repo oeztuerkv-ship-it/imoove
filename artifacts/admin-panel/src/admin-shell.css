@@ -395,20 +395,19 @@
 }
 
 .admin-sidebar__brand-mark {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--onroda-radius-icon);
-  background: var(--onroda-bg-card);
-  border: 1px solid var(--onroda-border);
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex-shrink: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
-.admin-sidebar__mark-img.onroda-ui-wordmark,
-.admin-sidebar__mark-img {
-  font-size: 1.2rem;
+.admin-sidebar__mark-img.admin-brand-logo {
+  height: 40px;
+  width: auto;
+  max-width: 132px;
 }
 
 .admin-sidebar__logo {
