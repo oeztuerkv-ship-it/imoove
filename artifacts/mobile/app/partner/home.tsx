@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -30,8 +30,8 @@ import {
   partnerCancelRide,
   partnerFetchRides,
   partnerFetchTracking,
+  partnerFetchUnreadMessageCount,
   partnerHideRide,
-  partnerRetrySearch,
   type PartnerRideRow,
 } from "@/utils/partnerApi";
 import {
@@ -72,6 +72,8 @@ export default function PartnerHomeScreen() {
   const [trackingInfoByRideId, setTrackingInfoByRideId] = useState<
     Record<string, { driverName?: string | null; plate?: string | null; etaLabel?: string }>
   >({});
+  const [statusNowMs, setStatusNowMs] = useState(() => Date.now());
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const logoutInFlightRef = useRef(false);
   const dismissedRideIdsRef = useRef(new Set<string>());
   const loadRidesSeqRef = useRef(0);
@@ -154,6 +156,19 @@ export default function PartnerHomeScreen() {
     void refreshAcceptedTrackingInfo(visible);
   }, [token, handleUnauthorized, refreshAcceptedTrackingInfo, toUiRideList]);
 
+  const refreshUnreadMessages = useCallback(async () => {
+    if (!token) {
+      setUnreadMessages(0);
+      return;
+    }
+    const r = await partnerFetchUnreadMessageCount(token);
+    if (r.ok) {
+      setUnreadMessages(r.data);
+      return;
+    }
+    if (r.unauthorized) await handleUnauthorized();
+  }, [token, handleUnauthorized]);
+
   useFocusEffect(
     useCallback(() => {
       if (!booting && !token) {
@@ -162,8 +177,9 @@ export default function PartnerHomeScreen() {
       }
       if (token) {
         void loadRides();
+        void refreshUnreadMessages();
       }
-    }, [booting, token, loadRides]),
+    }, [booting, token, loadRides, refreshUnreadMessages]),
   );
 
   useFocusEffect(
@@ -174,27 +190,48 @@ export default function PartnerHomeScreen() {
 
   const visibleRides = useMemo(() => toUiRideList(rides), [rides, toUiRideList]);
 
+  const hasLiveSearchRides = useMemo(
+    () =>
+      visibleRides.some((r) =>
+        ["pending", "requested", "searching_driver", "offered", "ready_for_dispatch"].includes(r.status),
+      ),
+    [visibleRides],
+  );
+
+  useEffect(() => {
+    if (!hasLiveSearchRides) return;
+    const tick = () => setStatusNowMs(Date.now());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [hasLiveSearchRides]);
+
   const stats = useMemo(() => {
-    const base = computePartnerHomeStats(visibleRides);
-    const openWithoutTimeout = visibleRides.filter((r) => isPartnerRideOpen(r.status) && !isPartnerSearchTimeout(r)).length;
+    const base = computePartnerHomeStats(visibleRides, statusNowMs);
+    const openWithoutTimeout = visibleRides.filter(
+      (r) => isPartnerRideOpen(r.status) && !isPartnerSearchTimeout(r, statusNowMs),
+    ).length;
     return { ...base, openCount: openWithoutTimeout };
-  }, [visibleRides]);
+  }, [visibleRides, statusNowMs]);
 
   const activeRides = useMemo(
-    () => visibleRides.filter(isPartnerRideActive).sort(sortPartnerRidesNewestFirst),
-    [visibleRides],
+    () => visibleRides.filter((r) => isPartnerRideActive(r, statusNowMs)).sort(sortPartnerRidesNewestFirst),
+    [visibleRides, statusNowMs],
   );
   const timeoutRides = useMemo(
-    () => visibleRides.filter((r) => isPartnerSearchTimeout(r)).sort(sortPartnerRidesNewestFirst),
-    [visibleRides],
+    () => visibleRides.filter((r) => isPartnerSearchTimeout(r, statusNowMs)).sort(sortPartnerRidesNewestFirst),
+    [visibleRides, statusNowMs],
   );
   const reservationRides = useMemo(
-    () => visibleRides.filter(isPartnerRideReservation).sort(sortPartnerRidesNewestFirst),
-    [visibleRides],
+    () => visibleRides.filter((r) => isPartnerRideReservation(r, statusNowMs)).sort(sortPartnerRidesNewestFirst),
+    [visibleRides, statusNowMs],
   );
 
   const atOpenLimit = stats.openCount >= PARTNER_MAX_OPEN_RIDES;
-  const hasTimeoutRide = useMemo(() => visibleRides.some((r) => isPartnerSearchTimeout(r)), [visibleRides]);
+  const hasTimeoutRide = useMemo(
+    () => visibleRides.some((r) => isPartnerSearchTimeout(r, statusNowMs)),
+    [visibleRides, statusNowMs],
+  );
 
   const handleLogout = async () => {
     if (logoutInFlightRef.current) return;
@@ -248,21 +285,6 @@ export default function PartnerHomeScreen() {
     }
     setCancelRide(null);
     setCancelReason("");
-    await loadRides();
-  };
-
-  const submitRetrySearch = async (ride: PartnerRideRow) => {
-    if (!token) return;
-    const res = await partnerRetrySearch(token, ride.id);
-    if (!res.ok) {
-      if (res.unauthorized) {
-        await handleUnauthorized();
-        router.replace("/partner/login");
-        return;
-      }
-      Alert.alert("Retry nicht möglich", "Neue Suche konnte nicht gestartet werden. Bitte bestellen Sie erneut.");
-      return;
-    }
     await loadRides();
   };
 
@@ -324,6 +346,18 @@ export default function PartnerHomeScreen() {
         <Text style={styles.companyName} numberOfLines={2}>
           {companyLabel}
         </Text>
+        <Pressable
+          style={styles.inboxBtn}
+          onPress={() => router.push("/partner/messages")}
+          accessibilityLabel="Posteingang"
+        >
+          <Feather name="bell" size={22} color="#111" />
+          {unreadMessages > 0 ? (
+            <View style={styles.inboxBadge}>
+              <Text style={styles.inboxBadgeText}>{unreadMessages > 99 ? "99+" : String(unreadMessages)}</Text>
+            </View>
+          ) : null}
+        </Pressable>
         <Pressable style={styles.logoutBtn} onPress={() => void handleLogout()} accessibilityLabel="Abmelden">
           <Feather name="log-out" size={22} color="#EF1D26" />
         </Pressable>
@@ -379,10 +413,10 @@ export default function PartnerHomeScreen() {
                 <PartnerRideCard
                   key={ride.id}
                   ride={ride}
+                  nowMs={statusNowMs}
                   acceptedInfo={trackingInfoByRideId[ride.id]}
                   onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
                   onCancel={setCancelRide}
-                  onRetrySearch={(r) => void submitRetrySearch(r)}
                   onRemoveFromList={(r) => void removeRideFromList(r)}
                 />
               ))
@@ -396,10 +430,10 @@ export default function PartnerHomeScreen() {
                 <PartnerRideCard
                   key={ride.id}
                   ride={ride}
+                  nowMs={statusNowMs}
                   acceptedInfo={trackingInfoByRideId[ride.id]}
                   onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
                   onCancel={setCancelRide}
-                  onRetrySearch={(r) => void submitRetrySearch(r)}
                   onRemoveFromList={(r) => void removeRideFromList(r)}
                 />
               ))
@@ -413,10 +447,10 @@ export default function PartnerHomeScreen() {
                 <PartnerRideCard
                   key={ride.id}
                   ride={ride}
+                  nowMs={statusNowMs}
                   acceptedInfo={trackingInfoByRideId[ride.id]}
                   onDetails={(id) => router.push({ pathname: "/partner/track", params: { rideId: id } })}
                   onCancel={setCancelRide}
-                  onRetrySearch={(r) => void submitRetrySearch(r)}
                   onRemoveFromList={(r) => void removeRideFromList(r)}
                 />
               ))
@@ -502,17 +536,31 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 20,
   },
-  logo: { width: 120, height: 48 },
+  logo: { width: 136, height: 54 },
   companyName: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: "Inter_600SemiBold",
     color: "#111",
     textAlign: "right",
-    lineHeight: 24,
+    lineHeight: 26,
     alignSelf: "center",
-    transform: [{ translateY: 6 }],
+    transform: [{ translateY: 4 }],
   },
+  inboxBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  inboxBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF1D26",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  inboxBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" },
   logoutBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   pickupCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
   pickupHeaderRow: {

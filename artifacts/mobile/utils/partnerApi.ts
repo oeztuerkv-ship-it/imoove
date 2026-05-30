@@ -251,6 +251,56 @@ export async function partnerHideRide(
   return { ok: true, data: r.data.ride };
 }
 
+export type PartnerMessageRow = {
+  id: string;
+  companyId: string;
+  subject: string;
+  body: string;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+  createdByAdmin: string;
+};
+
+export async function partnerFetchMessages(
+  token: string,
+): Promise<PartnerApiResult<PartnerMessageRow[]>> {
+  const r = await partnerAuthedJson<{ ok?: boolean; items?: PartnerMessageRow[] }>(token, "/panel/v1/messages");
+  if (!r.ok) return r;
+  if (!r.data.ok) {
+    return { ok: false, unauthorized: false, forbidden: false, message: "Nachrichten konnten nicht geladen werden." };
+  }
+  return { ok: true, data: Array.isArray(r.data.items) ? r.data.items : [] };
+}
+
+export async function partnerFetchUnreadMessageCount(
+  token: string,
+): Promise<PartnerApiResult<number>> {
+  const r = await partnerAuthedJson<{ ok?: boolean; count?: number }>(token, "/panel/v1/messages/unread-count");
+  if (!r.ok) return r;
+  if (!r.data.ok) {
+    return { ok: false, unauthorized: false, forbidden: false, message: "Zähler nicht verfügbar." };
+  }
+  const n = typeof r.data.count === "number" ? r.data.count : 0;
+  return { ok: true, data: Math.max(0, n) };
+}
+
+export async function partnerMarkMessageRead(
+  token: string,
+  messageId: string,
+): Promise<PartnerApiResult<PartnerMessageRow>> {
+  const r = await partnerAuthedJson<{ ok?: boolean; item?: PartnerMessageRow }>(
+    token,
+    `/panel/v1/messages/${encodeURIComponent(messageId)}/read`,
+    { method: "PATCH" },
+  );
+  if (!r.ok) return r;
+  if (!r.data.ok || !r.data.item) {
+    return { ok: false, unauthorized: false, forbidden: false, message: "Als gelesen markieren fehlgeschlagen." };
+  }
+  return { ok: true, data: r.data.item };
+}
+
 export async function partnerFetchTracking(
   token: string,
   rideId: string,
