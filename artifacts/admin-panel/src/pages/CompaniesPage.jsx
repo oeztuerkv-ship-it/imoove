@@ -891,6 +891,15 @@ export default function CompaniesPage({
       <div className="admin-table-card admin-table-card--flush">
         <div className="admin-rides-table-wrap">
           <table className="admin-rides-table admin-companies-table">
+            <colgroup>
+              <col className="admin-companies-table__col-num" />
+              <col className="admin-companies-table__col-name" />
+              <col className="admin-companies-table__col-kind" />
+              <col className="admin-companies-table__col-city" />
+              <col className="admin-companies-table__col-iban" />
+              <col className="admin-companies-table__col-status" />
+              <col className="admin-companies-table__col-actions" />
+            </colgroup>
           <thead>
             <tr>
               <th className="admin-companies-table__col-num" scope="col" aria-label="Laufende Nummer">
@@ -1013,7 +1022,7 @@ export default function CompaniesPage({
                       {item.city || "—"}
                     </td>
                     <td
-                      className="admin-companies-table__mono admin-crisp-numeric"
+                      className="admin-companies-table__col-iban admin-companies-table__mono admin-crisp-numeric"
                       title={iban || "Keine IBAN hinterlegt"}
                     >
                       {iban || <span className="admin-companies-table__missing">fehlt</span>}

@@ -1562,70 +1562,83 @@
 }
 
 .admin-companies .admin-rides-table-wrap {
-  padding: 0 8px 6px;
+  padding: 0 10px 8px;
 }
 
-.admin-companies-table {
+/* Mandantenliste (mit .admin-rides-table) — feste Spalten via colgroup, kein Leerraum */
+.admin-companies-table.admin-rides-table {
   table-layout: fixed;
+  width: 100%;
+}
+
+.admin-companies-table.admin-rides-table col.admin-companies-table__col-num {
+  width: 2.25rem;
+}
+
+.admin-companies-table.admin-rides-table col.admin-companies-table__col-name {
+  width: 14%;
+}
+
+.admin-companies-table.admin-rides-table col.admin-companies-table__col-kind {
+  width: 4.75rem;
+}
+
+.admin-companies-table.admin-rides-table col.admin-companies-table__col-city {
+  width: 7.5rem;
+}
+
+.admin-companies-table.admin-rides-table col.admin-companies-table__col-iban {
+  width: 7.5rem;
+}
+
+.admin-companies-table.admin-rides-table col.admin-companies-table__col-status {
+  width: auto;
+}
+
+.admin-companies-table.admin-rides-table col.admin-companies-table__col-actions {
+  width: 11.5rem;
 }
 
 .admin-companies-table.admin-rides-table thead th,
 .admin-companies-table.admin-rides-table tbody td {
-  padding: 5px 6px;
+  padding: 7px 8px;
+  vertical-align: middle;
 }
 
-.admin-companies-table__col-num {
-  width: 2rem;
+.admin-companies-table.admin-rides-table .admin-companies-table__col-num {
   text-align: center;
-  padding-left: 4px !important;
-  padding-right: 4px !important;
 }
 
-.admin-companies-table__col-name {
-  width: 15%;
-  min-width: 0;
+.admin-companies-table.admin-rides-table .admin-companies-table__col-name {
+  overflow: hidden;
 }
 
-.admin-companies-table__col-kind {
-  width: 6%;
-  min-width: 0;
+.admin-companies-table.admin-rides-table .admin-companies-table__col-city,
+.admin-companies-table.admin-rides-table .admin-companies-table__col-iban {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.admin-companies-table__col-city {
-  width: 8%;
-  min-width: 0;
-  max-width: 6.5rem;
-}
-
-.admin-companies-table__col-iban {
-  width: 11%;
-  min-width: 0;
-  max-width: 8.5rem;
-}
-
-.admin-companies-table__col-status {
-  width: 15%;
-  min-width: 0;
-}
-
-.admin-companies-table .admin-rides-table__col-actions,
-.admin-companies-table__col-actions {
-  width: 1%;
-  min-width: 0;
-  padding-left: 4px !important;
-  padding-right: 4px !important;
+.admin-companies-table.admin-rides-table .admin-rides-table__col-actions,
+.admin-companies-table.admin-rides-table .admin-companies-table__col-actions {
+  min-width: 0 !important;
+  width: auto;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
   white-space: nowrap;
+  text-align: right;
 }
 
-.admin-companies-table .admin-rides-table__actions {
-  gap: 3px;
+.admin-companies-table.admin-rides-table .admin-rides-table__actions {
+  gap: 5px;
   flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 
-.admin-companies-table .admin-btn-action--table {
-  padding: 2px 5px;
-  font-size: 0.65rem;
-  line-height: 1.2;
+.admin-companies-table.admin-rides-table .admin-btn-action--table {
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  line-height: 1.25;
   font-weight: 700;
 }
 
@@ -1648,8 +1661,11 @@
 
 .admin-companies-table__mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.8rem;
-  word-break: break-all;
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
   color: var(--onroda-text-grey);
 }
 
@@ -1664,7 +1680,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -1692,22 +1708,23 @@
 .admin-companies-table__kind {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 6px;
   border: 1px solid;
   font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   line-height: 1.25;
   white-space: nowrap;
 }
 
 .admin-companies-table__statuses {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  max-width: 100%;
 }
 
 .admin-companies-table__missing {
@@ -1718,20 +1735,17 @@
   font-family: inherit;
 }
 
-.admin-companies-table tbody .admin-status-pill {
+.admin-companies-table.admin-rides-table tbody .admin-status-pill {
+  display: inline-flex;
+  flex-shrink: 0;
   text-transform: none;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   font-weight: 700;
-  font-size: 0.62rem;
-  padding: 1px 5px;
-  border-radius: 4px;
-  line-height: 1.2;
-}
-
-.admin-companies-table tbody .admin-status-pill--bad {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.68rem;
+  padding: 2px 7px;
+  border-radius: 6px;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 .admin-companies .admin-c-filter-toolbar--in-panel {
@@ -1833,7 +1847,7 @@
   color: var(--onroda-text);
 }
 
-/* —— Unternehmen: Tabellen-Ansicht (Operator-Dashboard) —— */
+/* —— Unternehmen: ältere Tabellen-Ansicht (nicht Mandantenliste mit .admin-rides-table) —— */
 .admin-companies-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--onroda-border-subtle);
@@ -1841,7 +1855,7 @@
   background: var(--onroda-bg-card);
 }
 
-.admin-companies-table {
+.admin-companies-table:not(.admin-rides-table) {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
@@ -1856,7 +1870,7 @@
   font-weight: 600;
 }
 
-.admin-companies-table th {
+.admin-companies-table:not(.admin-rides-table) th {
   text-align: left;
   padding: 10px 12px;
   border-bottom: 2px solid var(--onroda-border-subtle);
@@ -1867,30 +1881,30 @@
   background: color-mix(in srgb, var(--onroda-bg-app) 55%, var(--onroda-bg-card));
 }
 
-.admin-companies-table td {
+.admin-companies-table:not(.admin-rides-table) td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--onroda-border-subtle);
   vertical-align: top;
 }
 
-.admin-companies-table__num {
+.admin-companies-table:not(.admin-rides-table) .admin-companies-table__num {
   text-align: right;
   white-space: nowrap;
 }
 
-.admin-companies-table__actions {
+.admin-companies-table:not(.admin-rides-table) .admin-companies-table__actions {
   min-width: 188px;
 }
 
-.admin-companies-table__row:hover td {
+.admin-companies-table:not(.admin-rides-table) .admin-companies-table__row:hover td {
   background: color-mix(in srgb, var(--onroda-red) 4%, transparent);
 }
 
-.admin-companies-table__row--open td {
+.admin-companies-table:not(.admin-rides-table) .admin-companies-table__row--open td {
   border-bottom: none;
 }
 
-.admin-companies-table__name {
+.admin-companies-table:not(.admin-rides-table) .admin-companies-table__name {
   font-weight: 800;
   font-size: 0.95rem;
   color: var(--onroda-text);
