@@ -1529,6 +1529,121 @@
   white-space: nowrap;
 }
 
+.admin-rides-table th.admin-rides-table__sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-rides-table th.admin-rides-table__sortable:hover {
+  color: var(--onroda-text-dark);
+}
+
+.admin-rides-table__sort-ind {
+  font-size: 0.65em;
+  opacity: 0.85;
+  margin-left: 2px;
+}
+
+.admin-filter-grid--companies {
+  grid-template-columns: 2fr minmax(120px, 1fr);
+}
+
+.admin-filter-item--meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Mandantenliste: gleiche Tabellen-/Seitenhülle wie Fahrten */
+.admin-page.admin-companies {
+  margin: 0;
+  padding: 0;
+  max-width: none;
+}
+
+.admin-companies-table {
+  table-layout: fixed;
+}
+
+.admin-companies-table__col-num {
+  width: 3.25rem;
+  text-align: center;
+}
+
+.admin-companies-table__col-name {
+  width: 22%;
+  min-width: 160px;
+}
+
+.admin-companies-table__col-kind {
+  width: 9%;
+  min-width: 80px;
+}
+
+.admin-companies-table__col-iban {
+  width: 18%;
+}
+
+.admin-companies-table__col-status {
+  width: 24%;
+  min-width: 180px;
+}
+
+.admin-companies-table__row {
+  cursor: pointer;
+  outline: none;
+}
+
+.admin-companies-table__row--blocked td {
+  background: color-mix(in srgb, #f59e0b 6%, var(--onroda-bg-card));
+}
+
+.admin-companies-table__row--blocked:hover td {
+  background: color-mix(in srgb, #f59e0b 10%, var(--onroda-bg-card));
+}
+
+.admin-companies-table__muted {
+  color: var(--onroda-text-muted);
+}
+
+.admin-companies-table__mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+  color: var(--onroda-text-grey);
+}
+
+.admin-companies-table__empty {
+  text-align: center;
+  color: var(--onroda-text-muted);
+  font-size: 0.9rem;
+  padding: 24px 16px !important;
+}
+
+.admin-companies-table .admin-c-rownum {
+  min-width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.72rem;
+}
+
+.admin-companies-table .admin-c-mandant__name {
+  font-size: 0.82rem;
+}
+
+.admin-companies-table .admin-c-kind {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+}
+
+.admin-companies-table .admin-c-badge {
+  font-size: 0.68rem;
+  padding: 2px 7px;
+}
+
+.admin-companies .admin-c-filter-toolbar--in-panel {
+  border-top-color: var(--onroda-border-subtle);
+}
+
 .admin-rides-table__actions {
   display: flex;
   flex-wrap: wrap;
@@ -2437,33 +2552,9 @@ ul.admin-mandate-doclist {
   font-size: 0.95rem;
 }
 
-/* —— Mandantenliste: breites, luftiges Admin-Dashboard (nur UI) —— */
-.admin-companies {
-  margin: 0 auto;
-  padding: 20px 24px 40px;
-  max-width: min(1680px, 100%);
-  box-sizing: border-box;
-}
-
-.admin-companies--wide {
-  width: 100%;
-}
-
-@media (min-width: 1280px) {
-  .admin-companies--wide {
-    padding-left: max(24px, calc(50vw - 820px));
-    padding-right: max(24px, calc(50vw - 820px));
-  }
-}
-
-@media (min-width: 1800px) {
-  .admin-companies--wide {
-    max-width: 96vw;
-  }
-}
-
+/* —— Mandantenliste (Seitenhülle = admin-page wie Fahrten) —— */
 .admin-companies__head {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .admin-companies__head-row {
@@ -2549,12 +2640,11 @@ ul.admin-mandate-doclist {
 
 /* Neues Unternehmen (Plattform-Admin / Service) */
 .admin-companies__create {
-  margin-bottom: 28px;
-  padding: 20px 22px 22px;
-  background: linear-gradient(180deg, #f8fafc 0%, #fff 48%);
-  border: 1px solid #d8e0eb;
-  border-radius: 14px;
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+  margin-bottom: 0;
+  padding: var(--onroda-space-8);
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-card);
 }
 
 .admin-companies__create-head {
@@ -2695,7 +2785,7 @@ ul.admin-mandate-doclist {
   white-space: nowrap;
 }
 
-/* Filter-Chips (unter Suche) */
+/* Filter-Chips (unter Suche) — Legacy; neue Seiten nutzen admin-filter-card */
 .admin-c-filter-panel {
   margin-bottom: 22px;
   padding: 18px 20px 16px;
@@ -2703,6 +2793,19 @@ ul.admin-mandate-doclist {
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.admin-companies .admin-filter-card .admin-c-filter-panel__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: var(--onroda-space-4) var(--onroda-space-6);
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-companies .admin-filter-card .admin-c-filter-panel__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .admin-c-filter-panel__grid {

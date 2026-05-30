@@ -372,18 +372,20 @@ export default function CompaniesPage({
 
   const sortThProps = (key, extraClass) => {
     const active = sortKey === key;
-    const cls = [
-      "admin-c-th",
-      extraClass,
-      "admin-c-th--sortable",
-      active ? `admin-c-th--sorted admin-c-th--sorted--${sortDir}` : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const cls = ["admin-rides-table__sortable", extraClass].filter(Boolean).join(" ");
     return {
-      className: cls,
+      className: cls || undefined,
       "aria-sort": active ? (sortDir === "asc" ? "ascending" : "descending") : "none",
     };
+  };
+
+  const sortThIndicator = (key) => {
+    if (sortKey !== key) return null;
+    return (
+      <span className="admin-rides-table__sort-ind" aria-hidden>
+        {sortDir === "asc" ? " ▲" : " ▼"}
+      </span>
+    );
   };
 
   const onRowClick = (id) => {
@@ -483,10 +485,10 @@ export default function CompaniesPage({
   }
 
   return (
-    <div className="admin-companies admin-companies--wide">
+    <div className="admin-page admin-companies">
       <div className="admin-companies__head">
         <div className="admin-companies__head-row">
-          <h1 className="admin-companies__title">Mandantenverwaltung</h1>
+          <h1 className="admin-page-section-title">Mandantenverwaltung</h1>
           {canCreateCompany ? (
             <button
               type="button"
@@ -511,7 +513,7 @@ export default function CompaniesPage({
             </button>
           ) : null}
         </div>
-        <p className="admin-companies__lead">
+        <p className="admin-page-section-sub">
           <strong>Operativer Mandanten-Stand</strong> — <strong>Zeile oder Firmenname</strong> öffnet die Mandantenzentrale.
           Rechts <strong>Partner-Zugang</strong> öffnet die Partner-Portal-Anlage für genau diesen Mandanten;{" "}
           <strong>Bearbeiten</strong> erweitert Flotte, Kasse und weitere Einstellungen in der Werkstatt.
@@ -738,15 +740,15 @@ export default function CompaniesPage({
         </section>
       ) : null}
 
-      <div className="admin-c-search">
-        <div className="admin-c-search__row">
-          <div className="admin-c-search__field">
-            <label className="admin-c-search__lbl" htmlFor="admin-companies-search">
+      <div className="admin-filter-card">
+        <div className="admin-filter-grid admin-filter-grid--companies">
+          <div className="admin-filter-item">
+            <label className="admin-field-label" htmlFor="admin-companies-search">
               Mandanten durchsuchen
             </label>
             <input
               id="admin-companies-search"
-              className="admin-c-search__inp"
+              className="admin-input"
               type="search"
               autoComplete="off"
               placeholder="Firma, Ansprechpartner, E-Mail, Ort, Telefon …"
@@ -755,14 +757,17 @@ export default function CompaniesPage({
             />
           </div>
           {searchQuery.trim() || hasAnyListFilter ? (
-            <div className="admin-c-search__meta" aria-live="polite">
-              {visibleItems.length} {visibleItems.length === 1 ? "Treffer" : "Treffer"}
+            <div className="admin-filter-item admin-filter-item--meta" aria-live="polite">
+              <label className="admin-field-label">&nbsp;</label>
+              <div className="admin-table-toolbar__info">
+                {visibleItems.length} {visibleItems.length === 1 ? "Treffer" : "Treffer"}
+              </div>
             </div>
           ) : null}
         </div>
       </div>
 
-      <section className="admin-c-filter-panel" aria-label="Filter und Sortierung">
+      <section className="admin-filter-card" aria-label="Filter und Sortierung">
         <div className="admin-c-filter-panel__grid">
           <div className="admin-c-filter-panel__block">
             <div className="admin-c-filter-legend" id="companies-type-filter-label">
@@ -864,50 +869,44 @@ export default function CompaniesPage({
         </div>
       </section>
 
-      {loading && items.length === 0 ? <p className="admin-c-muted">Lade …</p> : null}
-      <div className="admin-c-tablewrap">
-        <div className="admin-c-tablebar">
-          <span className="admin-c-tablebar__title">Mandantenliste</span>
-          <span className="admin-c-tablebar__meta" aria-live="polite">
-            {visibleItems.length > 0
-              ? `Nr. 1–${visibleItems.length} · ${visibleItems.length} ${visibleItems.length === 1 ? "Eintrag" : "Einträge"}`
-              : "Keine Einträge"}
-            {items.length > 0 && visibleItems.length !== items.length
-              ? ` (gefiltert von ${items.length})`
-              : null}
-          </span>
+      {loading && items.length === 0 ? <div className="admin-info-banner">Lade …</div> : null}
+
+      <div className="admin-table-toolbar">
+        <div className="admin-table-toolbar__info" aria-live="polite">
+          {visibleItems.length > 0
+            ? `Mandantenliste · Nr. 1–${visibleItems.length} · ${visibleItems.length} ${visibleItems.length === 1 ? "Eintrag" : "Einträge"}`
+            : "Mandantenliste · Keine Einträge"}
+          {items.length > 0 && visibleItems.length !== items.length
+            ? ` (gefiltert von ${items.length})`
+            : null}
         </div>
-        <table className="admin-c-table">
+      </div>
+
+      <div className="admin-table-card admin-table-card--flush">
+        <div className="admin-rides-table-wrap">
+          <table className="admin-rides-table admin-companies-table">
           <thead>
             <tr>
-              <th className="admin-c-th admin-c-th--num" scope="col" aria-label="Laufende Nummer">
-                <span className="admin-c-th__txt">#</span>
+              <th className="admin-companies-table__col-num" scope="col" aria-label="Laufende Nummer">
+                #
               </th>
               <th
                 scope="col"
-                {...sortThProps("name", "admin-c-th--name")}
+                {...sortThProps("name", "admin-companies-table__col-name")}
                 onClick={() => setSortFromColumn("name")}
                 title="Nach Firmenname sortieren"
               >
-                <span className="admin-c-th__txt">Mandant</span>
-                {sortKey === "name" ? (
-                  <span className="admin-c-sort-ind" aria-hidden>
-                    {sortDir === "asc" ? "▲" : "▼"}
-                  </span>
-                ) : null}
+                Mandant
+                {sortThIndicator("name")}
               </th>
               <th
                 scope="col"
-                {...sortThProps("kind", "admin-c-th--sm")}
+                {...sortThProps("kind", "admin-companies-table__col-kind")}
                 onClick={() => setSortFromColumn("kind")}
                 title="Nach Unternehmensart sortieren"
               >
-                <span className="admin-c-th__txt">Modus</span>
-                {sortKey === "kind" ? (
-                  <span className="admin-c-sort-ind" aria-hidden>
-                    {sortDir === "asc" ? "▲" : "▼"}
-                  </span>
-                ) : null}
+                Modus
+                {sortThIndicator("kind")}
               </th>
               <th
                 scope="col"
@@ -915,46 +914,34 @@ export default function CompaniesPage({
                 onClick={() => setSortFromColumn("city")}
                 title="Nach Ort sortieren"
               >
-                <span className="admin-c-th__txt">Ort</span>
-                {sortKey === "city" ? (
-                  <span className="admin-c-sort-ind" aria-hidden>
-                    {sortDir === "asc" ? "▲" : "▼"}
-                  </span>
-                ) : null}
+                Ort
+                {sortThIndicator("city")}
               </th>
               <th
                 scope="col"
-                {...sortThProps("iban", "admin-c-th--iban")}
+                {...sortThProps("iban", "admin-companies-table__col-iban")}
                 onClick={() => setSortFromColumn("iban")}
                 title="Nach IBAN sortieren"
               >
-                <span className="admin-c-th__txt">IBAN</span>
-                {sortKey === "iban" ? (
-                  <span className="admin-c-sort-ind" aria-hidden>
-                    {sortDir === "asc" ? "▲" : "▼"}
-                  </span>
-                ) : null}
+                IBAN
+                {sortThIndicator("iban")}
               </th>
               <th
                 scope="col"
-                {...sortThProps("statusBundle", "admin-c-th--st")}
+                {...sortThProps("statusBundle", "admin-companies-table__col-status")}
                 onClick={() => setSortFromColumn("statusBundle")}
                 title="Kombinierter Status (Verif. · Compliance · Vertrag)"
               >
-                <span className="admin-c-th__txt">Status</span>
-                {sortKey === "statusBundle" ? (
-                  <span className="admin-c-sort-ind" aria-hidden>
-                    {sortDir === "asc" ? "▲" : "▼"}
-                  </span>
-                ) : null}
+                Status
+                {sortThIndicator("statusBundle")}
               </th>
-              <th className="admin-c-th admin-c-th--act" aria-label="Aktionen" />
+              <th className="admin-rides-table__col-actions" aria-label="Aktionen" />
             </tr>
           </thead>
           <tbody>
             {!loading && visibleItems.length === 0 ? (
               <tr>
-                <td colSpan="7" className="admin-c-td admin-c-td--empty">
+                <td colSpan="7" className="admin-companies-table__empty">
                   {searchQuery.trim() ? "Keine Mandanten passend zur Suche / Filterkombination." : "Keine Mandanten in diesem Filter."}
                 </td>
               </tr>
@@ -967,7 +954,10 @@ export default function CompaniesPage({
               return (
                 <Fragment key={item.id}>
                   <tr
-                    className={"admin-c-tr" + (item.is_blocked ? " admin-c-tr--blocked" : "")}
+                    className={
+                      "admin-rides-table__row admin-companies-table__row" +
+                      (item.is_blocked ? " admin-companies-table__row--blocked" : "")
+                    }
                     onClick={() => onRowClick(item.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -979,13 +969,13 @@ export default function CompaniesPage({
                     role="button"
                     aria-label={`Nr. ${rowNum}, Mandantenzentrale: ${item.name || item.id}`}
                   >
-                    <td className="admin-c-td admin-c-td--num">
+                    <td className="admin-companies-table__col-num">
                       <span className="admin-c-rownum" aria-hidden>
                         {rowNum}
                       </span>
                       <span className="admin-visually-hidden">Zeile {rowNum}</span>
                     </td>
-                    <td className="admin-c-td">
+                    <td>
                       <div className="admin-c-mandant">
                         <button
                           type="button"
@@ -1001,7 +991,7 @@ export default function CompaniesPage({
                         ) : null}
                       </div>
                     </td>
-                    <td className="admin-c-td">
+                    <td>
                       <span
                         className="admin-c-kind"
                         style={{
@@ -1013,22 +1003,22 @@ export default function CompaniesPage({
                         {displayKind}
                       </span>
                     </td>
-                    <td className="admin-c-td admin-c-td--muted">{item.city || "—"}</td>
+                    <td className="admin-companies-table__muted">{item.city || "—"}</td>
                     <td
-                      className="admin-c-td admin-c-td--mono"
+                      className="admin-companies-table__mono"
                       title={iban || "Keine IBAN hinterlegt"}
                     >
                       {iban || <span className="admin-c-iban-miss">fehlt</span>}
                     </td>
-                    <td className="admin-c-td">
+                    <td>
                       <StatusBadgeGroup
                         v={item.verification_status}
                         c={item.compliance_status}
                         t={item.contract_status}
                       />
                     </td>
-                    <td className="admin-c-td admin-c-td--actions" onClick={(e) => e.stopPropagation()}>
-                      <div className="admin-c-rowactions">
+                    <td className="admin-rides-table__col-actions" onClick={(e) => e.stopPropagation()}>
+                      <div className="admin-rides-table__actions admin-c-rowactions">
                         {onOpenMandateDetail ? (
                           <button
                             type="button"
@@ -1079,6 +1069,7 @@ export default function CompaniesPage({
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
