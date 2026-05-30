@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -159,64 +160,62 @@ export default function SupportInboxPage() {
   const closed = detail?.thread?.status === "closed";
 
   return (
-    <div className="admin-page" style={{ padding: "20px 24px", maxWidth: 1200 }}>
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Partner-Anfragen</h1>
-      <p style={{ margin: "0 0 20px", color: "var(--onroda-text-muted, #64748b)", maxWidth: 720, lineHeight: 1.5 }}>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
         Mandantenbezogene Support-Threads: Antworten setzen den Status auf „beantwortet“. Geschlossene Threads lassen sich
         hier nicht weiter befüllen — der Partner legt ggf. eine neue Anfrage an.
       </p>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="admin-table-sub">Status</span>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="admin-input">
-            {STATUS_OPTS.map((o) => (
-              <option key={o.value || "all"} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="admin-table-sub">Mandanten-ID</span>
-          <input className="admin-input" value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} placeholder="co-…" />
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 200 }}>
-          <span className="admin-table-sub">Suche (Titel / ID)</span>
-          <input className="admin-input" value={filterQ} onChange={(e) => setFilterQ(e.target.value)} />
-        </label>
-        <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
-        </button>
-      </div>
+      {err ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{err}</div>
+          </div>
+        </section>
+      ) : null}
 
-      {err ? <div className="admin-error-banner">{err}</div> : null}
+      <AdminCollapsibleSection title="Filter" defaultOpen>
+        <div className="admin-filter-toolbar">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Status</span>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="admin-input">
+              {STATUS_OPTS.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Mandanten-ID</span>
+            <input className="admin-input" value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} placeholder="co-…" />
+          </label>
+          <label className="admin-filter-field admin-filter-field--wide">
+            <span className="admin-field-label">Suche (Titel / ID)</span>
+            <input className="admin-input" value={filterQ} onChange={(e) => setFilterQ(e.target.value)} />
+          </label>
+          <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
+            {loading ? "Lade…" : "Aktualisieren"}
+          </button>
+        </div>
+      </AdminCollapsibleSection>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(0, 2fr)", gap: 20 }}>
-        <div style={{ border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8, overflow: "hidden" }}>
-          <div style={{ padding: "10px 12px", background: "var(--onroda-surface-2, #f8fafc)", fontWeight: 600 }}>Threads</div>
-          <div style={{ maxHeight: 560, overflow: "auto" }}>
+      <div className="admin-split-layout">
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__head">Threads</div>
+          <div className="admin-split-pane__list">
             {threads.length === 0 && !loading ? (
-              <p style={{ padding: 12, margin: 0, color: "#64748b" }}>Keine Einträge.</p>
+              <p className="admin-split-list-empty">Keine Einträge.</p>
             ) : (
               threads.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setSelectedId(t.id)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    border: "none",
-                    borderBottom: "1px solid #eee",
-                    background: t.id === selectedId ? "#e0f2fe" : "#fff",
-                    cursor: "pointer",
-                  }}
+                  className={`admin-split-list-btn${t.id === selectedId ? " admin-split-list-btn--active" : ""}`}
                 >
-                  <div style={{ fontWeight: 600 }}>{t.title}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  <div className="admin-split-list-btn__title">{t.title}</div>
+                  <div className="admin-split-list-btn__meta">
                     {t.companyName || t.companyId} · {STATUS_DE[t.status] || t.status} · {fmt(t.lastMessageAt)}
                   </div>
                 </button>
@@ -225,18 +224,19 @@ export default function SupportInboxPage() {
           </div>
         </div>
 
-        <div style={{ border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8, padding: 16 }}>
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__body">
           {!selectedId ? (
-            <p style={{ color: "#64748b", margin: 0 }}>Links einen Thread wählen.</p>
+            <p className="admin-split-list-empty">Links einen Thread wählen.</p>
           ) : detailErr ? (
             <div className="admin-error-banner">{detailErr}</div>
           ) : !detail?.thread ? (
-            <p style={{ color: "#64748b", margin: 0 }}>Lade …</p>
+            <p className="admin-split-list-empty">Lade …</p>
           ) : (
             <>
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <h2 style={{ margin: "0 0 6px", fontSize: "1.1rem" }}>{detail.thread.title}</h2>
+                  <h2 className="admin-split-detail-title">{detail.thread.title}</h2>
                   <div className="admin-table-sub">
                     {detail.companyName} ({detail.thread.companyId}) · {CAT_DE[detail.thread.category] || detail.thread.category}
                   </div>
@@ -294,6 +294,7 @@ export default function SupportInboxPage() {
               )}
             </>
           )}
+          </div>
         </div>
       </div>
     </div>

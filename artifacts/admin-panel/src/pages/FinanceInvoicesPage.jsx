@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -409,11 +410,20 @@ export default function FinanceInvoicesPage() {
   ];
 
   return (
-    <div className="admin-page admin-page--loose">
-      {error ? <div className="admin-error-banner">{error}</div> : null}
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
+        Rechnungslisten und Rechnungsdetail — Verwendungszweck = Rechnungsnummer; PDF neutral („Rechnung“).
+      </p>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Rechnungs-KPIs (Plattform)</div>
+      {error ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{error}</div>
+          </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="Rechnungs-KPIs" subtitle="Plattform" defaultOpen>
         <div className="finance-kpi-grid">
           {kpiCards.map((c) => (
             <div key={c.label} className="finance-kpi-card">
@@ -424,16 +434,14 @@ export default function FinanceInvoicesPage() {
             </div>
           ))}
         </div>
-      </div>
+      </AdminCollapsibleSection>
 
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Plattform-Rechnungen (B2B)</div>
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--admin-muted, #6b7280)" }}>
-          Verwendungszweck = Rechnungsnummer (z. B. <span className="admin-mono">ONR-HOT-2026-04-001</span>). PDF
-          bleibt neutral („Rechnung“).
+      <AdminCollapsibleSection title="Plattform-Rechnungen (B2B)" subtitle={`${total} Rechnungen`} defaultOpen>
+        <p className="admin-table-sub" style={{ margin: "0 0 12px" }}>
+          Verwendungszweck = Rechnungsnummer (z. B. <span className="admin-mono">ONR-HOT-2026-04-001</span>).
         </p>
 
-        <div className="admin-table-toolbar" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+        <div className="admin-filter-toolbar" style={{ marginBottom: 12 }}>
           <button
             type="button"
             className="admin-page-btn"
@@ -644,7 +652,7 @@ export default function FinanceInvoicesPage() {
 
         {actionMsg && !detail ? <div className="admin-info-banner" style={{ marginTop: 12 }}>{actionMsg}</div> : null}
 
-        <div className="admin-table-card" style={{ marginTop: 14 }}>
+        <div className="admin-table-card admin-table-card--embedded" style={{ marginTop: 14 }}>
           <div className="admin-table-scroll">
             <div className="admin-table-row admin-table-row--head admin-finance-inv-row">
               <div>Rechnung</div>
@@ -702,17 +710,22 @@ export default function FinanceInvoicesPage() {
             Weiter
           </button>
         </div>
-      </div>
+      </AdminCollapsibleSection>
 
       {detailLoading ? (
-        <div className="admin-panel-card">
-          <p style={{ margin: 0 }}>Detail wird geladen …</p>
-        </div>
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <p className="admin-table-sub" style={{ margin: 0 }}>Detail wird geladen …</p>
+          </div>
+        </section>
       ) : null}
 
       {detail && !detailLoading ? (
-        <div className="admin-panel-card">
-          <div className="admin-panel-card__title">Rechnungsdetail · {detail.invoice_number}</div>
+        <section className="admin-section-block">
+          <div className="admin-section-block__head admin-section-block__head--static">
+            <h2 className="admin-section-block__title">Rechnungsdetail · {detail.invoice_number}</h2>
+          </div>
+          <div className="admin-section-block__body">
           {actionMsg ? <div className="admin-info-banner" style={{ marginBottom: 12 }}>{actionMsg}</div> : null}
           {"error" in detail ? (
             <div className="admin-error-banner">{detail.error}</div>
@@ -830,7 +843,8 @@ export default function FinanceInvoicesPage() {
               ) : null}
             </>
           )}
-        </div>
+          </div>
+        </section>
       ) : null}
     </div>
   );

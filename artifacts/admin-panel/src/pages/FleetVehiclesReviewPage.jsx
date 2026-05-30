@@ -170,37 +170,25 @@ export default function FleetVehiclesReviewPage() {
   const v = detail?.vehicle;
 
   return (
-    <div className="admin-app--control" style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <p className="admin-page-eyebrow" style={{ marginBottom: 6 }}>
-        Plattform · Taxi-Flotte
-      </p>
-      <h1 className="admin-page-title" style={{ marginTop: 0, marginBottom: 8 }}>
-        Fahrzeuge prüfen
-      </h1>
-      <p className="admin-text-muted" style={{ marginBottom: 24, maxWidth: 720, lineHeight: 1.5 }}>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
         Fahrzeuge in der Warteschlange „Zur Prüfung“ (Mandant hat Unterlagen eingereicht). Freigabe verbindlich durch die
         Plattform — Partner können Fahrzeuge nicht selbst aktivieren.
       </p>
 
-      {err ? (
-        <p className="admin-state-error" style={{ marginBottom: 12 }}>
-          {err}
-        </p>
-      ) : null}
-      {detailErr ? (
-        <p className="admin-state-error" style={{ marginBottom: 12 }}>
-          {detailErr}
-        </p>
+      {err || detailErr ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body admin-section-block__body--stack">
+            {err ? <div className="admin-error-banner admin-info-banner--inline">{err}</div> : null}
+            {detailErr ? <div className="admin-error-banner admin-info-banner--inline">{detailErr}</div> : null}
+          </div>
+        </section>
       ) : null}
 
-      <div
-        className="admin-card"
-        style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.1fr)", gap: 20 }}
-      >
-        <div>
-          <h2 className="admin-section-title" style={{ marginTop: 0 }}>
-            Warteschlange
-          </h2>
+      <div className="admin-split-layout">
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__head">Warteschlange</div>
+          <div className="admin-split-pane__body">
           {loading ? (
             <p className="admin-text-muted">Laden …</p>
           ) : items.length === 0 ? (
@@ -231,13 +219,13 @@ export default function FleetVehiclesReviewPage() {
               })}
             </ul>
           )}
+          </div>
         </div>
-        <div>
-          <h2 className="admin-section-title" style={{ marginTop: 0 }}>
-            Detail
-          </h2>
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__head">Detail</div>
+          <div className="admin-split-pane__body">
           {!selectedId || !v ? (
-            <p className="admin-text-muted">Eintrag in der Liste wählen.</p>
+            <p className="admin-split-list-empty">Eintrag in der Liste wählen.</p>
           ) : (
             <div className="admin-stack" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
@@ -353,6 +341,7 @@ export default function FleetVehiclesReviewPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

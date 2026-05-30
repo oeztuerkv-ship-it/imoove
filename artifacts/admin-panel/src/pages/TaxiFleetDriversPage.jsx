@@ -254,66 +254,60 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
   }
 
   return (
-    <div className="admin-page" style={{ padding: "20px", fontFamily: "sans-serif", maxWidth: 1280 }}>
-      <h1 style={{ marginTop: 0, color: "#0f172a" }}>Taxi · Fahrer (Plattform)</h1>
-      <p style={{ color: "#64748b", maxWidth: 720, lineHeight: 1.5, marginBottom: 20 }}>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
         <strong>Operator-Sicht</strong> — Fahrer je Taxi-Mandant prüfen, Freigabe erteilen, sperren und
         Sperrgrund/Notiz dokumentieren. Änderungen werden in <code>panel_audit_log</code> (Mandant) mitgeschrieben.
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) 1.2fr", gap: 20, alignItems: "start" }}>
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, background: "#fafafa" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>1. Taxi-Unternehmen</div>
-          <input
-            value={cQuery}
-            onChange={(e) => setCQuery(e.target.value)}
-            placeholder="Suche (Name, ID)…"
-            style={{ width: "100%", padding: "8px 10px", marginBottom: 10, border: "1px solid #cbd5e1", borderRadius: 6 }}
-          />
-          {cLoading ? <p className="admin-table-sub">Lade …</p> : null}
-          <div style={{ maxHeight: 320, overflow: "auto" }}>
-            {filteredCompanies.map((c) => (
-              <button
-                type="button"
-                key={c.id}
-                onClick={() => {
-                  setCompanyId(c.id);
-                  setSel(null);
-                }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 10px",
-                  marginBottom: 4,
-                  border: "1px solid " + (companyId === c.id ? "#0ea5e9" : "#e2e8f0"),
-                  borderRadius: 6,
-                  background: companyId === c.id ? "#e0f2fe" : "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontWeight: 600, color: "#0f172a" }}>{c.name}</div>
-                <div style={{ fontSize: 11, color: "#64748b", fontFamily: "ui-monospace" }}>{c.id}</div>
-              </button>
-            ))}
+      <div className="admin-split-layout">
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__head">1. Taxi-Unternehmen</div>
+          <div className="admin-split-pane__body">
+            <input
+              className="admin-input"
+              value={cQuery}
+              onChange={(e) => setCQuery(e.target.value)}
+              placeholder="Suche (Name, ID)…"
+              style={{ width: "100%", marginBottom: 10 }}
+            />
+            {cLoading ? <p className="admin-table-sub">Lade …</p> : null}
+            <div className="admin-split-pane__list" style={{ maxHeight: 320 }}>
+              {filteredCompanies.map((c) => (
+                <button
+                  type="button"
+                  key={c.id}
+                  onClick={() => {
+                    setCompanyId(c.id);
+                    setSel(null);
+                  }}
+                  className={`admin-split-list-btn${companyId === c.id ? " admin-split-list-btn--active" : ""}`}
+                >
+                  <div className="admin-split-list-btn__title">{c.name}</div>
+                  <div className="admin-split-list-btn__meta admin-crisp-numeric">{c.id}</div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>2. Fahrer in diesem Mandanten</div>
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__head">2. Fahrer in diesem Mandanten</div>
+          <div className="admin-split-pane__body">
           {!companyId ? (
-            <p style={{ color: "#94a3b8" }}>Bitte links ein Unternehmen wählen.</p>
+            <p className="admin-split-list-empty">Bitte links ein Unternehmen wählen.</p>
           ) : dLoading ? (
             <p className="admin-table-sub">Lade Fahrer …</p>
           ) : (
             <>
               <input
+                className="admin-input"
                 value={dQuery}
                 onChange={(e) => setDQuery(e.target.value)}
                 placeholder="Fahrer suchen (Name, E-Mail, Telefon)…"
-                style={{ width: "100%", maxWidth: 420, padding: "8px 10px", marginBottom: 10, border: "1px solid #cbd5e1", borderRadius: 6 }}
+                style={{ width: "100%", maxWidth: 420, marginBottom: 10 }}
               />
-              <div style={{ overflow: "auto", maxHeight: 400, border: "1px solid #e2e8f0", borderRadius: 6 }}>
+              <div className="admin-table-card admin-table-card--embedded" style={{ overflow: "auto", maxHeight: 400 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
@@ -349,12 +343,16 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
               </div>
             </>
           )}
+          </div>
         </div>
       </div>
 
-      {sel && companyId && (
-        <div style={{ marginTop: 24, border: "1px solid #e2e8f0", borderRadius: 8, padding: 16, background: "#fff" }}>
-          <h2 style={{ marginTop: 0, fontSize: 18, color: "#0f172a" }}>Fahrer-Detail</h2>
+      {sel && companyId ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__head admin-section-block__head--static">
+            <h2 className="admin-section-block__title">Fahrer-Detail</h2>
+          </div>
+          <div className="admin-section-block__body">
           {detailLoading ? <p>Detail wird geladen…</p> : null}
           {detail && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 13 }}>
@@ -592,8 +590,9 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
               </div>
             </div>
           )}
-        </div>
-      )}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

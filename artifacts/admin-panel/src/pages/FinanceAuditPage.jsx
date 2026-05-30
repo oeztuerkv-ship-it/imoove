@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -45,18 +46,26 @@ export default function FinanceAuditPage() {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="admin-page admin-page--loose">
-      {error ? <div className="admin-error-banner">{error}</div> : null}
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Finance Audit (read only)</div>
-        <div className="admin-table-toolbar">
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">Finance-Audit-Log mit Filter und Verlauf (nur Lesen).</p>
+
+      {error ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{error}</div>
+          </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="Finance Audit" subtitle="read only" defaultOpen>
+        <div className="admin-filter-toolbar">
           <input className="admin-input" placeholder="entity_type (z. B. ride_financial)" value={entityType} onChange={(e) => { setEntityType(e.target.value); setPage(1); }} />
           <input className="admin-input" placeholder="action (z. B. snapshot_updated)" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} />
           <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
-        <div className="admin-table-card">
+        <div className="admin-table-card admin-table-card--embedded">
           <div className="admin-table-scroll">
             <div className="admin-table-row admin-table-row--head">
               <div>Zeit</div><div>Entity</div><div>Entity ID</div><div>Action</div><div>Actor</div>
@@ -78,7 +87,7 @@ export default function FinanceAuditPage() {
           <span className="admin-page-dots">Seite {page} / {pages}</span>
           <button className="admin-page-btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Weiter</button>
         </div>
-      </div>
+      </AdminCollapsibleSection>
     </div>
   );
 }

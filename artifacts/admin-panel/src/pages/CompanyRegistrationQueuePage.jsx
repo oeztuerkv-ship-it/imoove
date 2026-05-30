@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -588,64 +589,65 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
   const missingDocNote = (req?.missingDocumentsNote && String(req.missingDocumentsNote).trim()) || "";
 
   return (
-    <div className="admin-page" style={{ padding: "20px 24px", maxWidth: 1280 }}>
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Registrierungsanfragen (Homepage-Onboarding)</h1>
-      <p style={{ margin: "0 0 16px", color: "var(--onroda-text-muted, #64748b)", maxWidth: 800, lineHeight: 1.5 }}>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
         <strong>Eigener Ablauf</strong> — nicht mit „Partner-Anfragen“ (Support-Threads) oder dem Partner-Panel verwechseln.
         Bewerber:innen kommen von der <strong>öffentlichen Registrierung</strong> (<code>panel-auth/registration-request</code>).
       </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "center" }}>
-        <label className="admin-table-sub" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          Liste
-          <select
-            className="admin-input"
-            value={listMode}
-            onChange={(e) => {
-              setListMode(e.target.value);
-              setSelectedId(null);
-            }}
-            style={{ minWidth: 220 }}
-          >
-            <option value="queue">Offene Warteschlange</option>
-            <option value="all">Alle Anfragen</option>
-          </select>
-        </label>
-        <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
-        </button>
-      </div>
-      {err ? <div className="admin-error-banner">{err}</div> : null}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
-        <div style={{ border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8, overflow: "hidden" }}>
-          <div style={{ padding: "10px 12px", background: "var(--onroda-surface-2, #f8fafc)", fontWeight: 600 }}>Anfragen</div>
-          <div style={{ maxHeight: 640, overflow: "auto" }}>
+
+      {err ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{err}</div>
+          </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="Liste" defaultOpen>
+        <div className="admin-filter-toolbar admin-section-toolbar--start">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Ansicht</span>
+            <select
+              className="admin-input"
+              value={listMode}
+              onChange={(e) => {
+                setListMode(e.target.value);
+                setSelectedId(null);
+              }}
+              style={{ minWidth: 220 }}
+            >
+              <option value="queue">Offene Warteschlange</option>
+              <option value="all">Alle Anfragen</option>
+            </select>
+          </label>
+          <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
+            {loading ? "Lade…" : "Aktualisieren"}
+          </button>
+        </div>
+      </AdminCollapsibleSection>
+
+      <div className="admin-split-layout admin-split-layout--queue">
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__head">Anfragen</div>
+          <div className="admin-split-pane__list">
             {items.length === 0 && !loading ? (
-              <p style={{ padding: 12, margin: 0, color: "#64748b" }}>Keine Einträge.</p>
+              <p className="admin-split-list-empty">Keine Einträge.</p>
             ) : (
               items.map((r) => (
                 <button
                   key={r.id}
                   type="button"
                   onClick={() => setSelectedId(r.id)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    border: "none",
-                    borderBottom: "1px solid #eee",
-                    background: r.id === selectedId ? "#e0f2fe" : "#fff",
-                    cursor: "pointer",
-                  }}
+                  className={`admin-split-list-btn${r.id === selectedId ? " admin-split-list-btn--active" : ""}`}
                 >
-                  <div style={{ fontSize: 11, color: "#64748b" }}>Ref. {r.id}</div>
-                  <div style={{ fontWeight: 600 }}>{r.companyName || "—"}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  <div className="admin-split-list-btn__meta">Ref. {r.id}</div>
+                  <div className="admin-split-list-btn__title">{r.companyName || "—"}</div>
+                  <div className="admin-split-list-btn__meta">
                     {REG_STATUS_DE[r.registrationStatus] || r.registrationStatus} · {fmt(r.createdAt)}
                   </div>
                   {r.linkedCompanyId ? (
-                    <div style={{ fontSize: 11, color: "#0369a1", marginTop: 4 }}>
-                      Mandant <code style={{ fontSize: 11 }}>{r.linkedCompanyId}</code>
+                    <div className="admin-split-list-btn__meta">
+                      Mandant <code>{r.linkedCompanyId}</code>
                     </div>
                   ) : null}
                 </button>
@@ -653,23 +655,17 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
             )}
           </div>
         </div>
-        <div
-          style={{
-            border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-            borderRadius: 8,
-            padding: 16,
-            minWidth: 0,
-          }}
-        >
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__body">
           {!selectedId ? (
-            <p style={{ color: "#64748b", margin: 0 }}>Links eine Anfrage wählen.</p>
+            <p className="admin-split-list-empty">Links eine Anfrage wählen.</p>
           ) : detailErr && !req ? (
             <div className="admin-error-banner">{detailErr}</div>
           ) : !req ? (
-            <p style={{ color: "#64748b", margin: 0 }}>Lade …</p>
+            <p className="admin-split-list-empty">Lade …</p>
           ) : (
             <div>
-              <h2 style={{ margin: "0 0 4px", fontSize: "1.1rem" }}>Ticket · {req.companyName}</h2>
+              <h2 className="admin-split-detail-title">Ticket · {req.companyName}</h2>
               <p className="admin-table-sub" style={{ margin: "0 0 12px" }}>
                 Referenz-ID: <code>{req.id}</code>
                 {req.linkedCompanyId ? (
@@ -1272,6 +1268,7 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

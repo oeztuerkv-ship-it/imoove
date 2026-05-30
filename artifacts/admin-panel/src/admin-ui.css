@@ -259,6 +259,117 @@
   color: var(--onroda-red);
 }
 
+.admin-page--content {
+  max-width: 1280px;
+}
+
+.admin-filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--onroda-space-4);
+  align-items: flex-end;
+}
+
+.admin-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--onroda-space-2);
+  min-width: 0;
+}
+
+.admin-filter-field--wide {
+  flex: 1;
+  min-width: 200px;
+}
+
+.admin-split-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+  gap: var(--onroda-gap-grid);
+  align-items: start;
+}
+
+.admin-split-layout--queue {
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+}
+
+@media (max-width: 900px) {
+  .admin-split-layout,
+  .admin-split-layout--queue {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-split-pane {
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-card);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.admin-split-pane__head {
+  padding: var(--onroda-space-4) var(--onroda-space-5);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--onroda-text-dark);
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  background: var(--onroda-bg-light);
+}
+
+.admin-split-pane__body {
+  padding: var(--onroda-padding-card);
+}
+
+.admin-split-pane__list {
+  max-height: 640px;
+  overflow: auto;
+}
+
+.admin-split-list-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--onroda-space-4) var(--onroda-space-5);
+  border: none;
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  background: var(--onroda-bg-card);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.admin-split-list-btn:hover {
+  background: var(--onroda-bg-light);
+}
+
+.admin-split-list-btn--active {
+  background: color-mix(in srgb, var(--onroda-red) 6%, var(--onroda-bg-card));
+}
+
+.admin-split-list-btn__title {
+  font-weight: 700;
+}
+
+.admin-split-list-btn__meta {
+  font-size: 0.8rem;
+  color: var(--onroda-text-muted);
+  margin-top: var(--onroda-space-2);
+}
+
+.admin-split-list-empty {
+  padding: var(--onroda-padding-card);
+  margin: 0;
+  color: var(--onroda-text-muted);
+}
+
+.admin-split-detail-title {
+  margin: 0 0 var(--onroda-space-2);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--onroda-text-dark);
+}
+
 .admin-placeholder-list {
   margin: 12px 0 0;
   padding-left: 1.25rem;
@@ -4183,33 +4294,12 @@ ul.admin-mandate-doclist {
 }
 
 /* —— Taxi · Fahrzeuge: Mandantenzentrale-Linie (Header + Karten) —— */
-.admin-taxi-fv-page {
+.admin-taxi-fv-page.admin-page--content {
   max-width: min(1280px, 100%);
-  margin: 0 auto;
-  padding: 12px 18px 40px;
-  font-size: 0.98rem;
-  line-height: 1.5;
-  color: #0f172a;
 }
 
 .admin-taxi-fv-head {
-  margin-bottom: 20px;
-}
-
-.admin-taxi-fv-h1 {
-  margin: 0 0 8px;
-  font-size: clamp(1.35rem, 1rem + 0.7vw, 1.6rem);
-  color: #0f172a;
-  font-weight: 850;
-  letter-spacing: -0.02em;
-}
-
-.admin-taxi-fv-lead {
-  margin: 0;
-  color: #5b6473;
-  max-width: 920px;
-  line-height: 1.55;
-  font-size: 1.02rem;
+  display: none;
 }
 
 .admin-taxi-fv-workgrid {
@@ -4237,7 +4327,11 @@ ul.admin-mandate-doclist {
 
 .admin-taxi-fv-side,
 .admin-taxi-fv-veh {
-  padding: 14px 16px 16px;
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-card);
+  padding: var(--onroda-padding-card);
+  overflow: hidden;
 }
 
 .admin-taxi-fv-side-scroll {

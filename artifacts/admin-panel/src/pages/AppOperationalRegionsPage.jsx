@@ -1,3 +1,4 @@
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import CollapsibleCard from "../components/CollapsibleCard.jsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
@@ -71,7 +72,6 @@ export default function AppOperationalRegionsPage() {
   const [assignBusy, setAssignBusy] = useState("");
   const [outOfServiceDe, setOutOfServiceDe] = useState("");
   const [savingMsg, setSavingMsg] = useState(false);
-  const [showTest, setShowTest] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newMode, setNewMode] = useState("radius");
   const [newTerms, setNewTerms] = useState("");
@@ -257,18 +257,33 @@ export default function AppOperationalRegionsPage() {
   const gridCols = "1.1fr 0.45fr 1.1fr 1.3fr 0.65fr";
 
   return (
-    <div className="admin-page">
-      {error ? <div className="admin-info-banner admin-info-banner--error" style={{ marginBottom: 12 }}>{error}</div> : null}
-      {okMsg ? <div className="admin-info-banner admin-info-banner--ok" style={{ marginBottom: 12 }}>{okMsg}</div> : null}
+    <div className="admin-page admin-page--loose">
+      <p className="admin-page-lead">
+        Wo gefahren wird (Matching), Tarif-Zuordnung, Radius/Text; Buchung nur in aktiven Gebieten.
+      </p>
 
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Gebiete</div>
+      {error || okMsg ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body admin-section-block__body--stack">
+            {error ? (
+              <div className="admin-info-banner admin-info-banner--error admin-info-banner--inline">{error}</div>
+            ) : null}
+            {okMsg ? <div className="admin-info-banner admin-info-banner--ok admin-info-banner--inline">{okMsg}</div> : null}
+          </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection
+        title="Gebiete & Tarifzuordnung"
+        subtitle={loading ? "Laden …" : `${regions.length} Gebiet${regions.length === 1 ? "" : "e"}`}
+        defaultOpen
+      >
         {loading ? (
           <p className="admin-table-sub" style={{ marginTop: 10 }}>Laden …</p>
         ) : regions.length === 0 ? (
           <p className="admin-table-sub" style={{ marginTop: 10 }}>Noch keine Gebiete.</p>
         ) : (
-          <div className="admin-table-card" style={{ marginTop: 12 }}>
+          <div className="admin-table-card admin-table-card--embedded">
             <div className="admin-table-scroll">
               <div className="admin-table-row admin-table-row--head" style={{ gridTemplateColumns: gridCols }}>
                 <span>Gebiet</span>
@@ -316,7 +331,7 @@ export default function AppOperationalRegionsPage() {
             </div>
           </div>
         )}
-      </div>
+      </AdminCollapsibleSection>
 
       <CollapsibleCard title="Region hinzufügen">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
@@ -368,11 +383,11 @@ export default function AppOperationalRegionsPage() {
         </button>
       </CollapsibleCard>
 
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-          <div className="admin-panel-card__title">Regionen</div>
-          <span className="admin-table-sub">{activeCount}/{regions.length} aktiv</span>
-        </div>
+      <AdminCollapsibleSection
+        title="Regionen verwalten"
+        subtitle={`${activeCount}/${regions.length} aktiv`}
+        defaultOpen
+      >
         {!loading && regions.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
             {regions.map((r) => (
@@ -380,37 +395,29 @@ export default function AppOperationalRegionsPage() {
             ))}
           </div>
         ) : null}
-      </div>
+      </AdminCollapsibleSection>
 
-      <div className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-        <button type="button" style={{ display: "flex", width: "100%", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: 0, gap: 10 }} onClick={() => setShowTest((v) => !v)}>
-          <span className="admin-panel-card__title" style={{ margin: 0 }}>Start / Ziel prüfen</span>
-          <span style={{ marginLeft: "auto", fontSize: 12, color: "rgba(0,0,0,0.4)" }}>{showTest ? "▲ Einklappen" : "▼ Ausklappen"}</span>
-        </button>
-        {showTest ? (
-          <div style={{ marginTop: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 600 }}>
-              <div>
-                <label className="admin-form-label">Abholadresse<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testFrom} onChange={(e) => setTestFrom(e.target.value)} /></label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 6 }}>
-                  <label className="admin-form-label">lat<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testFromLat} onChange={(e) => setTestFromLat(e.target.value)} /></label>
-                  <label className="admin-form-label">lng<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testFromLng} onChange={(e) => setTestFromLng(e.target.value)} /></label>
-                </div>
-              </div>
-              <div>
-                <label className="admin-form-label">Zieladresse<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testTo} onChange={(e) => setTestTo(e.target.value)} /></label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 6 }}>
-                  <label className="admin-form-label">lat<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testToLat} onChange={(e) => setTestToLat(e.target.value)} /></label>
-                  <label className="admin-form-label">lng<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testToLng} onChange={(e) => setTestToLng(e.target.value)} /></label>
-                </div>
-              </div>
+      <CollapsibleCard title="Start / Ziel prüfen">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 600 }}>
+          <div>
+            <label className="admin-form-label">Abholadresse<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testFrom} onChange={(e) => setTestFrom(e.target.value)} /></label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 6 }}>
+              <label className="admin-form-label">lat<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testFromLat} onChange={(e) => setTestFromLat(e.target.value)} /></label>
+              <label className="admin-form-label">lng<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testFromLng} onChange={(e) => setTestFromLng(e.target.value)} /></label>
             </div>
-            <p className="admin-table-sub" style={{ marginTop: 12, fontWeight: 600, color: fromOk && toOk && anyActive ? "#16a34a" : "#dc2626" }}>
-              {testResult}
-            </p>
           </div>
-        ) : null}
-      </div>
+          <div>
+            <label className="admin-form-label">Zieladresse<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testTo} onChange={(e) => setTestTo(e.target.value)} /></label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 6 }}>
+              <label className="admin-form-label">lat<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testToLat} onChange={(e) => setTestToLat(e.target.value)} /></label>
+              <label className="admin-form-label">lng<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={testToLng} onChange={(e) => setTestToLng(e.target.value)} /></label>
+            </div>
+          </div>
+        </div>
+        <p className="admin-table-sub" style={{ marginTop: 12, fontWeight: 600, color: fromOk && toOk && anyActive ? "#16a34a" : "#dc2626" }}>
+          {testResult}
+        </p>
+      </CollapsibleCard>
 
       <CollapsibleCard title="Hinweistext (App)">
         <label className="admin-form-label" style={{ display: "block", marginTop: 8, maxWidth: 560 }}>

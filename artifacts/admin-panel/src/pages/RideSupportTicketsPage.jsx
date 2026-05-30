@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -148,65 +149,62 @@ export default function RideSupportTicketsPage() {
   }
 
   return (
-    <div className="admin-page" style={{ padding: "20px 24px", maxWidth: 1200 }}>
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Fahrt-Support (Kund*innen)</h1>
-      <p style={{ margin: "0 0 20px", color: "var(--onroda-text-muted, #64748b)", maxWidth: 800, lineHeight: 1.5 }}>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">
         Tickets aus der Kunden-App mit <strong>unveränderbarem Fahrtkontext</strong> (Snapshot zum Zeitpunkt der Meldung). Keine
         E-Mail, kein Chat — Plattform-Bearbeitung, interne Notiz, Status.
       </p>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="admin-table-sub">Status</span>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="admin-input">
-            {STATUS_OPTS.map((o) => (
-              <option key={o.value || "all"} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 220 }}>
-          <span className="admin-table-sub">Suche (Ticket / Fahrt / Passagier-ID)</span>
-          <input className="admin-input" value={filterQ} onChange={(e) => setFilterQ(e.target.value)} />
-        </label>
-        <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
-        </button>
-        <span className="admin-table-sub" style={{ marginLeft: 8 }}>
-          {total} Treffer
-        </span>
-      </div>
+      {err ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{err}</div>
+          </div>
+        </section>
+      ) : null}
 
-      {err ? <div className="admin-error-banner">{err}</div> : null}
+      <AdminCollapsibleSection title="Filter" subtitle={`${total} Treffer`} defaultOpen>
+        <div className="admin-filter-toolbar">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Status</span>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="admin-input">
+              {STATUS_OPTS.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-filter-field admin-filter-field--wide">
+            <span className="admin-field-label">Suche (Ticket / Fahrt / Passagier-ID)</span>
+            <input className="admin-input" value={filterQ} onChange={(e) => setFilterQ(e.target.value)} />
+          </label>
+          <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
+            {loading ? "Lade…" : "Aktualisieren"}
+          </button>
+        </div>
+      </AdminCollapsibleSection>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1fr) minmax(0, 2fr)", gap: 20 }}>
-        <div style={{ border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8, overflow: "hidden" }}>
-          <div style={{ padding: "10px 12px", background: "var(--onroda-surface-2, #f8fafc)", fontWeight: 600 }}>Tickets</div>
-          <div style={{ maxHeight: 600, overflow: "auto" }}>
+      <div className="admin-split-layout">
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__head">Tickets</div>
+          <div className="admin-split-pane__list">
             {items.length === 0 && !loading ? (
-              <p style={{ padding: 12, margin: 0, color: "#64748b" }}>Keine Einträge.</p>
+              <p className="admin-split-list-empty">Keine Einträge.</p>
             ) : (
               items.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setSelectedId(t.id)}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    border: "none",
-                    borderBottom: "1px solid #eee",
-                    background: t.id === selectedId ? "#e0f2fe" : "#fff",
-                    cursor: "pointer",
-                  }}
+                  className={`admin-split-list-btn${t.id === selectedId ? " admin-split-list-btn--active" : ""}`}
                 >
-                  <div style={{ fontWeight: 600, fontSize: 12 }}><code>{t.id}</code></div>
-                  <div style={{ fontSize: 13, marginTop: 4 }}>{CAT_DE[t.category] || t.category}</div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                    Fahrt <code style={{ fontSize: 11 }}>{t.rideId}</code> · {STATUS_DE[t.status] || t.status} · {fmt(t.createdAt)}
+                  <div className="admin-split-list-btn__title">
+                    <code>{t.id}</code>
+                  </div>
+                  <div className="admin-split-list-btn__meta">{CAT_DE[t.category] || t.category}</div>
+                  <div className="admin-split-list-btn__meta">
+                    Fahrt <code>{t.rideId}</code> · {STATUS_DE[t.status] || t.status} · {fmt(t.createdAt)}
                   </div>
                 </button>
               ))
@@ -214,18 +212,19 @@ export default function RideSupportTicketsPage() {
           </div>
         </div>
 
-        <div style={{ border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8, padding: 16 }}>
+        <div className="admin-split-pane">
+          <div className="admin-split-pane__body">
           {!selectedId ? (
-            <p style={{ color: "#64748b", margin: 0 }}>Links ein Ticket wählen.</p>
+            <p className="admin-split-list-empty">Links ein Ticket wählen.</p>
           ) : detailErr ? (
             <div className="admin-error-banner">{detailErr}</div>
           ) : !detail ? (
-            <p style={{ color: "#64748b", margin: 0 }}>Lade …</p>
+            <p className="admin-split-list-empty">Lade …</p>
           ) : (
             <>
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <h2 style={{ margin: "0 0 6px", fontSize: "1.1rem" }}>{CAT_DE[detail.category] || detail.category}</h2>
+                  <h2 className="admin-split-detail-title">{CAT_DE[detail.category] || detail.category}</h2>
                   <div className="admin-table-sub">
                     Fahrt <code>{detail.rideId}</code> · Passagier-ID <code>{detail.passengerId}</code>
                   </div>
@@ -285,6 +284,7 @@ export default function RideSupportTicketsPage() {
               </div>
             </>
           )}
+          </div>
         </div>
       </div>
     </div>

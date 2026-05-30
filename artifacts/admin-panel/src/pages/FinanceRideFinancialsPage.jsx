@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -80,11 +81,19 @@ export default function FinanceRideFinancialsPage() {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="admin-page admin-page--loose">
-      {error ? <div className="admin-error-banner">{error}</div> : null}
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Ride Financials</div>
-        <div className="admin-table-toolbar">
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">Finanz-Snapshots je Fahrt mit Filter, Pagination und Detail.</p>
+
+      {error ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{error}</div>
+          </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="Ride Financials" subtitle={`${total} Einträge`} defaultOpen>
+        <div className="admin-filter-toolbar">
           <input
             className="admin-input"
             placeholder="Suche (ride_id / billing_reference)"
@@ -122,7 +131,7 @@ export default function FinanceRideFinancialsPage() {
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
-        <div className="admin-table-card">
+        <div className="admin-table-card admin-table-card--embedded">
           <div className="admin-table-scroll">
             <div className="admin-table-row admin-table-row--head">
               <div>Ride</div><div>Partner</div><div>Provider</div><div>Gross</div><div>Commission</div><div>Billing</div><div>Settlement</div><div />
@@ -139,7 +148,7 @@ export default function FinanceRideFinancialsPage() {
                 <div><button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => void openDetail(x.ride_id)}>Details</button></div>
               </div>
             ))}
-            {!loading && items.length === 0 ? <div className="admin-info-banner">Keine Datensätze gefunden.</div> : null}
+            {!loading && items.length === 0 ? <div className="admin-info-banner admin-info-banner--inline">Keine Datensätze gefunden.</div> : null}
           </div>
         </div>
         <div className="admin-pagination">
@@ -147,12 +156,21 @@ export default function FinanceRideFinancialsPage() {
           <span className="admin-page-dots">Seite {page} / {pages}</span>
           <button className="admin-page-btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Weiter</button>
         </div>
-      </div>
+      </AdminCollapsibleSection>
 
-      {detailLoading ? <div className="admin-info-banner">Detail wird geladen …</div> : null}
+      {detailLoading ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-info-banner admin-info-banner--inline">Detail wird geladen …</div>
+          </div>
+        </section>
+      ) : null}
       {detail ? (
-        <div className="admin-panel-card">
-          <div className="admin-panel-card__title">Ride Financial Detail</div>
+        <section className="admin-section-block">
+          <div className="admin-section-block__head admin-section-block__head--static">
+            <h2 className="admin-section-block__title">Ride Financial Detail</h2>
+          </div>
+          <div className="admin-section-block__body">
           {"error" in detail ? (
             <div className="admin-error-banner">{detail.error}</div>
           ) : (
@@ -167,7 +185,8 @@ export default function FinanceRideFinancialsPage() {
               <div><strong>Settlement eligible:</strong> {detail?.eligibility?.settlementEligible ? "ja" : "nein"}</div>
             </div>
           )}
-        </div>
+          </div>
+        </section>
       ) : null}
     </div>
   );

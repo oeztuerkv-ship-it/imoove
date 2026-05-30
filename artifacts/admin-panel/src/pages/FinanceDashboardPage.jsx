@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -61,25 +62,31 @@ export default function FinanceDashboardPage() {
   ];
 
   return (
-    <div className="admin-page admin-page--loose">
-      <div className="admin-panel-card">
-        <div className="admin-panel-card__title">KPI-Summary</div>
-        <div className="admin-table-toolbar">
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Von</span>
-              <input className="admin-input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Bis</span>
-              <input className="admin-input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </label>
+    <div className="admin-page admin-page--loose admin-page--content">
+      <p className="admin-page-lead">Plattform-Finanzüberblick — KPIs zu Umsatz, Forderungen und Abrechnungen.</p>
+
+      {error ? (
+        <section className="admin-section-block">
+          <div className="admin-section-block__body">
+            <div className="admin-error-banner admin-info-banner--inline">{error}</div>
           </div>
+        </section>
+      ) : null}
+
+      <AdminCollapsibleSection title="KPI-Summary" subtitle="Abrechnung & Plattform-Provision" defaultOpen>
+        <div className="admin-filter-toolbar">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Von</span>
+            <input className="admin-input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Bis</span>
+            <input className="admin-input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </label>
           <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
-        {error ? <div className="admin-error-banner">{error}</div> : null}
         <div className="finance-kpi-grid">
           {cards.map((c) => (
             <div key={c.label} className="finance-kpi-card">
@@ -88,7 +95,7 @@ export default function FinanceDashboardPage() {
             </div>
           ))}
         </div>
-      </div>
+      </AdminCollapsibleSection>
     </div>
   );
 }

@@ -362,17 +362,14 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
   }
 
   return (
-    <div className="admin-page admin-taxi-fv-page">
-      <div className="admin-taxi-fv-head">
-        <h1 className="admin-taxi-fv-h1">Taxi · Fahrzeuge (Plattform)</h1>
-        <p className="admin-taxi-fv-lead">
-          <strong>Operator-Sicht</strong> — Fahrzeuge je Taxi-Mandant prüfen, freigeben, sperren und Sperrgrund/Notiz
-          dokumentieren. Änderungen werden in <code>panel_audit_log</code> (Mandant) mitgeschrieben.
-        </p>
-      </div>
+    <div className="admin-page admin-page--loose admin-page--content admin-taxi-fv-page">
+      <p className="admin-page-lead">
+        <strong>Operator-Sicht</strong> — Fahrzeuge je Taxi-Mandant prüfen, freigeben, sperren und Sperrgrund/Notiz
+        dokumentieren. Änderungen werden in <code>panel_audit_log</code> (Mandant) mitgeschrieben.
+      </p>
 
       <div className="admin-taxi-fv-workgrid">
-        <section className="admin-m-card admin-taxi-fv-side" aria-label="Mandant wählen">
+        <section className="admin-taxi-fv-side" aria-label="Mandant wählen">
           <div className="admin-taxi-fv-sidelabel">1. Taxi-Unternehmen</div>
           <input
             className="admin-m-inp"
@@ -402,7 +399,7 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
           </div>
         </section>
 
-        <section className="admin-m-card admin-taxi-fv-veh" aria-label="Fahrzeuge im Mandanten">
+        <section className="admin-taxi-fv-veh" aria-label="Fahrzeuge im Mandanten">
           <div className="admin-taxi-fv-sidelabel">2. Fahrzeuge in diesem Mandanten</div>
           {!companyId ? (
             <p className="admin-taxi-fv-muted">Bitte links ein Unternehmen wählen.</p>
