@@ -12,7 +12,7 @@ import {
 } from "../db/krankenInvoicesData.js";
 import { buildAndStoreKrankenInvoicePdf, readKrankenInvoicePdfBuffer } from "../lib/krankenInvoicePdfService.js";
 import { sendKrankenInvoiceMail } from "../lib/krankenInvoiceMail.js";
-import { assertCompanyKkModuleEnabled } from "../lib/kkModuleAccess.js";
+import { assertCompanyKkModuleEnabled, kkModuleDeniedJson, KK_MODULE_NOT_ENABLED } from "../lib/kkModuleAccess.js";
 import { assertActivePanelProfile, denyUnlessPanelModule } from "./panelRouteContext.js";
 
 const router: IRouter = Router();
@@ -31,7 +31,7 @@ async function requireCompanyKkModule(
 ): Promise<boolean> {
   const gate = await assertCompanyKkModuleEnabled(companyId);
   if (!gate.ok) {
-    res.status(403).json({ ok: false, error: gate.error });
+    res.status(403).json(kkModuleDeniedJson(KK_MODULE_NOT_ENABLED));
     return false;
   }
   return true;

@@ -14,6 +14,8 @@ export function messageForFleetDriverCreateError(data) {
     }
     case "email_taken":
       return "Diese E-Mail ist bereits als Fahrer registriert. Mit bestehendem Konto anmelden oder eine andere E-Mail wählen.";
+    case "email_reserved_panel_account":
+      return "Diese E-Mail ist bereits als Partner-Portal-Zugang (Unternehmer) vergeben. Für Fahrer bitte eine andere E-Mail verwenden.";
     case "email_invalid":
       return "Bitte eine gültige E-Mail-Adresse eingeben.";
     case "company_profile_incomplete":

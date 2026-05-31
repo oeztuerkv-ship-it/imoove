@@ -1,7 +1,9 @@
 import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
 import { findFleetDriverByEmailNormalized, getCompanyKind, touchFleetDriverLogin } from "../db/fleetDriversData";
+import { findActivePanelUserByEmailNormalized } from "../db/panelAuthData";
 import { getFleetLoginCompanyDenyReason } from "../db/companyGovernanceData";
+import { PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE } from "../lib/onrodaAccessMessages.js";
 import { isFleetDriverJwtConfigured, signFleetDriverJwt } from "../lib/fleetDriverJwt";
 import { rateLimitFleetLogin } from "../lib/fleetLoginRateLimit";
 import { verifyPassword } from "../lib/password";
@@ -33,6 +35,15 @@ router.post("/fleet-auth/login", async (req, res) => {
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!email || !password) {
     res.status(400).json({ error: "email_and_password_required" });
+    return;
+  }
+
+  const panelAccount = await findActivePanelUserByEmailNormalized(email);
+  if (panelAccount) {
+    res.status(403).json({
+      error: "panel_email_not_fleet_driver",
+      message: PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE,
+    });
     return;
   }
 

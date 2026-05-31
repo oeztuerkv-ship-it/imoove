@@ -2,10 +2,14 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { findCompanyById } from "./adminData";
 import { getDb, isPostgresConfigured } from "./client";
+import { findActivePanelUserByEmailNormalized } from "./panelAuthData";
 import { adminCompaniesTable, fleetDriversTable } from "./schema";
 
 /** Eine E-Mail → genau ein `fleet_drivers`-Datensatz → genau ein Mandant (kein zweites Konto). */
-export type FleetDriverEmailRejectReason = "email_taken_in_company" | "email_taken_other_company";
+export type FleetDriverEmailRejectReason =
+  | "email_taken_in_company"
+  | "email_taken_other_company"
+  | "email_reserved_panel_account";
 
 export type FleetDriverEmailReject = {
   reason: FleetDriverEmailRejectReason;
@@ -33,6 +37,17 @@ export async function validateFleetDriverEmailAssignment(
 ): Promise<FleetDriverEmailReject | null> {
   const em = normalizeFleetDriverEmail(email);
   if (!isValidFleetDriverEmail(em)) return null;
+
+  const panelUser = await findActivePanelUserByEmailNormalized(em);
+  if (panelUser) {
+    return {
+      reason: "email_reserved_panel_account",
+      existingDriverId: "",
+      existingCompanyId: panelUser.company_id,
+      existingCompanyName: null,
+    };
+  }
+
   const existing = await findFleetDriverByEmailNormalized(em);
   if (!existing) return null;
   if (exceptDriverId && existing.id === exceptDriverId) return null;
@@ -73,7 +88,8 @@ export function isFleetDriverEmailConflictError(code: string): boolean {
   return (
     code === "email_taken" ||
     code === "email_taken_in_company" ||
-    code === "email_taken_other_company"
+    code === "email_taken_other_company" ||
+    code === "email_reserved_panel_account"
   );
 }
 

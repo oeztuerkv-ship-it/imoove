@@ -45625,6 +45625,272 @@ var init_operationalTariffEngine = __esm({
   }
 });
 
+// src/lib/onrodaAccessMessages.ts
+var ONRODA_KK_DENIED_MESSAGE_DE, PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE;
+var init_onrodaAccessMessages = __esm({
+  "src/lib/onrodaAccessMessages.ts"() {
+    ONRODA_KK_DENIED_MESSAGE_DE = "Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.";
+    PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE = "Diese E-Mail ist f\xFCr das Partner-Portal (Unternehmer) registriert. Bitte melden Sie sich dort an oder nutzen Sie die vom Unternehmen angelegte Fahrer-E-Mail mit Einmal-Passwort.";
+  }
+});
+
+// src/lib/kkModuleAccess.ts
+function kkModuleDeniedJson(error) {
+  return { ok: false, error, message: ONRODA_KK_DENIED_MESSAGE_DE };
+}
+function isTaxiCompanyKind(companyKind) {
+  return companyKind.trim().toLowerCase() === "taxi";
+}
+function isCompanyKkModuleEnabled(company) {
+  return isTaxiCompanyKind(company.companyKind) && Boolean(company.featureKkModule);
+}
+function computeDriverKkModuleAccess(company, driver) {
+  if (!isCompanyKkModuleEnabled(company)) return false;
+  if (driver.isOwner) return true;
+  return Boolean(driver.permissionKkModule);
+}
+function kkModuleAccessFromRows(company, driver) {
+  const companyEnabled = isCompanyKkModuleEnabled({
+    companyKind: company.company_kind,
+    featureKkModule: company.feature_kk_module
+  });
+  const isOwner = Boolean(driver.is_owner);
+  const permissionKkModule = Boolean(driver.permission_kk_module);
+  const canAccess = computeDriverKkModuleAccess(
+    { companyKind: company.company_kind, featureKkModule: company.feature_kk_module },
+    { isOwner, permissionKkModule }
+  );
+  return { companyEnabled, canAccess, isOwner, permissionKkModule };
+}
+async function findCompanyKkModuleRow(companyId) {
+  const cid = companyId.trim();
+  if (!cid || !isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    company_kind: adminCompaniesTable.company_kind,
+    feature_kk_module: adminCompaniesTable.feature_kk_module
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
+  return rows[0] ?? null;
+}
+async function getCompanyFeatureKkModule(companyId) {
+  const row = await findCompanyKkModuleRow(companyId);
+  if (!row) return false;
+  return isCompanyKkModuleEnabled({
+    companyKind: row.company_kind,
+    featureKkModule: row.feature_kk_module
+  });
+}
+async function resolveKkModuleAccessForFleetDriver(companyId, fleetDriverId) {
+  const driverRow = await findFleetDriverInCompany(fleetDriverId.trim(), companyId.trim());
+  if (!driverRow) return null;
+  const companyRow = await findCompanyKkModuleRow(companyId);
+  if (!companyRow) return null;
+  return kkModuleAccessFromRows(companyRow, driverRow);
+}
+async function assertKkModuleAccessForFleetDriver(companyId, fleetDriverId) {
+  const access = await resolveKkModuleAccessForFleetDriver(companyId, fleetDriverId);
+  if (!access) {
+    return { ok: false, error: KK_MODULE_NOT_AUTHORIZED };
+  }
+  if (!access.companyEnabled) {
+    return { ok: false, error: KK_MODULE_NOT_ENABLED };
+  }
+  if (!access.canAccess) {
+    return { ok: false, error: KK_MODULE_NOT_AUTHORIZED };
+  }
+  return { ok: true, access };
+}
+async function assertCompanyKkModuleEnabled(companyId) {
+  const enabled = await getCompanyFeatureKkModule(companyId);
+  if (!enabled) {
+    return { ok: false, error: KK_MODULE_NOT_ENABLED };
+  }
+  return { ok: true };
+}
+var KK_MODULE_NOT_ENABLED, KK_MODULE_NOT_AUTHORIZED;
+var init_kkModuleAccess = __esm({
+  "src/lib/kkModuleAccess.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_fleetDriversData();
+    init_schema2();
+    init_onrodaAccessMessages();
+    KK_MODULE_NOT_ENABLED = "kk_module_not_enabled";
+    KK_MODULE_NOT_AUTHORIZED = "kk_module_not_authorized";
+  }
+});
+
+// src/db/panelAuthData.ts
+async function findActivePanelUserByUsername(username) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = username.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    password_hash: panelUsersTable.password_hash,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      sql2`lower(${panelUsersTable.username}) = ${normalized}`,
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    username: r.username,
+    email: r.email,
+    password_hash: r.password_hash,
+    role: r.role,
+    must_change_password: r.must_change_password,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
+async function findActivePanelUserByEmailNormalized(email) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !normalized.includes("@")) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    password_hash: panelUsersTable.password_hash,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      sql2`lower(trim(${panelUsersTable.email})) = ${normalized}`,
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(2);
+  if (rows.length !== 1) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    username: r.username,
+    email: r.email,
+    password_hash: r.password_hash,
+    role: r.role,
+    must_change_password: r.must_change_password,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
+async function findActivePanelUserProfileById(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    companyId: panelUsersTable.company_id,
+    companyName: adminCompaniesTable.name,
+    companyKindRaw: adminCompaniesTable.company_kind,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    role: panelUsersTable.role,
+    mustChangePassword: panelUsersTable.must_change_password,
+    createdAt: panelUsersTable.created_at,
+    updatedAt: panelUsersTable.updated_at,
+    companyPanelModulesJson: adminCompaniesTable.panel_modules,
+    featureKkModuleRaw: adminCompaniesTable.feature_kk_module
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(panelUsersTable.id, id),
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    companyId: r.companyId,
+    companyName: r.companyName,
+    companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" || r.companyKindRaw === "medical" ? r.companyKindRaw : "general",
+    username: r.username,
+    email: r.email,
+    role: r.role,
+    mustChangePassword: r.mustChangePassword,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson),
+    featureKkModule: isCompanyKkModuleEnabled({
+      companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" || r.companyKindRaw === "medical" ? r.companyKindRaw : "general",
+      featureKkModule: Boolean(r.featureKkModuleRaw)
+    })
+  };
+}
+async function findActivePanelUserById(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    password_hash: panelUsersTable.password_hash,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(panelUsersTable.id, id),
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    username: r.username,
+    email: r.email,
+    password_hash: r.password_hash,
+    role: r.role,
+    must_change_password: r.must_change_password,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
+var init_panelAuthData = __esm({
+  "src/db/panelAuthData.ts"() {
+    init_drizzle_orm();
+    init_panelModules();
+    init_kkModuleAccess();
+    init_client();
+    init_schema2();
+  }
+});
+
 // src/db/fleetDriversData.ts
 var fleetDriversData_exports = {};
 __export(fleetDriversData_exports, {
@@ -45678,6 +45944,15 @@ function isValidFleetDriverEmail(email) {
 async function validateFleetDriverEmailAssignment(email, companyId, exceptDriverId) {
   const em = normalizeFleetDriverEmail(email);
   if (!isValidFleetDriverEmail(em)) return null;
+  const panelUser = await findActivePanelUserByEmailNormalized(em);
+  if (panelUser) {
+    return {
+      reason: "email_reserved_panel_account",
+      existingDriverId: "",
+      existingCompanyId: panelUser.company_id,
+      existingCompanyName: null
+    };
+  }
   const existing = await findFleetDriverByEmailNormalized(em);
   if (!existing) return null;
   if (exceptDriverId && existing.id === exceptDriverId) return null;
@@ -45701,7 +45976,7 @@ function fleetDriverEmailConflictBody(error, meta) {
   return body;
 }
 function isFleetDriverEmailConflictError(code) {
-  return code === "email_taken" || code === "email_taken_in_company" || code === "email_taken_other_company";
+  return code === "email_taken" || code === "email_taken_in_company" || code === "email_taken_other_company" || code === "email_reserved_panel_account";
 }
 function normalizeFleetDriverApproval(raw) {
   const t = String(raw ?? "").toLowerCase().trim();
@@ -46235,6 +46510,7 @@ var init_fleetDriversData = __esm({
     init_drizzle_orm();
     init_adminData();
     init_client();
+    init_panelAuthData();
     init_schema2();
     MAX_SUS_REASON = 2e3;
     MAX_ADMIN_NOTE = 4e3;
@@ -49223,6 +49499,8 @@ async function listMarketOnlineDriversEligibleForInstantRide(ride) {
     if (!capability?.vehicleLegalType) continue;
     if (!isRideCompatibleWithCapability(ride, capability)) continue;
     if (ride.rideKind === "medical") {
+      const companyKkEnabled = await getCompanyFeatureKkModule(companyId);
+      if (!companyKkEnabled) continue;
       const medicalAuth = await resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId);
       if (!medicalAuth?.authorized) continue;
     }
@@ -49237,6 +49515,7 @@ var init_fleetInstantRideMarketData = __esm({
     init_client();
     init_fleetDriverReadiness();
     init_fleetMatchingData();
+    init_kkModuleAccess();
     init_medicalTransportAuthorization();
     init_schema2();
     INSTANT_MARKET_STATUSES = /* @__PURE__ */ new Set([
@@ -75610,253 +75889,7 @@ var adminApi_default = router14;
 
 // src/routes/panelAuth.ts
 var import_express15 = __toESM(require_express2(), 1);
-
-// src/db/panelAuthData.ts
-init_drizzle_orm();
-init_panelModules();
-
-// src/lib/kkModuleAccess.ts
-init_drizzle_orm();
-init_client();
-init_fleetDriversData();
-init_schema2();
-var KK_MODULE_NOT_ENABLED = "kk_module_not_enabled";
-var KK_MODULE_NOT_AUTHORIZED = "kk_module_not_authorized";
-function isTaxiCompanyKind(companyKind) {
-  return companyKind.trim().toLowerCase() === "taxi";
-}
-function isCompanyKkModuleEnabled(company) {
-  return isTaxiCompanyKind(company.companyKind) && Boolean(company.featureKkModule);
-}
-function computeDriverKkModuleAccess(company, driver) {
-  if (!isCompanyKkModuleEnabled(company)) return false;
-  if (driver.isOwner) return true;
-  return Boolean(driver.permissionKkModule);
-}
-function kkModuleAccessFromRows(company, driver) {
-  const companyEnabled = isCompanyKkModuleEnabled({
-    companyKind: company.company_kind,
-    featureKkModule: company.feature_kk_module
-  });
-  const isOwner = Boolean(driver.is_owner);
-  const permissionKkModule = Boolean(driver.permission_kk_module);
-  const canAccess = computeDriverKkModuleAccess(
-    { companyKind: company.company_kind, featureKkModule: company.feature_kk_module },
-    { isOwner, permissionKkModule }
-  );
-  return { companyEnabled, canAccess, isOwner, permissionKkModule };
-}
-async function findCompanyKkModuleRow(companyId) {
-  const cid = companyId.trim();
-  if (!cid || !isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    company_kind: adminCompaniesTable.company_kind,
-    feature_kk_module: adminCompaniesTable.feature_kk_module
-  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
-  return rows[0] ?? null;
-}
-async function getCompanyFeatureKkModule(companyId) {
-  const row = await findCompanyKkModuleRow(companyId);
-  if (!row) return false;
-  return isCompanyKkModuleEnabled({
-    companyKind: row.company_kind,
-    featureKkModule: row.feature_kk_module
-  });
-}
-async function resolveKkModuleAccessForFleetDriver(companyId, fleetDriverId) {
-  const driverRow = await findFleetDriverInCompany(fleetDriverId.trim(), companyId.trim());
-  if (!driverRow) return null;
-  const companyRow = await findCompanyKkModuleRow(companyId);
-  if (!companyRow) return null;
-  return kkModuleAccessFromRows(companyRow, driverRow);
-}
-async function assertKkModuleAccessForFleetDriver(companyId, fleetDriverId) {
-  const access = await resolveKkModuleAccessForFleetDriver(companyId, fleetDriverId);
-  if (!access) {
-    return { ok: false, error: KK_MODULE_NOT_AUTHORIZED };
-  }
-  if (!access.companyEnabled) {
-    return { ok: false, error: KK_MODULE_NOT_ENABLED };
-  }
-  if (!access.canAccess) {
-    return { ok: false, error: KK_MODULE_NOT_AUTHORIZED };
-  }
-  return { ok: true, access };
-}
-async function assertCompanyKkModuleEnabled(companyId) {
-  const enabled = await getCompanyFeatureKkModule(companyId);
-  if (!enabled) {
-    return { ok: false, error: KK_MODULE_NOT_ENABLED };
-  }
-  return { ok: true };
-}
-
-// src/db/panelAuthData.ts
-init_client();
-init_schema2();
-async function findActivePanelUserByUsername(username) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const normalized = username.trim().toLowerCase();
-  if (!normalized) return null;
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    company_id: panelUsersTable.company_id,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    password_hash: panelUsersTable.password_hash,
-    role: panelUsersTable.role,
-    must_change_password: panelUsersTable.must_change_password,
-    is_active: panelUsersTable.is_active,
-    created_at: panelUsersTable.created_at,
-    updated_at: panelUsersTable.updated_at
-  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      sql2`lower(${panelUsersTable.username}) = ${normalized}`,
-      eq(panelUsersTable.is_active, true),
-      eq(adminCompaniesTable.is_active, true)
-    )
-  ).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id,
-    company_id: r.company_id,
-    username: r.username,
-    email: r.email,
-    password_hash: r.password_hash,
-    role: r.role,
-    must_change_password: r.must_change_password,
-    is_active: r.is_active,
-    created_at: r.created_at,
-    updated_at: r.updated_at
-  };
-}
-async function findActivePanelUserByEmailNormalized(email) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const normalized = email.trim().toLowerCase();
-  if (!normalized || !normalized.includes("@")) return null;
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    company_id: panelUsersTable.company_id,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    password_hash: panelUsersTable.password_hash,
-    role: panelUsersTable.role,
-    must_change_password: panelUsersTable.must_change_password,
-    is_active: panelUsersTable.is_active,
-    created_at: panelUsersTable.created_at,
-    updated_at: panelUsersTable.updated_at
-  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      sql2`lower(trim(${panelUsersTable.email})) = ${normalized}`,
-      eq(panelUsersTable.is_active, true),
-      eq(adminCompaniesTable.is_active, true)
-    )
-  ).limit(2);
-  if (rows.length !== 1) return null;
-  const r = rows[0];
-  return {
-    id: r.id,
-    company_id: r.company_id,
-    username: r.username,
-    email: r.email,
-    password_hash: r.password_hash,
-    role: r.role,
-    must_change_password: r.must_change_password,
-    is_active: r.is_active,
-    created_at: r.created_at,
-    updated_at: r.updated_at
-  };
-}
-async function findActivePanelUserProfileById(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    companyId: panelUsersTable.company_id,
-    companyName: adminCompaniesTable.name,
-    companyKindRaw: adminCompaniesTable.company_kind,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    role: panelUsersTable.role,
-    mustChangePassword: panelUsersTable.must_change_password,
-    createdAt: panelUsersTable.created_at,
-    updatedAt: panelUsersTable.updated_at,
-    companyPanelModulesJson: adminCompaniesTable.panel_modules,
-    featureKkModuleRaw: adminCompaniesTable.feature_kk_module
-  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      eq(panelUsersTable.id, id),
-      eq(panelUsersTable.is_active, true),
-      eq(adminCompaniesTable.is_active, true)
-    )
-  ).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id,
-    companyId: r.companyId,
-    companyName: r.companyName,
-    companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" || r.companyKindRaw === "medical" ? r.companyKindRaw : "general",
-    username: r.username,
-    email: r.email,
-    role: r.role,
-    mustChangePassword: r.mustChangePassword,
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-    panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson),
-    featureKkModule: isCompanyKkModuleEnabled({
-      companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" || r.companyKindRaw === "medical" ? r.companyKindRaw : "general",
-      featureKkModule: Boolean(r.featureKkModuleRaw)
-    })
-  };
-}
-async function findActivePanelUserById(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    company_id: panelUsersTable.company_id,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    password_hash: panelUsersTable.password_hash,
-    role: panelUsersTable.role,
-    must_change_password: panelUsersTable.must_change_password,
-    is_active: panelUsersTable.is_active,
-    created_at: panelUsersTable.created_at,
-    updated_at: panelUsersTable.updated_at
-  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      eq(panelUsersTable.id, id),
-      eq(panelUsersTable.is_active, true),
-      eq(adminCompaniesTable.is_active, true)
-    )
-  ).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id,
-    company_id: r.company_id,
-    username: r.username,
-    email: r.email,
-    password_hash: r.password_hash,
-    role: r.role,
-    must_change_password: r.must_change_password,
-    is_active: r.is_active,
-    created_at: r.created_at,
-    updated_at: r.updated_at
-  };
-}
-
-// src/routes/panelAuth.ts
+init_panelAuthData();
 init_client();
 init_logger2();
 
@@ -76501,6 +76534,7 @@ init_client();
 import { randomUUID as randomUUID36 } from "node:crypto";
 import { mkdir as mkdir6, readFile as readFile2, writeFile as writeFile6 } from "node:fs/promises";
 import path9 from "node:path";
+init_panelAuthData();
 init_panelCompanyData();
 init_companyGovernanceData();
 init_accessCodesData();
@@ -79536,6 +79570,7 @@ async function getPanelInvoiceForCompany(companyId, invoiceId) {
 
 // src/routes/panelRouteContext.ts
 init_client();
+init_panelAuthData();
 init_panelModules();
 function enabledPanelModules2(profile) {
   return resolveEffectivePanelModules(profile.panelModules, profile.companyKind);
@@ -79741,6 +79776,7 @@ async function sendKrankenInvoiceMail(input) {
 }
 
 // src/routes/panelKrankenInvoiceRoutes.ts
+init_kkModuleAccess();
 var router18 = (0, import_express18.Router)();
 function requireTaxiCompany(res, companyKind) {
   if (companyKind !== "taxi") {
@@ -79752,7 +79788,7 @@ function requireTaxiCompany(res, companyKind) {
 async function requireCompanyKkModule(res, companyId) {
   const gate = await assertCompanyKkModuleEnabled(companyId);
   if (!gate.ok) {
-    res.status(403).json({ ok: false, error: gate.error });
+    res.status(403).json(kkModuleDeniedJson(KK_MODULE_NOT_ENABLED));
     return false;
   }
   return true;
@@ -79916,7 +79952,9 @@ var panelKrankenInvoiceRoutes_default = router18;
 var import_express19 = __toESM(require_express2(), 1);
 init_client();
 init_fleetDriversData();
+init_panelAuthData();
 init_companyGovernanceData();
+init_onrodaAccessMessages();
 
 // src/lib/fleetLoginRateLimit.ts
 var WINDOW_MS3 = 6e4;
@@ -79963,6 +80001,14 @@ router19.post("/fleet-auth/login", async (req, res) => {
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!email || !password) {
     res.status(400).json({ error: "email_and_password_required" });
+    return;
+  }
+  const panelAccount = await findActivePanelUserByEmailNormalized(email);
+  if (panelAccount) {
+    res.status(403).json({
+      error: "panel_email_not_fleet_driver",
+      message: PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE
+    });
     return;
   }
   const row = await findFleetDriverByEmailNormalized(email);
@@ -81007,6 +81053,7 @@ function evaluateMedicalTrafficLight(input) {
 
 // src/lib/medical/medicalScanService.ts
 init_medicalTransportAuthorization();
+init_kkModuleAccess();
 var MEDICAL_RIDE_UPLOAD_ROOT2 = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path11.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
 var MEDICAL_TEST_SCAN_DISCLAIMER = "Testpr\xFCfung ohne Fahrt \u2013 nicht abrechnungsrelevant.";
 async function runMedicalTransportDocumentScanForCustomerBooking(input) {
@@ -81205,7 +81252,12 @@ async function runMedicalTransportDocumentScanTest(input) {
   }
   const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
   if (!kkAuthz.ok) {
-    return { ok: false, error: kkAuthz.error, status: 403 };
+    return {
+      ok: false,
+      error: kkAuthz.error,
+      status: 403,
+      message: kkAuthz.error === KK_MODULE_NOT_ENABLED || kkAuthz.error === KK_MODULE_NOT_AUTHORIZED ? ONRODA_KK_DENIED_MESSAGE_DE : void 0
+    };
   }
   return runMedicalTransportDocumentScanTestCore({
     imageBase64: input.imageBase64,
@@ -81286,7 +81338,12 @@ async function runMedicalTransportDocumentScan(input) {
   }
   const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
   if (!kkAuthz.ok) {
-    return { ok: false, error: kkAuthz.error, status: 403 };
+    return {
+      ok: false,
+      error: kkAuthz.error,
+      status: 403,
+      message: kkAuthz.error === KK_MODULE_NOT_ENABLED || kkAuthz.error === KK_MODULE_NOT_AUTHORIZED ? ONRODA_KK_DENIED_MESSAGE_DE : void 0
+    };
   }
   const ride = await findRide(rideId);
   if (!ride) {
@@ -81434,6 +81491,7 @@ async function runMedicalTransportDocumentScan(input) {
 
 // src/routes/fleetDriverApi.ts
 init_medicalTransportAuthorization();
+init_kkModuleAccess();
 var router20 = (0, import_express20.Router)();
 router20.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
@@ -81673,6 +81731,7 @@ router20.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
       a.fleetDriverId
     );
     const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
+    const companyKkModuleEnabled = await getCompanyFeatureKkModule(a.companyId);
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
     const all = await listRides();
@@ -81759,6 +81818,7 @@ router20.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
       a.fleetDriverId
     );
     const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
+    const companyKkModuleEnabled = await getCompanyFeatureKkModule(a.companyId);
     const all = await listRides();
     const pool2 = all.filter((ride) => {
       const isFutureReservationStatus = ride.status === "scheduled" || ride.status === "scheduled_assigned";
@@ -81773,7 +81833,9 @@ router20.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
       const isAssignedToOtherDriver = assignedDriverId.length > 0 && !isAssignedToThisDriver;
       if (isAssignedToOtherDriver) return false;
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
-      if (ride.rideKind === "medical" && !medicalTransportAuthorized) return false;
+      if (ride.rideKind === "medical") {
+        if (!companyKkModuleEnabled || !medicalTransportAuthorized) return false;
+      }
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = pool2.map(stripPartnerOnlyRideFields);
@@ -81965,7 +82027,11 @@ router20.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (re
       returnRideId: typeof body.returnRideId === "string" ? body.returnRideId : void 0
     });
     if (!result.ok) {
-      res.status(result.status).json({ ok: false, error: result.error });
+      res.status(result.status).json({
+        ok: false,
+        error: result.error,
+        ...typeof result.message === "string" ? { message: result.message } : {}
+      });
       return;
     }
     res.json({
@@ -81999,7 +82065,11 @@ router20.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, asyn
       imageBase64
     });
     if (!result.ok) {
-      res.status(result.status).json({ ok: false, error: result.error });
+      res.status(result.status).json({
+        ok: false,
+        error: result.error,
+        ...typeof result.message === "string" ? { message: result.message } : {}
+      });
       return;
     }
     res.json({
@@ -82046,6 +82116,8 @@ init_fleetVehiclesData();
 init_fleetAssignmentsData();
 init_companyGovernanceData();
 init_adminData();
+init_kkModuleAccess();
+init_panelAuthData();
 init_panelModules();
 init_fleetDriverReadiness();
 var router21 = (0, import_express21.Router)();
@@ -82321,7 +82393,7 @@ router21.patch("/panel/v1/fleet/:driverId/permissions", requirePanelAuth, async 
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
     const kkEnabled = await getCompanyFeatureKkModule(ctx.claims.companyId);
     if (!kkEnabled) {
-      res.status(403).json({ ok: false, error: "kk_module_not_enabled" });
+      res.status(403).json(kkModuleDeniedJson(KK_MODULE_NOT_ENABLED));
       return;
     }
     const driverId = String(req.params.driverId ?? "").trim();
@@ -82818,12 +82890,13 @@ var fleetPanelApi_default = router21;
 // src/routes/insurerPanelApi.ts
 var import_express22 = __toESM(require_express2(), 1);
 init_client();
+init_panelAuthData();
+init_fleetDriversData();
 import { randomUUID as randomUUID42 } from "node:crypto";
 import fs3 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
 import path13 from "node:path";
 import { fileURLToPath as fileURLToPath5 } from "node:url";
-init_fleetDriversData();
 
 // src/db/insurerPanelData.ts
 init_drizzle_orm();

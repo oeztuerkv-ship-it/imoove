@@ -3,8 +3,19 @@ import { getDb, isPostgresConfigured } from "../db/client";
 import { findFleetDriverInCompany } from "../db/fleetDriversData";
 import { adminCompaniesTable } from "../db/schema";
 
+import { ONRODA_KK_DENIED_MESSAGE_DE } from "./onrodaAccessMessages.js";
+
 export const KK_MODULE_NOT_ENABLED = "kk_module_not_enabled";
 export const KK_MODULE_NOT_AUTHORIZED = "kk_module_not_authorized";
+
+export { ONRODA_KK_DENIED_MESSAGE_DE };
+
+/** JSON-Hilfsfeld für 403-Antworten (Panel + Fleet). */
+export function kkModuleDeniedJson(
+  error: typeof KK_MODULE_NOT_ENABLED | typeof KK_MODULE_NOT_AUTHORIZED,
+): { ok: false; error: string; message: string } {
+  return { ok: false, error, message: ONRODA_KK_DENIED_MESSAGE_DE };
+}
 
 export type KkModuleCompanyFlags = {
   companyKind: string;

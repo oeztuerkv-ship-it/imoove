@@ -36,7 +36,7 @@ import {
 import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
 import { runMedicalTransportDocumentScan, runMedicalTransportDocumentScanTest } from "../lib/medical/medicalScanService";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
-import { resolveKkModuleAccessForFleetDriver } from "../lib/kkModuleAccess.js";
+import { getCompanyFeatureKkModule, resolveKkModuleAccessForFleetDriver } from "../lib/kkModuleAccess.js";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 const router: IRouter = Router();
@@ -301,6 +301,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       a.fleetDriverId,
     );
     const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
+    const companyKkModuleEnabled = await getCompanyFeatureKkModule(a.companyId);
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
     const all = await listRides();
@@ -410,6 +411,7 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       a.fleetDriverId,
     );
     const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
+    const companyKkModuleEnabled = await getCompanyFeatureKkModule(a.companyId);
     const all = await listRides();
     const pool = all.filter((ride) => {
       const isFutureReservationStatus =
@@ -429,7 +431,9 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       if (isAssignedToOtherDriver) return false;
 
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
-      if (ride.rideKind === "medical" && !medicalTransportAuthorized) return false;
+      if (ride.rideKind === "medical") {
+        if (!companyKkModuleEnabled || !medicalTransportAuthorized) return false;
+      }
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = pool.map(stripPartnerOnlyRideFields);
@@ -641,7 +645,13 @@ router.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req,
     });
 
     if (!result.ok) {
-      res.status(result.status).json({ ok: false, error: result.error });
+      res.status(result.status).json({
+        ok: false,
+        error: result.error,
+        ...(typeof (result as { message?: string }).message === "string"
+          ? { message: (result as { message: string }).message }
+          : {}),
+      });
       return;
     }
 
@@ -677,7 +687,13 @@ router.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async 
       imageBase64,
     });
     if (!result.ok) {
-      res.status(result.status).json({ ok: false, error: result.error });
+      res.status(result.status).json({
+        ok: false,
+        error: result.error,
+        ...(typeof (result as { message?: string }).message === "string"
+          ? { message: (result as { message: string }).message }
+          : {}),
+      });
       return;
     }
     res.json({

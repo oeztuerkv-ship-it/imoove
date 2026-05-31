@@ -38,7 +38,12 @@ import {
   assertMedicalTransportPlatformAvailable,
   resolveMedicalTransportAuthorizationForFleetDriver,
 } from "./medicalTransportAuthorization";
-import { assertKkModuleAccessForFleetDriver } from "../kkModuleAccess.js";
+import {
+  assertKkModuleAccessForFleetDriver,
+  KK_MODULE_NOT_AUTHORIZED,
+  KK_MODULE_NOT_ENABLED,
+  ONRODA_KK_DENIED_MESSAGE_DE,
+} from "../kkModuleAccess.js";
 import {
   buildCustomerTransportScanMeta,
   buildDriverHintLines,
@@ -230,7 +235,7 @@ export type MedicalScanServiceResult =
       reviewId: string;
       storageKey: string;
     } & MedicalScanEvaluationCore)
-  | { ok: false; error: string; status: number };
+  | { ok: false; error: string; status: number; message?: string };
 
 export type MedicalScanTestServiceResult =
   | ({
@@ -394,7 +399,15 @@ export async function runMedicalTransportDocumentScanTest(
 
   const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
   if (!kkAuthz.ok) {
-    return { ok: false, error: kkAuthz.error, status: 403 };
+    return {
+      ok: false,
+      error: kkAuthz.error,
+      status: 403,
+      message:
+        kkAuthz.error === KK_MODULE_NOT_ENABLED || kkAuthz.error === KK_MODULE_NOT_AUTHORIZED
+          ? ONRODA_KK_DENIED_MESSAGE_DE
+          : undefined,
+    };
   }
 
   return runMedicalTransportDocumentScanTestCore({
@@ -503,7 +516,15 @@ export async function runMedicalTransportDocumentScan(
 
   const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
   if (!kkAuthz.ok) {
-    return { ok: false, error: kkAuthz.error, status: 403 };
+    return {
+      ok: false,
+      error: kkAuthz.error,
+      status: 403,
+      message:
+        kkAuthz.error === KK_MODULE_NOT_ENABLED || kkAuthz.error === KK_MODULE_NOT_AUTHORIZED
+          ? ONRODA_KK_DENIED_MESSAGE_DE
+          : undefined,
+    };
   }
 
   const ride = await findRide(rideId);

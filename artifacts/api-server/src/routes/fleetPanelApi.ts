@@ -44,7 +44,11 @@ import {
 } from "../db/fleetAssignmentsData";
 import { countFleetDriversForCompany, countFleetVehiclesForCompany } from "../db/companyGovernanceData";
 import { findCompanyById } from "../db/adminData";
-import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
+import {
+  getCompanyFeatureKkModule,
+  KK_MODULE_NOT_ENABLED,
+  kkModuleDeniedJson,
+} from "../lib/kkModuleAccess.js";
 import { hashPassword } from "../lib/password";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
@@ -372,7 +376,7 @@ router.patch("/panel/v1/fleet/:driverId/permissions", requirePanelAuth, async (r
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const kkEnabled = await getCompanyFeatureKkModule(ctx.claims.companyId);
     if (!kkEnabled) {
-      res.status(403).json({ ok: false, error: "kk_module_not_enabled" });
+      res.status(403).json(kkModuleDeniedJson(KK_MODULE_NOT_ENABLED));
       return;
     }
     const driverId = String(req.params.driverId ?? "").trim();

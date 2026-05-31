@@ -3,6 +3,7 @@ import type { RideRequest } from "../domain/rideRequest";
 import { getDb, isPostgresConfigured } from "./client";
 import { getFleetDriverReadinessById } from "./fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "./fleetMatchingData";
+import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { fleetDriversTable } from "./schema";
 
@@ -63,6 +64,8 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     if (!isRideCompatibleWithCapability(ride, capability)) continue;
 
     if (ride.rideKind === "medical") {
+      const companyKkEnabled = await getCompanyFeatureKkModule(companyId);
+      if (!companyKkEnabled) continue;
       const medicalAuth = await resolveMedicalTransportAuthorizationForFleetDriver(companyId, fleetDriverId);
       if (!medicalAuth?.authorized) continue;
     }

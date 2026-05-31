@@ -33,8 +33,19 @@ alwaysApply: false
 - **Mobile Fahrer:** Transportschein/Scan nur bei `driver.kkModuleAuthorized` (nicht nur `medicalTransportAuthorized`).
 - **Admin:** Toggle „KK-Modul aktiviert“ nur bei `company_kind === taxi` in `CompanyMandateDetailPage.jsx`.
 
+## Vermittlung & Meldungen
+
+- **Markt/Push** (`fleetInstantRideMarketData`, `GET /fleet-driver/v1/market-rides`): `rideKind === medical` nur wenn Mandant `feature_kk_module` **und** Fahrer `medical_transport`-Freigabe.
+- **403 KK:** API-Feld `message` = „Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.“ (`onrodaAccessMessages.ts`).
+
+## Rollen-Trennung Panel vs. Fahrer
+
+- Partner-E-Mail (`panel_users`, aktiv) darf **nicht** als `fleet_drivers`-E-Mail angelegt werden (`email_reserved_panel_account`).
+- `POST /fleet-auth/login` mit Panel-E-Mail → `403 panel_email_not_fleet_driver` (auch wenn fälschlich ein Fahrer-Datensatz existiert).
+
 ## Abnahme kurz
 
-1. Taxi-Mandant ohne Flag → kein Krankenfahrten-Tab, Scan 403 `kk_module_not_enabled`.
+1. Taxi-Mandant ohne Flag → kein Krankenfahrten-Tab, Scan 403 `kk_module_not_enabled`, keine medical-Marktaufträge.
 2. Flag an → Inhaber sieht alles; Mitarbeiter ohne `permission_kk_module` kein Scan.
 3. Inhaber schaltet Mitarbeiter frei → Scan ok.
+4. Unternehmer-Panel-E-Mail → Fahrer-Login blockiert; Fahrer nur mit eigener E-Mail + `must_change_password` beim Erstlogin.
