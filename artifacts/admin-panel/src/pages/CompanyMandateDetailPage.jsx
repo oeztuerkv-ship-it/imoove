@@ -181,6 +181,7 @@ function formFromCompany(c, billingAccountEmail) {
     is_active: Boolean(c.is_active),
     is_blocked: Boolean(c.is_blocked),
     medical_transport_enabled: Boolean(c.medical_transport_enabled),
+    feature_kk_module: Boolean(c.feature_kk_module),
     business_notes: c.business_notes ?? "",
     max_drivers: Number.isFinite(Number(c.max_drivers)) ? Number(c.max_drivers) : 100,
     max_vehicles: Number.isFinite(Number(c.max_vehicles)) ? Number(c.max_vehicles) : 100,
@@ -573,6 +574,7 @@ export default function CompanyMandateDetailPage({
         is_active: form.is_active,
         is_blocked: form.is_blocked,
         medical_transport_enabled: form.medical_transport_enabled,
+        feature_kk_module: form.feature_kk_module,
         business_notes: form.business_notes,
         max_drivers: form.max_drivers,
         max_vehicles: form.max_vehicles,
@@ -787,6 +789,31 @@ export default function CompanyMandateDetailPage({
                   Nur freigegebene Mandanten dürfen Krankenfahrten annehmen; Fahrer erben standardmäßig diese
                   Einstellung (Override pro Fahrer in Taxi · Fahrer).
                 </p>
+                {c.company_kind === "taxi" ? (
+                  <>
+                    <label className="admin-m-lbl admin-m-lbl--check" style={{ gridColumn: "1 / -1" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!form.feature_kk_module}
+                        onChange={onField("feature_kk_module")}
+                      />{" "}
+                      KK-Modul aktiviert (SaaS-Abo)
+                    </label>
+                    <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1", marginTop: -4 }}>
+                      Steuert Krankenfahrten-Tab, Sammelrechnung und Transportschein in Partner-Portal und Fahrer-App.
+                      {c.feature_kk_module_since ? (
+                        <>
+                          {" "}
+                          Aktiv seit:{" "}
+                          {new Date(c.feature_kk_module_since).toLocaleString("de-DE", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </>
+                      ) : null}
+                    </p>
+                  </>
+                ) : null}
                 <label className="admin-m-lbl">
                   Verifizierungsstatus
                   <select
@@ -1228,6 +1255,23 @@ export default function CompanyMandateDetailPage({
                       {boolJaNein(c.medical_transport_enabled)}
                     </div>
                   </div>
+                  {c.company_kind === "taxi" ? (
+                    <div>
+                      <div className="admin-table-sub">KK-Modul (SaaS)</div>
+                      <div style={{ color: c.feature_kk_module ? "#047857" : undefined }}>
+                        {boolJaNein(c.feature_kk_module)}
+                        {c.feature_kk_module_since ? (
+                          <span className="admin-table-sub" style={{ display: "block", marginTop: 4 }}>
+                            seit{" "}
+                            {new Date(c.feature_kk_module_since).toLocaleString("de-DE", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 {blockReasonRO ? (
                   <div className="admin-m-ro-note">
