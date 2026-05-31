@@ -43,6 +43,7 @@ function fleetLoginUserMessage(errorCode: string): string {
     case "fleet_login_only_taxi_company":
       return "Fahrer-Login steht nur Taxi-Unternehmen zur Verfügung.";
     case "driver_suspended":
+    case "driver_access_suspended":
       return "Ihr Fahrer-Zugang ist pausiert. Bitte den Betrieb kontaktieren.";
     case "driver_account_inactive":
       return "Ihr Fahrerkonto ist deaktiviert. Bitte Ihr Unternehmen oder den Support kontaktieren.";
@@ -418,7 +419,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       const mustChangePassword = Boolean(data.passwordChangeRequired ?? d.mustChangePassword);
       return { ok: true, mustChangePassword };
     } catch (error) {
-      const msg = `Netzwerkfehler beim Fahrer-Login: ${error instanceof Error ? error.message : String(error)}`;
+      const raw = error instanceof Error ? error.message : String(error);
+      const msg =
+        raw.includes("Network request failed") || raw.includes("NSLocalizedDescription")
+          ? "Verbindung zum Server fehlgeschlagen. Bitte Internet prüfen und erneut versuchen."
+          : `Netzwerkfehler beim Fahrer-Login: ${raw}`;
       setLastError(msg);
       return { ok: false, error: msg };
     }

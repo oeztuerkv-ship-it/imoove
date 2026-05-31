@@ -452,14 +452,8 @@ export default function HomeScreen() {
     }
   }, [showOnboarding]);
 
-  /* ── After driver login, navigate to dashboard ── */
-  useEffect(() => {
-    if (isDriverLoggedIn) {
-      router.replace(
-        (driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard") as Href,
-      );
-    }
-  }, [isDriverLoggedIn, driverProfile?.mustChangePassword]);
+  /* Fahrer-Umleitung nur über <Redirect> wenn Home fokussiert (siehe unten) — kein globales
+     router.replace hier: kollidiert mit /driver/login und erzeugt „Uncaught (in promise)“. */
 
   /* ── Search overlay state ── */
   const [isSearchActive, setIsSearchActive] = useState(false);

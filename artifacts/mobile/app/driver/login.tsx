@@ -23,6 +23,10 @@ import { FahrerRegistrierenFooter } from "@/src/screens/LoginScreen";
 
 const PARTNER_REGISTER_URL = "https://onroda.de/#partner";
 
+function safeHaptic(fn: () => Promise<unknown>) {
+  void fn().catch(() => {});
+}
+
 export default function DriverLoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -42,18 +46,38 @@ export default function DriverLoginScreen() {
       return;
     }
     setLoading(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await new Promise((r) => setTimeout(r, 600));
-    const result = await login(email, password);
-    setLoading(false);
-    if (result.ok) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await refreshDriverMarketHard();
-      const target = result.mustChangePassword ? "/driver/change-password" : "/driver/dashboard";
-      router.replace(target as never);
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Anmeldung fehlgeschlagen", result.error || "E-Mail oder Passwort ist falsch.");
+    safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
+    try {
+      await new Promise((r) => setTimeout(r, 600));
+      const result = await login(email, password);
+      if (result.ok) {
+        safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
+        try {
+          await refreshDriverMarketHard();
+        } catch {
+          /* Markt nach Login optional — Navigation trotzdem */
+        }
+        const target = result.mustChangePassword ? "/driver/change-password" : "/driver/dashboard";
+        try {
+          router.replace(target as never);
+        } catch {
+          Alert.alert(
+            "Hinweis",
+            "Anmeldung erfolgreich, aber die Weiterleitung ist fehlgeschlagen. Bitte die App neu öffnen oder erneut „Als Fahrer anmelden“.",
+          );
+        }
+      } else {
+        safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
+        Alert.alert("Anmeldung fehlgeschlagen", result.error || "E-Mail oder Passwort ist falsch.");
+      }
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      const msg = raw.includes("NSLocalizedDescription")
+        ? "Verbindung zum Server fehlgeschlagen. Bitte Internet prüfen und erneut versuchen."
+        : raw || "Anmeldung fehlgeschlagen.";
+      Alert.alert("Anmeldung fehlgeschlagen", msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -149,7 +173,7 @@ export default function DriverLoginScreen() {
           <Pressable
             style={[styles.registerBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
               Alert.alert(
                 "Als Fahrer bewerben",
                 "Interesse als Fahrer bei ONRODA zu arbeiten?\n\n✉ onroda@mail.de\n🌐 www.onroda.de\n\nSchreib uns oder besuche unsere Website — wir melden uns zeitnah bei dir.",
@@ -170,7 +194,7 @@ export default function DriverLoginScreen() {
             }}
             padding={16}
             onPartnerRegisterPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
               void Linking.openURL(PARTNER_REGISTER_URL).catch(() => {
                 Alert.alert(
                   "Hinweis",
