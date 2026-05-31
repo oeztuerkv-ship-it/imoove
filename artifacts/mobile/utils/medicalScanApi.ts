@@ -73,6 +73,7 @@ export type MedicalScanError = {
   ok: false;
   error: string;
   httpStatus: number;
+  message?: string;
 };
 
 export type MedicalScanResult = MedicalScanSuccess | MedicalScanError;
@@ -101,15 +102,15 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
   test_scan_disabled: "Testscan ist auf dem Server deaktiviert.",
   medical_transport_not_authorized:
     "Krankenfahrten sind für Sie derzeit nicht freigeschaltet. Bitte wenden Sie sich an ONRODA: onroda@mail.de",
-  kk_module_not_enabled:
-    "Das KK-Modul ist für Ihr Unternehmen nicht freigeschaltet. Bitte wenden Sie sich an ONRODA: onroda@mail.de",
-  kk_module_not_authorized:
-    "Kein Zugriff auf das KK-Modul. Ihr Unternehmer kann die Berechtigung im Partner-Portal vergeben.",
+  kk_module_not_enabled: "Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.",
+  kk_module_not_authorized: "Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.",
   http_413: "Foto ist zu groß für den Upload. Bitte erneut aufnehmen.",
   network_error: "Keine Verbindung zum Server.",
 };
 
-export function medicalScanErrorMessageDe(code: string): string {
+export function medicalScanErrorMessageDe(code: string, serverMessage?: string): string {
+  const fromServer = typeof serverMessage === "string" ? serverMessage.trim() : "";
+  if (fromServer) return fromServer;
   if (code === "http_413") return ERROR_MESSAGES_DE.http_413!;
   return ERROR_MESSAGES_DE[code] ?? `Scan fehlgeschlagen (${code})`;
 }
@@ -183,10 +184,17 @@ export async function postMedicalTransportScan(
     return { ok: false, error: "network_error", httpStatus: 0 };
   }
 
-  const data = (await res.json().catch(() => ({}))) as Partial<MedicalScanSuccess> & { error?: string };
+  const data = (await res.json().catch(() => ({}))) as Partial<MedicalScanSuccess> & {
+    error?: string;
+    message?: string;
+  };
   if (!res.ok || data.ok !== true) {
     const error = typeof data.error === "string" ? data.error : `http_${res.status}`;
-    return { ok: false, error, httpStatus: res.status };
+    const message =
+      typeof data.message === "string" && data.message.trim()
+        ? data.message.trim()
+        : medicalScanErrorMessageDe(error);
+    return { ok: false, error, httpStatus: res.status, message };
   }
 
   return {
@@ -229,11 +237,15 @@ export type PostMedicalTransportScanTestInput = {
 
 function parseMedicalScanTestHttpResponse(
   res: Response,
-  data: Partial<MedicalScanTestSuccess> & { error?: string },
+  data: Partial<MedicalScanTestSuccess> & { error?: string; message?: string },
 ): MedicalScanTestResult {
   if (!res.ok || data.ok !== true || data.testMode !== true) {
     const error = typeof data.error === "string" ? data.error : `http_${res.status}`;
-    return { ok: false, error, httpStatus: res.status };
+    const message =
+      typeof data.message === "string" && data.message.trim()
+        ? data.message.trim()
+        : medicalScanErrorMessageDe(error);
+    return { ok: false, error, httpStatus: res.status, message };
   }
 
   return {

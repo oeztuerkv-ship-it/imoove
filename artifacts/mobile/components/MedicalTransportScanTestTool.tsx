@@ -57,7 +57,9 @@ export function MedicalTransportScanTestTool({
           scanApi === "customer" ? postCustomerMedicalTransportScanTest : postMedicalTransportScanTest;
         const result = await postScan({ authToken: token, imageBase64: b64url });
         if (!result.ok) {
-          throw new Error(medicalScanErrorMessageDe(result.error));
+          throw new Error(
+            result.ok === false && result.message ? result.message : medicalScanErrorMessageDe(result.error),
+          );
         }
         setScanResult(result);
         setScanModalOpen(true);

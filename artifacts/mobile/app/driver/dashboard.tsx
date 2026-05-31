@@ -1467,7 +1467,9 @@ function MedicalRideProofActions({
         returnRideId: ctx.returnRideId,
       });
       if (!result.ok) {
-        throw new Error(medicalScanErrorMessageDe(result.error));
+        throw new Error(
+          result.ok === false && result.message ? result.message : medicalScanErrorMessageDe(result.error),
+        );
       }
       setScanResult(result);
       setLastScanResult(result);

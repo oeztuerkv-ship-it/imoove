@@ -2,18 +2,23 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-const MESSAGE =
-  "Krankenfahrten nicht freigeschaltet — bitte ONRODA kontaktieren: onroda@mail.de";
+const MESSAGE_KK =
+  "Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.";
+const MESSAGE_MEDICAL =
+  "Krankenfahrten sind für Sie derzeit nicht freigeschaltet. Bitte wenden Sie sich an ONRODA.";
 
 type Props = {
   compact?: boolean;
+  /** `kk` = KK-Modul / Transportschein; `medical` = operative Krankenfahrt-Freigabe */
+  variant?: "kk" | "medical";
 };
 
-export function MedicalTransportNotAuthorizedCard({ compact }: Props) {
+export function MedicalTransportNotAuthorizedCard({ compact, variant = "kk" }: Props) {
+  const message = variant === "medical" ? MESSAGE_MEDICAL : MESSAGE_KK;
   return (
     <View style={[styles.root, compact && styles.rootCompact]}>
       <MaterialCommunityIcons name="hospital-box-outline" size={compact ? 20 : 22} color="#64748B" />
-      <Text style={[styles.text, compact && styles.textCompact]}>{MESSAGE}</Text>
+      <Text style={[styles.text, compact && styles.textCompact]}>{message}</Text>
     </View>
   );
 }

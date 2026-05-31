@@ -57,6 +57,8 @@ function fleetLoginUserMessage(errorCode: string): string {
       return "Dienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.";
     case "company_access_blocked":
       return "Unternehmenszugang blockiert. Bitte den Betrieb oder den Support (Vertrag / Sperre / Aktivierung).";
+    case "panel_email_not_fleet_driver":
+      return "Diese E-Mail ist für das Partner-Portal (Unternehmer) registriert. Bitte melden Sie sich dort an oder nutzen Sie die vom Unternehmen angelegte Fahrer-E-Mail mit Einmal-Passwort.";
     default:
       return errorCode || "Anmeldung fehlgeschlagen.";
   }
@@ -349,12 +351,15 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok || data?.ok !== true || !data?.token || !data?.driver) {
         const parsedError = typeof data.error === "string" ? data.error : "";
         const parsedHint = typeof data.hint === "string" ? data.hint : "";
+        const parsedMessage = typeof data.message === "string" ? data.message.trim() : "";
         const bodySnippet = rawText.trim().slice(0, 400);
-        const userFacing = parsedError
-          ? [fleetLoginUserMessage(parsedError), parsedHint].filter(Boolean).join("\n\n")
-          : parsedHint
-            ? parsedHint
-            : `HTTP ${res.status} ${res.statusText || ""}\nURL: ${API_BASE}/fleet-auth/login\n${bodySnippet || "Anmeldung fehlgeschlagen."}`.trim();
+        const userFacing = parsedMessage
+          ? parsedMessage
+          : parsedError
+            ? [fleetLoginUserMessage(parsedError), parsedHint].filter(Boolean).join("\n\n")
+            : parsedHint
+              ? parsedHint
+              : `HTTP ${res.status} ${res.statusText || ""}\nURL: ${API_BASE}/fleet-auth/login\n${bodySnippet || "Anmeldung fehlgeschlagen."}`.trim();
         setLastError(userFacing);
         return { ok: false, error: userFacing };
       }
