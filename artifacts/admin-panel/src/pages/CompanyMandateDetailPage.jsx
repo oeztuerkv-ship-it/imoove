@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import CompanyMandateEditBlocks from "../components/CompanyMandateEditBlocks.jsx";
+import CompanyDocumentInventoryBlock from "../components/CompanyDocumentInventoryBlock.jsx";
 import CompanyTaxiOnboardingSections from "../components/CompanyTaxiOnboardingSections.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders, adminFetch } from "../lib/adminApiHeaders.js";
@@ -1165,26 +1166,16 @@ export default function CompanyMandateDetailPage({
             </section>
           ) : null}
 
-          <section className="admin-section-block">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Dokumente (Zusammenfassung)
-              </span>
-            </div>
-            <ul className="admin-mandate-doclist" style={{ margin: "10px 14px 12px" }}>
-              <li>
-                <strong>Gewerbenachweis (Unternehmen):</strong>{" "}
-                {docs?.gewerbeFilePresent ? "Datei hinterlegt" : NA}
-              </li>
-              <li>
-                <strong>Versicherung (Unternehmen):</strong>{" "}
-                {docs?.insuranceFilePresent ? "Datei hinterlegt" : NA}
-              </li>
-              {data?.taxi &&
+          <CompanyDocumentInventoryBlock
+            companyId={companyId}
+            title="Dokumente · alle Uploads"
+            subtitle="Onboarding, Compliance, Fahrer-P-Schein, Fahrzeugnachweise — PDF/Foto öffnen"
+            footer={
+              data?.taxi &&
               (!docs?.gewerbeFilePresent ||
                 !docs?.insuranceFilePresent ||
                 (c?.compliance_status && c.compliance_status !== "compliant")) ? (
-                <li style={{ listStyle: "none", marginTop: 10, padding: 0 }}>
+                <p style={{ marginTop: 12 }}>
                   <button
                     type="button"
                     className="admin-mandate-taxi-btn admin-mandate-taxi-btn--secondary"
@@ -1194,29 +1185,10 @@ export default function CompanyMandateDetailPage({
                   >
                     {complianceWaiveBusy ? "…" : "Unternehmen: Pflichtnachweise trotz fehlender Dateien freigeben"}
                   </button>
-                </li>
-              ) : null}
-              <li>
-                <strong>Konzession / Nummer in Stammdaten:</strong>{" "}
-                {docs?.companyConcessionTextPresent ? s(c.concession_number) : NA}
-              </li>
-              {data.taxi ? (
-                <>
-                  <li>
-                    <strong>P-Schein (Fahrer):</strong> {docs.pScheinDriversWithDocument ?? 0} mit hochgeladenem
-                    Nachweis, {docs.pScheinDriversWithIssue ?? 0} mit offenem Ablauf/Nachweis-Problem
-                  </li>
-                  <li>
-                    <strong>Fahrzeugnachweise:</strong> {docs.vehiclesWithUploadedDocs ?? 0} von{" "}
-                    {docs.vehiclesTotalForDocs ?? 0} Fahrzeugen mindestens ein Dokument
-                  </li>
-                </>
-              ) : null}
-            </ul>
-            <p className="admin-table-sub" style={{ fontSize: 12 }}>
-              Fahrer: P-Schein-Logik wie Einsatzbereitschaft; Fahrzeuge: JSON-Upload-Liste in der Flotte.
-            </p>
-          </section>
+                </p>
+              ) : null
+            }
+          />
 
           <AdminCollapsibleSection
             title="Letzte Fahrten (max. 20, jüngste zuerst)"

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminCollapsibleSection from "./AdminCollapsibleSection.jsx";
 import AdminOnboardingBlockFooter from "./AdminOnboardingBlockFooter.jsx";
+import CompanyDocumentInventoryBlock from "./CompanyDocumentInventoryBlock.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -54,6 +55,7 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
     tuevDate: "",
   });
   const [upload, setUpload] = useState({ docType: "gewerbeschein", vehicleId: "", file: null });
+  const [inventoryRev, setInventoryRev] = useState(0);
   const [kk, setKk] = useState({ featureKkModule: false, partnerIkNumber: "", kkModuleNotes: "" });
 
   const load = useCallback(async () => {
@@ -223,7 +225,9 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
         return;
       }
       setUpload((u) => ({ ...u, file: null }));
+      setInventoryRev((n) => n + 1);
       await load();
+      onChanged?.();
     } finally {
       setBusy("");
     }
@@ -248,20 +252,6 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
     } finally {
       setBusy("");
     }
-  }
-
-  function openDoc(docId) {
-    const url = `${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/documents/${encodeURIComponent(docId)}/file`;
-    fetch(url, { headers: adminApiHeaders() })
-      .then((res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        return res.blob();
-      })
-      .then((blob) => {
-        const u = URL.createObjectURL(blob);
-        window.open(u, "_blank", "noopener,noreferrer");
-      })
-      .catch(() => window.alert("Dokument konnte nicht geöffnet werden."));
   }
 
   if (loading) return <p className="admin-table-sub">Onboarding-Daten werden geladen …</p>;
@@ -470,79 +460,64 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
         </form>
       </AdminCollapsibleSection>
 
-      <AdminCollapsibleSection
-        className="admin-onb-section"
-        title="Dokumente"
-        subtitle={`${documents.length} Dateien`}
-        defaultOpen={false}
-      >
-        <form onSubmit={(e) => void uploadDocument(e)} className="admin-onb-block">
-          <div className="admin-onb-block__content">
-            <div className="admin-m-form admin-onb-form">
-              <label className="admin-m-lbl">
-                Dokumenttyp
-                <select
-                  className="admin-m-inp"
-                  value={upload.docType}
-                  onChange={(e) => setUpload((u) => ({ ...u, docType: e.target.value }))}
-                >
-                  {DOC_TYPES.map(([val, lab]) => (
-                    <option key={val} value={val}>
-                      {lab}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="admin-m-lbl">
-                Fahrzeug (optional)
-                <select
-                  className="admin-m-inp"
-                  value={upload.vehicleId}
-                  onChange={(e) => setUpload((u) => ({ ...u, vehicleId: e.target.value }))}
-                >
-                  <option value="">— Unternehmen —</option>
-                  {vehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.licensePlate}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="admin-m-lbl admin-onb-field--full">
-                Datei (PDF/JPG/PNG, max. 10 MB)
-                <input
-                  className="admin-m-inp"
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                  onChange={(e) =>
-                    setUpload((u) => ({ ...u, file: e.target.files?.[0] ?? null }))
-                  }
-                />
-              </label>
+      <CompanyDocumentInventoryBlock
+        key={inventoryRev}
+        companyId={companyId}
+        title="Dokumente · alle Uploads"
+        subtitle="Partner- und Admin-Dateien nachvollziehen"
+        footer={
+          <form onSubmit={(e) => void uploadDocument(e)} className="admin-onb-block" style={{ marginTop: 16 }}>
+            <div className="admin-onb-block__content">
+              <p className="admin-table-sub" style={{ margin: "0 0 10px" }}>
+                Admin-Upload (Onboarding-Tabelle, max. 10 MB)
+              </p>
+              <div className="admin-m-form admin-onb-form">
+                <label className="admin-m-lbl">
+                  Dokumenttyp
+                  <select
+                    className="admin-m-inp"
+                    value={upload.docType}
+                    onChange={(e) => setUpload((u) => ({ ...u, docType: e.target.value }))}
+                  >
+                    {DOC_TYPES.map(([val, lab]) => (
+                      <option key={val} value={val}>
+                        {lab}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="admin-m-lbl">
+                  Fahrzeug (optional)
+                  <select
+                    className="admin-m-inp"
+                    value={upload.vehicleId}
+                    onChange={(e) => setUpload((u) => ({ ...u, vehicleId: e.target.value }))}
+                  >
+                    <option value="">— Unternehmen —</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.licensePlate}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="admin-m-lbl admin-onb-field--full">
+                  Datei (PDF/JPG/PNG)
+                  <input
+                    className="admin-m-inp"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                    onChange={(e) =>
+                      setUpload((u) => ({ ...u, file: e.target.files?.[0] ?? null }))
+                    }
+                  />
+                </label>
+              </div>
             </div>
-            {documents.length > 0 ? (
-              <ul className="admin-onb-doc-list">
-                {documents.map((d) => (
-                  <li key={d.id} className="admin-onb-doc-list__item">
-                    <span>
-                      <strong>{d.fileName}</strong>
-                      <span className="admin-table-sub admin-onb-doc-list__meta">
-                        {d.docType} · {fmtDe(d.uploadedAt)} · {(d.fileSizeBytes / 1024).toFixed(0)} KB
-                      </span>
-                    </span>
-                    <button type="button" className="admin-link" onClick={() => openDoc(d.id)}>
-                      Öffnen
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="admin-onb-empty">Noch keine Dokumente.</p>
-            )}
-          </div>
-          <AdminOnboardingBlockFooter label="Dokument speichern" busy={busy === "doc-up"} />
-        </form>
-      </AdminCollapsibleSection>
+            <AdminOnboardingBlockFooter label="Dokument speichern" busy={busy === "doc-up"} />
+          </form>
+        }
+      />
 
       <AdminCollapsibleSection
         className="admin-onb-section"

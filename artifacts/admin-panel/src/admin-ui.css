@@ -3361,6 +3361,66 @@ ul.admin-mandate-doclist {
   margin-left: 0 !important;
 }
 
+.admin-doc-inventory__body {
+  padding: 0 14px 16px;
+}
+
+.admin-doc-inventory__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.admin-doc-inventory__toolbar .admin-m-inp {
+  flex: 1;
+  min-width: 200px;
+}
+
+.admin-doc-inventory__group {
+  margin-bottom: 18px;
+}
+
+.admin-doc-inventory__cat {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.admin-doc-inventory__table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.admin-doc-inventory__table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-doc-inventory__table th,
+.admin-doc-inventory__table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+
+.admin-doc-inventory__table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.admin-doc-inventory__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .admin-onb-ampel {
   display: flex;
   align-items: flex-start;

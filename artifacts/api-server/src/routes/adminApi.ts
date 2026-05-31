@@ -100,6 +100,11 @@ import {
   setCurrentComplianceDocumentReview,
 } from "../db/companyComplianceDocumentsData";
 import {
+  listAdminCompanyDocumentInventory,
+  resolveAdminComplianceDocumentStorageKey,
+  resolveAdminFleetDriverDocStorageKey,
+} from "../db/adminCompanyDocumentInventoryData.js";
+import {
   deleteCompanyOnboardingVehicle,
   getCompanyOnboardingBundle,
   getCompanyOnboardingDocumentFile,
@@ -109,6 +114,7 @@ import {
   patchCompanyOnboardingStatus,
   patchCompanyOnboardingVehicle,
 } from "../db/companyOnboardingData";
+import { readAdminFleetUploadBuffer, streamAdminFleetUploadToResponse } from "../lib/adminFleetUploadFile.js";
 import { COMPANY_DOC_MAX_BYTES, isOnboardingStatus } from "../lib/companyOnboardingConstants";
 import { parseMultipartForm } from "../lib/parseMultipartForm";
 import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
@@ -3648,6 +3654,107 @@ adminJson.get("/companies/:companyId/documents/:docId/file", async (req, res, ne
     res.setHeader("Content-Type", r.mimeType);
     res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(r.fileName)}"`);
     res.send(r.buffer);
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Alle Mandanten-Uploads (Onboarding, Compliance, Fahrer P-Schein, Flotten-Fahrzeug) — Nachvollziehbarkeit Admin. */
+adminJson.get("/companies/:companyId/document-inventory", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const items = await listAdminCompanyDocumentInventory(companyId);
+    if (items === null) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, companyId, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/companies/:companyId/document-files/compliance/file", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const kind = typeof req.query.kind === "string" ? req.query.kind : "";
+    const storageKeyQ = typeof req.query.storageKey === "string" ? req.query.storageKey : undefined;
+    const sk = await resolveAdminComplianceDocumentStorageKey(companyId, kind, storageKeyQ);
+    if (!sk) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const file = await readAdminFleetUploadBuffer(sk);
+    if (!file) {
+      res.status(404).json({ error: "file_missing" });
+      return;
+    }
+    res.setHeader("Content-Type", file.mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.fileName)}"`);
+    res.send(file.buffer);
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/companies/:companyId/document-files/fleet-driver/:driverId/file", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const sk = await resolveAdminFleetDriverDocStorageKey(companyId, driverId);
+    if (!sk) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!streamAdminFleetUploadToResponse(sk, res)) {
+      res.status(404).json({ error: "file_missing" });
+    }
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/companies/:companyId/document-files/fleet-vehicle/:vehicleId/file", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const storageKey =
+      typeof (req.query as { storageKey?: string }).storageKey === "string"
+        ? (req.query as { storageKey: string }).storageKey.trim()
+        : "";
+    if (!storageKey || storageKey.includes("..")) {
+      res.status(400).json({ error: "storage_key_invalid" });
+      return;
+    }
+    const keys = await listFleetVehicleDocumentStorageKeysInCompany(companyId, vehicleId);
+    if (keys === null || !keys.includes(storageKey)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!streamAdminFleetUploadToResponse(storageKey, res)) {
+      res.status(404).json({ error: "file_missing" });
+    }
   } catch (e) {
     next(e);
   }
