@@ -5,6 +5,7 @@ import FleetPage from "../pages/FleetPage.jsx";
 import TeamPage from "../pages/TeamPage.jsx";
 import HelpPage from "../pages/HelpPage.jsx";
 import TaxiStammdatenPage from "../pages/taxi/TaxiStammdatenPage.jsx";
+import TaxiMeinUnternehmenPage from "../pages/taxi/TaxiMeinUnternehmenPage.jsx";
 import TaxiDocumentsPage from "../pages/taxi/TaxiDocumentsPage.jsx";
 import TaxiKrankenfahrtenPage from "../pages/taxi/TaxiKrankenfahrtenPage.jsx";
 import TaxiTarifeInfoPage from "../pages/taxi/TaxiTarifeInfoPage.jsx";
@@ -58,6 +59,11 @@ const TAXI_NAV_DEFS = [
       user?.featureKkModule === true &&
       hasPanelModule(user?.panelModules, "rides_list") &&
       hasPerm(user, "rides.read"),
+  },
+  {
+    key: "mein_unternehmen",
+    label: "Mein Unternehmen",
+    show: (user) => hasPanelModule(user?.panelModules, "company_profile") && hasPerm(user, "company.update"),
   },
   {
     key: "einstellungen",
@@ -245,6 +251,7 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
         {activeTaxiModule === "tarif_info" && <TaxiTarifeInfoPage />}
         {activeTaxiModule === "krankenfahrten" && <TaxiKrankenfahrtenPage />}
         {activeTaxiModule === "dokumente" && <TaxiDocumentsPage onOpenDocumentSupportRequest={openSupportDraft} />}
+        {activeTaxiModule === "mein_unternehmen" && <TaxiMeinUnternehmenPage />}
         {activeTaxiModule === "einstellungen" && (
           <TaxiStammdatenPage
             settingsTabIntent={settingsTabIntent}

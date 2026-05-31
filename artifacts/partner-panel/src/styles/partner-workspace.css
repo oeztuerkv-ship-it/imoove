@@ -3050,3 +3050,83 @@
   font-style: italic;
   color: #9ca3af;
 }
+
+/* Mein Unternehmen — Onboarding */
+.partner-collapsible {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.partner-collapsible__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: none;
+  background: #fafafa;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.partner-collapsible__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+.partner-collapsible__sub {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+.partner-collapsible__body {
+  padding: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+.partner-onb-status {
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+}
+.partner-onb-status--ok {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.partner-onb-status--pending {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.partner-onb-status--warn {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.partner-onb-status p {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  color: #374151;
+}
+.partner-simple-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.partner-simple-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.9rem;
+}
+.partner-link-btn {
+  border: none;
+  background: none;
+  color: #0d9488;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  margin-left: 8px;
+}
