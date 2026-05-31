@@ -3180,6 +3180,36 @@ ul.admin-mandate-doclist {
   line-height: 1.4;
 }
 
+.admin-m-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-m-field__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--onroda-text-muted);
+}
+
+.admin-m-field__req {
+  color: var(--onroda-red, #b91c1c);
+}
+
+.admin-m-field__err {
+  font-size: 0.75rem;
+  color: var(--onroda-red, #b91c1c);
+}
+
+.admin-m-err {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
 .admin-onb-btn-save {
   display: inline-flex;
   align-items: center;
