@@ -11,6 +11,7 @@ import {
   adminAppHistoryHref,
   applyAdminAppRoute,
   buildAdminAppHash,
+  isAdminDeepLinkHash,
   parseAdminAppHash,
 } from "./lib/adminAppHistory.js";
 
@@ -546,10 +547,28 @@ export default function App() {
 
   useEffect(() => {
     if (!authUser?.role) return;
+    if (
+      mandateDetailCompanyId &&
+      !isAdminPageAllowed("companies", authUser.role)
+    ) {
+      setMandateDetailCompanyId(null);
+    }
     if (!isAdminPageAllowed(active, authUser.role)) {
       setActive(firstAllowedAdminPage(authUser.role));
     }
-  }, [authUser?.role, active, authUser]);
+  }, [authUser?.role, active, authUser, mandateDetailCompanyId]);
+
+  /** Mandanten-Deep-Link: Inhalt nur unter Seite „companies“ — sonst leerer Hauptbereich. */
+  useEffect(() => {
+    if (authBooting || !authUser) return;
+    if (
+      mandateDetailCompanyId &&
+      active !== "companies" &&
+      isAdminPageAllowed("companies", authUser.role)
+    ) {
+      setActive("companies");
+    }
+  }, [authBooting, authUser, mandateDetailCompanyId, active]);
 
   /** Erster Login / Reload: Hash lesen oder Dashboard in History setzen */
   useEffect(() => {
@@ -913,7 +932,28 @@ export default function App() {
       return <AdminPasswordResetPage />;
     }
     if (!loginRevealed) {
-      return <div style={{ minHeight: "100vh", width: "100%", background: "#fff" }} />;
+      const deep = isAdminDeepLinkHash(window.location.hash);
+      return (
+        <div className="admin-page" style={{ maxWidth: 520, margin: "48px auto", padding: "0 20px" }}>
+          <div className="admin-panel-card">
+            <div className="admin-panel-card__title">Plattform-Admin</div>
+            <p className="admin-table-sub" style={{ marginTop: 8, lineHeight: 1.5 }}>
+              {deep
+                ? "Dieser Link (z. B. Mandantenzentrale) erfordert eine Anmeldung."
+                : "Anmeldung ist ausgeblendet."}{" "}
+              Zweimal <strong>Leertaste</strong> drücken oder unten auf „Anmelden“.
+            </p>
+            <button
+              type="button"
+              className="admin-btn-primary"
+              style={{ marginTop: 16 }}
+              onClick={() => setLoginRevealed(true)}
+            >
+              Anmelden
+            </button>
+          </div>
+        </div>
+      );
     }
     return (
       <div className="admin-page" style={{ maxWidth: 460, margin: "40px auto" }}>

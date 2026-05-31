@@ -174,3 +174,13 @@ export function adminAppHistoryHref(hash) {
   if (typeof window === "undefined") return hash || "#/dashboard";
   return `${window.location.pathname}${window.location.search}${hash}`;
 }
+
+/** Deep-Link (Mandantenzentrale, Fahrtakte, …) — Login direkt anzeigen, nicht weiße Leerseite. */
+export function isAdminDeepLinkHash(hash) {
+  const route = parseAdminAppHash(hash, "admin");
+  if (route.mandateId) return true;
+  if (route.page === "ride-detail" && route.rideId) return true;
+  if (route.page === "users-panel" && route.panelCompanyId) return true;
+  if (route.taxiFleetCompanyId) return true;
+  return false;
+}

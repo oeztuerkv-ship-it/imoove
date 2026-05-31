@@ -164,28 +164,47 @@ export default function CompanyMandateDetailPage({
   const [complianceWaiveBusy, setComplianceWaiveBusy] = useState(false);
 
   const loadMandate = useCallback(() => {
+    if (!companyId) {
+      setErr("Keine Mandanten-ID in der URL.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setErr("");
     adminFetch(`${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/mandate-read`)
-      .then((res) => {
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          setErr("Nicht angemeldet — bitte abmelden und erneut einloggen (Admin-Session).");
+          return;
+        }
+        if (res.status === 403) {
+          setErr("Keine Berechtigung für diesen Mandanten (Rolle oder Mandanten-Scope).");
+          return;
+        }
         if (res.status === 404) {
           setErr("Mandant nicht gefunden.");
-          return null;
+          return;
         }
         if (!res.ok) {
-          setErr("Daten konnten nicht geladen werden.");
-          return null;
+          const hint = typeof json?.error === "string" ? json.error : "";
+          setErr(
+            hint === "database_not_configured"
+              ? "Datenbank nicht erreichbar (Server/Deploy)."
+              : `Daten konnten nicht geladen werden${hint ? ` (${hint})` : ""}.`,
+          );
+          return;
         }
-        return res.json();
-      })
-      .then((json) => {
-        if (json?.ok) {
-          setData(json);
+        if (!json?.ok || !json?.company) {
+          setErr("Ungültige API-Antwort — Admin-Panel und API-Deploy prüfen.");
+          return;
         }
-        setLoading(false);
+        setData(json);
       })
       .catch(() => {
-        setErr("Netzwerkfehler.");
+        setErr("Netzwerkfehler — API erreichbar? (api.onroda.de)");
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, [companyId]);
@@ -456,8 +475,16 @@ export default function CompanyMandateDetailPage({
 
   return (
     <div className="admin-page admin-page--loose admin-page--content admin-mandate-detail-page">
+      <div className="admin-m-hero__bar" style={{ marginBottom: 12 }}>
+        <button type="button" className="admin-m-back" onClick={onBack}>
+          ← Mandantenliste
+        </button>
+      </div>
       {err ? <div className="admin-error-banner">{err}</div> : null}
       {loading && !c ? <p className="admin-table-sub">Lade Mandantendaten …</p> : null}
+      {!loading && !c && !err ? (
+        <p className="admin-table-sub">Keine Mandantendaten — bitte Seite aktualisieren.</p>
+      ) : null}
 
       {c && data ? (
         <>
