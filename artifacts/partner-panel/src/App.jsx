@@ -1,7 +1,14 @@
 import { useMemo } from "react";
 import { usePanelAuth } from "./context/PanelAuthContext.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import PartnerPasswordResetPage from "./pages/PartnerPasswordResetPage.jsx";
 import PasswordChangeRequiredPage from "./pages/PasswordChangeRequiredPage.jsx";
+
+function isPartnerPasswordResetPath() {
+  if (typeof window === "undefined") return false;
+  const normalized = window.location.pathname.replace(/\/+$/, "") || "/";
+  return normalized.endsWith("/password-reset");
+}
 import TaxiEntrepreneurShell from "./taxi/TaxiEntrepreneurShell.jsx";
 import AgenturMasterPanel from "./components/AgenturMasterPanel.jsx";
 import KasseMasterPanel from "./components/KasseMasterPanel.jsx";
@@ -25,6 +32,10 @@ export default function App() {
 
   if (booting) {
     return <div style={{ padding: "20px" }}>System startet...</div>;
+  }
+
+  if (!user && isPartnerPasswordResetPath()) {
+    return <PartnerPasswordResetPage />;
   }
 
   if (!user) {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_BASE } from "../lib/apiBase.js";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import OnrodaMark from "../components/OnrodaMark.jsx";
 
@@ -6,9 +7,12 @@ export default function LoginPage() {
   const { login, error } = usePanelAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
+  const [resetIdentity, setResetIdentity] = useState("");
   const [showResetForm, setShowResetForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetError, setResetError] = useState("");
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -17,6 +21,43 @@ export default function LoginPage() {
       await login(username, password);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function onRequestPasswordReset(e) {
+    e.preventDefault();
+    setResetBusy(true);
+    setResetMessage("");
+    setResetError("");
+    const identity = resetIdentity.trim();
+    if (!identity) {
+      setResetError("Bitte E-Mail oder Benutzername eingeben.");
+      setResetBusy(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/panel-auth/password-reset/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identity }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 429) {
+        setResetError("Zu viele Versuche — bitte in ein paar Minuten erneut.");
+        return;
+      }
+      if (!res.ok) {
+        setResetError("Anfrage fehlgeschlagen. Bitte später erneut versuchen.");
+        return;
+      }
+      setResetMessage(
+        data?.message ||
+          "Wenn ein passender Zugang existiert, erhalten Sie in Kürze eine E-Mail mit einem Link zum Festlegen eines neuen Passworts.",
+      );
+    } catch {
+      setResetError("Netzwerkfehler — bitte Verbindung prüfen.");
+    } finally {
+      setResetBusy(false);
     }
   }
 
@@ -71,30 +112,56 @@ export default function LoginPage() {
             <button
               type="button"
               className="partner-login__forgot-btn"
-              onClick={() => setShowResetForm(true)}
+              onClick={() => {
+                setShowResetForm(true);
+                setResetMessage("");
+                setResetError("");
+                setResetIdentity(username.trim());
+              }}
             >
               Passwort vergessen?
             </button>
           ) : (
-            <form className="partner-login__form" onSubmit={(ev) => ev.preventDefault()}>
+            <form className="partner-login__form" onSubmit={onRequestPasswordReset}>
               <p className="partner-login__lead">
-                Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Zurücksetzen deines Passworts.
+                Geben Sie die <strong>E-Mail oder den Benutzernamen</strong> Ihres Zugangs ein. Wir senden eine
+                E-Mail mit einem Link zum Festlegen eines neuen Passworts (nur wenn ein Zugang mit hinterlegter E-Mail
+                existiert).
               </p>
               <label className="partner-login__label">
-                E-Mail-Adresse
+                E-Mail oder Benutzername
                 <input
                   className="partner-login__input"
-                  name="reset-email"
-                  autoComplete="email"
-                  type="email"
+                  name="reset-identity"
+                  autoComplete="username"
+                  type="text"
+                  inputMode="email"
                   placeholder="name@unternehmen.de"
-                  value={resetEmail}
-                  onChange={(ev) => setResetEmail(ev.target.value)}
+                  value={resetIdentity}
+                  onChange={(ev) => setResetIdentity(ev.target.value)}
                   required
                 />
               </label>
-              <button type="submit" className="partner-login__submit partner-login__submit-secondary">
-                Reset-Link senden
+              {resetError ? <p className="partner-login__error">{resetError}</p> : null}
+              {resetMessage ? <p className="partner-login__ok">{resetMessage}</p> : null}
+              <button
+                type="submit"
+                className="partner-login__submit partner-login__submit-secondary"
+                disabled={resetBusy}
+              >
+                {resetBusy ? "Wird gesendet …" : "Anweisungen per E-Mail senden"}
+              </button>
+              <button
+                type="button"
+                className="partner-login__forgot-btn"
+                style={{ marginTop: 10 }}
+                onClick={() => {
+                  setShowResetForm(false);
+                  setResetMessage("");
+                  setResetError("");
+                }}
+              >
+                ← Zurück zum Login
               </button>
             </form>
           )}
