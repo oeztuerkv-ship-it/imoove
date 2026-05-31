@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePanelAuth } from "../../context/PanelAuthContext.jsx";
 import { API_BASE } from "../../lib/apiBase.js";
 import PartnerCollapsibleSection from "../../components/PartnerCollapsibleSection.jsx";
+import PartnerOnboardingBlockFooter from "../../components/PartnerOnboardingBlockFooter.jsx";
 
 const DOC_TYPES = [
   ["gewerbeschein", "Gewerbeschein"],
@@ -226,133 +227,145 @@ export default function TaxiMeinUnternehmenPage() {
         <p className="partner-page__lead">Stammdaten, Fahrzeuge und Nachweise für die Freischaltung durch Onroda.</p>
       </header>
 
-      <div className={`partner-onb-status partner-onb-status--${ban.tone}`}>
-        <strong>{ban.title}</strong>
-        <p>{ban.text}</p>
+      <section className={`partner-onb-status partner-onb-status--${ban.tone}`}>
+        <div className="partner-onb-status__text">
+          <strong>{ban.title}</strong>
+          <p>{ban.text}</p>
+        </div>
         {profile.onboardingStatus !== "approved" && profile.onboardingStatus !== "pending" ? (
-          <button
+          <PartnerOnboardingBlockFooter
+            label="Zur Prüfung einreichen"
             type="button"
-            className="partner-btn-primary"
-            style={{ marginTop: 10 }}
-            disabled={!!busy}
+            busy={busy === "submit"}
             onClick={() => void submitReview()}
-          >
-            {busy === "submit" ? "…" : "Zur Prüfung einreichen"}
-          </button>
+          />
         ) : null}
-      </div>
+      </section>
 
       <PartnerCollapsibleSection title="Stammdaten" subtitle="Ihr Unternehmen" defaultOpen>
-        <form className="partner-form-grid" onSubmit={(e) => void saveProfile(e)}>
-          {[
-            ["name", "Firmenname"],
-            ["contactName", "Ansprechpartner"],
-            ["email", "E-Mail"],
-            ["phone", "Telefon"],
-            ["addressLine1", "Straße"],
-            ["postalCode", "PLZ"],
-            ["city", "Ort"],
-            ["iban", "IBAN"],
-            ["taxNumber", "Steuernummer"],
-            ["tradeLicenseNumber", "Gewerbeschein-Nr."],
-            ["concessionNumber", "Konzession"],
-          ].map(([key, label]) => (
-            <label key={key} className="partner-field">
-              <span className="partner-field__label">{label}</span>
-              <input
-                className="partner-input"
-                value={form[key] ?? ""}
-                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-              />
-            </label>
-          ))}
-          <div className="partner-form-toolbar">
-            <button type="submit" className="partner-btn-primary" disabled={busy === "save"}>
-              {busy === "save" ? "Speichert …" : "Speichern"}
-            </button>
+        <form className="partner-onb-block" onSubmit={(e) => void saveProfile(e)}>
+          <div className="partner-onb-block__content partner-form-grid">
+            {[
+              ["name", "Firmenname"],
+              ["contactName", "Ansprechpartner"],
+              ["email", "E-Mail"],
+              ["phone", "Telefon"],
+              ["addressLine1", "Straße"],
+              ["postalCode", "PLZ"],
+              ["city", "Ort"],
+              ["iban", "IBAN"],
+              ["taxNumber", "Steuernummer"],
+              ["tradeLicenseNumber", "Gewerbeschein-Nr."],
+              ["concessionNumber", "Konzession"],
+            ].map(([key, label]) => (
+              <label key={key} className="partner-field">
+                <span className="partner-field__label">{label}</span>
+                <input
+                  className="partner-input"
+                  value={form[key] ?? ""}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                />
+              </label>
+            ))}
           </div>
+          <PartnerOnboardingBlockFooter busy={busy === "save"} />
         </form>
       </PartnerCollapsibleSection>
 
       <PartnerCollapsibleSection title="Fahrzeuge" subtitle={`${vehicles.length} Fahrzeug(e)`} defaultOpen={false}>
-        <form className="partner-form-grid" onSubmit={(e) => void addVehicle(e)}>
-          <label className="partner-field">
-            <span className="partner-field__label">Kennzeichen</span>
-            <input
-              className="partner-input"
-              required
-              value={newVehicle.licensePlate}
-              onChange={(e) => setNewVehicle((v) => ({ ...v, licensePlate: e.target.value }))}
-            />
-          </label>
-          <label className="partner-field">
-            <span className="partner-field__label">Typ</span>
-            <select
-              className="partner-input"
-              value={newVehicle.vehicleType}
-              onChange={(e) => setNewVehicle((v) => ({ ...v, vehicleType: e.target.value }))}
-            >
-              {VEHICLE_TYPES.map(([val, lab]) => (
-                <option key={val} value={val}>
-                  {lab}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="partner-btn-secondary" disabled={busy === "veh"}>
-            Fahrzeug hinzufügen
-          </button>
+        <form className="partner-onb-block" onSubmit={(e) => void addVehicle(e)}>
+          <div className="partner-onb-block__content">
+            <div className="partner-form-grid">
+              <label className="partner-field">
+                <span className="partner-field__label">Kennzeichen</span>
+                <input
+                  className="partner-input"
+                  required
+                  value={newVehicle.licensePlate}
+                  onChange={(e) => setNewVehicle((v) => ({ ...v, licensePlate: e.target.value }))}
+                />
+              </label>
+              <label className="partner-field">
+                <span className="partner-field__label">Typ</span>
+                <select
+                  className="partner-input"
+                  value={newVehicle.vehicleType}
+                  onChange={(e) => setNewVehicle((v) => ({ ...v, vehicleType: e.target.value }))}
+                >
+                  {VEHICLE_TYPES.map(([val, lab]) => (
+                    <option key={val} value={val}>
+                      {lab}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {vehicles.length > 0 ? (
+              <ul className="partner-onb-list">
+                {vehicles.map((v) => (
+                  <li key={v.id} className="partner-onb-list__item">
+                    <strong>{v.licensePlate}</strong>
+                    <span className="partner-onb-list__meta">
+                      {v.vehicleType}
+                      {v.tuevDate ? ` · TÜV ${v.tuevDate}` : ""}
+                      {!v.isActive ? " · inaktiv" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="partner-onb-empty">Noch keine Fahrzeuge — unten speichern, um eines anzulegen.</p>
+            )}
+          </div>
+          <PartnerOnboardingBlockFooter label="Fahrzeug speichern" busy={busy === "veh"} />
         </form>
-        <ul className="partner-simple-list">
-          {vehicles.map((v) => (
-            <li key={v.id}>
-              <strong>{v.licensePlate}</strong> · {v.vehicleType}
-              {v.tuevDate ? ` · TÜV ${v.tuevDate}` : ""}
-              {!v.isActive ? " (inaktiv)" : ""}
-            </li>
-          ))}
-        </ul>
       </PartnerCollapsibleSection>
 
       <PartnerCollapsibleSection title="Dokumente" subtitle="PDF, JPG oder PNG" defaultOpen={false}>
-        <form className="partner-form-grid" onSubmit={(e) => void uploadDoc(e)}>
-          <label className="partner-field">
-            <span className="partner-field__label">Typ</span>
-            <select
-              className="partner-input"
-              value={upload.docType}
-              onChange={(e) => setUpload((u) => ({ ...u, docType: e.target.value }))}
-            >
-              {DOC_TYPES.map(([val, lab]) => (
-                <option key={val} value={val}>
-                  {lab}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="partner-field">
-            <span className="partner-field__label">Datei</span>
-            <input
-              className="partner-input"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setUpload((u) => ({ ...u, file: e.target.files?.[0] ?? null }))}
-            />
-          </label>
-          <button type="submit" className="partner-btn-secondary" disabled={busy === "doc"}>
-            Hochladen
-          </button>
+        <form className="partner-onb-block" onSubmit={(e) => void uploadDoc(e)}>
+          <div className="partner-onb-block__content">
+            <div className="partner-form-grid">
+              <label className="partner-field">
+                <span className="partner-field__label">Typ</span>
+                <select
+                  className="partner-input"
+                  value={upload.docType}
+                  onChange={(e) => setUpload((u) => ({ ...u, docType: e.target.value }))}
+                >
+                  {DOC_TYPES.map(([val, lab]) => (
+                    <option key={val} value={val}>
+                      {lab}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="partner-field partner-field--file">
+                <span className="partner-field__label">Datei</span>
+                <input
+                  className="partner-input partner-input--file"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setUpload((u) => ({ ...u, file: e.target.files?.[0] ?? null }))}
+                />
+              </label>
+            </div>
+            {documents.length > 0 ? (
+              <ul className="partner-onb-list">
+                {documents.map((d) => (
+                  <li key={d.id} className="partner-onb-list__item partner-onb-list__item--doc">
+                    <span>{d.fileName}</span>
+                    <button type="button" className="partner-link-btn" onClick={() => openDoc(d.id)}>
+                      Ansehen
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="partner-onb-empty">Noch keine Dokumente hochgeladen.</p>
+            )}
+          </div>
+          <PartnerOnboardingBlockFooter label="Dokument speichern" busy={busy === "doc"} />
         </form>
-        <ul className="partner-simple-list">
-          {documents.map((d) => (
-            <li key={d.id}>
-              {d.fileName}{" "}
-              <button type="button" className="partner-link-btn" onClick={() => openDoc(d.id)}>
-                Ansehen
-              </button>
-            </li>
-          ))}
-        </ul>
       </PartnerCollapsibleSection>
     </div>
   );
