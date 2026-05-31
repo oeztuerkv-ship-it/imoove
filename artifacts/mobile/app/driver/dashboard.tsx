@@ -39,6 +39,11 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
 import {
+  getCurrentPositionSafe,
+  requestForegroundPermissionsSafe,
+  watchPositionSafe,
+} from "@/utils/safeExpoLocation";
+import {
   ensureDriverBackgroundLocationPermissions,
   startDriverBackgroundLocation,
   stopDriverBackgroundLocation,
@@ -1899,15 +1904,16 @@ function ActiveRideScreen({
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+      const fg = await requestForegroundPermissionsSafe();
+      if (!fg || fg.status !== "granted") return;
       // Get initial position immediately so navigation can start right away
-      const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const initial = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      if (!initial) return;
       setDriverCoords({ lat: initial.coords.latitude, lon: initial.coords.longitude });
       if (phase === "pickup" && req.fromLat != null && req.fromLon != null) {
         setDistanceToCustomer(haversineDistance(initial.coords.latitude, initial.coords.longitude, req.fromLat, req.fromLon));
       }
-      sub = await Location.watchPositionAsync(
+      sub = await watchPositionSafe(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
         (loc) => {
           const { latitude, longitude } = loc.coords;
@@ -2853,11 +2859,12 @@ export default function DriverDashboard() {
     if (Platform.OS === "web") return;
     let sub: Location.LocationSubscription | null = null;
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const fg = await requestForegroundPermissionsSafe();
+      if (!fg || fg.status !== "granted") return;
+      const pos = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      if (!pos) return;
       setDriverPos({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-      sub = await Location.watchPositionAsync(
+      sub = await watchPositionSafe(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 10000, distanceInterval: 50 },
         (loc) => setDriverPos({ lat: loc.coords.latitude, lon: loc.coords.longitude }),
       );
@@ -2983,10 +2990,10 @@ export default function DriverDashboard() {
   const bgLocationPromptedRef = useRef(false);
 
   useEffect(() => {
-    if (!driver?.authToken || bgLocationPromptedRef.current) return;
+    if (!driver?.authToken || !driverMarketOnline || bgLocationPromptedRef.current) return;
     bgLocationPromptedRef.current = true;
     void ensureDriverBackgroundLocationPermissions({ interactive: true });
-  }, [driver?.authToken]);
+  }, [driver?.authToken, driverMarketOnline]);
 
   useEffect(() => {
     if (!activeDriverRequest?.id) {

@@ -6,6 +6,12 @@ import {
   DRIVER_BG_LOCATION_TASK,
   DRIVER_BG_RIDE_STORAGE_KEY,
 } from "@/tasks/driverBackgroundLocation";
+import {
+  getBackgroundPermissionsSafe,
+  getForegroundPermissionsSafe,
+  requestBackgroundPermissionsSafe,
+  requestForegroundPermissionsSafe,
+} from "@/utils/safeExpoLocation";
 
 const PROMPT_STORAGE_KEY = "@Onroda_driver_bg_location_prompted";
 
@@ -29,13 +35,15 @@ export async function ensureDriverBackgroundLocationPermissions(options?: {
 }): Promise<boolean> {
   if (Platform.OS === "web") return false;
 
-  const fgExisting = await Location.getForegroundPermissionsAsync();
+  const fgExisting = await getForegroundPermissionsSafe();
+  if (!fgExisting) return false;
   if (fgExisting.status !== "granted") {
-    const fgReq = await Location.requestForegroundPermissionsAsync();
-    if (fgReq.status !== "granted") return false;
+    const fgReq = await requestForegroundPermissionsSafe();
+    if (!fgReq || fgReq.status !== "granted") return false;
   }
 
-  const bgExisting = await Location.getBackgroundPermissionsAsync();
+  const bgExisting = await getBackgroundPermissionsSafe();
+  if (!bgExisting) return false;
   if (bgExisting.status === "granted") return true;
 
   if (!options?.interactive) return false;
@@ -64,8 +72,8 @@ export async function ensureDriverBackgroundLocationPermissions(options?: {
           onPress: () => {
             void (async () => {
               await AsyncStorage.setItem(PROMPT_STORAGE_KEY, "1");
-              const bgReq = await Location.requestBackgroundPermissionsAsync();
-              resolve(bgReq.status === "granted");
+              const bgReq = await requestBackgroundPermissionsSafe();
+              resolve(Boolean(bgReq && bgReq.status === "granted"));
             })();
           },
         },

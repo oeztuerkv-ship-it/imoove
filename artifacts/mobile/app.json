@@ -21,6 +21,7 @@
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
         "NSLocationWhenInUseUsageDescription": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
+        "NSLocationAlwaysUsageDescription": "ONRODA benötigt deinen Standort während aktiver Fahrten, auch im Hintergrund.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",
         "CFBundleURLTypes": [
           {
@@ -82,6 +83,7 @@
       [
         "expo-location",
         {
+          "locationAlwaysPermission": "ONRODA benötigt deinen Standort während aktiver Fahrten, auch im Hintergrund.",
           "locationAlwaysAndWhenInUsePermission": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",
           "locationWhenInUsePermission": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
           "isIosBackgroundLocationEnabled": true,
