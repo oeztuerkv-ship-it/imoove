@@ -1,20 +1,9 @@
 import nodemailer from "nodemailer";
+import { onrodaBrandLogoMailImgHtml } from "./onrodaBrandLogoAsset.js";
 import { logger } from "./logger";
 
 function panelBaseUrl(): string {
   return (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
-}
-
-function marketingLogoSrc(): string {
-  const u = (process.env.PARTNER_REGISTRATION_STATUS_PAGE_URL ?? "https://www.onroda.de/partner/anfrage-status").replace(
-    /\/$/,
-    "",
-  );
-  try {
-    return `${new URL(u).origin}/onroda-mark.png`;
-  } catch {
-    return "https://www.onroda.de/onroda-mark.png";
-  }
 }
 
 function escapeHtml(s: string): string {
@@ -57,32 +46,34 @@ export async function sendPanelUserWelcomeEmail(input: {
   const user = input.username.trim();
   const pw = input.initialPassword;
   const kind = (input.accessKindLabel ?? "").trim();
+  const isReset = input.variant === "reset";
 
-  const subject = `Onroda: Zugang zum Partner-Portal — ${company}`;
+  const subject = isReset
+    ? `Onroda: Neues Passwort — Partner-Portal — ${company}`
+    : `Onroda: Zugang zum Partner-Portal — ${company}`;
   const text = [
     "Guten Tag,",
     "",
-    `für „${company}“ wurde ein Zugang zum Onroda-Partner-Portal angelegt.`,
+    isReset
+      ? `für „${company}“ wurde ein neues Passwort für das Onroda-Partner-Portal vergeben.`
+      : `für „${company}“ wurde ein Zugang zum Onroda-Partner-Portal angelegt.`,
     kind ? `Art / Hinweis: ${kind}` : "",
     "",
     `Partner-Portal: ${panel}`,
     `Benutzername: ${user}`,
-    `Einmalpasswort: ${pw}`,
+    `${isReset ? "Neues Passwort" : "Einmalpasswort"}: ${pw}`,
     "",
-    "Bitte ändern Sie das Passwort nach dem ersten Login.",
-    "",
-    "Mit freundlichen Grüßen",
-    "Onroda",
+    "Bitte ändern Sie das Passwort nach dem nächsten Login.",
   ]
     .filter(Boolean)
     .join("\n");
 
-  const logoSrc = marketingLogoSrc();
+  const logoHtml = onrodaBrandLogoMailImgHtml();
   const kindHtml = kind ? `<p><strong>Art / Hinweis:</strong> ${escapeHtml(kind)}</p>` : "";
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
-  <p style="margin:0 0 16px"><img src="${escapeHtml(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
+  ${logoHtml}
   <p>Guten Tag,</p>
   <p>für <strong>${escapeHtml(company)}</strong> ${isReset ? "wurde ein <strong>neues Passwort</strong> für das" : "wurde ein Zugang zum"} <strong>Onroda-Partner-Portal</strong>${isReset ? " vergeben." : " angelegt."}</p>
   ${kindHtml}
@@ -90,7 +81,6 @@ export async function sendPanelUserWelcomeEmail(input: {
   <p><strong>Benutzername:</strong> <code>${escapeHtml(user)}</code><br/>
      <strong>${isReset ? "Neues Passwort" : "Einmalpasswort"}:</strong> <code>${escapeHtml(pw)}</code></p>
   <p>Bitte ändern Sie das Passwort nach dem nächsten Login (Pflicht beim ersten Mal mit diesem Passwort).</p>
-  <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
 </body></html>`;
 
   try {

@@ -1,3 +1,4 @@
+import { onrodaBrandLogoMailImgHtml } from "./onrodaBrandLogoAsset.js";
 import { escapeHtmlMail, sendOnrodaMail } from "./onrodaSmtpMail.js";
 
 export function panelPasswordResetPageBaseUrl(): string {
@@ -10,18 +11,6 @@ export function buildPanelPasswordResetLink(rawToken: string): string {
   const base = panelPasswordResetPageBaseUrl();
   const sep = base.includes("?") ? "&" : "?";
   return `${base}${sep}token=${encodeURIComponent(rawToken)}`;
-}
-
-/** Gleiche Bildmarke wie Partner-Freigabe / Willkommens-Mail (`onroda-mark.png` auf Marketing-Host). */
-function marketingLogoSrc(): string {
-  const u = (
-    process.env.PARTNER_REGISTRATION_STATUS_PAGE_URL ?? "https://www.onroda.de/partner/anfrage-status"
-  ).replace(/\/$/, "");
-  try {
-    return `${new URL(u).origin}/onroda-mark.png`;
-  } catch {
-    return "https://www.onroda.de/onroda-mark.png";
-  }
 }
 
 export async function sendPanelPasswordResetMail(input: {
@@ -39,7 +28,7 @@ export async function sendPanelPasswordResetMail(input: {
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
   const resetLinkEsc = escapeHtmlMail(input.resetLink);
-  const logoSrc = escapeHtmlMail(marketingLogoSrc());
+  const logoHtml = onrodaBrandLogoMailImgHtml({ centered: true });
   const userEsc = escapeHtmlMail(input.username);
 
   const securityNote =
@@ -56,9 +45,6 @@ export async function sendPanelPasswordResetMail(input: {
     `Benutzername: ${input.username}`,
     "",
     securityNote,
-    "",
-    "Mit freundlichen Grüßen",
-    "Onroda",
   ].join("\n");
 
   const html = `<!DOCTYPE html>
@@ -69,9 +55,7 @@ export async function sendPanelPasswordResetMail(input: {
   </div>
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
     <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
-      <div style="text-align:center;margin-bottom:20px;">
-        <img src="${logoSrc}" alt="ONRODA" width="120" height="40" style="display:block;margin:0 auto;max-width:100%;height:auto;border:0" />
-      </div>
+      ${logoHtml}
       <h2 style="text-align:center;margin:0 0 16px;font-size:20px;color:#111;">Passwort zurücksetzen</h2>
       <p style="margin:0 0 12px;line-height:1.5;color:#333;">Sie haben ein neues Passwort für das <strong>Onroda-Partner-Portal</strong> angefordert.</p>
       <div style="text-align:center;margin:30px 0;">
@@ -86,7 +70,6 @@ export async function sendPanelPasswordResetMail(input: {
       <p style="font-size:12px;color:#888;margin:16px 0 0;line-height:1.5;border-top:1px solid #e8edf4;padding-top:14px;">
         ${escapeHtmlMail(securityNote)}
       </p>
-      <p style="margin-top:20px;color:#6b7280;font-size:12px;text-align:center;">Onroda</p>
     </div>
   </div>
 </body></html>`;

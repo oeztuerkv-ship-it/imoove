@@ -1,6 +1,6 @@
 ONRODA Marken-Assets (Repo-Kopien)
 
-- artifacts/api-server/static/onroda-mark.png — Bildmarke (PDF, E-Mail, offizielle Dokumente; öffentlich unter /onroda-mark.png)
-- artifacts/shared/assets/onroda-mark.png — Kanonische Quelle der Bildmarke (mit api-server/static abgleichen)
+- artifacts/api-server/assets/onroda-logo-transparent.png — einziges Produkt-Logo (Partner-Panel, Mobile-Partner, HTML-Mails via onrodaBrandLogoAsset.ts)
+- artifacts/api-server/assets/onroda-logo-official.png — Rechnungs-PDF (invoiceLogoAsset.ts)
 
-UI (Admin-Panel, Partner-Panel, Mobile, Marketing-Header): nur Text-Schriftzug „onroda“ (onroda-brand.css: .onroda-ui-wordmark), keine Bildmarke in Navigation/Login.
+Veraltet / nicht für Produkt-UI oder Partner-Mails: onroda-mark.png (Marketing-Static).

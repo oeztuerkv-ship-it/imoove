@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { onrodaBrandLogoMailImgHtml } from "./onrodaBrandLogoAsset.js";
 import { logger } from "./logger";
 
 function panelBaseUrl(): string {
@@ -10,16 +11,6 @@ function statusPageUrl(): string {
     /\/$/,
     "",
   );
-}
-
-/** Bildmarke für Freigabe-Mail (gleiche Marketing-Origin wie Statusseite; nur offizielle Kommunikation). */
-function marketingDocumentMarkUrl(): string {
-  try {
-    const o = new URL(statusPageUrl());
-    return `${o.origin}/onroda-mark.png`;
-  } catch {
-    return "https://www.onroda.de/onroda-mark.png";
-  }
 }
 
 function escapeHtml(s: string): string {
@@ -61,9 +52,6 @@ function buildBodies(input: {
     `Partner-Portal: ${panel}`,
     `Status Ihrer Anfrage: ${status}`,
     credBlock,
-    ``,
-    `Mit freundlichen Grüßen`,
-    `Onroda`,
   ].join("\n");
 
   const pwHtml =
@@ -76,17 +64,16 @@ function buildBodies(input: {
          <p>Bitte ändern Sie das Passwort nach dem ersten Login.</p>`
       : `<p>Die Zugangsdaten zum Partner-Portal erhalten Sie separat von uns, falls noch nicht angelegt.</p>`;
 
-  const logoSrc = marketingDocumentMarkUrl();
+  const logoHtml = onrodaBrandLogoMailImgHtml();
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
-  <p style="margin:0 0 16px"><img src="${escapeHtml(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
+  ${logoHtml}
   <p>Guten Tag,</p>
   <p>Ihre Partneranfrage für <strong>${escapeHtml(company)}</strong> wurde <strong>freigegeben</strong>.</p>
   <p><a href="${escapeHtml(panel)}">Zum Partner-Portal</a></p>
   <p><a href="${escapeHtml(status)}">Anfrage-Status ansehen</a></p>
   ${pwHtml}
-  <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
 </body></html>`;
 
   return { subject, text, html };
