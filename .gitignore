@@ -34,7 +34,8 @@ pnpm-debug.log*
 .cache/
 coverage/
 
-# API-Bundle (Quelle: artifacts/api-server/src — Build auf dem Zielsystem)
+# API-Bundle — nur lokal / auf dem Server bauen (pnpm run build in artifacts/api-server).
+# Nicht committen: verhindert Merge-Konflikte und falsche Pfade im Bundle.
 artifacts/api-server/dist/
 
 # Expo-Lokalcache (nicht versionieren)
