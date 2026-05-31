@@ -5,7 +5,11 @@ import FleetDocumentsTab from "./fleet/FleetDocumentsTab.jsx";
 import FleetDriversTab from "./fleet/FleetDriversTab.jsx";
 import FleetTabs from "./fleet/FleetTabs.jsx";
 import FleetVehiclesTab from "./fleet/FleetVehiclesTab.jsx";
-import { messageForFleetDriverCreateError, vehicleDocumentUploadUrl } from "./fleet/fleetPanelHelpers.js";
+import {
+  messageForFleetDriverCreateError,
+  messageForFleetLoadError,
+  vehicleDocumentUploadUrl,
+} from "./fleet/fleetPanelHelpers.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -159,7 +163,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
       setAssignments(aRes.ok && aData?.ok && Array.isArray(aData.assignments) ? aData.assignments : []);
       setDash(dashRes.ok && dashData?.ok ? dashData : null);
     } catch {
-      setErr("Flotten-Daten konnten nicht geladen werden.");
+      setErr(messageForFleetLoadError({}, 0));
     } finally {
       setLoading(false);
     }

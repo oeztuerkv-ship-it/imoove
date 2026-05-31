@@ -1,3 +1,32 @@
+/** Antwort von `GET /panel/v1/fleet/*` (Laden) — gleiche Codes wie `assertFleetPanel` / Permissions. */
+export function messageForFleetLoadError(data, httpStatus = 0) {
+  const code = typeof data?.error === "string" ? data.error : "";
+  const hint = data?.hint;
+  if (httpStatus === 401 || code === "unauthorized" || code === "user_inactive_or_missing" || code === "token_out_of_sync") {
+    return "Sitzung abgelaufen. Bitte abmelden und neu anmelden.";
+  }
+  if (code === "module_not_enabled") {
+    return "Das Modul „Flotte & Fahrer“ ist für Ihr Konto nicht freigeschaltet. Bitte Onroda kontaktieren.";
+  }
+  if (code === "fleet_only_taxi_company") {
+    return "Flottenverwaltung steht nur Taxi-Unternehmen zur Verfügung.";
+  }
+  if (code === "forbidden") {
+    return hint
+      ? `Keine Berechtigung (${String(hint)}). Bitte mit einem Benutzer anmelden, der „Flotte“ lesen darf.`
+      : "Keine Berechtigung zum Anzeigen der Flotte. Rolle oder Berechtigung „Flotte lesen“ fehlt.";
+  }
+  if (code === "database_not_configured") {
+    return "Dienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.";
+  }
+  if (httpStatus >= 500) {
+    return "Serverfehler beim Laden der Flotte. Bitte kurz warten und Seite neu laden — bei anhaltendem Fehler Onroda informieren.";
+  }
+  return code
+    ? `Flotten-Daten konnten nicht geladen werden (${code}).`
+    : "Flotten-Daten konnten nicht geladen werden.";
+}
+
 /** Antwort von `POST /panel/v1/fleet/drivers` bei Fehler — siehe `fleetPanelApi.ts` / `insertFleetDriver`. */
 export function messageForFleetDriverCreateError(data) {
   const code = typeof data?.error === "string" ? data.error : "";
