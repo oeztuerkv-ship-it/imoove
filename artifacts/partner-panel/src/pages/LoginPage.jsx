@@ -46,13 +46,22 @@ export default function LoginPage() {
         setResetError("Zu viele Versuche — bitte in ein paar Minuten erneut.");
         return;
       }
-      if (!res.ok) {
-        setResetError("Anfrage fehlgeschlagen. Bitte später erneut versuchen.");
+      if (!res.ok || data?.ok === false) {
+        const msg =
+          typeof data?.message === "string" && data.message.trim()
+            ? data.message
+            : data?.error === "panel_user_not_found"
+              ? "Kein aktiver Partner-Zugang zu dieser E-Mail oder diesem Benutzernamen."
+              : data?.error === "panel_user_no_email"
+                ? "Zu diesem Zugang ist keine E-Mail hinterlegt — bitte Administrator kontaktieren."
+                : "Anfrage fehlgeschlagen. Bitte später erneut versuchen.";
+        setResetError(msg);
         return;
       }
       setResetMessage(
-        data?.message ||
-          "Wenn ein passender Zugang existiert, erhalten Sie in Kürze eine E-Mail mit einem Link zum Festlegen eines neuen Passworts.",
+        typeof data?.message === "string" && data.message.trim()
+          ? data.message
+          : "Die E-Mail mit dem Link zum neuen Passwort wurde gesendet.",
       );
     } catch {
       setResetError("Netzwerkfehler — bitte Verbindung prüfen.");
@@ -124,9 +133,8 @@ export default function LoginPage() {
           ) : (
             <form className="partner-login__form" onSubmit={onRequestPasswordReset}>
               <p className="partner-login__lead">
-                Geben Sie die <strong>E-Mail oder den Benutzernamen</strong> Ihres Zugangs ein. Wir senden eine
-                E-Mail mit einem Link zum Festlegen eines neuen Passworts (nur wenn ein Zugang mit hinterlegter E-Mail
-                existiert).
+                Geben Sie die <strong>E-Mail oder den Benutzernamen</strong> Ihres Partner-Zugangs ein. Wir prüfen, ob der
+                Zugang existiert, und senden bei Treffer eine E-Mail mit dem Link zum neuen Passwort.
               </p>
               <label className="partner-login__label">
                 E-Mail oder Benutzername
