@@ -545,6 +545,8 @@ export default function CompanyMandateDetailPage({
                             Fahrer: {c.max_drivers ?? "—"} · Fahrzeuge: {c.max_vehicles ?? "—"}
                           </div>
                         </div>
+                      </>
+                    ) : null}
                     {isHotel ? (
                       <div>
                         <div className="admin-table-sub">Kostenstelle</div>
@@ -616,8 +618,6 @@ export default function CompanyMandateDetailPage({
                   </div>
                 </section>
               ) : null}
-            </>
-          ) : null}
 
           <section className="admin-section-block admin-section-block--mandate-kpi">
             <div className="admin-m-card__h">
