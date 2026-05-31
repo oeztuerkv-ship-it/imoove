@@ -200,7 +200,9 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
         return;
       }
       setMsg(
-        data.initialPassword ? `Fahrer angelegt. Initiales Passwort: ${data.initialPassword}` : "Fahrer angelegt.",
+        data.initialPassword
+          ? `Fahrer angelegt. Initiales Passwort: ${data.initialPassword}. In der Fahrer-App erscheint „Noch nicht freigeschaltet“, bis P-Schein, Fahrzeug und Pflichtdaten im Panel ergänzt sind.`
+          : "Fahrer angelegt. In der Fahrer-App erscheint „Noch nicht freigeschaltet“, bis alle Pflichtdaten im Panel ergänzt sind.",
       );
       setDriverForm({
         email: "",

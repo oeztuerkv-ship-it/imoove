@@ -1,3 +1,5 @@
+import { driverAppStatusMeta } from "./fleetPanelHelpers.js";
+
 /**
  * @param {{
  *   driverCreateSectionRef: import("react").RefObject<HTMLDivElement | null>;
@@ -65,7 +67,7 @@ export default function FleetDriversTab({
               Neuen Fahrer anlegen
             </h3>
             <p className="partner-muted" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.45 }}>
-              Nach dem Speichern kann sich der Fahrer mit E-Mail und Passwort in der Fahrer-App anmelden. P-Schein, Führerschein und Anschrift sind optional.
+              Sie können den Fahrer sofort anlegen — nur E-Mail, Vor- und Nachname sind Pflicht. Der Fahrer kann sich in der App anmelden, sieht dort aber die Meldung „Noch nicht freigeschaltet“, bis Sie P-Schein, Fahrzeugzuweisung und alle Pflichtdaten im Panel ergänzt haben.
             </p>
             <div className="partner-form-grid">
               <label className="partner-form-field">
@@ -311,7 +313,8 @@ export default function FleetDriversTab({
             <tr>
               <th>Name</th>
               <th>E-Mail</th>
-              <th>Status</th>
+              <th>Konto</th>
+              <th>Fahrer-App</th>
               {featureKkModule && isPanelOwner ? <th>KK-Modul</th> : null}
               <th>Aktionen</th>
             </tr>
@@ -319,15 +322,16 @@ export default function FleetDriversTab({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={featureKkModule && isPanelOwner ? 5 : 4}>Laden …</td>
+                <td colSpan={featureKkModule && isPanelOwner ? 6 : 5}>Laden …</td>
               </tr>
             ) : drivers.length === 0 ? (
               <tr>
-                <td colSpan={featureKkModule && isPanelOwner ? 5 : 4}>Keine Fahrer.</td>
+                <td colSpan={featureKkModule && isPanelOwner ? 6 : 5}>Keine Fahrer.</td>
               </tr>
             ) : (
               drivers.map((d) => {
                 const loginOk = partnerDriverCanLogin(d);
+                const appStatus = driverAppStatusMeta(d);
                 return (
                   <tr key={d.id}>
                     <td>
@@ -336,7 +340,12 @@ export default function FleetDriversTab({
                     <td>{d.email}</td>
                     <td>
                       <span className={`partner-pill partner-pill--${loginOk ? "ok" : "missing"}`}>
-                        {loginOk ? "Aktiv" : "Deaktiviert"}
+                        {loginOk ? "Login aktiv" : "Deaktiviert"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`partner-pill partner-pill--${appStatus.tone}`} title="Sicht in der Fahrer-App">
+                        {appStatus.label}
                       </span>
                     </td>
                     {featureKkModule && isPanelOwner ? (

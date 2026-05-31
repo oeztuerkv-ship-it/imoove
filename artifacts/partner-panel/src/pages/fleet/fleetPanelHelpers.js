@@ -90,6 +90,18 @@ export const VEHICLE_CLASSES = [
   { value: "wheelchair", label: "Rollstuhl / barrierefrei" },
 ];
 
+/** Fahrer-App: Login vs. Einsatzbereitschaft (Readiness). */
+export function driverAppStatusMeta(d) {
+  const loginOk = Boolean(d?.isActive) && d?.accessStatus === "active";
+  if (!loginOk) {
+    return { label: "Kein App-Login", tone: "missing" };
+  }
+  if (d?.readiness?.ready === true) {
+    return { label: "In der App freigeschaltet", tone: "ok" };
+  }
+  return { label: "App: noch nicht freigeschaltet", tone: "warn" };
+}
+
 export function vehicleStatusDe(v) {
   const s = v?.approvalStatus;
   if (s === "draft") return "Entwurf";
