@@ -1,6 +1,6 @@
 import { moneyDe } from "./dashboardHelpers.js";
 
-/** @param {{ metrics: object | null; metricsError: string | null; fleetDash: object | null; fleetDashError: string | null; medicalOpen: number; ridesLoaded: boolean; onNavigateMedical?: () => void }} props */
+/** @param {{ metrics: object | null; metricsError: string | null; fleetDash: object | null; fleetDashError: string | null; medicalOpen: number; ridesLoaded: boolean; onNavigateMedical?: () => void; featureKkModule?: boolean }} props */
 export default function DashboardKpiGrid({
   metrics,
   metricsError,
@@ -9,6 +9,7 @@ export default function DashboardKpiGrid({
   medicalOpen,
   ridesLoaded,
   onNavigateMedical,
+  featureKkModule = false,
 }) {
   const openRides = metricsError ? null : metrics?.openRides ?? 0;
   const revenueToday = metricsError ? null : metrics?.today?.revenue;
@@ -40,18 +41,27 @@ export default function DashboardKpiGrid({
       value: metricsError ? "—" : moneyDe(revenueToday),
       hint: metricsError || "Abgeschlossene Fahrten (Kalendertag)",
     },
-    {
-      key: "med",
-      title: "Offene Krankenfahrten",
-      value: !ridesLoaded ? "…" : String(medicalOpen),
-      hint: !ridesLoaded ? "Fahrten werden geladen …" : "Ohne bezahlte/stornierte Rechnung (vereinfacht)",
-      action:
-        typeof onNavigateMedical === "function" ? (
-          <button type="button" className="partner-link-btn" style={{ marginTop: 8, padding: 0 }} onClick={() => onNavigateMedical()}>
-            Zu Krankenfahrten
-          </button>
-        ) : null,
-    },
+    ...(featureKkModule
+      ? [
+          {
+            key: "med",
+            title: "Offene Krankenfahrten",
+            value: !ridesLoaded ? "…" : String(medicalOpen),
+            hint: !ridesLoaded ? "Fahrten werden geladen …" : "Ohne bezahlte/stornierte Rechnung (vereinfacht)",
+            action:
+              typeof onNavigateMedical === "function" ? (
+                <button
+                  type="button"
+                  className="partner-link-btn"
+                  style={{ marginTop: 8, padding: 0 }}
+                  onClick={() => onNavigateMedical()}
+                >
+                  Zu Krankenfahrten
+                </button>
+              ) : null,
+          },
+        ]
+      : []),
   ];
 
   return (

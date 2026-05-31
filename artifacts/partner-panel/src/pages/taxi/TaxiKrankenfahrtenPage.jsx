@@ -185,6 +185,12 @@ export default function TaxiKrankenfahrtenPage() {
     });
   }, [medical]);
 
+  const kkModuleEnabled = user?.featureKkModule === true;
+
+  if (!kkModuleEnabled) {
+    return null;
+  }
+
   if (!canRead || !hasRidesList) {
     return (
       <div className="partner-stack partner-stack--tight">

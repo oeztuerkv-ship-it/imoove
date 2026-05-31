@@ -73,6 +73,7 @@ export default function DashboardOverviewPage({
                 fleetDashError={fleetDashError}
                 medicalOpen={medicalOpenCount}
                 ridesLoaded={ridesLoaded}
+                featureKkModule={user?.featureKkModule === true}
                 onNavigateMedical={() => onNavigateModule("krankenfahrten")}
               />
 

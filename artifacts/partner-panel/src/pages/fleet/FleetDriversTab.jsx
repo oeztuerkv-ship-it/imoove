@@ -17,6 +17,10 @@
  *   saveEditedDriver: (e: React.FormEvent) => void | Promise<void>;
  *   deactivateDriverAccount: (id: string) => void | Promise<void>;
  *   activateDriverForPartner: (id: string) => void | Promise<void>;
+ *   featureKkModule?: boolean;
+ *   isPanelOwner?: boolean;
+ *   onToggleKkPermission?: (driverId: string, enabled: boolean) => void | Promise<void>;
+ *   kkPermissionBusyId?: string | null;
  * }} props
  */
 
@@ -43,6 +47,10 @@ export default function FleetDriversTab({
   saveEditedDriver,
   deactivateDriverAccount,
   activateDriverForPartner,
+  featureKkModule = false,
+  isPanelOwner = false,
+  onToggleKkPermission,
+  kkPermissionBusyId = null,
 }) {
   const editingDriver = editDriverId ? drivers.find((x) => x.id === editDriverId) : null;
   const readinessBlocks = editingDriver?.readiness?.blockReasons;
@@ -304,17 +312,18 @@ export default function FleetDriversTab({
               <th>Name</th>
               <th>E-Mail</th>
               <th>Status</th>
+              {featureKkModule && isPanelOwner ? <th>KK-Modul</th> : null}
               <th>Aktionen</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4}>Laden …</td>
+                <td colSpan={featureKkModule && isPanelOwner ? 5 : 4}>Laden …</td>
               </tr>
             ) : drivers.length === 0 ? (
               <tr>
-                <td colSpan={4}>Keine Fahrer.</td>
+                <td colSpan={featureKkModule && isPanelOwner ? 5 : 4}>Keine Fahrer.</td>
               </tr>
             ) : (
               drivers.map((d) => {
@@ -330,6 +339,28 @@ export default function FleetDriversTab({
                         {loginOk ? "Aktiv" : "Deaktiviert"}
                       </span>
                     </td>
+                    {featureKkModule && isPanelOwner ? (
+                      <td>
+                        {d.isOwner ? (
+                          <span className="partner-muted" style={{ fontSize: 13 }}>
+                            Inhaber (immer)
+                          </span>
+                        ) : (
+                          <label
+                            className="partner-form-field"
+                            style={{ flexDirection: "row", alignItems: "center", gap: 8, margin: 0 }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={Boolean(d.permissionKkModule)}
+                              disabled={kkPermissionBusyId === d.id}
+                              onChange={(ev) => void onToggleKkPermission?.(d.id, ev.target.checked)}
+                            />
+                            <span style={{ fontSize: 13 }}>Zugriff</span>
+                          </label>
+                        )}
+                      </td>
+                    ) : null}
                     <td className="partner-table__actions">
                       {canManage ? (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>

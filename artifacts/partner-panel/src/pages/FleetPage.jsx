@@ -65,6 +65,9 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     driversLicenseExpiry: "",
   });
   const [driverEditError, setDriverEditError] = useState("");
+  const [kkPermissionBusyId, setKkPermissionBusyId] = useState(null);
+  const featureKkModule = user?.featureKkModule === true;
+  const isPanelOwner = user?.role === "owner";
   const [vehicleForm, setVehicleForm] = useState({
     licensePlate: "",
     model: "",
@@ -439,6 +442,33 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     return { ok: res.ok && data?.ok, ...data, status: res.status };
   }
 
+  async function toggleKkPermission(driverId, enabled) {
+    if (!token || !isPanelOwner || !featureKkModule) return;
+    setKkPermissionBusyId(driverId);
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/${encodeURIComponent(driverId)}/permissions`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ permission_kk_module: enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setMsg("KK-Berechtigung konnte nicht gespeichert werden.");
+        return;
+      }
+      setMsg(enabled ? "KK-Modul-Zugriff freigeschaltet." : "KK-Modul-Zugriff entzogen.");
+      await loadAll();
+    } catch {
+      setMsg("KK-Berechtigung konnte nicht gespeichert werden.");
+    } finally {
+      setKkPermissionBusyId(null);
+    }
+  }
+
   function sliceIsoDate(v) {
     if (v == null || v === "") return "";
     const s = String(v);
@@ -707,6 +737,10 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
           saveEditedDriver={saveEditedDriver}
           deactivateDriverAccount={deactivateDriverAccount}
           activateDriverForPartner={activateDriverForPartner}
+          featureKkModule={featureKkModule}
+          isPanelOwner={isPanelOwner}
+          onToggleKkPermission={toggleKkPermission}
+          kkPermissionBusyId={kkPermissionBusyId}
         />
       ) : null}
 

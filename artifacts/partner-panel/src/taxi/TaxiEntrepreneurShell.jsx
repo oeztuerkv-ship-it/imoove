@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import OnrodaMark from "../components/OnrodaMark.jsx";
 import TaxiMasterPanel from "../components/TaxiMasterPanel.jsx";
 import FleetPage from "../pages/FleetPage.jsx";
 import TeamPage from "../pages/TeamPage.jsx";
@@ -53,7 +54,10 @@ const TAXI_NAV_DEFS = [
   {
     key: "krankenfahrten",
     label: "Krankenfahrten",
-    show: (user) => hasPanelModule(user?.panelModules, "rides_list") && hasPerm(user, "rides.read"),
+    show: (user) =>
+      user?.featureKkModule === true &&
+      hasPanelModule(user?.panelModules, "rides_list") &&
+      hasPerm(user, "rides.read"),
   },
   {
     key: "einstellungen",
@@ -186,14 +190,13 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
           <div className="partner-shell__header-primary partner-shell__header-primary--fleet">
             <div className="partner-shell__brand-cluster">
               <a
-                className="partner-shell__onroda-wordmark"
+                className="partner-shell__brand-mark"
                 href="https://onroda.de"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="onroda – zur Website"
+                aria-label="ONRODA – zur Website"
               >
-                <span className="on">on</span>
-                <span className="roda">roda</span>
+                <OnrodaMark />
               </a>
               {company?.name ? (
                 <span className="partner-shell__company-chip" title={company.name}>
