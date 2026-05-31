@@ -186,17 +186,17 @@
 
 /* —— Seitenkopf (modul) —— */
 .partner-page-eyebrow {
-  font-size: 14px;
-  letter-spacing: 0.14em;
+  font-size: 0.8125rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-weight: 800;
+  font-weight: 700;
   color: #d90429;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 
 .partner-page-title {
-  font-size: 46px;
-  line-height: 1.05;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1.08;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: #111111;
@@ -210,15 +210,20 @@
 }
 
 .partner-page-lead {
-  font-size: 18px;
-  line-height: 1.6;
+  font-size: 1.0625rem;
+  line-height: 1.55;
   color: #52525b;
-  max-width: 900px;
-  margin: 12px 0 0;
+  max-width: 42rem;
+  margin: 16px 0 0;
 }
 
 .partner-page-hero {
-  margin-bottom: 36px;
+  margin-bottom: 40px;
+}
+
+.partner-shell--fleet .partner-page-hero {
+  margin-bottom: 32px;
+  padding-top: 4px;
 }
 
 /* —— Sektionen —— */
@@ -1073,6 +1078,34 @@
   gap: 8px 12px;
   align-items: center;
   margin: 0 0 20px;
+}
+
+.partner-settings-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.partner-form-toolbar--settings-edit {
+  position: sticky;
+  top: 76px;
+  z-index: 120;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(17, 24, 39, 0.06);
+}
+
+.partner-settings-edit-form > .partner-form-toolbar--settings-edit:last-of-type {
+  position: static;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  box-shadow: none;
+  border-style: dashed;
+  background: #fafafa;
 }
 
 .partner-form-grid {
@@ -2384,7 +2417,7 @@
 .partner-shell__header--fleet {
   padding: 0;
   border-bottom: 1px solid #e8e8ec;
-  box-shadow: none;
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.04);
   background: #ffffff;
 }
 
@@ -2397,21 +2430,49 @@
   gap: 20px;
 }
 
-/* Fleet-Topbar: Marke + Navi als linke Gruppe; Aktionen (+ / Benutzer) rechts */
-.partner-shell__header--fleet .partner-shell__header-inner {
-  justify-content: flex-start;
-  column-gap: 16px;
-  row-gap: 10px;
+/* Fleet-Topbar: Logo links · Navi Mitte · Aktionen rechts */
+.partner-shell__header-inner--fleet {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  min-height: 76px;
+  padding: 18px clamp(20px, 2.5vw, 40px);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: clamp(20px, 3vw, 40px);
+  row-gap: 12px;
 }
 
-.partner-shell__header-primary--fleet {
+.partner-shell__brand-cluster--fleet {
   display: flex;
   flex-direction: row;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px 14px;
-  flex: 1 1 auto;
+  gap: 16px;
+  flex-shrink: 0;
   min-width: 0;
+  justify-self: start;
+}
+
+.partner-shell__brand-mark--fleet {
+  flex-shrink: 0;
+}
+
+.partner-shell__brand-mark--fleet .panel-brand-logo {
+  height: 44px;
+  max-width: 148px;
+  width: auto;
+  display: block;
+}
+
+.partner-shell__company-chip--fleet {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #4b5563;
+  max-width: min(200px, 22vw);
+  padding-left: 16px;
+  border-left: 1px solid #e5e7eb;
+  line-height: 1.3;
 }
 
 .partner-shell__brand-cluster {
@@ -2506,7 +2567,9 @@
 
 .partner-shell__body--fleet {
   max-width: 1400px;
-  padding-top: 32px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 36px clamp(20px, 2.5vw, 40px) 48px;
 }
 
 /* Global „+“ Menü */
@@ -2658,16 +2721,37 @@
     align-items: flex-start;
   }
 
-  .partner-shell__header-primary--fleet {
+  .partner-shell__header-inner--fleet {
+    display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    min-height: 0;
+    padding: 14px 16px;
+    column-gap: 12px;
+    row-gap: 12px;
+  }
+
+  .partner-shell__brand-cluster--fleet {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .partner-shell__company-chip--fleet {
+    display: none;
   }
 
   .partner-shell__header--fleet .partner-shell__nav.partner-shell__nav--fleet {
-    flex-basis: 100%;
+    order: 3;
+    flex: 1 1 100%;
     overflow-x: auto;
     flex-wrap: nowrap;
     padding-bottom: 4px;
     -webkit-overflow-scrolling: touch;
+    gap: 4px;
+  }
+
+  .partner-shell__header-actions--fleet {
+    margin-left: auto;
   }
 
   .partner-shell__header-actions {

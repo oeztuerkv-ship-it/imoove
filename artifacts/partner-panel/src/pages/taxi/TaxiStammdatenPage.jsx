@@ -7,6 +7,19 @@ import { complianceBucketFromCompany, complianceKpiLabelAndClass } from "../../l
 import SettingsTabs from "./SettingsTabs.jsx";
 import DocumentsSidebarCard from "./DocumentsSidebarCard.jsx";
 
+function SettingsEditToolbar({ saving, onCancel }) {
+  return (
+    <div className="partner-form-toolbar partner-form-toolbar--settings-edit">
+      <button type="submit" className="partner-btn-primary" disabled={saving}>
+        {saving ? "Speichert …" : "Speichern"}
+      </button>
+      <button type="button" className="partner-btn-secondary" onClick={onCancel} disabled={saving}>
+        Abbrechen
+      </button>
+    </div>
+  );
+}
+
 function mailtoStammChangeRequest(company) {
   const id = company?.id != null ? String(company.id) : "";
   const sub = encodeURIComponent(`Stammdaten-Änderung Taxi-Panel (${id || "Mandant"})`);
@@ -488,17 +501,6 @@ export default function TaxiStammdatenPage({
           </button>
         </div>
       ) : null}
-      {editing && canPatch ? (
-        <form className="partner-form-toolbar" onSubmit={onSave}>
-          <button type="submit" className="partner-btn-primary" disabled={saving}>
-            {saving ? "Speichert …" : "Speichern"}
-          </button>
-          <button type="button" className="partner-btn-secondary" onClick={cancelEdit} disabled={saving}>
-            Abbrechen
-          </button>
-        </form>
-      ) : null}
-
       <div className="partner-card partner-card--section">
         <p className="partner-muted" style={{ margin: 0 }}>
           <strong>Hinweise neben den Feldern:</strong> Ohne Zusatz = im Modus „Bearbeiten“ hier änderbar bzw. einmalig
@@ -692,12 +694,14 @@ export default function TaxiStammdatenPage({
       ) : null}
 
       {c && !loading && editing && canPatch ? (
-        <div className="partner-settings-layout">
-          <div className="partner-settings-layout__main">
-        <div className="partner-form">
-          <h2 className="partner-kvlist-title" style={{ margin: "0 0 8px" }}>
-            Bearbeiten
-          </h2>
+        <form className="partner-settings-edit-form" onSubmit={onSave}>
+          <SettingsEditToolbar saving={saving} onCancel={cancelEdit} />
+          <div className="partner-settings-layout">
+            <div className="partner-settings-layout__main">
+              <div className="partner-form">
+                <h2 className="partner-kvlist-title" style={{ margin: "0 0 8px" }}>
+                  Bearbeiten
+                </h2>
           {profileLocked ? (
             <p className="partner-state-warn" style={{ marginTop: 0 }}>
               Basis-„Kern“-Felder (Name, Adresse, Ansprechdaten) sind <strong>gesperrt</strong> — Eingabefelder dazu sind
@@ -830,10 +834,12 @@ export default function TaxiStammdatenPage({
               </div>
             ) : null}
           </div>
-        </div>
+              </div>
+            </div>
+            {sidebar}
           </div>
-          {sidebar}
-        </div>
+          <SettingsEditToolbar saving={saving} onCancel={cancelEdit} />
+        </form>
       ) : null}
     </div>
   );

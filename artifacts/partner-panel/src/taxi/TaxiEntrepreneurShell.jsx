@@ -186,44 +186,42 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
   return (
     <div className="partner-shell partner-shell--fleet">
       <header className="partner-shell__header partner-shell__header--fleet">
-        <div className="partner-shell__header-inner">
-          <div className="partner-shell__header-primary partner-shell__header-primary--fleet">
-            <div className="partner-shell__brand-cluster">
-              <a
-                className="partner-shell__brand-mark"
-                href="https://onroda.de"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="ONRODA – zur Website"
-              >
-                <OnrodaMark />
-              </a>
-              {company?.name ? (
-                <span className="partner-shell__company-chip" title={company.name}>
-                  {company.name}
-                </span>
-              ) : null}
-            </div>
-
-            <nav className="partner-shell__nav partner-shell__nav--fleet" aria-label="Hauptbereiche">
-              {visibleNav.map((m) => (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => setActiveTaxiModule(m.key)}
-                  className={
-                    activeTaxiModule === m.key
-                      ? "partner-shell__nav-link partner-shell__nav-link--active"
-                      : "partner-shell__nav-link"
-                  }
-                >
-                  {m.label}
-                </button>
-              ))}
-            </nav>
+        <div className="partner-shell__header-inner partner-shell__header-inner--fleet">
+          <div className="partner-shell__brand-cluster partner-shell__brand-cluster--fleet">
+            <a
+              className="partner-shell__brand-mark partner-shell__brand-mark--fleet"
+              href="https://onroda.de"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="ONRODA – zur Website"
+            >
+              <OnrodaMark />
+            </a>
+            {company?.name ? (
+              <span className="partner-shell__company-chip partner-shell__company-chip--fleet" title={company.name}>
+                {company.name}
+              </span>
+            ) : null}
           </div>
 
-          <div className="partner-shell__header-actions">
+          <nav className="partner-shell__nav partner-shell__nav--fleet" aria-label="Hauptbereiche">
+            {visibleNav.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setActiveTaxiModule(m.key)}
+                className={
+                  activeTaxiModule === m.key
+                    ? "partner-shell__nav-link partner-shell__nav-link--active"
+                    : "partner-shell__nav-link"
+                }
+              >
+                {m.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="partner-shell__header-actions partner-shell__header-actions--fleet">
             <GlobalCreateMenu user={user} onSelectAction={onGlobalCreateAction} />
             <TaxiUserMenu user={user} onLogout={onLogout} links={userMenuLinks} />
           </div>
