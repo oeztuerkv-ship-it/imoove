@@ -1,5 +1,30 @@
 /* Listen, Filter, Tabellen — nur var(--onroda-*) aus onroda-brand.css */
 
+/**
+ * Typografie Operator-Konsole — Apple-ähnliche Skala (SF / System-UI).
+ * Neue Blöcke/Seiten: diese Tokens nutzen, keine kleinen 0.75–0.85rem-Einzelwerte.
+ */
+.admin-app {
+  --admin-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI",
+    system-ui, sans-serif;
+  --admin-type-caption: 0.8125rem; /* 13px — Labels klein */
+  --admin-type-footnote: 0.9375rem; /* 15px — Meta, Tabellen-Hilfstext */
+  --admin-type-body: 1.0625rem; /* 17px — Fließtext, Inputs, Tabellen */
+  --admin-type-callout: 1rem; /* 16px — Toolbar, kompakte Zeilen */
+  --admin-type-headline: 1.25rem; /* 20px — Block-Titel */
+  --admin-type-title3: 1.375rem; /* 22px — Detail-Überschriften */
+  --admin-type-stat: 2.125rem; /* 34px — KPI-Zahlen */
+  font-family: var(--admin-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.admin-app__content-inner {
+  font-size: var(--admin-type-body);
+  line-height: 1.47;
+  letter-spacing: -0.011em;
+}
+
 .admin-brand-logo {
   display: block;
   width: auto;
@@ -63,8 +88,8 @@
 .admin-page-lead {
   margin: 0;
   max-width: 48rem;
-  font-size: 0.95rem;
-  line-height: 1.55;
+  font-size: var(--admin-type-body);
+  line-height: 1.47;
   color: var(--onroda-text-grey);
 }
 
@@ -129,26 +154,27 @@
 
 .admin-section-block__chevron {
   flex-shrink: 0;
-  margin-top: 2px;
-  font-size: 1rem;
-  font-weight: 800;
+  margin-top: 3px;
+  font-size: var(--admin-type-callout);
+  font-weight: 700;
   line-height: 1;
   color: var(--onroda-text-muted);
 }
 
 .admin-section-block__title {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: var(--admin-type-headline);
+  font-weight: 700;
   color: var(--onroda-text-dark);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
 }
 
 .admin-section-block__sub {
   margin: var(--onroda-space-2) 0 0;
-  font-size: 0.85rem;
+  font-size: var(--admin-type-footnote);
   color: var(--onroda-text-muted);
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .admin-section-block__body {
@@ -215,7 +241,7 @@
   display: flex;
   align-items: center;
   gap: var(--onroda-space-3);
-  font-size: 0.9rem;
+  font-size: var(--admin-type-body);
   color: var(--onroda-text-dark);
 }
 
@@ -234,12 +260,12 @@
 }
 
 .admin-table-cell-muted {
-  font-size: 0.8rem;
+  font-size: var(--admin-type-footnote);
   color: var(--onroda-text-muted);
 }
 
 .admin-table-cell-ok {
-  font-size: 0.8rem;
+  font-size: var(--admin-type-footnote);
   color: #15803d;
 }
 
@@ -251,8 +277,8 @@
 }
 
 .admin-btn-compact {
-  font-size: 0.75rem;
-  padding: 4px 8px;
+  font-size: var(--admin-type-footnote);
+  padding: 6px 12px;
 }
 
 .admin-btn-compact--danger {
@@ -310,8 +336,8 @@
 
 .admin-split-pane__head {
   padding: var(--onroda-space-4) var(--onroda-space-5);
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: var(--admin-type-footnote);
   color: var(--onroda-text-dark);
   border-bottom: 1px solid var(--onroda-border-subtle);
   background: var(--onroda-bg-light);
@@ -352,7 +378,7 @@
 }
 
 .admin-split-list-btn__meta {
-  font-size: 0.8rem;
+  font-size: var(--admin-type-footnote);
   color: var(--onroda-text-muted);
   margin-top: var(--onroda-space-2);
 }
@@ -365,9 +391,10 @@
 
 .admin-split-detail-title {
   margin: 0 0 var(--onroda-space-2);
-  font-size: 1.1rem;
-  font-weight: 800;
+  font-size: var(--admin-type-title3);
+  font-weight: 700;
   color: var(--onroda-text-dark);
+  letter-spacing: -0.02em;
 }
 
 .admin-split-layout--insurer-detail {
@@ -427,23 +454,23 @@
 }
 
 .insurer-ride-card__id {
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: var(--admin-type-body);
+  font-weight: 700;
   color: var(--onroda-text-dark);
   letter-spacing: -0.02em;
 }
 
 .insurer-ride-card__price {
   text-align: right;
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: var(--admin-type-body);
+  font-weight: 600;
   color: var(--onroda-text-dark);
   white-space: nowrap;
 }
 
 .insurer-ride-card__sub {
   color: var(--onroda-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--admin-type-footnote);
 }
 
 .insurer-detail-actors {
@@ -467,9 +494,9 @@
 .admin-placeholder-list {
   margin: 12px 0 0;
   padding-left: 1.25rem;
-  line-height: 1.5;
+  line-height: 1.47;
   color: var(--onroda-text-grey);
-  font-size: 0.92rem;
+  font-size: var(--admin-type-body);
 }
 
 .admin-placeholder-list li {
@@ -502,16 +529,17 @@
 
 .admin-stat-label {
   color: var(--onroda-text-grey);
-  font-size: 0.95rem;
+  font-size: var(--admin-type-footnote);
   margin-bottom: var(--onroda-space-3);
   font-weight: 500;
 }
 
 .admin-stat-value {
-  font-size: 2rem;
-  font-weight: 800;
+  font-size: var(--admin-type-stat);
+  font-weight: 700;
   color: var(--onroda-red);
   line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 .admin-filter-card {
@@ -547,14 +575,16 @@
 }
 
 .admin-field-label {
-  font-size: 0.85rem;
+  font-size: var(--admin-type-footnote);
   color: var(--onroda-text-grey);
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .admin-input,
 .admin-select {
-  height: 42px;
+  height: 44px;
+  font-size: var(--admin-type-body);
   border-radius: var(--onroda-radius-md);
   border: 1px solid var(--onroda-border-outline);
   background: var(--onroda-bg-light);
@@ -577,20 +607,21 @@
 }
 
 .admin-btn-refresh {
-  height: 42px;
+  height: 44px;
+  font-size: var(--admin-type-footnote);
   background: var(--onroda-bg-light);
   color: var(--onroda-text-dark);
   border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-pill);
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 600;
   padding: 0 var(--onroda-space-8);
 }
 
 .admin-btn-refresh--compact {
-  height: 34px;
-  padding: 0 12px;
-  font-size: 0.83rem;
+  height: 38px;
+  padding: 0 14px;
+  font-size: var(--admin-type-footnote);
 }
 
 .admin-btn-refresh:hover {
@@ -604,13 +635,14 @@
 
 /* Formular primär = Homepage .btn-red */
 .admin-btn-primary {
-  height: 42px;
+  height: 44px;
   padding: 0 var(--onroda-padding-btn-x);
   border: none;
   border-radius: var(--onroda-radius-pill);
   background: var(--onroda-red);
   color: var(--onroda-text-on-brand);
-  font-weight: 700;
+  font-size: var(--admin-type-footnote);
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -658,7 +690,7 @@
 
 .admin-table-toolbar__info {
   color: var(--onroda-text-grey);
-  font-size: 0.85rem;
+  font-size: var(--admin-type-footnote);
   font-weight: 500;
 }
 
@@ -682,10 +714,10 @@
 }
 
 .admin-page-btn--compact {
-  height: 34px;
-  min-width: 34px;
-  padding: 0 12px;
-  font-size: 0.83rem;
+  height: 38px;
+  min-width: 38px;
+  padding: 0 14px;
+  font-size: var(--admin-type-footnote);
 }
 
 .admin-page-btn:hover {
@@ -759,8 +791,9 @@
 .admin-page-section-sub {
   color: var(--onroda-text-grey);
   margin: var(--onroda-space-2) 0 0;
-  font-size: 0.95rem;
+  font-size: var(--admin-type-body);
   font-weight: 500;
+  line-height: 1.47;
 }
 
 .admin-data-table {
@@ -801,8 +834,9 @@
 
 .admin-table-sub {
   color: var(--onroda-text-muted);
-  font-size: 0.85em;
+  font-size: var(--admin-type-footnote);
   font-weight: 500;
+  line-height: 1.4;
 }
 
 .admin-table-card {
@@ -821,9 +855,9 @@
   display: grid;
   gap: var(--onroda-space-4);
   align-items: center;
-  padding: 10px var(--onroda-space-6);
+  padding: 12px var(--onroda-space-6);
   border-bottom: 1px solid var(--onroda-border-subtle);
-  font-size: 0.95rem;
+  font-size: var(--admin-type-body);
   color: var(--onroda-text-dark);
   background: var(--onroda-bg-light);
 }
@@ -1905,16 +1939,16 @@
 .admin-rides-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: var(--admin-type-body);
 }
 
 .admin-rides-table thead th {
   text-align: left;
-  padding: 8px 10px;
-  font-size: 0.68rem;
-  font-weight: 800;
+  padding: 10px 12px;
+  font-size: var(--admin-type-caption);
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--onroda-text-muted);
   border-bottom: 1px solid var(--onroda-border-subtle);
   background: color-mix(in srgb, var(--onroda-bg-card) 96%, var(--onroda-border-subtle));
@@ -1922,7 +1956,7 @@
 }
 
 .admin-rides-table tbody td {
-  padding: 8px 10px;
+  padding: 10px 12px;
   vertical-align: top;
   border-bottom: 1px solid var(--onroda-border-subtle);
 }
@@ -4057,6 +4091,77 @@ ul.admin-mandate-doclist {
   padding: 0 16px 40px;
 }
 
+/** Mandantenzentrale (Detail): App-Grau zwischen weißen Blöcken — alle company_kind. */
+.admin-mandate-detail-page.admin-page--loose {
+  max-width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 0 var(--onroda-space-4) 40px;
+}
+
+.admin-mandate-detail-page > .admin-error-banner {
+  margin-bottom: 0;
+}
+
+.admin-section-block--mandate-hero {
+  padding: var(--onroda-padding-card);
+}
+
+.admin-section-block--mandate-hero .admin-m-hero__title {
+  margin: var(--onroda-space-1) 0 0;
+  font-size: var(--admin-type-title-2, 1.45rem);
+  font-weight: 800;
+  color: var(--onroda-text-dark);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.admin-section-block--mandate-hero .admin-m-hero__hint {
+  color: var(--onroda-text-muted);
+}
+
+.admin-mandate-detail-page .admin-section-block > .admin-m-card__h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--onroda-space-3) var(--onroda-space-4);
+  margin: 0;
+  padding: var(--onroda-space-4) var(--onroda-space-5);
+  background: transparent;
+  border-bottom: 1px solid var(--onroda-border-subtle);
+}
+
+.admin-mandate-detail-page .admin-section-block > .admin-m-card__h .admin-panel-card__title {
+  margin: 0;
+  font-size: var(--admin-type-headline);
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.admin-mandate-detail-page .admin-section-block > :not(.admin-m-card__h) {
+  padding-left: var(--onroda-space-5);
+  padding-right: var(--onroda-space-5);
+  padding-bottom: var(--onroda-space-5);
+}
+
+.admin-mandate-detail-page .admin-section-block > .admin-m-card__h + * {
+  padding-top: var(--onroda-space-4);
+}
+
+.admin-mandate-detail-page .admin-section-block--mandate-kpi .admin-mandate-kpi {
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.admin-mandate-detail-page .admin-section-block--mandate-kpi > p.admin-table-sub {
+  margin-top: 0;
+  padding-top: 0;
+}
+
 .admin-m-hero {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -4209,9 +4314,9 @@ ul.admin-mandate-doclist {
 .admin-m-sec {
   margin: 16px 0 0;
   padding: 0 14px 8px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
+  font-size: var(--admin-type-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #475569;
   border-bottom: 1px solid #e8edf4;
@@ -4223,8 +4328,8 @@ ul.admin-mandate-doclist {
 }
 
 .admin-m-sec__hint {
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-size: var(--admin-type-footnote);
+  line-height: 1.4;
   color: #5c6470;
   margin: 0 0 2px 0;
 }
@@ -4331,8 +4436,8 @@ ul.admin-mandate-doclist {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: var(--admin-type-footnote);
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #64748b;
@@ -4343,7 +4448,7 @@ ul.admin-mandate-doclist {
   align-items: center;
   gap: 8px;
   text-transform: none;
-  font-size: 0.85rem;
+  font-size: var(--admin-type-body);
   font-weight: 600;
   color: #334155;
   padding-top: 6px;
@@ -4352,7 +4457,7 @@ ul.admin-mandate-doclist {
 .admin-m-inp,
 .admin-m-ta {
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--admin-type-body);
   text-transform: none;
   font-weight: 500;
   letter-spacing: 0;

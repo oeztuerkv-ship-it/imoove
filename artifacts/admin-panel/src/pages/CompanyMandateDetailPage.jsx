@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -217,7 +218,6 @@ export default function CompanyMandateDetailPage({
   const [saveErr, setSaveErr] = useState("");
   const [form, setForm] = useState(null);
   const [taxiFleetBusy, setTaxiFleetBusy] = useState("");
-  const [recentRidesOpen, setRecentRidesOpen] = useState(false);
 
   const loadMandate = useCallback(() => {
     setLoading(true);
@@ -630,13 +630,13 @@ export default function CompanyMandateDetailPage({
   }, [c]);
 
   return (
-    <div className="admin-page admin-m-page">
-      {err ? <div className="admin-error-banner" style={{ marginBottom: 16 }}>{err}</div> : null}
+    <div className="admin-page admin-page--loose admin-page--content admin-mandate-detail-page">
+      {err ? <div className="admin-error-banner">{err}</div> : null}
       {loading && !c ? <p className="admin-table-sub">Lade Mandantendaten …</p> : null}
 
       {c && data ? (
         <>
-          <header className="admin-m-hero">
+          <section className="admin-section-block admin-section-block--mandate-hero" aria-label="Mandantenkopf">
             <div className="admin-m-hero__bar">
               <div className="admin-m-hero__left">
                 <button type="button" className="admin-m-back" onClick={onBack}>
@@ -694,12 +694,12 @@ export default function CompanyMandateDetailPage({
                 </button>
               </div>
             </div>
-          </header>
+          </section>
 
-          {saveErr ? <div className="admin-error-banner" style={{ marginBottom: 12 }}>{saveErr}</div> : null}
+          {saveErr ? <div className="admin-error-banner">{saveErr}</div> : null}
 
           {showEdit && form ? (
-            <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 16 }}>
+            <section className="admin-section-block">
               <div className="admin-m-card__h">
                 <span className="admin-panel-card__title" style={{ margin: 0 }}>
                   Mandant bearbeiten
@@ -1152,7 +1152,7 @@ export default function CompanyMandateDetailPage({
 
           {!showEdit ? (
             <>
-              <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+              <section className="admin-section-block">
                 <div className="admin-m-card__h">
                   <span className="admin-panel-card__title" style={{ margin: 0 }}>
                     1. Stammdaten
@@ -1220,7 +1220,7 @@ export default function CompanyMandateDetailPage({
                 </div>
               </section>
 
-              <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+              <section className="admin-section-block">
                 <div className="admin-m-card__h">
                   <span className="admin-panel-card__title" style={{ margin: 0 }}>
                     2. Status &amp; Freigaben
@@ -1291,7 +1291,7 @@ export default function CompanyMandateDetailPage({
                 ) : null}
               </section>
 
-              <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+              <section className="admin-section-block">
                 <div className="admin-m-card__h">
                   <span className="admin-panel-card__title" style={{ margin: 0 }}>
                     3. Abrechnung
@@ -1343,7 +1343,7 @@ export default function CompanyMandateDetailPage({
               </section>
 
               {isTaxi || isHotel || isInsurerLike ? (
-                <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+                <section className="admin-section-block">
                   <div className="admin-m-card__h">
                     <span className="admin-panel-card__title" style={{ margin: 0 }}>
                       4. Zusatz je Mandantentyp
@@ -1422,7 +1422,7 @@ export default function CompanyMandateDetailPage({
                   </div>
                 </section>
               ) : !isTaxi && !isHotel && !isInsurerLike ? (
-                <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+                <section className="admin-section-block">
                   <div className="admin-m-card__h">
                     <span className="admin-panel-card__title" style={{ margin: 0 }}>
                       4. Weitere Angaben
@@ -1445,13 +1445,13 @@ export default function CompanyMandateDetailPage({
             </>
           ) : null}
 
-          <section className="admin-panel-card admin-m-card admin-m-card--kpi" style={{ marginBottom: 16 }}>
+          <section className="admin-section-block admin-section-block--mandate-kpi">
             <div className="admin-m-card__h">
               <span className="admin-panel-card__title" style={{ margin: 0 }}>
                 Abrechnung / Einnahmen
               </span>
             </div>
-            <div className="admin-mandate-kpi" style={{ marginBottom: 12, padding: "0 8px 10px" }}>
+            <div className="admin-mandate-kpi">
               <div className="admin-mandate-kpi__cell">
                 <div className="admin-mandate-kpi__val">{eur(f?.revenueCompletedGrossAllTime)}</div>
                 <div className="admin-mandate-kpi__lbl">Umsatz gesamt (abgeschlossen, Brutto Fahrpreis)</div>
@@ -1491,13 +1491,13 @@ export default function CompanyMandateDetailPage({
             </p>
           </section>
 
-          <section className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
+          <section className="admin-section-block">
             <div className="admin-m-card__h">
               <span className="admin-panel-card__title" style={{ margin: 0 }}>
                 Fahrten im Überblick (Status)
               </span>
             </div>
-            <div className="admin-mandate-kpi" style={{ padding: "8px 12px 12px" }}>
+            <div className="admin-mandate-kpi">
               <div className="admin-mandate-kpi__cell">
                 <div className="admin-mandate-kpi__val">{data.rides?.openPipeline ?? 0}</div>
                 <div className="admin-mandate-kpi__lbl">Offen (Warteschlange)</div>
@@ -1520,10 +1520,7 @@ export default function CompanyMandateDetailPage({
           </section>
 
           {data.taxi ? (
-            <section
-              className="admin-panel-card admin-m-card admin-m-card--unified"
-              style={{ marginBottom: 16 }}
-            >
+            <section className="admin-section-block">
               <div className="admin-m-card__h">
                 <div style={{ minWidth: 0 }}>
                   <div className="admin-panel-card__title" style={{ margin: 0 }}>
@@ -1885,10 +1882,7 @@ export default function CompanyMandateDetailPage({
           ) : null}
 
           {data.hotel ? (
-            <section
-              className="admin-panel-card admin-m-card admin-m-card--unified"
-              style={{ marginBottom: 16 }}
-            >
+            <section className="admin-section-block">
               <div className="admin-m-card__h">
                 <span className="admin-panel-card__title" style={{ margin: 0 }}>
                   Hotel · Zugangscodes
@@ -1912,10 +1906,7 @@ export default function CompanyMandateDetailPage({
           ) : null}
 
           {data.insurer ? (
-            <section
-              className="admin-panel-card admin-m-card admin-m-card--unified"
-              style={{ marginBottom: 16 }}
-            >
+            <section className="admin-section-block">
               <div className="admin-m-card__h">
                 <span className="admin-panel-card__title" style={{ margin: 0 }}>
                   Kasse / Krankenfahrt (Zählung, o. Diagnosen)
@@ -1954,7 +1945,7 @@ export default function CompanyMandateDetailPage({
             </section>
           ) : null}
 
-          <section className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
+          <section className="admin-section-block">
             <div className="admin-m-card__h">
               <span className="admin-panel-card__title" style={{ margin: 0 }}>
                 Dokumente (Zusammenfassung)
@@ -1991,77 +1982,58 @@ export default function CompanyMandateDetailPage({
             </p>
           </section>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--collapsible" style={{ marginBottom: 16 }}>
-            <button
-              type="button"
-              className="admin-m-card__toggle"
-              aria-expanded={recentRidesOpen}
-              aria-controls="admin-mandate-recent-rides"
-              onClick={() => setRecentRidesOpen((v) => !v)}
-            >
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Letzte Fahrten (max. 20, jüngste zuerst)
-              </span>
-              <span className="admin-m-card__toggle-meta">
-                {data.recentRides?.length ? (
-                  <span className="admin-table-sub" style={{ margin: 0 }}>
-                    {data.recentRides.length} Einträge
-                  </span>
-                ) : null}
-                <span className="admin-m-card__chevron" aria-hidden>
-                  {recentRidesOpen ? "▾" : "▸"}
-                </span>
-              </span>
-            </button>
-            {recentRidesOpen ? (
-              <div id="admin-mandate-recent-rides" className="admin-m-card__body">
-                {isInsurerLike ? (
-                  <p className="admin-table-sub" style={{ marginBottom: 8 }}>
-                    Krankenkasse: sichtbar sind Fahrt, Kostenstelle, Referenz, Status und Betrag – keine medizinischen
-                    Befunde.
-                  </p>
-                ) : null}
-                {!(data.recentRides && data.recentRides.length) ? (
-                  <p className="admin-table-sub">Keine Fahrten.</p>
-                ) : (
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ minWidth: 880, width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr>
-                          <th className="admin-mandate-th">Status</th>
-                          <th className="admin-mandate-th">Anlage / Datum</th>
-                          <th className="admin-mandate-th">Start</th>
-                          <th className="admin-mandate-th">Ziel</th>
-                          <th className="admin-mandate-th">Betrag</th>
-                          <th className="admin-mandate-th">Zahlungsart</th>
-                          <th className="admin-mandate-th">Fahrer</th>
-                          <th className="admin-mandate-th">Kostenstelle / Ref.</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.recentRides.map((r) => (
-                          <tr key={r.id}>
-                            <td className="admin-mandate-td">{r.status}</td>
-                            <td className="admin-mandate-td">{fmtDateDay(r.createdAt)}</td>
-                            <td className="admin-mandate-tdMono">{r.fromLabel}</td>
-                            <td className="admin-mandate-tdMono">{r.toLabel}</td>
-                            <td className="admin-mandate-td">{eur(r.amountEur)}</td>
-                            <td className="admin-mandate-td">{r.paymentMethod || NA}</td>
-                            <td className="admin-mandate-td">{r.driverLabel || NA}</td>
-                            <td className="admin-mandate-td">
-                              {r.costCenterId || "—"} / {r.billingReference || "—"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+          <AdminCollapsibleSection
+            title="Letzte Fahrten (max. 20, jüngste zuerst)"
+            subtitle={
+              data.recentRides?.length ? `${data.recentRides.length} Einträge` : "Keine Fahrten in der Liste"
+            }
+            defaultOpen={false}
+          >
+            {isInsurerLike ? (
+              <p className="admin-table-sub" style={{ marginBottom: 8 }}>
+                Krankenkasse: sichtbar sind Fahrt, Kostenstelle, Referenz, Status und Betrag – keine medizinischen
+                Befunde.
+              </p>
             ) : null}
-          </section>
+            {!(data.recentRides && data.recentRides.length) ? (
+              <p className="admin-table-sub">Keine Fahrten.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ minWidth: 880, width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th className="admin-mandate-th">Status</th>
+                      <th className="admin-mandate-th">Anlage / Datum</th>
+                      <th className="admin-mandate-th">Start</th>
+                      <th className="admin-mandate-th">Ziel</th>
+                      <th className="admin-mandate-th">Betrag</th>
+                      <th className="admin-mandate-th">Zahlungsart</th>
+                      <th className="admin-mandate-th">Fahrer</th>
+                      <th className="admin-mandate-th">Kostenstelle / Ref.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentRides.map((r) => (
+                      <tr key={r.id}>
+                        <td className="admin-mandate-td">{r.status}</td>
+                        <td className="admin-mandate-td">{fmtDateDay(r.createdAt)}</td>
+                        <td className="admin-mandate-tdMono">{r.fromLabel}</td>
+                        <td className="admin-mandate-tdMono">{r.toLabel}</td>
+                        <td className="admin-mandate-td">{eur(r.amountEur)}</td>
+                        <td className="admin-mandate-td">{r.paymentMethod || NA}</td>
+                        <td className="admin-mandate-td">{r.driverLabel || NA}</td>
+                        <td className="admin-mandate-td">
+                          {r.costCenterId || "—"} / {r.billingReference || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card">
+          <section className="admin-section-block">
             <div className="admin-m-card__h">
               <span className="admin-panel-card__title" style={{ margin: 0 }}>
                 Verlauf / Audit (Panel)

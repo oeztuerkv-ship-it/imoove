@@ -20,6 +20,7 @@ Volltext und Klassenliste: **`artifacts/admin-panel/docs/admin-ui-reference.md`*
 - **Gleiche Abstände** (Struktur wie die Referenz: Sektionen, `admin-m-sec`, typische 12–16px zwischen Blöcken).
 - **Gleiche Status-Badges** (`admin-c-badge` + die bestehenden `--neutral|--info|--ok|--warn|--err`).
 - **Seitenoberfläche:** App-Hintergrund **grau** (`--onroda-bg-app`), Inhalte in **weißen** `admin-section-block`-Karten; aufklappbar nur über **`AdminCollapsibleSection`** (siehe Doku „Seitenoberfläche & Blöcke“) — **kein** eigener Hintergrund pro Screen.
+- **Typografie (verbindlich):** Apple-ähnliche Skala auf `.admin-app` — **17px** Fließtext/Inputs/Tabellen (`--admin-type-body`), **20px** Block-Titel (`--admin-type-headline`), **15px** Meta/Labels (`--admin-type-footnote`), **13px** nur für Caps/Spaltenköpfe (`--admin-type-caption`). **Keine** neuen `0.72–0.85rem`-Einzelwerte in Block-UI; Tokens in `admin-ui.css` nutzen. Details: **`artifacts/admin-panel/docs/admin-ui-reference.md`** § Typografie.
 - **Keine neuen Fremd-Layouts** (kein eigenes Mini-Design-System) und **kein TaxiMaster-UI-Klon** als Plattform-Look.
 - **Keine isolierten Sonderdesigns**; wenn etwas wiederverwendbar fehlt: Klassen zentral in `admin-ui.css` ergänzen, dann in der Doku-Referenz erwähnen.
 

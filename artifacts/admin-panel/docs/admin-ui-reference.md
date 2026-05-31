@@ -42,6 +42,23 @@ Ziel: **keine** neuen Fremd- oder Einzellayouts, **keine** isolierten Sonderdesi
 
 **Referenz-Implementierung:** `DriversOverviewPage.jsx` (KPI → Block „Suche & Filter“ → Block „Ergebnisse“).
 
+## Typografie (Apple-ähnlich, verbindlich)
+
+Ziel: **größere, moderne Lesbarkeit** in Blöcken — nicht die alte 0,72–0,85rem-Mini-Schrift.
+
+| Token | Größe | Verwendung |
+|--------|--------|------------|
+| `--admin-type-body` | 17px (1.0625rem) | Fließtext, `admin-page-lead`, Tabellenzeilen, Inputs, Banner |
+| `--admin-type-headline` | 20px (1.25rem) | `admin-section-block__title` |
+| `--admin-type-footnote` | 15px (0.9375rem) | Untertitel, Labels, Toolbar-Info, kompakte Buttons |
+| `--admin-type-caption` | 13px (0.8125rem) | Tabellen-Spaltenköpfe (uppercase), kleinste Meta |
+| `--admin-type-title3` | 22px | Split-Detail-Titel |
+| `--admin-type-stat` | 34px | KPI-Zahlen (`admin-stat-value`) |
+
+- **Schriftfamilie:** `-apple-system`, BlinkMacSystemFont, SF Pro, `system-ui` auf `.admin-app`.
+- **Neue Seiten:** `var(--admin-type-*)` — **kein** ad-hoc `fontSize: '0.8rem'` in JSX für Block-Inhalte.
+- **Legacy:** ältere `admin-m-*` / `admin-c-*` werden schrittweise angeglichen; neue Features nur über die Tokens oben.
+
 ## Cards (Karten)
 
 - Inhalt in **`admin-panel-card` + `admin-m-card`**, für einheitliche Flächen: **`admin-m-card--unified`**, nicht pro Fachfarbe eigene Silo-Rahmen.

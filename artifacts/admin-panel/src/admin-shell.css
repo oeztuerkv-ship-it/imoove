@@ -89,17 +89,18 @@
 .admin-app__title {
   margin: 0;
   font-size: 1.75rem;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--onroda-red);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
 }
 
 .admin-app__subtitle {
   margin: 6px 0 0;
-  font-size: 0.95rem;
+  font-size: var(--admin-type-body, 1.0625rem);
   color: var(--onroda-text-grey);
   font-weight: 500;
+  line-height: 1.47;
 }
 
 .admin-app__topbar-right {
