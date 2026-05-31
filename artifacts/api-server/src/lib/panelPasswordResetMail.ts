@@ -12,6 +12,18 @@ export function buildPanelPasswordResetLink(rawToken: string): string {
   return `${base}${sep}token=${encodeURIComponent(rawToken)}`;
 }
 
+/** Gleiche Bildmarke wie Partner-Freigabe / Willkommens-Mail (`onroda-mark.png` auf Marketing-Host). */
+function marketingLogoSrc(): string {
+  const u = (
+    process.env.PARTNER_REGISTRATION_STATUS_PAGE_URL ?? "https://www.onroda.de/partner/anfrage-status"
+  ).replace(/\/$/, "");
+  try {
+    return `${new URL(u).origin}/onroda-mark.png`;
+  } catch {
+    return "https://www.onroda.de/onroda-mark.png";
+  }
+}
+
 export async function sendPanelPasswordResetMail(input: {
   to: string;
   resetLink: string;
@@ -27,6 +39,11 @@ export async function sendPanelPasswordResetMail(input: {
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
   const resetLinkEsc = escapeHtmlMail(input.resetLink);
+  const logoSrc = escapeHtmlMail(marketingLogoSrc());
+  const userEsc = escapeHtmlMail(input.username);
+
+  const securityNote =
+    "Wenn Sie diese Anfrage nicht gestellt haben, ignorieren Sie diese E-Mail. Ihr Passwort bleibt unverändert.";
 
   const text = [
     "Guten Tag,",
@@ -38,25 +55,39 @@ export async function sendPanelPasswordResetMail(input: {
     `Der Link ist etwa ${ttlMinutes} Minuten gültig (bis ${until}, Europe/Berlin).`,
     `Benutzername: ${input.username}`,
     "",
-    "Wenn Sie keine Anfrage gestellt haben, ignorieren Sie diese E-Mail.",
+    securityNote,
     "",
     "Mit freundlichen Grüßen",
     "Onroda",
   ].join("\n");
 
   const html = `<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8" /></head>
+<html lang="de"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
 <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
-  <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
-    <p style="text-align:center;font-size:22px;font-weight:800;"><span style="color:#e30613;">On</span><span style="color:#111;">roda</span></p>
-    <h2 style="text-align:center;font-size:18px;color:#111;">Passwort zurücksetzen</h2>
-    <p style="line-height:1.5;color:#333;">Sie haben ein neues Passwort für das <strong>Partner-Portal</strong> angefordert.</p>
-    <p style="text-align:center;margin:24px 0;">
-      <a href="${resetLinkEsc}" style="display:inline-block;background:#0d9488;color:#fff;padding:14px 22px;text-decoration:none;border-radius:6px;font-weight:bold;">
-        Neues Passwort festlegen
-      </a>
-    </p>
-    <p style="font-size:12px;color:#888;">Link gültig ${ttlMinutes} Min. (bis ${escapeHtmlMail(until)}). Benutzername: <code>${escapeHtmlMail(input.username)}</code></p>
+  <div style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;">
+    Passwort zurücksetzen für das Onroda-Partner-Portal — Link nur begrenzt gültig.
+  </div>
+  <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
+    <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <img src="${logoSrc}" alt="ONRODA" width="120" height="40" style="display:block;margin:0 auto;max-width:100%;height:auto;border:0" />
+      </div>
+      <h2 style="text-align:center;margin:0 0 16px;font-size:20px;color:#111;">Passwort zurücksetzen</h2>
+      <p style="margin:0 0 12px;line-height:1.5;color:#333;">Sie haben ein neues Passwort für das <strong>Onroda-Partner-Portal</strong> angefordert.</p>
+      <div style="text-align:center;margin:30px 0;">
+        <a href="${resetLinkEsc}"
+           style="display:inline-block;background:#e30613;color:#ffffff;padding:15px 25px;text-decoration:none;border-radius:6px;font-weight:bold;">
+          Neues Passwort festlegen
+        </a>
+      </div>
+      <p style="font-size:12px;color:#888;margin:0;line-height:1.5;">
+        Dieser Link ist ${ttlMinutes} Minuten gültig (bis ${escapeHtmlMail(until)}, Europe/Berlin). Benutzername: <code>${userEsc}</code>
+      </p>
+      <p style="font-size:12px;color:#888;margin:16px 0 0;line-height:1.5;border-top:1px solid #e8edf4;padding-top:14px;">
+        ${escapeHtmlMail(securityNote)}
+      </p>
+      <p style="margin-top:20px;color:#6b7280;font-size:12px;text-align:center;">Onroda</p>
+    </div>
   </div>
 </body></html>`;
 
