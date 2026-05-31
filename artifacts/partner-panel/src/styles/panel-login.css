@@ -35,10 +35,11 @@
   color: var(--onroda-red);
 }
 
-.partner-login__brand-logo-img {
+.partner-login__brand-logo-img.panel-brand-logo,
+.partner-login__brand-mark.panel-brand-logo {
+  height: 48px;
+  max-width: 160px;
   margin: 0 auto 6px;
-  display: block;
-  font-size: 1.65rem;
 }
 
 .partner-login__brand-subtitle {

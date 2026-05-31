@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import OnrodaMark from "./OnrodaMark.jsx";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import {
@@ -1099,10 +1100,7 @@ export default function AgenturMasterPanel({ company, onLogout }) {
   return (
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       <div style={{ background: "#fff", borderBottom: "0.5px solid rgba(0,0,0,0.1)", padding: "0 24px", display: "flex", alignItems: "center", height: 56, position: "sticky", top: 0, zIndex: 100 }}>
-        <span style={{ display: "flex", alignItems: "baseline", gap: 1 }}>
-          <span style={{ color: RED, fontWeight: 800, fontSize: 20, letterSpacing: -1 }}>on</span>
-          <span style={{ color: "#1c1c1e", fontWeight: 800, fontSize: 20, letterSpacing: -1 }}>roda</span>
-        </span>
+        <OnrodaMark className="partner-shell__brand-mark-img" />
         <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", marginLeft: 8, background: "#F2F2F7", padding: "3px 10px", borderRadius: 20, fontWeight: 500 }}>
           {company?.company_kind === "hotel" ? "🏨 Hotel" : company?.company_kind === "travel" ? "✈️ Reisebüro" : "🏢 Agentur"}
         </span>

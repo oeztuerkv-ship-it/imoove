@@ -32,33 +32,27 @@
   min-width: 120px;
 }
 
-/* Wortmarke wie Marketing-Startseite (ON / RODA), Serif wie Homepage */
-.partner-shell__onroda-wordmark {
-  font-family: "Libre Baskerville", Georgia, serif;
-  font-weight: 700;
-  font-size: 1.45rem;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  text-decoration: none;
+/* PNG-Markenlogo in Taxi-/Kasse-Shell-Header (wie Admin-Topnav / Mobile-Partner). */
+.partner-shell__brand-mark {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
+  text-decoration: none;
+  line-height: 0;
 }
 
-.partner-shell__onroda-wordmark .on {
-  color: var(--onroda-red, #d5001c);
+.partner-shell__brand-mark .panel-brand-logo {
+  height: 48px;
+  max-width: 160px;
 }
 
-.partner-shell__onroda-wordmark .roda {
-  color: var(--onroda-text-dark, #1a1a1a);
+.partner-shell__brand-mark:hover .panel-brand-logo {
+  opacity: 0.92;
 }
 
-.partner-shell__onroda-wordmark:hover .on {
-  filter: brightness(0.92);
-}
-
-.partner-shell__onroda-wordmark:hover .roda {
-  color: #000000;
+.partner-shell__brand-mark-img.panel-brand-logo {
+  height: 48px;
+  max-width: 160px;
 }
 
 .partner-shell__brand-taxi-line {
@@ -2686,8 +2680,10 @@
     padding: 10px 10px 8px;
   }
 
-  .partner-shell__onroda-wordmark {
-    font-size: 1.22rem;
+  .partner-shell__brand-mark .panel-brand-logo,
+  .partner-shell__brand-mark-img.panel-brand-logo {
+    height: 40px;
+    max-width: 132px;
   }
 
   .partner-shell__brand-taxi {

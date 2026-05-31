@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import OnrodaMark from "./OnrodaMark.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 
@@ -72,8 +73,8 @@ export default function KasseMasterPanel({ company, onUpdate }) {
       
       {/* SIDEBAR NAVIGATION (Grüne Welt) */}
       <div style={{ width: "240px", background: theme.dark, padding: "15px", color: "#fff", display: "flex", flexDirection: "column", gap: "8px" }}>
-        <div style={{ color: theme.green, fontWeight: "bold", textAlign: "center", borderBottom: `1px solid ${theme.green}`, paddingBottom: "10px", marginBottom: "15px" }}>
-          KOSTENTRÄGER PORTAL
+        <div style={{ borderBottom: `1px solid ${theme.green}`, paddingBottom: "12px", marginBottom: "15px", display: "flex", justifyContent: "center" }}>
+          <OnrodaMark className="panel-sidebar__mark-img" />
         </div>
         {[
           { id: "dashboard", l: "📊 1. ÜBERSICHT" },

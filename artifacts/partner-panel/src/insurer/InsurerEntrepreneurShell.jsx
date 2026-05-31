@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import OnrodaMark from "../components/OnrodaMark.jsx";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { hasPanelModule } from "../lib/panelNavigation.js";
 import { API_BASE } from "../lib/apiBase.js";
@@ -62,14 +63,13 @@ export default function InsurerEntrepreneurShell({ company, onLogout }) {
       <header className="partner-shell__header">
         <div className="partner-shell__brand" title={company?.name || "Kostenträger"}>
           <a
-            className="partner-shell__onroda-wordmark"
+            className="partner-shell__brand-mark"
             href="https://onroda.de"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="onroda – zur Website"
+            aria-label="ONRODA – zur Website"
           >
-            <span className="on">on</span>
-            <span className="roda">roda</span>
+            <OnrodaMark />
           </a>
           <div className="partner-shell__brand-taxi-line">
             <span className="partner-shell__brand-taxi">Krankenkasse &amp; Kostenträger</span>

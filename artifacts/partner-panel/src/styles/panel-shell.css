@@ -149,6 +149,20 @@
   color: var(--onroda-text-grey);
 }
 
+/* PNG-Markenlogo — gleiche Maße wie Admin-Konsole (Topnav 48px, Sidebar 56px). */
+.panel-brand-logo {
+  height: 48px;
+  width: auto;
+  max-width: 160px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.panel-sidebar__mark-img.panel-brand-logo {
+  height: 56px;
+  max-width: 168px;
+}
+
 .panel-sidebar__brand {
   display: flex;
   align-items: center;

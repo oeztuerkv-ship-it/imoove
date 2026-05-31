@@ -1,14 +1,11 @@
-import OnrodaLogo from "../components/OnrodaLogo.jsx";
+import OnrodaMark from "../components/OnrodaMark.jsx";
 
 export default function PanelSidebar({ active, onChange, items }) {
   return (
     <aside className="panel-sidebar">
       <div>
         <div className="panel-sidebar__brand">
-          <OnrodaLogo className="panel-sidebar__wordmark" />
-          <div>
-            <div className="panel-sidebar__logo-sub">Ihr Unternehmensbereich</div>
-          </div>
+          <OnrodaMark className="panel-sidebar__mark-img" />
         </div>
 
         <div className="panel-sidebar__section-title">Ihr Menü</div>
