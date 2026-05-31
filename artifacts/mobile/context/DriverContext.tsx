@@ -65,7 +65,7 @@ function fleetLoginUserMessage(errorCode: string): string {
 }
 
 const DEFAULT_NICHT_FREI_MSG =
-  "Noch nicht freigegeben — Auftragsmarkt gesperrt. Bitte Ihr Unternehmen oder Onroda kontaktieren, bis alle Voraussetzungen erfüllt sind.";
+  "Sie sind noch nicht freigeschaltet. Ihr Unternehmen muss im Partner-Portal die fehlenden Daten ergänzen — bis dahin sind Aufträge gesperrt. Die Anmeldung in der App ist möglich.";
 
 /** Antwort `GET /fleet-driver/v1/me` → Profil (Token bleibt aus `prev`). */
 function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, unknown>): DriverProfile {

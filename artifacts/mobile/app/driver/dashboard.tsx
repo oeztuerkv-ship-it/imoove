@@ -3560,7 +3560,7 @@ export default function DriverDashboard() {
           }}
         >
           <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#FBBF24", marginBottom: 4 }}>
-            {driver.blockBannerTitle || "Auftragsmarkt gesperrt"}
+            {driver.blockBannerTitle || "Noch nicht freigeschaltet"}
           </Text>
           <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#E2E8F0", lineHeight: 19 }}>
             {driver.notFreigegebenMessage}
