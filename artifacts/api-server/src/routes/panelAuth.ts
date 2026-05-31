@@ -248,7 +248,17 @@ function hashPanelResetToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-/** Passwort-vergessen: neutrale Antwort (keine Enumeration), E-Mail mit Link an hinterlegte Adresse. */
+function maskEmailForResetHint(email: string): string {
+  const e = email.trim();
+  const at = e.indexOf("@");
+  if (at <= 0) return "Ihre hinterlegte E-Mail-Adresse";
+  const local = e.slice(0, at);
+  const domain = e.slice(at + 1);
+  const head = local.length <= 2 ? local[0] ?? "*" : `${local.slice(0, 2)}…`;
+  return `${head}@${domain}`;
+}
+
+/** Passwort-vergessen: prüft Zugang + E-Mail im System, sendet Link nur bei Treffer. */
 router.post("/panel-auth/password-reset/request", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPanelLogin(ip);
@@ -258,27 +268,43 @@ router.post("/panel-auth/password-reset/request", async (req, res) => {
     return;
   }
 
-  const generic = {
-    ok: true,
-    message:
-      "Wenn ein passender Zugang existiert, erhalten Sie in Kürze eine E-Mail mit einem Link zum Festlegen eines neuen Passworts.",
-  };
-
   const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
-  if (!identity || !isPostgresConfigured()) {
-    res.json(generic);
+  if (!identity) {
+    res.status(400).json({
+      ok: false,
+      error: "identity_required",
+      message: "Bitte E-Mail oder Benutzername eingeben.",
+    });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({
+      ok: false,
+      error: "database_not_configured",
+      message: "Passwort-Rücksetzung ist derzeit nicht verfügbar (Datenbank).",
+    });
     return;
   }
 
   const row = await findActivePanelUserByIdentity(identity);
   if (!row) {
-    res.json(generic);
+    res.status(404).json({
+      ok: false,
+      error: "panel_user_not_found",
+      message:
+        "Kein aktiver Partner-Zugang zu dieser E-Mail oder diesem Benutzernamen. Prüfen Sie die Schreibweise oder wenden Sie sich an Ihren Administrator.",
+    });
     return;
   }
 
   const recipient = (row.email ?? "").trim();
   if (!recipient.includes("@")) {
-    res.json(generic);
+    res.status(400).json({
+      ok: false,
+      error: "panel_user_no_email",
+      message:
+        "Zu diesem Zugang ist keine E-Mail-Adresse hinterlegt. Bitte Ihren Administrator (Onroda / Unternehmens-Admin) um ein neues Passwort bitten.",
+    });
     return;
   }
 
@@ -315,7 +341,25 @@ router.post("/panel-auth/password-reset/request", async (req, res) => {
     },
   });
 
-  res.json(generic);
+  if (!mailResult.ok) {
+    const mailHint =
+      mailResult.reason === "smtp_not_configured"
+        ? "E-Mail-Versand ist auf dem Server nicht konfiguriert. Bitte den Plattform-Support kontaktieren."
+        : "Die E-Mail konnte nicht versendet werden. Bitte später erneut versuchen oder den Administrator kontaktieren.";
+    res.status(503).json({
+      ok: false,
+      error: "mail_send_failed",
+      reason: mailResult.reason,
+      message: mailHint,
+    });
+    return;
+  }
+
+  res.json({
+    ok: true,
+    mailSent: true,
+    message: `Die E-Mail mit dem Link zum neuen Passwort wurde an ${maskEmailForResetHint(recipient)} gesendet.`,
+  });
 });
 
 router.post("/panel-auth/password-reset/confirm", async (req, res) => {
