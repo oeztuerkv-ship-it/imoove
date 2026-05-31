@@ -104,6 +104,10 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
       ? cc.minCommissionEur
       : null;
   const medicalTransportAuthorized = me.medicalTransportAuthorized === true;
+  const featureKkModule = me.featureKkModule === true;
+  const permissionKkModule = me.permissionKkModule === true;
+  const isOwner = me.isOwner === true;
+  const kkModuleAuthorized = me.kkModuleAuthorized === true;
   return {
     ...prev,
     id: String(d.id ?? prev.id ?? ""),
@@ -130,6 +134,10 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
       minCommissionEur,
     },
     medicalTransportAuthorized,
+    featureKkModule,
+    permissionKkModule,
+    isOwner,
+    kkModuleAuthorized,
   };
 }
 
@@ -157,6 +165,10 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     driverBlockKind: typeof p.driverBlockKind === "string" ? p.driverBlockKind : "",
     companyCommission: normalizeCompanyCommissionFromStorage(p.companyCommission),
     medicalTransportAuthorized: p.medicalTransportAuthorized === true,
+    featureKkModule: p.featureKkModule === true,
+    permissionKkModule: p.permissionKkModule === true,
+    isOwner: p.isOwner === true,
+    kkModuleAuthorized: p.kkModuleAuthorized === true,
   };
 }
 
@@ -208,6 +220,14 @@ export interface DriverProfile {
   companyCommission: DriverCompanyCommission;
   /** Krankenfahrt-Freigabe (aus `/fleet-driver/v1/me`). */
   medicalTransportAuthorized: boolean;
+  /** Mandant: KK-Modul SaaS freigeschaltet. */
+  featureKkModule: boolean;
+  /** Fahrer: explizite KK-Berechtigung (Mitarbeiter). */
+  permissionKkModule: boolean;
+  /** Inhaber-Fahrerkonto. */
+  isOwner: boolean;
+  /** Effektiver KK-Modul-Zugriff (Scan/Upload). */
+  kkModuleAuthorized: boolean;
 }
 
 interface DriverContextValue {
@@ -358,6 +378,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         driverBlockKind: "",
         companyCommission: { rate: 0.1, ratePercent: 10, minCommissionEur: null },
         medicalTransportAuthorized: false,
+        featureKkModule: false,
+        permissionKkModule: false,
+        isOwner: false,
+        kkModuleAuthorized: false,
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));

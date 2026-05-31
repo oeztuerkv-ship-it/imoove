@@ -672,7 +672,7 @@ function ScheduledCard({
   fleetAuthToken,
   driverId,
   onMedicalUpdated,
-  medicalTransportAuthorized = true,
+  kkModuleAuthorized = true,
 }: {
   req: RideRequest;
   onAccept: () => void;
@@ -683,7 +683,7 @@ function ScheduledCard({
   fleetAuthToken?: string;
   driverId?: string;
   onMedicalUpdated?: () => void | Promise<void>;
-  medicalTransportAuthorized?: boolean;
+  kkModuleAuthorized?: boolean;
 }) {
   const { t } = useTranslation();
   const isAssignedUpcoming = req.status === "scheduled_assigned";
@@ -802,14 +802,17 @@ function ScheduledCard({
           fleetAuthToken={fleetAuthToken.trim()}
           driverId={driverId}
           mode="orderCheck"
-          medicalTransportAuthorized={medicalTransportAuthorized}
+          kkModuleAuthorized={kkModuleAuthorized}
           onUpdated={() => void onMedicalUpdated?.()}
         />
       ) : null}
 
       {!isAssignedUpcoming ? (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
-          <Pressable style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 10, borderRadius: 14 }]} onPress={onReject}>
+          <Pressable
+            style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 10, borderRadius: 14 }]}
+            onPress={onReject}
+          >
             <Text style={[styles.rejectText, { color: "#B91C1C" }]}>{t("driver.scheduled.reject")}</Text>
           </Pressable>
           <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#DC2626", paddingVertical: 15, borderRadius: 14 }]} onPress={onAccept}>
@@ -1272,11 +1275,11 @@ function TabProfil({
           ]}
         >
           <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>KONTO</Text>
-          {driver.medicalTransportAuthorized ? (
+          {driver.kkModuleAuthorized ? (
             <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="card" />
-          ) : (
+          ) : driver.featureKkModule ? (
             <MedicalTransportNotAuthorizedCard />
-          )}
+          ) : null}
         </View>
       ) : null}
 
@@ -1346,14 +1349,14 @@ function MedicalRideProofActions({
   onUpdated,
   mode = "full",
   driverId,
-  medicalTransportAuthorized = true,
+  kkModuleAuthorized = true,
 }: {
   req: RideRequest;
   fleetAuthToken: string;
   onUpdated: () => void | Promise<void>;
   mode?: "full" | "orderCheck";
   driverId?: string;
-  medicalTransportAuthorized?: boolean;
+  kkModuleAuthorized?: boolean;
 }) {
   const metaRaw = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
   const meta = metaRaw && typeof metaRaw === "object" ? metaRaw : {};
@@ -1373,7 +1376,7 @@ function MedicalRideProofActions({
   const orderCheckMode = mode === "orderCheck";
 
   if (!isMedicalRideRequest(req)) return null;
-  if (!medicalTransportAuthorized) {
+  if (!kkModuleAuthorized) {
     return (
       <View style={{ paddingHorizontal: orderCheckMode ? 0 : 16, marginBottom: 10, marginTop: orderCheckMode ? 14 : 0 }}>
         <MedicalTransportNotAuthorizedCard />
@@ -1800,14 +1803,14 @@ function ActiveRideScreen({
   onCancel,
   driverId,
   fleetAuthToken,
-  medicalTransportAuthorized = true,
+  kkModuleAuthorized = true,
 }: {
   req: RideRequest;
   onComplete: (finalFare: number) => void | Promise<void>;
   onCancel: () => void;
   driverId: string;
   fleetAuthToken: string;
-  medicalTransportAuthorized?: boolean;
+  kkModuleAuthorized?: boolean;
 }) {
   const colors = useColors();
   const { startDriving, arriveAtCustomer, markDriverArriving, refreshRequests } = useRideRequests();
@@ -2134,7 +2137,7 @@ function ActiveRideScreen({
           <MedicalRideProofActions
             req={req}
             fleetAuthToken={fleetAuthToken}
-            medicalTransportAuthorized={medicalTransportAuthorized}
+            kkModuleAuthorized={kkModuleAuthorized}
             onUpdated={() => void refreshRequests()}
           />
         ) : null}
@@ -3568,7 +3571,7 @@ export default function DriverDashboard() {
             onCancel={() => handleCancel(activeDriverRequest.id)}
             driverId={driverId}
             fleetAuthToken={driver.authToken}
-            medicalTransportAuthorized={driver.medicalTransportAuthorized}
+            kkModuleAuthorized={driver.kkModuleAuthorized}
           />
         ) : (
           <>
@@ -3700,7 +3703,7 @@ export default function DriverDashboard() {
                             driverPos={driverPos}
                             fleetAuthToken={driver.authToken}
                             driverId={driver.id}
-                            medicalTransportAuthorized={driver.medicalTransportAuthorized}
+                            kkModuleAuthorized={driver.kkModuleAuthorized}
                             onMedicalUpdated={() => void refreshDriverMarketHard()}
                             onAccept={() => handleAccept(req.id)}
                             onReject={() => handleReject(req.id)}
@@ -3733,7 +3736,7 @@ export default function DriverDashboard() {
                             driverPos={driverPos}
                             fleetAuthToken={driver.authToken}
                             driverId={driver.id}
-                            medicalTransportAuthorized={driver.medicalTransportAuthorized}
+                            kkModuleAuthorized={driver.kkModuleAuthorized}
                             onMedicalUpdated={() => void refreshDriverMarketHard()}
                             onAccept={() => handleAccept(req.id)}
                             onReject={() => handleReject(req.id)}

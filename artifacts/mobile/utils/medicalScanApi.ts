@@ -101,6 +101,10 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
   test_scan_disabled: "Testscan ist auf dem Server deaktiviert.",
   medical_transport_not_authorized:
     "Krankenfahrten sind für Sie derzeit nicht freigeschaltet. Bitte wenden Sie sich an ONRODA: onroda@mail.de",
+  kk_module_not_enabled:
+    "Das KK-Modul ist für Ihr Unternehmen nicht freigeschaltet. Bitte wenden Sie sich an ONRODA: onroda@mail.de",
+  kk_module_not_authorized:
+    "Kein Zugriff auf das KK-Modul. Ihr Unternehmer kann die Berechtigung im Partner-Portal vergeben.",
   http_413: "Foto ist zu groß für den Upload. Bitte erneut aufnehmen.",
   network_error: "Keine Verbindung zum Server.",
 };
