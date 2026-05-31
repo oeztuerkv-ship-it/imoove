@@ -254,6 +254,17 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
     commission_rate:
       typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
+    commission_type: r.commission_type ?? "percentage",
+    commission_fixed_eur:
+      typeof r.commission_fixed_eur === "number" && Number.isFinite(r.commission_fixed_eur)
+        ? r.commission_fixed_eur
+        : 0,
+    min_commission_eur:
+      typeof r.min_commission_eur === "number" && Number.isFinite(r.min_commission_eur) ? r.min_commission_eur : null,
+    payout_allowed: r.payout_allowed !== false,
+    panel_access_enabled: r.panel_access_enabled !== false,
+    trade_license_number: r.trade_license_number ?? "",
+    onboarding_status: r.onboarding_status ?? "incomplete",
     medical_transport_enabled: Boolean(r.medical_transport_enabled),
     feature_kk_module: Boolean(r.feature_kk_module),
     feature_kk_module_since: r.feature_kk_module_since ? r.feature_kk_module_since.toISOString() : null,
@@ -603,6 +614,13 @@ export type AdminCompanyUpdateBody = Partial<{
   partner_panel_profile_locked: boolean;
   /** Dezimal 0–1 (0.10 = 10 %). */
   commission_rate: number;
+  commission_type: string;
+  commission_fixed_eur: number;
+  min_commission_eur: number | null;
+  payout_allowed: boolean;
+  panel_access_enabled: boolean;
+  trade_license_number: string;
+  onboarding_status: string;
   is_active: boolean;
   is_priority_company: boolean;
   priority_for_live_rides: boolean;
@@ -624,6 +642,8 @@ export type AdminCompanyUpdateBody = Partial<{
    * Nicht Teil von `CompanyRow` — nur Schreib-Seite.
    */
   billing_account_email?: string;
+  billing_settlement_interval?: string;
+  billing_payment_terms_days?: number;
 }>;
 
 /** ONRODA-Provisionssatz des Mandanten (0.10 = 10 %). Fallback 10 % wenn ungültig. */
@@ -709,6 +729,13 @@ function companyRowToDbValues(c: CompanyRow) {
     panel_modules: c.panel_modules ?? null,
     partner_panel_profile_locked: c.partner_panel_profile_locked,
     commission_rate: c.commission_rate,
+    commission_type: c.commission_type ?? "percentage",
+    commission_fixed_eur: c.commission_fixed_eur ?? 0,
+    min_commission_eur: c.min_commission_eur,
+    payout_allowed: c.payout_allowed !== false,
+    panel_access_enabled: c.panel_access_enabled !== false,
+    trade_license_number: c.trade_license_number ?? "",
+    onboarding_status: c.onboarding_status ?? "incomplete",
     medical_transport_enabled: c.medical_transport_enabled,
     feature_kk_module: c.feature_kk_module,
     feature_kk_module_since: c.feature_kk_module_since ? new Date(c.feature_kk_module_since) : null,
@@ -825,6 +852,24 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (typeof body.commission_rate === "number" && Number.isFinite(body.commission_rate)) {
     next.commission_rate = Math.min(1, Math.max(0, body.commission_rate));
   }
+  if (typeof body.commission_type === "string") {
+    const t = body.commission_type.trim().toLowerCase();
+    if (["percentage", "fixed", "hybrid", "none"].includes(t)) next.commission_type = t;
+  }
+  if (typeof body.commission_fixed_eur === "number" && Number.isFinite(body.commission_fixed_eur)) {
+    next.commission_fixed_eur = Math.max(0, body.commission_fixed_eur);
+  }
+  if (body.min_commission_eur === null) next.min_commission_eur = null;
+  if (typeof body.min_commission_eur === "number" && Number.isFinite(body.min_commission_eur)) {
+    next.min_commission_eur = Math.max(0, body.min_commission_eur);
+  }
+  if (typeof body.payout_allowed === "boolean") next.payout_allowed = body.payout_allowed;
+  if (typeof body.panel_access_enabled === "boolean") next.panel_access_enabled = body.panel_access_enabled;
+  if (typeof body.trade_license_number === "string") next.trade_license_number = body.trade_license_number.trim();
+  if (typeof body.onboarding_status === "string") {
+    const os = body.onboarding_status.trim();
+    if (["incomplete", "pending", "approved"].includes(os)) next.onboarding_status = os;
+  }
   if (typeof body.medical_transport_enabled === "boolean") {
     next.medical_transport_enabled = body.medical_transport_enabled;
   }
@@ -919,6 +964,13 @@ export async function insertAdminCompany(
     panel_modules: null,
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
+    commission_type: "percentage",
+    commission_fixed_eur: 0,
+    min_commission_eur: null,
+    payout_allowed: true,
+    panel_access_enabled: true,
+    trade_license_number: "",
+    onboarding_status: "incomplete",
     medical_transport_enabled: false,
     feature_kk_module: false,
     feature_kk_module_since: null,

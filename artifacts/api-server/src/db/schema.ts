@@ -85,6 +85,13 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false),
   /** ONRODA-Provision (0.10 = 10 %), siehe ride_financials bei completed. */
   commission_rate: doublePrecision("commission_rate").notNull().default(0.1),
+  /** percentage | fixed | hybrid | none — Finance/ride_financials. */
+  commission_type: text("commission_type").notNull().default("percentage"),
+  commission_fixed_eur: doublePrecision("commission_fixed_eur").notNull().default(0),
+  min_commission_eur: doublePrecision("min_commission_eur"),
+  payout_allowed: boolean("payout_allowed").notNull().default(true),
+  /** Partner-Panel-Login/API für diesen Mandanten (unabhängig von is_active). */
+  panel_access_enabled: boolean("panel_access_enabled").notNull().default(true),
   /** Institutionskennzeichen (IK) des Partners — Snapshot in medical_cases. */
   partner_ik_number: text("partner_ik_number").notNull().default(""),
   /** Vorlagen Krankenkassen-Abrechnung: [{ insurerName, insurerIk, email }]. */

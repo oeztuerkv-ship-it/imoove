@@ -7,7 +7,8 @@ import {
   resolveMergedTariff,
 } from "../lib/operationalTariffEngine";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
-import { getAdminCompanyCommissionRate } from "./adminData";
+import { findCompanyById } from "./adminData";
+import { financePricingContextFromCompanyRow } from "../lib/adminCompanyProvision";
 import { getDb, isPostgresConfigured } from "./client";
 import { isMedicalTransportPlatformAvailable } from "../lib/medical/medicalTransportAuthorization";
 import { appOperationalConfigTable, appServiceRegionsTable } from "./schema";
@@ -649,13 +650,12 @@ export async function resolveFinancePricingContextForRide(
   const opCtx = resolveFinancePricingContextFromOperational(ride, opPayload, serviceRegions);
   const companyId = typeof ride.companyId === "string" ? ride.companyId.trim() : "";
   if (!companyId) return opCtx;
-  const companyRate = await getAdminCompanyCommissionRate(companyId);
-  return {
-    commissionType: "percentage",
-    commissionValue: companyRate,
+  const company = await findCompanyById(companyId);
+  if (!company) return opCtx;
+  return financePricingContextFromCompanyRow(company, {
     minCommissionEur: opCtx.minCommissionEur ?? null,
     vatRate: opCtx.vatRate,
-  };
+  });
 }
 
 // --- Admin mutations ---

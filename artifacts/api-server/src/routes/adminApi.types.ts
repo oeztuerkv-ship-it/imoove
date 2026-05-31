@@ -58,6 +58,14 @@ export interface CompanyRow {
   partner_panel_profile_locked: boolean;
   /** ONRODA-Provisionssatz (0.10 = 10 %), Plattform-Admin je Mandant. */
   commission_rate: number;
+  /** percentage | fixed | hybrid | none */
+  commission_type: string;
+  commission_fixed_eur: number;
+  min_commission_eur: number | null;
+  payout_allowed: boolean;
+  panel_access_enabled: boolean;
+  trade_license_number: string;
+  onboarding_status: string;
   /** ONRODA-Admin: Krankenfahrten für diesen Mandanten freigeschaltet. */
   medical_transport_enabled: boolean;
   /** KK-Modul SaaS-Abo (Taxi) — Krankenfahrten/Sammelrechnung im Partner-Portal. */

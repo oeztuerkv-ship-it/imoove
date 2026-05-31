@@ -1140,6 +1140,27 @@ BEGIN
     errs := array_append(errs, 'table company_documents (Migration 090)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'commission_type'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.commission_type (Migration 091)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'payout_allowed'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.payout_allowed (Migration 091)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'panel_access_enabled'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.panel_access_enabled (Migration 091)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

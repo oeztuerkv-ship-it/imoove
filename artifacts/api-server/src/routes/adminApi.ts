@@ -26,6 +26,8 @@ import {
   updateAdminCompany,
   updateFareArea,
 } from "../db/adminData";
+import { patchAdminCompanySection } from "../lib/adminCompanySectionPatch";
+import type { AdminCompanyPatchSection } from "../lib/adminCompanyPatchAudit";
 import {
   countFinancialAuditAdmin,
   countInvoicesAdmin,
@@ -3479,6 +3481,68 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     }
     res.json({ ok: true, item });
   } catch (e) {
+    next(e);
+  }
+});
+
+const ADMIN_COMPANY_PATCH_SECTIONS = new Set<AdminCompanyPatchSection>([
+  "stammdaten",
+  "kontakt",
+  "status",
+  "billing",
+  "bank",
+  "notes",
+]);
+
+adminJson.patch("/companies/:companyId/sections/:section", async (req, res, next) => {
+  try {
+    const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!allowed) return;
+    const section = req.params.section as AdminCompanyPatchSection;
+    if (!ADMIN_COMPANY_PATCH_SECTIONS.has(section)) {
+      res.status(400).json({ error: "invalid_section" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const result = await patchAdminCompanySection(
+      req.params.companyId,
+      section,
+      (req.body ?? {}) as Record<string, unknown>,
+      adminId,
+    );
+    if (!result.ok) {
+      if (result.error === "not_found") {
+        res.status(404).json({ error: result.error });
+        return;
+      }
+      if (result.error === "validation_failed") {
+        res.status(400).json({ error: result.error, fieldErrors: result.fieldErrors ?? {} });
+        return;
+      }
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      item: result.item,
+      billingAccountEmail: result.billingAccountEmail,
+      billingAccount: {
+        billingEmail: result.billingAccountEmail,
+        settlementInterval: result.billingSettlementInterval,
+        paymentTermsDays: result.billingPaymentTermsDays,
+        accountName: result.item.billing_name || null,
+      },
+    });
+  } catch (e: unknown) {
+    const code = (e as Error & { code?: string }).code;
+    if (code === "company_code_duplicate") {
+      res.status(409).json({ error: code });
+      return;
+    }
+    if (code?.startsWith("company_code_") || code?.startsWith("invoice_prefix_")) {
+      res.status(400).json({ error: code });
+      return;
+    }
     next(e);
   }
 });

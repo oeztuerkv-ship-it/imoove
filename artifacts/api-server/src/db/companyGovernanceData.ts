@@ -74,6 +74,7 @@ export async function getCompanyGovernanceGate(companyId: string): Promise<Compa
     .limit(1);
   const r = rows[0];
   if (!r) return null;
+  if (r.panel_access_enabled === false) return null;
   /**
    * Mindest-Stammdaten für Flotten-Freischaltung (Partner/Admin-UI sichtbar):
    * Mandanten-Art, Steuer-ID, Konzessionsnummer, Name, E-Mail, Telefon,

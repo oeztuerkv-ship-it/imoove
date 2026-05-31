@@ -87,6 +87,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Taxi-Onboarding Ampel + trade_license_number                               → 088_taxi_company_onboarding_admin.sql
   Onboarding-Fahrzeugliste company_vehicles                                  → 089_company_vehicles.sql
   Onboarding-Dokumente company_documents (bytea)                               → 090_company_documents.sql
+  Admin: Provisionsmodell + Panel-Zugang + Auszahlung je Mandant               → 091_admin_company_billing_provision.sql
 
 Nach Migrationen Schema prüfen:
 

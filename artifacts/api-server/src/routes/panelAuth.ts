@@ -3,7 +3,9 @@ import {
   findActivePanelUserByEmailNormalized,
   findActivePanelUserByUsername,
 } from "../db/panelAuthData";
-import { isPostgresConfigured } from "../db/client";
+import { eq } from "drizzle-orm";
+import { getDb, isPostgresConfigured } from "../db/client";
+import { adminCompaniesTable } from "../db/schema";
 import {
   addPartnerRegistrationDocument,
   addPartnerRegistrationMessage,
@@ -164,6 +166,19 @@ router.post("/panel-auth/login", async (req, res) => {
     }
     res.status(401).json({ error: "invalid_credentials" });
     return;
+  }
+
+  const db = getDb();
+  if (db && row.company_id) {
+    const [co] = await db
+      .select({ panel_access_enabled: adminCompaniesTable.panel_access_enabled })
+      .from(adminCompaniesTable)
+      .where(eq(adminCompaniesTable.id, row.company_id))
+      .limit(1);
+    if (co && co.panel_access_enabled === false) {
+      res.status(403).json({ error: "panel_access_disabled" });
+      return;
+    }
   }
 
   let token: string;

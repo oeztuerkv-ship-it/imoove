@@ -4,6 +4,7 @@ import { listAccessCodesForCompany } from "./accessCodesData";
 import { logger } from "../lib/logger";
 import type { CompanyRow } from "../routes/adminApi.types";
 import { findCompanyById, getCompanyKpis, type CompanyKpis } from "./adminData";
+import { getCompanyBillingAccountSnapshot, type BillingAccountSnapshot } from "./adminCompanyBillingSync";
 import { listAdminTaxiFleetDriverRows, type AdminTaxiFleetDriverRow } from "./fleetDriverReadiness";
 import { listFleetDriversForCompany } from "./fleetDriversData";
 import { listFleetVehiclesForCompany, type FleetVehicleRow } from "./fleetVehiclesData";
@@ -14,6 +15,13 @@ import { billingAccountsTable, rideFinancialsTable, ridesTable, settlementsTable
 const OPEN_RIDE_STATUSES = ["pending", "accepted", "arrived", "in_progress"] as const;
 const ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"] as const;
 const SETTLEMENT_OPEN = ["draft", "issued", "approved"] as const;
+
+const EMPTY_BILLING_ACCOUNT: BillingAccountSnapshot = {
+  billingEmail: null,
+  settlementInterval: null,
+  paymentTermsDays: null,
+  accountName: null,
+};
 
 function n(v: unknown): number {
   const x = typeof v === "number" ? v : Number(v);
@@ -284,6 +292,7 @@ export type CompanyMandateRead = {
   financials: CompanyMandateReadFinancials;
   /** Erste aktive `billing_accounts`-Zeile; sonst `null` (kein Doppel-Import neuer Logik). */
   billingAccountEmail: string | null;
+  billingAccount: BillingAccountSnapshot;
   /** Letzte 20 Fahrten, gleiche Leseregeln wie Listen-API. */
   recentRides: MandateRecentRide[];
   taxi: CompanyMandateTaxiBlock | null;
@@ -400,6 +409,7 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
       rides: rsum,
       financials: memFinancialsForMandate(rsum, kpi),
       billingAccountEmail: null,
+      billingAccount: EMPTY_BILLING_ACCOUNT,
       recentRides,
       taxi:
         company.company_kind === "taxi" && taxiTup
@@ -452,6 +462,7 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
       rides: rsum,
       financials: memFinancialsForMandate(rsum, kpi),
       billingAccountEmail: null,
+      billingAccount: EMPTY_BILLING_ACCOUNT,
       recentRides,
       taxi:
         company.company_kind === "taxi" && taxiTup
@@ -686,12 +697,8 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
     buildMandateRecentRides(companyId),
   ]);
 
-  const billingAccountEmail = (() => {
-    const raw = billingRow[0]?.email;
-    if (raw == null || typeof raw !== "string") return null;
-    const t = raw.trim();
-    return t || null;
-  })();
+  const billingAccount = await getCompanyBillingAccountSnapshot(companyId);
+  const billingAccountEmail = billingAccount.billingEmail;
 
   return {
     company,
@@ -699,6 +706,7 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
     rides: ridesSummary,
     financials,
     billingAccountEmail,
+    billingAccount,
     recentRides,
     taxi,
     hotel,
