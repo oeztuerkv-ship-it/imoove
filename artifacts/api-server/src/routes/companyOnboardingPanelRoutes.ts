@@ -14,6 +14,7 @@ import {
   patchCompanyOnboardingVehicle,
   submitCompanyOnboardingForReview,
 } from "../db/companyOnboardingData";
+import { listCompanyOperatorMessages } from "../db/companyVehicleRequestsData";
 import { getCompanyKind } from "../db/fleetDriversData";
 import { COMPANY_DOC_MAX_BYTES } from "../lib/companyOnboardingConstants";
 import { parseMultipartForm } from "../lib/parseMultipartForm";
@@ -191,6 +192,17 @@ router.delete("/panel/v1/vehicles/:id", requirePanelAuth, async (req, res, next)
       return;
     }
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/company-operator-messages", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertTaxiOnboardingPanel(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    const messages = await listCompanyOperatorMessages(ctx.claims.companyId);
+    res.json({ ok: true, messages });
   } catch (e) {
     next(e);
   }

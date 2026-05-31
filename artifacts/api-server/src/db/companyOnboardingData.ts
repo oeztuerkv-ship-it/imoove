@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
-import type { OnboardingStatus } from "../lib/companyOnboardingConstants";
+import type { CompanyVehicleReviewStatus, OnboardingStatus } from "../lib/companyOnboardingConstants";
 import {
   isCompanyDocType,
+  isCompanyVehicleReviewStatus,
   isCompanyVehicleType,
   isOnboardingStatus,
   normalizeCompanyDocMime,
@@ -47,6 +48,11 @@ export type CompanyVehicleRow = {
   concessionNumber: string;
   tuevDate: string | null;
   isActive: boolean;
+  reviewStatus: CompanyVehicleReviewStatus;
+  operatorMessage: string;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedByAdmin: string | null;
   createdAt: string;
 };
 
@@ -107,7 +113,8 @@ function rowToProfile(r: typeof adminCompaniesTable.$inferSelect): CompanyOnboar
   };
 }
 
-function rowToVehicle(r: typeof companyVehiclesTable.$inferSelect): CompanyVehicleRow {
+export function rowToVehicle(r: typeof companyVehiclesTable.$inferSelect): CompanyVehicleRow {
+  const rs = String(r.review_status ?? "draft").trim();
   return {
     id: r.id,
     companyId: r.company_id,
@@ -116,6 +123,11 @@ function rowToVehicle(r: typeof companyVehiclesTable.$inferSelect): CompanyVehic
     concessionNumber: r.concession_number ?? "",
     tuevDate: fmtDate(r.tuev_date),
     isActive: Boolean(r.is_active),
+    reviewStatus: isCompanyVehicleReviewStatus(rs) ? rs : "draft",
+    operatorMessage: (r.operator_message ?? "").trim(),
+    submittedAt: fmtTs(r.submitted_at),
+    reviewedAt: fmtTs(r.reviewed_at),
+    reviewedByAdmin: (r.reviewed_by_admin ?? "").trim() || null,
     createdAt: fmtTs(r.created_at) ?? new Date().toISOString(),
   };
 }
@@ -455,5 +467,20 @@ export async function submitCompanyOnboardingForReview(
   const cur = await getCompanyOnboardingProfile(companyId);
   if (!cur) return { ok: false, error: "not_found" };
   if (cur.onboardingStatus === "approved") return { ok: false, error: "already_approved" };
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+
+  const now = new Date();
+  await db
+    .update(companyVehiclesTable)
+    .set({ review_status: "pending", submitted_at: now })
+    .where(
+      and(
+        eq(companyVehiclesTable.company_id, companyId),
+        eq(companyVehiclesTable.review_status, "draft"),
+      ),
+    );
+
   return patchCompanyOnboardingStatus(companyId, { status: "pending" });
 }

@@ -88,6 +88,8 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Onboarding-Fahrzeugliste company_vehicles                                  → 089_company_vehicles.sql
   Onboarding-Dokumente company_documents (bytea)                               → 090_company_documents.sql
   Admin: Provisionsmodell + Panel-Zugang + Auszahlung je Mandant               → 091_admin_company_billing_provision.sql
+  Panel-Passwort-Reset (092)                                                   → 092_panel_password_reset.sql
+  Onboarding-Fahrzeug-Prüfung + Operator-Nachrichten                           → 093_company_vehicle_review.sql
 
 Nach Migrationen Schema prüfen:
 

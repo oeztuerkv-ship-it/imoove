@@ -114,8 +114,18 @@ import {
   patchCompanyOnboardingStatus,
   patchCompanyOnboardingVehicle,
 } from "../db/companyOnboardingData";
+import {
+  getCompanyVehicleRequestDetailForAdmin,
+  insertCompanyOperatorMessage,
+  listCompanyVehicleRequestsForAdmin,
+  patchCompanyVehicleReviewForAdmin,
+} from "../db/companyVehicleRequestsData";
 import { readAdminFleetUploadBuffer, streamAdminFleetUploadToResponse } from "../lib/adminFleetUploadFile.js";
-import { COMPANY_DOC_MAX_BYTES, isOnboardingStatus } from "../lib/companyOnboardingConstants";
+import {
+  COMPANY_DOC_MAX_BYTES,
+  isCompanyVehicleReviewStatus,
+  isOnboardingStatus,
+} from "../lib/companyOnboardingConstants";
 import { parseMultipartForm } from "../lib/parseMultipartForm";
 import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
 import {
@@ -3760,6 +3770,102 @@ adminJson.get("/companies/:companyId/document-files/fleet-vehicle/:vehicleId/fil
   }
 });
 
+/** Taxi-Onboarding: Warteschlange Fahrzeuge + Nachweise (Konzession, Fahrzeugschein) je Mandant. */
+adminJson.get("/company-vehicle-requests", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const statusQ = typeof req.query.status === "string" ? req.query.status : "pending";
+    const items = await listCompanyVehicleRequestsForAdmin({
+      status: statusQ === "all" ? "all" : "pending",
+    });
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/company-vehicle-requests/:companyId", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const detail = await getCompanyVehicleRequestDetailForAdmin(req.params.companyId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...detail });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/company-vehicle-requests/:companyId/vehicles/:vehicleId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const reviewRaw = typeof b.reviewStatus === "string" ? b.reviewStatus.trim() : "";
+    if (!reviewRaw || !isCompanyVehicleReviewStatus(reviewRaw)) {
+      res.status(400).json({ error: "invalid_review_status" });
+      return;
+    }
+    const approvedBy = req.adminAuth?.username?.trim() || null;
+    const r = await patchCompanyVehicleReviewForAdmin(
+      req.params.companyId,
+      req.params.vehicleId,
+      {
+        reviewStatus: reviewRaw,
+        operatorMessage: typeof b.operatorMessage === "string" ? b.operatorMessage : undefined,
+        reviewedByAdmin: approvedBy,
+      },
+    );
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true, vehicle: r.vehicle });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/company-vehicle-requests/:companyId/messages", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const body = typeof b.body === "string" ? b.body : "";
+    const vehicleId =
+      typeof b.vehicleId === "string" && b.vehicleId.trim() ? b.vehicleId.trim() : null;
+    const r = await insertCompanyOperatorMessage({
+      companyId: req.params.companyId,
+      vehicleId,
+      senderType: "admin",
+      senderAdminUserId: req.adminAuth?.adminUserId ?? null,
+      body,
+      updateVehicleOperatorMessage: true,
+    });
+    if (!r.ok) {
+      res.status(400).json({ error: r.error });
+      return;
+    }
+    res.status(201).json({ ok: true, message: r.message });
+  } catch (e) {
+    next(e);
+  }
+});
+
 adminJson.patch("/companies/:companyId/onboarding-status", async (req, res, next) => {
   try {
     if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
@@ -3859,6 +3965,24 @@ adminJson.patch("/companies/:companyId/vehicles/:vehicleId", async (req, res, ne
     }
     if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
     const b = (req.body ?? {}) as Record<string, unknown>;
+    const reviewRaw = typeof b.reviewStatus === "string" ? b.reviewStatus.trim() : "";
+    if (reviewRaw && isCompanyVehicleReviewStatus(reviewRaw)) {
+      const rr = await patchCompanyVehicleReviewForAdmin(
+        req.params.companyId,
+        req.params.vehicleId,
+        {
+          reviewStatus: reviewRaw,
+          operatorMessage: typeof b.operatorMessage === "string" ? b.operatorMessage : undefined,
+          reviewedByAdmin: req.adminAuth?.username?.trim() || null,
+        },
+      );
+      if (!rr.ok) {
+        res.status(rr.error === "not_found" ? 404 : 400).json({ error: rr.error });
+        return;
+      }
+      res.json({ ok: true, vehicle: rr.vehicle });
+      return;
+    }
     const r = await patchCompanyOnboardingVehicle(req.params.companyId, req.params.vehicleId, {
       licensePlate: typeof b.licensePlate === "string" ? b.licensePlate : undefined,
       vehicleType: typeof b.vehicleType === "string" ? b.vehicleType : undefined,

@@ -4,6 +4,15 @@ export type OnboardingStatus = (typeof ONBOARDING_STATUSES)[number];
 export const COMPANY_VEHICLE_TYPES = ["limousine", "kombi", "van", "wheelchair"] as const;
 export type CompanyVehicleType = (typeof COMPANY_VEHICLE_TYPES)[number];
 
+export const COMPANY_VEHICLE_REVIEW_STATUSES = [
+  "draft",
+  "pending",
+  "active",
+  "inactive",
+  "rejected",
+] as const;
+export type CompanyVehicleReviewStatus = (typeof COMPANY_VEHICLE_REVIEW_STATUSES)[number];
+
 export const COMPANY_DOC_TYPES = [
   "gewerbeschein",
   "konzession",
@@ -32,6 +41,21 @@ export function isOnboardingStatus(v: string): v is OnboardingStatus {
 
 export function isCompanyVehicleType(v: string): v is CompanyVehicleType {
   return (COMPANY_VEHICLE_TYPES as readonly string[]).includes(v);
+}
+
+export function isCompanyVehicleReviewStatus(v: string): v is CompanyVehicleReviewStatus {
+  return (COMPANY_VEHICLE_REVIEW_STATUSES as readonly string[]).includes(v);
+}
+
+export function vehicleReviewStatusLabelDe(s: string): string {
+  const map: Record<string, string> = {
+    draft: "Entwurf",
+    pending: "In Prüfung",
+    active: "Aktiv",
+    inactive: "Deaktiviert",
+    rejected: "Abgelehnt",
+  };
+  return map[s] ?? s;
 }
 
 export function isCompanyDocType(v: string): v is CompanyDocType {

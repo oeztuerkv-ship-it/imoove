@@ -1149,6 +1149,20 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'company_vehicles' AND column_name = 'review_status'
+  ) THEN
+    errs := array_append(errs, 'company_vehicles.review_status (Migration 093)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'company_operator_messages'
+  ) THEN
+    errs := array_append(errs, 'table company_operator_messages (Migration 093)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'commission_type'
   ) THEN
     errs := array_append(errs, 'admin_companies.commission_type (Migration 091)');

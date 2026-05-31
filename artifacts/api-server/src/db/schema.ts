@@ -131,6 +131,29 @@ export const companyVehiclesTable = pgTable("company_vehicles", {
   concession_number: text("concession_number").notNull().default(""),
   tuev_date: date("tuev_date"),
   is_active: boolean("is_active").notNull().default(true),
+  review_status: text("review_status").notNull().default("draft"),
+  operator_message: text("operator_message").notNull().default(""),
+  submitted_at: timestamp("submitted_at", { withTimezone: true }),
+  reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  reviewed_by_admin: text("reviewed_by_admin"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Operator↔Partner Nachrichten zu Onboarding-Fahrzeugen / Mandant. */
+export const companyOperatorMessagesTable = pgTable("company_operator_messages", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  vehicle_id: text("vehicle_id").references(() => companyVehiclesTable.id, { onDelete: "set null" }),
+  sender_type: text("sender_type").notNull(),
+  sender_admin_user_id: text("sender_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  sender_panel_user_id: text("sender_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
+  body: text("body").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
