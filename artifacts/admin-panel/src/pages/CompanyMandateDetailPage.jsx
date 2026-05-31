@@ -192,6 +192,8 @@ function formFromCompany(c, billingAccountEmail) {
     insurer_cost_note: strFromRec(ip, IP_ADMIN.costCentersNote),
     insurer_booking_types_note: strFromRec(ip, IP_ADMIN.bookingTypesNote),
     commission_rate_percent: commissionPercentFromCompany(c),
+    partner_ik_number: c.partner_ik_number ?? "",
+    insurer_billing_contacts_json: JSON.stringify(c.insurer_billing_contacts_json ?? [], null, 2),
   };
 }
 
@@ -575,6 +577,15 @@ export default function CompanyMandateDetailPage({
         max_drivers: form.max_drivers,
         max_vehicles: form.max_vehicles,
         commission_rate: pct / 100,
+        partner_ik_number: String(form.partner_ik_number ?? "").replace(/\D/g, "").slice(0, 9),
+        insurer_billing_contacts_json: (() => {
+          try {
+            const parsed = JSON.parse(String(form.insurer_billing_contacts_json ?? "[]"));
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })(),
         fare_permissions: nextFp,
         insurer_permissions: nextIp,
       }),
@@ -927,6 +938,29 @@ export default function CompanyMandateDetailPage({
                   Steuer-Nr.
                   <input className="admin-m-inp" value={fVal("tax_id")} onChange={onField("tax_id")} />
                 </label>
+                {c?.company_kind === "taxi" ? (
+                  <>
+                    <label className="admin-m-lbl">
+                      Partner-IK (Taxi)
+                      <input
+                        className="admin-m-inp admin-mono"
+                        value={fVal("partner_ik_number")}
+                        onChange={onField("partner_ik_number")}
+                        placeholder="9-stellig"
+                      />
+                    </label>
+                    <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                      Krankenkassen-Kontakte (JSON)
+                      <textarea
+                        className="admin-m-inp"
+                        rows={5}
+                        value={fVal("insurer_billing_contacts_json")}
+                        onChange={onField("insurer_billing_contacts_json")}
+                        placeholder='[{"insurerName":"AOK","insurerIk":"108018007","email":"abrechnung@…"}]'
+                      />
+                    </label>
+                  </>
+                ) : null}
                 <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1" }}>
                   Zahlungs-/Sammelstatus der Abrechnung: später über Finanz-Module; hier nur Stammdaten fürs Konto.
                 </p>
@@ -1112,6 +1146,12 @@ export default function CompanyMandateDetailPage({
                     <div className="admin-table-sub">ONRODA Provisionssatz</div>
                     <div style={{ fontWeight: 600 }}>{fmtCommissionPercent(c)}</div>
                   </div>
+                  {c.company_kind === "taxi" ? (
+                    <div>
+                      <div className="admin-table-sub">Partner-IK</div>
+                      <div style={{ fontWeight: 600 }}>{fmtText(c.partner_ik_number)}</div>
+                    </div>
+                  ) : null}
                   <div>
                     <div className="admin-table-sub">Ansprechpartner</div>
                     <div>{fmtText(c.contact_name)}</div>

@@ -22,6 +22,7 @@ export const ADMIN_PAGE_ROLES = {
   "finance-dashboard": ["admin", "service", "taxi", "insurance"],
   "finance-ride-financials": ["admin", "service", "taxi", "insurance"],
   "finance-invoices": ["admin", "service", "taxi", "insurance"],
+  "finance-kranken-invoices": ["admin", "service", "taxi", "insurance"],
   "finance-audit": ["admin", "service", "taxi", "insurance"],
 
   "docs-hub": ["admin", "service", "taxi", "insurance", "hotel"],
@@ -166,6 +167,7 @@ const ADMIN_NAV_GROUPS_RAW = [
       { pageKey: "finance-audit", label: "Audit", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "finance-dashboard", label: "Dashboard", icon: "chart", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "finance-invoices", label: "Invoices", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
+      { pageKey: "finance-kranken-invoices", label: "Krankenfahrten-Rechnungen", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "finance-ride-financials", label: "Ride Financials", icon: "rides", roles: ["admin", "service", "taxi", "insurance"] },
     ],
   },
@@ -431,6 +433,7 @@ const ADMIN_TOP_NAV = [
       { pageKey: "finance-audit", label: "Finanzen · Audit" },
       { pageKey: "finance-dashboard", label: "Finanzen · Dashboard" },
       { pageKey: "finance-invoices", label: "Finanzen · Invoices" },
+      { pageKey: "finance-kranken-invoices", label: "Finanzen · Krankenfahrten-Rechnungen" },
       { pageKey: "finance-ride-financials", label: "Finanzen · Ride Financials" },
     ],
   },

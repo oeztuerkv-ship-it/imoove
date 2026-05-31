@@ -28,6 +28,7 @@ import AdminPlaceholderPage from "./pages/AdminPlaceholderPage.jsx";
 import FinanceDashboardPage from "./pages/FinanceDashboardPage.jsx";
 import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
+import FinanceKrankenInvoicesPage from "./pages/FinanceKrankenInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 import SupportInboxPage from "./pages/SupportInboxPage.jsx";
 import RideSupportTicketsPage from "./pages/RideSupportTicketsPage.jsx";
@@ -876,6 +877,8 @@ export default function App() {
         return <FinanceRideFinancialsPage />;
       case "finance-invoices":
         return <FinanceInvoicesPage />;
+      case "finance-kranken-invoices":
+        return <FinanceKrankenInvoicesPage />;
       case "finance-audit":
         return <FinanceAuditPage />;
       case "settings":
