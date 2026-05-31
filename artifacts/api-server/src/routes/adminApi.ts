@@ -4979,10 +4979,18 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       res.status(404).json({ error: "not_found" });
       return;
     }
-    const body = req.body as { newPassword?: string };
-    const neu = typeof body.newPassword === "string" ? body.newPassword : "";
+    const body = req.body as { newPassword?: string; sendWelcomeEmail?: boolean };
+    const rawNeu = typeof body.newPassword === "string" ? body.newPassword.trim() : "";
+    const generatedPassword = rawNeu ? "" : generateTemporaryPassword();
+    const neu = rawNeu || generatedPassword;
     if (neu.length < 10) {
       res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
+      return;
+    }
+    const sendWelcomeEmail = body.sendWelcomeEmail === true;
+    const email = (target.email ?? "").trim();
+    if (sendWelcomeEmail && !email) {
+      res.status(400).json({ error: "email_required_for_welcome_mail" });
       return;
     }
     const hash = await hashPassword(neu);
@@ -4991,6 +4999,17 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       res.status(500).json({ error: "password_update_failed" });
       return;
     }
+    let welcomeEmail: { sent: boolean; reason?: string } = { sent: false, reason: "not_requested" };
+    if (sendWelcomeEmail && email) {
+      const mail = await sendPanelUserWelcomeEmail({
+        to: email,
+        companyName: company.name ?? companyId,
+        username: target.username,
+        initialPassword: neu,
+        variant: "reset",
+      });
+      welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
+    }
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId,
@@ -4998,9 +5017,14 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       action: "admin.panel_user.password_reset",
       subjectType: "panel_user",
       subjectId: userId,
-      meta: { source: "platform_admin_api" },
+      meta: { source: "platform_admin_api", welcomeEmail, mustChangePassword: true },
     });
-    res.json({ ok: true });
+    res.json({
+      ok: true,
+      mustChangePassword: true,
+      ...(generatedPassword ? { newPassword: neu } : {}),
+      welcomeEmail,
+    });
   } catch (e) {
     next(e);
   }

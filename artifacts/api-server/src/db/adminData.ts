@@ -883,12 +883,12 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (body.insurer_billing_contacts_json !== undefined && Array.isArray(body.insurer_billing_contacts_json)) {
     next.insurer_billing_contacts_json = body.insurer_billing_contacts_json as CompanyRow["insurer_billing_contacts_json"];
   }
-  if (typeof body.company_code === "string") {
+  if (typeof body.company_code === "string" && body.company_code.trim()) {
     const v = validateCompanyCode(body.company_code);
     if (!v.ok) throw Object.assign(new Error(v.error), { code: v.error });
     next.company_code = v.code;
   }
-  if (typeof body.invoice_prefix === "string") {
+  if (typeof body.invoice_prefix === "string" && body.invoice_prefix.trim()) {
     const v = validateInvoicePrefix(body.invoice_prefix);
     if (!v.ok) throw Object.assign(new Error(v.error), { code: v.error });
     next.invoice_prefix = v.prefix || defaultInvoicePrefixForCompanyKind(next.company_kind);

@@ -35,6 +35,8 @@ export async function sendPanelUserWelcomeEmail(input: {
   username: string;
   initialPassword: string;
   accessKindLabel?: string;
+  /** `reset` = neues Passwort nach Admin-Reset; Standard = Erstanlage. */
+  variant?: "welcome" | "reset";
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
   const smtpUrl = (process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
   const from = (process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
@@ -82,12 +84,12 @@ export async function sendPanelUserWelcomeEmail(input: {
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
   <p style="margin:0 0 16px"><img src="${escapeHtml(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
   <p>Guten Tag,</p>
-  <p>für <strong>${escapeHtml(company)}</strong> wurde ein Zugang zum <strong>Onroda-Partner-Portal</strong> angelegt.</p>
+  <p>für <strong>${escapeHtml(company)}</strong> ${isReset ? "wurde ein <strong>neues Passwort</strong> für das" : "wurde ein Zugang zum"} <strong>Onroda-Partner-Portal</strong>${isReset ? " vergeben." : " angelegt."}</p>
   ${kindHtml}
   <p><a href="${escapeHtml(panel)}">Zum Partner-Portal</a></p>
   <p><strong>Benutzername:</strong> <code>${escapeHtml(user)}</code><br/>
-     <strong>Einmalpasswort:</strong> <code>${escapeHtml(pw)}</code></p>
-  <p>Bitte ändern Sie das Passwort nach dem ersten Login.</p>
+     <strong>${isReset ? "Neues Passwort" : "Einmalpasswort"}:</strong> <code>${escapeHtml(pw)}</code></p>
+  <p>Bitte ändern Sie das Passwort nach dem nächsten Login (Pflicht beim ersten Mal mit diesem Passwort).</p>
   <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
 </body></html>`;
 
