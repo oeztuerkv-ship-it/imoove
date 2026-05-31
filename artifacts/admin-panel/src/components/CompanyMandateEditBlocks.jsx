@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminOnboardingBlockFooter from "./AdminOnboardingBlockFooter";
 import { API_BASE } from "../lib/apiBase.js";
-import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import { adminFetch, getAdminSessionToken, isAdminSessionConfigured } from "../lib/adminApiHeaders.js";
 import {
   commissionPercentFromRate,
   commissionRateFromPercent,
@@ -40,18 +40,41 @@ function Field({ label, required, error, children }) {
   );
 }
 
+function formatPatchError(res, json) {
+  const code = String(json?.error ?? "").trim();
+  if (res.status === 401 || code === "unauthorized" || code === "session_required") {
+    return "Nicht angemeldet — bitte im Admin-Panel einloggen (Plattform-Login, kein Partner-Token).";
+  }
+  if (res.status === 403 || code === "forbidden") {
+    return "Keine Berechtigung: Rolle „admin“ oder „service“ (oder Taxi-Admin für diesen Mandanten).";
+  }
+  if (res.status === 404) {
+    return "API-Route nicht gefunden — Server-Deploy prüfen (Section-PATCH / admin-panel Build).";
+  }
+  if (code === "db_schema_admin_company_091" || json?.hint) {
+    return String(json.hint || "Migration 091 auf der Datenbank einspielen, dann API neu starten.");
+  }
+  if (code === "database_not_configured") {
+    return "Datenbank nicht erreichbar (DATABASE_URL / Deploy).";
+  }
+  if (code === "validation_failed") return "Validierung fehlgeschlagen — markierte Felder prüfen.";
+  if (code === "empty_patch") return "Keine speicherbaren Felder — bitte einen Wert ändern.";
+  if (code === "company_code_duplicate") return "Mandanten-Code ist bereits vergeben.";
+  return code || `Speichern fehlgeschlagen (HTTP ${res.status})`;
+}
+
 async function patchCompanySection(companyId, section, body) {
-  const res = await fetch(
+  const res = await adminFetch(
     `${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/sections/${section}`,
     {
       method: "PATCH",
-      headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },
   );
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(json.error || `HTTP ${res.status}`);
+    const err = new Error(formatPatchError(res, json));
     err.fieldErrors = json.fieldErrors;
     throw err;
   }
@@ -77,7 +100,9 @@ export default function CompanyMandateEditBlocks({
 
   const [busy, setBusy] = useState("");
   const [sectionErr, setSectionErr] = useState("");
+  const [sectionOk, setSectionOk] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const sessionOk = isAdminSessionConfigured();
 
   const resetForms = useCallback(() => {
     setStammdaten({
@@ -149,8 +174,13 @@ export default function CompanyMandateEditBlocks({
   }, [resetForms]);
 
   const saveSection = async (section, body, localValidate, busyKey = section) => {
+    if (!sessionOk) {
+      setSectionErr("Keine Admin-Sitzung — bitte unter admin.onroda.de/partners/ anmelden.");
+      return;
+    }
     setBusy(busyKey);
     setSectionErr("");
+    setSectionOk("");
     setFieldErrors({});
     const localErr = localValidate ? localValidate() : {};
     if (Object.keys(localErr).length) {
@@ -163,6 +193,7 @@ export default function CompanyMandateEditBlocks({
       if (section === "status") {
         setStatus((prev) => ({ ...prev, ...body }));
       }
+      setSectionOk("Gespeichert.");
       onSaved?.();
     } catch (e) {
       setSectionErr(e.message || "Speichern fehlgeschlagen");
@@ -183,37 +214,15 @@ export default function CompanyMandateEditBlocks({
     status.contract_status === "active";
   const fullyInactive = !status.is_active && !status.panel_access_enabled;
 
-  const quickActivate = async () => {
-    setBusy("status-activate");
-    setSectionErr("");
-    setFieldErrors({});
-    try {
-      const r = await fetch(
-        `${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/onboarding-status`,
-        {
-          method: "PATCH",
-          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "approved" }),
-        },
-      );
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      const body = {
-        is_active: true,
-        is_blocked: false,
-        panel_access_enabled: true,
-        onboarding_status: "approved",
-        contract_status: "active",
-      };
-      await patchCompanySection(companyId, "status", body);
-      setStatus((prev) => ({ ...prev, ...body }));
-      onSaved?.();
-    } catch (e) {
-      setSectionErr(e.message || "Aktivieren fehlgeschlagen");
-      if (e.fieldErrors) setFieldErrors(e.fieldErrors);
-    } finally {
-      setBusy("");
-    }
+  const quickActivate = () => {
+    const body = {
+      is_active: true,
+      is_blocked: false,
+      panel_access_enabled: true,
+      onboarding_status: "approved",
+      contract_status: "active",
+    };
+    return saveSection("status", body, undefined, "status-activate");
   };
 
   const quickDeactivate = () =>
@@ -230,6 +239,22 @@ export default function CompanyMandateEditBlocks({
 
   return (
     <>
+      {!sessionOk ? (
+        <div className="admin-error-banner" role="alert">
+          Bearbeiten/Speichern ist ohne <strong>Admin-Login</strong> gesperrt. Bitte anmelden (nicht Partner-Panel).
+          {getAdminSessionToken() ? " (Token ungültig — neu einloggen.)" : null}
+        </div>
+      ) : null}
+      {sectionErr ? (
+        <div className="admin-error-banner" role="alert">
+          {sectionErr}
+        </div>
+      ) : null}
+      {sectionOk && !sectionErr ? (
+        <div className="admin-success-banner" role="status">
+          {sectionOk}
+        </div>
+      ) : null}
       <section className="admin-section-block admin-onb-block">
         <div className="admin-m-card__h">
           <span className="admin-panel-card__title" style={{ margin: 0 }}>
@@ -302,6 +327,7 @@ export default function CompanyMandateEditBlocks({
           </Field>
         </div>
         <AdminOnboardingBlockFooter
+          type="button"
           label="Stammdaten speichern"
           busy={busy === "stammdaten"}
           onClick={() => saveSection("stammdaten", stammdaten, () => {
@@ -534,6 +560,7 @@ export default function CompanyMandateEditBlocks({
           </Field>
         </div>
         <AdminOnboardingBlockFooter
+          type="button"
           label="Betrieb/Status speichern"
           busy={statusBusy}
           onClick={() => saveSection("status", status)}
@@ -679,6 +706,7 @@ export default function CompanyMandateEditBlocks({
           ) : null}
         </div>
         <AdminOnboardingBlockFooter
+          type="button"
           label="Provision/Abrechnung speichern"
           busy={busy === "billing"}
           onClick={() => {
@@ -744,6 +772,7 @@ export default function CompanyMandateEditBlocks({
           </Field>
         </div>
         <AdminOnboardingBlockFooter
+          type="button"
           label="Bankdaten speichern"
           busy={busy === "bank"}
           onClick={() =>
@@ -771,17 +800,12 @@ export default function CompanyMandateEditBlocks({
           />
         </Field>
         <AdminOnboardingBlockFooter
+          type="button"
           label="Admin-Notiz speichern"
           busy={busy === "notes"}
           onClick={() => saveSection("notes", notes)}
         />
       </section>
-
-      {sectionErr ? (
-        <p className="admin-m-err" role="alert">
-          {sectionErr}
-        </p>
-      ) : null}
     </>
   );
 }

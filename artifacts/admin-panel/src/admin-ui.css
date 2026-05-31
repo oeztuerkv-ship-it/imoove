@@ -757,6 +757,16 @@
   border-radius: var(--onroda-radius-card);
 }
 
+.admin-success-banner {
+  padding: var(--onroda-space-7) var(--onroda-space-9);
+  margin-bottom: var(--onroda-space-4);
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: var(--onroda-radius-card);
+  font-size: 0.9rem;
+}
+
 .admin-panel-card {
   background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
