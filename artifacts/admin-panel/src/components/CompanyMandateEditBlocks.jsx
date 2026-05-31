@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminOnboardingBlockFooter from "./AdminOnboardingBlockFooter";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminFetch, getAdminSessionToken, isAdminSessionConfigured } from "../lib/adminApiHeaders.js";
@@ -89,7 +89,6 @@ export default function CompanyMandateEditBlocks({
   onSaved,
 }) {
   const c = company;
-  const fp = asObj(c.fare_permissions);
 
   const [stammdaten, setStammdaten] = useState({});
   const [kontakt, setKontakt] = useState({});
@@ -167,11 +166,11 @@ export default function CompanyMandateEditBlocks({
     });
     setFieldErrors({});
     setSectionErr("");
-  }, [c, billingAccount, billingAccountEmail, fp]);
+  }, [c, billingAccount, billingAccountEmail]);
 
   useEffect(() => {
     resetForms();
-  }, [resetForms]);
+  }, [serverFormRevision, resetForms]);
 
   const saveSection = async (section, body, localValidate, busyKey = section) => {
     if (!sessionOk) {
@@ -427,6 +426,7 @@ export default function CompanyMandateEditBlocks({
           </Field>
         </div>
         <AdminOnboardingBlockFooter
+          type="button"
           label="Kontakt speichern"
           busy={busy === "kontakt"}
           onClick={() =>
@@ -563,7 +563,14 @@ export default function CompanyMandateEditBlocks({
           type="button"
           label="Betrieb/Status speichern"
           busy={statusBusy}
-          onClick={() => saveSection("status", status)}
+          onClick={() => {
+            const body = { ...status };
+            if (c.company_kind !== "taxi") {
+              delete body.medical_transport_enabled;
+              delete body.feature_kk_module;
+            }
+            return saveSection("status", body);
+          }}
         />
       </section>
 

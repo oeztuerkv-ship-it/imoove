@@ -2,7 +2,7 @@
 export default function AdminOnboardingBlockFooter({
   label = "Speichern",
   busy = false,
-  type = "submit",
+  type = "button",
   onClick,
   hint = "",
 }) {

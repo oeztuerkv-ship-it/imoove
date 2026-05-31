@@ -3,7 +3,7 @@ import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import CompanyMandateEditBlocks from "../components/CompanyMandateEditBlocks.jsx";
 import CompanyTaxiOnboardingSections from "../components/CompanyTaxiOnboardingSections.jsx";
 import { API_BASE } from "../lib/apiBase.js";
-import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import { adminApiHeaders, adminFetch } from "../lib/adminApiHeaders.js";
 
 const KIND_LABEL = {
   taxi: "Taxi",
@@ -166,9 +166,7 @@ export default function CompanyMandateDetailPage({
   const loadMandate = useCallback(() => {
     setLoading(true);
     setErr("");
-    fetch(`${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/mandate-read`, {
-      headers: adminApiHeaders(),
-    })
+    adminFetch(`${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/mandate-read`)
       .then((res) => {
         if (res.status === 404) {
           setErr("Mandant nicht gefunden.");
