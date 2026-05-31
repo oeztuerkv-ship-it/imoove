@@ -112,6 +112,8 @@ const seedCompanies: CompanyRow[] = [
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
     medical_transport_enabled: false,
+    feature_kk_module: false,
+    feature_kk_module_since: null,
     partner_ik_number: "",
     insurer_billing_contacts_json: [],
   },
@@ -167,6 +169,8 @@ const seedCompanies: CompanyRow[] = [
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
     medical_transport_enabled: false,
+    feature_kk_module: false,
+    feature_kk_module_since: null,
     partner_ik_number: "",
     insurer_billing_contacts_json: [],
   },
@@ -251,6 +255,8 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     commission_rate:
       typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
     medical_transport_enabled: Boolean(r.medical_transport_enabled),
+    feature_kk_module: Boolean(r.feature_kk_module),
+    feature_kk_module_since: r.feature_kk_module_since ? r.feature_kk_module_since.toISOString() : null,
     partner_ik_number: r.partner_ik_number ?? "",
     insurer_billing_contacts_json: Array.isArray(r.insurer_billing_contacts_json)
       ? (r.insurer_billing_contacts_json as Array<{ insurerName?: string; insurerIk?: string; email?: string }>)
@@ -704,6 +710,8 @@ function companyRowToDbValues(c: CompanyRow) {
     partner_panel_profile_locked: c.partner_panel_profile_locked,
     commission_rate: c.commission_rate,
     medical_transport_enabled: c.medical_transport_enabled,
+    feature_kk_module: c.feature_kk_module,
+    feature_kk_module_since: c.feature_kk_module_since ? new Date(c.feature_kk_module_since) : null,
     partner_ik_number: c.partner_ik_number ?? "",
     insurer_billing_contacts_json: c.insurer_billing_contacts_json ?? [],
     company_code: c.company_code,
@@ -820,6 +828,10 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (typeof body.medical_transport_enabled === "boolean") {
     next.medical_transport_enabled = body.medical_transport_enabled;
   }
+  if (typeof body.feature_kk_module === "boolean") {
+    next.feature_kk_module = body.feature_kk_module;
+    next.feature_kk_module_since = body.feature_kk_module ? new Date().toISOString() : null;
+  }
   if (typeof body.partner_ik_number === "string") {
     next.partner_ik_number = body.partner_ik_number.replace(/\D/g, "").slice(0, 9);
   }
@@ -908,6 +920,8 @@ export async function insertAdminCompany(
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
     medical_transport_enabled: false,
+    feature_kk_module: false,
+    feature_kk_module_since: null,
   };
   const next = applyAdminCompanyPatch(base, body);
 

@@ -12,6 +12,7 @@ import {
 } from "../db/krankenInvoicesData.js";
 import { buildAndStoreKrankenInvoicePdf, readKrankenInvoicePdfBuffer } from "../lib/krankenInvoicePdfService.js";
 import { sendKrankenInvoiceMail } from "../lib/krankenInvoiceMail.js";
+import { assertCompanyKkModuleEnabled } from "../lib/kkModuleAccess.js";
 import { assertActivePanelProfile, denyUnlessPanelModule } from "./panelRouteContext.js";
 
 const router: IRouter = Router();
@@ -24,11 +25,24 @@ function requireTaxiCompany(res: import("express").Response, companyKind: string
   return true;
 }
 
+async function requireCompanyKkModule(
+  res: import("express").Response,
+  companyId: string,
+): Promise<boolean> {
+  const gate = await assertCompanyKkModuleEnabled(companyId);
+  if (!gate.ok) {
+    res.status(403).json({ ok: false, error: gate.error });
+    return false;
+  }
+  return true;
+}
+
 router.get("/panel/v1/kranken-invoices", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!(await requireCompanyKkModule(res, ctx.claims.companyId))) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
     const invoices = await listKrankenInvoicesForCompany(ctx.claims.companyId);
@@ -43,6 +57,7 @@ router.get("/panel/v1/kranken-invoices/open-vouchers", requirePanelAuth, async (
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!(await requireCompanyKkModule(res, ctx.claims.companyId))) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
     const periodFrom = String(req.query.periodFrom ?? "").trim();
@@ -71,6 +86,7 @@ router.post("/panel/v1/kranken-invoices/generate", requirePanelAuth, async (req,
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!(await requireCompanyKkModule(res, ctx.claims.companyId))) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.write")) return;
 
@@ -111,6 +127,7 @@ router.post("/panel/v1/kranken-invoices/:invoiceId/send", requirePanelAuth, asyn
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!(await requireCompanyKkModule(res, ctx.claims.companyId))) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.write")) return;
 
@@ -162,6 +179,7 @@ router.get("/panel/v1/kranken-invoices/:invoiceId/pdf", requirePanelAuth, async 
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!(await requireCompanyKkModule(res, ctx.claims.companyId))) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 

@@ -36,6 +36,7 @@ import {
 import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
 import { runMedicalTransportDocumentScan, runMedicalTransportDocumentScanTest } from "../lib/medical/medicalScanService";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
+import { resolveKkModuleAccessForFleetDriver } from "../lib/kkModuleAccess.js";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 const router: IRouter = Router();
@@ -92,10 +93,15 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     a.companyId,
     a.fleetDriverId,
   );
+  const kkAccess = await resolveKkModuleAccessForFleetDriver(a.companyId, a.fleetDriverId);
   res.json({
     ok: true,
     einsatzbereit,
     isMarketOnline,
+    featureKkModule: kkAccess?.companyEnabled ?? false,
+    permissionKkModule: kkAccess?.permissionKkModule ?? false,
+    isOwner: kkAccess?.isOwner ?? false,
+    kkModuleAuthorized: kkAccess?.canAccess ?? false,
     medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
     medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
     companyCommission: {

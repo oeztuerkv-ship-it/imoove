@@ -60,6 +60,10 @@ export interface CompanyRow {
   commission_rate: number;
   /** ONRODA-Admin: Krankenfahrten für diesen Mandanten freigeschaltet. */
   medical_transport_enabled: boolean;
+  /** KK-Modul SaaS-Abo (Taxi) — Krankenfahrten/Sammelrechnung im Partner-Portal. */
+  feature_kk_module: boolean;
+  /** ISO-Zeitpunkt der letzten Aktivierung; null wenn deaktiviert. */
+  feature_kk_module_since: string | null;
   /** Öffentlicher Mandanten-Code (eindeutig), z. B. STADTMITTE. */
   company_code: string;
   /** Rechnungs-Prefix ONR-{prefix}-YYYY-MM-SEQ (HOT, MED, …). */

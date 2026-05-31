@@ -18,6 +18,7 @@ import {
   isFleetDriverEmailConflictError,
   listFleetDriversForCompany,
   patchFleetDriverProfile,
+  patchFleetDriverKkPermissions,
   suspendFleetDriver,
   type FleetVehicleClass as FleetDriverVehicleClass,
   type FleetVehicleLegalType as FleetDriverVehicleLegalType,
@@ -43,6 +44,7 @@ import {
 } from "../db/fleetAssignmentsData";
 import { countFleetDriversForCompany, countFleetVehiclesForCompany } from "../db/companyGovernanceData";
 import { findCompanyById } from "../db/adminData";
+import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
 import { hashPassword } from "../lib/password";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
@@ -237,6 +239,7 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
       phone,
       passwordHash: hash,
       mustChangePassword: true,
+      isOwner: c === 0,
       vehicleLegalType,
       vehicleClass,
       pScheinNumber: pScheinNumber.trim() || undefined,
@@ -351,6 +354,49 @@ router.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, n
       subjectType: "fleet_driver",
       subjectId: id,
       meta: { fields: Object.keys(patch), passwordReset: hasPassword },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.patch("/panel/v1/fleet/:driverId/permissions", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (ctx.profile.role !== "owner") {
+      res.status(403).json({ ok: false, error: "owner_only" });
+      return;
+    }
+    if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
+    const kkEnabled = await getCompanyFeatureKkModule(ctx.claims.companyId);
+    if (!kkEnabled) {
+      res.status(403).json({ ok: false, error: "kk_module_not_enabled" });
+      return;
+    }
+    const driverId = String(req.params.driverId ?? "").trim();
+    const body = req.body as { permission_kk_module?: unknown };
+    if (typeof body.permission_kk_module !== "boolean") {
+      res.status(400).json({ ok: false, error: "permission_kk_module_required" });
+      return;
+    }
+    const result = await patchFleetDriverKkPermissions(driverId, ctx.claims.companyId, {
+      permissionKkModule: body.permission_kk_module,
+    });
+    if (!result.ok) {
+      const status = result.error === "not_found" ? 404 : 403;
+      res.status(status).json({ ok: false, error: result.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_kk_permissions",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { permission_kk_module: body.permission_kk_module },
     });
     res.json({ ok: true });
   } catch (e) {

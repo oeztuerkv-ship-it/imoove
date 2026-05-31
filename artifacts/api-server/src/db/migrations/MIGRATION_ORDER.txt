@@ -83,6 +83,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Fahrer: E-Mail plattformweit eindeutig (ein Mandant pro E-Mail)           → 084_fleet_drivers_email_unique_enforce.sql
   Krankenfahrt T-Schein-Belege (transport_vouchers)                         → 085_transport_vouchers.sql
   Krankenfahrten-Sammelrechnungen + KK-Kontakte am Mandanten                → 086_kranken_invoices.sql
+  KK-Modul SaaS (feature_kk_module, Fahrer-Berechtigungen)                  → 087_kk_module_feature.sql
 
 Nach Migrationen Schema prüfen:
 

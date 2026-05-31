@@ -79,6 +79,9 @@ export const adminCompaniesTable = pgTable("admin_companies", {
     .default([]),
   /** ONRODA-Admin: Krankenfahrten + Transportschein-Scanner für diesen Mandanten. */
   medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
+  /** KK-Modul SaaS-Abo (Krankenfahrten/Sammelrechnung) — nur Taxi, Admin-Freischaltung. */
+  feature_kk_module: boolean("feature_kk_module").notNull().default(false),
+  feature_kk_module_since: timestamp("feature_kk_module_since", { withTimezone: true }),
   /** Öffentlicher Mandanten-Code (eindeutig), nicht company_id. */
   company_code: text("company_code").notNull().default(""),
   /** Segment ONR-{invoice_prefix}-YYYY-MM-SEQ (z. B. HOT, MED). */
@@ -146,6 +149,10 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   medical_transport_inherit_from_company: boolean("medical_transport_inherit_from_company")
     .notNull()
     .default(true),
+  /** KK-Modul: Mitarbeiter-Zugriff (Inhaber: is_owner). */
+  permission_kk_module: boolean("permission_kk_module").notNull().default(false),
+  /** Inhaber-Fahrerkonto — voller KK-Zugriff bei aktivem Mandanten-Modul. */
+  is_owner: boolean("is_owner").notNull().default(false),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true }),

@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { normalizeStoredPanelModules } from "../domain/panelModules";
+import { isCompanyKkModuleEnabled } from "../lib/kkModuleAccess.js";
 import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, panelUsersTable } from "./schema";
 
@@ -135,6 +136,8 @@ export interface PanelUserProfileRow {
   updatedAt: Date;
   /** Normalisierte Modul-Whitelist; `null` = alle Panel-Module aktiv (Legacy). */
   panelModules: string[] | null;
+  /** KK-Modul SaaS für Taxi-Mandanten (aus admin_companies.feature_kk_module). */
+  featureKkModule: boolean;
 }
 
 /** Profil inkl. Firmenname für GET /api/panel/v1/me (nur PostgreSQL). */
@@ -156,6 +159,7 @@ export async function findActivePanelUserProfileById(id: string): Promise<PanelU
       createdAt: panelUsersTable.created_at,
       updatedAt: panelUsersTable.updated_at,
       companyPanelModulesJson: adminCompaniesTable.panel_modules,
+      featureKkModuleRaw: adminCompaniesTable.feature_kk_module,
     })
     .from(panelUsersTable)
     .innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id))
@@ -190,6 +194,18 @@ export async function findActivePanelUserProfileById(id: string): Promise<PanelU
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson),
+    featureKkModule: isCompanyKkModuleEnabled({
+      companyKind:
+        r.companyKindRaw === "taxi" ||
+        r.companyKindRaw === "voucher_client" ||
+        r.companyKindRaw === "insurer" ||
+        r.companyKindRaw === "hotel" ||
+        r.companyKindRaw === "corporate" ||
+        r.companyKindRaw === "medical"
+          ? r.companyKindRaw
+          : "general",
+      featureKkModule: Boolean(r.featureKkModuleRaw),
+    }),
   };
 }
 

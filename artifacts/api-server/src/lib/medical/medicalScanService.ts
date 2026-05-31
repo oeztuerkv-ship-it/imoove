@@ -35,10 +35,10 @@ import {
 import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument, type MedicalOcrExtracted } from "./medicalOcrNormalize";
 import { evaluateMedicalTrafficLight, type MedicalWarning } from "./medicalTrafficLight";
 import {
-  assertMedicalTransportAuthorizedForFleetDriver,
   assertMedicalTransportPlatformAvailable,
   resolveMedicalTransportAuthorizationForFleetDriver,
 } from "./medicalTransportAuthorization";
+import { assertKkModuleAccessForFleetDriver } from "../kkModuleAccess.js";
 import {
   buildCustomerTransportScanMeta,
   buildDriverHintLines,
@@ -392,9 +392,9 @@ export async function runMedicalTransportDocumentScanTest(
     return { ok: false, error: "bad_request", status: 400 };
   }
 
-  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
-  if (!authz.ok) {
-    return { ok: false, error: authz.error, status: 403 };
+  const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
+  if (!kkAuthz.ok) {
+    return { ok: false, error: kkAuthz.error, status: 403 };
   }
 
   return runMedicalTransportDocumentScanTestCore({
@@ -501,9 +501,9 @@ export async function runMedicalTransportDocumentScan(
     return { ok: false, error: "bad_request", status: 400 };
   }
 
-  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
-  if (!authz.ok) {
-    return { ok: false, error: authz.error, status: 403 };
+  const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
+  if (!kkAuthz.ok) {
+    return { ok: false, error: kkAuthz.error, status: 403 };
   }
 
   const ride = await findRide(rideId);

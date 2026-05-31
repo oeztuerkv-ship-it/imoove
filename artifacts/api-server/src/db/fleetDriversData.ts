@@ -133,6 +133,10 @@ export interface FleetDriverListRow {
   medicalTransportEnabled: boolean;
   /** true = medicalTransportEnabled vom Unternehmen erben. */
   medicalTransportInheritFromCompany: boolean;
+  /** KK-Modul: Mitarbeiter-Berechtigung. */
+  permissionKkModule: boolean;
+  /** Inhaber-Fahrerkonto. */
+  isOwner: boolean;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -196,6 +200,8 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     isMarketOnline: Boolean(r.is_market_online),
     medicalTransportEnabled: Boolean(r.medical_transport_enabled),
     medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company),
+    permissionKkModule: Boolean(r.permission_kk_module),
+    isOwner: Boolean(r.is_owner),
   };
 }
 
@@ -309,6 +315,7 @@ export async function insertFleetDriver(input: {
   driversLicenseExpiry?: string | null;
   /** Neu angelegte Fahrer gelten im Mandanten als nutzbar; Plattform prüft Einsatz über Readiness (Nachweise/Fahrzeug). */
   approvalStatus?: FleetDriverApprovalStatus;
+  isOwner?: boolean;
 }): Promise<
   | { ok: true; id: string }
   | {
@@ -360,6 +367,7 @@ export async function insertFleetDriver(input: {
     access_status: "active",
     approval_status: input.approvalStatus ?? "approved",
     session_version: 1,
+    is_owner: Boolean(input.isOwner),
     });
   } catch (e: unknown) {
     const code = (e as { code?: string })?.code;
@@ -462,6 +470,26 @@ export async function patchFleetDriverProfile(
   }
 
   await db.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
+  return { ok: true };
+}
+
+export async function patchFleetDriverKkPermissions(
+  id: string,
+  companyId: string,
+  patch: { permissionKkModule: boolean },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const cur = await findFleetDriverInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (cur.is_owner) return { ok: false, error: "owner_permissions_fixed" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  await db
+    .update(fleetDriversTable)
+    .set({
+      permission_kk_module: Boolean(patch.permissionKkModule),
+      updated_at: new Date(),
+    })
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
   return { ok: true };
 }
 

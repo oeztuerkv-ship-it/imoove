@@ -824,6 +824,7 @@ router.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
       updatedAt: profile.updatedAt.toISOString(),
       permissions: permissionsForRole(role),
       panelModules: enabledPanelModules(profile),
+      featureKkModule: profile.featureKkModule,
     },
   });
 });

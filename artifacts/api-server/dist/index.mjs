@@ -116,7 +116,7 @@ var require_package = __commonJS({
 var require_main = __commonJS({
   "../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js"(exports, module) {
     var fs4 = __require("fs");
-    var path14 = __require("path");
+    var path15 = __require("path");
     var os = __require("os");
     var crypto2 = __require("crypto");
     var packageJson = require_package();
@@ -230,7 +230,7 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path14.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path15.resolve(process.cwd(), ".env.vault");
       }
       if (fs4.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
@@ -238,7 +238,7 @@ var require_main = __commonJS({
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path14.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path15.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       _log("Loading env from encrypted .env.vault");
@@ -251,7 +251,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path14.resolve(process.cwd(), ".env");
+      const dotenvPath = path15.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       const debug = Boolean(options && options.debug);
       if (options && options.encoding) {
@@ -274,13 +274,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path15 of optionPaths) {
+      for (const path16 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs4.readFileSync(path15, { encoding }));
+          const parsed = DotenvModule.parse(fs4.readFileSync(path16, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug) {
-            _debug(`Failed to load ${path15} ${e.message}`);
+            _debug(`Failed to load ${path16} ${e.message}`);
           }
           lastError = e;
         }
@@ -19267,11 +19267,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path14) {
-      if (!path14 || typeof path14 !== "string") {
+    function lookup(path15) {
+      if (!path15 || typeof path15 !== "string") {
         return false;
       }
-      var extension3 = extname("x." + path14).toLowerCase().slice(1);
+      var extension3 = extname("x." + path15).toLowerCase().slice(1);
       if (!extension3) {
         return false;
       }
@@ -22743,13 +22743,13 @@ var require_view = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/view.js"(exports, module) {
     "use strict";
     var debug = require_src()("express:view");
-    var path14 = __require("node:path");
+    var path15 = __require("node:path");
     var fs4 = __require("node:fs");
-    var dirname = path14.dirname;
-    var basename = path14.basename;
-    var extname = path14.extname;
-    var join = path14.join;
-    var resolve = path14.resolve;
+    var dirname = path15.dirname;
+    var basename = path15.basename;
+    var extname = path15.extname;
+    var join = path15.join;
+    var resolve = path15.resolve;
     module.exports = View2;
     function View2(name2, options) {
       var opts = options || {};
@@ -22778,17 +22778,17 @@ var require_view = __commonJS({
       this.path = this.lookup(fileName);
     }
     View2.prototype.lookup = function lookup(name2) {
-      var path15;
+      var path16;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name2);
-      for (var i = 0; i < roots.length && !path15; i++) {
+      for (var i = 0; i < roots.length && !path16; i++) {
         var root = roots[i];
         var loc = resolve(root, name2);
         var dir = dirname(loc);
         var file = basename(loc);
-        path15 = this.resolve(dir, file);
+        path16 = this.resolve(dir, file);
       }
-      return path15;
+      return path16;
     };
     View2.prototype.render = function render(options, callback) {
       var sync = true;
@@ -22810,21 +22810,21 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file) {
       var ext = this.ext;
-      var path15 = join(dir, file);
-      var stat = tryStat(path15);
+      var path16 = join(dir, file);
+      var stat = tryStat(path16);
       if (stat && stat.isFile()) {
-        return path15;
+        return path16;
       }
-      path15 = join(dir, basename(file, ext), "index" + ext);
-      stat = tryStat(path15);
+      path16 = join(dir, basename(file, ext), "index" + ext);
+      stat = tryStat(path16);
       if (stat && stat.isFile()) {
-        return path15;
+        return path16;
       }
     };
-    function tryStat(path15) {
-      debug('stat "%s"', path15);
+    function tryStat(path16) {
+      debug('stat "%s"', path16);
       try {
-        return fs4.statSync(path15);
+        return fs4.statSync(path16);
       } catch (e) {
         return void 0;
       }
@@ -23960,15 +23960,15 @@ var require_dist = __commonJS({
       let index = 0;
       function consumeUntil(end) {
         const output = [];
-        let path14 = "";
+        let path15 = "";
         function writePath() {
-          if (!path14)
+          if (!path15)
             return;
           output.push({
             type: "text",
-            value: encodePath(path14)
+            value: encodePath(path15)
           });
-          path14 = "";
+          path15 = "";
         }
         while (index < chars.length) {
           const value = chars[index++];
@@ -23980,7 +23980,7 @@ var require_dist = __commonJS({
             if (index === chars.length) {
               throw new PathError(`Unexpected end after \\ at index ${index}`, str2);
             }
-            path14 += chars[index++];
+            path15 += chars[index++];
             continue;
           }
           if (value === ":" || value === "*") {
@@ -24024,7 +24024,7 @@ var require_dist = __commonJS({
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
             throw new PathError(`Unexpected ${value} at index ${index - 1}`, str2);
           }
-          path14 += value;
+          path15 += value;
         }
         if (end) {
           throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str2);
@@ -24034,17 +24034,17 @@ var require_dist = __commonJS({
       }
       return new TokenData(consumeUntil(""), str2);
     }
-    function compile(path14, options = {}) {
+    function compile(path15, options = {}) {
       const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const data = typeof path14 === "object" ? path14 : parse(path14, options);
+      const data = typeof path15 === "object" ? path15 : parse(path15, options);
       const fn = tokensToFunction(data.tokens, delimiter, encode3);
-      return function path15(params = {}) {
+      return function path16(params = {}) {
         const missing = [];
-        const path16 = fn(params, missing);
+        const path17 = fn(params, missing);
         if (missing.length) {
           throw new TypeError(`Missing parameters: ${missing.join(", ")}`);
         }
-        return path16;
+        return path17;
       };
     }
     function tokensToFunction(tokens, delimiter, encode3) {
@@ -24106,9 +24106,9 @@ var require_dist = __commonJS({
         return encodeValue(value);
       };
     }
-    function match(path14, options = {}) {
+    function match(path15, options = {}) {
       const { decode: decode2 = decodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const { regexp, keys } = pathToRegexp(path14, options);
+      const { regexp, keys } = pathToRegexp(path15, options);
       const decoders = keys.map((key) => {
         if (decode2 === false)
           return NOOP_VALUE;
@@ -24120,7 +24120,7 @@ var require_dist = __commonJS({
         const m = regexp.exec(input);
         if (!m)
           return false;
-        const path15 = m[0];
+        const path16 = m[0];
         const params = /* @__PURE__ */ Object.create(null);
         for (let i = 1; i < m.length; i++) {
           if (m[i] === void 0)
@@ -24129,21 +24129,21 @@ var require_dist = __commonJS({
           const decoder2 = decoders[i - 1];
           params[key.name] = decoder2(m[i]);
         }
-        return { path: path15, params };
+        return { path: path16, params };
       };
     }
-    function pathToRegexp(path14, options = {}) {
+    function pathToRegexp(path15, options = {}) {
       const { delimiter = DEFAULT_DELIMITER, end = true, sensitive = false, trailing = true } = options;
       const keys = [];
       let source = "";
       let combinations = 0;
-      function process2(path15) {
-        if (Array.isArray(path15)) {
-          for (const p of path15)
+      function process2(path16) {
+        if (Array.isArray(path16)) {
+          for (const p of path16)
             process2(p);
           return;
         }
-        const data = typeof path15 === "object" ? path15 : parse(path15, options);
+        const data = typeof path16 === "object" ? path16 : parse(path16, options);
         flatten(data.tokens, 0, [], (tokens) => {
           if (combinations >= 256) {
             throw new PathError("Too many path combinations", data.originalPath);
@@ -24154,7 +24154,7 @@ var require_dist = __commonJS({
           combinations++;
         });
       }
-      process2(path14);
+      process2(path15);
       let pattern = `^(?:${source})`;
       if (trailing)
         pattern += "(?:" + escape2(delimiter) + "$)?";
@@ -24294,18 +24294,18 @@ var require_layer = __commonJS({
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
     module.exports = Layer;
-    function Layer(path14, options, fn) {
+    function Layer(path15, options, fn) {
       if (!(this instanceof Layer)) {
-        return new Layer(path14, options, fn);
+        return new Layer(path15, options, fn);
       }
-      debug("new %o", path14);
+      debug("new %o", path15);
       const opts = options || {};
       this.handle = fn;
       this.keys = [];
       this.name = fn.name || "<anonymous>";
       this.params = void 0;
       this.path = void 0;
-      this.slash = path14 === "/" && opts.end === false;
+      this.slash = path15 === "/" && opts.end === false;
       function matcher(_path) {
         if (_path instanceof RegExp) {
           const keys = [];
@@ -24344,7 +24344,7 @@ var require_layer = __commonJS({
           decode: decodeParam
         });
       }
-      this.matchers = Array.isArray(path14) ? path14.map(matcher) : [matcher(path14)];
+      this.matchers = Array.isArray(path15) ? path15.map(matcher) : [matcher(path15)];
     }
     Layer.prototype.handleError = function handleError(error, req, res, next) {
       const fn = this.handle;
@@ -24384,9 +24384,9 @@ var require_layer = __commonJS({
         next(err);
       }
     };
-    Layer.prototype.match = function match(path14) {
+    Layer.prototype.match = function match(path15) {
       let match2;
-      if (path14 != null) {
+      if (path15 != null) {
         if (this.slash) {
           this.params = {};
           this.path = "";
@@ -24394,7 +24394,7 @@ var require_layer = __commonJS({
         }
         let i = 0;
         while (!match2 && i < this.matchers.length) {
-          match2 = this.matchers[i](path14);
+          match2 = this.matchers[i](path15);
           i++;
         }
       }
@@ -24422,13 +24422,13 @@ var require_layer = __commonJS({
         throw err;
       }
     }
-    function loosen(path14) {
-      if (path14 instanceof RegExp || path14 === "/") {
-        return path14;
+    function loosen(path15) {
+      if (path15 instanceof RegExp || path15 === "/") {
+        return path15;
       }
-      return Array.isArray(path14) ? path14.map(function(p) {
+      return Array.isArray(path15) ? path15.map(function(p) {
         return loosen(p);
-      }) : String(path14).replace(TRAILING_SLASH_REGEXP, "");
+      }) : String(path15).replace(TRAILING_SLASH_REGEXP, "");
     }
   }
 });
@@ -24444,9 +24444,9 @@ var require_route = __commonJS({
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
     module.exports = Route;
-    function Route(path14) {
-      debug("new %o", path14);
-      this.path = path14;
+    function Route(path15) {
+      debug("new %o", path15);
+      this.path = path15;
       this.stack = [];
       this.methods = /* @__PURE__ */ Object.create(null);
     }
@@ -24567,27 +24567,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router26;
+    module.exports = Router28;
     module.exports.Route = Route;
-    function Router26(options) {
-      if (!(this instanceof Router26)) {
-        return new Router26(options);
+    function Router28(options) {
+      if (!(this instanceof Router28)) {
+        return new Router28(options);
       }
       const opts = options || {};
-      function router26(req, res, next) {
-        router26.handle(req, res, next);
+      function router28(req, res, next) {
+        router28.handle(req, res, next);
       }
-      Object.setPrototypeOf(router26, this);
-      router26.caseSensitive = opts.caseSensitive;
-      router26.mergeParams = opts.mergeParams;
-      router26.params = {};
-      router26.strict = opts.strict;
-      router26.stack = [];
-      return router26;
+      Object.setPrototypeOf(router28, this);
+      router28.caseSensitive = opts.caseSensitive;
+      router28.mergeParams = opts.mergeParams;
+      router28.params = {};
+      router28.strict = opts.strict;
+      router28.stack = [];
+      return router28;
     }
-    Router26.prototype = function() {
+    Router28.prototype = function() {
     };
-    Router26.prototype.param = function param2(name2, fn) {
+    Router28.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -24607,7 +24607,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router26.prototype.handle = function handle(req, res, callback) {
+    Router28.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -24654,8 +24654,8 @@ var require_router = __commonJS({
         if (++sync > 100) {
           return setImmediate(next, err);
         }
-        const path14 = getPathname(req);
-        if (path14 == null) {
+        const path15 = getPathname(req);
+        if (path15 == null) {
           return done(layerError);
         }
         let layer;
@@ -24663,7 +24663,7 @@ var require_router = __commonJS({
         let route;
         while (match !== true && idx < stack.length) {
           layer = stack[idx++];
-          match = matchLayer(layer, path14);
+          match = matchLayer(layer, path15);
           route = layer.route;
           if (typeof match !== "boolean") {
             layerError = layerError || match;
@@ -24701,18 +24701,18 @@ var require_router = __commonJS({
           } else if (route) {
             layer.handleRequest(req, res, next);
           } else {
-            trimPrefix(layer, layerError, layerPath, path14);
+            trimPrefix(layer, layerError, layerPath, path15);
           }
           sync = 0;
         });
       }
-      function trimPrefix(layer, layerError, layerPath, path14) {
+      function trimPrefix(layer, layerError, layerPath, path15) {
         if (layerPath.length !== 0) {
-          if (layerPath !== path14.substring(0, layerPath.length)) {
+          if (layerPath !== path15.substring(0, layerPath.length)) {
             next(layerError);
             return;
           }
-          const c = path14[layerPath.length];
+          const c = path15[layerPath.length];
           if (c && c !== "/") {
             next(layerError);
             return;
@@ -24734,9 +24734,9 @@ var require_router = __commonJS({
         }
       }
     };
-    Router26.prototype.use = function use(handler) {
+    Router28.prototype.use = function use(handler) {
       let offset = 0;
-      let path14 = "/";
+      let path15 = "/";
       if (typeof handler !== "function") {
         let arg = handler;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -24744,7 +24744,7 @@ var require_router = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path14 = handler;
+          path15 = handler;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -24756,8 +24756,8 @@ var require_router = __commonJS({
         if (typeof fn !== "function") {
           throw new TypeError("argument handler must be a function");
         }
-        debug("use %o %s", path14, fn.name || "<anonymous>");
-        const layer = new Layer(path14, {
+        debug("use %o %s", path15, fn.name || "<anonymous>");
+        const layer = new Layer(path15, {
           sensitive: this.caseSensitive,
           strict: false,
           end: false
@@ -24767,9 +24767,9 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router26.prototype.route = function route(path14) {
-      const route2 = new Route(path14);
-      const layer = new Layer(path14, {
+    Router28.prototype.route = function route(path15) {
+      const route2 = new Route(path15);
+      const layer = new Layer(path15, {
         sensitive: this.caseSensitive,
         strict: this.strict,
         end: true
@@ -24782,8 +24782,8 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router26.prototype[method] = function(path14) {
-        const route = this.route(path14);
+      Router28.prototype[method] = function(path15) {
+        const route = this.route(path15);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
@@ -24812,9 +24812,9 @@ var require_router = __commonJS({
       const fqdnIndex = url.substring(0, pathLength).indexOf("://");
       return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
-    function matchLayer(layer, path14) {
+    function matchLayer(layer, path15) {
       try {
-        return layer.match(path14);
+        return layer.match(path15);
       } catch (err) {
         return err;
       }
@@ -24965,13 +24965,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router26 = require_router();
+    var Router28 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router26 = null;
+      var router28 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -24980,13 +24980,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router26 === null) {
-            router26 = new Router26({
+          if (router28 === null) {
+            router28 = new Router28({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router26;
+          return router28;
         }
       });
     };
@@ -25042,7 +25042,7 @@ var require_application = __commonJS({
     };
     app2.use = function use(fn) {
       var offset = 0;
-      var path14 = "/";
+      var path15 = "/";
       if (typeof fn !== "function") {
         var arg = fn;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -25050,22 +25050,22 @@ var require_application = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path14 = fn;
+          path15 = fn;
         }
       }
       var fns = flatten.call(slice.call(arguments, offset), Infinity);
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router26 = this.router;
+      var router28 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router26.use(path14, fn2);
+          return router28.use(path15, fn2);
         }
-        debug(".use app under %s", path14);
-        fn2.mountpath = path14;
+        debug(".use app under %s", path15);
+        fn2.mountpath = path15;
         fn2.parent = this;
-        router26.use(path14, function mounted_app(req, res, next) {
+        router28.use(path15, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -25077,8 +25077,8 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app2.route = function route(path14) {
-      return this.router.route(path14);
+    app2.route = function route(path15) {
+      return this.router.route(path15);
     };
     app2.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
@@ -25121,7 +25121,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app2.path = function path14() {
+    app2.path = function path15() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
     app2.enabled = function enabled(setting) {
@@ -25137,17 +25137,17 @@ var require_application = __commonJS({
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app2[method] = function(path14) {
+      app2[method] = function(path15) {
         if (method === "get" && arguments.length === 1) {
-          return this.set(path14);
+          return this.set(path15);
         }
-        var route = this.route(path14);
+        var route = this.route(path15);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
     });
-    app2.all = function all(path14) {
-      var route = this.route(path14);
+    app2.all = function all(path15) {
+      var route = this.route(path15);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
         route[methods[i]].apply(route, args);
@@ -26057,7 +26057,7 @@ var require_request = __commonJS({
       var subdomains2 = !isIP(hostname2) ? hostname2.split(".").reverse() : [hostname2];
       return subdomains2.slice(offset);
     });
-    defineGetter(req, "path", function path14() {
+    defineGetter(req, "path", function path15() {
       return parse(this).pathname;
     });
     defineGetter(req, "host", function host() {
@@ -26469,27 +26469,27 @@ var require_send = __commonJS({
     var ms = require_ms();
     var onFinished = require_on_finished();
     var parseRange = require_range_parser();
-    var path14 = __require("path");
+    var path15 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
     var util2 = __require("util");
-    var extname = path14.extname;
-    var join = path14.join;
-    var normalize = path14.normalize;
-    var resolve = path14.resolve;
-    var sep = path14.sep;
+    var extname = path15.extname;
+    var join = path15.join;
+    var normalize = path15.normalize;
+    var resolve = path15.resolve;
+    var sep = path15.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
     module.exports = send;
-    function send(req, path15, options) {
-      return new SendStream(req, path15, options);
+    function send(req, path16, options) {
+      return new SendStream(req, path16, options);
     }
-    function SendStream(req, path15, options) {
+    function SendStream(req, path16, options) {
       Stream.call(this);
       var opts = options || {};
       this.options = opts;
-      this.path = path15;
+      this.path = path16;
       this.req = req;
       this._acceptRanges = opts.acceptRanges !== void 0 ? Boolean(opts.acceptRanges) : true;
       this._cacheControl = opts.cacheControl !== void 0 ? Boolean(opts.cacheControl) : true;
@@ -26603,10 +26603,10 @@ var require_send = __commonJS({
       var lastModified = this.res.getHeader("Last-Modified");
       return parseHttpDate(lastModified) <= parseHttpDate(ifRange);
     };
-    SendStream.prototype.redirect = function redirect(path15) {
+    SendStream.prototype.redirect = function redirect(path16) {
       var res = this.res;
       if (hasListeners(this, "directory")) {
-        this.emit("directory", res, path15);
+        this.emit("directory", res, path16);
         return;
       }
       if (this.hasTrailingSlash()) {
@@ -26626,38 +26626,38 @@ var require_send = __commonJS({
     SendStream.prototype.pipe = function pipe(res) {
       var root = this._root;
       this.res = res;
-      var path15 = decode2(this.path);
-      if (path15 === -1) {
+      var path16 = decode2(this.path);
+      if (path16 === -1) {
         this.error(400);
         return res;
       }
-      if (~path15.indexOf("\0")) {
+      if (~path16.indexOf("\0")) {
         this.error(400);
         return res;
       }
       var parts;
       if (root !== null) {
-        if (path15) {
-          path15 = normalize("." + sep + path15);
+        if (path16) {
+          path16 = normalize("." + sep + path16);
         }
-        if (UP_PATH_REGEXP.test(path15)) {
-          debug('malicious path "%s"', path15);
+        if (UP_PATH_REGEXP.test(path16)) {
+          debug('malicious path "%s"', path16);
           this.error(403);
           return res;
         }
-        parts = path15.split(sep);
-        path15 = normalize(join(root, path15));
+        parts = path16.split(sep);
+        path16 = normalize(join(root, path16));
       } else {
-        if (UP_PATH_REGEXP.test(path15)) {
-          debug('malicious path "%s"', path15);
+        if (UP_PATH_REGEXP.test(path16)) {
+          debug('malicious path "%s"', path16);
           this.error(403);
           return res;
         }
-        parts = normalize(path15).split(sep);
-        path15 = resolve(path15);
+        parts = normalize(path16).split(sep);
+        path16 = resolve(path16);
       }
       if (containsDotFile(parts)) {
-        debug('%s dotfile "%s"', this._dotfiles, path15);
+        debug('%s dotfile "%s"', this._dotfiles, path16);
         switch (this._dotfiles) {
           case "allow":
             break;
@@ -26671,13 +26671,13 @@ var require_send = __commonJS({
         }
       }
       if (this._index.length && this.hasTrailingSlash()) {
-        this.sendIndex(path15);
+        this.sendIndex(path16);
         return res;
       }
-      this.sendFile(path15);
+      this.sendFile(path16);
       return res;
     };
-    SendStream.prototype.send = function send2(path15, stat) {
+    SendStream.prototype.send = function send2(path16, stat) {
       var len = stat.size;
       var options = this.options;
       var opts = {};
@@ -26689,9 +26689,9 @@ var require_send = __commonJS({
         this.headersAlreadySent();
         return;
       }
-      debug('pipe "%s"', path15);
-      this.setHeader(path15, stat);
-      this.type(path15);
+      debug('pipe "%s"', path16);
+      this.setHeader(path16, stat);
+      this.type(path16);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
           this.error(412);
@@ -26740,28 +26740,28 @@ var require_send = __commonJS({
         res.end();
         return;
       }
-      this.stream(path15, opts);
+      this.stream(path16, opts);
     };
-    SendStream.prototype.sendFile = function sendFile(path15) {
+    SendStream.prototype.sendFile = function sendFile(path16) {
       var i = 0;
       var self = this;
-      debug('stat "%s"', path15);
-      fs4.stat(path15, function onstat(err, stat) {
-        var pathEndsWithSep = path15[path15.length - 1] === sep;
-        if (err && err.code === "ENOENT" && !extname(path15) && !pathEndsWithSep) {
+      debug('stat "%s"', path16);
+      fs4.stat(path16, function onstat(err, stat) {
+        var pathEndsWithSep = path16[path16.length - 1] === sep;
+        if (err && err.code === "ENOENT" && !extname(path16) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path15);
+        if (stat.isDirectory()) return self.redirect(path16);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path15, stat);
-        self.send(path15, stat);
+        self.emit("file", path16, stat);
+        self.send(path16, stat);
       });
       function next(err) {
         if (self._extensions.length <= i) {
           return err ? self.onStatError(err) : self.error(404);
         }
-        var p = path15 + "." + self._extensions[i++];
+        var p = path16 + "." + self._extensions[i++];
         debug('stat "%s"', p);
         fs4.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -26771,7 +26771,7 @@ var require_send = __commonJS({
         });
       }
     };
-    SendStream.prototype.sendIndex = function sendIndex(path15) {
+    SendStream.prototype.sendIndex = function sendIndex(path16) {
       var i = -1;
       var self = this;
       function next(err) {
@@ -26779,7 +26779,7 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path15, self._index[i]);
+        var p = join(path16, self._index[i]);
         debug('stat "%s"', p);
         fs4.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -26790,10 +26790,10 @@ var require_send = __commonJS({
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path15, options) {
+    SendStream.prototype.stream = function stream(path16, options) {
       var self = this;
       var res = this.res;
-      var stream2 = fs4.createReadStream(path15, options);
+      var stream2 = fs4.createReadStream(path16, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -26808,17 +26808,17 @@ var require_send = __commonJS({
         self.emit("end");
       });
     };
-    SendStream.prototype.type = function type(path15) {
+    SendStream.prototype.type = function type(path16) {
       var res = this.res;
       if (res.getHeader("Content-Type")) return;
-      var ext = extname(path15);
+      var ext = extname(path16);
       var type2 = mime.contentType(ext) || "application/octet-stream";
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path15, stat) {
+    SendStream.prototype.setHeader = function setHeader(path16, stat) {
       var res = this.res;
-      this.emit("headers", res, path15, stat);
+      this.emit("headers", res, path16, stat);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -26876,9 +26876,9 @@ var require_send = __commonJS({
       }
       return err instanceof Error ? createError(status, err, { expose: false }) : createError(status, err);
     }
-    function decode2(path15) {
+    function decode2(path16) {
       try {
-        return decodeURIComponent(path15);
+        return decodeURIComponent(path16);
       } catch (err) {
         return -1;
       }
@@ -27022,7 +27022,7 @@ var require_response = __commonJS({
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
-    var path14 = __require("node:path");
+    var path15 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
     var sign2 = require_cookie_signature().sign;
@@ -27031,8 +27031,8 @@ var require_response = __commonJS({
     var setCharset = require_utils3().setCharset;
     var cookie = require_cookie();
     var send = require_send();
-    var extname = path14.extname;
-    var resolve = path14.resolve;
+    var extname = path15.extname;
+    var resolve = path15.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = __require("node:buffer");
     var res = Object.create(http.ServerResponse.prototype);
@@ -27178,26 +27178,26 @@ var require_response = __commonJS({
       this.type("txt");
       return this.send(body);
     };
-    res.sendFile = function sendFile(path15, options, callback) {
+    res.sendFile = function sendFile(path16, options, callback) {
       var done = callback;
       var req = this.req;
       var res2 = this;
       var next = req.next;
       var opts = options || {};
-      if (!path15) {
+      if (!path16) {
         throw new TypeError("path argument is required to res.sendFile");
       }
-      if (typeof path15 !== "string") {
+      if (typeof path16 !== "string") {
         throw new TypeError("path must be a string to res.sendFile");
       }
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      if (!opts.root && !pathIsAbsolute(path15)) {
+      if (!opts.root && !pathIsAbsolute(path16)) {
         throw new TypeError("path must be absolute or specify root to res.sendFile");
       }
-      var pathname = encodeURI(path15);
+      var pathname = encodeURI(path16);
       opts.etag = this.app.enabled("etag");
       var file = send(req, pathname, opts);
       sendfile(res2, file, opts, function(err) {
@@ -27208,7 +27208,7 @@ var require_response = __commonJS({
         }
       });
     };
-    res.download = function download(path15, filename, options, callback) {
+    res.download = function download(path16, filename, options, callback) {
       var done = callback;
       var name2 = filename;
       var opts = options || null;
@@ -27225,7 +27225,7 @@ var require_response = __commonJS({
         opts = filename;
       }
       var headers = {
-        "Content-Disposition": contentDisposition(name2 || path15)
+        "Content-Disposition": contentDisposition(name2 || path16)
       };
       if (opts && opts.headers) {
         var keys = Object.keys(opts.headers);
@@ -27238,7 +27238,7 @@ var require_response = __commonJS({
       }
       opts = Object.create(opts);
       opts.headers = headers;
-      var fullPath = !opts.root ? resolve(path15) : path15;
+      var fullPath = !opts.root ? resolve(path16) : path16;
       return this.sendFile(fullPath, opts, done);
     };
     res.contentType = res.type = function contentType(type) {
@@ -27521,11 +27521,11 @@ var require_serve_static = __commonJS({
         }
         var forwardError = !fallthrough;
         var originalUrl = parseUrl.original(req);
-        var path14 = parseUrl(req).pathname;
-        if (path14 === "/" && originalUrl.pathname.substr(-1) !== "/") {
-          path14 = "";
+        var path15 = parseUrl(req).pathname;
+        if (path15 === "/" && originalUrl.pathname.substr(-1) !== "/") {
+          path15 = "";
         }
-        var stream = send(req, path14, opts);
+        var stream = send(req, path15, opts);
         stream.on("directory", onDirectory);
         if (setHeaders) {
           stream.on("headers", setHeaders);
@@ -27592,7 +27592,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router26 = require_router();
+    var Router28 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -27614,8 +27614,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router26.Route;
-    exports.Router = Router26;
+    exports.Route = Router28.Route;
+    exports.Router = Router28;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -28173,8 +28173,8 @@ var require_req = __commonJS({
       if (req.originalUrl) {
         _req.url = req.originalUrl;
       } else {
-        const path14 = req.path;
-        _req.url = typeof path14 === "string" ? path14 : req.url ? req.url.path || req.url : void 0;
+        const path15 = req.path;
+        _req.url = typeof path15 === "string" ? path15 : req.url ? req.url.path || req.url : void 0;
       }
       if (req.query) {
         _req.query = req.query;
@@ -28339,14 +28339,14 @@ var require_redact = __commonJS({
       }
       return obj;
     }
-    function parsePath(path14) {
+    function parsePath(path15) {
       const parts = [];
       let current = "";
       let inBrackets = false;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path14.length; i++) {
-        const char2 = path14[i];
+      for (let i = 0; i < path15.length; i++) {
+        const char2 = path15[i];
         if (!inBrackets && char2 === ".") {
           if (current) {
             parts.push(current);
@@ -28477,10 +28477,10 @@ var require_redact = __commonJS({
       return current;
     }
     function redactPaths(obj, paths, censor, remove = false) {
-      for (const path14 of paths) {
-        const parts = parsePath(path14);
+      for (const path15 of paths) {
+        const parts = parsePath(path15);
         if (parts.includes("*")) {
-          redactWildcardPath(obj, parts, censor, path14, remove);
+          redactWildcardPath(obj, parts, censor, path15, remove);
         } else {
           if (remove) {
             removeKey(obj, parts);
@@ -28565,8 +28565,8 @@ var require_redact = __commonJS({
           }
         } else {
           if (afterWildcard.includes("*")) {
-            const wrappedCensor = typeof censor === "function" ? (value, path14) => {
-              const fullPath = [...pathArray.slice(0, pathLength), ...path14];
+            const wrappedCensor = typeof censor === "function" ? (value, path15) => {
+              const fullPath = [...pathArray.slice(0, pathLength), ...path15];
               return censor(value, fullPath);
             } : censor;
             redactWildcardPath(current, afterWildcard, wrappedCensor, originalPath, remove);
@@ -28601,8 +28601,8 @@ var require_redact = __commonJS({
         return null;
       }
       const pathStructure = /* @__PURE__ */ new Map();
-      for (const path14 of pathsToClone) {
-        const parts = parsePath(path14);
+      for (const path15 of pathsToClone) {
+        const parts = parsePath(path15);
         let current = pathStructure;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -28654,24 +28654,24 @@ var require_redact = __commonJS({
       }
       return cloneSelectively(obj, pathStructure);
     }
-    function validatePath(path14) {
-      if (typeof path14 !== "string") {
+    function validatePath(path15) {
+      if (typeof path15 !== "string") {
         throw new Error("Paths must be (non-empty) strings");
       }
-      if (path14 === "") {
+      if (path15 === "") {
         throw new Error("Invalid redaction path ()");
       }
-      if (path14.includes("..")) {
-        throw new Error(`Invalid redaction path (${path14})`);
+      if (path15.includes("..")) {
+        throw new Error(`Invalid redaction path (${path15})`);
       }
-      if (path14.includes(",")) {
-        throw new Error(`Invalid redaction path (${path14})`);
+      if (path15.includes(",")) {
+        throw new Error(`Invalid redaction path (${path15})`);
       }
       let bracketCount = 0;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path14.length; i++) {
-        const char2 = path14[i];
+      for (let i = 0; i < path15.length; i++) {
+        const char2 = path15[i];
         if ((char2 === '"' || char2 === "'") && bracketCount > 0) {
           if (!inQuotes) {
             inQuotes = true;
@@ -28685,20 +28685,20 @@ var require_redact = __commonJS({
         } else if (char2 === "]" && !inQuotes) {
           bracketCount--;
           if (bracketCount < 0) {
-            throw new Error(`Invalid redaction path (${path14})`);
+            throw new Error(`Invalid redaction path (${path15})`);
           }
         }
       }
       if (bracketCount !== 0) {
-        throw new Error(`Invalid redaction path (${path14})`);
+        throw new Error(`Invalid redaction path (${path15})`);
       }
     }
     function validatePaths(paths) {
       if (!Array.isArray(paths)) {
         throw new TypeError("paths must be an array");
       }
-      for (const path14 of paths) {
-        validatePath(path14);
+      for (const path15 of paths) {
+        validatePath(path15);
       }
     }
     function slowRedact(options = {}) {
@@ -28866,8 +28866,8 @@ var require_redaction = __commonJS({
         if (shape[k] === null) {
           o[k] = (value) => topCensor(value, [k]);
         } else {
-          const wrappedCensor = typeof censor === "function" ? (value, path14) => {
-            return censor(value, [k, ...path14]);
+          const wrappedCensor = typeof censor === "function" ? (value, path15) => {
+            return censor(value, [k, ...path15]);
           } : censor;
           o[k] = Redact({
             paths: shape[k],
@@ -29088,7 +29088,7 @@ var require_sonic_boom = __commonJS({
     var fs4 = __require("fs");
     var EventEmitter = __require("events");
     var inherits = __require("util").inherits;
-    var path14 = __require("path");
+    var path15 = __require("path");
     var sleep = require_atomic_sleep();
     var assert = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
@@ -29142,7 +29142,7 @@ var require_sonic_boom = __commonJS({
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
-          if (sonic.mkdir) fs4.mkdirSync(path14.dirname(file), { recursive: true });
+          if (sonic.mkdir) fs4.mkdirSync(path15.dirname(file), { recursive: true });
           const fd = fs4.openSync(file, flags, mode);
           fileOpened(null, fd);
         } catch (err) {
@@ -29150,7 +29150,7 @@ var require_sonic_boom = __commonJS({
           throw err;
         }
       } else if (sonic.mkdir) {
-        fs4.mkdir(path14.dirname(file), { recursive: true }, (err) => {
+        fs4.mkdir(path15.dirname(file), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
           fs4.open(file, flags, mode, fileOpened);
         });
@@ -29162,7 +29162,7 @@ var require_sonic_boom = __commonJS({
       if (!(this instanceof SonicBoom)) {
         return new SonicBoom(opts);
       }
-      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir8, retryEAGAIN, fsync, contentMode, mode } = opts || {};
+      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir9, retryEAGAIN, fsync, contentMode, mode } = opts || {};
       fd = fd || dest;
       this._len = 0;
       this.fd = -1;
@@ -29187,7 +29187,7 @@ var require_sonic_boom = __commonJS({
       this.append = append || false;
       this.mode = mode;
       this.retryEAGAIN = retryEAGAIN || (() => true);
-      this.mkdir = mkdir8 || false;
+      this.mkdir = mkdir9 || false;
       let fsWriteSync;
       let fsWrite;
       if (contentMode === kContentModeBuffer) {
@@ -32010,9 +32010,9 @@ var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
-        const path14 = __require("path");
+        const path15 = __require("path");
         const outputDir = "/Users/vedo/Downloads/imoove/artifacts/api-server/dist";
-        return path14.resolve(outputDir, p.replace(/^\.\//, ""));
+        return path15.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
         return f(p);
@@ -33219,10 +33219,10 @@ var init_subquery = __esm({
     init_entity();
     Subquery = class {
       static [entityKind] = "Subquery";
-      constructor(sql3, fields, alias, isWith = false, usedTables = []) {
+      constructor(sql4, fields, alias, isWith = false, usedTables = []) {
         this._ = {
           brand: "Subquery",
-          sql: sql3,
+          sql: sql4,
           selectedFields: fields,
           alias,
           isWith,
@@ -34007,7 +34007,7 @@ var init_query_promise = __esm({
 function mapResultRow(columns, row, joinsNotNullableMap) {
   const nullifyMap = {};
   const result = columns.reduce(
-    (result2, { path: path14, field }, columnIndex) => {
+    (result2, { path: path15, field }, columnIndex) => {
       let decoder2;
       if (is(field, Column)) {
         decoder2 = field;
@@ -34019,8 +34019,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         decoder2 = field.sql.decoder;
       }
       let node = result2;
-      for (const [pathChunkIndex, pathChunk] of path14.entries()) {
-        if (pathChunkIndex < path14.length - 1) {
+      for (const [pathChunkIndex, pathChunk] of path15.entries()) {
+        if (pathChunkIndex < path15.length - 1) {
           if (!(pathChunk in node)) {
             node[pathChunk] = {};
           }
@@ -34028,8 +34028,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         } else {
           const rawValue = row[columnIndex];
           const value = node[pathChunk] = rawValue === null ? null : decoder2.mapFromDriverValue(rawValue);
-          if (joinsNotNullableMap && is(field, Column) && path14.length === 2) {
-            const objectName = path14[0];
+          if (joinsNotNullableMap && is(field, Column) && path15.length === 2) {
+            const objectName = path15[0];
             if (!(objectName in nullifyMap)) {
               nullifyMap[objectName] = value === null ? getTableName(field.table) : false;
             } else if (typeof nullifyMap[objectName] === "string" && nullifyMap[objectName] !== getTableName(field.table)) {
@@ -40198,10 +40198,10 @@ var init_raw = __esm({
     init_entity();
     init_query_promise();
     PgRaw = class extends QueryPromise {
-      constructor(execute, sql3, query, mapBatchResult) {
+      constructor(execute, sql4, query, mapBatchResult) {
         super();
         this.execute = execute;
-        this.sql = sql3;
+        this.sql = sql4;
         this.query = query;
         this.mapBatchResult = mapBatchResult;
       }
@@ -40521,8 +40521,8 @@ var init_db = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/cache/core/cache.js
-async function hashQuery(sql3, params) {
-  const dataToHash = `${sql3}-${JSON.stringify(params)}`;
+async function hashQuery(sql4, params) {
+  const dataToHash = `${sql4}-${JSON.stringify(params)}`;
   const encoder2 = new TextEncoder();
   const data = encoder2.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -41233,6 +41233,8 @@ __export(schema_exports, {
   invoiceItemsTable: () => invoiceItemsTable,
   invoiceNumberSequencesTable: () => invoiceNumberSequencesTable,
   invoicesTable: () => invoicesTable,
+  krankenInvoiceSequencesTable: () => krankenInvoiceSequencesTable,
+  krankenInvoicesTable: () => krankenInvoicesTable,
   medicalCasesTable: () => medicalCasesTable,
   medicalDocumentExtractionsTable: () => medicalDocumentExtractionsTable,
   medicalDocumentsTable: () => medicalDocumentsTable,
@@ -41256,9 +41258,10 @@ __export(schema_exports, {
   settlementRideAllocationsTable: () => settlementRideAllocationsTable,
   settlementsTable: () => settlementsTable,
   supportMessagesTable: () => supportMessagesTable,
-  supportThreadsTable: () => supportThreadsTable
+  supportThreadsTable: () => supportThreadsTable,
+  transportVouchersTable: () => transportVouchersTable
 });
-var adminCompaniesTable, invoiceNumberSequencesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, customerMedicalTransportScansTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, partnerMessagesTable, appSponsorsTable, appServiceRegionsTable;
+var adminCompaniesTable, invoiceNumberSequencesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, customerAccountsTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, medicalCasesTable, medicalDocumentsTable, medicalReviewsTable, customerMedicalTransportScansTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, partnerMessagesTable, appSponsorsTable, appServiceRegionsTable, transportVouchersTable, krankenInvoicesTable, krankenInvoiceSequencesTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41323,8 +41326,13 @@ var init_schema2 = __esm({
       commission_rate: doublePrecision("commission_rate").notNull().default(0.1),
       /** Institutionskennzeichen (IK) des Partners — Snapshot in medical_cases. */
       partner_ik_number: text("partner_ik_number").notNull().default(""),
+      /** Vorlagen Krankenkassen-Abrechnung: [{ insurerName, insurerIk, email }]. */
+      insurer_billing_contacts_json: jsonb("insurer_billing_contacts_json").$type().notNull().default([]),
       /** ONRODA-Admin: Krankenfahrten + Transportschein-Scanner für diesen Mandanten. */
       medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
+      /** KK-Modul SaaS-Abo (Krankenfahrten/Sammelrechnung) — nur Taxi, Admin-Freischaltung. */
+      feature_kk_module: boolean("feature_kk_module").notNull().default(false),
+      feature_kk_module_since: timestamp("feature_kk_module_since", { withTimezone: true }),
       /** Öffentlicher Mandanten-Code (eindeutig), nicht company_id. */
       company_code: text("company_code").notNull().default(""),
       /** Segment ONR-{invoice_prefix}-YYYY-MM-SEQ (z. B. HOT, MED). */
@@ -41347,6 +41355,7 @@ var init_schema2 = __esm({
     fleetDriversTable = pgTable("fleet_drivers", {
       id: text("id").primaryKey(),
       company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      /** Plattformweit eindeutig (lower(trim)); ein Datensatz = ein Mandant — Migration 022/084. */
       email: text("email").notNull(),
       first_name: text("first_name").notNull().default(""),
       last_name: text("last_name").notNull().default(""),
@@ -41384,6 +41393,10 @@ var init_schema2 = __esm({
       medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
       /** true = medical_transport_enabled vom Unternehmen erben. */
       medical_transport_inherit_from_company: boolean("medical_transport_inherit_from_company").notNull().default(true),
+      /** KK-Modul: Mitarbeiter-Zugriff (Inhaber: is_owner). */
+      permission_kk_module: boolean("permission_kk_module").notNull().default(false),
+      /** Inhaber-Fahrerkonto — voller KK-Zugriff bei aktivem Mandanten-Modul. */
+      is_owner: boolean("is_owner").notNull().default(false),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
       reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true })
@@ -42215,6 +42228,7 @@ var init_schema2 = __esm({
     partnerMessagesTable = pgTable("partner_messages", {
       id: text("id").primaryKey(),
       company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      batch_id: text("batch_id"),
       subject: text("subject").notNull().default(""),
       body: text("body").notNull().default(""),
       is_read: boolean("is_read").notNull().default(false),
@@ -42256,6 +42270,60 @@ var init_schema2 = __esm({
       sort_order: integer("sort_order").notNull().default(0),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
+    transportVouchersTable = pgTable("transport_vouchers", {
+      id: text("id").primaryKey(),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      patient_name: text("patient_name").notNull().default(""),
+      insurer_name: text("insurer_name").notNull().default(""),
+      insurer_ik: text("insurer_ik").notNull().default(""),
+      insurer_email: text("insurer_email").notNull().default(""),
+      fare_amount: doublePrecision("fare_amount").notNull().default(0),
+      commission_amount: doublePrecision("commission_amount").notNull().default(0),
+      net_amount: doublePrecision("net_amount").notNull().default(0),
+      commission_rate_snap: doublePrecision("commission_rate_snap").notNull().default(0),
+      status: text("status").notNull().default("open"),
+      kranken_invoice_id: text("kranken_invoice_id"),
+      billed_at: timestamp("billed_at", { withTimezone: true }),
+      paid_at: timestamp("paid_at", { withTimezone: true }),
+      ride_reference_at: timestamp("ride_reference_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    krankenInvoicesTable = pgTable("kranken_invoices", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      insurer_name: text("insurer_name").notNull().default(""),
+      insurer_ik: text("insurer_ik").notNull().default(""),
+      insurer_email: text("insurer_email").notNull().default(""),
+      invoice_number: text("invoice_number").notNull(),
+      period_from: date("period_from").notNull(),
+      period_to: date("period_to").notNull(),
+      total_amount: doublePrecision("total_amount").notNull().default(0),
+      commission_amount: doublePrecision("commission_amount").notNull().default(0),
+      net_amount: doublePrecision("net_amount").notNull().default(0),
+      commission_rate_snap: doublePrecision("commission_rate_snap").notNull().default(0),
+      status: text("status").notNull().default("draft"),
+      sent_at: timestamp("sent_at", { withTimezone: true }),
+      sent_to: text("sent_to").notNull().default(""),
+      paid_at: timestamp("paid_at", { withTimezone: true }),
+      pdf_storage_key: text("pdf_storage_key").notNull().default(""),
+      ride_count: integer("ride_count").notNull().default(0),
+      metadata_json: jsonb("metadata_json").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    krankenInvoiceSequencesTable = pgTable(
+      "kranken_invoice_sequences",
+      {
+        company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+        year: integer("year").notNull(),
+        next_seq: integer("next_seq").notNull().default(1)
+      },
+      (t) => ({
+        pk: primaryKey({ columns: [t.company_id, t.year] })
+      })
+    );
   }
 });
 
@@ -45573,15 +45641,18 @@ __export(fleetDriversData_exports, {
   findFleetDriverByEmailNormalized: () => findFleetDriverByEmailNormalized,
   findFleetDriverGlobal: () => findFleetDriverGlobal,
   findFleetDriverInCompany: () => findFleetDriverInCompany,
+  fleetDriverEmailConflictBody: () => fleetDriverEmailConflictBody,
   fleetDriverTableRowToList: () => fleetDriverTableRowToList,
   getCompanyKind: () => getCompanyKind,
   getFleetDriverMarketOnline: () => getFleetDriverMarketOnline,
   insertFleetDriver: () => insertFleetDriver,
   isDriverReservationSuspendedSync: () => isDriverReservationSuspendedSync,
+  isFleetDriverEmailConflictError: () => isFleetDriverEmailConflictError,
   listFleetDriversForCompany: () => listFleetDriversForCompany,
   listPendingFleetDriversForAdmin: () => listPendingFleetDriversForAdmin,
   markFleetDriverMissingDocumentsForCompany: () => markFleetDriverMissingDocumentsForCompany,
   normalizeFleetDriverApproval: () => normalizeFleetDriverApproval,
+  patchFleetDriverKkPermissions: () => patchFleetDriverKkPermissions,
   patchFleetDriverProfile: () => patchFleetDriverProfile,
   rejectFleetDriverForCompany: () => rejectFleetDriverForCompany,
   setFleetDriverApprovalByAdmin: () => setFleetDriverApprovalByAdmin,
@@ -45594,9 +45665,44 @@ __export(fleetDriversData_exports, {
   suspendFleetDriver: () => suspendFleetDriver,
   touchFleetDriverHeartbeat: () => touchFleetDriverHeartbeat,
   touchFleetDriverLogin: () => touchFleetDriverLogin,
-  updateFleetDriverPassword: () => updateFleetDriverPassword
+  updateFleetDriverPassword: () => updateFleetDriverPassword,
+  validateFleetDriverEmailAssignment: () => validateFleetDriverEmailAssignment
 });
 import { randomUUID as randomUUID6 } from "node:crypto";
+function normalizeFleetDriverEmail(email) {
+  return email.trim().toLowerCase();
+}
+function isValidFleetDriverEmail(email) {
+  return Boolean(email) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+async function validateFleetDriverEmailAssignment(email, companyId, exceptDriverId) {
+  const em = normalizeFleetDriverEmail(email);
+  if (!isValidFleetDriverEmail(em)) return null;
+  const existing = await findFleetDriverByEmailNormalized(em);
+  if (!existing) return null;
+  if (exceptDriverId && existing.id === exceptDriverId) return null;
+  const existingCompanyId = existing.company_id;
+  let existingCompanyName = null;
+  const co = await findCompanyById(existingCompanyId);
+  if (co) existingCompanyName = co.name ?? null;
+  const reason = existingCompanyId === companyId ? "email_taken_in_company" : "email_taken_other_company";
+  return {
+    reason,
+    existingDriverId: existing.id,
+    existingCompanyId,
+    existingCompanyName
+  };
+}
+function fleetDriverEmailConflictBody(error, meta) {
+  const body = { error };
+  if (meta?.existingCompanyId) body.existingCompanyId = meta.existingCompanyId;
+  if (meta?.existingCompanyName) body.existingCompanyName = meta.existingCompanyName;
+  if (meta?.existingDriverId) body.existingDriverId = meta.existingDriverId;
+  return body;
+}
+function isFleetDriverEmailConflictError(code) {
+  return code === "email_taken" || code === "email_taken_in_company" || code === "email_taken_other_company";
+}
 function normalizeFleetDriverApproval(raw) {
   const t = String(raw ?? "").toLowerCase().trim();
   if (t === "in_review" || t === "pending" || t === "missing_documents" || t === "rejected" || t === "approved")
@@ -45644,7 +45750,9 @@ function fleetDriverTableRowToList(r) {
     reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
     isMarketOnline: Boolean(r.is_market_online),
     medicalTransportEnabled: Boolean(r.medical_transport_enabled),
-    medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company)
+    medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company),
+    permissionKkModule: Boolean(r.permission_kk_module),
+    isOwner: Boolean(r.is_owner)
   };
 }
 function rowToList(r) {
@@ -45713,38 +45821,63 @@ async function insertFleetDriver(input) {
   if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const email = input.email.trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = normalizeFleetDriverEmail(input.email);
+  if (!isValidFleetDriverEmail(email)) {
     return { ok: false, error: "email_invalid" };
   }
-  const existing = await findFleetDriverByEmailNormalized(email);
-  if (existing) {
-    return { ok: false, error: "email_taken" };
+  const emailConflict = await validateFleetDriverEmailAssignment(email, input.companyId);
+  if (emailConflict) {
+    return {
+      ok: false,
+      error: emailConflict.reason,
+      existingCompanyId: emailConflict.existingCompanyId,
+      existingCompanyName: emailConflict.existingCompanyName,
+      existingDriverId: emailConflict.existingDriverId
+    };
   }
   const id = `fd-${randomUUID6()}`;
   const pExp = input.pScheinExpiry?.trim();
   const dlExp = input.driversLicenseExpiry?.trim();
-  await db2.insert(fleetDriversTable).values({
-    id,
-    company_id: input.companyId,
-    email,
-    first_name: input.firstName.trim(),
-    last_name: input.lastName.trim(),
-    phone: input.phone.trim(),
-    password_hash: input.passwordHash,
-    must_change_password: input.mustChangePassword,
-    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
-    vehicle_class: input.vehicleClass ?? "standard",
-    p_schein_number: (input.pScheinNumber ?? "").trim(),
-    p_schein_expiry: pExp ? pExp : null,
-    home_address: (input.homeAddress ?? "").trim(),
-    drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
-    drivers_license_expiry: dlExp ? dlExp : null,
-    is_active: true,
-    access_status: "active",
-    approval_status: input.approvalStatus ?? "approved",
-    session_version: 1
-  });
+  try {
+    await db2.insert(fleetDriversTable).values({
+      id,
+      company_id: input.companyId,
+      email,
+      first_name: input.firstName.trim(),
+      last_name: input.lastName.trim(),
+      phone: input.phone.trim(),
+      password_hash: input.passwordHash,
+      must_change_password: input.mustChangePassword,
+      vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+      vehicle_class: input.vehicleClass ?? "standard",
+      p_schein_number: (input.pScheinNumber ?? "").trim(),
+      p_schein_expiry: pExp ? pExp : null,
+      home_address: (input.homeAddress ?? "").trim(),
+      drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
+      drivers_license_expiry: dlExp ? dlExp : null,
+      is_active: true,
+      access_status: "active",
+      approval_status: input.approvalStatus ?? "approved",
+      session_version: 1,
+      is_owner: Boolean(input.isOwner)
+    });
+  } catch (e) {
+    const code = e?.code;
+    if (code === "23505") {
+      const again = await validateFleetDriverEmailAssignment(email, input.companyId);
+      if (again) {
+        return {
+          ok: false,
+          error: again.reason,
+          existingCompanyId: again.existingCompanyId,
+          existingCompanyName: again.existingCompanyName,
+          existingDriverId: again.existingDriverId
+        };
+      }
+      return { ok: false, error: "email_taken" };
+    }
+    throw e;
+  }
   return { ok: true, id };
 }
 async function patchFleetDriverProfile(id, companyId, patch) {
@@ -45755,13 +45888,19 @@ async function patchFleetDriverProfile(id, companyId, patch) {
   const set = { updated_at: /* @__PURE__ */ new Date() };
   let bumpSession = false;
   if (patch.email !== void 0) {
-    const em = patch.email.trim().toLowerCase();
-    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    const em = normalizeFleetDriverEmail(patch.email);
+    if (!isValidFleetDriverEmail(em)) {
       return { ok: false, error: "email_invalid" };
     }
-    const other = await findFleetDriverByEmailNormalized(em);
-    if (other && other.id !== id) {
-      return { ok: false, error: "email_taken" };
+    const emailConflict = await validateFleetDriverEmailAssignment(em, companyId, id);
+    if (emailConflict) {
+      return {
+        ok: false,
+        error: emailConflict.reason,
+        existingCompanyId: emailConflict.existingCompanyId,
+        existingCompanyName: emailConflict.existingCompanyName,
+        existingDriverId: emailConflict.existingDriverId
+      };
     }
     set.email = em;
     bumpSession = true;
@@ -45791,6 +45930,18 @@ async function patchFleetDriverProfile(id, companyId, patch) {
     set.session_version = sql2`${fleetDriversTable.session_version} + 1`;
   }
   await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
+  return { ok: true };
+}
+async function patchFleetDriverKkPermissions(id, companyId, patch) {
+  const cur = await findFleetDriverInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (cur.is_owner) return { ok: false, error: "owner_permissions_fixed" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  await db2.update(fleetDriversTable).set({
+    permission_kk_module: Boolean(patch.permissionKkModule),
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
   return { ok: true };
 }
 async function updateFleetDriverPassword(id, companyId, passwordHash, mustChangePassword) {
@@ -45938,6 +46089,7 @@ async function adminSuspendFleetDriver(companyId, driverId, suspensionReason) {
   const r = await db2.update(fleetDriversTable).set({
     access_status: "suspended",
     is_active: true,
+    is_market_online: false,
     suspension_reason: reason,
     updated_at: /* @__PURE__ */ new Date(),
     session_version: sql2`${fleetDriversTable.session_version} + 1`
@@ -46081,6 +46233,7 @@ var MAX_SUS_REASON, MAX_ADMIN_NOTE;
 var init_fleetDriversData = __esm({
   "src/db/fleetDriversData.ts"() {
     init_drizzle_orm();
+    init_adminData();
     init_client();
     init_schema2();
     MAX_SUS_REASON = 2e3;
@@ -46975,6 +47128,10 @@ function rowToCompany(r) {
     partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
     commission_rate: typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
     medical_transport_enabled: Boolean(r.medical_transport_enabled),
+    feature_kk_module: Boolean(r.feature_kk_module),
+    feature_kk_module_since: r.feature_kk_module_since ? r.feature_kk_module_since.toISOString() : null,
+    partner_ik_number: r.partner_ik_number ?? "",
+    insurer_billing_contacts_json: Array.isArray(r.insurer_billing_contacts_json) ? r.insurer_billing_contacts_json : [],
     company_code: r.company_code ?? "",
     invoice_prefix: r.invoice_prefix ?? "",
     invoice_sequence_next: typeof r.invoice_sequence_next === "number" && Number.isFinite(r.invoice_sequence_next) ? r.invoice_sequence_next : 1
@@ -47259,6 +47416,10 @@ function companyRowToDbValues(c) {
     partner_panel_profile_locked: c.partner_panel_profile_locked,
     commission_rate: c.commission_rate,
     medical_transport_enabled: c.medical_transport_enabled,
+    feature_kk_module: c.feature_kk_module,
+    feature_kk_module_since: c.feature_kk_module_since ? new Date(c.feature_kk_module_since) : null,
+    partner_ik_number: c.partner_ik_number ?? "",
+    insurer_billing_contacts_json: c.insurer_billing_contacts_json ?? [],
     company_code: c.company_code,
     invoice_prefix: c.invoice_prefix,
     invoice_sequence_next: c.invoice_sequence_next
@@ -47368,6 +47529,16 @@ function applyAdminCompanyPatch(cur, body) {
   if (typeof body.medical_transport_enabled === "boolean") {
     next.medical_transport_enabled = body.medical_transport_enabled;
   }
+  if (typeof body.feature_kk_module === "boolean") {
+    next.feature_kk_module = body.feature_kk_module;
+    next.feature_kk_module_since = body.feature_kk_module ? (/* @__PURE__ */ new Date()).toISOString() : null;
+  }
+  if (typeof body.partner_ik_number === "string") {
+    next.partner_ik_number = body.partner_ik_number.replace(/\D/g, "").slice(0, 9);
+  }
+  if (body.insurer_billing_contacts_json !== void 0 && Array.isArray(body.insurer_billing_contacts_json)) {
+    next.insurer_billing_contacts_json = body.insurer_billing_contacts_json;
+  }
   if (typeof body.company_code === "string") {
     const v = validateCompanyCode(body.company_code);
     if (!v.ok) throw Object.assign(new Error(v.error), { code: v.error });
@@ -47445,7 +47616,9 @@ async function insertAdminCompany(body) {
     panel_modules: null,
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
-    medical_transport_enabled: false
+    medical_transport_enabled: false,
+    feature_kk_module: false,
+    feature_kk_module_since: null
   };
   const next = applyAdminCompanyPatch(base, body);
   const db2 = getDb();
@@ -47849,7 +48022,11 @@ var init_adminData = __esm({
         ],
         partner_panel_profile_locked: false,
         commission_rate: 0.1,
-        medical_transport_enabled: false
+        medical_transport_enabled: false,
+        feature_kk_module: false,
+        feature_kk_module_since: null,
+        partner_ik_number: "",
+        insurer_billing_contacts_json: []
       },
       {
         id: "co-demo-2",
@@ -47902,7 +48079,11 @@ var init_adminData = __esm({
         panel_modules: null,
         partner_panel_profile_locked: false,
         commission_rate: 0.1,
-        medical_transport_enabled: false
+        medical_transport_enabled: false,
+        feature_kk_module: false,
+        feature_kk_module_since: null,
+        partner_ik_number: "",
+        insurer_billing_contacts_json: []
       }
     ];
     seedFareAreas = [
@@ -49458,6 +49639,7 @@ function rowToPanelPublic(r) {
     maxDrivers: r.max_drivers ?? 100,
     maxVehicles: r.max_vehicles ?? 100,
     profileLocked: Boolean(r.partner_panel_profile_locked),
+    partnerIkNumber: r.partner_ik_number ?? "",
     complianceDocuments: {
       gewerbe: { uploadedAt: "", reviewStatus: "", reviewNote: "" },
       insurance: { uploadedAt: "", reviewStatus: "", reviewNote: "" }
@@ -49802,14 +49984,14 @@ var import_websocket_server = __toESM(require_websocket_server(), 1);
 var wrapper_default = import_websocket.default;
 
 // src/app.ts
-var import_express26 = __toESM(require_express2(), 1);
+var import_express28 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
-import path13 from "path";
+import path14 from "path";
 import { fileURLToPath as fileURLToPath6 } from "node:url";
 
 // src/routes/index.ts
-var import_express24 = __toESM(require_express2(), 1);
+var import_express26 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -50292,8 +50474,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path14, errorMaps, issueData } = params;
-  const fullPath = [...path14, ...issueData.path || []];
+  const { data, path: path15, errorMaps, issueData } = params;
+  const fullPath = [...path15, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -50409,11 +50591,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path14, key) {
+  constructor(parent, value, path15, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path14;
+    this._path = path15;
     this._key = key;
   }
   get path() {
@@ -56371,6 +56553,9 @@ function canReadAdminCompaniesList(role) {
 function canMutateAdminCompanies(role) {
   return role === "admin" || role === "service";
 }
+function canAdminGloballySuspendFleetDrivers(role) {
+  return canMutateAdminCompanies(role);
+}
 function canMutateScopedTaxiAdminCompany(role, scopeCompanyId, company) {
   if (role !== "taxi") return false;
   if (String(company.company_kind ?? "").trim() !== "taxi") return false;
@@ -59324,8 +59509,8 @@ import { createHash, randomBytes as randomBytes4 } from "crypto";
 import admin from "firebase-admin";
 function isFirebaseAdminConfigured() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
-  const path14 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
-  return raw.length > 0 || path14.length > 0;
+  const path15 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
+  return raw.length > 0 || path15.length > 0;
 }
 function ensureFirebaseApp() {
   if (admin.apps.length > 0) {
@@ -60571,11 +60756,11 @@ router5.post("/auth/customer/password-reset/confirm", async (req, res) => {
 var customerAuth_default = router5;
 
 // src/routes/adminApi.ts
-var import_express13 = __toESM(require_express2(), 1);
-import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID32 } from "node:crypto";
+var import_express14 = __toESM(require_express2(), 1);
+import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID34 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readFile } from "node:fs/promises";
-import path7 from "node:path";
+import path8 from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // src/domain/adminCompanyKindPanelModules.ts
@@ -61328,7 +61513,18 @@ async function sendOnrodaMail(input) {
   }
   try {
     const transport = nodemailer2.createTransport(smtpUrl);
-    await transport.sendMail({ from, to, subject: input.subject, text: input.text, html: input.html });
+    await transport.sendMail({
+      from,
+      to,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+      attachments: input.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType ?? "application/pdf"
+      }))
+    });
     if (input.logEvent) {
       logger.info({ event: input.logEvent, to: to.replace(/(.{2}).*(@.*)/, "$1\u2026$2") }, "onroda mail sent");
     }
@@ -66110,6 +66306,235 @@ init_fleetVehiclesData();
 init_fleetDriversData();
 init_fleetDriverReadiness();
 
+// src/db/adminFleetDriversOverviewData.ts
+init_drizzle_orm();
+init_client();
+init_fleetDriverReadiness();
+init_fleetDriversData();
+init_schema2();
+init_ridesData();
+var ACTIVE_RIDE_STATUSES3 = ["accepted", "arrived", "in_progress"];
+function adminFleetDriverOverviewHasSearchCriteria(filters) {
+  const q = filters.q?.trim() ?? "";
+  if (q.length >= 2) return true;
+  if (filters.companyId?.trim()) return true;
+  if (filters.workflowKey?.trim()) return true;
+  if (filters.online && filters.online !== "all") return true;
+  if (filters.blocked && filters.blocked !== "all") return true;
+  if (filters.documents && filters.documents !== "all") return true;
+  if (filters.hasActiveRide && filters.hasActiveRide !== "all") return true;
+  return false;
+}
+function fleetDriverOverviewSortKey(row) {
+  const first = (row.firstName ?? "").trim();
+  const last = (row.lastName ?? "").trim();
+  const visible = `${first} ${last}`.trim();
+  if (visible) return visible;
+  const dn = (row.displayName ?? "").trim();
+  if (dn) return dn;
+  return (row.email ?? "").trim();
+}
+function sortAdminFleetDriverOverviewRows(rows, sort) {
+  if (sort === "activity") {
+    rows.sort((a, b) => {
+      const ta = a.lastActivityAt ? Date.parse(a.lastActivityAt) : 0;
+      const tb = b.lastActivityAt ? Date.parse(b.lastActivityAt) : 0;
+      return tb - ta;
+    });
+    return;
+  }
+  rows.sort((a, b) => {
+    const cmp = fleetDriverOverviewSortKey(a).localeCompare(fleetDriverOverviewSortKey(b), "de", {
+      sensitivity: "base"
+    });
+    if (cmp !== 0) return cmp;
+    return a.companyName.localeCompare(b.companyName, "de", { sensitivity: "base" });
+  });
+}
+function lastActivityIso(row) {
+  const candidates2 = [row.lastHeartbeatAt, row.lastLoginAt, row.updatedAt].filter(Boolean);
+  if (!candidates2.length) return null;
+  let best = candidates2[0];
+  for (const c of candidates2.slice(1)) {
+    if (Date.parse(c) > Date.parse(best)) best = c;
+  }
+  return best;
+}
+function derivePresence(row) {
+  if (!row.isActive || row.accessStatus !== "active" || row.approvalStatus !== "approved") {
+    return "unavailable";
+  }
+  return row.isMarketOnline ? "online" : "offline";
+}
+function deriveAccountStatusLabel(row) {
+  if (row.accessStatus === "suspended") return "Gesperrt";
+  if (!row.isActive) return "Deaktiviert";
+  if (row.approvalStatus === "approved") return "Aktiv";
+  if (row.approvalStatus === "pending" || row.approvalStatus === "in_review") {
+    return "Wartet auf Freigabe";
+  }
+  if (row.approvalStatus === "missing_documents") return "Unterlagen fehlen";
+  if (row.approvalStatus === "rejected") return "Abgelehnt";
+  return row.workflow?.label ?? "\u2014";
+}
+function rowMatchesFilters(row, f) {
+  const q = f.q?.trim().toLowerCase();
+  if (q) {
+    const hay = [
+      row.id,
+      row.displayName,
+      row.firstName,
+      row.lastName,
+      row.email,
+      row.phone,
+      row.companyName,
+      row.companyId,
+      row.assignedVehicle?.licensePlate,
+      row.assignedVehicle?.model
+    ].filter(Boolean).join(" ").toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  if (f.companyId?.trim() && row.companyId !== f.companyId.trim()) return false;
+  if (f.workflowKey?.trim() && row.workflow.key !== f.workflowKey.trim()) return false;
+  if (f.online === "yes" && row.presenceStatus !== "online") return false;
+  if (f.online === "no" && row.presenceStatus !== "offline") return false;
+  if (f.blocked === "yes" && row.accessStatus !== "suspended") return false;
+  if (f.blocked === "no" && row.accessStatus === "suspended") return false;
+  if (f.documents === "complete" && !row.documentsComplete) return false;
+  if (f.documents === "incomplete" && row.documentsComplete) return false;
+  if (f.hasActiveRide === "yes" && !row.hasActiveRide) return false;
+  if (f.hasActiveRide === "no" && row.hasActiveRide) return false;
+  return true;
+}
+async function loadRideStatsByDriverId(driverIds) {
+  const map = /* @__PURE__ */ new Map();
+  for (const id of driverIds) {
+    map.set(id, { rideCount: 0, hasActiveRide: false, activeRideId: null });
+  }
+  if (!driverIds.length) return map;
+  const db2 = getDb();
+  if (!db2) return map;
+  const countRows = await db2.select({
+    driverId: ridesTable.driver_id,
+    rideCount: sql2`count(*)::int`
+  }).from(ridesTable).where(inArray(ridesTable.driver_id, driverIds)).groupBy(ridesTable.driver_id);
+  for (const r of countRows) {
+    const id = String(r.driverId ?? "").trim();
+    if (!id || !map.has(id)) continue;
+    const cur = map.get(id);
+    cur.rideCount = Number(r.rideCount ?? 0);
+  }
+  const activeRows = await db2.select({ id: ridesTable.id, driverId: ridesTable.driver_id, createdAt: ridesTable.created_at }).from(ridesTable).where(
+    and(inArray(ridesTable.driver_id, driverIds), inArray(ridesTable.status, [...ACTIVE_RIDE_STATUSES3]))
+  ).orderBy(desc(ridesTable.created_at));
+  for (const r of activeRows) {
+    const id = String(r.driverId ?? "").trim();
+    if (!id || !map.has(id)) continue;
+    const cur = map.get(id);
+    if (!cur.hasActiveRide) {
+      cur.hasActiveRide = true;
+      cur.activeRideId = r.id;
+    }
+  }
+  return map;
+}
+async function listAdminFleetDriversOverview(filters, scope) {
+  if (!adminFleetDriverOverviewHasSearchCriteria(filters)) return [];
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const companyRows = await db2.select({ id: adminCompaniesTable.id, name: adminCompaniesTable.name }).from(adminCompaniesTable).where(eq(adminCompaniesTable.company_kind, "taxi"));
+  let taxiCompanies = companyRows.map((c) => ({ id: c.id, name: c.name }));
+  if (scope?.taxiCompanyIds?.length) {
+    const allowed = new Set(scope.taxiCompanyIds);
+    taxiCompanies = taxiCompanies.filter((c) => allowed.has(c.id));
+  }
+  if (!taxiCompanies.length) return [];
+  const nameById = new Map(taxiCompanies.map((c) => [c.id, c.name]));
+  const companyIds = taxiCompanies.map((c) => c.id);
+  const allRows = [];
+  for (const companyId of companyIds) {
+    const drivers = await listAdminTaxiFleetDriverRows(companyId);
+    const driverIds = drivers.map((d) => d.id);
+    const rideStats = await loadRideStatsByDriverId(driverIds);
+    const companyName = nameById.get(companyId) ?? companyId;
+    for (const d of drivers) {
+      const gaps = computeFleetDriverComplianceGaps(d);
+      const stats = rideStats.get(d.id) ?? { rideCount: 0, hasActiveRide: false, activeRideId: null };
+      const overview = {
+        id: d.id,
+        companyId: d.companyId,
+        companyName,
+        firstName: d.firstName,
+        lastName: d.lastName,
+        displayName: `${d.firstName} ${d.lastName}`.trim() || d.email,
+        email: d.email,
+        phone: d.phone,
+        accessStatus: d.accessStatus,
+        isActive: d.isActive,
+        approvalStatus: d.approvalStatus,
+        isMarketOnline: d.isMarketOnline,
+        workflow: d.workflow,
+        presenceStatus: derivePresence(d),
+        accountStatusLabel: deriveAccountStatusLabel(d),
+        documentsComplete: gaps.length === 0 && d.approvalStatus === "approved",
+        documentGaps: gaps,
+        assignedVehicle: d.assignedVehicle ? {
+          id: d.assignedVehicle.id,
+          licensePlate: d.assignedVehicle.licensePlate,
+          model: d.assignedVehicle.model
+        } : null,
+        lastActivityAt: lastActivityIso(d),
+        rideCount: stats.rideCount,
+        hasActiveRide: stats.hasActiveRide,
+        activeRideId: stats.activeRideId,
+        suspensionReason: d.suspensionReason,
+        readinessReady: Boolean(d.readiness?.ready),
+        createdAt: d.createdAt
+      };
+      if (rowMatchesFilters(overview, filters)) allRows.push(overview);
+    }
+  }
+  sortAdminFleetDriverOverviewRows(allRows, filters.sort ?? "name");
+  return allRows;
+}
+async function getAdminFleetDriverOverviewDetail(driverId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const row = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.id, driverId.trim())).limit(1);
+  const raw = row[0];
+  if (!raw) return null;
+  const companyId = raw.company_id;
+  const [coRows, driver] = await Promise.all([
+    db2.select({ name: adminCompaniesTable.name }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1),
+    getAdminTaxiFleetDriverDetail(companyId, driverId.trim())
+  ]);
+  if (!driver) return null;
+  const recentRides = await listRidesAdminPage({ driverId: driverId.trim(), companyId }, 30, 0);
+  return {
+    driver,
+    companyName: coRows[0]?.name ?? companyId,
+    recentRides
+  };
+}
+function parseAdminFleetDriverOverviewFilters(query) {
+  const str2 = (k) => typeof query[k] === "string" ? query[k].trim() : "";
+  const online = str2("online");
+  const blocked = str2("blocked");
+  const documents = str2("documents");
+  const hasActiveRide = str2("hasActiveRide");
+  return {
+    q: str2("q") || void 0,
+    companyId: str2("companyId") || void 0,
+    workflowKey: str2("workflowKey") || str2("status") || void 0,
+    online: online === "yes" || online === "no" ? online : "all",
+    blocked: blocked === "yes" || blocked === "no" ? blocked : "all",
+    documents: documents === "complete" || documents === "incomplete" ? documents : "all",
+    hasActiveRide: hasActiveRide === "yes" || hasActiveRide === "no" ? hasActiveRide : "all",
+    sort: str2("sort") === "activity" ? "activity" : "name"
+  };
+}
+
 // src/lib/persistPanelUserManualAttachment.ts
 import { mkdir as mkdir3, writeFile as writeFile3 } from "node:fs/promises";
 import path5 from "node:path";
@@ -67384,15 +67809,1512 @@ router6.get("/exports/:id/download", async (req, res, next) => {
 });
 var adminInsuranceApi_default = router6;
 
-// src/routes/adminAppNewsRouter.ts
+// src/routes/adminKrankenInvoiceRoutes.ts
 var import_express7 = __toESM(require_express2(), 1);
+
+// src/db/krankenInvoicesData.ts
+init_drizzle_orm();
+init_adminData();
+init_client();
+import { randomUUID as randomUUID28 } from "node:crypto";
+
+// src/db/medicalCasesData.ts
+init_drizzle_orm();
+import { randomUUID as randomUUID27 } from "node:crypto";
+
+// src/lib/medical/medicalOcrNormalize.ts
+var MEDICAL_OCR_EXTRACTED_FIELDS = [
+  "patientDisplayName",
+  "patientReference",
+  "insuranceName",
+  "insuranceIk",
+  "partnerIkNumber",
+  "transportDate",
+  "validFrom",
+  "validUntil",
+  "aufnahmedatum",
+  "entlassungsdatum",
+  "documentKind",
+  "behandlungsArt",
+  "behandlungsKontext",
+  "behandlungsFrequenz",
+  "pflegegrad",
+  "merkzeichen",
+  "dauerhafteMobilitaetsbeeintraechtigung",
+  "fernbehandlungErkannt",
+  "genehmigungsnummer"
+];
+var EMPTY_EXTRACTED = {
+  patientDisplayName: "",
+  patientReference: "",
+  insuranceName: "",
+  insuranceIk: "",
+  partnerIkNumber: "",
+  transportDate: null,
+  validFrom: null,
+  validUntil: null,
+  aufnahmedatum: null,
+  entlassungsdatum: null,
+  documentKind: "transport_sheet",
+  behandlungsArt: "unbekannt",
+  behandlungsKontext: "standard",
+  behandlungsFrequenz: "keine",
+  pflegegrad: "unbekannt",
+  merkzeichen: "unbekannt",
+  dauerhafteMobilitaetsbeeintraechtigung: false,
+  fernbehandlungErkannt: false,
+  genehmigungsnummer: null
+};
+function isRecord2(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function normalizeOcrToken(raw) {
+  return String(raw ?? "").trim().toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+}
+function pickString(raw, keys) {
+  for (const k of keys) {
+    const v = raw[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  }
+  return "";
+}
+function normalizeIk(raw) {
+  return raw.replace(/\D/g, "").slice(0, 9);
+}
+function normalizeMedicalOcrDate(raw) {
+  if (raw == null) return null;
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    return raw.toISOString().slice(0, 10);
+  }
+  const s = String(raw).trim();
+  if (!s) return null;
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const de = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (de) {
+    const dd = de[1].padStart(2, "0");
+    const mm = de[2].padStart(2, "0");
+    return `${de[3]}-${mm}-${dd}`;
+  }
+  const t = Date.parse(s);
+  if (Number.isFinite(t)) return new Date(t).toISOString().slice(0, 10);
+  return null;
+}
+function parseDocumentKind(raw) {
+  const v = raw.trim().toLowerCase();
+  if (v === "signature_image" || v === "signature") return "signature_image";
+  if (v === "other") return "other";
+  return "transport_sheet";
+}
+function parseMedicalBehandlungsArt(raw) {
+  const v = normalizeOcrToken(raw);
+  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v === "ambulant" || v.includes("ambulant") || v === "outpatient") {
+    return "ambulant";
+  }
+  if (v === "stationaer" || v.includes("stationaer") || v.includes("stationar") || v === "inpatient") {
+    return "stationaer";
+  }
+  return "unbekannt";
+}
+function parseMedicalBehandlungsKontext(raw) {
+  const v = normalizeOcrToken(raw);
+  if (!v || v === "standard" || v === "normal") return "standard";
+  if (v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v === "vorstationaer" || v.includes("vorstationaer") || v.includes("vor-stationaer") || v.includes("vor stationaer") || v.includes("voraufnahme") || v.includes("aufnahme") && !v.includes("nach")) {
+    return "vorstationaer";
+  }
+  if (v === "nachstationaer" || v.includes("nachstationaer") || v.includes("nach-stationaer") || v.includes("nach stationaer") || v.includes("entlassung") || v.includes("nachentlassung")) {
+    return "nachstationaer";
+  }
+  return "unbekannt";
+}
+function parseMedicalBehandlungsFrequenz(raw) {
+  const v = normalizeOcrToken(raw);
+  if (!v || v === "keine" || v === "none" || v === "nein" || v === "normal") return "keine";
+  if (v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v.includes("dialyse") || v.includes("haemodialyse") || v.includes("hemodialyse")) {
+    return "dialyse";
+  }
+  if (v.includes("chemo") || v.includes("chemotherapie") || v.includes("zytostat")) {
+    return "chemo";
+  }
+  if (v.includes("strahlen") || v.includes("strahlentherapie") || v.includes("radioonkologie") || v.includes("bestrahlung")) {
+    return "strahlen";
+  }
+  return "unbekannt";
+}
+function parseMedicalPflegegrad(raw) {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
+  if (v === "keins" || v === "keine" || v === "none" || v === "0" || v === "nein") return "keins";
+  const digit = v.match(/\b([345])\b/)?.[1];
+  if (digit === "3" || digit === "4" || digit === "5") return digit;
+  return "unbekannt";
+}
+function parseMedicalMerkzeichen(raw) {
+  const v = String(raw ?? "").trim();
+  if (!v || v.toLowerCase() === "unbekannt" || v.toLowerCase() === "unknown") return "unbekannt";
+  if (v.toLowerCase() === "keins" || v.toLowerCase() === "keine" || v.toLowerCase() === "none") return "keins";
+  const normalized = normalizeOcrToken(v);
+  if (normalized.includes("gehbehinderung")) return "G";
+  const compact = v.replace(/\s+/g, "");
+  if (/^G$/i.test(compact)) return "G";
+  if (/^aG$/i.test(compact) || compact.toLowerCase() === "ag") return "aG";
+  if (/^Bl$/i.test(compact) || compact.toLowerCase() === "bl") return "Bl";
+  if (compact === "H" || compact.toLowerCase() === "h") return "H";
+  const upper = v.toUpperCase();
+  if (/\bG\b/.test(v) && !upper.includes("AG") && !upper.includes("BL")) return "G";
+  if (upper.includes("GEHBEHINDERUNG")) return "G";
+  if (upper.includes("AG") && !upper.includes("BL")) return "aG";
+  if (upper.includes("BL")) return "Bl";
+  if (/\bH\b/.test(v)) return "H";
+  return "unbekannt";
+}
+function parseFernbehandlungErkannt(raw) {
+  if (typeof raw === "boolean") return raw;
+  if (raw == null) return false;
+  const v = normalizeOcrToken(raw);
+  if (!v) return false;
+  if (v === "true" || v === "ja" || v === "yes" || v === "1") return true;
+  return v.includes("videosprechstunde") || v.includes("video-sprechstunde") || v.includes("video sprechstunde") || v.includes("telefonisch") || v.includes("fernbehandlung") || v.includes("fernsprechstunde") || v.includes("fern sprechstunde");
+}
+function inferFernbehandlungFromNested(nested) {
+  const explicit = parseFernbehandlungErkannt(
+    nested.fernbehandlungErkannt ?? nested.fernbehandlung_erkannt ?? nested.remoteTreatment ?? nested.remote_treatment
+  );
+  if (explicit) return true;
+  const hint = normalizeOcrToken(
+    pickString(nested, [
+      "ausstellungsArt",
+      "ausstellungs_art",
+      "verordnungsart",
+      "behandlungsform",
+      "ausstellungsform",
+      "scheinHinweis",
+      "verordnungstext",
+      "notes"
+    ])
+  );
+  return parseFernbehandlungErkannt(hint);
+}
+function parseDauerhafteMobilitaetsbeeintraechtigung(raw) {
+  if (typeof raw === "boolean") return raw;
+  if (raw == null) return false;
+  const v = normalizeOcrToken(raw);
+  if (!v) return false;
+  if (v === "true" || v === "ja" || v === "yes" || v === "1" || v === "x" || v === "angekreuzt") {
+    return true;
+  }
+  return v.includes("dauerhafte mobilitaetsbeeintraechtigung") || v.includes("dauerhaft mobilitaetsbeeintraechtigt") || v.includes("mobilitaetsbeeintraechtigung dauerhaft");
+}
+function normalizeGenehmigungsnummer(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "unbekannt") return null;
+  return s.slice(0, 64);
+}
+function isHochfrequenteBehandlung(extracted) {
+  return extracted.behandlungsFrequenz === "dialyse" || extracted.behandlungsFrequenz === "chemo" || extracted.behandlungsFrequenz === "strahlen";
+}
+function isAmbulantGenehmigungsfreiPg45(extracted) {
+  return extracted.pflegegrad === "4" || extracted.pflegegrad === "5";
+}
+function isAmbulantGenehmigungsfreiMerkzeichen(extracted) {
+  return extracted.merkzeichen === "aG" || extracted.merkzeichen === "Bl" || extracted.merkzeichen === "H" || extracted.merkzeichen === "G";
+}
+function isAmbulantGenehmigungsfreiPg3(extracted) {
+  if (extracted.pflegegrad !== "3") return false;
+  return extracted.dauerhafteMobilitaetsbeeintraechtigung || extracted.merkzeichen === "G";
+}
+function isAmbulantGenehmigungsfrei(extracted) {
+  if (isHochfrequenteBehandlung(extracted)) return false;
+  return isAmbulantGenehmigungsfreiPg45(extracted) || isAmbulantGenehmigungsfreiMerkzeichen(extracted) || isAmbulantGenehmigungsfreiPg3(extracted);
+}
+function hasGenehmigungsnummer(extracted) {
+  return Boolean(extracted.genehmigungsnummer?.trim());
+}
+function parseHasSignatureOnDocument(raw) {
+  if (!isRecord2(raw)) return void 0;
+  const nested = isRecord2(raw.extracted) ? raw.extracted : raw;
+  if (typeof nested.hasSignatureOnDocument === "boolean") return nested.hasSignatureOnDocument;
+  if (typeof nested.has_signature_on_document === "boolean") return nested.has_signature_on_document;
+  return void 0;
+}
+function pickConfidence(raw) {
+  const out = {};
+  const conf = raw.confidence ?? raw.confidences ?? raw.field_confidence;
+  const source = isRecord2(conf) ? conf : raw;
+  if (!isRecord2(source)) return out;
+  for (const field of MEDICAL_OCR_EXTRACTED_FIELDS) {
+    const v = source[field];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      out[field] = Math.max(0, Math.min(1, v));
+    }
+  }
+  return out;
+}
+function inferBehandlungsKontextFromNested(nested) {
+  const explicit = parseMedicalBehandlungsKontext(
+    nested.behandlungsKontext ?? nested.behandlungs_kontext ?? nested.treatmentContext ?? nested.treatment_context
+  );
+  if (explicit !== "unbekannt") return explicit;
+  const hint = normalizeOcrToken(
+    pickString(nested, [
+      "behandlungsKontextHint",
+      "behandlungs_kontext_hint",
+      "transportReason",
+      "transport_reason",
+      "verordnungstyp",
+      "notes"
+    ])
+  );
+  if (!hint) return "standard";
+  return parseMedicalBehandlungsKontext(hint);
+}
+function inferBehandlungsFrequenzFromNested(nested) {
+  const explicit = parseMedicalBehandlungsFrequenz(
+    nested.behandlungsFrequenz ?? nested.behandlungs_frequenz ?? nested.treatmentFrequency ?? nested.treatment_frequency
+  );
+  if (explicit !== "unbekannt") return explicit;
+  const hint = normalizeOcrToken(
+    pickString(nested, [
+      "behandlungsFrequenzHint",
+      "behandlungs_frequenz_hint",
+      "treatmentHint",
+      "treatment_hint",
+      "notes"
+    ])
+  );
+  if (!hint) return "keine";
+  const fromHint = parseMedicalBehandlungsFrequenz(hint);
+  return fromHint === "unbekannt" ? "keine" : fromHint;
+}
+function normalizeMedicalOcrPayload(raw) {
+  if (!isRecord2(raw)) {
+    return { extracted: { ...EMPTY_EXTRACTED }, confidence: {} };
+  }
+  const nested = isRecord2(raw.extracted) ? raw.extracted : isRecord2(raw.fields) ? raw.fields : raw;
+  const patientDisplayName = pickString(nested, [
+    "patientDisplayName",
+    "patient_display_name",
+    "patientName",
+    "patient_name",
+    "name"
+  ]).slice(0, 200);
+  const patientReference = pickString(nested, [
+    "patientReference",
+    "patient_reference",
+    "patientId",
+    "patient_id",
+    "versichertennummer"
+  ]).slice(0, 120);
+  const insuranceName = pickString(nested, [
+    "insuranceName",
+    "insurance_name",
+    "krankenkasse",
+    "kasse",
+    "health_insurance"
+  ]).slice(0, 200);
+  const insuranceIkRaw = pickString(nested, [
+    "insuranceIk",
+    "insurance_ik",
+    "kassenIk",
+    "kassen_ik",
+    "kk_ik"
+  ]);
+  const insuranceIk = normalizeIk(insuranceIkRaw);
+  const partnerIkRaw = pickString(nested, [
+    "partnerIkNumber",
+    "partner_ik_number",
+    "leistungserbringerIk",
+    "leistungserbringer_ik",
+    "provider_ik"
+  ]);
+  const partnerIkNumber = normalizeIk(partnerIkRaw);
+  const transportDate = normalizeMedicalOcrDate(
+    nested.transportDate ?? nested.transport_date ?? nested.fahrtdatum ?? nested.ride_date ?? nested.date
+  );
+  const validFrom = normalizeMedicalOcrDate(
+    nested.validFrom ?? nested.valid_from ?? nested.gueltig_ab ?? nested.gueltigAb
+  );
+  const validUntil = normalizeMedicalOcrDate(
+    nested.validUntil ?? nested.valid_until ?? nested.gueltig_bis ?? nested.gueltigBis
+  );
+  const aufnahmedatum = normalizeMedicalOcrDate(
+    nested.aufnahmedatum ?? nested.aufnahme_datum ?? nested.admissionDate ?? nested.admission_date
+  );
+  const entlassungsdatum = normalizeMedicalOcrDate(
+    nested.entlassungsdatum ?? nested.entlassung_datum ?? nested.dischargeDate ?? nested.discharge_date
+  );
+  const documentKind = parseDocumentKind(
+    pickString(nested, ["documentKind", "document_kind", "documentType", "document_type"])
+  );
+  const behandlungsArt = parseMedicalBehandlungsArt(
+    nested.behandlungsArt ?? nested.behandlungs_art ?? nested.behandlungsart ?? nested.treatmentType ?? nested.treatment_type
+  );
+  const behandlungsKontext = inferBehandlungsKontextFromNested(nested);
+  const behandlungsFrequenz = inferBehandlungsFrequenzFromNested(nested);
+  const pflegegrad = parseMedicalPflegegrad(
+    nested.pflegegrad ?? nested.pflegegrad_level ?? nested.careLevel ?? nested.care_level
+  );
+  const merkzeichen = parseMedicalMerkzeichen(
+    nested.merkzeichen ?? nested.merkzeichen_code ?? nested.disabilityMark ?? nested.disability_mark
+  );
+  const dauerhafteMobilitaetsbeeintraechtigung = parseDauerhafteMobilitaetsbeeintraechtigung(
+    nested.dauerhafteMobilitaetsbeeintraechtigung ?? nested.dauerhafte_mobilitaetsbeeintraechtigung ?? nested.dauerhafteMobilitaetsbeeintraechtigungCheckbox ?? nested.mobilitaetsbeeintraechtigung_dauerhaft
+  );
+  const fernbehandlungErkannt = inferFernbehandlungFromNested(nested);
+  const genehmigungsnummer = normalizeGenehmigungsnummer(
+    nested.genehmigungsnummer ?? nested.genehmigungs_nummer ?? nested.approvalNumber ?? nested.approval_number ?? nested.kk_genehmigungsnummer
+  );
+  const confidence = pickConfidence(raw);
+  return {
+    extracted: {
+      patientDisplayName,
+      patientReference,
+      insuranceName,
+      insuranceIk,
+      partnerIkNumber,
+      transportDate,
+      validFrom,
+      validUntil,
+      aufnahmedatum,
+      entlassungsdatum,
+      documentKind,
+      behandlungsArt,
+      behandlungsKontext,
+      behandlungsFrequenz,
+      pflegegrad,
+      merkzeichen,
+      dauerhafteMobilitaetsbeeintraechtigung,
+      fernbehandlungErkannt,
+      genehmigungsnummer
+    },
+    confidence
+  };
+}
+function medicalOcrHasMinimalExtract(extracted) {
+  return Boolean(
+    extracted.insuranceName || extracted.insuranceIk || extracted.partnerIkNumber || extracted.transportDate || extracted.validFrom || extracted.validUntil || extracted.aufnahmedatum || extracted.entlassungsdatum || extracted.patientDisplayName || extracted.patientReference || extracted.behandlungsArt !== "unbekannt" || extracted.behandlungsKontext !== "standard" || isHochfrequenteBehandlung(extracted) || extracted.genehmigungsnummer
+  );
+}
+
+// src/lib/medical/medicalDateLogic.ts
+var MEDICAL_DATE_LOGIC_TYPES = [
+  "today",
+  "series",
+  "return_trip",
+  "long_term_treatment"
+];
+function isMedicalDateLogicType(v) {
+  return MEDICAL_DATE_LOGIC_TYPES.includes(v);
+}
+function parseMedicalDateLogicType(raw) {
+  const v = (raw ?? "").trim().toLowerCase();
+  return isMedicalDateLogicType(v) ? v : "today";
+}
+var BERLIN_TZ2 = "Europe/Berlin";
+var VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION = 3;
+var NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE = 7;
+function berlinCalendarDay(d) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: BERLIN_TZ2,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(d);
+}
+function toDate(v) {
+  if (v == null) return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  const t = Date.parse(String(v));
+  return Number.isFinite(t) ? new Date(t) : null;
+}
+function dayDiff(a, b) {
+  const ta = Date.parse(`${a}T12:00:00.000Z`);
+  const tb = Date.parse(`${b}T12:00:00.000Z`);
+  if (!Number.isFinite(ta) || !Number.isFinite(tb)) return null;
+  return Math.round((ta - tb) / 864e5);
+}
+function pickOcrRideDate(extracted) {
+  return extracted.transportDate ?? extracted.validFrom ?? null;
+}
+function mergeDateLogicSeverity(current, next) {
+  if (current === "fail" || next === "fail") return "fail";
+  if (current === "warn" || next === "warn") return "warn";
+  return "ok";
+}
+function evaluateStationaerKontextDateWindow(extracted, rideDay) {
+  const warningCodes = [];
+  let severity = "ok";
+  const details = {
+    behandlungsKontext: extracted.behandlungsKontext,
+    rideDay,
+    aufnahmedatum: extracted.aufnahmedatum,
+    entlassungsdatum: extracted.entlassungsdatum
+  };
+  if (extracted.behandlungsKontext === "vorstationaer") {
+    const admission = extracted.aufnahmedatum;
+    if (!admission) {
+      warningCodes.push("vorstationaer_missing_aufnahmedatum");
+      severity = mergeDateLogicSeverity(severity, "warn");
+    } else {
+      const diff = dayDiff(rideDay, admission);
+      details.vorstationaerDayDiff = diff;
+      if (diff == null || diff < -VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION || diff > 0) {
+        warningCodes.push("vorstationaer_outside_window");
+        severity = mergeDateLogicSeverity(severity, "fail");
+      }
+    }
+  }
+  if (extracted.behandlungsKontext === "nachstationaer") {
+    const discharge = extracted.entlassungsdatum;
+    if (!discharge) {
+      warningCodes.push("nachstationaer_missing_entlassungsdatum");
+      severity = mergeDateLogicSeverity(severity, "warn");
+    } else {
+      const diff = dayDiff(rideDay, discharge);
+      details.nachstationaerDayDiff = diff;
+      if (diff == null || diff < 0 || diff > NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE) {
+        warningCodes.push("nachstationaer_outside_window");
+        severity = mergeDateLogicSeverity(severity, "fail");
+      }
+    }
+  }
+  return { warningCodes, severity, details };
+}
+function applyStationaerKontextChecks(input, rideDay, warningCodes, severity, details) {
+  const stationaer = evaluateStationaerKontextDateWindow(input.extracted, rideDay);
+  warningCodes.push(...stationaer.warningCodes);
+  Object.assign(details, { stationaerKontext: stationaer.details });
+  return mergeDateLogicSeverity(severity, stationaer.severity);
+}
+function evaluateToday(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const ride = toDate(input.rideScheduledAt);
+  const today = berlinCalendarDay(now);
+  const expectedDate = ride ? berlinCalendarDay(ride) : today;
+  const { validFrom, validUntil, transportDate } = input.extracted;
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const warningCodes = [];
+  let severity = "ok";
+  if (validUntil && validUntil < today) {
+    warningCodes.push("validity_expired");
+    severity = "fail";
+  }
+  if (validFrom && today < validFrom) {
+    warningCodes.push("validity_not_yet_started");
+    severity = "fail";
+  }
+  if (severity !== "fail") {
+    const hasValidUntil = Boolean(validUntil);
+    const todayInValidityWindow = (!validFrom || validFrom <= today) && (!validUntil || today <= validUntil);
+    if (hasValidUntil && todayInValidityWindow) {
+    } else if (!hasValidUntil) {
+      const refDate = transportDate ?? ocrDate;
+      if (!refDate) {
+        warningCodes.push("missing_ocr_date");
+        severity = "warn";
+      } else {
+        const diff = dayDiff(refDate, today);
+        if (diff != null && Math.abs(diff) > 1) {
+          warningCodes.push("ride_date_mismatch");
+          severity = "fail";
+        }
+      }
+    }
+  }
+  const details = {
+    rideScheduledAt: ride?.toISOString() ?? null,
+    today,
+    validFrom,
+    validUntil,
+    transportDate,
+    checkMode: validUntil ? "validity_window" : "transport_date_tolerance"
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+  return {
+    type: "today",
+    passed: severity === "ok",
+    severity,
+    expectedDate: today,
+    ocrDate,
+    warningCodes,
+    details
+  };
+}
+function evaluateSeries(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const ride = toDate(input.rideScheduledAt);
+  const expectedDate = ride ? berlinCalendarDay(ride) : berlinCalendarDay(now);
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const warningCodes = [];
+  let severity = "ok";
+  const series = input.series;
+  if (!series?.id) {
+    warningCodes.push("missing_series");
+    severity = "fail";
+  } else {
+    const from = normalizeMedicalOcrDate(series.validFrom);
+    const until = normalizeMedicalOcrDate(series.validUntil);
+    if (from && expectedDate < from) {
+      warningCodes.push("series_before_valid_from");
+      severity = "fail";
+    }
+    if (until && expectedDate > until) {
+      warningCodes.push("series_after_valid_until");
+      severity = "fail";
+    }
+    const completed = series.completedRides ?? 0;
+    if (series.totalRides > 0 && completed >= series.totalRides) {
+      warningCodes.push("series_quota_exhausted");
+      severity = severity === "fail" ? "fail" : "warn";
+    }
+  }
+  if (!ocrDate) {
+    warningCodes.push("missing_ocr_date");
+    if (severity !== "fail") severity = "warn";
+  } else if (ocrDate !== expectedDate && severity !== "fail") {
+    warningCodes.push("ride_date_mismatch");
+    severity = "warn";
+  }
+  const details = {
+    seriesId: series?.id ?? null,
+    validFrom: series ? normalizeMedicalOcrDate(series.validFrom) : null,
+    validUntil: series ? normalizeMedicalOcrDate(series.validUntil) : null,
+    totalRides: series?.totalRides ?? null,
+    completedRides: series?.completedRides ?? null
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+  return {
+    type: "series",
+    passed: severity === "ok",
+    severity,
+    expectedDate,
+    ocrDate,
+    warningCodes,
+    details
+  };
+}
+function evaluateReturnTrip(input) {
+  const ride = toDate(input.rideScheduledAt);
+  const returnRide = toDate(input.returnRideScheduledAt);
+  const expectedDate = ride ? berlinCalendarDay(ride) : null;
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const warningCodes = [];
+  let severity = "ok";
+  if (!returnRide) {
+    warningCodes.push("missing_return_ride");
+    severity = "warn";
+  } else if (ride) {
+    const outboundDay = berlinCalendarDay(ride);
+    const returnDay = berlinCalendarDay(returnRide);
+    const diff = dayDiff(returnDay, outboundDay);
+    if (diff != null && (diff < 0 || diff > 14)) {
+      warningCodes.push("return_trip_date_implausible");
+      severity = "fail";
+    }
+  }
+  if (!ocrDate) {
+    warningCodes.push("missing_ocr_date");
+    if (severity !== "fail") severity = "warn";
+  } else if (expectedDate && ocrDate !== expectedDate && severity !== "fail") {
+    warningCodes.push("ride_date_mismatch");
+    severity = "warn";
+  }
+  const details = {
+    returnRideScheduledAt: returnRide?.toISOString() ?? null
+  };
+  if (expectedDate) {
+    severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+  }
+  return {
+    type: "return_trip",
+    passed: severity === "ok",
+    severity,
+    expectedDate,
+    ocrDate,
+    warningCodes,
+    details
+  };
+}
+function evaluateLongTermTreatment(input) {
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const today = berlinCalendarDay(now);
+  const ride = toDate(input.rideScheduledAt);
+  const expectedDate = ride ? berlinCalendarDay(ride) : today;
+  const ocrDate = pickOcrRideDate(input.extracted);
+  const validFrom = input.extracted.validFrom;
+  const validUntil = input.extracted.validUntil;
+  const warningCodes = [];
+  let severity = "ok";
+  if (!validFrom && !validUntil) {
+    warningCodes.push("missing_validity_window");
+    severity = "warn";
+  }
+  if (validUntil && validUntil < today) {
+    warningCodes.push("validity_expired");
+    severity = "fail";
+  }
+  if (validFrom && expectedDate < validFrom) {
+    warningCodes.push("ride_before_valid_from");
+    severity = "fail";
+  }
+  if (validUntil && expectedDate > validUntil) {
+    warningCodes.push("ride_after_valid_until");
+    severity = "fail";
+  }
+  const series = input.series;
+  if (series?.id) {
+    const sUntil = normalizeMedicalOcrDate(series.validUntil);
+    if (sUntil && expectedDate > sUntil) {
+      warningCodes.push("series_window_exceeded");
+      severity = "fail";
+    }
+  }
+  if (!ocrDate) {
+    warningCodes.push("missing_ocr_date");
+    if (severity !== "fail") severity = "warn";
+  }
+  const details = {
+    validFrom,
+    validUntil,
+    seriesId: series?.id ?? null
+  };
+  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
+  return {
+    type: "long_term_treatment",
+    passed: severity === "ok",
+    severity,
+    expectedDate,
+    ocrDate,
+    warningCodes,
+    details
+  };
+}
+function evaluateMedicalDateLogic(input) {
+  switch (input.dateLogicType) {
+    case "series":
+      return evaluateSeries(input);
+    case "return_trip":
+      return evaluateReturnTrip(input);
+    case "long_term_treatment":
+      return evaluateLongTermTreatment(input);
+    case "today":
+    default:
+      return evaluateToday(input);
+  }
+}
+
+// src/db/medicalCasesData.ts
+init_client();
+init_schema2();
+var MEDICAL_CASE_TYPES = ["transport_sheet", "signature_image", "other"];
+var MEDICAL_CASE_STATUSES = ["open", "reviewed", "closed"];
+function isCaseType(v) {
+  return MEDICAL_CASE_TYPES.includes(v);
+}
+function isCaseStatus(v) {
+  return MEDICAL_CASE_STATUSES.includes(v);
+}
+function mapRow6(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    rideId: r.ride_id ?? null,
+    seriesId: r.series_id ?? null,
+    patientDisplayName: r.patient_display_name ?? "",
+    patientReference: r.patient_reference ?? "",
+    insuranceName: r.insurance_name ?? "",
+    insuranceIk: r.insurance_ik ?? "",
+    partnerIkNumber: r.partner_ik_number ?? "",
+    caseType: isCaseType(r.case_type) ? r.case_type : "transport_sheet",
+    dateLogicType: parseMedicalDateLogicType(r.date_logic_type),
+    dateLogicContextJson: r.date_logic_context_json && typeof r.date_logic_context_json === "object" ? r.date_logic_context_json : {},
+    status: isCaseStatus(r.status) ? r.status : "open",
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function getAdminCompanyPartnerIkNumber(companyId) {
+  const db2 = getDb();
+  if (!db2) return "";
+  const cid = companyId.trim();
+  if (!cid) return "";
+  const rows = await db2.select({ partnerIkNumber: adminCompaniesTable.partner_ik_number }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
+  return rows[0]?.partnerIkNumber?.trim() ?? "";
+}
+async function insertMedicalCase(input) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const id = `mc-${randomUUID27()}`;
+  const now = /* @__PURE__ */ new Date();
+  const caseType = input.caseType && isCaseType(input.caseType) ? input.caseType : "transport_sheet";
+  const status = input.status && isCaseStatus(input.status) ? input.status : "open";
+  await db2.insert(medicalCasesTable).values({
+    id,
+    company_id: input.companyId.trim(),
+    ride_id: input.rideId?.trim() || null,
+    series_id: input.seriesId?.trim() || null,
+    patient_display_name: (input.patientDisplayName ?? "").trim().slice(0, 200),
+    patient_reference: (input.patientReference ?? "").trim().slice(0, 120),
+    insurance_name: (input.insuranceName ?? "").trim().slice(0, 200),
+    insurance_ik: (input.insuranceIk ?? "").replace(/\D/g, "").slice(0, 9),
+    partner_ik_number: (input.partnerIkNumber ?? "").replace(/\D/g, "").slice(0, 9),
+    case_type: caseType,
+    date_logic_type: input.dateLogicType ?? "today",
+    date_logic_context_json: input.dateLogicContextJson ?? {},
+    status,
+    created_at: now,
+    updated_at: now
+  });
+  const created = await findMedicalCaseById(id);
+  if (!created) throw new Error("medical_case_insert_failed");
+  return created;
+}
+async function findMedicalCaseById(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const tid = id.trim();
+  if (!tid) return null;
+  const rows = await db2.select().from(medicalCasesTable).where(eq(medicalCasesTable.id, tid)).limit(1);
+  const r = rows[0];
+  return r ? mapRow6(r) : null;
+}
+async function findLatestMedicalCaseByRideId(rideId, companyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rid = rideId.trim();
+  if (!rid) return null;
+  const where = companyId && companyId.trim() ? and(eq(medicalCasesTable.ride_id, rid), eq(medicalCasesTable.company_id, companyId.trim())) : eq(medicalCasesTable.ride_id, rid);
+  const rows = await db2.select().from(medicalCasesTable).where(where).orderBy(desc(medicalCasesTable.created_at)).limit(1);
+  const r = rows[0];
+  return r ? mapRow6(r) : null;
+}
+async function updateMedicalCaseStatus(id, status) {
+  const db2 = getDb();
+  if (!db2) return null;
+  if (!isCaseStatus(status)) return null;
+  const tid = id.trim();
+  if (!tid) return null;
+  await db2.update(medicalCasesTable).set({ status, updated_at: /* @__PURE__ */ new Date() }).where(eq(medicalCasesTable.id, tid));
+  return findMedicalCaseById(tid);
+}
+
+// src/db/krankenInvoicesData.ts
+init_schema2();
+function normalizeIk2(ik) {
+  return ik.replace(/\D/g, "").slice(0, 9);
+}
+function parseDateOnly(s) {
+  const t = s.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+  const d = /* @__PURE__ */ new Date(`${t}T12:00:00.000Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function isoDateOnly(d) {
+  return d.toISOString().slice(0, 10);
+}
+function mapVoucherRow(r, extra) {
+  return {
+    id: r.id,
+    rideId: r.ride_id,
+    companyId: r.company_id,
+    patientName: r.patient_name ?? "",
+    insurerName: r.insurer_name ?? "",
+    insurerIk: r.insurer_ik ?? "",
+    insurerEmail: r.insurer_email ?? "",
+    fareAmount: r.fare_amount ?? 0,
+    commissionAmount: r.commission_amount ?? 0,
+    netAmount: r.net_amount ?? 0,
+    commissionRateSnap: r.commission_rate_snap ?? 0,
+    status: r.status ?? "open",
+    krankenInvoiceId: r.kranken_invoice_id ?? null,
+    billedAt: r.billed_at?.toISOString() ?? null,
+    paidAt: r.paid_at?.toISOString() ?? null,
+    rideReferenceAt: r.ride_reference_at?.toISOString() ?? null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString(),
+    ...extra
+  };
+}
+function mapInvoiceRow(r, companyName) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    companyName,
+    insurerName: r.insurer_name ?? "",
+    insurerIk: r.insurer_ik ?? "",
+    insurerEmail: r.insurer_email ?? "",
+    invoiceNumber: r.invoice_number,
+    periodFrom: String(r.period_from),
+    periodTo: String(r.period_to),
+    totalAmount: r.total_amount ?? 0,
+    commissionAmount: r.commission_amount ?? 0,
+    netAmount: r.net_amount ?? 0,
+    commissionRateSnap: r.commission_rate_snap ?? 0,
+    status: r.status ?? "draft",
+    sentAt: r.sent_at?.toISOString() ?? null,
+    sentTo: r.sent_to ?? "",
+    paidAt: r.paid_at?.toISOString() ?? null,
+    pdfStorageKey: r.pdf_storage_key ?? "",
+    rideCount: r.ride_count ?? 0,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+function rideFareAmount(ride) {
+  const f = ride.final_fare;
+  if (typeof f === "number" && Number.isFinite(f) && f >= 0) return f;
+  return typeof ride.estimated_fare === "number" && Number.isFinite(ride.estimated_fare) ? ride.estimated_fare : 0;
+}
+function insuranceFromRide(meta, medical) {
+  const fromMetaName = typeof meta.insurance_name === "string" ? meta.insurance_name.trim() : "";
+  const fromMetaIk = typeof meta.insurance_ik === "string" ? normalizeIk2(meta.insurance_ik) : typeof meta.insurer_ik === "string" ? normalizeIk2(meta.insurer_ik) : "";
+  return {
+    insurerName: fromMetaName || medical?.insuranceName?.trim() || "",
+    insurerIk: fromMetaIk || normalizeIk2(medical?.insuranceIk ?? "")
+  };
+}
+function patientFromRide(meta, medical, rideCustomerName) {
+  const ref = typeof meta.patient_reference === "string" ? meta.patient_reference.trim() : "";
+  if (ref) return ref.slice(0, 120);
+  const disp = medical?.patientDisplayName?.trim();
+  if (disp) return disp.slice(0, 120);
+  const cn = (rideCustomerName ?? "").trim();
+  if (cn) return cn.slice(0, 120);
+  return medical?.patientReference?.trim().slice(0, 120) || "Patient";
+}
+function insurerMatchesFilter(row, filter) {
+  const wantIk = filter.insurerIk ? normalizeIk2(filter.insurerIk) : "";
+  const wantName = (filter.insurerName ?? "").trim().toLowerCase();
+  if (wantIk && normalizeIk2(row.insurerIk) !== wantIk) return false;
+  if (wantName && row.insurerName.trim().toLowerCase() !== wantName) return false;
+  return true;
+}
+function parseInsurerBillingContacts(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item;
+    const insurerName = typeof o.insurerName === "string" ? o.insurerName.trim() : "";
+    const insurerIk = normalizeIk2(typeof o.insurerIk === "string" ? o.insurerIk : "");
+    const email = typeof o.email === "string" ? o.email.trim() : "";
+    if (!insurerName && !insurerIk) continue;
+    out.push({ insurerName, insurerIk, email });
+  }
+  return out;
+}
+async function getInsurerBillingContactsForCompany(companyId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({ contacts: adminCompaniesTable.insurer_billing_contacts_json }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId.trim())).limit(1);
+  return parseInsurerBillingContacts(rows[0]?.contacts);
+}
+async function resolveDefaultInsurerEmail(companyId, insurerName, insurerIk, fallbackEmail) {
+  const contacts = await getInsurerBillingContactsForCompany(companyId);
+  const ik = normalizeIk2(insurerIk);
+  const name2 = insurerName.trim().toLowerCase();
+  const hit = contacts.find((c) => ik && c.insurerIk === ik && c.email) ?? contacts.find((c) => name2 && c.insurerName.trim().toLowerCase() === name2 && c.email);
+  return (hit?.email || fallbackEmail).trim();
+}
+async function syncOpenTransportVouchersForCompany(input) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cid = input.companyId.trim();
+  const from = parseDateOnly(input.periodFrom);
+  const to = parseDateOnly(input.periodTo);
+  if (!from || !to) return [];
+  const commissionRate = await getAdminCompanyCommissionRate(cid);
+  const periodEnd = /* @__PURE__ */ new Date(`${isoDateOnly(to)}T23:59:59.999Z`);
+  const rideRows = await db2.select().from(ridesTable).where(
+    and(
+      eq(ridesTable.company_id, cid),
+      eq(ridesTable.status, "completed"),
+      gte(ridesTable.created_at, from),
+      lte(ridesTable.created_at, periodEnd),
+      or(eq(ridesTable.payer_kind, "insurance"), eq(ridesTable.ride_kind, "medical"))
+    )
+  ).orderBy(desc(ridesTable.created_at));
+  const out = [];
+  for (const ride of rideRows) {
+    const meta = ride.partner_booking_meta ?? {};
+    const readiness = calculateMedicalBillingReadiness(meta);
+    if (!readiness.billingReady) continue;
+    const medical = await findLatestMedicalCaseByRideId(ride.id, cid);
+    const ins = insuranceFromRide(meta, medical);
+    if (!ins.insurerName && !ins.insurerIk) continue;
+    if (!insurerMatchesFilter(ins, input)) continue;
+    const fare = roundMoneyEur(rideFareAmount(ride));
+    const commissionAmount = roundMoneyEur(fare * commissionRate);
+    const netAmount = roundMoneyEur(fare - commissionAmount);
+    const patientName = patientFromRide(meta, medical, ride.customer_name);
+    const insurerEmail = await resolveDefaultInsurerEmail(
+      cid,
+      ins.insurerName,
+      ins.insurerIk,
+      typeof meta.insurer_email === "string" ? meta.insurer_email : ""
+    );
+    const existing = await db2.select().from(transportVouchersTable).where(eq(transportVouchersTable.ride_id, ride.id)).limit(1);
+    const now = /* @__PURE__ */ new Date();
+    const refAt = ride.scheduled_at ?? ride.created_at;
+    if (existing[0]) {
+      const ex = existing[0];
+      if (ex.status !== "open") {
+        if (ex.status === "billed" || ex.status === "paid") {
+          out.push(
+            mapVoucherRow(ex, {
+              rideFromFull: ride.from_full,
+              rideToFull: ride.to_full,
+              distanceKm: ride.distance_km
+            })
+          );
+        }
+        continue;
+      }
+      await db2.update(transportVouchersTable).set({
+        patient_name: patientName,
+        insurer_name: ins.insurerName,
+        insurer_ik: ins.insurerIk,
+        insurer_email: insurerEmail,
+        fare_amount: fare,
+        commission_amount: commissionAmount,
+        net_amount: netAmount,
+        commission_rate_snap: commissionRate,
+        ride_reference_at: refAt,
+        updated_at: now
+      }).where(eq(transportVouchersTable.id, ex.id));
+      const refreshed = await db2.select().from(transportVouchersTable).where(eq(transportVouchersTable.id, ex.id)).limit(1);
+      if (refreshed[0]) {
+        out.push(
+          mapVoucherRow(refreshed[0], {
+            rideFromFull: ride.from_full,
+            rideToFull: ride.to_full,
+            distanceKm: ride.distance_km
+          })
+        );
+      }
+      continue;
+    }
+    const id = `tv-${randomUUID28()}`;
+    await db2.insert(transportVouchersTable).values({
+      id,
+      ride_id: ride.id,
+      company_id: cid,
+      patient_name: patientName,
+      insurer_name: ins.insurerName,
+      insurer_ik: ins.insurerIk,
+      insurer_email: insurerEmail,
+      fare_amount: fare,
+      commission_amount: commissionAmount,
+      net_amount: netAmount,
+      commission_rate_snap: commissionRate,
+      status: "open",
+      ride_reference_at: refAt,
+      created_at: now,
+      updated_at: now
+    });
+    const inserted = await db2.select().from(transportVouchersTable).where(eq(transportVouchersTable.id, id)).limit(1);
+    if (inserted[0]) {
+      out.push(
+        mapVoucherRow(inserted[0], {
+          rideFromFull: ride.from_full,
+          rideToFull: ride.to_full,
+          distanceKm: ride.distance_km
+        })
+      );
+    }
+  }
+  return out.filter((v) => v.status === "open");
+}
+async function allocateKrankenInvoiceNumber(companyId, year2) {
+  const db2 = getDb();
+  if (!db2) throw new Error("db_unavailable");
+  const cid = companyId.trim();
+  const existing = await db2.select().from(krankenInvoiceSequencesTable).where(and(eq(krankenInvoiceSequencesTable.company_id, cid), eq(krankenInvoiceSequencesTable.year, year2))).limit(1);
+  let seq = 1;
+  if (existing[0]) {
+    seq = existing[0].next_seq;
+    await db2.update(krankenInvoiceSequencesTable).set({ next_seq: seq + 1 }).where(
+      and(eq(krankenInvoiceSequencesTable.company_id, cid), eq(krankenInvoiceSequencesTable.year, year2))
+    );
+  } else {
+    await db2.insert(krankenInvoiceSequencesTable).values({
+      company_id: cid,
+      year: year2,
+      next_seq: 2
+    });
+  }
+  return `KR-${year2}-${String(seq).padStart(3, "0")}`;
+}
+async function listOpenTransportVouchersForCompany(companyId, filters) {
+  await syncOpenTransportVouchersForCompany({ companyId, ...filters });
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(transportVouchersTable).where(and(eq(transportVouchersTable.company_id, companyId.trim()), eq(transportVouchersTable.status, "open"))).orderBy(desc(transportVouchersTable.ride_reference_at));
+  const filtered = rows.filter(
+    (r) => insurerMatchesFilter({ insurerName: r.insurer_name, insurerIk: r.insurer_ik }, filters)
+  );
+  const out = [];
+  for (const r of filtered) {
+    const rideRows = await db2.select().from(ridesTable).where(eq(ridesTable.id, r.ride_id)).limit(1);
+    const ride = rideRows[0];
+    out.push(
+      mapVoucherRow(r, ride ? { rideFromFull: ride.from_full, rideToFull: ride.to_full, distanceKm: ride.distance_km } : void 0)
+    );
+  }
+  return out;
+}
+async function listKrankenInvoicesForCompany(companyId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(krankenInvoicesTable).where(eq(krankenInvoicesTable.company_id, companyId.trim())).orderBy(desc(krankenInvoicesTable.created_at));
+  const company = await findCompanyById(companyId);
+  return rows.map((r) => mapInvoiceRow(r, company?.name));
+}
+async function listAllKrankenInvoicesAdmin() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(krankenInvoicesTable).orderBy(desc(krankenInvoicesTable.created_at));
+  const out = [];
+  for (const r of rows) {
+    const c = await findCompanyById(r.company_id);
+    out.push(mapInvoiceRow(r, c?.name));
+  }
+  return out;
+}
+async function getKrankenInvoiceById(invoiceId, companyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const conds = [eq(krankenInvoicesTable.id, invoiceId.trim())];
+  if (companyId) conds.push(eq(krankenInvoicesTable.company_id, companyId.trim()));
+  const invRows = await db2.select().from(krankenInvoicesTable).where(and(...conds)).limit(1);
+  const inv = invRows[0];
+  if (!inv) return null;
+  const company = await findCompanyById(inv.company_id);
+  const vouchers = await db2.select().from(transportVouchersTable).where(eq(transportVouchersTable.kranken_invoice_id, inv.id)).orderBy(desc(transportVouchersTable.ride_reference_at));
+  const voucherOut = [];
+  for (const v of vouchers) {
+    const rideRows = await db2.select().from(ridesTable).where(eq(ridesTable.id, v.ride_id)).limit(1);
+    const ride = rideRows[0];
+    voucherOut.push(
+      mapVoucherRow(v, ride ? { rideFromFull: ride.from_full, rideToFull: ride.to_full, distanceKm: ride.distance_km } : void 0)
+    );
+  }
+  return { invoice: mapInvoiceRow(inv, company?.name), vouchers: voucherOut };
+}
+async function generateKrankenInvoice(input) {
+  if (!isPostgresConfigured()) return { error: "db_required" };
+  const cid = input.companyId.trim();
+  const from = parseDateOnly(input.periodFrom);
+  const to = parseDateOnly(input.periodTo);
+  if (!from || !to) return { error: "period_from_to_required" };
+  if (from > to) return { error: "period_invalid" };
+  const open = await syncOpenTransportVouchersForCompany({
+    companyId: cid,
+    periodFrom: input.periodFrom,
+    periodTo: input.periodTo,
+    insurerName: input.insurerName,
+    insurerIk: input.insurerIk
+  });
+  if (open.length === 0) return { error: "no_open_vouchers" };
+  const commissionRate = await getAdminCompanyCommissionRate(cid);
+  let total = 0;
+  let commission = 0;
+  let net = 0;
+  for (const v of open) {
+    total += v.fareAmount;
+    commission += v.commissionAmount;
+    net += v.netAmount;
+  }
+  total = roundMoneyEur(total);
+  commission = roundMoneyEur(commission);
+  net = roundMoneyEur(net);
+  const year2 = from.getUTCFullYear();
+  const invoiceNumber = await allocateKrankenInvoiceNumber(cid, year2);
+  const id = `ki-${randomUUID28()}`;
+  const now = /* @__PURE__ */ new Date();
+  const email = input.insurerEmail.trim();
+  const db2 = getDb();
+  await db2.insert(krankenInvoicesTable).values({
+    id,
+    company_id: cid,
+    insurer_name: input.insurerName.trim(),
+    insurer_ik: normalizeIk2(input.insurerIk),
+    insurer_email: email,
+    invoice_number: invoiceNumber,
+    period_from: isoDateOnly(from),
+    period_to: isoDateOnly(to),
+    total_amount: total,
+    commission_amount: commission,
+    net_amount: net,
+    commission_rate_snap: commissionRate,
+    status: "draft",
+    ride_count: open.length,
+    pdf_storage_key: "",
+    created_at: now,
+    updated_at: now
+  });
+  for (const v of open) {
+    await db2.update(transportVouchersTable).set({
+      status: "billed",
+      kranken_invoice_id: id,
+      billed_at: now,
+      updated_at: now
+    }).where(eq(transportVouchersTable.id, v.id));
+  }
+  const detail = await getKrankenInvoiceById(id, cid);
+  if (!detail) return { error: "invoice_create_failed" };
+  return detail;
+}
+async function updateKrankenInvoicePdfKey(invoiceId, storageKey) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(krankenInvoicesTable).set({ pdf_storage_key: storageKey, updated_at: /* @__PURE__ */ new Date() }).where(eq(krankenInvoicesTable.id, invoiceId));
+}
+async function markKrankenInvoiceSent(invoiceId, sentTo, companyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const conds = [eq(krankenInvoicesTable.id, invoiceId.trim())];
+  if (companyId) conds.push(eq(krankenInvoicesTable.company_id, companyId.trim()));
+  await db2.update(krankenInvoicesTable).set({ status: "sent", sent_at: now, sent_to: sentTo.trim(), updated_at: now }).where(and(...conds));
+  const detail = await getKrankenInvoiceById(invoiceId, companyId);
+  return detail?.invoice ?? null;
+}
+async function markKrankenInvoicePaidAdmin(invoiceId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const invId = invoiceId.trim();
+  await db2.update(krankenInvoicesTable).set({ status: "paid", paid_at: now, updated_at: now }).where(eq(krankenInvoicesTable.id, invId));
+  await db2.update(transportVouchersTable).set({ status: "paid", paid_at: now, updated_at: now }).where(eq(transportVouchersTable.kranken_invoice_id, invId));
+  const detail = await getKrankenInvoiceById(invId);
+  return detail?.invoice ?? null;
+}
+function companySenderLines(company) {
+  const lines = [];
+  const name2 = (company.billing_name || company.name || "").trim();
+  if (name2) lines.push(name2);
+  const a1 = (company.billing_address_line1 || company.address_line1 || "").trim();
+  const a2 = (company.billing_address_line2 || company.address_line2 || "").trim();
+  const plz = (company.billing_postal_code || company.postal_code || "").trim();
+  const city = (company.billing_city || company.city || "").trim();
+  if (a1) lines.push(a1);
+  if (a2) lines.push(a2);
+  if (plz || city) lines.push(`${plz} ${city}`.trim());
+  const ik = String(company.partner_ik_number ?? "").trim();
+  if (ik) lines.push(`IK: ${ik}`);
+  return lines.length ? lines : [name2 || "Taxi-Unternehmen"];
+}
+async function getKrankenInvoiceAdminKpis() {
+  const db2 = getDb();
+  if (!db2) {
+    return {
+      totalInvoices: 0,
+      draftCount: 0,
+      sentCount: 0,
+      paidCount: 0,
+      totalAmount: 0,
+      commissionAmount: 0,
+      netAmount: 0
+    };
+  }
+  const rows = await db2.select().from(krankenInvoicesTable);
+  let draftCount = 0;
+  let sentCount = 0;
+  let paidCount = 0;
+  let totalAmount = 0;
+  let commissionAmount = 0;
+  let netAmount = 0;
+  for (const r of rows) {
+    const st = r.status;
+    if (st === "draft") draftCount += 1;
+    else if (st === "sent") sentCount += 1;
+    else if (st === "paid") paidCount += 1;
+    totalAmount += r.total_amount ?? 0;
+    commissionAmount += r.commission_amount ?? 0;
+    netAmount += r.net_amount ?? 0;
+  }
+  return {
+    totalInvoices: rows.length,
+    draftCount,
+    sentCount,
+    paidCount,
+    totalAmount: roundMoneyEur(totalAmount),
+    commissionAmount: roundMoneyEur(commissionAmount),
+    netAmount: roundMoneyEur(netAmount)
+  };
+}
+
+// src/lib/krankenInvoicePdfService.ts
+init_adminData();
+import { mkdir as mkdir5, writeFile as writeFile5 } from "node:fs/promises";
+import path7 from "node:path";
+
+// src/lib/invoice/krankenInvoicePdf.ts
+import PDFDocument2 from "pdfkit";
+function fmtDateDe3(iso) {
+  const t = iso.trim();
+  if (!t) return "\u2014";
+  const d = new Date(t.includes("T") ? t : `${t}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return t;
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function fmtMoney2(n5) {
+  return `${roundMoneyEur(n5).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20AC`;
+}
+function routeShort(from, to) {
+  const a = (from ?? "").trim();
+  const b = (to ?? "").trim();
+  if (!a && !b) return "\u2014";
+  const short = (s) => s.length > 36 ? `${s.slice(0, 33)}\u2026` : s;
+  return `${short(a)} \u2192 ${short(b)}`;
+}
+function renderKrankenInvoicePdf(input) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument2({ size: "A4", margin: 0, autoFirstPage: false });
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+    const headerMeta = {
+      invoiceNumber: input.invoiceNumber,
+      statusLabel: "Sammelrechnung Krankenfahrt",
+      issueDateLabel: fmtDateDe3(input.issueDate),
+      periodLabel: `${fmtDateDe3(input.periodFrom)} \u2013 ${fmtDateDe3(input.periodTo)}`,
+      dueDateLabel: "\u2014"
+    };
+    let pageCount = 0;
+    doc.addPage({ size: "A4", margin: 0 });
+    pageCount = 1;
+    let ctx = createPdfContext(doc, 0);
+    const posW = 28;
+    const amtW = 62;
+    const kmW = 40;
+    const dateW = 58;
+    const descW = ctx.contentWidth - posW - dateW - kmW - amtW;
+    const columns = [
+      { key: "pos", title: "Pos.", width: posW, align: "left" },
+      { key: "date", title: "Datum", width: dateW, align: "left" },
+      { key: "patient", title: "Patient / Strecke", width: descW, align: "left" },
+      { key: "km", title: "km", width: kmW, align: "right" },
+      { key: "gross", title: "Betrag", width: amtW, align: "right" }
+    ];
+    ctx.y = drawInvoicePageHeader(ctx, headerMeta, { compact: false });
+    ctx.y = drawInvoiceMetaBar(ctx, headerMeta);
+    ctx.y = drawPartyColumns(
+      ctx,
+      { title: "Rechnungssteller (Taxi)", name: input.senderName, lines: input.senderLines.filter(Boolean) },
+      { title: "Rechnungsempf\xE4nger (Krankenkasse)", name: input.recipientName, lines: input.recipientLines.filter(Boolean) }
+    );
+    doc.font("Helvetica").fontSize(9).fillColor(ONRODA_INVOICE_BRAND.muted);
+    doc.text("Krankenfahrten \u2014 T-Schein-Fahrten im Abrechnungszeitraum", ctx.contentLeft, ctx.y);
+    ctx.y += 18;
+    ctx.y = drawInvoiceTableHeader(ctx, columns);
+    const items = input.vouchers.length ? input.vouchers : [];
+    let pos = 0;
+    for (const v of items) {
+      pos += 1;
+      const row = {
+        cells: {
+          pos: String(pos),
+          date: fmtDateDe3(v.rideReferenceAt ?? v.createdAt),
+          patient: `${v.patientName}
+${routeShort(v.rideFromFull, v.rideToFull)}`,
+          km: v.distanceKm != null && Number.isFinite(v.distanceKm) ? v.distanceKm.toFixed(1) : "\u2014",
+          gross: fmtMoney2(v.fareAmount)
+        }
+      };
+      const rowH = measureTableRowHeight(doc, row, columns);
+      if (ctx.y + rowH > INVOICE_PAGE.height - INVOICE_MARGINS.bottom - INVOICE_LAYOUT.footerHeight) {
+        drawInvoiceFooterOnCurrentPage(ctx, pageCount, 0);
+        doc.addPage({ size: "A4", margin: 0 });
+        pageCount += 1;
+        ctx = createPdfContext(doc, pageCount - 1);
+        ctx.y = drawInvoicePageHeader(ctx, headerMeta, { compact: true });
+        ctx.y = drawInvoiceTableHeader(ctx, columns);
+      }
+      ctx.y = drawInvoiceTableRow(ctx, columns, { ...row, rowHeight: rowH });
+    }
+    if (!items.length) {
+      const row = {
+        cells: {
+          pos: "\u2014",
+          date: "\u2014",
+          patient: "Keine Fahrten im Zeitraum",
+          km: "\u2014",
+          gross: fmtMoney2(0)
+        }
+      };
+      ctx.y = drawInvoiceTableRow(ctx, columns, row);
+    }
+    const pctLabel = input.commissionRatePercent.toLocaleString("de-DE", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+    const boxX = ctx.contentLeft;
+    const boxW = ctx.contentWidth;
+    const lineH = 16;
+    const boxH = lineH * 4 + 20;
+    if (ctx.y + boxH > INVOICE_PAGE.height - INVOICE_MARGINS.bottom - INVOICE_LAYOUT.footerHeight) {
+      drawInvoiceFooterOnCurrentPage(ctx, pageCount, 0);
+      doc.addPage({ size: "A4", margin: 0 });
+      pageCount += 1;
+      ctx = createPdfContext(doc, pageCount - 1);
+      ctx.y = drawInvoicePageHeader(ctx, headerMeta, { compact: true });
+    }
+    ctx.y += 12;
+    doc.roundedRect(boxX, ctx.y, boxW, boxH, 8).fillAndStroke("#F9FAFB", ONRODA_INVOICE_BRAND.border);
+    let ty = ctx.y + 12;
+    const labelX = boxX + 14;
+    const valueX = boxX + boxW - 14;
+    const drawLine = (label, value, bold = false) => {
+      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(ONRODA_INVOICE_BRAND.text);
+      doc.text(label, labelX, ty, { width: boxW - 120, align: "left" });
+      doc.text(value, labelX, ty, { width: boxW - 28, align: "right" });
+      ty += lineH;
+    };
+    drawLine("Summe Fahrpreise", fmtMoney2(input.totalAmount));
+    drawLine(`ONRODA Provision (${pctLabel} %)`, fmtMoney2(input.commissionAmount));
+    drawLine("Auszahlungsbetrag ans Taxi-Unternehmen", fmtMoney2(input.netAmount), true);
+    doc.font("Helvetica").fontSize(8).fillColor(ONRODA_INVOICE_BRAND.muted);
+    doc.text(
+      "ONRODA dokumentiert die Abrechnung; Zahlung der Krankenkasse gem\xE4\xDF vertraglicher Vereinbarung.",
+      labelX,
+      ty + 4,
+      { width: boxW - 28 }
+    );
+    ctx.y += boxH + 8;
+    drawInvoiceFooterOnCurrentPage(ctx, pageCount, pageCount);
+    doc.end();
+  });
+}
+
+// src/lib/krankenInvoicePdfService.ts
+var KRANKEN_INVOICE_UPLOAD_ROOT = (process.env.KRANKEN_INVOICE_UPLOAD_DIR ?? "").trim() || path7.resolve(process.cwd(), "artifacts/api-server/uploads/kranken-invoices");
+function pdfAbsPath(storageKey) {
+  const rel = storageKey.replace(/^\/+/, "");
+  const resolved = path7.resolve(KRANKEN_INVOICE_UPLOAD_ROOT, rel);
+  const root = path7.resolve(KRANKEN_INVOICE_UPLOAD_ROOT);
+  if (!resolved.startsWith(root)) throw new Error("invalid_storage_key");
+  return resolved;
+}
+function defaultPdfKey(companyId, invoiceNumber) {
+  const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return path7.join(companyKey, `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+}
+async function buildAndStoreKrankenInvoicePdf(invoiceId, companyId) {
+  const detail = await getKrankenInvoiceById(invoiceId, companyId);
+  if (!detail) return null;
+  const company = await findCompanyById(companyId);
+  if (!company) return null;
+  const inv = detail.invoice;
+  const ratePct = Math.round(inv.commissionRateSnap * 1e4) / 100;
+  const buffer = await renderKrankenInvoicePdf({
+    invoiceNumber: inv.invoiceNumber,
+    issueDate: inv.createdAt,
+    periodFrom: inv.periodFrom,
+    periodTo: inv.periodTo,
+    senderName: company.name,
+    senderLines: companySenderLines(company),
+    recipientName: inv.insurerName || "Krankenkasse",
+    recipientLines: [
+      inv.insurerIk ? `IK: ${inv.insurerIk}` : "",
+      inv.insurerEmail ? `E-Mail: ${inv.insurerEmail}` : ""
+    ].filter(Boolean),
+    vouchers: detail.vouchers,
+    totalAmount: inv.totalAmount,
+    commissionAmount: inv.commissionAmount,
+    netAmount: inv.netAmount,
+    commissionRatePercent: ratePct
+  });
+  const storageKey = inv.pdfStorageKey?.trim() || defaultPdfKey(companyId, inv.invoiceNumber);
+  const abs = pdfAbsPath(storageKey);
+  await mkdir5(path7.dirname(abs), { recursive: true });
+  await writeFile5(abs, buffer);
+  if (!inv.pdfStorageKey?.trim()) {
+    await updateKrankenInvoicePdfKey(invoiceId, storageKey);
+  }
+  return { buffer, storageKey };
+}
+async function readKrankenInvoicePdfBuffer(invoiceId, companyId) {
+  const detail = await getKrankenInvoiceById(invoiceId, companyId);
+  if (!detail) return null;
+  if (!detail.invoice.pdfStorageKey) {
+    const built = await buildAndStoreKrankenInvoicePdf(invoiceId, detail.invoice.companyId);
+    return built?.buffer ?? null;
+  }
+  try {
+    const { readFile: readFile4 } = await import("node:fs/promises");
+    return await readFile4(pdfAbsPath(detail.invoice.pdfStorageKey));
+  } catch {
+    const built = await buildAndStoreKrankenInvoicePdf(invoiceId, detail.invoice.companyId);
+    return built?.buffer ?? null;
+  }
+}
+
+// src/routes/adminKrankenInvoiceRoutes.ts
+var router7 = (0, import_express7.Router)();
+router7.get("/kranken-invoices", async (req, res, next) => {
+  try {
+    const invoices = await listAllKrankenInvoicesAdmin();
+    const kpis = await getKrankenInvoiceAdminKpis();
+    res.json({ ok: true, invoices, kpis });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.get("/kranken-invoices/:invoiceId/pdf", async (req, res, next) => {
+  try {
+    const invoiceId = String(req.params.invoiceId ?? "").trim();
+    const detail = await getKrankenInvoiceById(invoiceId);
+    if (!detail) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    const buffer = await readKrankenInvoicePdfBuffer(invoiceId);
+    if (!buffer) {
+      res.status(500).json({ ok: false, error: "pdf_failed" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${detail.invoice.invoiceNumber.replace(/[^\w-]+/g, "_")}.pdf"`
+    );
+    res.send(buffer);
+  } catch (e) {
+    next(e);
+  }
+});
+router7.patch("/kranken-invoices/:invoiceId/paid", async (req, res, next) => {
+  try {
+    const invoiceId = String(req.params.invoiceId ?? "").trim();
+    const updated = await markKrankenInvoicePaidAdmin(invoiceId);
+    if (!updated) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, invoice: updated });
+  } catch (e) {
+    next(e);
+  }
+});
+var adminKrankenInvoiceRoutes_default = router7;
+
+// src/routes/adminAppNewsRouter.ts
+var import_express8 = __toESM(require_express2(), 1);
 init_client();
 
 // src/db/appNewsData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID27 } from "node:crypto";
+import { randomUUID as randomUUID29 } from "node:crypto";
 var AUDIENCES = /* @__PURE__ */ new Set([
   "all",
   "customer",
@@ -67466,7 +69388,7 @@ async function findAppNewsAdmin(id) {
 async function createAppNewsItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID27();
+  const id = randomUUID29();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appNewsItemsTable).values({
     id,
@@ -67510,7 +69432,7 @@ async function deactivateAppNewsItem(id) {
 }
 
 // src/routes/adminAppNewsRouter.ts
-var router7 = (0, import_express7.Router)();
+var router8 = (0, import_express8.Router)();
 function adminRole(req) {
   return req.adminAuth?.role ?? "admin";
 }
@@ -67530,7 +69452,7 @@ function isValidExternalUrl(raw) {
 function parseBody(req) {
   return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
 }
-router7.get("/", async (req, res, next) => {
+router8.get("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -67546,7 +69468,7 @@ router7.get("/", async (req, res, next) => {
     next(e);
   }
 });
-router7.post("/", async (req, res, next) => {
+router8.post("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -67611,7 +69533,7 @@ router7.post("/", async (req, res, next) => {
     next(e);
   }
 });
-router7.patch("/:id", async (req, res, next) => {
+router8.patch("/:id", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -67684,7 +69606,7 @@ router7.patch("/:id", async (req, res, next) => {
     next(e);
   }
 });
-router7.delete("/:id", async (req, res, next) => {
+router8.delete("/:id", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -67709,16 +69631,16 @@ router7.delete("/:id", async (req, res, next) => {
     next(e);
   }
 });
-var adminAppNewsRouter_default = router7;
+var adminAppNewsRouter_default = router8;
 
 // src/routes/adminCustomerAccountsRouter.ts
-var import_express8 = __toESM(require_express2(), 1);
+var import_express9 = __toESM(require_express2(), 1);
 init_client();
-var router8 = (0, import_express8.Router)();
+var router9 = (0, import_express9.Router)();
 function adminRole2(req) {
   return req.adminAuth?.role ?? "admin";
 }
-router8.get("/", async (req, res, next) => {
+router9.get("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole2(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -67736,17 +69658,17 @@ router8.get("/", async (req, res, next) => {
     next(e);
   }
 });
-var adminCustomerAccountsRouter_default = router8;
+var adminCustomerAccountsRouter_default = router9;
 
 // src/routes/adminAppSponsorsRouter.ts
-var import_express9 = __toESM(require_express2(), 1);
+var import_express10 = __toESM(require_express2(), 1);
 init_client();
 
 // src/db/appSponsorsData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID28 } from "node:crypto";
+import { randomUUID as randomUUID30 } from "node:crypto";
 var AUDIENCES2 = /* @__PURE__ */ new Set(["all", "customer", "driver"]);
 var CATEGORIES = /* @__PURE__ */ new Set(["sponsor", "partner", "angebot", "event"]);
 function parseAppSponsorAudience(raw) {
@@ -67821,7 +69743,7 @@ async function findAppSponsorAdmin(id) {
 async function createAppSponsorItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID28();
+  const id = randomUUID30();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appSponsorsTable).values({
     id,
@@ -67875,7 +69797,7 @@ async function deactivateAppSponsorItem(id) {
 }
 
 // src/routes/adminAppSponsorsRouter.ts
-var router9 = (0, import_express9.Router)();
+var router10 = (0, import_express10.Router)();
 function adminRole3(req) {
   return req.adminAuth?.role ?? "admin";
 }
@@ -67890,7 +69812,7 @@ function isValidHttpsUrl(raw) {
 function qrCodeUrlFromExternalLink(url) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(url)}`;
 }
-router9.get("/", async (req, res, next) => {
+router10.get("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole3(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -67906,7 +69828,7 @@ router9.get("/", async (req, res, next) => {
     next(e);
   }
 });
-router9.post("/", async (req, res, next) => {
+router10.post("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole3(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -67989,7 +69911,7 @@ router9.post("/", async (req, res, next) => {
     next(e);
   }
 });
-router9.patch("/:id", async (req, res, next) => {
+router10.patch("/:id", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole3(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68083,7 +70005,7 @@ router9.patch("/:id", async (req, res, next) => {
     next(e);
   }
 });
-router9.delete("/:id", async (req, res, next) => {
+router10.delete("/:id", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole3(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68108,17 +70030,17 @@ router9.delete("/:id", async (req, res, next) => {
     next(e);
   }
 });
-var adminAppSponsorsRouter_default = router9;
+var adminAppSponsorsRouter_default = router10;
 
 // src/routes/adminAppFaqRouter.ts
-var import_express10 = __toESM(require_express2(), 1);
+var import_express11 = __toESM(require_express2(), 1);
 init_client();
 
 // src/db/appFaqData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID29 } from "node:crypto";
+import { randomUUID as randomUUID31 } from "node:crypto";
 var CATEGORIES2 = /* @__PURE__ */ new Set(["general", "payment", "driver", "booking", "account"]);
 function parseAppFaqCategory(raw) {
   const s = String(raw ?? "").trim().toLowerCase();
@@ -68167,7 +70089,7 @@ async function createAppFaqItem(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID29();
+  const id = randomUUID31();
   await db2.insert(appFaqTable).values({
     id,
     question: input.question,
@@ -68200,14 +70122,14 @@ async function deleteAppFaqItem(id) {
 }
 
 // src/routes/adminAppFaqRouter.ts
-var router10 = (0, import_express10.Router)();
+var router11 = (0, import_express11.Router)();
 function adminRole4(req) {
   return req.adminAuth?.role ?? "admin";
 }
 function parseBody3(req) {
   return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
 }
-router10.get("/", async (req, res, next) => {
+router11.get("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole4(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68223,7 +70145,7 @@ router10.get("/", async (req, res, next) => {
     next(e);
   }
 });
-router10.post("/", async (req, res, next) => {
+router11.post("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole4(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68253,7 +70175,7 @@ router10.post("/", async (req, res, next) => {
     next(e);
   }
 });
-router10.patch("/:id", async (req, res, next) => {
+router11.patch("/:id", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole4(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68292,7 +70214,7 @@ router10.patch("/:id", async (req, res, next) => {
     next(e);
   }
 });
-router10.delete("/:id", async (req, res, next) => {
+router11.delete("/:id", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole4(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68317,17 +70239,17 @@ router10.delete("/:id", async (req, res, next) => {
     next(e);
   }
 });
-var adminAppFaqRouter_default = router10;
+var adminAppFaqRouter_default = router11;
 
 // src/routes/adminDriverMessagesRouter.ts
-var import_express11 = __toESM(require_express2(), 1);
+var import_express12 = __toESM(require_express2(), 1);
 init_client();
 
 // src/db/driverMessagesData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID30 } from "node:crypto";
+import { randomUUID as randomUUID32 } from "node:crypto";
 function rowToDto(r, targetDriverLabel = null) {
   return {
     id: r.id,
@@ -68386,7 +70308,7 @@ async function dismissDriverMessage(fleetDriverId, messageId) {
 async function insertDriverMessage(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID30();
+  const id = randomUUID32();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(driverMessagesTable).values({
     id,
@@ -68413,7 +70335,7 @@ async function fleetDriverExists(driverId) {
 init_fleetDriverExpoPushData();
 init_fleetDriversData();
 init_expoPushGateway();
-var router11 = (0, import_express11.Router)();
+var router12 = (0, import_express12.Router)();
 function adminRole5(req) {
   return req.adminAuth?.role ?? "admin";
 }
@@ -68423,7 +70345,7 @@ function sentByLabel(req) {
 function parseBody4(req) {
   return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
 }
-router11.get("/", async (req, res, next) => {
+router12.get("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole5(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68441,7 +70363,7 @@ router11.get("/", async (req, res, next) => {
     next(e);
   }
 });
-router11.post("/broadcast", async (req, res, next) => {
+router12.post("/broadcast", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole5(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68492,7 +70414,7 @@ router11.post("/broadcast", async (req, res, next) => {
     next(e);
   }
 });
-router11.post("/single", async (req, res, next) => {
+router12.post("/single", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole5(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68560,18 +70482,42 @@ router11.post("/single", async (req, res, next) => {
     next(e);
   }
 });
-var adminDriverMessagesRouter_default = router11;
+var adminDriverMessagesRouter_default = router12;
 
 // src/routes/adminPartnerMessagesRouter.ts
-var import_express12 = __toESM(require_express2(), 1);
+var import_express13 = __toESM(require_express2(), 1);
 init_client();
 
 // src/db/partnerMessagesData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID31 } from "node:crypto";
-var PARTNER_MESSAGE_COMPANY_KINDS = ["hotel", "corporate", "voucher_client", "general", "medical"];
+import { randomUUID as randomUUID33 } from "node:crypto";
+var ADMIN_MESSAGE_COMPANY_KINDS = [
+  "general",
+  "taxi",
+  "voucher_client",
+  "insurer",
+  "hotel",
+  "corporate",
+  "medical"
+];
+var PARTNER_MESSAGE_DEFAULT_BROADCAST_KINDS = [
+  "hotel",
+  "corporate",
+  "voucher_client",
+  "general",
+  "medical"
+];
+var ADMIN_MESSAGE_KIND_LABELS_DE = {
+  general: "Allgemein",
+  taxi: "Taxi / Mietwagen",
+  voucher_client: "Gutscheinpartner",
+  insurer: "Krankenkasse / Versicherung",
+  hotel: "Hotel",
+  corporate: "Unternehmen / Firma",
+  medical: "Medizinische Fahrt"
+};
 function rowToDto2(r, companyName = null) {
   return {
     id: r.id,
@@ -68585,14 +70531,19 @@ function rowToDto2(r, companyName = null) {
     createdByAdmin: r.created_by_admin
   };
 }
-async function listPartnerMessageRecipientCompanyIds() {
+function isAdminMessageCompanyKind(kind) {
+  return ADMIN_MESSAGE_COMPANY_KINDS.includes(kind);
+}
+async function listPartnerMessageRecipientCompanyIdsByKinds(kinds) {
   const db2 = getDb();
-  if (!db2) return [];
+  if (!db2 || kinds.length === 0) return [];
+  const allowed = kinds.filter(isAdminMessageCompanyKind);
+  if (allowed.length === 0) return [];
   const rows = await db2.select({ id: adminCompaniesTable.id }).from(adminCompaniesTable).where(
     and(
       eq(adminCompaniesTable.is_active, true),
       eq(adminCompaniesTable.is_blocked, false),
-      inArray(adminCompaniesTable.company_kind, [...PARTNER_MESSAGE_COMPANY_KINDS])
+      inArray(adminCompaniesTable.company_kind, allowed)
     )
   );
   return rows.map((r) => r.id);
@@ -68607,10 +70558,44 @@ async function partnerCompanyExistsForMessages(companyId) {
       eq(adminCompaniesTable.id, id),
       eq(adminCompaniesTable.is_active, true),
       eq(adminCompaniesTable.is_blocked, false),
-      inArray(adminCompaniesTable.company_kind, [...PARTNER_MESSAGE_COMPANY_KINDS])
+      inArray(adminCompaniesTable.company_kind, [...ADMIN_MESSAGE_COMPANY_KINDS])
     )
   ).limit(1);
   return rows.length > 0;
+}
+async function resolveAdminMessageRecipients(companyIdRaw) {
+  const raw = companyIdRaw.trim();
+  const lower = raw.toLowerCase();
+  if (lower === "alle" || lower === "all" || raw === "") {
+    const companyIds = await listPartnerMessageRecipientCompanyIdsByKinds([
+      ...PARTNER_MESSAGE_DEFAULT_BROADCAST_KINDS
+    ]);
+    return {
+      mode: "broadcast",
+      companyIds,
+      targetLabel: "Alle Partner (Hotel, Agentur, Medizin, \u2026)",
+      targetKey: "alle"
+    };
+  }
+  if (lower.startsWith("kind:")) {
+    const kind = raw.slice(5).trim().toLowerCase();
+    if (!isAdminMessageCompanyKind(kind)) return null;
+    const companyIds = await listPartnerMessageRecipientCompanyIdsByKinds([kind]);
+    return {
+      mode: "broadcast",
+      companyIds,
+      targetLabel: ADMIN_MESSAGE_KIND_LABELS_DE[kind],
+      targetKey: `kind:${kind}`
+    };
+  }
+  const ok2 = await partnerCompanyExistsForMessages(raw);
+  if (!ok2) return null;
+  return {
+    mode: "single",
+    companyIds: [raw],
+    targetLabel: "Einzelnes Unternehmen",
+    targetKey: raw
+  };
 }
 async function insertPartnerMessagesBatch(input) {
   const db2 = getDb();
@@ -68619,9 +70604,11 @@ async function insertPartnerMessagesBatch(input) {
   const subject = input.subject.trim();
   const body = input.body.trim();
   const createdByAdmin = input.createdByAdmin.trim() || "admin";
+  const batchId = randomUUID33();
   const values = input.companyIds.map((companyId) => ({
-    id: randomUUID31(),
+    id: randomUUID33(),
     company_id: companyId,
+    batch_id: batchId,
     subject,
     body,
     is_read: false,
@@ -68634,6 +70621,7 @@ async function insertPartnerMessagesBatch(input) {
     (v) => rowToDto2({
       id: v.id,
       company_id: v.company_id,
+      batch_id: v.batch_id,
       subject: v.subject,
       body: v.body,
       is_read: v.is_read,
@@ -68642,6 +70630,19 @@ async function insertPartnerMessagesBatch(input) {
       created_by_admin: v.created_by_admin
     })
   );
+}
+function adminMessageGroupKey(msg) {
+  const bid = msg.batch_id?.trim();
+  if (bid) return `batch:${bid}`;
+  const t = msg.created_at.toISOString().slice(0, 19);
+  return `legacy:${msg.subject}
+${msg.body}
+${t}
+${msg.created_by_admin}`;
+}
+function sortRecipientsForAdmin(a, b) {
+  if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+  return String(a.companyName || a.companyId).localeCompare(String(b.companyName || b.companyId), "de");
 }
 async function listPartnerMessagesForCompany(companyId, limit = 100) {
   const db2 = getDb();
@@ -68683,19 +70684,71 @@ async function getPartnerMessageForCompany(messageId, companyId) {
   const rows = await db2.select().from(partnerMessagesTable).where(and(eq(partnerMessagesTable.id, id), eq(partnerMessagesTable.company_id, cid))).limit(1);
   return rows[0] ? rowToDto2(rows[0]) : null;
 }
-async function listPartnerMessagesAdmin(limit = 150) {
+async function listPartnerMessagesAdminGroups(groupLimit = 60) {
   const db2 = getDb();
   if (!db2) return [];
-  const cap = Math.min(300, Math.max(1, limit));
+  const cap = Math.min(120, Math.max(1, groupLimit));
   const rows = await db2.select({
     msg: partnerMessagesTable,
-    companyName: adminCompaniesTable.name
-  }).from(partnerMessagesTable).leftJoin(adminCompaniesTable, eq(partnerMessagesTable.company_id, adminCompaniesTable.id)).orderBy(desc(partnerMessagesTable.created_at)).limit(cap);
-  return rows.map((r) => rowToDto2(r.msg, r.companyName ?? null));
+    companyName: adminCompaniesTable.name,
+    companyKind: adminCompaniesTable.company_kind
+  }).from(partnerMessagesTable).leftJoin(adminCompaniesTable, eq(partnerMessagesTable.company_id, adminCompaniesTable.id)).orderBy(desc(partnerMessagesTable.created_at)).limit(500);
+  const map = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const msg = row.msg;
+    const key = adminMessageGroupKey(msg);
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        groupKey: key,
+        batchId: msg.batch_id?.trim() || null,
+        subject: msg.subject,
+        body: msg.body,
+        createdAt: msg.created_at.toISOString(),
+        createdByAdmin: msg.created_by_admin,
+        recipientCount: 0,
+        readCount: 0,
+        recipients: []
+      };
+      map.set(key, group);
+    }
+    const recipient = {
+      id: msg.id,
+      companyId: msg.company_id,
+      companyName: row.companyName ?? null,
+      companyKind: row.companyKind ?? null,
+      isRead: msg.is_read,
+      readAt: msg.read_at ? msg.read_at.toISOString() : null
+    };
+    group.recipients.push(recipient);
+    group.recipientCount += 1;
+    if (msg.is_read) group.readCount += 1;
+  }
+  return [...map.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, cap).map((g) => ({
+    ...g,
+    recipients: [...g.recipients].sort(sortRecipientsForAdmin)
+  }));
+}
+async function deletePartnerMessageForCompany(messageId, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = messageId.trim();
+  const cid = companyId.trim();
+  if (!id || !cid) return false;
+  const deleted = await db2.delete(partnerMessagesTable).where(and(eq(partnerMessagesTable.id, id), eq(partnerMessagesTable.company_id, cid))).returning({ id: partnerMessagesTable.id });
+  return deleted.length > 0;
+}
+async function deletePartnerMessageById(messageId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = messageId.trim();
+  if (!id) return false;
+  const deleted = await db2.delete(partnerMessagesTable).where(eq(partnerMessagesTable.id, id)).returning({ id: partnerMessagesTable.id });
+  return deleted.length > 0;
 }
 
 // src/routes/adminPartnerMessagesRouter.ts
-var router12 = (0, import_express12.Router)();
+var router13 = (0, import_express13.Router)();
 function adminRole6(req) {
   return req.adminAuth?.role ?? "admin";
 }
@@ -68705,7 +70758,7 @@ function sentByLabel2(req) {
 function parseBody5(req) {
   return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
 }
-router12.get("/", async (req, res, next) => {
+router13.get("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole6(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68717,13 +70770,15 @@ router12.get("/", async (req, res, next) => {
     }
     const rawLimit = req.query.limit;
     const limit = typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim()) ? parseInt(rawLimit.trim(), 10) : 150;
-    const items = await listPartnerMessagesAdmin(limit);
-    res.json({ ok: true, items });
+    const groups = await listPartnerMessagesAdminGroups(
+      typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim()) ? Math.min(120, parseInt(rawLimit.trim(), 10)) : 60
+    );
+    res.json({ ok: true, groups });
   } catch (e) {
     next(e);
   }
 });
-router12.post("/", async (req, res, next) => {
+router13.post("/", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminRole6(req))) {
       res.status(403).json({ error: "forbidden" });
@@ -68745,24 +70800,17 @@ router12.post("/", async (req, res, next) => {
       res.status(400).json({ error: "body_invalid", hint: "max 20000" });
       return;
     }
-    const broadcast = companyIdRaw === "" || companyIdRaw.toLowerCase() === "alle" || companyIdRaw.toLowerCase() === "all";
-    let companyIds = [];
-    if (broadcast) {
-      companyIds = await listPartnerMessageRecipientCompanyIds();
-    } else {
-      const ok2 = await partnerCompanyExistsForMessages(companyIdRaw);
-      if (!ok2) {
-        res.status(404).json({ error: "company_not_found" });
-        return;
-      }
-      companyIds = [companyIdRaw];
+    const resolved = await resolveAdminMessageRecipients(companyIdRaw);
+    if (!resolved) {
+      res.status(400).json({ error: "invalid_recipient", hint: "alle, kind:hotel, kind:taxi, \u2026 oder Mandanten-ID" });
+      return;
     }
-    if (companyIds.length === 0) {
-      res.status(400).json({ error: "no_recipients" });
+    if (resolved.companyIds.length === 0) {
+      res.status(400).json({ error: "no_recipients", target: resolved.targetKey });
       return;
     }
     const items = await insertPartnerMessagesBatch({
-      companyIds,
+      companyIds: resolved.companyIds,
       subject,
       body,
       createdByAdmin: sentByLabel2(req)
@@ -68770,14 +70818,41 @@ router12.post("/", async (req, res, next) => {
     res.status(201).json({
       ok: true,
       recipientCount: items.length,
-      broadcast,
+      broadcast: resolved.mode === "broadcast",
+      target: resolved.targetKey,
+      targetLabel: resolved.targetLabel,
       items
     });
   } catch (e) {
     next(e);
   }
 });
-var adminPartnerMessagesRouter_default = router12;
+router13.delete("/:messageId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole6(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const messageId = String(req.params.messageId ?? "").trim();
+    if (!messageId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const ok2 = await deletePartnerMessageById(messageId);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+var adminPartnerMessagesRouter_default = router13;
 
 // src/routes/adminApi.ts
 async function requireCompanyRowForMutation(req, res, companyId) {
@@ -68911,8 +70986,8 @@ async function allocateUniquePanelUsername(preferred) {
 function hashResetToken(token) {
   return createHash3("sha256").update(token).digest("hex");
 }
-var router13 = (0, import_express13.Router)();
-router13.post("/admin/auth/login", async (req, res) => {
+var router14 = (0, import_express14.Router)();
+router14.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok2 = await authenticateAdminCredentials(username, password);
@@ -68962,7 +71037,7 @@ router13.post("/admin/auth/login", async (req, res) => {
     authSource: ok2.source
   });
 });
-router13.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
+router14.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
     res.status(403).json({
@@ -68977,7 +71052,7 @@ router13.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const scopeCompanyId = typeof principal.scopeCompanyId === "string" && principal.scopeCompanyId.trim() ? principal.scopeCompanyId.trim() : null;
   res.json({ ok: true, authKind: "session", user: { username, role, scopeCompanyId } });
 });
-router13.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
+router14.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
     res.status(403).json({
@@ -69018,7 +71093,7 @@ router13.post("/admin/auth/change-password", requireAdminApiBearer, async (req, 
   const token = await signAdminSessionJwt({ username: principal.username, role: principal.role });
   res.json({ ok: true, token });
 });
-router13.post("/admin/auth/password-reset/request", async (req, res) => {
+router14.post("/admin/auth/password-reset/request", async (req, res) => {
   const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
   const generic = {
     ok: true,
@@ -69081,7 +71156,7 @@ router13.post("/admin/auth/password-reset/request", async (req, res) => {
   });
   res.json(generic);
 });
-router13.post("/admin/auth/password-reset/confirm", async (req, res) => {
+router14.post("/admin/auth/password-reset/confirm", async (req, res) => {
   const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
   const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
   if (!token || newPassword.length < 10) {
@@ -69120,7 +71195,7 @@ router13.post("/admin/auth/password-reset/confirm", async (req, res) => {
   });
   res.json({ ok: true });
 });
-router13.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
+router14.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
   if (!isAdminPrincipal(req)) {
     res.status(403).json({ error: "forbidden" });
     return;
@@ -69161,7 +71236,7 @@ router13.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, as
     expiresAt: expiresAt.toISOString()
   });
 });
-router13.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router14.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -69177,7 +71252,7 @@ router13.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) 
     next(e);
   }
 });
-router13.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router14.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -69229,7 +71304,7 @@ router13.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next)
     next(e);
   }
 });
-router13.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router14.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -69286,7 +71361,7 @@ router13.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, 
     next(e);
   }
 });
-router13.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router14.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -69333,16 +71408,17 @@ router13.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res,
     next(e);
   }
 });
-var adminJson = (0, import_express13.Router)();
+var adminJson = (0, import_express14.Router)();
 adminJson.use(requireAdminApiBearer);
 adminJson.use("/insurance", adminInsuranceApi_default);
+adminJson.use(adminKrankenInvoiceRoutes_default);
 adminJson.use("/app-news", adminAppNewsRouter_default);
 adminJson.use("/customer-accounts", adminCustomerAccountsRouter_default);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter_default);
 adminJson.use("/faq", adminAppFaqRouter_default);
 adminJson.use("/driver-messages", adminDriverMessagesRouter_default);
 adminJson.use("/messages", adminPartnerMessagesRouter_default);
-var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path7.join(path7.dirname(fileURLToPath3(import.meta.url)), "..", "..", "data", "fleet-uploads");
+var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path8.join(path8.dirname(fileURLToPath3(import.meta.url)), "..", "..", "data", "fleet-uploads");
 adminJson.get("/stats", async (req, res, next) => {
   try {
     if (!canAccessAdminStats(adminConsoleRole(req))) {
@@ -70131,7 +72207,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -70159,7 +72235,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -70179,7 +72255,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.missing_documents",
@@ -70201,7 +72277,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.approval",
@@ -70237,7 +72313,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/suspend", async
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.suspended",
@@ -70267,7 +72343,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", asyn
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.activated",
@@ -70304,7 +72380,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-overr
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.readiness_override_system",
@@ -70347,7 +72423,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/medical-transp
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.medical_transport",
@@ -70388,7 +72464,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.notes_patched",
@@ -70401,6 +72477,159 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
       }
     });
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+function taxiCompanyScopeIdsForFleetOverview(req) {
+  const role = adminConsoleRole(req);
+  const scope = req.adminAuth?.scopeCompanyId?.trim();
+  if (role === "taxi" && scope) return [scope];
+  return void 0;
+}
+adminJson.get("/fleet/drivers", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const filters = parseAdminFleetDriverOverviewFilters(req.query);
+    const searchRequired = !adminFleetDriverOverviewHasSearchCriteria(filters);
+    const scopeIds = taxiCompanyScopeIdsForFleetOverview(req);
+    const drivers = searchRequired ? [] : await listAdminFleetDriversOverview(filters, {
+      taxiCompanyIds: scopeIds
+    });
+    res.json({ ok: true, drivers, total: drivers.length, searchRequired });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/fleet/drivers/:driverId", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const driverId = String(req.params.driverId ?? "").trim();
+    const scopeIds = taxiCompanyScopeIdsForFleetOverview(req);
+    const detail = await getAdminFleetDriverOverviewDetail(driverId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (scopeIds?.length && !scopeIds.includes(detail.driver.companyId)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.json({ ok: true, ...detail });
+  } catch (e) {
+    next(e);
+  }
+});
+async function adminFleetDriverBlockUnblock(req, res, mode) {
+  if (!canAdminGloballySuspendFleetDrivers(adminConsoleRole(req))) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const driverId = String(req.params.driverId ?? "").trim();
+  const row = await findFleetDriverGlobal(driverId);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const companyId = row.company_id;
+  const scopeIds = taxiCompanyScopeIdsForFleetOverview(req);
+  if (scopeIds?.length && !scopeIds.includes(companyId)) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const company = await findCompanyById(companyId);
+  if (!company || company.company_kind !== "taxi") {
+    res.status(400).json({ error: "not_taxi_company" });
+    return;
+  }
+  if (mode === "block") {
+    const b = req.body ?? {};
+    const reason = typeof b.reason === "string" ? b.reason : "";
+    const adminNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : void 0;
+    const ok3 = await adminSuspendFleetDriver(companyId, driverId, reason);
+    if (!ok3) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (adminNote !== void 0) {
+      await adminPatchFleetDriverAdminFields(companyId, driverId, { adminInternalNote: adminNote });
+    }
+    const adminId2 = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID34(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.suspended",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { reason: String(reason).slice(0, 500), adminUserId: adminId2, source: "fleet_overview" }
+    });
+    res.json({ ok: true, accessStatus: "suspended" });
+    return;
+  }
+  const ok2 = await adminActivateFleetDriver(companyId, driverId);
+  if (!ok2) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const adminId = await resolveAdminAuthUserIdForSupport(req);
+  await insertPanelAuditLog({
+    id: randomUUID34(),
+    companyId,
+    actorPanelUserId: null,
+    action: "admin.fleet_driver.activated",
+    subjectType: "fleet_driver",
+    subjectId: driverId,
+    meta: { adminUserId: adminId, source: "fleet_overview" }
+  });
+  res.json({ ok: true, accessStatus: "active" });
+}
+adminJson.patch("/fleet/drivers/:driverId/block", async (req, res, next) => {
+  try {
+    await adminFleetDriverBlockUnblock(req, res, "block");
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/fleet/drivers/:driverId/unblock", async (req, res, next) => {
+  try {
+    await adminFleetDriverBlockUnblock(req, res, "unblock");
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/fleet/drivers/:driverId/status", async (req, res, next) => {
+  try {
+    const raw = typeof req.body?.status === "string" ? req.body.status.trim().toLowerCase() : "";
+    if (raw === "suspended" || raw === "blocked") {
+      await adminFleetDriverBlockUnblock(req, res, "block");
+      return;
+    }
+    if (raw === "active") {
+      await adminFleetDriverBlockUnblock(req, res, "unblock");
+      return;
+    }
+    res.status(400).json({ error: "status_invalid", hint: "active | suspended" });
   } catch (e) {
     next(e);
   }
@@ -70494,7 +72723,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -70541,7 +72770,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -70576,7 +72805,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/mark-missing
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.missing_documents",
@@ -70619,7 +72848,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", asyn
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -70656,7 +72885,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.unblocked",
@@ -70694,7 +72923,7 @@ adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", asy
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.notes_patched",
@@ -71536,7 +73765,7 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     if (prev && typeof body.medical_transport_enabled === "boolean" && prev.medical_transport_enabled !== body.medical_transport_enabled && isPostgresConfigured()) {
       const adminId = await resolveAdminAuthUserIdForSupport(req);
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId: req.params.companyId,
         actorPanelUserId: null,
         action: "admin.company.medical_transport_enabled",
@@ -71701,7 +73930,7 @@ adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => 
     }
     const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
     const result = await insertAdminSupportMessage({
-      messageId: randomUUID32(),
+      messageId: randomUUID34(),
       threadId,
       body,
       senderAdminUserId
@@ -72369,7 +74598,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
           ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
         } else {
           await insertPanelAuditLog({
-            id: randomUUID32(),
+            id: randomUUID34(),
             companyId: createdCompany.id,
             actorPanelUserId: null,
             action: "admin.panel_user.created",
@@ -72525,7 +74754,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
     }
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -72602,7 +74831,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -72638,7 +74867,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID32(),
+      id: randomUUID34(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -72753,14 +74982,14 @@ adminJson.get("/rides/:id/medical-signature-file", async (req, res, next) => {
       res.status(404).json({ error: "signature_not_found" });
       return;
     }
-    const uploadRoot = path7.resolve(process.cwd(), "uploads", "medical-rides");
-    const normalized = path7.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
-    const filePath = path7.resolve(uploadRoot, normalized);
-    if (!filePath.startsWith(uploadRoot + path7.sep) && filePath !== uploadRoot) {
+    const uploadRoot = path8.resolve(process.cwd(), "uploads", "medical-rides");
+    const normalized = path8.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
+    const filePath = path8.resolve(uploadRoot, normalized);
+    if (!filePath.startsWith(uploadRoot + path8.sep) && filePath !== uploadRoot) {
       res.status(400).json({ error: "invalid_signature_key" });
       return;
     }
-    const ext = path7.extname(filePath).toLowerCase();
+    const ext = path8.extname(filePath).toLowerCase();
     const contentType = ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "";
     if (!contentType) {
       res.status(415).json({ error: "unsupported_signature_type" });
@@ -73178,7 +75407,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -73222,7 +75451,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -73252,7 +75481,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/mark-missing-documents", async (req, 
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.missing_documents",
@@ -73289,7 +75518,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID32(),
+        id: randomUUID34(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -73324,9 +75553,9 @@ adminJson.get("/fleet-vehicles/:vehicleId/documents/file", async (req, res, next
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path7.resolve(path7.join(adminFleetUploadRoot, storageKey));
-    const base = path7.resolve(adminFleetUploadRoot);
-    if (!abs.startsWith(base + path7.sep) && abs !== base) {
+    const abs = path8.resolve(path8.join(adminFleetUploadRoot, storageKey));
+    const base = path8.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path8.sep) && abs !== base) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -73362,9 +75591,9 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path7.resolve(path7.join(adminFleetUploadRoot, storageKey));
-    const base = path7.resolve(adminFleetUploadRoot);
-    if (!abs.startsWith(base + path7.sep) && abs !== base) {
+    const abs = path8.resolve(path8.join(adminFleetUploadRoot, storageKey));
+    const base = path8.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path8.sep) && abs !== base) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -73376,15 +75605,95 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
     next(e);
   }
 });
-router13.use("/admin", adminJson);
-var adminApi_default = router13;
+router14.use("/admin", adminJson);
+var adminApi_default = router14;
 
 // src/routes/panelAuth.ts
-var import_express14 = __toESM(require_express2(), 1);
+var import_express15 = __toESM(require_express2(), 1);
 
 // src/db/panelAuthData.ts
 init_drizzle_orm();
 init_panelModules();
+
+// src/lib/kkModuleAccess.ts
+init_drizzle_orm();
+init_client();
+init_fleetDriversData();
+init_schema2();
+var KK_MODULE_NOT_ENABLED = "kk_module_not_enabled";
+var KK_MODULE_NOT_AUTHORIZED = "kk_module_not_authorized";
+function isTaxiCompanyKind(companyKind) {
+  return companyKind.trim().toLowerCase() === "taxi";
+}
+function isCompanyKkModuleEnabled(company) {
+  return isTaxiCompanyKind(company.companyKind) && Boolean(company.featureKkModule);
+}
+function computeDriverKkModuleAccess(company, driver) {
+  if (!isCompanyKkModuleEnabled(company)) return false;
+  if (driver.isOwner) return true;
+  return Boolean(driver.permissionKkModule);
+}
+function kkModuleAccessFromRows(company, driver) {
+  const companyEnabled = isCompanyKkModuleEnabled({
+    companyKind: company.company_kind,
+    featureKkModule: company.feature_kk_module
+  });
+  const isOwner = Boolean(driver.is_owner);
+  const permissionKkModule = Boolean(driver.permission_kk_module);
+  const canAccess = computeDriverKkModuleAccess(
+    { companyKind: company.company_kind, featureKkModule: company.feature_kk_module },
+    { isOwner, permissionKkModule }
+  );
+  return { companyEnabled, canAccess, isOwner, permissionKkModule };
+}
+async function findCompanyKkModuleRow(companyId) {
+  const cid = companyId.trim();
+  if (!cid || !isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    company_kind: adminCompaniesTable.company_kind,
+    feature_kk_module: adminCompaniesTable.feature_kk_module
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
+  return rows[0] ?? null;
+}
+async function getCompanyFeatureKkModule(companyId) {
+  const row = await findCompanyKkModuleRow(companyId);
+  if (!row) return false;
+  return isCompanyKkModuleEnabled({
+    companyKind: row.company_kind,
+    featureKkModule: row.feature_kk_module
+  });
+}
+async function resolveKkModuleAccessForFleetDriver(companyId, fleetDriverId) {
+  const driverRow = await findFleetDriverInCompany(fleetDriverId.trim(), companyId.trim());
+  if (!driverRow) return null;
+  const companyRow = await findCompanyKkModuleRow(companyId);
+  if (!companyRow) return null;
+  return kkModuleAccessFromRows(companyRow, driverRow);
+}
+async function assertKkModuleAccessForFleetDriver(companyId, fleetDriverId) {
+  const access = await resolveKkModuleAccessForFleetDriver(companyId, fleetDriverId);
+  if (!access) {
+    return { ok: false, error: KK_MODULE_NOT_AUTHORIZED };
+  }
+  if (!access.companyEnabled) {
+    return { ok: false, error: KK_MODULE_NOT_ENABLED };
+  }
+  if (!access.canAccess) {
+    return { ok: false, error: KK_MODULE_NOT_AUTHORIZED };
+  }
+  return { ok: true, access };
+}
+async function assertCompanyKkModuleEnabled(companyId) {
+  const enabled = await getCompanyFeatureKkModule(companyId);
+  if (!enabled) {
+    return { ok: false, error: KK_MODULE_NOT_ENABLED };
+  }
+  return { ok: true };
+}
+
+// src/db/panelAuthData.ts
 init_client();
 init_schema2();
 async function findActivePanelUserByUsername(username) {
@@ -73480,7 +75789,8 @@ async function findActivePanelUserProfileById(id) {
     mustChangePassword: panelUsersTable.must_change_password,
     createdAt: panelUsersTable.created_at,
     updatedAt: panelUsersTable.updated_at,
-    companyPanelModulesJson: adminCompaniesTable.panel_modules
+    companyPanelModulesJson: adminCompaniesTable.panel_modules,
+    featureKkModuleRaw: adminCompaniesTable.feature_kk_module
   }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
     and(
       eq(panelUsersTable.id, id),
@@ -73501,7 +75811,11 @@ async function findActivePanelUserProfileById(id) {
     mustChangePassword: r.mustChangePassword,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
-    panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson)
+    panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson),
+    featureKkModule: isCompanyKkModuleEnabled({
+      companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" || r.companyKindRaw === "medical" ? r.companyKindRaw : "general",
+      featureKkModule: Boolean(r.featureKkModuleRaw)
+    })
   };
 }
 async function findActivePanelUserById(id) {
@@ -73708,8 +76022,8 @@ var TAXI_DOC_ERROR_HINTS = {
   taxi_concession_pdf_required: "Bitte laden Sie die Konzession als PDF hoch (Pflicht).",
   taxi_pdf_invalid: "Mindestens eine PDF-Datei ist ung\xFCltig oder zu gro\xDF (max. 4 MB pro Datei, nur PDF)."
 };
-var router14 = (0, import_express14.Router)();
-router14.post("/panel-auth/login", async (req, res) => {
+var router15 = (0, import_express15.Router)();
+router15.post("/panel-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPanelLogin(ip);
   if (!rl.ok) {
@@ -73816,11 +76130,11 @@ router14.post("/panel-auth/login", async (req, res) => {
     }
   });
 });
-router14.post("/panel-auth/logout", (_req, res) => {
+router15.post("/panel-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
 var PENDING_PUBLIC_REGISTRATION = /* @__PURE__ */ new Set(["open", "in_review", "documents_required"]);
-router14.post("/panel-auth/registration-request", async (req, res) => {
+router15.post("/panel-auth/registration-request", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -73983,7 +76297,7 @@ router14.post("/panel-auth/registration-request", async (req, res) => {
   );
   res.status(201).json({ ok: true, request: created });
 });
-router14.get("/panel-auth/registration-request-status", async (req, res) => {
+router15.get("/panel-auth/registration-request-status", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -74008,7 +76322,7 @@ router14.get("/panel-auth/registration-request-status", async (req, res) => {
   }
   res.json({ ok: true, request: toPublicPartnerRegistrationSnapshot(row) });
 });
-router14.get("/panel-auth/registration-request/:id", async (req, res) => {
+router15.get("/panel-auth/registration-request/:id", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -74042,7 +76356,7 @@ router14.get("/panel-auth/registration-request/:id", async (req, res) => {
     timeline: toPublicPartnerRegistrationTimeline(detail.timeline)
   });
 });
-router14.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
+router15.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -74088,7 +76402,7 @@ router14.post("/panel-auth/registration-request/:id/messages", async (req, res) 
   await addPartnerRegistrationMessage(id, "partner", email, message2);
   res.status(201).json({ ok: true });
 });
-router14.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
+router15.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -74121,7 +76435,7 @@ router14.post("/panel-auth/registration-request/:id/change-request", async (req,
   await patchPartnerRegistrationRequest(id, { status: "in_review" });
   res.status(201).json({ ok: true });
 });
-router14.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
+router15.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -74178,15 +76492,15 @@ router14.post("/panel-auth/registration-request/:id/documents", async (req, res)
   }
   res.status(201).json({ ok: true, document: toPublicPartnerRegistrationDocument(doc) });
 });
-var panelAuth_default = router14;
+var panelAuth_default = router15;
 
 // src/routes/panelApi.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express16 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID34 } from "node:crypto";
-import { mkdir as mkdir5, readFile as readFile2, writeFile as writeFile5 } from "node:fs/promises";
-import path8 from "node:path";
+import { randomUUID as randomUUID36 } from "node:crypto";
+import { mkdir as mkdir6, readFile as readFile2, writeFile as writeFile6 } from "node:fs/promises";
+import path9 from "node:path";
 init_panelCompanyData();
 init_companyGovernanceData();
 init_accessCodesData();
@@ -74203,7 +76517,7 @@ init_dispatchStatus();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID33 } from "node:crypto";
+import { randomUUID as randomUUID35 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -74221,7 +76535,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID33()}`;
+  const id = `SRS-${randomUUID35()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -74354,7 +76668,7 @@ var requirePanelAuth = async (req, res, next) => {
 };
 
 // src/routes/panelApi.ts
-var router15 = (0, import_express15.Router)();
+var router16 = (0, import_express16.Router)();
 var PARTNER_OPEN_RIDE_LIMIT = 5;
 var PARTNER_RETRY_SEARCH_TIMEOUT_MS = 6e4;
 var PANEL_OPEN_RIDE_TERMINAL_STATUSES = /* @__PURE__ */ new Set([
@@ -74427,7 +76741,7 @@ function parsePartnerDriverNote(body) {
   const note = raw.trim().slice(0, 200);
   return note.length > 0 ? note : null;
 }
-var INVOICE_UPLOAD_ROOT = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path8.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
+var INVOICE_UPLOAD_ROOT = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path9.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
 function invoiceLine(text2) {
   return text2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
@@ -74487,7 +76801,7 @@ function nextInvoiceNumber(existing, date2 = /* @__PURE__ */ new Date()) {
   }
   return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
 }
-router15.use((_req, res, next) => {
+router16.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -74622,7 +76936,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID34()}`;
+  return `REQ-${randomUUID36()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -74908,10 +77222,10 @@ function companyRidesFiltersFromQuery(query) {
   };
   return { ok: true, filters };
 }
-router15.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
+router16.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
-router15.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
+router16.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res, {
     allowPasswordChangeRequired: true
   });
@@ -74932,11 +77246,12 @@ router15.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
       createdAt: profile.createdAt.toISOString(),
       updatedAt: profile.updatedAt.toISOString(),
       permissions: permissionsForRole(role),
-      panelModules: enabledPanelModules(profile)
+      panelModules: enabledPanelModules(profile),
+      featureKkModule: profile.featureKkModule
     }
   });
 });
-router15.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
+router16.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res);
   if (!ctx) return;
   if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
@@ -74948,7 +77263,7 @@ router15.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
   res.json({ ok: true, company });
 });
-router15.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -74962,7 +77277,7 @@ router15.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router15.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
+router16.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75033,7 +77348,7 @@ router15.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -75046,7 +77361,7 @@ router15.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
     next(e);
   }
 });
-router15.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75057,7 +77372,7 @@ router15.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router15.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75071,7 +77386,7 @@ router15.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -75083,7 +77398,7 @@ router15.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -75096,7 +77411,7 @@ router15.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
     next(e);
   }
 });
-router15.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75108,7 +77423,7 @@ router15.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router15.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75126,8 +77441,8 @@ router15.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
       res.status(400).json({ error: "body_invalid", hint: "max 10000" });
       return;
     }
-    const threadId = randomUUID34();
-    const messageId = randomUUID34();
+    const threadId = randomUUID36();
+    const messageId = randomUUID36();
     const created = await insertSupportThreadWithFirstMessage({
       threadId,
       messageId,
@@ -75146,7 +77461,7 @@ router15.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router15.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75167,7 +77482,7 @@ router15.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req
     next(e);
   }
 });
-router15.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75185,7 +77500,7 @@ router15.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
       return;
     }
     const result = await insertPartnerSupportMessage({
-      messageId: randomUUID34(),
+      messageId: randomUUID36(),
       threadId,
       companyId: ctx.claims.companyId,
       panelUserId: ctx.claims.panelUserId,
@@ -75204,7 +77519,7 @@ router15.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
     next(e);
   }
 });
-router15.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75274,7 +77589,7 @@ router15.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, r
     next(e);
   }
 });
-router15.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75293,7 +77608,7 @@ router15.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router15.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75336,7 +77651,7 @@ router15.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.cancelled",
@@ -75350,7 +77665,7 @@ router15.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router15.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75403,7 +77718,7 @@ router15.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.retry_search",
@@ -75417,7 +77732,7 @@ router15.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (r
     next(e);
   }
 });
-router15.post("/panel/v1/rides/:rideId/hide", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/rides/:rideId/hide", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75453,7 +77768,7 @@ router15.post("/panel/v1/rides/:rideId/hide", requirePanelAuth, async (req, res,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.hidden_from_partner_list",
@@ -75467,7 +77782,7 @@ router15.post("/panel/v1/rides/:rideId/hide", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router15.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75497,7 +77812,7 @@ router15.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router15.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75560,10 +77875,10 @@ router15.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
       "Hinweis: Rechnung im Namen des Taxiunternehmens, ohne automatische Kassen-\xDCbermittlung."
     ];
     const companyKey = ctx.claims.companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const relKey = path8.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
-    const absPath = path8.join(INVOICE_UPLOAD_ROOT, relKey);
-    await mkdir5(path8.dirname(absPath), { recursive: true });
-    await writeFile5(absPath, buildSimpleInvoicePdf(pdfLines));
+    const relKey = path9.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+    const absPath = path9.join(INVOICE_UPLOAD_ROOT, relKey);
+    await mkdir6(path9.dirname(absPath), { recursive: true });
+    await writeFile6(absPath, buildSimpleInvoicePdf(pdfLines));
     const nextMeta = {
       ...meta,
       gross_ride_amount: gross,
@@ -75585,7 +77900,7 @@ router15.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "billing.invoice_created",
@@ -75606,7 +77921,7 @@ router15.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
     next(e);
   }
 });
-router15.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75624,7 +77939,7 @@ router15.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, re
       res.status(404).json({ error: "invoice_not_found" });
       return;
     }
-    const absPath = path8.join(INVOICE_UPLOAD_ROOT, fileKey);
+    const absPath = path9.join(INVOICE_UPLOAD_ROOT, fileKey);
     const buf = await readFile2(absPath).catch(() => null);
     if (!buf) {
       res.status(404).json({ error: "pdf_file_missing" });
@@ -75638,7 +77953,7 @@ router15.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router15.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75670,7 +77985,7 @@ router15.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router15.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -75869,7 +78184,7 @@ router15.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -75888,7 +78203,7 @@ router15.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router15.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76049,7 +78364,7 @@ router15.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -76062,7 +78377,7 @@ router15.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router15.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76320,7 +78635,7 @@ router15.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -76333,7 +78648,7 @@ router15.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
     next(e);
   }
 });
-router15.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76544,7 +78859,7 @@ router15.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req,
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -76564,7 +78879,7 @@ function normalizeQueryRecord(raw) {
   }
   return q;
 }
-router15.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76593,7 +78908,7 @@ router15.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router15.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76616,7 +78931,7 @@ router15.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router15.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76628,7 +78943,7 @@ router15.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router15.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76640,7 +78955,7 @@ router15.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router15.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76674,7 +78989,7 @@ router15.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -76695,7 +79010,7 @@ router15.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router15.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
+router16.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76721,7 +79036,7 @@ router15.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -76734,7 +79049,7 @@ router15.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router15.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res, {
       allowPasswordChangeRequired: true
@@ -76766,7 +79081,7 @@ router15.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -76779,7 +79094,7 @@ router15.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router15.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76791,7 +79106,7 @@ router15.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router15.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76835,7 +79150,7 @@ router15.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -76856,7 +79171,7 @@ router15.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router15.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router16.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76922,7 +79237,7 @@ router15.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -76940,7 +79255,7 @@ router15.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
     next(e);
   }
 });
-router15.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router16.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -76977,7 +79292,7 @@ router15.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -76990,7 +79305,7 @@ router15.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router15.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -77027,7 +79342,7 @@ router15.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID34(),
+      id: randomUUID36(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -77040,7 +79355,7 @@ router15.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
     next(e);
   }
 });
-router15.get("/panel/v1/messages/unread-count", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/messages/unread-count", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -77051,7 +79366,7 @@ router15.get("/panel/v1/messages/unread-count", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router15.get("/panel/v1/messages", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/messages", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -77062,7 +79377,7 @@ router15.get("/panel/v1/messages", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router15.patch("/panel/v1/messages/:messageId/read", requirePanelAuth, async (req, res, next) => {
+router16.patch("/panel/v1/messages/:messageId/read", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -77086,12 +79401,32 @@ router15.patch("/panel/v1/messages/:messageId/read", requirePanelAuth, async (re
     next(e);
   }
 });
-var panelApi_default = router15;
+router16.delete("/panel/v1/messages/:messageId", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const messageId = String(req.params.messageId ?? "").trim();
+    if (!messageId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const ok2 = await deletePartnerMessageForCompany(messageId, ctx.claims.companyId);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+var panelApi_default = router16;
 
 // src/routes/panelInvoiceRoutes.ts
-var import_express16 = __toESM(require_express2(), 1);
-import { mkdir as mkdir6, readFile as readFile3, writeFile as writeFile6 } from "node:fs/promises";
-import path9 from "node:path";
+var import_express17 = __toESM(require_express2(), 1);
+import { mkdir as mkdir7, readFile as readFile3, writeFile as writeFile7 } from "node:fs/promises";
+import path10 from "node:path";
 
 // src/db/panelInvoicesData.ts
 init_drizzle_orm();
@@ -77239,12 +79574,12 @@ async function assertActivePanelProfile2(req, res, opts) {
 }
 
 // src/routes/panelInvoiceRoutes.ts
-var router16 = (0, import_express16.Router)();
-var INVOICE_UPLOAD_ROOT2 = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path9.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
+var router17 = (0, import_express17.Router)();
+var INVOICE_UPLOAD_ROOT2 = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path10.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
 function invoicePdfAbsPath(storageKey) {
   const rel = storageKey.replace(/^\/+/, "");
-  const resolved = path9.resolve(INVOICE_UPLOAD_ROOT2, rel);
-  const root = path9.resolve(INVOICE_UPLOAD_ROOT2);
+  const resolved = path10.resolve(INVOICE_UPLOAD_ROOT2, rel);
+  const root = path10.resolve(INVOICE_UPLOAD_ROOT2);
   if (!resolved.startsWith(root)) {
     throw new Error("invalid_storage_key");
   }
@@ -77252,9 +79587,9 @@ function invoicePdfAbsPath(storageKey) {
 }
 function defaultMonthlyPdfKey(companyId, invoiceNumber) {
   const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return path9.join(companyKey, "monthly-invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+  return path10.join(companyKey, "monthly-invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
 }
-router16.get("/panel/v1/invoices", requirePanelAuth, async (req, res, next) => {
+router17.get("/panel/v1/invoices", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile2(req, res);
     if (!ctx) return;
@@ -77266,7 +79601,7 @@ router16.get("/panel/v1/invoices", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router16.get("/panel/v1/invoices/:invoiceId", requirePanelAuth, async (req, res, next) => {
+router17.get("/panel/v1/invoices/:invoiceId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile2(req, res);
     if (!ctx) return;
@@ -77287,7 +79622,7 @@ router16.get("/panel/v1/invoices/:invoiceId", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router16.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, res, next) => {
+router17.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile2(req, res);
     if (!ctx) return;
@@ -77334,8 +79669,8 @@ router16.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, 
       if (!storageKey) {
         storageKey = defaultMonthlyPdfKey(ctx.claims.companyId, invoice.invoiceNumber);
         const absPath = invoicePdfAbsPath(storageKey);
-        await mkdir6(path9.dirname(absPath), { recursive: true });
-        await writeFile6(absPath, pdfBuffer);
+        await mkdir7(path10.dirname(absPath), { recursive: true });
+        await writeFile7(absPath, pdfBuffer);
       }
     }
     res.setHeader("Content-Type", "application/pdf");
@@ -77352,10 +79687,233 @@ router16.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, 
     next(e);
   }
 });
-var panelInvoiceRoutes_default = router16;
+var panelInvoiceRoutes_default = router17;
+
+// src/routes/panelKrankenInvoiceRoutes.ts
+var import_express18 = __toESM(require_express2(), 1);
+init_adminData();
+
+// src/lib/krankenInvoiceMail.ts
+function buildKrankenInvoiceMail(input) {
+  const company = input.companyName.trim() || "Taxi-Unternehmen";
+  const period = `${input.periodFrom} \u2013 ${input.periodTo}`;
+  const subject = `Sammelrechnung Krankenfahrt ${input.invoiceNumber} \u2014 ${company}`;
+  const text2 = [
+    "Guten Tag,",
+    "",
+    `anbei die Sammelrechnung Krankenfahrten (${input.invoiceNumber}) von ${company} f\xFCr ${input.insurerName}.`,
+    "",
+    `Abrechnungszeitraum: ${period}`,
+    `Rechnungsbetrag (Fahrpreise): ${input.totalAmount}`,
+    "",
+    "Das PDF ist dieser E-Mail beigef\xFCgt.",
+    "",
+    "Mit freundlichen Gr\xFC\xDFen",
+    company,
+    "(\xFCbermittelt \xFCber ONRODA)"
+  ].join("\n");
+  const html = `<!DOCTYPE html><html lang="de"><body style="font-family:Arial,sans-serif;line-height:1.5">
+<p>Guten Tag,</p>
+<p>anbei die Sammelrechnung <strong>${escapeHtmlMail(input.invoiceNumber)}</strong> von
+<strong>${escapeHtmlMail(company)}</strong> f\xFCr <strong>${escapeHtmlMail(input.insurerName)}</strong>.</p>
+<p>Zeitraum: ${escapeHtmlMail(period)}<br/>Fahrpreise gesamt: ${escapeHtmlMail(input.totalAmount)}</p>
+<p>Das PDF ist dieser E-Mail beigef\xFCgt.</p>
+<p>Mit freundlichen Gr\xFC\xDFen<br/>${escapeHtmlMail(company)}<br/><span style="color:#64748b">(\xFCbermittelt \xFCber ONRODA)</span></p>
+</body></html>`;
+  return { subject, text: text2, html };
+}
+async function sendKrankenInvoiceMail(input) {
+  const mail = buildKrankenInvoiceMail(input);
+  return sendOnrodaMail({
+    to: input.to,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html,
+    logEvent: "kranken_invoice.sent",
+    attachments: [
+      {
+        filename: `${input.invoiceNumber.replace(/[^\w-]+/g, "_")}.pdf`,
+        content: input.pdfBuffer,
+        contentType: "application/pdf"
+      }
+    ]
+  });
+}
+
+// src/routes/panelKrankenInvoiceRoutes.ts
+var router18 = (0, import_express18.Router)();
+function requireTaxiCompany(res, companyKind) {
+  if (companyKind !== "taxi") {
+    res.status(403).json({ ok: false, error: "taxi_company_only" });
+    return false;
+  }
+  return true;
+}
+async function requireCompanyKkModule(res, companyId) {
+  const gate = await assertCompanyKkModuleEnabled(companyId);
+  if (!gate.ok) {
+    res.status(403).json({ ok: false, error: gate.error });
+    return false;
+  }
+  return true;
+}
+router18.get("/panel/v1/kranken-invoices", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!await requireCompanyKkModule(res, ctx.claims.companyId)) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const invoices = await listKrankenInvoicesForCompany(ctx.claims.companyId);
+    res.json({ ok: true, invoices });
+  } catch (e) {
+    next(e);
+  }
+});
+router18.get("/panel/v1/kranken-invoices/open-vouchers", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!await requireCompanyKkModule(res, ctx.claims.companyId)) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const periodFrom = String(req.query.periodFrom ?? "").trim();
+    const periodTo = String(req.query.periodTo ?? "").trim();
+    const insurerName = String(req.query.insurerName ?? "").trim();
+    const insurerIk = String(req.query.insurerIk ?? "").trim();
+    if (!periodFrom || !periodTo) {
+      res.status(400).json({ ok: false, error: "period_from_to_required" });
+      return;
+    }
+    const vouchers = await listOpenTransportVouchersForCompany(ctx.claims.companyId, {
+      periodFrom,
+      periodTo,
+      insurerName: insurerName || void 0,
+      insurerIk: insurerIk || void 0
+    });
+    const insurerContacts = await getInsurerBillingContactsForCompany(ctx.claims.companyId);
+    res.json({ ok: true, vouchers, insurerContacts });
+  } catch (e) {
+    next(e);
+  }
+});
+router18.post("/panel/v1/kranken-invoices/generate", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!await requireCompanyKkModule(res, ctx.claims.companyId)) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.write")) return;
+    const body = req.body;
+    const periodFrom = String(body.periodFrom ?? "").trim();
+    const periodTo = String(body.periodTo ?? "").trim();
+    const insurerName = String(body.insurerName ?? "").trim();
+    const insurerIk = String(body.insurerIk ?? "").trim();
+    const insurerEmail = String(body.insurerEmail ?? "").trim();
+    if (!periodFrom || !periodTo || !insurerName) {
+      res.status(400).json({ ok: false, error: "period_insurer_required" });
+      return;
+    }
+    const result = await generateKrankenInvoice({
+      companyId: ctx.claims.companyId,
+      periodFrom,
+      periodTo,
+      insurerName,
+      insurerIk,
+      insurerEmail
+    });
+    if ("error" in result) {
+      const code = result.error;
+      res.status(code === "no_open_vouchers" ? 409 : 400).json({ ok: false, error: code });
+      return;
+    }
+    await buildAndStoreKrankenInvoicePdf(result.invoice.id, ctx.claims.companyId);
+    res.status(201).json({ ok: true, invoice: result.invoice, vouchers: result.vouchers });
+  } catch (e) {
+    next(e);
+  }
+});
+router18.post("/panel/v1/kranken-invoices/:invoiceId/send", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!await requireCompanyKkModule(res, ctx.claims.companyId)) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.write")) return;
+    const invoiceId = String(req.params.invoiceId ?? "").trim();
+    const detail = await getKrankenInvoiceById(invoiceId, ctx.claims.companyId);
+    if (!detail) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    const to = String(req.body?.insurerEmail ?? "").trim() || detail.invoice.insurerEmail.trim();
+    if (!to || !to.includes("@")) {
+      res.status(400).json({ ok: false, error: "insurer_email_required" });
+      return;
+    }
+    const built = await buildAndStoreKrankenInvoicePdf(invoiceId, ctx.claims.companyId);
+    if (!built) {
+      res.status(500).json({ ok: false, error: "pdf_failed" });
+      return;
+    }
+    const company = await findCompanyById(ctx.claims.companyId);
+    const mail = await sendKrankenInvoiceMail({
+      to,
+      companyName: company?.name ?? "",
+      invoiceNumber: detail.invoice.invoiceNumber,
+      insurerName: detail.invoice.insurerName,
+      periodFrom: detail.invoice.periodFrom,
+      periodTo: detail.invoice.periodTo,
+      totalAmount: `${detail.invoice.totalAmount.toFixed(2)} EUR`,
+      pdfBuffer: built.buffer
+    });
+    if (!mail.ok) {
+      res.status(503).json({ ok: false, error: mail.reason });
+      return;
+    }
+    const updated = await markKrankenInvoiceSent(invoiceId, to, ctx.claims.companyId);
+    res.json({ ok: true, invoice: updated, sentTo: to });
+  } catch (e) {
+    next(e);
+  }
+});
+router18.get("/panel/v1/kranken-invoices/:invoiceId/pdf", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile2(req, res);
+    if (!ctx) return;
+    if (!requireTaxiCompany(res, ctx.profile.companyKind)) return;
+    if (!await requireCompanyKkModule(res, ctx.claims.companyId)) return;
+    if (!denyUnlessPanelModule2(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const invoiceId = String(req.params.invoiceId ?? "").trim();
+    const detail = await getKrankenInvoiceById(invoiceId, ctx.claims.companyId);
+    if (!detail) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    const buffer = await readKrankenInvoicePdfBuffer(invoiceId, ctx.claims.companyId);
+    if (!buffer) {
+      res.status(500).json({ ok: false, error: "pdf_failed" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${detail.invoice.invoiceNumber.replace(/[^\w-]+/g, "_")}.pdf"`
+    );
+    res.send(buffer);
+  } catch (e) {
+    next(e);
+  }
+});
+var panelKrankenInvoiceRoutes_default = router18;
 
 // src/routes/fleetAuth.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
 init_client();
 init_fleetDriversData();
 init_companyGovernanceData();
@@ -77381,8 +79939,8 @@ function rateLimitFleetLogin(ip) {
 }
 
 // src/routes/fleetAuth.ts
-var router17 = (0, import_express17.Router)();
-router17.post("/fleet-auth/login", async (req, res) => {
+var router19 = (0, import_express19.Router)();
+router19.post("/fleet-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitFleetLogin(ip);
   if (!rl.ok) {
@@ -77463,13 +80021,13 @@ router17.post("/fleet-auth/login", async (req, res) => {
     }
   });
 });
-router17.post("/fleet-auth/logout", (_req, res) => {
+router19.post("/fleet-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
-var fleetAuth_default = router17;
+var fleetAuth_default = router19;
 
 // src/routes/fleetDriverApi.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 init_client();
 init_fleetDriversData();
 init_fleetAssignmentsData();
@@ -77556,788 +80114,13 @@ init_financeCalculationService();
 // src/lib/medical/medicalScanService.ts
 init_drizzle_orm();
 init_client();
-import { randomUUID as randomUUID38 } from "node:crypto";
-import { mkdir as mkdir7, writeFile as writeFile7 } from "node:fs/promises";
-import path10 from "node:path";
-
-// src/db/medicalCasesData.ts
-init_drizzle_orm();
-import { randomUUID as randomUUID35 } from "node:crypto";
-
-// src/lib/medical/medicalOcrNormalize.ts
-var MEDICAL_OCR_EXTRACTED_FIELDS = [
-  "patientDisplayName",
-  "patientReference",
-  "insuranceName",
-  "insuranceIk",
-  "partnerIkNumber",
-  "transportDate",
-  "validFrom",
-  "validUntil",
-  "aufnahmedatum",
-  "entlassungsdatum",
-  "documentKind",
-  "behandlungsArt",
-  "behandlungsKontext",
-  "behandlungsFrequenz",
-  "pflegegrad",
-  "merkzeichen",
-  "dauerhafteMobilitaetsbeeintraechtigung",
-  "fernbehandlungErkannt",
-  "genehmigungsnummer"
-];
-var EMPTY_EXTRACTED = {
-  patientDisplayName: "",
-  patientReference: "",
-  insuranceName: "",
-  insuranceIk: "",
-  partnerIkNumber: "",
-  transportDate: null,
-  validFrom: null,
-  validUntil: null,
-  aufnahmedatum: null,
-  entlassungsdatum: null,
-  documentKind: "transport_sheet",
-  behandlungsArt: "unbekannt",
-  behandlungsKontext: "standard",
-  behandlungsFrequenz: "keine",
-  pflegegrad: "unbekannt",
-  merkzeichen: "unbekannt",
-  dauerhafteMobilitaetsbeeintraechtigung: false,
-  fernbehandlungErkannt: false,
-  genehmigungsnummer: null
-};
-function isRecord2(v) {
-  return v !== null && typeof v === "object" && !Array.isArray(v);
-}
-function normalizeOcrToken(raw) {
-  return String(raw ?? "").trim().toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
-}
-function pickString(raw, keys) {
-  for (const k of keys) {
-    const v = raw[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
-    if (typeof v === "number" && Number.isFinite(v)) return String(v);
-  }
-  return "";
-}
-function normalizeIk(raw) {
-  return raw.replace(/\D/g, "").slice(0, 9);
-}
-function normalizeMedicalOcrDate(raw) {
-  if (raw == null) return null;
-  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
-    return raw.toISOString().slice(0, 10);
-  }
-  const s = String(raw).trim();
-  if (!s) return null;
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-  const de = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (de) {
-    const dd = de[1].padStart(2, "0");
-    const mm = de[2].padStart(2, "0");
-    return `${de[3]}-${mm}-${dd}`;
-  }
-  const t = Date.parse(s);
-  if (Number.isFinite(t)) return new Date(t).toISOString().slice(0, 10);
-  return null;
-}
-function parseDocumentKind(raw) {
-  const v = raw.trim().toLowerCase();
-  if (v === "signature_image" || v === "signature") return "signature_image";
-  if (v === "other") return "other";
-  return "transport_sheet";
-}
-function parseMedicalBehandlungsArt(raw) {
-  const v = normalizeOcrToken(raw);
-  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
-  if (v === "ambulant" || v.includes("ambulant") || v === "outpatient") {
-    return "ambulant";
-  }
-  if (v === "stationaer" || v.includes("stationaer") || v.includes("stationar") || v === "inpatient") {
-    return "stationaer";
-  }
-  return "unbekannt";
-}
-function parseMedicalBehandlungsKontext(raw) {
-  const v = normalizeOcrToken(raw);
-  if (!v || v === "standard" || v === "normal") return "standard";
-  if (v === "unbekannt" || v === "unknown") return "unbekannt";
-  if (v === "vorstationaer" || v.includes("vorstationaer") || v.includes("vor-stationaer") || v.includes("vor stationaer") || v.includes("voraufnahme") || v.includes("aufnahme") && !v.includes("nach")) {
-    return "vorstationaer";
-  }
-  if (v === "nachstationaer" || v.includes("nachstationaer") || v.includes("nach-stationaer") || v.includes("nach stationaer") || v.includes("entlassung") || v.includes("nachentlassung")) {
-    return "nachstationaer";
-  }
-  return "unbekannt";
-}
-function parseMedicalBehandlungsFrequenz(raw) {
-  const v = normalizeOcrToken(raw);
-  if (!v || v === "keine" || v === "none" || v === "nein" || v === "normal") return "keine";
-  if (v === "unbekannt" || v === "unknown") return "unbekannt";
-  if (v.includes("dialyse") || v.includes("haemodialyse") || v.includes("hemodialyse")) {
-    return "dialyse";
-  }
-  if (v.includes("chemo") || v.includes("chemotherapie") || v.includes("zytostat")) {
-    return "chemo";
-  }
-  if (v.includes("strahlen") || v.includes("strahlentherapie") || v.includes("radioonkologie") || v.includes("bestrahlung")) {
-    return "strahlen";
-  }
-  return "unbekannt";
-}
-function parseMedicalPflegegrad(raw) {
-  const v = String(raw ?? "").trim().toLowerCase();
-  if (!v || v === "unbekannt" || v === "unknown") return "unbekannt";
-  if (v === "keins" || v === "keine" || v === "none" || v === "0" || v === "nein") return "keins";
-  const digit = v.match(/\b([345])\b/)?.[1];
-  if (digit === "3" || digit === "4" || digit === "5") return digit;
-  return "unbekannt";
-}
-function parseMedicalMerkzeichen(raw) {
-  const v = String(raw ?? "").trim();
-  if (!v || v.toLowerCase() === "unbekannt" || v.toLowerCase() === "unknown") return "unbekannt";
-  if (v.toLowerCase() === "keins" || v.toLowerCase() === "keine" || v.toLowerCase() === "none") return "keins";
-  const normalized = normalizeOcrToken(v);
-  if (normalized.includes("gehbehinderung")) return "G";
-  const compact = v.replace(/\s+/g, "");
-  if (/^G$/i.test(compact)) return "G";
-  if (/^aG$/i.test(compact) || compact.toLowerCase() === "ag") return "aG";
-  if (/^Bl$/i.test(compact) || compact.toLowerCase() === "bl") return "Bl";
-  if (compact === "H" || compact.toLowerCase() === "h") return "H";
-  const upper = v.toUpperCase();
-  if (/\bG\b/.test(v) && !upper.includes("AG") && !upper.includes("BL")) return "G";
-  if (upper.includes("GEHBEHINDERUNG")) return "G";
-  if (upper.includes("AG") && !upper.includes("BL")) return "aG";
-  if (upper.includes("BL")) return "Bl";
-  if (/\bH\b/.test(v)) return "H";
-  return "unbekannt";
-}
-function parseFernbehandlungErkannt(raw) {
-  if (typeof raw === "boolean") return raw;
-  if (raw == null) return false;
-  const v = normalizeOcrToken(raw);
-  if (!v) return false;
-  if (v === "true" || v === "ja" || v === "yes" || v === "1") return true;
-  return v.includes("videosprechstunde") || v.includes("video-sprechstunde") || v.includes("video sprechstunde") || v.includes("telefonisch") || v.includes("fernbehandlung") || v.includes("fernsprechstunde") || v.includes("fern sprechstunde");
-}
-function inferFernbehandlungFromNested(nested) {
-  const explicit = parseFernbehandlungErkannt(
-    nested.fernbehandlungErkannt ?? nested.fernbehandlung_erkannt ?? nested.remoteTreatment ?? nested.remote_treatment
-  );
-  if (explicit) return true;
-  const hint = normalizeOcrToken(
-    pickString(nested, [
-      "ausstellungsArt",
-      "ausstellungs_art",
-      "verordnungsart",
-      "behandlungsform",
-      "ausstellungsform",
-      "scheinHinweis",
-      "verordnungstext",
-      "notes"
-    ])
-  );
-  return parseFernbehandlungErkannt(hint);
-}
-function parseDauerhafteMobilitaetsbeeintraechtigung(raw) {
-  if (typeof raw === "boolean") return raw;
-  if (raw == null) return false;
-  const v = normalizeOcrToken(raw);
-  if (!v) return false;
-  if (v === "true" || v === "ja" || v === "yes" || v === "1" || v === "x" || v === "angekreuzt") {
-    return true;
-  }
-  return v.includes("dauerhafte mobilitaetsbeeintraechtigung") || v.includes("dauerhaft mobilitaetsbeeintraechtigt") || v.includes("mobilitaetsbeeintraechtigung dauerhaft");
-}
-function normalizeGenehmigungsnummer(raw) {
-  if (raw == null) return null;
-  const s = String(raw).trim();
-  if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "unbekannt") return null;
-  return s.slice(0, 64);
-}
-function isHochfrequenteBehandlung(extracted) {
-  return extracted.behandlungsFrequenz === "dialyse" || extracted.behandlungsFrequenz === "chemo" || extracted.behandlungsFrequenz === "strahlen";
-}
-function isAmbulantGenehmigungsfreiPg45(extracted) {
-  return extracted.pflegegrad === "4" || extracted.pflegegrad === "5";
-}
-function isAmbulantGenehmigungsfreiMerkzeichen(extracted) {
-  return extracted.merkzeichen === "aG" || extracted.merkzeichen === "Bl" || extracted.merkzeichen === "H" || extracted.merkzeichen === "G";
-}
-function isAmbulantGenehmigungsfreiPg3(extracted) {
-  if (extracted.pflegegrad !== "3") return false;
-  return extracted.dauerhafteMobilitaetsbeeintraechtigung || extracted.merkzeichen === "G";
-}
-function isAmbulantGenehmigungsfrei(extracted) {
-  if (isHochfrequenteBehandlung(extracted)) return false;
-  return isAmbulantGenehmigungsfreiPg45(extracted) || isAmbulantGenehmigungsfreiMerkzeichen(extracted) || isAmbulantGenehmigungsfreiPg3(extracted);
-}
-function hasGenehmigungsnummer(extracted) {
-  return Boolean(extracted.genehmigungsnummer?.trim());
-}
-function parseHasSignatureOnDocument(raw) {
-  if (!isRecord2(raw)) return void 0;
-  const nested = isRecord2(raw.extracted) ? raw.extracted : raw;
-  if (typeof nested.hasSignatureOnDocument === "boolean") return nested.hasSignatureOnDocument;
-  if (typeof nested.has_signature_on_document === "boolean") return nested.has_signature_on_document;
-  return void 0;
-}
-function pickConfidence(raw) {
-  const out = {};
-  const conf = raw.confidence ?? raw.confidences ?? raw.field_confidence;
-  const source = isRecord2(conf) ? conf : raw;
-  if (!isRecord2(source)) return out;
-  for (const field of MEDICAL_OCR_EXTRACTED_FIELDS) {
-    const v = source[field];
-    if (typeof v === "number" && Number.isFinite(v)) {
-      out[field] = Math.max(0, Math.min(1, v));
-    }
-  }
-  return out;
-}
-function inferBehandlungsKontextFromNested(nested) {
-  const explicit = parseMedicalBehandlungsKontext(
-    nested.behandlungsKontext ?? nested.behandlungs_kontext ?? nested.treatmentContext ?? nested.treatment_context
-  );
-  if (explicit !== "unbekannt") return explicit;
-  const hint = normalizeOcrToken(
-    pickString(nested, [
-      "behandlungsKontextHint",
-      "behandlungs_kontext_hint",
-      "transportReason",
-      "transport_reason",
-      "verordnungstyp",
-      "notes"
-    ])
-  );
-  if (!hint) return "standard";
-  return parseMedicalBehandlungsKontext(hint);
-}
-function inferBehandlungsFrequenzFromNested(nested) {
-  const explicit = parseMedicalBehandlungsFrequenz(
-    nested.behandlungsFrequenz ?? nested.behandlungs_frequenz ?? nested.treatmentFrequency ?? nested.treatment_frequency
-  );
-  if (explicit !== "unbekannt") return explicit;
-  const hint = normalizeOcrToken(
-    pickString(nested, [
-      "behandlungsFrequenzHint",
-      "behandlungs_frequenz_hint",
-      "treatmentHint",
-      "treatment_hint",
-      "notes"
-    ])
-  );
-  if (!hint) return "keine";
-  const fromHint = parseMedicalBehandlungsFrequenz(hint);
-  return fromHint === "unbekannt" ? "keine" : fromHint;
-}
-function normalizeMedicalOcrPayload(raw) {
-  if (!isRecord2(raw)) {
-    return { extracted: { ...EMPTY_EXTRACTED }, confidence: {} };
-  }
-  const nested = isRecord2(raw.extracted) ? raw.extracted : isRecord2(raw.fields) ? raw.fields : raw;
-  const patientDisplayName = pickString(nested, [
-    "patientDisplayName",
-    "patient_display_name",
-    "patientName",
-    "patient_name",
-    "name"
-  ]).slice(0, 200);
-  const patientReference = pickString(nested, [
-    "patientReference",
-    "patient_reference",
-    "patientId",
-    "patient_id",
-    "versichertennummer"
-  ]).slice(0, 120);
-  const insuranceName = pickString(nested, [
-    "insuranceName",
-    "insurance_name",
-    "krankenkasse",
-    "kasse",
-    "health_insurance"
-  ]).slice(0, 200);
-  const insuranceIkRaw = pickString(nested, [
-    "insuranceIk",
-    "insurance_ik",
-    "kassenIk",
-    "kassen_ik",
-    "kk_ik"
-  ]);
-  const insuranceIk = normalizeIk(insuranceIkRaw);
-  const partnerIkRaw = pickString(nested, [
-    "partnerIkNumber",
-    "partner_ik_number",
-    "leistungserbringerIk",
-    "leistungserbringer_ik",
-    "provider_ik"
-  ]);
-  const partnerIkNumber = normalizeIk(partnerIkRaw);
-  const transportDate = normalizeMedicalOcrDate(
-    nested.transportDate ?? nested.transport_date ?? nested.fahrtdatum ?? nested.ride_date ?? nested.date
-  );
-  const validFrom = normalizeMedicalOcrDate(
-    nested.validFrom ?? nested.valid_from ?? nested.gueltig_ab ?? nested.gueltigAb
-  );
-  const validUntil = normalizeMedicalOcrDate(
-    nested.validUntil ?? nested.valid_until ?? nested.gueltig_bis ?? nested.gueltigBis
-  );
-  const aufnahmedatum = normalizeMedicalOcrDate(
-    nested.aufnahmedatum ?? nested.aufnahme_datum ?? nested.admissionDate ?? nested.admission_date
-  );
-  const entlassungsdatum = normalizeMedicalOcrDate(
-    nested.entlassungsdatum ?? nested.entlassung_datum ?? nested.dischargeDate ?? nested.discharge_date
-  );
-  const documentKind = parseDocumentKind(
-    pickString(nested, ["documentKind", "document_kind", "documentType", "document_type"])
-  );
-  const behandlungsArt = parseMedicalBehandlungsArt(
-    nested.behandlungsArt ?? nested.behandlungs_art ?? nested.behandlungsart ?? nested.treatmentType ?? nested.treatment_type
-  );
-  const behandlungsKontext = inferBehandlungsKontextFromNested(nested);
-  const behandlungsFrequenz = inferBehandlungsFrequenzFromNested(nested);
-  const pflegegrad = parseMedicalPflegegrad(
-    nested.pflegegrad ?? nested.pflegegrad_level ?? nested.careLevel ?? nested.care_level
-  );
-  const merkzeichen = parseMedicalMerkzeichen(
-    nested.merkzeichen ?? nested.merkzeichen_code ?? nested.disabilityMark ?? nested.disability_mark
-  );
-  const dauerhafteMobilitaetsbeeintraechtigung = parseDauerhafteMobilitaetsbeeintraechtigung(
-    nested.dauerhafteMobilitaetsbeeintraechtigung ?? nested.dauerhafte_mobilitaetsbeeintraechtigung ?? nested.dauerhafteMobilitaetsbeeintraechtigungCheckbox ?? nested.mobilitaetsbeeintraechtigung_dauerhaft
-  );
-  const fernbehandlungErkannt = inferFernbehandlungFromNested(nested);
-  const genehmigungsnummer = normalizeGenehmigungsnummer(
-    nested.genehmigungsnummer ?? nested.genehmigungs_nummer ?? nested.approvalNumber ?? nested.approval_number ?? nested.kk_genehmigungsnummer
-  );
-  const confidence = pickConfidence(raw);
-  return {
-    extracted: {
-      patientDisplayName,
-      patientReference,
-      insuranceName,
-      insuranceIk,
-      partnerIkNumber,
-      transportDate,
-      validFrom,
-      validUntil,
-      aufnahmedatum,
-      entlassungsdatum,
-      documentKind,
-      behandlungsArt,
-      behandlungsKontext,
-      behandlungsFrequenz,
-      pflegegrad,
-      merkzeichen,
-      dauerhafteMobilitaetsbeeintraechtigung,
-      fernbehandlungErkannt,
-      genehmigungsnummer
-    },
-    confidence
-  };
-}
-function medicalOcrHasMinimalExtract(extracted) {
-  return Boolean(
-    extracted.insuranceName || extracted.insuranceIk || extracted.partnerIkNumber || extracted.transportDate || extracted.validFrom || extracted.validUntil || extracted.aufnahmedatum || extracted.entlassungsdatum || extracted.patientDisplayName || extracted.patientReference || extracted.behandlungsArt !== "unbekannt" || extracted.behandlungsKontext !== "standard" || isHochfrequenteBehandlung(extracted) || extracted.genehmigungsnummer
-  );
-}
-
-// src/lib/medical/medicalDateLogic.ts
-var MEDICAL_DATE_LOGIC_TYPES = [
-  "today",
-  "series",
-  "return_trip",
-  "long_term_treatment"
-];
-function isMedicalDateLogicType(v) {
-  return MEDICAL_DATE_LOGIC_TYPES.includes(v);
-}
-function parseMedicalDateLogicType(raw) {
-  const v = (raw ?? "").trim().toLowerCase();
-  return isMedicalDateLogicType(v) ? v : "today";
-}
-var BERLIN_TZ2 = "Europe/Berlin";
-var VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION = 3;
-var NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE = 7;
-function berlinCalendarDay(d) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: BERLIN_TZ2,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(d);
-}
-function toDate(v) {
-  if (v == null) return null;
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
-  const t = Date.parse(String(v));
-  return Number.isFinite(t) ? new Date(t) : null;
-}
-function dayDiff(a, b) {
-  const ta = Date.parse(`${a}T12:00:00.000Z`);
-  const tb = Date.parse(`${b}T12:00:00.000Z`);
-  if (!Number.isFinite(ta) || !Number.isFinite(tb)) return null;
-  return Math.round((ta - tb) / 864e5);
-}
-function pickOcrRideDate(extracted) {
-  return extracted.transportDate ?? extracted.validFrom ?? null;
-}
-function mergeDateLogicSeverity(current, next) {
-  if (current === "fail" || next === "fail") return "fail";
-  if (current === "warn" || next === "warn") return "warn";
-  return "ok";
-}
-function evaluateStationaerKontextDateWindow(extracted, rideDay) {
-  const warningCodes = [];
-  let severity = "ok";
-  const details = {
-    behandlungsKontext: extracted.behandlungsKontext,
-    rideDay,
-    aufnahmedatum: extracted.aufnahmedatum,
-    entlassungsdatum: extracted.entlassungsdatum
-  };
-  if (extracted.behandlungsKontext === "vorstationaer") {
-    const admission = extracted.aufnahmedatum;
-    if (!admission) {
-      warningCodes.push("vorstationaer_missing_aufnahmedatum");
-      severity = mergeDateLogicSeverity(severity, "warn");
-    } else {
-      const diff = dayDiff(rideDay, admission);
-      details.vorstationaerDayDiff = diff;
-      if (diff == null || diff < -VORSTATIONAER_MAX_DAYS_BEFORE_ADMISSION || diff > 0) {
-        warningCodes.push("vorstationaer_outside_window");
-        severity = mergeDateLogicSeverity(severity, "fail");
-      }
-    }
-  }
-  if (extracted.behandlungsKontext === "nachstationaer") {
-    const discharge = extracted.entlassungsdatum;
-    if (!discharge) {
-      warningCodes.push("nachstationaer_missing_entlassungsdatum");
-      severity = mergeDateLogicSeverity(severity, "warn");
-    } else {
-      const diff = dayDiff(rideDay, discharge);
-      details.nachstationaerDayDiff = diff;
-      if (diff == null || diff < 0 || diff > NACHSTATIONAER_MAX_DAYS_AFTER_DISCHARGE) {
-        warningCodes.push("nachstationaer_outside_window");
-        severity = mergeDateLogicSeverity(severity, "fail");
-      }
-    }
-  }
-  return { warningCodes, severity, details };
-}
-function applyStationaerKontextChecks(input, rideDay, warningCodes, severity, details) {
-  const stationaer = evaluateStationaerKontextDateWindow(input.extracted, rideDay);
-  warningCodes.push(...stationaer.warningCodes);
-  Object.assign(details, { stationaerKontext: stationaer.details });
-  return mergeDateLogicSeverity(severity, stationaer.severity);
-}
-function evaluateToday(input) {
-  const now = input.now ?? /* @__PURE__ */ new Date();
-  const ride = toDate(input.rideScheduledAt);
-  const today = berlinCalendarDay(now);
-  const expectedDate = ride ? berlinCalendarDay(ride) : today;
-  const { validFrom, validUntil, transportDate } = input.extracted;
-  const ocrDate = pickOcrRideDate(input.extracted);
-  const warningCodes = [];
-  let severity = "ok";
-  if (validUntil && validUntil < today) {
-    warningCodes.push("validity_expired");
-    severity = "fail";
-  }
-  if (validFrom && today < validFrom) {
-    warningCodes.push("validity_not_yet_started");
-    severity = "fail";
-  }
-  if (severity !== "fail") {
-    const hasValidUntil = Boolean(validUntil);
-    const todayInValidityWindow = (!validFrom || validFrom <= today) && (!validUntil || today <= validUntil);
-    if (hasValidUntil && todayInValidityWindow) {
-    } else if (!hasValidUntil) {
-      const refDate = transportDate ?? ocrDate;
-      if (!refDate) {
-        warningCodes.push("missing_ocr_date");
-        severity = "warn";
-      } else {
-        const diff = dayDiff(refDate, today);
-        if (diff != null && Math.abs(diff) > 1) {
-          warningCodes.push("ride_date_mismatch");
-          severity = "fail";
-        }
-      }
-    }
-  }
-  const details = {
-    rideScheduledAt: ride?.toISOString() ?? null,
-    today,
-    validFrom,
-    validUntil,
-    transportDate,
-    checkMode: validUntil ? "validity_window" : "transport_date_tolerance"
-  };
-  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
-  return {
-    type: "today",
-    passed: severity === "ok",
-    severity,
-    expectedDate: today,
-    ocrDate,
-    warningCodes,
-    details
-  };
-}
-function evaluateSeries(input) {
-  const now = input.now ?? /* @__PURE__ */ new Date();
-  const ride = toDate(input.rideScheduledAt);
-  const expectedDate = ride ? berlinCalendarDay(ride) : berlinCalendarDay(now);
-  const ocrDate = pickOcrRideDate(input.extracted);
-  const warningCodes = [];
-  let severity = "ok";
-  const series = input.series;
-  if (!series?.id) {
-    warningCodes.push("missing_series");
-    severity = "fail";
-  } else {
-    const from = normalizeMedicalOcrDate(series.validFrom);
-    const until = normalizeMedicalOcrDate(series.validUntil);
-    if (from && expectedDate < from) {
-      warningCodes.push("series_before_valid_from");
-      severity = "fail";
-    }
-    if (until && expectedDate > until) {
-      warningCodes.push("series_after_valid_until");
-      severity = "fail";
-    }
-    const completed = series.completedRides ?? 0;
-    if (series.totalRides > 0 && completed >= series.totalRides) {
-      warningCodes.push("series_quota_exhausted");
-      severity = severity === "fail" ? "fail" : "warn";
-    }
-  }
-  if (!ocrDate) {
-    warningCodes.push("missing_ocr_date");
-    if (severity !== "fail") severity = "warn";
-  } else if (ocrDate !== expectedDate && severity !== "fail") {
-    warningCodes.push("ride_date_mismatch");
-    severity = "warn";
-  }
-  const details = {
-    seriesId: series?.id ?? null,
-    validFrom: series ? normalizeMedicalOcrDate(series.validFrom) : null,
-    validUntil: series ? normalizeMedicalOcrDate(series.validUntil) : null,
-    totalRides: series?.totalRides ?? null,
-    completedRides: series?.completedRides ?? null
-  };
-  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
-  return {
-    type: "series",
-    passed: severity === "ok",
-    severity,
-    expectedDate,
-    ocrDate,
-    warningCodes,
-    details
-  };
-}
-function evaluateReturnTrip(input) {
-  const ride = toDate(input.rideScheduledAt);
-  const returnRide = toDate(input.returnRideScheduledAt);
-  const expectedDate = ride ? berlinCalendarDay(ride) : null;
-  const ocrDate = pickOcrRideDate(input.extracted);
-  const warningCodes = [];
-  let severity = "ok";
-  if (!returnRide) {
-    warningCodes.push("missing_return_ride");
-    severity = "warn";
-  } else if (ride) {
-    const outboundDay = berlinCalendarDay(ride);
-    const returnDay = berlinCalendarDay(returnRide);
-    const diff = dayDiff(returnDay, outboundDay);
-    if (diff != null && (diff < 0 || diff > 14)) {
-      warningCodes.push("return_trip_date_implausible");
-      severity = "fail";
-    }
-  }
-  if (!ocrDate) {
-    warningCodes.push("missing_ocr_date");
-    if (severity !== "fail") severity = "warn";
-  } else if (expectedDate && ocrDate !== expectedDate && severity !== "fail") {
-    warningCodes.push("ride_date_mismatch");
-    severity = "warn";
-  }
-  const details = {
-    returnRideScheduledAt: returnRide?.toISOString() ?? null
-  };
-  if (expectedDate) {
-    severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
-  }
-  return {
-    type: "return_trip",
-    passed: severity === "ok",
-    severity,
-    expectedDate,
-    ocrDate,
-    warningCodes,
-    details
-  };
-}
-function evaluateLongTermTreatment(input) {
-  const now = input.now ?? /* @__PURE__ */ new Date();
-  const today = berlinCalendarDay(now);
-  const ride = toDate(input.rideScheduledAt);
-  const expectedDate = ride ? berlinCalendarDay(ride) : today;
-  const ocrDate = pickOcrRideDate(input.extracted);
-  const validFrom = input.extracted.validFrom;
-  const validUntil = input.extracted.validUntil;
-  const warningCodes = [];
-  let severity = "ok";
-  if (!validFrom && !validUntil) {
-    warningCodes.push("missing_validity_window");
-    severity = "warn";
-  }
-  if (validUntil && validUntil < today) {
-    warningCodes.push("validity_expired");
-    severity = "fail";
-  }
-  if (validFrom && expectedDate < validFrom) {
-    warningCodes.push("ride_before_valid_from");
-    severity = "fail";
-  }
-  if (validUntil && expectedDate > validUntil) {
-    warningCodes.push("ride_after_valid_until");
-    severity = "fail";
-  }
-  const series = input.series;
-  if (series?.id) {
-    const sUntil = normalizeMedicalOcrDate(series.validUntil);
-    if (sUntil && expectedDate > sUntil) {
-      warningCodes.push("series_window_exceeded");
-      severity = "fail";
-    }
-  }
-  if (!ocrDate) {
-    warningCodes.push("missing_ocr_date");
-    if (severity !== "fail") severity = "warn";
-  }
-  const details = {
-    validFrom,
-    validUntil,
-    seriesId: series?.id ?? null
-  };
-  severity = applyStationaerKontextChecks(input, expectedDate, warningCodes, severity, details);
-  return {
-    type: "long_term_treatment",
-    passed: severity === "ok",
-    severity,
-    expectedDate,
-    ocrDate,
-    warningCodes,
-    details
-  };
-}
-function evaluateMedicalDateLogic(input) {
-  switch (input.dateLogicType) {
-    case "series":
-      return evaluateSeries(input);
-    case "return_trip":
-      return evaluateReturnTrip(input);
-    case "long_term_treatment":
-      return evaluateLongTermTreatment(input);
-    case "today":
-    default:
-      return evaluateToday(input);
-  }
-}
-
-// src/db/medicalCasesData.ts
-init_client();
-init_schema2();
-var MEDICAL_CASE_TYPES = ["transport_sheet", "signature_image", "other"];
-var MEDICAL_CASE_STATUSES = ["open", "reviewed", "closed"];
-function isCaseType(v) {
-  return MEDICAL_CASE_TYPES.includes(v);
-}
-function isCaseStatus(v) {
-  return MEDICAL_CASE_STATUSES.includes(v);
-}
-function mapRow6(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    rideId: r.ride_id ?? null,
-    seriesId: r.series_id ?? null,
-    patientDisplayName: r.patient_display_name ?? "",
-    patientReference: r.patient_reference ?? "",
-    insuranceName: r.insurance_name ?? "",
-    insuranceIk: r.insurance_ik ?? "",
-    partnerIkNumber: r.partner_ik_number ?? "",
-    caseType: isCaseType(r.case_type) ? r.case_type : "transport_sheet",
-    dateLogicType: parseMedicalDateLogicType(r.date_logic_type),
-    dateLogicContextJson: r.date_logic_context_json && typeof r.date_logic_context_json === "object" ? r.date_logic_context_json : {},
-    status: isCaseStatus(r.status) ? r.status : "open",
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString()
-  };
-}
-async function getAdminCompanyPartnerIkNumber(companyId) {
-  const db2 = getDb();
-  if (!db2) return "";
-  const cid = companyId.trim();
-  if (!cid) return "";
-  const rows = await db2.select({ partnerIkNumber: adminCompaniesTable.partner_ik_number }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, cid)).limit(1);
-  return rows[0]?.partnerIkNumber?.trim() ?? "";
-}
-async function insertMedicalCase(input) {
-  const db2 = getDb();
-  if (!db2) throw new Error("database_not_configured");
-  const id = `mc-${randomUUID35()}`;
-  const now = /* @__PURE__ */ new Date();
-  const caseType = input.caseType && isCaseType(input.caseType) ? input.caseType : "transport_sheet";
-  const status = input.status && isCaseStatus(input.status) ? input.status : "open";
-  await db2.insert(medicalCasesTable).values({
-    id,
-    company_id: input.companyId.trim(),
-    ride_id: input.rideId?.trim() || null,
-    series_id: input.seriesId?.trim() || null,
-    patient_display_name: (input.patientDisplayName ?? "").trim().slice(0, 200),
-    patient_reference: (input.patientReference ?? "").trim().slice(0, 120),
-    insurance_name: (input.insuranceName ?? "").trim().slice(0, 200),
-    insurance_ik: (input.insuranceIk ?? "").replace(/\D/g, "").slice(0, 9),
-    partner_ik_number: (input.partnerIkNumber ?? "").replace(/\D/g, "").slice(0, 9),
-    case_type: caseType,
-    date_logic_type: input.dateLogicType ?? "today",
-    date_logic_context_json: input.dateLogicContextJson ?? {},
-    status,
-    created_at: now,
-    updated_at: now
-  });
-  const created = await findMedicalCaseById(id);
-  if (!created) throw new Error("medical_case_insert_failed");
-  return created;
-}
-async function findMedicalCaseById(id) {
-  const db2 = getDb();
-  if (!db2) return null;
-  const tid = id.trim();
-  if (!tid) return null;
-  const rows = await db2.select().from(medicalCasesTable).where(eq(medicalCasesTable.id, tid)).limit(1);
-  const r = rows[0];
-  return r ? mapRow6(r) : null;
-}
-async function updateMedicalCaseStatus(id, status) {
-  const db2 = getDb();
-  if (!db2) return null;
-  if (!isCaseStatus(status)) return null;
-  const tid = id.trim();
-  if (!tid) return null;
-  await db2.update(medicalCasesTable).set({ status, updated_at: /* @__PURE__ */ new Date() }).where(eq(medicalCasesTable.id, tid));
-  return findMedicalCaseById(tid);
-}
+import { randomUUID as randomUUID39 } from "node:crypto";
+import { mkdir as mkdir8, writeFile as writeFile8 } from "node:fs/promises";
+import path11 from "node:path";
 
 // src/db/medicalDocumentsData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID36 } from "node:crypto";
+import { randomUUID as randomUUID37 } from "node:crypto";
 init_client();
 init_schema2();
 var MEDICAL_DOCUMENT_TYPES = ["transport_sheet", "signature_image", "other"];
@@ -78379,7 +80162,7 @@ function mapRow7(r) {
 async function insertMedicalDocument(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mdoc-${randomUUID36()}`;
+  const id = `mdoc-${randomUUID37()}`;
   const docType = input.documentType && isDocumentType(input.documentType) ? input.documentType : "transport_sheet";
   await db2.insert(medicalDocumentsTable).values({
     id,
@@ -78412,7 +80195,7 @@ async function findMedicalDocumentById(id) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID37 } from "node:crypto";
+import { randomUUID as randomUUID38 } from "node:crypto";
 var MEDICAL_REVIEWER_ACTOR_KINDS = ["system", "driver", "panel", "admin"];
 function isTrafficLight(v) {
   return v === "green" || v === "yellow" || v === "red";
@@ -78476,7 +80259,7 @@ function mapRow8(r) {
 async function insertMedicalReview(input) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const id = `mrev-${randomUUID37()}`;
+  const id = `mrev-${randomUUID38()}`;
   const reviewedAt = input.reviewedAt ?? /* @__PURE__ */ new Date();
   const actorKind = input.reviewerActorKind && isReviewerActorKind(input.reviewerActorKind) ? input.reviewerActorKind : "system";
   await db2.insert(medicalReviewsTable).values({
@@ -78737,7 +80520,7 @@ var FIELD_LABELS_DE = {
 function normalizeText(value) {
   return value.trim().toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 }
-function normalizeIk2(value) {
+function normalizeIk3(value) {
   return value.replace(/\D/g, "").slice(0, 9);
 }
 function isPrivateInsuranceHint(nameNorm) {
@@ -78773,7 +80556,7 @@ function isStatutoryInsuranceHint(nameNorm, ik) {
 }
 function resolveMedicalInsuranceProfile(insuranceName, insuranceIk) {
   const nameNorm = normalizeText(insuranceName);
-  const ik = normalizeIk2(insuranceIk);
+  const ik = normalizeIk3(insuranceIk);
   if (isPrivateInsuranceHint(nameNorm)) {
     return "PRIVATE";
   }
@@ -79224,7 +81007,7 @@ function evaluateMedicalTrafficLight(input) {
 
 // src/lib/medical/medicalScanService.ts
 init_medicalTransportAuthorization();
-var MEDICAL_RIDE_UPLOAD_ROOT2 = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path10.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
+var MEDICAL_RIDE_UPLOAD_ROOT2 = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path11.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
 var MEDICAL_TEST_SCAN_DISCLAIMER = "Testpr\xFCfung ohne Fahrt \u2013 nicht abrechnungsrelevant.";
 async function runMedicalTransportDocumentScanForCustomerBooking(input) {
   if (!isPostgresConfigured()) {
@@ -79247,12 +81030,12 @@ async function runMedicalTransportDocumentScanForCustomerBooking(input) {
     const status = decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
     return { ok: false, error: decoded.error, status };
   }
-  const scanId = `cms-${randomUUID38()}`;
+  const scanId = `cms-${randomUUID39()}`;
   const passengerKey = customerPassengerId2.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const rel = path10.join("customer-pending", passengerKey, `${scanId}.${decoded.ext}`).replace(/\\/g, "/");
-  const dest = path10.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
-  await mkdir7(path10.dirname(dest), { recursive: true });
-  await writeFile7(dest, decoded.buffer);
+  const rel = path11.join("customer-pending", passengerKey, `${scanId}.${decoded.ext}`).replace(/\\/g, "/");
+  const dest = path11.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
+  await mkdir8(path11.dirname(dest), { recursive: true });
+  await writeFile8(dest, decoded.buffer);
   const pipeline = await runMedicalOcrPipeline({
     buffer: decoded.buffer,
     mime: decoded.mime,
@@ -79420,9 +81203,9 @@ async function runMedicalTransportDocumentScanTest(input) {
   if (!companyId || !fleetDriverId) {
     return { ok: false, error: "bad_request", status: 400 };
   }
-  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
-  if (!authz.ok) {
-    return { ok: false, error: authz.error, status: 403 };
+  const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
+  if (!kkAuthz.ok) {
+    return { ok: false, error: kkAuthz.error, status: 403 };
   }
   return runMedicalTransportDocumentScanTestCore({
     imageBase64: input.imageBase64,
@@ -79501,9 +81284,9 @@ async function runMedicalTransportDocumentScan(input) {
   if (!rideId || !companyId || !fleetDriverId) {
     return { ok: false, error: "bad_request", status: 400 };
   }
-  const authz = await assertMedicalTransportAuthorizedForFleetDriver(companyId, fleetDriverId);
-  if (!authz.ok) {
-    return { ok: false, error: authz.error, status: 403 };
+  const kkAuthz = await assertKkModuleAccessForFleetDriver(companyId, fleetDriverId);
+  if (!kkAuthz.ok) {
+    return { ok: false, error: kkAuthz.error, status: 403 };
   }
   const ride = await findRide(rideId);
   if (!ride) {
@@ -79552,10 +81335,10 @@ async function runMedicalTransportDocumentScan(input) {
     }
   }
   const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const rel = path10.join(companyKey, "rides", rideId, `scan-${randomUUID38()}.${decoded.ext}`).replace(/\\/g, "/");
-  const dest = path10.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
-  await mkdir7(path10.dirname(dest), { recursive: true });
-  await writeFile7(dest, decoded.buffer);
+  const rel = path11.join(companyKey, "rides", rideId, `scan-${randomUUID39()}.${decoded.ext}`).replace(/\\/g, "/");
+  const dest = path11.join(MEDICAL_RIDE_UPLOAD_ROOT2, rel);
+  await mkdir8(path11.dirname(dest), { recursive: true });
+  await writeFile8(dest, decoded.buffer);
   const partnerIkSnapshot = await resolvePartnerIk(companyId);
   let completedRidesInSeries;
   if (seriesRow) {
@@ -79651,8 +81434,8 @@ async function runMedicalTransportDocumentScan(input) {
 
 // src/routes/fleetDriverApi.ts
 init_medicalTransportAuthorization();
-var router18 = (0, import_express18.Router)();
-router18.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
+var router20 = (0, import_express20.Router)();
+router20.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -79696,10 +81479,15 @@ router18.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     a.companyId,
     a.fleetDriverId
   );
+  const kkAccess = await resolveKkModuleAccessForFleetDriver(a.companyId, a.fleetDriverId);
   res.json({
     ok: true,
     einsatzbereit,
     isMarketOnline,
+    featureKkModule: kkAccess?.companyEnabled ?? false,
+    permissionKkModule: kkAccess?.permissionKkModule ?? false,
+    isOwner: kkAccess?.isOwner ?? false,
+    kkModuleAuthorized: kkAccess?.canAccess ?? false,
     medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
     medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
     companyCommission: {
@@ -79735,7 +81523,7 @@ router18.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     } : null
   });
 });
-router18.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
+router20.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -79761,7 +81549,7 @@ router18.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth,
     next(e);
   }
 });
-router18.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
+router20.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -79792,7 +81580,7 @@ router18.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, re
   }));
   res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
 });
-router18.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
+router20.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -79842,7 +81630,7 @@ router18.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (
     } : null
   });
 });
-router18.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+router20.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -79929,7 +81717,7 @@ router18.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
     next(e);
   }
 });
-router18.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
+router20.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -80000,7 +81788,7 @@ router18.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
     next(e);
   }
 });
-router18.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
+router20.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -80017,7 +81805,7 @@ router18.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (r
     next(e);
   }
 });
-router18.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
+router20.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -80039,7 +81827,7 @@ router18.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriver
     next(e);
   }
 });
-router18.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
+router20.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -80061,7 +81849,7 @@ router18.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleet
     next(e);
   }
 });
-router18.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
+router20.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -80084,7 +81872,7 @@ router18.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async 
     next(e);
   }
 });
-router18.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
+router20.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -80094,7 +81882,7 @@ router18.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) 
   const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
   res.json({ ok: true, marketOnline });
 });
-router18.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
+router20.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -80118,7 +81906,7 @@ router18.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, a
     hasPushToken: pushTokens.length > 0
   });
 });
-router18.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
+router20.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -80149,7 +81937,7 @@ router18.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async 
   }
   res.json({ ok: true });
 });
-router18.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
+router20.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ ok: false, error: "database_not_configured" });
@@ -80196,7 +81984,7 @@ router18.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (re
     next(err);
   }
 });
-router18.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
+router20.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const auth = req.fleetDriverAuth;
     if (!auth) {
@@ -80228,7 +82016,7 @@ router18.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, asyn
     next(err);
   }
 });
-router18.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
+router20.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     const rides = await listRidesForDriver(a.fleetDriverId);
@@ -80242,15 +82030,15 @@ router18.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (
     next(err);
   }
 });
-var fleetDriverApi_default = router18;
+var fleetDriverApi_default = router20;
 
 // src/routes/fleetPanelApi.ts
-var import_express19 = __toESM(require_express2(), 1);
+var import_express21 = __toESM(require_express2(), 1);
 init_companyComplianceDocumentsData();
-import { randomUUID as randomUUID39 } from "node:crypto";
+import { randomUUID as randomUUID40 } from "node:crypto";
 import fs2 from "node:fs/promises";
 import { createReadStream as createReadStream3 } from "node:fs";
-import path11 from "node:path";
+import path12 from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 init_client();
 init_fleetDriversData();
@@ -80260,15 +82048,15 @@ init_companyGovernanceData();
 init_adminData();
 init_panelModules();
 init_fleetDriverReadiness();
-var router19 = (0, import_express19.Router)();
-router19.use((_req, res, next) => {
+var router21 = (0, import_express21.Router)();
+router21.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
   next();
 });
-var pkgRoot = path11.join(path11.dirname(fileURLToPath4(import.meta.url)), "..", "..");
-var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path11.join(pkgRoot, "data", "fleet-uploads");
+var pkgRoot = path12.join(path12.dirname(fileURLToPath4(import.meta.url)), "..", "..");
+var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path12.join(pkgRoot, "data", "fleet-uploads");
 var ALLOWED_VEHICLE_LEGAL_TYPES = ["taxi"];
 var ALLOWED_VEHICLE_CLASSES = ["standard", "xl", "wheelchair"];
 function enabledPanelModules3(panelModules, companyKind) {
@@ -80311,7 +82099,7 @@ async function requireFleetOnboardingEntityCreateAllowed(companyId) {
   if (company.is_blocked) return { ok: false, error: "company_blocked" };
   return { ok: true, company };
 }
-router19.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
+router21.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80336,7 +82124,7 @@ router19.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router19.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router21.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80364,7 +82152,7 @@ router19.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router19.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router21.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80410,6 +82198,7 @@ router19.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       phone,
       passwordHash: hash,
       mustChangePassword: true,
+      isOwner: c === 0,
       vehicleLegalType,
       vehicleClass,
       pScheinNumber: pScheinNumber.trim() || void 0,
@@ -80421,11 +82210,17 @@ router19.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
     });
     if (!ins.ok) {
       const code = ins.error;
-      res.status(code === "email_taken" ? 409 : 400).json({ error: code });
+      res.status(isFleetDriverEmailConflictError(code) ? 409 : 400).json(
+        fleetDriverEmailConflictBody(code, {
+          existingCompanyId: ins.existingCompanyId,
+          existingCompanyName: ins.existingCompanyName,
+          existingDriverId: ins.existingDriverId
+        })
+      );
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID39(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -80438,7 +82233,7 @@ router19.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router19.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
+router21.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80482,8 +82277,14 @@ router19.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
     if (hasProfileKeys) {
       const r = await patchFleetDriverProfile(id, ctx.claims.companyId, patch);
       if (!r.ok) {
-        const st = r.error === "email_taken" ? 409 : r.error === "email_invalid" ? 400 : r.error === "not_found" ? 404 : 400;
-        res.status(st).json({ error: r.error });
+        const st = isFleetDriverEmailConflictError(r.error) ? 409 : r.error === "email_invalid" ? 400 : r.error === "not_found" ? 404 : 400;
+        res.status(st).json(
+          fleetDriverEmailConflictBody(r.error, {
+            existingCompanyId: r.existingCompanyId,
+            existingCompanyName: r.existingCompanyName,
+            existingDriverId: r.existingDriverId
+          })
+        );
         return;
       }
     }
@@ -80496,7 +82297,7 @@ router19.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
       }
     }
     await insertPanelAuditLog({
-      id: randomUUID39(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_updated",
@@ -80509,7 +82310,49 @@ router19.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router19.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
+router21.patch("/panel/v1/fleet/:driverId/permissions", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (ctx.profile.role !== "owner") {
+      res.status(403).json({ ok: false, error: "owner_only" });
+      return;
+    }
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const kkEnabled = await getCompanyFeatureKkModule(ctx.claims.companyId);
+    if (!kkEnabled) {
+      res.status(403).json({ ok: false, error: "kk_module_not_enabled" });
+      return;
+    }
+    const driverId = String(req.params.driverId ?? "").trim();
+    const body = req.body;
+    if (typeof body.permission_kk_module !== "boolean") {
+      res.status(400).json({ ok: false, error: "permission_kk_module_required" });
+      return;
+    }
+    const result = await patchFleetDriverKkPermissions(driverId, ctx.claims.companyId, {
+      permissionKkModule: body.permission_kk_module
+    });
+    if (!result.ok) {
+      const status = result.error === "not_found" ? 404 : 403;
+      res.status(status).json({ ok: false, error: result.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID40(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_kk_permissions",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { permission_kk_module: body.permission_kk_module }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router21.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80520,7 +82363,7 @@ router19.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID39(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -80533,7 +82376,7 @@ router19.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
     next(e);
   }
 });
-router19.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
+router21.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80544,7 +82387,7 @@ router19.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID39(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -80557,7 +82400,7 @@ router19.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
     next(e);
   }
 });
-router19.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router21.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80571,7 +82414,7 @@ router19.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID39(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -80584,10 +82427,10 @@ router19.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
     next(e);
   }
 });
-router19.post(
+router21.post(
   "/panel/v1/fleet/drivers/:id/p-schein-doc",
   requirePanelAuth,
-  import_express19.default.raw({ type: "application/pdf", limit: "6mb" }),
+  import_express21.default.raw({ type: "application/pdf", limit: "6mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -80604,9 +82447,9 @@ router19.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path11.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID39()}.pdf`);
-      const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
-      await fs2.mkdir(path11.dirname(dest), { recursive: true });
+      const rel = path12.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID40()}.pdf`);
+      const dest = path12.join(FLEET_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path12.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const pr = await patchFleetDriverProfile(id, ctx.claims.companyId, { pScheinDocStorageKey: storageKey });
@@ -80620,7 +82463,7 @@ router19.post(
     }
   }
 );
-router19.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router21.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80638,7 +82481,7 @@ router19.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router19.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router21.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80692,7 +82535,7 @@ router19.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID39(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -80705,7 +82548,7 @@ router19.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router19.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
+router21.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80754,7 +82597,7 @@ router19.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router19.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router21.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80765,7 +82608,7 @@ router19.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router19.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router21.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80787,7 +82630,7 @@ router19.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router19.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
+router21.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80798,10 +82641,10 @@ router19.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async
     next(e);
   }
 });
-router19.post(
+router21.post(
   "/panel/v1/fleet/vehicles/:id/documents",
   requirePanelAuth,
-  import_express19.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express21.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -80819,9 +82662,9 @@ router19.post(
         res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
         return;
       }
-      const rel = path11.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID39()}.pdf`);
-      const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
-      await fs2.mkdir(path11.dirname(dest), { recursive: true });
+      const rel = path12.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID40()}.pdf`);
+      const dest = path12.join(FLEET_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path12.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const ar = await addFleetVehicleDocumentVersion(id, ctx.claims.companyId, storageKey, {
@@ -80834,7 +82677,7 @@ router19.post(
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID39(),
+        id: randomUUID40(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: "fleet.vehicle_document_uploaded",
@@ -80848,7 +82691,7 @@ router19.post(
     }
   }
 );
-router19.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
+router21.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80866,7 +82709,7 @@ router19.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID39(),
+      id: randomUUID40(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_submitted_for_approval",
@@ -80879,7 +82722,7 @@ router19.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
     next(e);
   }
 });
-router19.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
+router21.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -80898,9 +82741,9 @@ router19.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path11.resolve(path11.join(FLEET_UPLOAD_ROOT, storageKey));
-    const root = path11.resolve(path11.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
-    if (!abs.startsWith(root + path11.sep) && abs !== root) {
+    const abs = path12.resolve(path12.join(FLEET_UPLOAD_ROOT, storageKey));
+    const root = path12.resolve(path12.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
+    if (!abs.startsWith(root + path12.sep) && abs !== root) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -80912,10 +82755,10 @@ router19.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
     next(e);
   }
 });
-router19.post(
+router21.post(
   "/panel/v1/fleet/compliance/:kind",
   requirePanelAuth,
-  import_express19.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express21.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -80931,9 +82774,9 @@ router19.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path11.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID39()}.pdf`);
-      const dest = path11.join(FLEET_UPLOAD_ROOT, rel);
-      await fs2.mkdir(path11.dirname(dest), { recursive: true });
+      const rel = path12.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID40()}.pdf`);
+      const dest = path12.join(FLEET_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path12.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       if (!isPostgresConfigured()) {
@@ -80956,7 +82799,7 @@ router19.post(
         throw e;
       }
       await insertPanelAuditLog({
-        id: randomUUID39(),
+        id: randomUUID40(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -80970,15 +82813,15 @@ router19.post(
     }
   }
 );
-var fleetPanelApi_default = router19;
+var fleetPanelApi_default = router21;
 
 // src/routes/insurerPanelApi.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 init_client();
-import { randomUUID as randomUUID41 } from "node:crypto";
+import { randomUUID as randomUUID42 } from "node:crypto";
 import fs3 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
-import path12 from "node:path";
+import path13 from "node:path";
 import { fileURLToPath as fileURLToPath5 } from "node:url";
 init_fleetDriversData();
 
@@ -80988,7 +82831,7 @@ init_partnerBookingMeta();
 init_client();
 init_schema2();
 init_ridesData();
-import { randomUUID as randomUUID40 } from "node:crypto";
+import { randomUUID as randomUUID41 } from "node:crypto";
 var OPEN = [
   "draft",
   "scheduled",
@@ -81111,7 +82954,7 @@ async function insertInsurerCostCenter(companyId, input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const code = input.code.trim();
   if (!code) return { ok: false, error: "code_required" };
-  const id = randomUUID40();
+  const id = randomUUID41();
   const now = /* @__PURE__ */ new Date();
   try {
     await db2.insert(insurerCostCentersTable).values({
@@ -81203,7 +83046,7 @@ async function insertInsurerTransportDocument(companyId, rideId, panelUserId, in
   if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const id = randomUUID40();
+  const id = randomUUID41();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(insurerRideTransportDocumentsTable).values({
     id,
@@ -81238,10 +83081,10 @@ async function getInsurerTransportDocumentFile(companyId, docId) {
 
 // src/routes/insurerPanelApi.ts
 init_panelModules();
-var router20 = (0, import_express20.Router)();
-var pkgRoot2 = path12.join(path12.dirname(fileURLToPath5(import.meta.url)), "..", "..");
-var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path12.join(pkgRoot2, "uploads", "insurer-transport");
-router20.use((_req, res, next) => {
+var router22 = (0, import_express22.Router)();
+var pkgRoot2 = path13.join(path13.dirname(fileURLToPath5(import.meta.url)), "..", "..");
+var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path13.join(pkgRoot2, "uploads", "insurer-transport");
+router22.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -81288,7 +83131,7 @@ function denyUnlessInsurerPerm(res, role, perm) {
   if (!denyUnlessPanelPermission(res, role, perm)) return false;
   return true;
 }
-router20.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
+router22.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -81300,7 +83143,7 @@ router20.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router20.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
+router22.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -81312,7 +83155,7 @@ router20.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router20.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router22.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -81324,7 +83167,7 @@ router20.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router20.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router22.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -81343,7 +83186,7 @@ router20.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router20.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
+router22.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -81363,7 +83206,7 @@ router20.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (re
     next(e);
   }
 });
-router20.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
+router22.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -81382,7 +83225,7 @@ router20.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID41(),
+      id: randomUUID42(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "insurer.ride_org_meta_patched",
@@ -81395,7 +83238,7 @@ router20.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
     next(e);
   }
 });
-router20.get(
+router22.get(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
   async (req, res, next) => {
@@ -81411,10 +83254,10 @@ router20.get(
     }
   }
 );
-router20.post(
+router22.post(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
-  import_express20.default.raw({ type: "*/*", limit: "8mb" }),
+  import_express22.default.raw({ type: "*/*", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertInsurerPanel(req, res);
@@ -81435,9 +83278,9 @@ router20.post(
       const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
       const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
       const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
-      const rel = path12.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID41()}.${ext}`);
-      const dest = path12.join(INSURER_UPLOAD_ROOT, rel);
-      await fs3.mkdir(path12.dirname(dest), { recursive: true });
+      const rel = path13.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID42()}.${ext}`);
+      const dest = path13.join(INSURER_UPLOAD_ROOT, rel);
+      await fs3.mkdir(path13.dirname(dest), { recursive: true });
       await fs3.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const out = await insertInsurerTransportDocument(
@@ -81461,7 +83304,7 @@ router20.post(
     }
   }
 );
-router20.get(
+router22.get(
   "/panel/v1/insurer/transport-documents/:docId/file",
   requirePanelAuth,
   async (req, res, next) => {
@@ -81475,7 +83318,7 @@ router20.get(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const full = path12.join(INSURER_UPLOAD_ROOT, meta.storageKey);
+      const full = path13.join(INSURER_UPLOAD_ROOT, meta.storageKey);
       res.setHeader("Content-Type", meta.contentType);
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(meta.originalFilename)}"`);
       createReadStream4(full).pipe(res);
@@ -81484,14 +83327,14 @@ router20.get(
     }
   }
 );
-var insurerPanelApi_default = router20;
+var insurerPanelApi_default = router22;
 
 // src/routes/publicHomepageApi.ts
-var import_express21 = __toESM(require_express2(), 1);
+var import_express23 = __toESM(require_express2(), 1);
 init_client();
 init_appOperationalData();
-var router21 = (0, import_express21.Router)();
-router21.get("/public/homepage-placeholders", async (_req, res, next) => {
+var router23 = (0, import_express23.Router)();
+router23.get("/public/homepage-placeholders", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -81504,7 +83347,7 @@ router21.get("/public/homepage-placeholders", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/public/homepage-hints", async (_req, res, next) => {
+router23.get("/public/homepage-hints", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -81517,7 +83360,7 @@ router21.get("/public/homepage-hints", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/public/homepage-content", async (_req, res, next) => {
+router23.get("/public/homepage-content", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, item: null });
@@ -81530,7 +83373,7 @@ router21.get("/public/homepage-content", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/public/homepage-faq", async (_req, res, next) => {
+router23.get("/public/homepage-faq", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -81543,7 +83386,7 @@ router21.get("/public/homepage-faq", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/public/homepage-how", async (_req, res, next) => {
+router23.get("/public/homepage-how", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -81556,7 +83399,7 @@ router21.get("/public/homepage-how", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/public/homepage-trust", async (_req, res, next) => {
+router23.get("/public/homepage-trust", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -81569,7 +83412,7 @@ router21.get("/public/homepage-trust", async (_req, res, next) => {
     next(e);
   }
 });
-router21.get("/public/app-operational", async (_req, res, next) => {
+router23.get("/public/app-operational", async (_req, res, next) => {
   try {
     const [config2, serviceRegions] = await Promise.all([
       getOperationalConfigPayload(),
@@ -81581,13 +83424,13 @@ router21.get("/public/app-operational", async (_req, res, next) => {
     next(e);
   }
 });
-var publicHomepageApi_default = router21;
+var publicHomepageApi_default = router23;
 
 // src/routes/appConfigApi.ts
-var import_express22 = __toESM(require_express2(), 1);
+var import_express24 = __toESM(require_express2(), 1);
 init_appOperationalData();
-var router22 = (0, import_express22.Router)();
-router22.get("/app/config", async (_req, res, next) => {
+var router24 = (0, import_express24.Router)();
+router24.get("/app/config", async (_req, res, next) => {
   try {
     const data = await getAppConfigForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -81596,7 +83439,7 @@ router22.get("/app/config", async (_req, res, next) => {
     next(e);
   }
 });
-router22.get("/app/pricing", async (_req, res, next) => {
+router24.get("/app/pricing", async (_req, res, next) => {
   try {
     const data = await getAppPricingForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -81605,7 +83448,7 @@ router22.get("/app/pricing", async (_req, res, next) => {
     next(e);
   }
 });
-router22.get("/app/news", async (req, res, next) => {
+router24.get("/app/news", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppNewsAudience(q);
@@ -81618,7 +83461,7 @@ router22.get("/app/news", async (req, res, next) => {
     next(e);
   }
 });
-router22.get("/app/faq", async (_req, res, next) => {
+router24.get("/app/faq", async (_req, res, next) => {
   try {
     const items = await listAppFaqPublic();
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
@@ -81627,7 +83470,7 @@ router22.get("/app/faq", async (_req, res, next) => {
     next(e);
   }
 });
-router22.get("/app/sponsors", async (req, res, next) => {
+router24.get("/app/sponsors", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppSponsorAudience(q);
@@ -81640,16 +83483,16 @@ router22.get("/app/sponsors", async (req, res, next) => {
     next(e);
   }
 });
-var appConfigApi_default = router22;
+var appConfigApi_default = router24;
 
 // src/routes/customerApi.ts
-var import_express23 = __toESM(require_express2(), 1);
+var import_express25 = __toESM(require_express2(), 1);
 init_fleetAssignmentsData();
 init_fleetVehiclesData();
 init_ridesData();
 init_passengerExpoPushData();
 init_client();
-var router23 = (0, import_express23.Router)();
+var router25 = (0, import_express25.Router)();
 async function buildRidePlateMap(rides) {
   const companyIds = Array.from(
     new Set(
@@ -81697,7 +83540,7 @@ function attachDriverPlate(ride, plateByRideId) {
     driverPlate: plate
   };
 }
-router23.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
+router25.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81713,7 +83556,7 @@ router23.get("/customer/v1/rides", requireCustomerSession, async (req, res, next
     next(e);
   }
 });
-router23.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
+router25.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81738,7 +83581,7 @@ router23.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, 
     next(e);
   }
 });
-router23.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
+router25.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81775,7 +83618,7 @@ router23.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, 
     next(e);
   }
 });
-router23.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
+router25.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81810,7 +83653,7 @@ router23.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (r
     next(e);
   }
 });
-router23.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
+router25.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81848,7 +83691,7 @@ router23.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, asy
     next(e);
   }
 });
-router23.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
+router25.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81899,7 +83742,7 @@ router23.post("/customer/v1/help-tickets", requireCustomerSession, async (req, r
     next(e);
   }
 });
-router23.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
+router25.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81919,7 +83762,7 @@ router23.post("/customer/v1/expo-push-token", requireCustomerSession, async (req
     next(e);
   }
 });
-router23.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req, res, next) => {
+router25.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81954,7 +83797,7 @@ router23.post("/customer/v1/medical/scan-test", requireCustomerSession, async (r
     next(err);
   }
 });
-router23.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
+router25.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -81986,32 +83829,33 @@ router23.post("/customer/v1/medical/scan", requireCustomerSession, async (req, r
     next(err);
   }
 });
-var customerApi_default = router23;
+var customerApi_default = router25;
 
 // src/routes/index.ts
-var router24 = (0, import_express24.Router)();
-router24.use(health_default);
-router24.use(appConfigApi_default);
-router24.use(auth_default);
-router24.use(emailAuth_default);
-router24.use(customerAuth_default);
-router24.use(panelAuth_default);
-router24.use(fleetAuth_default);
-router24.use(fleetDriverApi_default);
-router24.use(fleetPanelApi_default);
-router24.use(insurerPanelApi_default);
-router24.use(publicHomepageApi_default);
-router24.use(panelApi_default);
-router24.use(panelInvoiceRoutes_default);
-router24.use(adminApi_default);
-router24.use(customerApi_default);
-router24.use(rides_default);
-var routes_default = router24;
+var router26 = (0, import_express26.Router)();
+router26.use(health_default);
+router26.use(appConfigApi_default);
+router26.use(auth_default);
+router26.use(emailAuth_default);
+router26.use(customerAuth_default);
+router26.use(panelAuth_default);
+router26.use(fleetAuth_default);
+router26.use(fleetDriverApi_default);
+router26.use(fleetPanelApi_default);
+router26.use(insurerPanelApi_default);
+router26.use(publicHomepageApi_default);
+router26.use(panelApi_default);
+router26.use(panelInvoiceRoutes_default);
+router26.use(panelKrankenInvoiceRoutes_default);
+router26.use(adminApi_default);
+router26.use(customerApi_default);
+router26.use(rides_default);
+var routes_default = router26;
 
 // src/routes/admin.ts
-var import_express25 = __toESM(require_express2(), 1);
-var router25 = (0, import_express25.Router)();
-router25.get("/admin", (_req, res) => {
+var import_express27 = __toESM(require_express2(), 1);
+var router27 = (0, import_express27.Router)();
+router27.get("/admin", (_req, res) => {
   res.type("html").send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -82031,11 +83875,11 @@ router25.get("/admin", (_req, res) => {
 </body>
 </html>`);
 });
-var admin_default = router25;
+var admin_default = router27;
 
 // src/app.ts
 init_logger2();
-var app = (0, import_express26.default)();
+var app = (0, import_express28.default)();
 function isPanelBrowserHost(h) {
   return h === "panel.onroda.de";
 }
@@ -82123,11 +83967,11 @@ function requestPathname(req) {
 function isMedicalLargeJsonPost(pathname) {
   return /\/fleet-driver\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/customer\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) || /\/rides\/[^/]+\/medical\/(?:transport-document|signature)\/?$/.test(pathname);
 }
-var jsonBodyDefault = import_express26.default.json({ limit: "200kb" });
-var jsonBodyMedical = import_express26.default.json({ limit: "10mb" });
-var jsonBodyPartnerRegInitial = import_express26.default.json({ limit: "25mb" });
-var jsonBodyPartnerRegDoc = import_express26.default.json({ limit: "12mb" });
-var urlencodedDefault = import_express26.default.urlencoded({ extended: true, limit: "200kb" });
+var jsonBodyDefault = import_express28.default.json({ limit: "200kb" });
+var jsonBodyMedical = import_express28.default.json({ limit: "10mb" });
+var jsonBodyPartnerRegInitial = import_express28.default.json({ limit: "25mb" });
+var jsonBodyPartnerRegDoc = import_express28.default.json({ limit: "12mb" });
+var urlencodedDefault = import_express28.default.urlencoded({ extended: true, limit: "200kb" });
 app.use((req, res, next) => {
   if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") {
     return jsonBodyDefault(req, res, next);
@@ -82154,11 +83998,11 @@ app.use((req, res, next) => {
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
-var __dirname2 = path13.dirname(fileURLToPath6(import.meta.url));
-var staticRoot = path13.join(__dirname2, "../static");
-var panelPublicRoot = path13.join(__dirname2, "../../partner-panel/dist");
+var __dirname2 = path14.dirname(fileURLToPath6(import.meta.url));
+var staticRoot = path14.join(__dirname2, "../static");
+var panelPublicRoot = path14.join(__dirname2, "../../partner-panel/dist");
 function resolvePublicRoot() {
-  return path13.join(__dirname2, "../../admin-panel/dist");
+  return path14.join(__dirname2, "../../admin-panel/dist");
 }
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
@@ -82168,7 +84012,7 @@ app.use((req, res, next) => {
 var adminPublicRoot = resolvePublicRoot();
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
-  import_express26.default.static(adminPublicRoot)(req, res, (err) => {
+  import_express28.default.static(adminPublicRoot)(req, res, (err) => {
     if (err) return next(err);
     return next();
   });
@@ -82176,46 +84020,46 @@ app.use("/partners", (req, res, next) => {
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
-  res.sendFile(path13.join(adminPublicRoot, "index.html"), (err) => {
+  res.sendFile(path14.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
-  import_express26.default.static(panelPublicRoot)(req, res, next);
+  import_express28.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
   if (req.path.startsWith("/partners")) return next();
-  res.sendFile(path13.join(panelPublicRoot, "index.html"), (err) => {
+  res.sendFile(path14.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   const p = req.path;
   if (p === "/partners" || p.startsWith("/partners/")) return next();
-  import_express26.default.static(staticRoot, { index: false })(req, res, next);
+  import_express28.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path13.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path14.join(staticRoot, "index.html"));
   return next();
 });
 app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path13.join(staticRoot, "partner-status.html"), (err) => {
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path14.join(staticRoot, "partner-status.html"), (err) => {
     if (err) next(err);
   });
   return next();
 });
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path13.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path14.join(staticRoot, "index.html"));
   if (isApiHost(host)) {
     return res.json({ ok: true, service: "onroda-api" });
   }
-  if (isPanelBrowserHost(host)) return res.sendFile(path13.join(panelPublicRoot, "index.html"), (err) => {
+  if (isPanelBrowserHost(host)) return res.sendFile(path14.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
   if (isAdminBrowserHost(host)) return res.redirect(302, "/partners/");
@@ -82455,12 +84299,12 @@ httpServer.listen(port, () => {
       const db2 = getDb2();
       if (!db2) return;
       const { ridesTable: ridesTable2 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
-      const { and: and3, eq: eq3, inArray: inArray2, isNotNull: isNotNull2, lt: lt2, lte: lte2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
+      const { and: and4, eq: eq3, inArray: inArray2, isNotNull: isNotNull2, lt: lt2, lte: lte2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
       const { setReservationSuspension: setReservationSuspension2 } = await Promise.resolve().then(() => (init_fleetDriversData(), fleetDriversData_exports));
       const now = /* @__PURE__ */ new Date();
       const nowMs = now.getTime();
       const cancelThreshold = new Date(nowMs + 10 * 60 * 1e3);
-      const noDriverCancelled = await db2.update(ridesTable2).set({ status: "cancelled_by_system" }).where(and3(eq3(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lte2(ridesTable2.scheduled_at, cancelThreshold))).returning({ id: ridesTable2.id, passenger_id: ridesTable2.passenger_id });
+      const noDriverCancelled = await db2.update(ridesTable2).set({ status: "cancelled_by_system" }).where(and4(eq3(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lte2(ridesTable2.scheduled_at, cancelThreshold))).returning({ id: ridesTable2.id, passenger_id: ridesTable2.passenger_id });
       if (noDriverCancelled.length > 0) {
         logger.info({ count: noDriverCancelled.length }, "[Cron] Kein Fahrer \u2192 cancelled_by_system");
         const { notifyPassengerRideCancelledBySystem: notifyPassengerRideCancelledBySystem2 } = await Promise.resolve().then(() => (init_passengerRideExpoPush(), passengerRideExpoPush_exports));
@@ -82479,7 +84323,7 @@ httpServer.listen(port, () => {
       }
       const activationDeadline = new Date(nowMs - 45 * 60 * 1e3);
       const missedActivation = await db2.select({ id: ridesTable2.id, driver_id: ridesTable2.driver_id, company_id: ridesTable2.company_id }).from(ridesTable2).where(
-        and3(
+        and4(
           eq3(ridesTable2.status, "scheduled_assigned"),
           isNotNull2(ridesTable2.scheduled_at),
           lte2(ridesTable2.scheduled_at, activationDeadline)
@@ -82504,11 +84348,11 @@ httpServer.listen(port, () => {
           void notifyDriverMissedActivationReservation2(did, cid, ride.id);
         }
       }
-      const expiredAssigned = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq3(ridesTable2.status, "scheduled_assigned"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
+      const expiredAssigned = await db2.update(ridesTable2).set({ status: "expired" }).where(and4(eq3(ridesTable2.status, "scheduled_assigned"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
       if (expiredAssigned.length > 0) {
         logger.info({ count: expiredAssigned.length }, "[Cron] scheduled_assigned \u2192 expired");
       }
-      const expiredScheduled = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq3(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
+      const expiredScheduled = await db2.update(ridesTable2).set({ status: "expired" }).where(and4(eq3(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
       if (expiredScheduled.length > 0) {
         logger.info({ count: expiredScheduled.length }, "[Cron] scheduled \u2192 expired");
       }

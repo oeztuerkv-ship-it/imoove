@@ -1,0 +1,40 @@
+---
+description: KK-Modul SaaS — Mandanten-Feature-Flag + Fahrer-Berechtigungen (Taxi)
+globs: artifacts/api-server/**,artifacts/admin-panel/**,artifacts/partner-panel/**,artifacts/mobile/**
+alwaysApply: false
+---
+
+# KK-Modul (Krankenkassen-SaaS, 200 €/Monat)
+
+## Datenmodell (Migration `087_kk_module_feature.sql`)
+
+| Spalte | Tabelle | Bedeutung |
+|--------|---------|-----------|
+| `feature_kk_module` | `admin_companies` | Mandant freigeschaltet (nur `company_kind = taxi`) |
+| `feature_kk_module_since` | `admin_companies` | Aktivierungszeitpunkt; `NULL` wenn aus |
+| `permission_kk_module` | `fleet_drivers` | Mitarbeiter-Zugriff |
+| `is_owner` | `fleet_drivers` | Inhaber — voller KK-Zugriff wenn Modul aktiv |
+
+**Nicht** mit `medical_transport_enabled` verwechseln — das ist die ältere operative Krankenfahrt-Freigabe; das KK-Modul ist das **kommerzielle SaaS-Paket** (UI + Sammelrechnung + Transportschein-Scan).
+
+## API (kein Hardcoding im Frontend)
+
+- Admin: `PATCH /api/admin/companies/:id` mit `feature_kk_module: true/false` (setzt `feature_kk_module_since`).
+- Partner: `GET /api/panel/v1/me` → `user.featureKkModule`.
+- Partner Inhaber: `PATCH /api/panel/v1/fleet/:driverId/permissions` Body `{ permission_kk_module: boolean }`.
+- Fahrer: `GET /api/fleet-driver/v1/me` → `featureKkModule`, `permissionKkModule`, `isOwner`, `kkModuleAuthorized`.
+- Logik zentral: `artifacts/api-server/src/lib/kkModuleAccess.ts`.
+- Panel Kranken-Rechnungen: `403` + `kk_module_not_enabled` wenn Mandant nicht freigeschaltet.
+- Fleet Medical-Scan: `kk_module_not_*` statt nur `medical_transport_not_authorized`.
+
+## UI-Regeln
+
+- **Partner:** Nav „Krankenfahrten“ nur bei `user.featureKkModule`; Flotte → KK-Toggle nur **Inhaber** (`role === 'owner'`).
+- **Mobile Fahrer:** Transportschein/Scan nur bei `driver.kkModuleAuthorized` (nicht nur `medicalTransportAuthorized`).
+- **Admin:** Toggle „KK-Modul aktiviert“ nur bei `company_kind === taxi` in `CompanyMandateDetailPage.jsx`.
+
+## Abnahme kurz
+
+1. Taxi-Mandant ohne Flag → kein Krankenfahrten-Tab, Scan 403 `kk_module_not_enabled`.
+2. Flag an → Inhaber sieht alles; Mitarbeiter ohne `permission_kk_module` kein Scan.
+3. Inhaber schaltet Mitarbeiter frei → Scan ok.
