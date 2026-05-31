@@ -26,16 +26,13 @@ export interface CompanyGovernanceGate {
  * Fahrer-App / Partner „In der App freigeschaltet“: nur Plattform-Pflicht (Unternehmer-Zugang, Konzession, Kennzeichen).
  * P-Schein, Fahrzeugzuweisung und Fahrer-Unterlagen sind Sache des Unternehmers — nicht blockieren.
  */
-export function companyMeetsTaxiDriverAppAccess(
-  gate: CompanyGovernanceGate | null,
-  hasFleetVehicleWithLicensePlate: boolean,
-): boolean {
+/** Fahrer-App / Partner-Liste: Unternehmer-Zugang + Konzession (Kennzeichen prüft Onroda an Fahrzeugen separat). */
+export function companyMeetsTaxiDriverAppAccess(gate: CompanyGovernanceGate | null): boolean {
   if (!gate) return false;
   if (gate.companyKind !== "taxi") return false;
   if (gate.isBlocked) return false;
   if (gate.contractStatus !== "active") return false;
   if (!gate.concessionNumberPresent) return false;
-  if (!hasFleetVehicleWithLicensePlate) return false;
   return true;
 }
 

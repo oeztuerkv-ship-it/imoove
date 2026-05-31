@@ -1,7 +1,7 @@
 import {
-  companyHasFleetVehicleWithLicensePlate,
   companyMeetsTaxiDriverAppAccess,
   getCompanyGovernanceGate,
+  reconcileTaxiFreischaltungForFleetLogin,
   type CompanyGovernanceGate,
 } from "./companyGovernanceData";
 import { findCompanyById } from "./adminData";
@@ -42,8 +42,7 @@ export interface DriverReadinessResult {
 }
 
 const MSG: Record<DriverReadinessBlockCode, string> = {
-  company_not_ready:
-    "Unternehmen: Plattform-Zugang, Konzession oder mindestens ein Fahrzeug-Kennzeichen fehlen noch (Onroda-Prüfung).",
+  company_not_ready: "Unternehmen: Plattform-Zugang oder Konzession fehlen noch (Onroda-Prüfung).",
   driver_suspended: "Fahrerzugang ist gesperrt.",
   driver_account_inactive: "Fahrerkonto ist deaktiviert.",
   driver_rejected: "Fahrer wurde abgelehnt.",
@@ -210,10 +209,9 @@ export function computeDriverReadiness(
   >,
   _hasVehicleAssignment: boolean,
   _assignedVehicle: FleetVehicleRow | null,
-  hasFleetVehicleWithLicensePlate: boolean,
 ): DriverReadinessResult {
   const blockReasons: DriverReadinessBlock[] = [];
-  if (!companyMeetsTaxiDriverAppAccess(gate, hasFleetVehicleWithLicensePlate)) {
+  if (!companyMeetsTaxiDriverAppAccess(gate)) {
     blockReasons.push({ code: "company_not_ready", message: MSG.company_not_ready });
   }
   if (!d.isActive) {
@@ -367,18 +365,18 @@ export async function getAdminTaxiFleetDriverDetail(
   const r = await findFleetDriverInCompany(driverId, companyId);
   if (!r) return null;
   const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh, hasPlate, medical] = await Promise.all([
+  await reconcileTaxiFreischaltungForFleetLogin(companyId);
+  const [gate, ass, veh, medical] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
-    companyHasFleetVehicleWithLicensePlate(companyId),
     medicalTransportFieldsForDriver(companyId, listRow),
   ]);
   const av = assignedVehicleForDriver(listRow.id, ass, veh);
   const view: PanelFleetDriverView = {
     ...listRow,
     workflow: deriveDriverWorkflowLabel(listRow),
-    readiness: computeDriverReadiness(gate, listRow, av != null, av, hasPlate),
+    readiness: computeDriverReadiness(gate, listRow, av != null, av),
   };
   return {
     ...view,
