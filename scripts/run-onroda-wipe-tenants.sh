@@ -6,6 +6,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ONRODA_API_ENV:-$ROOT/artifacts/api-server/.env}"
 SQL_FILE="$ROOT/scripts/onroda-wipe-tenants-keep-one-admin.sql"
 
+# CLI-Wert vor .env merken (source darf ONRODA_KEEP_ADMIN_LOGIN nicht überschreiben/leeren)
+KEEP_FROM_CLI="${ONRODA_KEEP_ADMIN_LOGIN:-}"
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Fehlt: $ENV_FILE (oder ONRODA_API_ENV setzen)" >&2
   exit 1
@@ -13,6 +16,7 @@ fi
 
 # shellcheck disable=SC1090
 set -a
+# shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
 
@@ -26,13 +30,13 @@ if ! command -v psql >/dev/null 2>&1; then
   exit 1
 fi
 
-KEEP="${ONRODA_KEEP_ADMIN_LOGIN:-}"
+KEEP="${KEEP_FROM_CLI:-${ONRODA_KEEP_ADMIN_LOGIN:-}}"
 if [[ -z "$KEEP" ]]; then
   KEEP="$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "SELECT username FROM admin_auth_users WHERE is_active ORDER BY created_at LIMIT 1" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 fi
 
 if [[ -z "$KEEP" ]]; then
-  echo "Kein aktiver admin_auth_users — setze ONRODA_KEEP_ADMIN_LOGIN=dein_username" >&2
+  echo "Kein Admin-Login — setze ONRODA_KEEP_ADMIN_LOGIN=dein_username (muss in admin_auth_users existieren)." >&2
   exit 1
 fi
 
@@ -56,11 +60,9 @@ if [[ "${ONRODA_CONFIRM_WIPE:-}" != "1" ]]; then
   exit 2
 fi
 
-TMP_SQL="$(mktemp)"
-trap 'rm -f "$TMP_SQL"' EXIT
-sed "s/__KEEP_LOGIN__/${KEEP//\//\\/}/g" "$SQL_FILE" > "$TMP_SQL"
-
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$TMP_SQL"
+echo ""
+echo "Starte Wipe (psql -v keep_login=…) …"
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v "keep_login=${KEEP}" -f "$SQL_FILE"
 
 echo ""
 echo "Nachher:"

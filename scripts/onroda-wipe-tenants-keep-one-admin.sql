@@ -5,24 +5,32 @@
 -- VORHER: Backup (pg_dump). Nur auf der gewollten Datenbank ausführen.
 --
 -- Ausführung (empfohlen):
---   ONRODA_KEEP_ADMIN_LOGIN=dein_admin_user ./scripts/run-onroda-wipe-tenants.sh
+--   ONRODA_KEEP_ADMIN_LOGIN=dein_admin_user ONRODA_CONFIRM_WIPE=1 ./scripts/run-onroda-wipe-tenants.sh
 --
--- Oder manuell (ersetze __KEEP_LOGIN__ im gesamten File):
---   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/onroda-wipe-tenants-keep-one-admin.sql
+-- Manuell (psql-Variable Pflicht):
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v keep_login=dein_admin_user -f scripts/onroda-wipe-tenants-keep-one-admin.sql
 --
 -- Bleibt u. a.: admin_auth_users (1 Zeile), fare_areas, app_operational_config,
 -- homepage_*, app_news_items, app_faq, app_sponsors, app_service_regions.
 -- =============================================================================
 
+\if :{?keep_login}
+\else
+\echo 'FEHLER: keep_login fehlt. Nutze scripts/run-onroda-wipe-tenants.sh oder: psql -v keep_login=DEIN_ADMIN_USER ...'
+\quit 1
+\endif
+
+SELECT set_config('onroda.wipe.keep_login', :'keep_login', true);
+
 BEGIN;
 
 DO $$
 DECLARE
-  keep_login constant text := '__KEEP_LOGIN__';
+  keep_login constant text := current_setting('onroda.wipe.keep_login');
   n int;
 BEGIN
-  IF keep_login = '__KEEP_LOGIN__' THEN
-    RAISE EXCEPTION 'Setze ONRODA_KEEP_ADMIN_LOGIN oder ersetze __KEEP_LOGIN__ im Skript.';
+  IF keep_login IS NULL OR btrim(keep_login) = '' THEN
+    RAISE EXCEPTION 'keep_login ist leer — psql -v keep_login=admin_username setzen.';
   END IF;
   SELECT count(*)::int INTO n FROM admin_auth_users WHERE lower(username) = lower(keep_login);
   IF n <> 1 THEN
@@ -108,13 +116,13 @@ DELETE FROM admin_companies;
 DELETE FROM admin_auth_password_resets
 WHERE admin_user_id IN (
   SELECT id FROM admin_auth_users
-  WHERE lower(username) <> lower('__KEEP_LOGIN__')
+  WHERE lower(username) <> lower(current_setting('onroda.wipe.keep_login'))
 );
 
 DELETE FROM admin_auth_audit_log;
 
 DELETE FROM admin_auth_users
-WHERE lower(username) <> lower('__KEEP_LOGIN__');
+WHERE lower(username) <> lower(current_setting('onroda.wipe.keep_login'));
 
 DO $$
 DECLARE
