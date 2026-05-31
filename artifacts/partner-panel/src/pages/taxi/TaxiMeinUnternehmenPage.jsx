@@ -23,6 +23,14 @@ const VEHICLE_TYPES = [
   ["wheelchair", "Rollstuhl"],
 ];
 
+const VEHICLE_REVIEW_DE = {
+  draft: "Entwurf",
+  pending: "In Prüfung bei Onroda",
+  active: "Freigegeben (aktiv)",
+  inactive: "Deaktiviert",
+  rejected: "Abgelehnt",
+};
+
 function statusBanner(status) {
   if (status === "approved") {
     return { tone: "ok", title: "Freigegeben", text: "Ihr Unternehmen ist freigeschaltet. Sie können den Betrieb starten." };
@@ -56,7 +64,8 @@ export default function TaxiMeinUnternehmenPage() {
     concessionNumber: "",
     tuevDate: "",
   });
-  const [upload, setUpload] = useState({ docType: "gewerbeschein", vehicleId: "", file: null });
+  const [upload, setUpload] = useState({ docType: "fahrzeugschein", vehicleId: "", file: null });
+  const [operatorMessages, setOperatorMessages] = useState([]);
 
   const headers = useCallback(
     () => ({
@@ -84,6 +93,15 @@ export default function TaxiMeinUnternehmenPage() {
       setProfile(j.profile);
       setVehicles(j.vehicles ?? []);
       setDocuments(j.documents ?? []);
+      try {
+        const mr = await fetch(`${API_BASE}/panel/v1/company-operator-messages`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const mj = await mr.json().catch(() => ({}));
+        setOperatorMessages(mr.ok && mj?.ok && Array.isArray(mj.messages) ? mj.messages : []);
+      } catch {
+        setOperatorMessages([]);
+      }
       setForm({
         name: j.profile?.name ?? "",
         contactName: j.profile?.contactName ?? "",
@@ -242,6 +260,22 @@ export default function TaxiMeinUnternehmenPage() {
         ) : null}
       </section>
 
+      {operatorMessages.length > 0 ? (
+        <PartnerCollapsibleSection title="Rückmeldung von Onroda" subtitle="Nachrichten der Plattform" defaultOpen>
+          <ul className="partner-onb-list">
+            {operatorMessages.map((m) => (
+              <li key={m.id} className="partner-onb-list__item">
+                <span className="partner-onb-list__meta">
+                  {m.senderType === "admin" ? "Onroda" : "Sie"} ·{" "}
+                  {new Date(m.createdAt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+                </span>
+                <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>{m.body}</p>
+              </li>
+            ))}
+          </ul>
+        </PartnerCollapsibleSection>
+      ) : null}
+
       <PartnerCollapsibleSection title="Stammdaten" subtitle="Ihr Unternehmen" defaultOpen>
         <form className="partner-onb-block" onSubmit={(e) => void saveProfile(e)}>
           <div className="partner-onb-block__content partner-form-grid">
@@ -299,6 +333,23 @@ export default function TaxiMeinUnternehmenPage() {
                   ))}
                 </select>
               </label>
+              <label className="partner-field">
+                <span className="partner-field__label">Konzessionsnummer (Fahrzeug)</span>
+                <input
+                  className="partner-input"
+                  value={newVehicle.concessionNumber}
+                  onChange={(e) => setNewVehicle((v) => ({ ...v, concessionNumber: e.target.value }))}
+                />
+              </label>
+              <label className="partner-field">
+                <span className="partner-field__label">TÜV (optional)</span>
+                <input
+                  className="partner-input"
+                  type="date"
+                  value={newVehicle.tuevDate}
+                  onChange={(e) => setNewVehicle((v) => ({ ...v, tuevDate: e.target.value }))}
+                />
+              </label>
             </div>
             {vehicles.length > 0 ? (
               <ul className="partner-onb-list">
@@ -307,9 +358,16 @@ export default function TaxiMeinUnternehmenPage() {
                     <strong>{v.licensePlate}</strong>
                     <span className="partner-onb-list__meta">
                       {v.vehicleType}
+                      {v.concessionNumber ? ` · Konz. ${v.concessionNumber}` : ""}
                       {v.tuevDate ? ` · TÜV ${v.tuevDate}` : ""}
-                      {!v.isActive ? " · inaktiv" : ""}
+                      {" · "}
+                      {VEHICLE_REVIEW_DE[v.reviewStatus] || v.reviewStatus || "—"}
                     </span>
+                    {v.operatorMessage ? (
+                      <p className="partner-onb-list__hint" style={{ marginTop: 6 }}>
+                        Onroda: {v.operatorMessage}
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -335,6 +393,21 @@ export default function TaxiMeinUnternehmenPage() {
                   {DOC_TYPES.map(([val, lab]) => (
                     <option key={val} value={val}>
                       {lab}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="partner-field">
+                <span className="partner-field__label">Fahrzeug (für Konzession / Fahrzeugschein)</span>
+                <select
+                  className="partner-input"
+                  value={upload.vehicleId}
+                  onChange={(e) => setUpload((u) => ({ ...u, vehicleId: e.target.value }))}
+                >
+                  <option value="">— Mandant allgemein —</option>
+                  {vehicles.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.licensePlate}
                     </option>
                   ))}
                 </select>
