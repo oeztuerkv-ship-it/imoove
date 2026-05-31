@@ -253,3 +253,90 @@ export async function setCurrentComplianceDocumentReview(
   await recomputeAndPersistGlobalCompliance(companyId);
   return { ok: true };
 }
+
+const ADMIN_COMPLIANCE_WAIVER_PREFIX = "platform-admin-waiver";
+
+/**
+ * Plattform-Admin: Pflichtnachweise (Gewerbe/Versicherung) als erfüllt markieren,
+ * auch wenn Partner noch keine Datei hochgeladen hat — Partner-Cockpit-Warnungen entfallen.
+ */
+export async function adminApproveCompanyComplianceDespiteMissingDocuments(
+  companyId: string,
+  input?: { note?: string },
+): Promise<{ ok: true; status: "pending" | "in_review" | "compliant" | "non_compliant" } | { ok: false; error: string }> {
+  const db = getDb();
+  if (!db) {
+    return { ok: false, error: "database_not_configured" };
+  }
+  const rows = await db.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r = rows[0];
+  if (!r) return { ok: false, error: "not_found" };
+
+  const note = String(input?.note ?? "").trim().slice(0, 4000);
+  const waiverNote =
+    note ||
+    "Plattform-Freigabe trotz fehlender Partner-Unterlagen (Admin). Nachweise bitte zeitnah nachreichen.";
+
+  for (const kind of ["gewerbe", "insurance"] as const) {
+    let storageKey = String(
+      kind === "gewerbe" ? r.compliance_gewerbe_storage_key : r.compliance_insurance_storage_key,
+    ).trim();
+    if (!storageKey) {
+      storageKey = `${ADMIN_COMPLIANCE_WAIVER_PREFIX}/${companyId}/${kind}`;
+      await db
+        .update(adminCompaniesTable)
+        .set(
+          kind === "gewerbe"
+            ? { compliance_gewerbe_storage_key: storageKey }
+            : { compliance_insurance_storage_key: storageKey },
+        )
+        .where(eq(adminCompaniesTable.id, companyId));
+    }
+
+    const current = await db
+      .select()
+      .from(companyComplianceDocumentsTable)
+      .where(
+        and(
+          eq(companyComplianceDocumentsTable.company_id, companyId),
+          eq(companyComplianceDocumentsTable.document_type, kind),
+          eq(companyComplianceDocumentsTable.is_current, true),
+        ),
+      )
+      .limit(1);
+
+    if (current[0]) {
+      await db
+        .update(companyComplianceDocumentsTable)
+        .set({ review_status: "approved", review_note: waiverNote, storage_key: storageKey })
+        .where(eq(companyComplianceDocumentsTable.id, current[0]!.id));
+    } else {
+      await db
+        .update(companyComplianceDocumentsTable)
+        .set({ is_current: false })
+        .where(
+          and(
+            eq(companyComplianceDocumentsTable.company_id, companyId),
+            eq(companyComplianceDocumentsTable.document_type, kind),
+          ),
+        );
+      await db.insert(companyComplianceDocumentsTable).values({
+        id: randomUUID(),
+        company_id: companyId,
+        document_type: kind,
+        storage_key: storageKey,
+        uploaded_by_panel_user_id: null,
+        review_status: "approved",
+        review_note: waiverNote,
+        is_current: true,
+      });
+    }
+  }
+
+  await recomputeAndPersistGlobalCompliance(companyId);
+  const refreshed = await db.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const row = refreshed[0];
+  if (!row) return { ok: false, error: "not_found" };
+  const { status } = await getDerivedComplianceAndDocumentsForRow(row);
+  return { ok: true, status };
+}

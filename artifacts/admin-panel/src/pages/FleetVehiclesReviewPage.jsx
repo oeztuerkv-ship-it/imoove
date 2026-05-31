@@ -123,35 +123,23 @@ export default function FleetVehiclesReviewPage() {
     }
   }
 
-  async function approveVehicle(vId) {
+  async function approveVehicle(vId, despiteGaps = false) {
     setBusy(true);
     setDetailErr("");
     const approveUrl = `${API_BASE}/admin/fleet-vehicles/${encodeURIComponent(vId)}/approve`;
-    const tryOnce = async (payload) => {
+    try {
+      const payload = despiteGaps ? { acknowledgeIncompleteDocuments: true } : {};
       const res = await fetch(approveUrl, {
         method: "POST",
         headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      return { res, data: await res.json().catch(() => ({})) };
-    };
-    try {
-      let { res, data } = await tryOnce({});
-      if (!res.ok && data?.error === "incomplete_documents_ack_required" && Array.isArray(data.gaps)) {
-        const msg = [
-          "Achtung: Unterlagen unvollständig.",
-          "",
-          ...data.gaps.map((g) => `• ${g}`),
-          "",
-          "Manuelle Freigabe durch Admin trotzdem durchführen?",
-        ].join("\n");
-        if (!window.confirm(msg)) {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        if (!despiteGaps && data?.error === "incomplete_documents_ack_required") {
           setBusy(false);
           return;
         }
-        ({ res, data } = await tryOnce({ acknowledgeIncompleteDocuments: true }));
-      }
-      if (!res.ok || !data?.ok) {
         setDetailErr(typeof data?.error === "string" ? data.error : "Freigabe fehlgeschlagen.");
         setBusy(false);
         return;
@@ -292,6 +280,15 @@ export default function FleetVehiclesReviewPage() {
                   onClick={() => void approveVehicle(v.id)}
                 >
                   Freigeben
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  disabled={busy}
+                  title="Freigabe ohne vollständige Unterlagen — ohne Rückfrage-Dialog"
+                  onClick={() => void approveVehicle(v.id, true)}
+                >
+                  Trotz Lücken freigeben
                 </button>
                 <button
                   type="button"

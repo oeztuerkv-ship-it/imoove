@@ -218,6 +218,7 @@ export default function CompanyMandateDetailPage({
   const [saveErr, setSaveErr] = useState("");
   const [form, setForm] = useState(null);
   const [taxiFleetBusy, setTaxiFleetBusy] = useState("");
+  const [complianceWaiveBusy, setComplianceWaiveBusy] = useState(false);
 
   const loadMandate = useCallback(() => {
     setLoading(true);
@@ -262,24 +263,15 @@ export default function CompanyMandateDetailPage({
     return { r, j };
   }
 
-  async function taxiApproveVehicle(vehicleId) {
+  async function taxiApproveVehicle(vehicleId, despiteGaps = false) {
     if (!companyId) return;
     const base = `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(vehicleId)}`;
-    setTaxiFleetBusy(`v-apr-${vehicleId}`);
+    setTaxiFleetBusy(despiteGaps ? `v-apr-gap-${vehicleId}` : `v-apr-${vehicleId}`);
     try {
-      let { r, j } = await postAdminJson(`${base}/approve`, {});
-      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
-        const msg = [
-          "Achtung: Unterlagen unvollständig.",
-          "",
-          ...j.gaps.map((g) => `• ${g}`),
-          "",
-          "Manuelle Freigabe durch Admin trotzdem durchführen?",
-        ].join("\n");
-        if (!window.confirm(msg)) return;
-        ({ r, j } = await postAdminJson(`${base}/approve`, { acknowledgeIncompleteDocuments: true }));
-      }
+      const payload = despiteGaps ? { acknowledgeIncompleteDocuments: true } : {};
+      const { r, j } = await postAdminJson(`${base}/approve`, payload);
       if (!r.ok) {
+        if (!despiteGaps && j?.error === "incomplete_documents_ack_required") return;
         window.alert(typeof j?.error === "string" ? j.error : String(r.status));
         return;
       }
@@ -368,30 +360,41 @@ export default function CompanyMandateDetailPage({
     }
   }
 
-  async function taxiApproveDriver(driverId) {
+  async function taxiApproveDriver(driverId, despiteGaps = false) {
     if (!companyId) return;
     const url = `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(driverId)}/approval`;
-    setTaxiFleetBusy(`d-apr-${driverId}`);
+    setTaxiFleetBusy(despiteGaps ? `d-apr-gap-${driverId}` : `d-apr-${driverId}`);
     try {
-      let { r, j } = await postAdminJson(url, { status: "approved" });
-      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
-        const msg = [
-          "Achtung: Unterlagen unvollständig.",
-          "",
-          ...j.gaps.map((g) => `• ${g}`),
-          "",
-          "Manuelle Freigabe durch Admin trotzdem durchführen?",
-        ].join("\n");
-        if (!window.confirm(msg)) return;
-        ({ r, j } = await postAdminJson(url, { status: "approved", acknowledgeIncompleteDocuments: true }));
-      }
+      const payload = despiteGaps
+        ? { status: "approved", acknowledgeIncompleteDocuments: true }
+        : { status: "approved" };
+      const { r, j } = await postAdminJson(url, payload);
       if (!r.ok) {
+        if (!despiteGaps && j?.error === "incomplete_documents_ack_required") return;
         window.alert(typeof j?.error === "string" ? j.error : String(r.status));
         return;
       }
       await loadMandate();
     } finally {
       setTaxiFleetBusy("");
+    }
+  }
+
+  async function waiveCompanyComplianceDespiteMissing() {
+    if (!companyId) return;
+    setComplianceWaiveBusy(true);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/compliance/approve-despite-missing-documents`,
+        {},
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setComplianceWaiveBusy(false);
     }
   }
 
@@ -1605,6 +1608,15 @@ export default function CompanyMandateDetailPage({
                             </button>
                             <button
                               type="button"
+                              className="admin-mandate-taxi-btn admin-mandate-taxi-btn--secondary"
+                              disabled={!!taxiFleetBusy}
+                              title="Plattform-Freigabe ohne vollständige Unterlagen — keine Rückfrage-Dialoge"
+                              onClick={() => void taxiApproveDriver(d.id, true)}
+                            >
+                              {btnBusy("d-apr-gap", d.id) ? "…" : "Trotz Lücken freigeben"}
+                            </button>
+                            <button
+                              type="button"
                               className="admin-mandate-taxi-btn admin-mandate-taxi-btn--inactive"
                               disabled={!!taxiFleetBusy}
                               onClick={() => void taxiSuspendDriver(d.id)}
@@ -1662,6 +1674,15 @@ export default function CompanyMandateDetailPage({
                                 onClick={() => void taxiApproveVehicle(v.id)}
                               >
                                 {btnBusy("v-apr", v.id) ? "…" : "Freigeben"}
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-mandate-taxi-btn admin-mandate-taxi-btn--secondary"
+                                disabled={!!taxiFleetBusy}
+                                title="Plattform-Freigabe ohne vollständige Unterlagen — keine Rückfrage-Dialoge"
+                                onClick={() => void taxiApproveVehicle(v.id, true)}
+                              >
+                                {btnBusy("v-apr-gap", v.id) ? "…" : "Trotz Lücken freigeben"}
                               </button>
                               <button
                                 type="button"
@@ -1960,6 +1981,22 @@ export default function CompanyMandateDetailPage({
                 <strong>Versicherung (Unternehmen):</strong>{" "}
                 {docs?.insuranceFilePresent ? "Datei hinterlegt" : NA}
               </li>
+              {data?.taxi &&
+              (!docs?.gewerbeFilePresent ||
+                !docs?.insuranceFilePresent ||
+                (c?.compliance_status && c.compliance_status !== "compliant")) ? (
+                <li style={{ listStyle: "none", marginTop: 10, padding: 0 }}>
+                  <button
+                    type="button"
+                    className="admin-mandate-taxi-btn admin-mandate-taxi-btn--secondary"
+                    disabled={complianceWaiveBusy}
+                    title="Partner-Cockpit: keine Warnungen zu fehlenden Gewerbe-/Versicherungsnachweisen; Nachweise später nachreichen."
+                    onClick={() => void waiveCompanyComplianceDespiteMissing()}
+                  >
+                    {complianceWaiveBusy ? "…" : "Unternehmen: Pflichtnachweise trotz fehlender Dateien freigeben"}
+                  </button>
+                </li>
+              ) : null}
               <li>
                 <strong>Konzession / Nummer in Stammdaten:</strong>{" "}
                 {docs?.companyConcessionTextPresent ? s(c.concession_number) : NA}

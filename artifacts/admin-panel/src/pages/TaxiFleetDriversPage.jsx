@@ -169,33 +169,22 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
     }
   }
 
-  async function runApproveDriver() {
+  async function runApproveDriver(despiteGaps = false) {
     if (!companyId || !sel) return;
-    setActBusy("/approval-approve");
+    setActBusy(despiteGaps ? "/approval-approve-gap" : "/approval-approve");
     const url = `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(sel.id)}/approval`;
-    const tryOnce = async (payload) => {
+    try {
+      const payload = despiteGaps
+        ? { status: "approved", acknowledgeIncompleteDocuments: true }
+        : { status: "approved" };
       const r = await fetch(url, {
         method: "POST",
         headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const j = await r.json().catch(() => ({}));
-      return { r, j };
-    };
-    try {
-      let { r, j } = await tryOnce({ status: "approved" });
-      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
-        const msg = [
-          "Achtung: Unterlagen unvollständig.",
-          "",
-          ...j.gaps.map((g) => `• ${g}`),
-          "",
-          "Manuelle Freigabe durch Admin trotzdem durchführen?",
-        ].join("\n");
-        if (!window.confirm(msg)) return;
-        ({ r, j } = await tryOnce({ status: "approved", acknowledgeIncompleteDocuments: true }));
-      }
       if (!r.ok) {
+        if (!despiteGaps && j?.error === "incomplete_documents_ack_required") return;
         window.alert(typeof j?.error === "string" ? j.error : String(r.status));
         return;
       }
@@ -417,6 +406,15 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                     onClick={() => void runApproveDriver()}
                   >
                     Freigeben
+                  </button>
+                  <button
+                    type="button"
+                    style={{ padding: "6px 12px", background: "#f1f5f9" }}
+                    disabled={!!actBusy}
+                    title="Freigabe ohne vollständige Unterlagen — ohne Rückfrage-Dialog"
+                    onClick={() => void runApproveDriver(true)}
+                  >
+                    Trotz Lücken freigeben
                   </button>
                   <button
                     type="button"

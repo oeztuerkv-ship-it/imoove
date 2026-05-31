@@ -284,33 +284,20 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
     }
   }
 
-  async function runApproveVehicle() {
+  async function runApproveVehicle(despiteGaps = false) {
     if (!companyId || !sel) return;
-    setActBusy("/approve");
+    setActBusy(despiteGaps ? "/approve-gap" : "/approve");
     try {
       const url = `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(sel.id)}/approve`;
-      const tryApprove = async (payload) => {
-        const r = await fetch(url, {
-          method: "POST",
-          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const j = await r.json().catch(() => ({}));
-        return { r, j };
-      };
-      let { r, j } = await tryApprove({});
-      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
-        const msg = [
-          "Achtung: Unterlagen unvollständig.",
-          "",
-          ...j.gaps.map((g) => `• ${g}`),
-          "",
-          "Manuelle Freigabe durch Admin trotzdem durchführen?",
-        ].join("\n");
-        if (!window.confirm(msg)) return;
-        ({ r, j } = await tryApprove({ acknowledgeIncompleteDocuments: true }));
-      }
+      const payload = despiteGaps ? { acknowledgeIncompleteDocuments: true } : {};
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json().catch(() => ({}));
       if (!r.ok) {
+        if (!despiteGaps && j?.error === "incomplete_documents_ack_required") return;
         window.alert(typeof j?.error === "string" ? j.error : String(r.status));
         return;
       }
@@ -521,6 +508,15 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
                       onClick={() => void runApproveVehicle()}
                     >
                       {actBusy === "/approve" ? "…" : "Freigeben"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-c-btn-sec"
+                      disabled={!!actBusy}
+                      title="Freigabe ohne vollständige Unterlagen — ohne Rückfrage-Dialog"
+                      onClick={() => void runApproveVehicle(true)}
+                    >
+                      {actBusy === "/approve-gap" ? "…" : "Trotz Lücken freigeben"}
                     </button>
                     <button
                       type="button"

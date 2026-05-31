@@ -93,7 +93,10 @@ import {
   updateRideSupportTicketAdmin,
   RIDE_SUPPORT_TICKET_STATUSES,
 } from "../db/rideSupportData";
-import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
+import {
+  adminApproveCompanyComplianceDespiteMissingDocuments,
+  setCurrentComplianceDocumentReview,
+} from "../db/companyComplianceDocumentsData";
 import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
 import {
   getOperationalConfigPayload,
@@ -3504,6 +3507,32 @@ adminJson.patch("/companies/:companyId/compliance-documents/:kind", async (req, 
       return;
     }
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Taxi-/Partner-Mandant: Gewerbe- und Versicherungsnachweis als erfüllt markieren, auch ohne Partner-Upload. */
+adminJson.post("/companies/:companyId/compliance/approve-despite-missing-documents", async (req, res, next) => {
+  try {
+    const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!allowed) return;
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as { note?: unknown };
+    const note = typeof b.note === "string" ? b.note : "";
+    const r = await adminApproveCompanyComplianceDespiteMissingDocuments(req.params.companyId, { note });
+    if (!r.ok) {
+      if (r.error === "not_found") {
+        res.status(404).json({ error: r.error });
+        return;
+      }
+      res.status(503).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true, complianceStatus: r.status });
   } catch (e) {
     next(e);
   }
