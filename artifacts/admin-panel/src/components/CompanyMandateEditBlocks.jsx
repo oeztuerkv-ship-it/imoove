@@ -103,7 +103,15 @@ export default function CompanyMandateEditBlocks({
   const [fieldErrors, setFieldErrors] = useState({});
   const sessionOk = isAdminSessionConfigured();
 
+  /** Nur bei neuen Server-Daten zurücksetzen — nicht bei jedem Tastendruck. */
+  const serverFormRevision = useMemo(() => {
+    const updated = c?.updated_at ?? c?.updatedAt ?? "";
+    const ba = billingAccountEmail ?? billingAccount?.billingEmail ?? "";
+    return `${companyId}|${updated}|${ba}`;
+  }, [companyId, c, billingAccountEmail, billingAccount?.billingEmail]);
+
   const resetForms = useCallback(() => {
+    const fp = asObj(c.fare_permissions);
     setStammdaten({
       name: c.name ?? "",
       legal_form: c.legal_form ?? "",
