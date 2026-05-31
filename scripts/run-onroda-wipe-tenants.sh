@@ -61,6 +61,10 @@ if [[ "${ONRODA_CONFIRM_WIPE:-}" != "1" ]]; then
 fi
 
 echo ""
+echo "Prelude-Test (set_config in Transaktion) …"
+ONRODA_KEEP_ADMIN_LOGIN="$KEEP" "$ROOT/scripts/test-onroda-wipe-prelude.sh"
+
+echo ""
 echo "Starte Wipe (psql -v keep_login=…) …"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v "keep_login=${KEEP}" -f "$SQL_FILE"
 

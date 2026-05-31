@@ -20,13 +20,14 @@
 \quit 1
 \endif
 
-SELECT set_config('onroda.wipe.keep_login', :'keep_login', true);
-
 BEGIN;
+
+-- Muss innerhalb derselben Transaktion wie die DO-Blöcke/DELETEs stehen (set_config mit is_local=true vor BEGIN wäre verloren).
+SELECT set_config('onroda.wipe.keep_login', :'keep_login', true);
 
 DO $$
 DECLARE
-  keep_login constant text := current_setting('onroda.wipe.keep_login');
+  keep_login constant text := current_setting('onroda.wipe.keep_login', true);
   n int;
 BEGIN
   IF keep_login IS NULL OR btrim(keep_login) = '' THEN
@@ -116,13 +117,13 @@ DELETE FROM admin_companies;
 DELETE FROM admin_auth_password_resets
 WHERE admin_user_id IN (
   SELECT id FROM admin_auth_users
-  WHERE lower(username) <> lower(current_setting('onroda.wipe.keep_login'))
+  WHERE lower(username) <> lower(current_setting('onroda.wipe.keep_login', true))
 );
 
 DELETE FROM admin_auth_audit_log;
 
 DELETE FROM admin_auth_users
-WHERE lower(username) <> lower(current_setting('onroda.wipe.keep_login'));
+WHERE lower(username) <> lower(current_setting('onroda.wipe.keep_login', true));
 
 DO $$
 DECLARE
