@@ -56,7 +56,7 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
     email: "",
     role: "staff",
     password: "",
-    sendWelcomeEmail: false,
+    sendWelcomeEmail: true,
     accessKind: "",
     accessKindNote: "",
     attachmentFile: null,
@@ -74,8 +74,10 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
 
   const [resetUser, setResetUser] = useState(null);
   const [newPassword, setNewPassword] = useState("");
+  const [resetSendEmail, setResetSendEmail] = useState(true);
   const [resetSaving, setResetSaving] = useState(false);
   const [resetErr, setResetErr] = useState("");
+  const [resetResult, setResetResult] = useState(null);
 
   const loadCompanies = useCallback(async () => {
     setLoadingCompanies(true);
@@ -179,6 +181,13 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
+        const code = data?.error;
+        if (code === "email_required_for_welcome_mail") {
+          throw new Error("E-Mail ist Pflicht, wenn die Einladungs-E-Mail gesendet werden soll.");
+        }
+        if (code === "username_password_required") {
+          throw new Error("Benutzername und Passwort (min. 10 Zeichen) — oder Passwort leer für Auto-Generierung.");
+        }
         throw new Error(data?.error || data?.hint || `HTTP ${res.status}`);
       }
       setCreateOnboarding(data?.onboarding ?? null);
@@ -190,7 +199,7 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
         email: "",
         role: "staff",
         password: "",
-        sendWelcomeEmail: false,
+        sendWelcomeEmail: true,
         accessKind: "",
         accessKindNote: "",
         attachmentFile: null,
@@ -252,11 +261,25 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
         {
           method: "POST",
           headers: adminApiHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ newPassword }),
+          body: JSON.stringify({
+            ...(newPassword.trim() ? { newPassword: newPassword.trim() } : {}),
+            sendWelcomeEmail: resetSendEmail,
+          }),
         },
       );
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || data?.hint || `HTTP ${res.status}`);
+      if (!res.ok) {
+        if (data?.error === "email_required_for_welcome_mail") {
+          throw new Error("E-Mail am Zugang fehlt — E-Mail-Versand abwählen oder E-Mail nachtragen.");
+        }
+        throw new Error(data?.error || data?.hint || `HTTP ${res.status}`);
+      }
+      setResetResult({
+        username: resetUser.username,
+        newPassword: data?.newPassword ?? (newPassword.trim() || null),
+        welcomeEmail: data?.welcomeEmail ?? null,
+        mustChangePassword: data?.mustChangePassword !== false,
+      });
       setResetUser(null);
       setNewPassword("");
     } catch (err) {
@@ -327,6 +350,20 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
       </div>
 
       {error ? <div className="admin-error-banner">{error}</div> : null}
+      {resetResult?.username ? (
+        <div className="admin-info-banner">
+          Passwort gesetzt für <strong>{resetResult.username}</strong>
+          {resetResult.newPassword ? ` — Passwort: ${resetResult.newPassword}` : ""}. Beim nächsten Login ist Passwortwechsel Pflicht.
+          {resetResult.welcomeEmail?.sent === true ? " E-Mail wurde versendet." : null}
+          {resetResult.welcomeEmail?.sent === false ? (
+            <span>
+              {" "}
+              — E-Mail nicht versendet ({resetResult.welcomeEmail.reason ?? "unbekannt"}).
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       {createOnboarding?.username ? (
         <div className="admin-info-banner">
           Zugang erstellt: <strong>{createOnboarding.username}</strong>
@@ -392,7 +429,9 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
                     disabled={!u.isActive}
                     onClick={() => {
                       setResetErr("");
+                      setResetResult(null);
                       setNewPassword("");
+                      setResetSendEmail(Boolean((u.email ?? "").trim()));
                       setResetUser(u);
                     }}
                   >
@@ -460,6 +499,9 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
                   autoComplete="new-password"
                   placeholder="Leer lassen = automatisch erzeugen"
                 />
+                <p className="admin-entity-card__meta" style={{ marginTop: 6 }}>
+                  Nach dem ersten Login muss der Nutzer das Passwort im Partner-Panel ändern (Pflicht).
+                </p>
               </div>
               <div className="admin-filter-item">
                 <label className="admin-field-label">Art des Zugangs (Hinweis für E-Mail / Protokoll)</label>
@@ -601,17 +643,36 @@ export default function PanelUsersPage({ initialCompanyId = null, onInitialCompa
             <form className="admin-modal__body" onSubmit={submitReset}>
               {resetErr ? <div className="admin-error-banner">{resetErr}</div> : null}
               <div className="admin-filter-item">
-                <label className="admin-field-label">Neues Passwort (min. 10 Zeichen)</label>
+                <label className="admin-field-label">Neues Passwort (optional, min. 10 Zeichen)</label>
                 <input
                   className="admin-input"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  required
                   minLength={10}
                   autoComplete="new-password"
+                  placeholder="Leer lassen = automatisch erzeugen"
                 />
               </div>
+              <label className="admin-switch-row" style={{ marginTop: 8 }}>
+                <span className="admin-switch-row__label">
+                  E-Mail mit neuem Passwort senden{resetUser?.email ? ` (${resetUser.email})` : ""}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={resetSendEmail}
+                  disabled={!String(resetUser?.email ?? "").trim()}
+                  onChange={(e) => setResetSendEmail(e.target.checked)}
+                />
+              </label>
+              {!String(resetUser?.email ?? "").trim() ? (
+                <p className="admin-entity-card__meta" style={{ marginTop: 6 }}>
+                  Ohne E-Mail am Zugang nur manuelle Weitergabe des Passworts möglich.
+                </p>
+              ) : null}
+              <p className="admin-entity-card__meta" style={{ marginTop: 8 }}>
+                Beim nächsten Login im Partner-Panel ist Passwortwechsel Pflicht.
+              </p>
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                 <button type="submit" className="admin-btn-refresh" disabled={resetSaving}>
                   {resetSaving ? "…" : "Passwort setzen"}

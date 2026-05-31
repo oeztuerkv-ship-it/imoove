@@ -60,6 +60,17 @@ function formatPatchError(res, json) {
   if (code === "validation_failed") return "Validierung fehlgeschlagen — markierte Felder prüfen.";
   if (code === "empty_patch") return "Keine speicherbaren Felder — bitte einen Wert ändern.";
   if (code === "company_code_duplicate") return "Mandanten-Code ist bereits vergeben.";
+  if (code === "company_code_too_short") {
+    return "Mandanten-Code: mindestens 2 Zeichen (A–Z, 0–9, Bindestrich) — Feld leer lassen, wenn unverändert.";
+  }
+  if (code === "company_code_too_long") return "Mandanten-Code: maximal 16 Zeichen.";
+  if (code === "company_code_invalid") {
+    return "Mandanten-Code: nur Großbuchstaben, Ziffern und Bindestriche (nicht am Anfang/Ende).";
+  }
+  if (code === "invoice_prefix_too_short") {
+    return "Rechnungs-Prefix: mindestens 2 Zeichen — leer lassen, wenn unverändert.";
+  }
+  if (code === "invoice_prefix_too_long") return "Rechnungs-Prefix: maximal 8 Zeichen.";
   return code || `Speichern fehlgeschlagen (HTTP ${res.status})`;
 }
 
@@ -318,18 +329,20 @@ export default function CompanyMandateEditBlocks({
               onChange={(e) => setStammdaten((s) => ({ ...s, trade_license_number: e.target.value }))}
             />
           </Field>
-          <Field label="Mandanten-Code" error={fe("company_code")}>
+          <Field label="Mandanten-Code (optional, min. 2 Zeichen)" error={fe("company_code")}>
             <input
               className="admin-m-inp"
               value={stammdaten.company_code}
               onChange={(e) => setStammdaten((s) => ({ ...s, company_code: e.target.value }))}
+              placeholder="Leer = unverändert"
             />
           </Field>
-          <Field label="Rechnungs-Prefix" error={fe("invoice_prefix")}>
+          <Field label="Rechnungs-Prefix (optional, min. 2 Zeichen)" error={fe("invoice_prefix")}>
             <input
               className="admin-m-inp"
               value={stammdaten.invoice_prefix}
               onChange={(e) => setStammdaten((s) => ({ ...s, invoice_prefix: e.target.value }))}
+              placeholder="Leer = unverändert"
             />
           </Field>
         </div>
@@ -337,11 +350,20 @@ export default function CompanyMandateEditBlocks({
           type="button"
           label="Stammdaten speichern"
           busy={busy === "stammdaten"}
-          onClick={() => saveSection("stammdaten", stammdaten, () => {
+          onClick={() => {
+            const body = { ...stammdaten };
+            if (!String(body.company_code ?? "").trim()) delete body.company_code;
+            if (!String(body.invoice_prefix ?? "").trim()) delete body.invoice_prefix;
+            return saveSection("stammdaten", body, () => {
             const err = {};
             if (!String(stammdaten.name || "").trim()) err.name = "Pflichtfeld";
+            const cc = String(stammdaten.company_code ?? "").trim();
+            if (cc && cc.length < 2) err.company_code = "Mindestens 2 Zeichen";
+            const ip = String(stammdaten.invoice_prefix ?? "").trim();
+            if (ip && ip.length < 2) err.invoice_prefix = "Mindestens 2 Zeichen";
             return err;
-          })}
+          });
+          }}
         />
       </section>
 
