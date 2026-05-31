@@ -56,6 +56,45 @@ const MSG: Record<DriverReadinessBlockCode, string> = {
 /** Sichtbarkeit in Fahrer-App (Kurz-Titel fürs Banner, ausführlicher Text). */
 export type FleetDriverMeBlockKind = "access_suspended" | "vehicle" | "compliance" | "other";
 
+const DRIVER_APP_NOT_READY_TITLE = "Noch nicht freigeschaltet";
+
+const DRIVER_APP_NOT_READY_LEAD =
+  "Sie sind noch nicht freigeschaltet. Ihr Unternehmen muss im Partner-Portal die fehlenden Daten ergänzen — bis dahin sind Aufträge gesperrt. Die Anmeldung in der App ist möglich.";
+
+/** Kurze Stichpunkte für Fahrer (ohne Admin-Jargon). */
+const DRIVER_APP_MISSING_SHORT: Partial<Record<DriverReadinessBlockCode, string>> = {
+  company_not_ready: "Unternehmen: Stammdaten oder Nachweise",
+  p_schein_date_missing: "P-Schein: Ablaufdatum",
+  p_schein_expired: "P-Schein: abgelaufen",
+  p_schein_doc_missing: "P-Schein: Nachweis (PDF)",
+  no_vehicle_assigned: "Fahrzeug dem Fahrer zuweisen",
+  vehicle_not_approved: "Fahrzeug: Freigabe",
+  vehicle_blocked: "Fahrzeug: gesperrt",
+  vehicle_rejected: "Fahrzeug: abgelehnt",
+  vehicle_pending_approval: "Fahrzeug: Prüfung durch Onroda",
+  vehicle_draft: "Fahrzeug: Daten und Unterlagen",
+  driver_not_approved: "Freigabe durch Onroda",
+};
+
+function driverAppMissingBullets(blockReasons: DriverReadinessBlock[]): string[] {
+  const seen = new Set<string>();
+  const lines: string[] = [];
+  for (const b of blockReasons) {
+    const short = DRIVER_APP_MISSING_SHORT[b.code];
+    const line = short ?? b.message;
+    if (!line || seen.has(line)) continue;
+    seen.add(line);
+    lines.push(line);
+  }
+  return lines;
+}
+
+function buildDriverAppNotReadyMessage(readiness: DriverReadinessResult): string {
+  const bullets = driverAppMissingBullets(readiness.blockReasons);
+  if (bullets.length === 0) return DRIVER_APP_NOT_READY_LEAD;
+  return `${DRIVER_APP_NOT_READY_LEAD}\n\nEs fehlt noch:\n• ${bullets.join("\n• ")}`;
+}
+
 export function buildFleetDriverMeClientHints(
   readiness: DriverReadinessResult,
   listRow: Pick<FleetDriverListRow, "suspensionReason">,
@@ -83,35 +122,10 @@ export function buildFleetDriverMeClientHints(
       driverBlockKind: "access_suspended",
     };
   }
-  const vehicleish = new Set<DriverReadinessBlockCode>([
-    "no_vehicle_assigned",
-    "vehicle_not_approved",
-    "vehicle_blocked",
-    "vehicle_rejected",
-    "vehicle_pending_approval",
-    "vehicle_draft",
-  ]);
-  if ([...codes].some((c) => vehicleish.has(c))) {
-    return {
-      blockBannerTitle: "Fahrzeug",
-      notFreigegebenMessage: [
-        "Ihr Fahrzeug ist nicht freigegeben oder gesperrt. Bitte wenden Sie sich an Ihr Unternehmen.",
-        ...readiness.blockReasons.filter((b) => vehicleish.has(b.code)).map((b) => b.message),
-      ].join("\n\n"),
-      driverBlockKind: "vehicle",
-    };
-  }
-  if (codes.has("company_not_ready")) {
-    return {
-      blockBannerTitle: "Unternehmen",
-      notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
-      driverBlockKind: "compliance",
-    };
-  }
   return {
-    blockBannerTitle: "Voraussetzungen",
-    notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
-    driverBlockKind: "other",
+    blockBannerTitle: DRIVER_APP_NOT_READY_TITLE,
+    notFreigegebenMessage: buildDriverAppNotReadyMessage(readiness),
+    driverBlockKind: "compliance",
   };
 }
 
