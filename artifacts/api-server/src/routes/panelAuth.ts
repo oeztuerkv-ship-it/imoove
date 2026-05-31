@@ -1,8 +1,20 @@
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import {
   findActivePanelUserByEmailNormalized,
+  findActivePanelUserById,
+  findActivePanelUserByIdentity,
   findActivePanelUserByUsername,
 } from "../db/panelAuthData";
+import {
+  createPanelPasswordResetToken,
+  findUsablePanelPasswordResetByTokenHash,
+  markPanelPasswordResetUsed,
+} from "../db/panelPasswordResetData";
+import { insertPanelAuditLog } from "../db/panelAuditData";
+import { updatePanelUserPasswordInCompany } from "../db/panelUsersData";
+import { buildPanelPasswordResetLink, sendPanelPasswordResetMail } from "../lib/panelPasswordResetMail";
+import { hashPassword } from "../lib/password";
 import { eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "../db/client";
 import { adminCompaniesTable } from "../db/schema";
@@ -229,6 +241,125 @@ router.post("/panel-auth/login", async (req, res) => {
  * Stateless JWT: Server speichert keine Session. Client verwirft das Token.
  */
 router.post("/panel-auth/logout", (_req, res) => {
+  res.json({ ok: true });
+});
+
+function hashPanelResetToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+/** Passwort-vergessen: neutrale Antwort (keine Enumeration), E-Mail mit Link an hinterlegte Adresse. */
+router.post("/panel-auth/password-reset/request", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPanelLogin(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+
+  const generic = {
+    ok: true,
+    message:
+      "Wenn ein passender Zugang existiert, erhalten Sie in Kürze eine E-Mail mit einem Link zum Festlegen eines neuen Passworts.",
+  };
+
+  const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
+  if (!identity || !isPostgresConfigured()) {
+    res.json(generic);
+    return;
+  }
+
+  const row = await findActivePanelUserByIdentity(identity);
+  if (!row) {
+    res.json(generic);
+    return;
+  }
+
+  const recipient = (row.email ?? "").trim();
+  if (!recipient.includes("@")) {
+    res.json(generic);
+    return;
+  }
+
+  const rawToken = randomBytes(32).toString("base64url");
+  const tokenHash = hashPanelResetToken(rawToken);
+  const configuredTtlMin = Number(process.env.PANEL_AUTH_RESET_TOKEN_TTL_MINUTES ?? "30");
+  const ttlMs = Math.max(1, Number.isFinite(configuredTtlMin) ? configuredTtlMin : 30) * 60 * 1000;
+  const expiresAt = new Date(Date.now() + ttlMs);
+
+  await createPanelPasswordResetToken({
+    panelUserId: row.id,
+    tokenHash,
+    expiresAt,
+  });
+
+  const resetLink = buildPanelPasswordResetLink(rawToken);
+  const mailResult = await sendPanelPasswordResetMail({
+    to: recipient,
+    resetLink,
+    username: row.username,
+    expiresAt,
+  });
+
+  await insertPanelAuditLog({
+    id: randomUUID(),
+    companyId: row.company_id,
+    actorPanelUserId: null,
+    action: "panel.auth.password_reset_requested",
+    subjectType: "panel_user",
+    subjectId: row.id,
+    meta: {
+      mailSent: mailResult.ok,
+      ...(mailResult.ok ? {} : { mailFailureReason: mailResult.reason }),
+    },
+  });
+
+  res.json(generic);
+});
+
+router.post("/panel-auth/password-reset/confirm", async (req, res) => {
+  const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+  const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  if (!token || newPassword.length < 10) {
+    res.status(400).json({ error: "reset_payload_invalid", hint: "token + newPassword(min10)" });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+
+  const reset = await findUsablePanelPasswordResetByTokenHash(hashPanelResetToken(token));
+  if (!reset) {
+    res.status(400).json({ error: "invalid_or_expired_reset_token" });
+    return;
+  }
+
+  const user = await findActivePanelUserById(reset.panelUserId);
+  if (!user) {
+    res.status(400).json({ error: "invalid_or_expired_reset_token" });
+    return;
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  const updated = await updatePanelUserPasswordInCompany(user.id, user.company_id, passwordHash, false);
+  await markPanelPasswordResetUsed(reset.id);
+  if (!updated) {
+    res.status(500).json({ error: "password_update_failed" });
+    return;
+  }
+
+  await insertPanelAuditLog({
+    id: randomUUID(),
+    companyId: user.company_id,
+    actorPanelUserId: user.id,
+    action: "panel.auth.password_reset_completed",
+    subjectType: "panel_user",
+    subjectId: user.id,
+    meta: { resetId: reset.id },
+  });
+
   res.json({ ok: true });
 });
 

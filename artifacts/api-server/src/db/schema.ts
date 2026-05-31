@@ -337,6 +337,18 @@ export const panelUsersTable = pgTable("panel_users", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Einmal-Tokens für Partner-Panel Passwort-vergessen (gehasht, ablaufend, single-use). */
+export const panelPasswordResetsTable = pgTable("panel_password_resets", {
+  id: text("id").primaryKey(),
+  panel_user_id: text("panel_user_id")
+    .notNull()
+    .references(() => panelUsersTable.id, { onDelete: "cascade" }),
+  token_hash: text("token_hash").notNull(),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  used_at: timestamp("used_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Firmen-Compliance (Gewerbe-/Versicherungsnachweis): aktuelle Fassung pro Typ, Prüf-Metadaten. */
 export const companyComplianceDocumentsTable = pgTable("company_compliance_documents", {
   id: text("id").primaryKey(),

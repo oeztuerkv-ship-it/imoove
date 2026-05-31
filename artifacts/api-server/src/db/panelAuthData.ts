@@ -73,6 +73,17 @@ export async function findActivePanelUserByUsername(
  * Gleiche Semantik wie `findActivePanelUserByUsername`, aber Abgleich über **geschäftliche E-Mail** (trim, lower).
  * Bei mehreren Treffern (seltene Dubletten) `null`, damit kein falscher Mandant gewählt wird.
  */
+/** Login / Passwort-vergessen: Benutzername oder E-Mail (wie `/panel-auth/login`). */
+export async function findActivePanelUserByIdentity(identity: string): Promise<PanelUserRow | null> {
+  const id = identity.trim();
+  if (!id) return null;
+  let row = await findActivePanelUserByUsername(id);
+  if (!row && id.includes("@")) {
+    row = await findActivePanelUserByEmailNormalized(id);
+  }
+  return row;
+}
+
 export async function findActivePanelUserByEmailNormalized(
   email: string,
 ): Promise<PanelUserRow | null> {

@@ -163,6 +163,13 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'panel_password_resets'
+  ) THEN
+    errs := array_append(errs, 'table panel_password_resets (Migration 092)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'fare_areas' AND column_name = 'base_fare_eur'
   ) THEN
