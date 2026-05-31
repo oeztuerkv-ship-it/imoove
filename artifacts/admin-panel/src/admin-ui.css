@@ -3133,6 +3133,38 @@ ul.admin-mandate-doclist {
   font-size: 0.95rem;
 }
 
+.admin-taxi-onboarding {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-onb-ampel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+.admin-onb-ampel--ok {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.admin-onb-ampel--pending {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.admin-onb-ampel--bad {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.admin-onb-ampel__emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
 /* —— Mandantenliste (Seitenhülle = admin-page wie Fahrten) —— */
 .admin-companies__head {
   margin-bottom: 0;

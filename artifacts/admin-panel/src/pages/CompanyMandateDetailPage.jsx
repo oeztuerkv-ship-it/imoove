@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
+import CompanyTaxiOnboardingSections from "../components/CompanyTaxiOnboardingSections.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -1523,6 +1524,8 @@ export default function CompanyMandateDetailPage({
           </section>
 
           {data.taxi ? (
+            <>
+              <CompanyTaxiOnboardingSections companyId={companyId} onChanged={() => void loadMandate()} />
             <section className="admin-section-block">
               <div className="admin-m-card__h">
                 <div style={{ minWidth: 0 }}>
@@ -1900,6 +1903,7 @@ export default function CompanyMandateDetailPage({
                 </div>
               ) : null}
             </section>
+            </>
           ) : null}
 
           {data.hotel ? (
