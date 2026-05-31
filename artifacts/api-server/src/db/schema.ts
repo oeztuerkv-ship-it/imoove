@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   date,
   doublePrecision,
   integer,
@@ -10,6 +11,20 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+const pgBytea = customType<{ data: Buffer; driverData: string }>({
+  dataType() {
+    return "bytea";
+  },
+  fromDriver(value: unknown): Buffer {
+    if (Buffer.isBuffer(value)) return value;
+    if (value == null) return Buffer.alloc(0);
+    return Buffer.from(String(value));
+  },
+  toDriver(value: Buffer): Buffer {
+    return value;
+  },
+});
 
 export const adminCompaniesTable = pgTable("admin_companies", {
   id: text("id").primaryKey(),
@@ -88,6 +103,43 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   invoice_prefix: text("invoice_prefix").notNull().default(""),
   /** Reserve; Laufnummer in invoice_number_sequences. */
   invoice_sequence_next: integer("invoice_sequence_next").notNull().default(1),
+  /** Gewerbeschein-Nr. (Onboarding, getrennt von Konzession Hauptnummer). */
+  trade_license_number: text("trade_license_number").notNull().default(""),
+  /** incomplete | pending | approved — Ampel-Freischaltung Taxi-Onboarding. */
+  onboarding_status: text("onboarding_status").notNull().default("incomplete"),
+  onboarding_approved_at: timestamp("onboarding_approved_at", { withTimezone: true }),
+  onboarding_approved_by: text("onboarding_approved_by"),
+  /** Interne Notizen KK-Modul (Admin). */
+  kk_module_notes: text("kk_module_notes").notNull().default(""),
+});
+
+/** Taxi-Onboarding: Fahrzeugregister (vor / parallel zur fleet_vehicles-Flotte). */
+export const companyVehiclesTable = pgTable("company_vehicles", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  license_plate: text("license_plate").notNull(),
+  vehicle_type: text("vehicle_type").notNull(),
+  concession_number: text("concession_number").notNull().default(""),
+  tuev_date: date("tuev_date"),
+  is_active: boolean("is_active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Taxi-Onboarding: hochgeladene Nachweise (Datei in DB). */
+export const companyDocumentsTable = pgTable("company_documents", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  vehicle_id: text("vehicle_id").references(() => companyVehiclesTable.id, { onDelete: "cascade" }),
+  doc_type: text("doc_type").notNull(),
+  file_name: text("file_name").notNull(),
+  file_data: pgBytea("file_data").notNull(),
+  mime_type: text("mime_type").notNull(),
+  uploaded_at: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+  uploaded_by: text("uploaded_by"),
 });
 
 export const invoiceNumberSequencesTable = pgTable(

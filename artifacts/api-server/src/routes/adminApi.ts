@@ -97,6 +97,18 @@ import {
   adminApproveCompanyComplianceDespiteMissingDocuments,
   setCurrentComplianceDocumentReview,
 } from "../db/companyComplianceDocumentsData";
+import {
+  deleteCompanyOnboardingVehicle,
+  getCompanyOnboardingBundle,
+  getCompanyOnboardingDocumentFile,
+  insertCompanyOnboardingDocument,
+  insertCompanyOnboardingVehicle,
+  patchCompanyOnboardingProfile,
+  patchCompanyOnboardingStatus,
+  patchCompanyOnboardingVehicle,
+} from "../db/companyOnboardingData";
+import { COMPANY_DOC_MAX_BYTES, isOnboardingStatus } from "../lib/companyOnboardingConstants";
+import { parseMultipartForm } from "../lib/parseMultipartForm";
 import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
 import {
   getOperationalConfigPayload,
@@ -3534,6 +3546,191 @@ adminJson.post("/companies/:companyId/compliance/approve-despite-missing-documen
     }
     res.json({ ok: true, complianceStatus: r.status });
   } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/companies/:companyId/profile", async (req, res, next) => {
+  try {
+    const company = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!company) return;
+    const bundle = await getCompanyOnboardingBundle(req.params.companyId);
+    if (!bundle) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...bundle });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/companies/:companyId/documents/:docId/file", async (req, res, next) => {
+  try {
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const r = await getCompanyOnboardingDocumentFile(req.params.companyId, req.params.docId);
+    if (!r.ok) {
+      res.status(404).json({ error: r.error });
+      return;
+    }
+    res.setHeader("Content-Type", r.mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(r.fileName)}"`);
+    res.send(r.buffer);
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/companies/:companyId/onboarding-status", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const b = (req.body ?? {}) as { status?: unknown; notes?: unknown };
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    if (!isOnboardingStatus(statusRaw)) {
+      res.status(400).json({ error: "invalid_status" });
+      return;
+    }
+    const notes = typeof b.notes === "string" ? b.notes : undefined;
+    const approvedBy = req.adminAuth?.username?.trim() || null;
+    const r = await patchCompanyOnboardingStatus(req.params.companyId, {
+      status: statusRaw,
+      notes,
+      approvedBy: statusRaw === "approved" ? approvedBy : null,
+    });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true, profile: r.profile });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/companies/:companyId/profile", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const str = (k: string) => (typeof b[k] === "string" ? String(b[k]) : undefined);
+    const r = await patchCompanyOnboardingProfile(req.params.companyId, {
+      name: str("name"),
+      contactName: str("contactName"),
+      email: str("email"),
+      phone: str("phone"),
+      addressLine1: str("addressLine1"),
+      addressLine2: str("addressLine2"),
+      postalCode: str("postalCode"),
+      city: str("city"),
+      country: str("country"),
+      iban: str("iban"),
+      taxNumber: str("taxNumber"),
+      tradeLicenseNumber: str("tradeLicenseNumber"),
+      concessionNumber: str("concessionNumber"),
+      kkModuleNotes: str("kkModuleNotes"),
+      featureKkModule: typeof b.featureKkModule === "boolean" ? b.featureKkModule : undefined,
+      partnerIkNumber: str("partnerIkNumber"),
+      insurerBillingContacts: Array.isArray(b.insurerBillingContacts)
+        ? (b.insurerBillingContacts as { insurerName?: string; insurerIk?: string; email?: string }[])
+        : undefined,
+    });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "no_changes" ? 400 : 503).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true, profile: r.profile });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/companies/:companyId/vehicles", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const r = await insertCompanyOnboardingVehicle(req.params.companyId, {
+      licensePlate: typeof b.licensePlate === "string" ? b.licensePlate : "",
+      vehicleType: typeof b.vehicleType === "string" ? b.vehicleType : "",
+      concessionNumber: typeof b.concessionNumber === "string" ? b.concessionNumber : undefined,
+      tuevDate: typeof b.tuevDate === "string" ? b.tuevDate : null,
+      isActive: b.isActive !== false,
+    });
+    if (!r.ok) {
+      res.status(400).json({ error: r.error });
+      return;
+    }
+    res.status(201).json({ ok: true, vehicle: r.vehicle });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/companies/:companyId/vehicles/:vehicleId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const r = await patchCompanyOnboardingVehicle(req.params.companyId, req.params.vehicleId, {
+      licensePlate: typeof b.licensePlate === "string" ? b.licensePlate : undefined,
+      vehicleType: typeof b.vehicleType === "string" ? b.vehicleType : undefined,
+      concessionNumber: typeof b.concessionNumber === "string" ? b.concessionNumber : undefined,
+      tuevDate: b.tuevDate === null ? null : typeof b.tuevDate === "string" ? b.tuevDate : undefined,
+      isActive: typeof b.isActive === "boolean" ? b.isActive : undefined,
+    });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true, vehicle: r.vehicle });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/companies/:companyId/documents", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
+    const parsed = await parseMultipartForm(req, { maxFileBytes: COMPANY_DOC_MAX_BYTES });
+    if (!parsed.file?.buffer?.length) {
+      res.status(400).json({ error: "file_required" });
+      return;
+    }
+    const r = await insertCompanyOnboardingDocument(req.params.companyId, {
+      docType: parsed.fields.docType ?? parsed.fields.doc_type ?? "",
+      fileName: parsed.file.fileName,
+      mimeType: parsed.file.mimeType,
+      fileData: parsed.file.buffer,
+      vehicleId: (parsed.fields.vehicleId ?? "").trim() || null,
+      uploadedBy: req.adminAuth?.username ?? "admin",
+    });
+    if (!r.ok) {
+      res.status(400).json({ error: r.error });
+      return;
+    }
+    res.status(201).json({ ok: true, document: r.document });
+  } catch (e) {
+    if (e instanceof Error && e.message === "file_too_large") {
+      res.status(413).json({ error: "file_too_large" });
+      return;
+    }
     next(e);
   }
 });

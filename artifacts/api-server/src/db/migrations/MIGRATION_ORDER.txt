@@ -84,6 +84,9 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Krankenfahrt T-Schein-Belege (transport_vouchers)                         → 085_transport_vouchers.sql
   Krankenfahrten-Sammelrechnungen + KK-Kontakte am Mandanten                → 086_kranken_invoices.sql
   KK-Modul SaaS (feature_kk_module, Fahrer-Berechtigungen)                  → 087_kk_module_feature.sql
+  Taxi-Onboarding Ampel + trade_license_number                               → 088_taxi_company_onboarding_admin.sql
+  Onboarding-Fahrzeugliste company_vehicles                                  → 089_company_vehicles.sql
+  Onboarding-Dokumente company_documents (bytea)                               → 090_company_documents.sql
 
 Nach Migrationen Schema prüfen:
 

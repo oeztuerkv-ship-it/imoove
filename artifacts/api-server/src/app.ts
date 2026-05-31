@@ -130,6 +130,10 @@ const jsonBodyPartnerRegDoc = express.json({ limit: "12mb" });
 const urlencodedDefault = express.urlencoded({ extended: true, limit: "200kb" });
 
 app.use((req, res, next) => {
+  const ct = String(req.headers["content-type"] ?? "").toLowerCase();
+  if (ct.includes("multipart/form-data")) {
+    return next();
+  }
   if (req.method !== "POST" && req.method !== "PUT" && req.method !== "PATCH") {
     return jsonBodyDefault(req, res, next);
   }
@@ -149,7 +153,7 @@ app.use((req, res, next) => {
 /** Nach JSON-Parser: urlencoded nur bei nicht-JSON (sonst doppeltes Lesen / falsches Limit). */
 app.use((req, res, next) => {
   const ct = String(req.headers["content-type"] ?? "").toLowerCase();
-  if (ct.includes("application/json")) {
+  if (ct.includes("application/json") || ct.includes("multipart/form-data")) {
     return next();
   }
   return urlencodedDefault(req, res, next);

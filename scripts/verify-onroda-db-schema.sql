@@ -1119,6 +1119,27 @@ BEGIN
     errs := array_append(errs, 'fleet_drivers.is_owner (Migration 087)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'onboarding_status'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.onboarding_status (Migration 088)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'company_vehicles'
+  ) THEN
+    errs := array_append(errs, 'table company_vehicles (Migration 089)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'company_documents'
+  ) THEN
+    errs := array_append(errs, 'table company_documents (Migration 090)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',
