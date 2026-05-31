@@ -11,6 +11,12 @@ import {
 
 const FP_BLOCK = "admin_platform_block_reason";
 
+function ampelMeta(status) {
+  if (status === "approved") return { emoji: "🟢", label: "Freigegeben", cls: "admin-onb-ampel--ok" };
+  if (status === "pending") return { emoji: "🟡", label: "Ausstehend", cls: "admin-onb-ampel--pending" };
+  return { emoji: "🔴", label: "Unvollständig", cls: "admin-onb-ampel--bad" };
+}
+
 function asObj(v) {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   return { ...v };
@@ -142,8 +148,8 @@ export default function CompanyMandateEditBlocks({
     resetForms();
   }, [resetForms]);
 
-  const saveSection = async (section, body, localValidate) => {
-    setBusy(section);
+  const saveSection = async (section, body, localValidate, busyKey = section) => {
+    setBusy(busyKey);
     setSectionErr("");
     setFieldErrors({});
     const localErr = localValidate ? localValidate() : {};
@@ -154,6 +160,9 @@ export default function CompanyMandateEditBlocks({
     }
     try {
       await patchCompanySection(companyId, section, body);
+      if (section === "status") {
+        setStatus((prev) => ({ ...prev, ...body }));
+      }
       onSaved?.();
     } catch (e) {
       setSectionErr(e.message || "Speichern fehlgeschlagen");
@@ -164,6 +173,60 @@ export default function CompanyMandateEditBlocks({
   };
 
   const fe = (k) => fieldErrors[k] || "";
+  const amp = ampelMeta(status.onboarding_status);
+  const statusBusy = busy === "status" || busy === "status-activate" || busy === "status-deactivate";
+  const fullyActive =
+    status.is_active &&
+    !status.is_blocked &&
+    status.panel_access_enabled &&
+    status.onboarding_status === "approved" &&
+    status.contract_status === "active";
+  const fullyInactive = !status.is_active && !status.panel_access_enabled;
+
+  const quickActivate = async () => {
+    setBusy("status-activate");
+    setSectionErr("");
+    setFieldErrors({});
+    try {
+      const r = await fetch(
+        `${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/onboarding-status`,
+        {
+          method: "PATCH",
+          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "approved" }),
+        },
+      );
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const body = {
+        is_active: true,
+        is_blocked: false,
+        panel_access_enabled: true,
+        onboarding_status: "approved",
+        contract_status: "active",
+      };
+      await patchCompanySection(companyId, "status", body);
+      setStatus((prev) => ({ ...prev, ...body }));
+      onSaved?.();
+    } catch (e) {
+      setSectionErr(e.message || "Aktivieren fehlgeschlagen");
+      if (e.fieldErrors) setFieldErrors(e.fieldErrors);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const quickDeactivate = () =>
+    saveSection(
+      "status",
+      {
+        is_active: false,
+        panel_access_enabled: false,
+        contract_status: "inactive",
+      },
+      undefined,
+      "status-deactivate",
+    );
 
   return (
     <>
@@ -472,7 +535,7 @@ export default function CompanyMandateEditBlocks({
         </div>
         <AdminOnboardingBlockFooter
           label="Betrieb/Status speichern"
-          busy={busy === "status"}
+          busy={statusBusy}
           onClick={() => saveSection("status", status)}
         />
       </section>
