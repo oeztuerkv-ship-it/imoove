@@ -450,6 +450,7 @@ export default function ProfilePage() {
 
           <RoSection title="Taxi / Unternehmen">
             <RoRow label="Unternehmensart" value={companyKindLabel(company.companyKind)} />
+            <RoRow label="Institutionskennzeichen (IK)" value={company.partnerIkNumber || "—"} />
             <RoRow label="Konzessionsnummer" value={company.concessionNumber} />
             <RoRow label="Genehmigung / Lizenz (Vermerk)" value={company.businessNotes} multiline />
           </RoSection>

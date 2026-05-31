@@ -10,6 +10,7 @@ import {
   rideStatusLabelDe,
 } from "../../dashboard/dashboardHelpers.js";
 import { filterMedicalRides, formatMoney, rideFareAmount } from "../finance/financeHelpers.js";
+import TaxiKrankenSammelrechnungTab from "./TaxiKrankenSammelrechnungTab.jsx";
 
 function panelHeaders(jwt) {
   const t = typeof jwt === "string" ? jwt.trim() : "";
@@ -213,6 +214,7 @@ export default function TaxiKrankenfahrtenPage() {
           { id: "muster4", label: "Muster 4" },
           { id: "series", label: "Serienfahrten" },
           { id: "billing", label: "Abrechnung" },
+          { id: "sammel", label: "Sammelrechnung" },
         ].map((t) => (
           <button
             key={t.id}
@@ -489,6 +491,8 @@ export default function TaxiKrankenfahrtenPage() {
           </div>
         </div>
       ) : null}
+
+      {tab === "sammel" ? <TaxiKrankenSammelrechnungTab /> : null}
 
       <div className="partner-card partner-card--section partner-card--hint">
         <p className="partner-muted" style={{ margin: 0 }}>
