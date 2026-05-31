@@ -72,6 +72,11 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   commission_rate: doublePrecision("commission_rate").notNull().default(0.1),
   /** Institutionskennzeichen (IK) des Partners — Snapshot in medical_cases. */
   partner_ik_number: text("partner_ik_number").notNull().default(""),
+  /** Vorlagen Krankenkassen-Abrechnung: [{ insurerName, insurerIk, email }]. */
+  insurer_billing_contacts_json: jsonb("insurer_billing_contacts_json")
+    .$type<Array<{ insurerName?: string; insurerIk?: string; email?: string }>>()
+    .notNull()
+    .default([]),
   /** ONRODA-Admin: Krankenfahrten + Transportschein-Scanner für diesen Mandanten. */
   medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
   /** Öffentlicher Mandanten-Code (eindeutig), nicht company_id. */
@@ -1256,3 +1261,70 @@ export const appServiceRegionsTable = pgTable("app_service_regions", {
   sort_order: integer("sort_order").notNull().default(0),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** T-Schein-Beleg je Krankenfahrt (vor Sammelrechnung status=open). */
+export const transportVouchersTable = pgTable("transport_vouchers", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  patient_name: text("patient_name").notNull().default(""),
+  insurer_name: text("insurer_name").notNull().default(""),
+  insurer_ik: text("insurer_ik").notNull().default(""),
+  insurer_email: text("insurer_email").notNull().default(""),
+  fare_amount: doublePrecision("fare_amount").notNull().default(0),
+  commission_amount: doublePrecision("commission_amount").notNull().default(0),
+  net_amount: doublePrecision("net_amount").notNull().default(0),
+  commission_rate_snap: doublePrecision("commission_rate_snap").notNull().default(0),
+  status: text("status").notNull().default("open"),
+  kranken_invoice_id: text("kranken_invoice_id"),
+  billed_at: timestamp("billed_at", { withTimezone: true }),
+  paid_at: timestamp("paid_at", { withTimezone: true }),
+  ride_reference_at: timestamp("ride_reference_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Sammelrechnung Taxi → Krankenkasse (ONRODA dokumentiert + PDF). */
+export const krankenInvoicesTable = pgTable("kranken_invoices", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  insurer_name: text("insurer_name").notNull().default(""),
+  insurer_ik: text("insurer_ik").notNull().default(""),
+  insurer_email: text("insurer_email").notNull().default(""),
+  invoice_number: text("invoice_number").notNull(),
+  period_from: date("period_from").notNull(),
+  period_to: date("period_to").notNull(),
+  total_amount: doublePrecision("total_amount").notNull().default(0),
+  commission_amount: doublePrecision("commission_amount").notNull().default(0),
+  net_amount: doublePrecision("net_amount").notNull().default(0),
+  commission_rate_snap: doublePrecision("commission_rate_snap").notNull().default(0),
+  status: text("status").notNull().default("draft"),
+  sent_at: timestamp("sent_at", { withTimezone: true }),
+  sent_to: text("sent_to").notNull().default(""),
+  paid_at: timestamp("paid_at", { withTimezone: true }),
+  pdf_storage_key: text("pdf_storage_key").notNull().default(""),
+  ride_count: integer("ride_count").notNull().default(0),
+  metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const krankenInvoiceSequencesTable = pgTable(
+  "kranken_invoice_sequences",
+  {
+    company_id: text("company_id")
+      .notNull()
+      .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+    year: integer("year").notNull(),
+    next_seq: integer("next_seq").notNull().default(1),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.company_id, t.year] }),
+  }),
+);

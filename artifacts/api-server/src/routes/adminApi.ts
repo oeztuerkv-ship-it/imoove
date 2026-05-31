@@ -235,6 +235,7 @@ import {
 } from "../lib/partnerApprovalMail";
 import { logger } from "../lib/logger";
 import adminInsuranceRouter from "./adminInsuranceApi";
+import adminKrankenInvoiceRouter from "./adminKrankenInvoiceRoutes";
 import adminAppNewsRouter from "./adminAppNewsRouter";
 import adminCustomerAccountsRouter from "./adminCustomerAccountsRouter";
 import adminAppSponsorsRouter from "./adminAppSponsorsRouter";
@@ -866,6 +867,7 @@ const adminJson: IRouter = Router();
 adminJson.use(requireAdminApiBearer);
 /** Krankenkassen-Modus: nur Whitelist-DTO, kein Mix mit /panel/v1. */
 adminJson.use("/insurance", adminInsuranceRouter);
+adminJson.use(adminKrankenInvoiceRouter);
 /** Mobile App-Neuigkeiten (CMS, Admin + Service). */
 adminJson.use("/app-news", adminAppNewsRouter);
 adminJson.use("/customer-accounts", adminCustomerAccountsRouter);

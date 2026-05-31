@@ -112,6 +112,8 @@ const seedCompanies: CompanyRow[] = [
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
     medical_transport_enabled: false,
+    partner_ik_number: "",
+    insurer_billing_contacts_json: [],
   },
   {
     id: "co-demo-2",
@@ -165,6 +167,8 @@ const seedCompanies: CompanyRow[] = [
     partner_panel_profile_locked: false,
     commission_rate: 0.1,
     medical_transport_enabled: false,
+    partner_ik_number: "",
+    insurer_billing_contacts_json: [],
   },
 ];
 
@@ -247,6 +251,10 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     commission_rate:
       typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
     medical_transport_enabled: Boolean(r.medical_transport_enabled),
+    partner_ik_number: r.partner_ik_number ?? "",
+    insurer_billing_contacts_json: Array.isArray(r.insurer_billing_contacts_json)
+      ? (r.insurer_billing_contacts_json as Array<{ insurerName?: string; insurerIk?: string; email?: string }>)
+      : [],
     company_code: r.company_code ?? "",
     invoice_prefix: r.invoice_prefix ?? "",
     invoice_sequence_next:
@@ -600,6 +608,8 @@ export type AdminCompanyUpdateBody = Partial<{
   panel_modules?: string[] | null;
   /** ONRODA-Admin: Krankenfahrten für diesen Mandanten freigeschaltet. */
   medical_transport_enabled: boolean;
+  partner_ik_number: string;
+  insurer_billing_contacts_json: Array<{ insurerName?: string; insurerIk?: string; email?: string }>;
   company_code: string;
   invoice_prefix: string;
   invoice_sequence_next: number;
@@ -694,6 +704,8 @@ function companyRowToDbValues(c: CompanyRow) {
     partner_panel_profile_locked: c.partner_panel_profile_locked,
     commission_rate: c.commission_rate,
     medical_transport_enabled: c.medical_transport_enabled,
+    partner_ik_number: c.partner_ik_number ?? "",
+    insurer_billing_contacts_json: c.insurer_billing_contacts_json ?? [],
     company_code: c.company_code,
     invoice_prefix: c.invoice_prefix,
     invoice_sequence_next: c.invoice_sequence_next,
@@ -807,6 +819,12 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   }
   if (typeof body.medical_transport_enabled === "boolean") {
     next.medical_transport_enabled = body.medical_transport_enabled;
+  }
+  if (typeof body.partner_ik_number === "string") {
+    next.partner_ik_number = body.partner_ik_number.replace(/\D/g, "").slice(0, 9);
+  }
+  if (body.insurer_billing_contacts_json !== undefined && Array.isArray(body.insurer_billing_contacts_json)) {
+    next.insurer_billing_contacts_json = body.insurer_billing_contacts_json as CompanyRow["insurer_billing_contacts_json"];
   }
   if (typeof body.company_code === "string") {
     const v = validateCompanyCode(body.company_code);

@@ -67,6 +67,8 @@ export interface PanelCompanyPublic {
   maxVehicles: number;
   /** Basis-Stammdaten im Panel abgeschlossen — Änderungen nur per Change-Request. */
   profileLocked: boolean;
+  /** Institutionskennzeichen (Leistungserbringer) — Pflege primär durch Plattform-Admin. */
+  partnerIkNumber: string;
   /**
    * Nachweise Gewerbe/Versicherung: abgeleitet aus `company_compliance_documents` + `admin_companies` Speicher-Keys
    * (uploadedAt ISO-8601, reviewStatus pending|approved|rejected, reviewNote leer, wenn abgelehnt mit Begründung).
@@ -211,6 +213,7 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     maxDrivers: r.max_drivers ?? 100,
     maxVehicles: r.max_vehicles ?? 100,
     profileLocked: Boolean(r.partner_panel_profile_locked),
+    partnerIkNumber: r.partner_ik_number ?? "",
     complianceDocuments: {
       gewerbe: { uploadedAt: "", reviewStatus: "", reviewNote: "" },
       insurance: { uploadedAt: "", reviewStatus: "", reviewNote: "" },

@@ -1077,6 +1077,27 @@ BEGIN
     errs := array_append(errs, 'partner_messages.batch_id (Migration 083)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'transport_vouchers'
+  ) THEN
+    errs := array_append(errs, 'table transport_vouchers (Migration 085)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'kranken_invoices'
+  ) THEN
+    errs := array_append(errs, 'table kranken_invoices (Migration 086)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'insurer_billing_contacts_json'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.insurer_billing_contacts_json (Migration 086)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

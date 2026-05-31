@@ -31,6 +31,7 @@ export async function sendOnrodaMail(input: {
   text: string;
   html: string;
   logEvent?: string;
+  attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
   const smtpUrl = resolveOnrodaSmtpUrl();
   const from = resolveOnrodaMailFrom();
@@ -44,7 +45,18 @@ export async function sendOnrodaMail(input: {
 
   try {
     const transport = nodemailer.createTransport(smtpUrl);
-    await transport.sendMail({ from, to, subject: input.subject, text: input.text, html: input.html });
+    await transport.sendMail({
+      from,
+      to,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+      attachments: input.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType ?? "application/pdf",
+      })),
+    });
     if (input.logEvent) {
       logger.info({ event: input.logEvent, to: to.replace(/(.{2}).*(@.*)/, "$1…$2") }, "onroda mail sent");
     }
