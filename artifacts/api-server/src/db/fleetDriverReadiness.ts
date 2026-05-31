@@ -251,19 +251,18 @@ export type PanelFleetDriverView = FleetDriverListRow & {
 };
 
 export async function getPanelFleetDriverViews(companyId: string): Promise<PanelFleetDriverView[]> {
-  const [gate, rows, ass, veh, hasPlate] = await Promise.all([
+  const [gate, rows, ass, veh] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listFleetDriversForCompany(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
-    companyHasFleetVehicleWithLicensePlate(companyId),
   ]);
   return rows.map((row) => {
     const av = assignedVehicleForDriver(row.id, ass, veh);
     return {
       ...row,
       workflow: deriveDriverWorkflowLabel(row),
-      readiness: computeDriverReadiness(gate, row, av != null, av, hasPlate),
+      readiness: computeDriverReadiness(gate, row, av != null, av),
     };
   });
 }
@@ -275,14 +274,13 @@ export async function getFleetDriverReadinessById(
   const r = await findFleetDriverInCompany(driverId, companyId);
   if (!r) return { error: "not_found" };
   const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh, hasPlate] = await Promise.all([
+  const [gate, ass, veh] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
-    companyHasFleetVehicleWithLicensePlate(companyId),
   ]);
   const av = assignedVehicleForDriver(listRow.id, ass, veh);
-  return computeDriverReadiness(gate, listRow, av != null, av, hasPlate);
+  return computeDriverReadiness(gate, listRow, av != null, av);
 }
 
 function assignedVehicleMeta(
