@@ -8,3 +8,7 @@ export const PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE =
 
 export const FLEET_DRIVER_EMAIL_IS_PANEL_ACCOUNT_MESSAGE_DE =
   "Diese E-Mail ist bereits als Partner-Portal-Zugang (Unternehmer) vergeben. Für Fahrer bitte eine andere E-Mail verwenden.";
+
+/** Fahrer-Login / App: keine internen Vertrags- oder Admin-Details. */
+export const FLEET_LOGIN_COMPANY_NOT_READY_MESSAGE_DE =
+  "Ihr Unternehmen ist noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb.";

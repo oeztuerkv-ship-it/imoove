@@ -59,11 +59,13 @@ export type FleetDriverMeBlockKind = "access_suspended" | "vehicle" | "complianc
 const DRIVER_APP_NOT_READY_TITLE = "Noch nicht freigeschaltet";
 
 const DRIVER_APP_NOT_READY_LEAD =
-  "Sie sind noch nicht freigeschaltet. Ihr Unternehmen muss im Partner-Portal die fehlenden Daten ergänzen — bis dahin sind Aufträge gesperrt. Die Anmeldung in der App ist möglich.";
+  "Sie sind noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb. Die Anmeldung ist möglich; Aufträge sind bis zur Freigabe gesperrt.";
 
-/** Kurze Stichpunkte für Fahrer (ohne Admin-Jargon). */
+const DRIVER_APP_COMPANY_NOT_READY_ONLY =
+  "Ihr Unternehmen ist noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb.";
+
+/** Kurze Stichpunkte für Fahrer (ohne Admin-Jargon, kein Vertrag/Stammdaten). */
 const DRIVER_APP_MISSING_SHORT: Partial<Record<DriverReadinessBlockCode, string>> = {
-  company_not_ready: "Unternehmen: Stammdaten oder Nachweise",
   p_schein_date_missing: "P-Schein: Ablaufdatum",
   p_schein_expired: "P-Schein: abgelaufen",
   p_schein_doc_missing: "P-Schein: Nachweis (PDF)",
@@ -90,7 +92,16 @@ function driverAppMissingBullets(blockReasons: DriverReadinessBlock[]): string[]
 }
 
 function buildDriverAppNotReadyMessage(readiness: DriverReadinessResult): string {
-  const bullets = driverAppMissingBullets(readiness.blockReasons);
+  const codes = new Set(readiness.blockReasons.map((b) => b.code));
+  const driverFacing = readiness.blockReasons.filter((b) => b.code !== "company_not_ready");
+  if (codes.has("company_not_ready") && driverFacing.length === 0) {
+    return DRIVER_APP_COMPANY_NOT_READY_ONLY;
+  }
+  const bullets = driverAppMissingBullets(driverFacing);
+  if (codes.has("company_not_ready")) {
+    if (bullets.length === 0) return DRIVER_APP_COMPANY_NOT_READY_ONLY;
+    return `${DRIVER_APP_COMPANY_NOT_READY_ONLY}\n\nBei Ihnen:\n• ${bullets.join("\n• ")}`;
+  }
   if (bullets.length === 0) return DRIVER_APP_NOT_READY_LEAD;
   return `${DRIVER_APP_NOT_READY_LEAD}\n\nEs fehlt noch:\n• ${bullets.join("\n• ")}`;
 }

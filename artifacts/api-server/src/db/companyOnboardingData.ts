@@ -268,6 +268,11 @@ export async function patchCompanyOnboardingStatus(
   if (input.status === "approved") {
     set.onboarding_approved_at = new Date();
     set.onboarding_approved_by = clip(input.approvedBy ?? "", 120) || null;
+    /** Taxi-Freischaltung = operativ nutzbar (Fahrer-Login, Panel, Vertrag). */
+    set.contract_status = "active";
+    set.verification_status = "verified";
+    set.is_blocked = false;
+    set.panel_access_enabled = true;
   } else {
     set.onboarding_approved_at = null;
     set.onboarding_approved_by = null;

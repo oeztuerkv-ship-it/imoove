@@ -35,13 +35,11 @@ function fleetLoginUserMessage(errorCode: string): string {
     case "invalid_credentials":
       return "E-Mail oder Passwort ist falsch.";
     case "company_not_found":
-      return "Unternehmensdaten fehlen. Bitte den Betrieb oder den Support kontaktieren.";
+      return "Anmeldung derzeit nicht möglich. Bitte wenden Sie sich an Ihren Betrieb.";
     case "company_inactive":
-      return "Ihr Unternehmenszugang ist deaktiviert. Bitte den Betrieb oder den Support.";
     case "company_blocked":
-      return "Ihr Unternehmen ist gesperrt. Bitte den Support kontaktieren.";
     case "contract_not_active":
-      return "Kein aktiver Vertrag für Ihr Unternehmen hinterlegt. Bitte Betrieb oder Admin: Vertragsstatus muss „active“ sein.";
+      return "Ihr Unternehmen ist noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb.";
     case "fleet_login_only_taxi_company":
       return "Fahrer-Login steht nur Taxi-Unternehmen zur Verfügung.";
     case "driver_suspended":
@@ -65,7 +63,7 @@ function fleetLoginUserMessage(errorCode: string): string {
 }
 
 const DEFAULT_NICHT_FREI_MSG =
-  "Sie sind noch nicht freigeschaltet. Ihr Unternehmen muss im Partner-Portal die fehlenden Daten ergänzen — bis dahin sind Aufträge gesperrt. Die Anmeldung in der App ist möglich.";
+  "Sie sind noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb. Die Anmeldung ist möglich; Aufträge sind bis zur Freigabe gesperrt.";
 
 /** Antwort `GET /fleet-driver/v1/me` → Profil (Token bleibt aus `prev`). */
 function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, unknown>): DriverProfile {

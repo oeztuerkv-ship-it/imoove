@@ -39,12 +39,42 @@ export type FleetLoginCompanyDenyReason =
   | "company_blocked"
   | "contract_not_active";
 
+/** Onboarding „Freigegeben“, aber Vertrag noch inactive — nachziehen (Legacy nach alter Freischalt-Logik). */
+export async function reconcileTaxiFreischaltungForFleetLogin(companyId: string): Promise<void> {
+  if (!isPostgresConfigured()) return;
+  const db = getDb();
+  if (!db) return;
+  const rows = await db
+    .select({
+      company_kind: adminCompaniesTable.company_kind,
+      onboarding_status: adminCompaniesTable.onboarding_status,
+      contract_status: adminCompaniesTable.contract_status,
+    })
+    .from(adminCompaniesTable)
+    .where(eq(adminCompaniesTable.id, companyId))
+    .limit(1);
+  const r = rows[0];
+  if (!r || String(r.company_kind ?? "") !== "taxi") return;
+  if (String(r.onboarding_status ?? "") !== "approved") return;
+  if (String(r.contract_status ?? "") === "active") return;
+  await db
+    .update(adminCompaniesTable)
+    .set({
+      contract_status: "active",
+      verification_status: "verified",
+      is_blocked: false,
+      panel_access_enabled: true,
+    })
+    .where(eq(adminCompaniesTable.id, companyId));
+}
+
 export async function getFleetLoginCompanyDenyReason(
   companyId: string,
 ): Promise<FleetLoginCompanyDenyReason | null> {
   if (!isPostgresConfigured()) return "company_not_found";
   const db = getDb();
   if (!db) return "company_not_found";
+  await reconcileTaxiFreischaltungForFleetLogin(companyId);
   const rows = await db
     .select({
       is_active: adminCompaniesTable.is_active,

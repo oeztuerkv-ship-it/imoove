@@ -2,8 +2,14 @@ import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
 import { findFleetDriverByEmailNormalized, getCompanyKind, touchFleetDriverLogin } from "../db/fleetDriversData";
 import { findActivePanelUserByEmailNormalized } from "../db/panelAuthData";
-import { getFleetLoginCompanyDenyReason } from "../db/companyGovernanceData";
-import { PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE } from "../lib/onrodaAccessMessages.js";
+import {
+  getFleetLoginCompanyDenyReason,
+  type FleetLoginCompanyDenyReason,
+} from "../db/companyGovernanceData";
+import {
+  FLEET_LOGIN_COMPANY_NOT_READY_MESSAGE_DE,
+  PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE,
+} from "../lib/onrodaAccessMessages.js";
 import { isFleetDriverJwtConfigured, signFleetDriverJwt } from "../lib/fleetDriverJwt";
 import { rateLimitFleetLogin } from "../lib/fleetLoginRateLimit";
 import { verifyPassword } from "../lib/password";
@@ -60,7 +66,15 @@ router.post("/fleet-auth/login", async (req, res) => {
   }
   const deny = await getFleetLoginCompanyDenyReason(row.company_id);
   if (deny) {
-    res.status(403).json({ error: deny });
+    const companyDeny = new Set<FleetLoginCompanyDenyReason>([
+      "company_inactive",
+      "company_blocked",
+      "contract_not_active",
+    ]);
+    res.status(403).json({
+      error: deny,
+      ...(companyDeny.has(deny) ? { message: FLEET_LOGIN_COMPANY_NOT_READY_MESSAGE_DE } : {}),
+    });
     return;
   }
 
