@@ -18,9 +18,28 @@ export interface CompanyGovernanceGate {
   farePermissions: Record<string, unknown>;
   insurerPermissions: Record<string, unknown>;
   areaAssignments: string[];
+  /** Taxi-Konzessionsnummer in Stammdaten (Onroda-Prüfung). */
+  concessionNumberPresent: boolean;
 }
 
-/** Einsatz/Vermittlung (Fahrer-Readiness, Matching); Panel darf Fahrer/Fahrzeug trotzdem anlegen (siehe `requireFleetOnboardingEntityCreateAllowed` in fleetPanelApi). */
+/**
+ * Fahrer-App / Partner „In der App freigeschaltet“: nur Plattform-Pflicht (Unternehmer-Zugang, Konzession, Kennzeichen).
+ * P-Schein, Fahrzeugzuweisung und Fahrer-Unterlagen sind Sache des Unternehmers — nicht blockieren.
+ */
+export function companyMeetsTaxiDriverAppAccess(
+  gate: CompanyGovernanceGate | null,
+  hasFleetVehicleWithLicensePlate: boolean,
+): boolean {
+  if (!gate) return false;
+  if (gate.companyKind !== "taxi") return false;
+  if (gate.isBlocked) return false;
+  if (gate.contractStatus !== "active") return false;
+  if (!gate.concessionNumberPresent) return false;
+  if (!hasFleetVehicleWithLicensePlate) return false;
+  return true;
+}
+
+/** Einsatz/Vermittlung (Anlage Limits, volle Governance); strenger als Fahrer-App-Zugang. */
 export function companyMeetsTaxiFleetProvisioningReadiness(gate: CompanyGovernanceGate | null): boolean {
   if (!gate) return false;
   if (gate.companyKind !== "taxi") return false;
@@ -143,7 +162,21 @@ export async function getCompanyGovernanceGate(companyId: string): Promise<Compa
     areaAssignments: Array.isArray(r.area_assignments)
       ? r.area_assignments.filter((x): x is string => typeof x === "string")
       : [],
+    concessionNumberPresent: Boolean(String(r.concession_number ?? "").trim()),
   };
+}
+
+/** Mindestens ein Flotten-Fahrzeug mit Kennzeichen (Onroda-Prüfung, unabhängig von Freigabe-Status). */
+export async function companyHasFleetVehicleWithLicensePlate(companyId: string): Promise<boolean> {
+  if (!isPostgresConfigured()) return false;
+  const db = getDb();
+  if (!db) return false;
+  const rows = await db
+    .select({ plate: fleetVehiclesTable.license_plate })
+    .from(fleetVehiclesTable)
+    .where(eq(fleetVehiclesTable.company_id, companyId))
+    .limit(50);
+  return rows.some((r) => Boolean(String(r.plate ?? "").trim()));
 }
 
 export async function countFleetDriversForCompany(companyId: string): Promise<number> {

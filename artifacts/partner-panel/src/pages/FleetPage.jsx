@@ -201,8 +201,8 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
       }
       setMsg(
         data.initialPassword
-          ? `Fahrer angelegt. Initiales Passwort: ${data.initialPassword}. In der Fahrer-App erscheint „Noch nicht freigeschaltet“, bis P-Schein, Fahrzeug und Pflichtdaten im Panel ergänzt sind.`
-          : "Fahrer angelegt. In der Fahrer-App erscheint „Noch nicht freigeschaltet“, bis alle Pflichtdaten im Panel ergänzt sind.",
+          ? `Fahrer angelegt. Initiales Passwort: ${data.initialPassword}. App-Freischaltung hängt am Unternehmen (Onroda: Zugang, Konzession, Kennzeichen) — P-Schein und Zuweisung sind Ihre Pflege im Panel.`
+          : "Fahrer angelegt. App-Freischaltung, sobald Ihr Unternehmen bei Onroda die Pflichtprüfung erfüllt (Zugang, Konzession, Kennzeichen).",
       );
       setDriverForm({
         email: "",

@@ -1,4 +1,9 @@
-import { getCompanyGovernanceGate, type CompanyGovernanceGate, companyMeetsTaxiFleetProvisioningReadiness } from "./companyGovernanceData";
+import {
+  companyHasFleetVehicleWithLicensePlate,
+  companyMeetsTaxiDriverAppAccess,
+  getCompanyGovernanceGate,
+  type CompanyGovernanceGate,
+} from "./companyGovernanceData";
 import { findCompanyById } from "./adminData";
 import {
   findFleetDriverInCompany,
@@ -37,7 +42,8 @@ export interface DriverReadinessResult {
 }
 
 const MSG: Record<DriverReadinessBlockCode, string> = {
-  company_not_ready: "Unternehmen ist noch nicht vollständig freigegeben (Verifizierung, Nachweise, Vertrag oder Stammdaten).",
+  company_not_ready:
+    "Unternehmen: Plattform-Zugang, Konzession oder mindestens ein Fahrzeug-Kennzeichen fehlen noch (Onroda-Prüfung).",
   driver_suspended: "Fahrerzugang ist gesperrt.",
   driver_account_inactive: "Fahrerkonto ist deaktiviert.",
   driver_rejected: "Fahrer wurde abgelehnt.",
@@ -64,18 +70,9 @@ const DRIVER_APP_NOT_READY_LEAD =
 const DRIVER_APP_COMPANY_NOT_READY_ONLY =
   "Ihr Unternehmen ist noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb.";
 
-/** Kurze Stichpunkte für Fahrer (ohne Admin-Jargon, kein Vertrag/Stammdaten). */
+/** Kurze Stichpunkte für Fahrer-App (nur noch Konto-/Unternehmens-Blocks). */
 const DRIVER_APP_MISSING_SHORT: Partial<Record<DriverReadinessBlockCode, string>> = {
-  p_schein_date_missing: "P-Schein: Ablaufdatum",
-  p_schein_expired: "P-Schein: abgelaufen",
-  p_schein_doc_missing: "P-Schein: Nachweis (PDF)",
-  no_vehicle_assigned: "Fahrzeug dem Fahrer zuweisen",
-  vehicle_not_approved: "Fahrzeug: Freigabe",
-  vehicle_blocked: "Fahrzeug: gesperrt",
-  vehicle_rejected: "Fahrzeug: abgelehnt",
-  vehicle_pending_approval: "Fahrzeug: Prüfung durch Onroda",
-  vehicle_draft: "Fahrzeug: Daten und Unterlagen",
-  driver_not_approved: "Freigabe durch Onroda",
+  company_not_ready: "Unternehmen: Zugang, Konzession oder Kennzeichen",
 };
 
 function driverAppMissingBullets(blockReasons: DriverReadinessBlock[]): string[] {
@@ -189,14 +186,13 @@ function pScheinExpiredOnlyWhenDatePresent(isoOrDate: string | null | undefined)
 }
 
 /**
- * Einsatzbereitschaft: gleiche Kriterien wie in der Fachvorgabe (Mandant + Fahrer + P-Schein + Fahrzeugfreigabe).
- * `gate` = null => Unternehmen nicht ladbare/aktive Zeile => nicht einsatzbereit.
+ * Fahrer-App-Einsatzbereit: Onroda prüft nur Unternehmens-Zugang, Konzession, Kennzeichen;
+ * P-Schein, Zuweisung und Fahrzeug-Freigabe pro Fahrer sind Sache des Unternehmers.
  */
 const READINESS_OVERRIDE_HARD_STOPS: ReadonlySet<DriverReadinessBlockCode> = new Set([
   "driver_suspended",
   "driver_account_inactive",
   "driver_rejected",
-  "driver_not_approved",
 ]);
 
 export function computeDriverReadiness(
@@ -212,11 +208,12 @@ export function computeDriverReadiness(
     | "readinessOverrideSystem"
     | "reservationSuspendedUntil"
   >,
-  hasVehicleAssignment: boolean,
-  assignedVehicle: FleetVehicleRow | null,
+  _hasVehicleAssignment: boolean,
+  _assignedVehicle: FleetVehicleRow | null,
+  hasFleetVehicleWithLicensePlate: boolean,
 ): DriverReadinessResult {
   const blockReasons: DriverReadinessBlock[] = [];
-  if (!companyMeetsTaxiFleetProvisioningReadiness(gate)) {
+  if (!companyMeetsTaxiDriverAppAccess(gate, hasFleetVehicleWithLicensePlate)) {
     blockReasons.push({ code: "company_not_ready", message: MSG.company_not_ready });
   }
   if (!d.isActive) {
@@ -232,46 +229,6 @@ export function computeDriverReadiness(
   }
   if (d.approvalStatus === "rejected") {
     blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });
-  } else if (
-    d.approvalStatus === "pending" ||
-    d.approvalStatus === "in_review" ||
-    d.approvalStatus === "missing_documents"
-  ) {
-    blockReasons.push({ code: "driver_not_approved", message: MSG.driver_not_approved });
-  }
-  if (pScheinDateMissing(d.pScheinExpiry)) {
-    blockReasons.push({ code: "p_schein_date_missing", message: MSG.p_schein_date_missing });
-  } else if (pScheinExpiredOnlyWhenDatePresent(d.pScheinExpiry)) {
-    blockReasons.push({ code: "p_schein_expired", message: MSG.p_schein_expired });
-  }
-  if (pScheinDocMissing(d.pScheinDocStorageKey)) {
-    blockReasons.push({ code: "p_schein_doc_missing", message: MSG.p_schein_doc_missing });
-  }
-  if (!hasVehicleAssignment) {
-    blockReasons.push({ code: "no_vehicle_assigned", message: MSG.no_vehicle_assigned });
-  } else if (assignedVehicle) {
-    const st = String(assignedVehicle.approvalStatus);
-    if (st === "approved") {
-      /* kein Fahrzeug-Block */
-    } else if (st === "blocked") {
-      const br = (assignedVehicle.blockReason ?? "").trim();
-      blockReasons.push({
-        code: "vehicle_blocked",
-        message: br ? `${MSG.vehicle_blocked} ${br}` : MSG.vehicle_blocked,
-      });
-    } else if (st === "rejected") {
-      const rj = (assignedVehicle.rejectionReason ?? "").trim();
-      blockReasons.push({
-        code: "vehicle_rejected",
-        message: rj ? `${MSG.vehicle_rejected} ${rj}` : MSG.vehicle_rejected,
-      });
-    } else if (st === "pending_approval" || st === "missing_documents") {
-      blockReasons.push({ code: "vehicle_pending_approval", message: MSG.vehicle_pending_approval });
-    } else if (st === "draft") {
-      blockReasons.push({ code: "vehicle_draft", message: MSG.vehicle_draft });
-    } else {
-      blockReasons.push({ code: "vehicle_not_approved", message: MSG.vehicle_not_approved });
-    }
   }
   if (d.readinessOverrideSystem) {
     const filtered = blockReasons.filter((b) => READINESS_OVERRIDE_HARD_STOPS.has(b.code));
@@ -296,18 +253,19 @@ export type PanelFleetDriverView = FleetDriverListRow & {
 };
 
 export async function getPanelFleetDriverViews(companyId: string): Promise<PanelFleetDriverView[]> {
-  const [gate, rows, ass, veh] = await Promise.all([
+  const [gate, rows, ass, veh, hasPlate] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listFleetDriversForCompany(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
+    companyHasFleetVehicleWithLicensePlate(companyId),
   ]);
   return rows.map((row) => {
     const av = assignedVehicleForDriver(row.id, ass, veh);
     return {
       ...row,
       workflow: deriveDriverWorkflowLabel(row),
-      readiness: computeDriverReadiness(gate, row, av != null, av),
+      readiness: computeDriverReadiness(gate, row, av != null, av, hasPlate),
     };
   });
 }
@@ -319,13 +277,14 @@ export async function getFleetDriverReadinessById(
   const r = await findFleetDriverInCompany(driverId, companyId);
   if (!r) return { error: "not_found" };
   const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh] = await Promise.all([
+  const [gate, ass, veh, hasPlate] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
+    companyHasFleetVehicleWithLicensePlate(companyId),
   ]);
   const av = assignedVehicleForDriver(listRow.id, ass, veh);
-  return computeDriverReadiness(gate, listRow, av != null, av);
+  return computeDriverReadiness(gate, listRow, av != null, av, hasPlate);
 }
 
 function assignedVehicleMeta(
@@ -408,17 +367,18 @@ export async function getAdminTaxiFleetDriverDetail(
   const r = await findFleetDriverInCompany(driverId, companyId);
   if (!r) return null;
   const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh, medical] = await Promise.all([
+  const [gate, ass, veh, hasPlate, medical] = await Promise.all([
     getCompanyGovernanceGate(companyId),
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId),
+    companyHasFleetVehicleWithLicensePlate(companyId),
     medicalTransportFieldsForDriver(companyId, listRow),
   ]);
   const av = assignedVehicleForDriver(listRow.id, ass, veh);
   const view: PanelFleetDriverView = {
     ...listRow,
     workflow: deriveDriverWorkflowLabel(listRow),
-    readiness: computeDriverReadiness(gate, listRow, av != null, av),
+    readiness: computeDriverReadiness(gate, listRow, av != null, av, hasPlate),
   };
   return {
     ...view,

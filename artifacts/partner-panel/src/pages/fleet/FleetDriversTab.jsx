@@ -67,7 +67,9 @@ export default function FleetDriversTab({
               Neuen Fahrer anlegen
             </h3>
             <p className="partner-muted" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.45 }}>
-              Sie können den Fahrer sofort anlegen — nur E-Mail, Vor- und Nachname sind Pflicht. Der Fahrer kann sich in der App anmelden, sieht dort aber die Meldung „Noch nicht freigeschaltet“, bis Sie P-Schein, Fahrzeugzuweisung und alle Pflichtdaten im Panel ergänzt haben.
+              Sie können den Fahrer sofort anlegen — nur E-Mail, Vor- und Nachname sind Pflicht. In der Fahrer-App ist er freigeschaltet,
+              sobald Ihr Unternehmen bei Onroda freigegeben ist (Zugang, Konzession, mindestens ein Kennzeichen). P-Schein, Zuweisung und
+              weitere Daten pflegen Sie selbst im Betrieb.
             </p>
             <div className="partner-form-grid">
               <label className="partner-form-field">
@@ -344,7 +346,15 @@ export default function FleetDriversTab({
                       </span>
                     </td>
                     <td>
-                      <span className={`partner-pill partner-pill--${appStatus.tone}`} title="Sicht in der Fahrer-App">
+                      <span
+                        className={`partner-pill partner-pill--${appStatus.tone}`}
+                        title={
+                          d.readiness?.ready
+                            ? "Fahrer kann in der App Aufträge annehmen (Unternehmen freigegeben)."
+                            : (d.readiness?.blockReasons ?? []).map((b) => b.message).join(" · ") ||
+                              "Noch nicht freigeschaltet in der App"
+                        }
+                      >
                         {appStatus.label}
                       </span>
                     </td>

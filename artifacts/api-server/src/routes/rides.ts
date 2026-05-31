@@ -1840,7 +1840,7 @@ export async function patchRideStatusRoute(
         res.status(409).json({
           error: "driver_not_einsatzbereit",
           blockReasons: readinessR.blockReasons,
-          message: "Fahrer ist derzeit nicht einsatzbereit (Freigabe, P-Schein, Fahrzeug oder Unternehmen).",
+          message: "Fahrer ist derzeit nicht einsatzbereit (Unternehmen, Konto gesperrt oder abgelehnt).",
         });
         return;
       }
