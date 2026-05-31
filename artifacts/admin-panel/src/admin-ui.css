@@ -3136,33 +3136,227 @@ ul.admin-mandate-doclist {
 .admin-taxi-onboarding {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 16px;
+}
+
+.admin-taxi-onboarding .admin-onb-section.admin-section-block {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  border-color: #e2e8f0;
+}
+
+.admin-taxi-onboarding .admin-onb-section .admin-section-block__body {
+  padding: 0;
+}
+
+.admin-onb-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-onb-block__content {
+  padding: var(--onroda-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--onroda-space-4);
+}
+
+.admin-onb-block__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 14px var(--onroda-space-5);
+  border-top: 1px solid #f1f5f9;
+  background: linear-gradient(180deg, #fff 0%, #fef2f2 100%);
+}
+
+.admin-onb-block__footer-hint {
+  margin: 0;
+  flex: 1 1 200px;
+  font-size: 0.8rem;
+  color: var(--onroda-text-muted);
+  line-height: 1.4;
+}
+
+.admin-onb-btn-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 22px;
+  margin-left: auto;
+  border: none;
+  border-radius: 12px;
+  background: var(--onroda-red, #b91c1c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.28);
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.admin-onb-btn-save:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.admin-onb-btn-save:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.admin-onb-btn-save:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.admin-onb-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 16px;
+}
+
+.admin-onb-field--full {
+  grid-column: 1 / -1;
+}
+
+.admin-onb-check {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-onb-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-onb-btn-outline {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.admin-onb-btn-outline:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.admin-onb-btn-outline--ok {
+  border-color: #86efac;
+  color: #166534;
+  background: #f0fdf4;
+}
+
+.admin-onb-empty {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  color: var(--onroda-text-muted);
+}
+
+.admin-onb-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.admin-onb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.admin-onb-table th,
+.admin-onb-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-onb-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+
+.admin-onb-doc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.admin-onb-doc-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.admin-onb-doc-list__item:last-child {
+  border-bottom: none;
+}
+
+.admin-onb-doc-list__meta {
+  display: block;
+  margin-top: 2px;
+  margin-left: 0 !important;
 }
 
 .admin-onb-ampel {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
   border: 1px solid #e2e8f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
+
 .admin-onb-ampel--ok {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-color: #6ee7b7;
 }
+
 .admin-onb-ampel--pending {
-  background: #fffbeb;
-  border-color: #fde68a;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #fcd34d;
 }
+
 .admin-onb-ampel--bad {
-  background: #fef2f2;
-  border-color: #fecaca;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
 }
+
 .admin-onb-ampel__emoji {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   line-height: 1;
+}
+
+.admin-onb-ampel__label {
+  font-size: 1.05rem;
+}
+
+.admin-onb-ampel__meta {
+  margin-top: 6px !important;
 }
 
 /* —— Mandantenliste (Seitenhülle = admin-page wie Fahrten) —— */
