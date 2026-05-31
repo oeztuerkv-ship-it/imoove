@@ -35,6 +35,7 @@ import SupportInboxPage from "./pages/SupportInboxPage.jsx";
 import RideSupportTicketsPage from "./pages/RideSupportTicketsPage.jsx";
 import AppHelpTicketsPage from "./pages/AppHelpTicketsPage.jsx";
 import FleetVehiclesReviewPage from "./pages/FleetVehiclesReviewPage.jsx";
+import CompanyVehicleRequestsPage from "./pages/CompanyVehicleRequestsPage.jsx";
 import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.jsx";
 import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
 import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
@@ -250,6 +251,10 @@ const PAGE_META = {
   "fleet-vehicles-review": {
     title: "Fahrzeuge prüfen",
     subtitle: "Gesamtsystem: einzureichende Taxi-Fahrzeuge freigeben, ablehnen oder sperren",
+  },
+  "company-vehicle-requests": {
+    title: "Anfragen · Fahrzeuge",
+    subtitle: "Taxi-Onboarding: Fahrzeuge mit Konzession und Fahrzeugschein prüfen, aktivieren, Partner antworten",
   },
   "drivers-overview": {
     title: "Fahrerübersicht",
@@ -832,6 +837,15 @@ export default function App() {
         return <AppHelpTicketsPage />;
       case "fleet-vehicles-review":
         return <FleetVehiclesReviewPage />;
+      case "company-vehicle-requests":
+        return (
+          <CompanyVehicleRequestsPage
+            onOpenCompany={(id) => {
+              setCompaniesInitialOpenId(id);
+              setActive("companies");
+            }}
+          />
+        );
       case "company-registration-requests":
         return (
           <CompanyRegistrationQueuePage

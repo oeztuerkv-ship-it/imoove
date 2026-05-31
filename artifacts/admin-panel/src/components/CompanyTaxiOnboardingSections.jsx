@@ -180,7 +180,7 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
     }
   }
 
-  async function toggleVehicleActive(v, next) {
+  async function setVehicleReview(v, reviewStatus) {
     setBusy(`v-${v.id}`);
     try {
       const r = await fetch(
@@ -188,7 +188,7 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
         {
           method: "PATCH",
           headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: next }),
+          body: JSON.stringify({ reviewStatus }),
         },
       );
       if (!r.ok) {
@@ -197,6 +197,7 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
         return;
       }
       await load();
+      onChanged?.();
     } finally {
       setBusy("");
     }
@@ -423,7 +424,8 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
                       <th>Typ</th>
                       <th>Konzession</th>
                       <th>TÜV</th>
-                      <th>Status</th>
+                      <th>Prüfstatus</th>
+                      <th>Aktion</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -433,14 +435,24 @@ export default function CompanyTaxiOnboardingSections({ companyId, onChanged }) 
                         <td>{v.vehicleType}</td>
                         <td>{v.concessionNumber || "—"}</td>
                         <td>{v.tuevDate || "—"}</td>
+                        <td>{v.reviewStatus || "—"}</td>
                         <td>
                           <button
                             type="button"
                             className="admin-link"
                             disabled={!!busy}
-                            onClick={() => void toggleVehicleActive(v, !v.isActive)}
+                            onClick={() => void setVehicleReview(v, "active")}
                           >
-                            {v.isActive ? "Deaktivieren" : "Aktivieren"}
+                            Aktivieren
+                          </button>
+                          {" · "}
+                          <button
+                            type="button"
+                            className="admin-link"
+                            disabled={!!busy}
+                            onClick={() => void setVehicleReview(v, "inactive")}
+                          >
+                            Deaktivieren
                           </button>
                         </td>
                       </tr>
