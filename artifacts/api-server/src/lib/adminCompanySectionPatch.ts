@@ -1,5 +1,7 @@
 import type { AdminCompanyUpdateBody } from "../db/adminData";
 import { findCompanyById, updateAdminCompany } from "../db/adminData";
+import { patchCompanyOnboardingStatus } from "../db/companyOnboardingData";
+import { logger } from "./logger";
 import type { CompanyRow } from "../routes/adminApi.types";
 import {
   bodyTouchesSection,
@@ -116,6 +118,7 @@ export async function patchAdminCompanySection(
   section: AdminCompanyPatchSection,
   raw: Record<string, unknown>,
   adminUserId: string | null,
+  opts?: { approvedBy?: string | null },
 ): Promise<AdminCompanySectionPatchResult> {
   const before = await findCompanyById(companyId);
   if (!before) return { ok: false, error: "not_found" };
@@ -152,8 +155,24 @@ export async function patchAdminCompanySection(
   delete (patchBody as Record<string, unknown>).billing_payment_terms_days;
   delete (patchBody as Record<string, unknown>).block_platform_reason;
 
-  const after = await updateAdminCompany(companyId, patchBody);
+  let after = await updateAdminCompany(companyId, patchBody);
   if (!after) return { ok: false, error: "not_found" };
+
+  if (
+    section === "status" &&
+    typeof patchBody.onboarding_status === "string" &&
+    patchBody.onboarding_status === "approved" &&
+    before.onboarding_status !== "approved"
+  ) {
+    const ob = await patchCompanyOnboardingStatus(companyId, {
+      status: "approved",
+      approvedBy: opts?.approvedBy ?? undefined,
+    });
+    if (ob.ok) {
+      after = await findCompanyById(companyId);
+      if (!after) return { ok: false, error: "not_found" };
+    }
+  }
 
   let billingAccountEmail: string | null = null;
   let billingSettlementInterval: string | null = null;
@@ -165,11 +184,15 @@ export async function patchAdminCompanySection(
     billingPaymentTermsDays = synced.paymentTermsDays;
   }
 
-  await logAdminCompanySectionPatch(companyId, section, before, after, adminUserId, {
-    billing_account_email: billingAccountEmail,
-    billing_settlement_interval: billingSettlementInterval,
-    billing_payment_terms_days: billingPaymentTermsDays,
-  });
+  try {
+    await logAdminCompanySectionPatch(companyId, section, before, after, adminUserId, {
+      billing_account_email: billingAccountEmail,
+      billing_settlement_interval: billingSettlementInterval,
+      billing_payment_terms_days: billingPaymentTermsDays,
+    });
+  } catch (err) {
+    logger.warn({ err, companyId, section }, "admin company section patch: audit log failed (data saved)");
+  }
 
   return {
     ok: true,

@@ -3509,6 +3509,7 @@ adminJson.patch("/companies/:companyId/sections/:section", async (req, res, next
       section,
       (req.body ?? {}) as Record<string, unknown>,
       adminId,
+      { approvedBy: req.adminAuth?.username?.trim() || null },
     );
     if (!result.ok) {
       if (result.error === "not_found") {
@@ -3541,6 +3542,13 @@ adminJson.patch("/companies/:companyId/sections/:section", async (req, res, next
     }
     if (code?.startsWith("company_code_") || code?.startsWith("invoice_prefix_")) {
       res.status(400).json({ error: code });
+      return;
+    }
+    if (code === "db_schema_admin_company_091") {
+      res.status(503).json({
+        error: code,
+        hint: "Migration 091_admin_company_billing_provision.sql auf der Datenbank einspielen (deploy-onroda-production.sh).",
+      });
       return;
     }
     next(e);
@@ -3647,10 +3655,6 @@ adminJson.get("/companies/:companyId/documents/:docId/file", async (req, res, ne
 
 adminJson.patch("/companies/:companyId/onboarding-status", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     if (!(await requireCompanyRowForMutation(req, res, req.params.companyId))) return;
     const b = (req.body ?? {}) as { status?: unknown; notes?: unknown };
     const statusRaw = typeof b.status === "string" ? b.status.trim() : "";

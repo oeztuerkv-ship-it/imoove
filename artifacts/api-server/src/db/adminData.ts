@@ -1054,6 +1054,14 @@ export async function updateAdminCompany(
     if (msg.includes("admin_companies_company_code_unique") || (msg.includes("duplicate") && msg.includes("company_code"))) {
       throw Object.assign(new Error("company_code_duplicate"), { code: "company_code_duplicate" });
     }
+    if (
+      msg.includes("42703") ||
+      msg.includes("commission_type") ||
+      msg.includes("panel_access_enabled") ||
+      msg.includes("payout_allowed")
+    ) {
+      throw Object.assign(new Error("db_schema_admin_company_091"), { code: "db_schema_admin_company_091" });
+    }
     throw e;
   }
   if (typeof billingAccountEmail === "string") {
