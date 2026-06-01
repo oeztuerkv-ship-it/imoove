@@ -7,12 +7,27 @@
     });
 
     document.addEventListener("click", function (e) {
-      var details = document.querySelector(".hp-topbar-about");
-      if (!details) return;
-      if (!details.contains(e.target)) {
-        details.removeAttribute("open");
+      var dropdowns = document.querySelectorAll(".hp-nav-dropdown");
+      for (var i = 0; i < dropdowns.length; i++) {
+        if (!dropdowns[i].contains(e.target)) {
+          dropdowns[i].removeAttribute("open");
+        }
       }
     });
+
+    var navToggle = document.getElementById("hp-nav-toggle");
+    var headerInner = document.querySelector(".hp-header-inner");
+    if (navToggle && headerInner) {
+      navToggle.addEventListener("click", function () {
+        var open = headerInner.classList.toggle("hp-nav-open");
+        navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    }
+
+    function setOptionalTextIcon(el, value, fallback) {
+      if (!el || el.querySelector("svg")) return;
+      el.textContent = String(value || fallback || "");
+    }
 
     var yEl = document.getElementById("y");
     if (yEl) yEl.textContent = new Date().getFullYear();
@@ -249,7 +264,7 @@
               continue;
             }
             cardWrap.removeAttribute("hidden");
-            iconEl.textContent = String(c && c.icon ? c.icon : defaultIcon);
+            setOptionalTextIcon(iconEl, c && c.icon ? c.icon : null, defaultIcon);
             titleEl.textContent = String(c && c.title ? c.title : defaultTitle);
             bodyEl.textContent = String(c && c.body ? c.body : defaultBody);
             ctaEl.textContent = String(c && c.ctaText ? c.ctaText : defaultCtaText);
@@ -287,7 +302,7 @@
               continue;
             }
             scWrap.removeAttribute("hidden");
-            scIcon.textContent = String(sc && sc.icon ? sc.icon : dIcon);
+            setOptionalTextIcon(scIcon, sc && sc.icon ? sc.icon : null, dIcon);
             scTitle.textContent = String(sc && sc.title ? sc.title : dTitle);
             scBody.textContent = String(sc && sc.body ? sc.body : dBody);
           }
@@ -330,7 +345,7 @@
             mWrap.removeAttribute("hidden");
             var n = mc && String(mc.num || "").trim() ? String(mc.num).trim() : dNum;
             mNum.textContent = n;
-            mIcon.textContent = String(mc && mc.icon ? mc.icon : dMI);
+            setOptionalTextIcon(mIcon, mc && mc.icon ? mc.icon : null, dMI);
             mTit.textContent = String(mc && mc.title ? mc.title : dMTi);
             mBody.textContent = String(mc && mc.body ? mc.body : dMBo);
             mCta.textContent = String(mc && mc.ctaText ? mc.ctaText : dMCt);
@@ -371,7 +386,7 @@
               continue;
             }
             wrap.removeAttribute("hidden");
-            icon.textContent = String(it && it.icon ? it.icon : dIcon);
+            setOptionalTextIcon(icon, it && it.icon ? it.icon : null, dIcon);
             title.textContent = String(it && it.title ? it.title : dTitle);
             body.textContent = String(it && it.body ? it.body : dBody);
           }

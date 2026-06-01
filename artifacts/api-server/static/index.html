@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Öffentliche API (Partneranfrage). Für lokale Tests z. B. http://127.0.0.1:3000/api setzen. -->
   <meta name="onroda-public-api-base" content="https://api.onroda.de/api" />
-  <title>ONRODA – Digitale Mobilität für Stuttgart</title>
+  <title>ONRODA – Plattform für Taxi, Krankenfahrten und Mobilität</title>
   <meta
     name="description"
-    content="ONRODA verbindet Fahrgäste, Fahrer und Unternehmen – für moderne, strukturierte Mobilität in Stuttgart und der Region."
+    content="ONRODA verbindet Fahrgäste, Fahrer und Unternehmen auf einer intelligenten Plattform – für effiziente Abläufe, transparente Prozesse und beste Mobilität."
   />
   <link rel="stylesheet" href="/onroda-brand.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
     rel="stylesheet"
   />
 
@@ -22,51 +22,67 @@
 </head>
 
 <body>
-  <div class="hp-topbar">
-    <div class="hp-wrap">
-      <div class="hp-topbar-left">
-        <a class="hp-logo" href="/" aria-label="onroda – Startseite">
-          <span class="onroda-ui-wordmark">
-            <span class="onroda-ui-wordmark__on">on</span><span class="onroda-ui-wordmark__rest">roda</span>
-          </span>
-        </a>
-      </div>
+  <header class="hp-header" id="site-header">
+    <div class="hp-wrap hp-header-inner">
+      <a class="hp-logo" href="/" aria-label="ONRODA – Startseite">
+        <img class="hp-logo-mark" src="/onroda-mark.png" width="36" height="36" alt="" />
+        <span class="hp-logo-text">ONRODA</span>
+      </a>
 
-      <div class="hp-topbar-actions">
-        <details class="hp-topbar-about">
+      <nav class="hp-nav" id="hp-primary-nav" aria-label="Hauptnavigation">
+        <a class="hp-nav-link" href="#fuer-wen">Fahrgäste</a>
+        <a class="hp-nav-link" href="#fuer-wen">Fahrer</a>
+        <a class="hp-nav-link" href="#unternehmen">Unternehmen</a>
+        <a class="hp-nav-link" href="#partner">Partner</a>
+        <details class="hp-nav-dropdown">
+          <summary>Lösungen</summary>
+          <div class="hp-nav-dropdown-panel">
+            <a href="#services">Leistungen</a>
+            <a href="#care">Krankenfahrten</a>
+            <a href="#how-it-works">Ablauf</a>
+            <a href="#unternehmen">Firmenkunden</a>
+          </div>
+        </details>
+        <details class="hp-nav-dropdown hp-nav-dropdown--about">
           <summary>Über ONRODA</summary>
-          <div class="hp-topbar-about-panel">
+          <div class="hp-nav-dropdown-panel hp-nav-dropdown-panel--wide">
             <h3>Über ONRODA</h3>
-            <h4>Was wir wollen</h4>
             <p>
               ONRODA steht für moderne Mobilität, die mehr kann als reine Fahrtvermittlung.
-              Wir wollen Abläufe digitaler, einfacher und verlässlicher machen – für Fahrgäste,
-              Unternehmen, Hotels, medizinische Einrichtungen und Partnerbetriebe.
+              Wir digitalisieren Abläufe für Fahrgäste, Unternehmen, medizinische Einrichtungen und Partnerbetriebe.
             </p>
             <p>
-              Dazu gehören für uns nicht nur Buchung und Fahrt, sondern die gesamte Abwicklung:
-              von der Anfrage über digitale Codes und Bestätigungen bis zur nachvollziehbaren
-              Organisation im Alltag.
-            </p>
-            <p>
-              ONRODA ist bewusst offen gedacht: Wir ermöglichen Mobilität für unterschiedlichste
-              Anforderungen und Einsatzbereiche – von klassischen Fahrten über barrierearme Lösungen
-              bis hin zu organisierten Krankenfahrten und speziellen Partnerprozessen.
-            </p>
-            <p>
-              Ziel ist ein System, das flexibel bleibt und gleichzeitig klare, digitale Abläufe bietet –
-              schnell, transparent, kostensparend und für alle Beteiligten nachvollziehbar.
+              Von der Anfrage über digitale Codes bis zur nachvollziehbaren Abrechnung – ein System,
+              das flexibel bleibt und klare Prozesse bietet.
             </p>
           </div>
         </details>
+      </nav>
 
-        <a class="hp-topbar-link" href="/datenschutz">Datenschutz</a>
-        <a class="hp-topbar-link" href="/impressum">Impressum</a>
-        <a class="hp-topbar-link" href="/agb">AGB</a>
-        <a class="hp-topbar-btn" href="https://panel.onroda.de/" rel="noopener noreferrer">Partner-Login</a>
+      <div class="hp-header-actions">
+        <a class="hp-header-legal" href="/datenschutz">Datenschutz</a>
+        <a class="hp-header-legal" href="/impressum">Impressum</a>
+        <a class="hp-header-legal" href="/agb">AGB</a>
+        <a class="hp-topbar-btn hp-topbar-btn--header" href="https://panel.onroda.de/" rel="noopener noreferrer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span class="hp-topbar-btn__label">Partner-Login</span>
+        </a>
+      </div>
+
+      <div class="hp-header-tools">
+        <a class="hp-topbar-btn hp-topbar-btn--mobile" href="https://panel.onroda.de/" rel="noopener noreferrer">Partner-Login</a>
+        <button type="button" class="hp-nav-toggle" id="hp-nav-toggle" aria-expanded="false" aria-controls="hp-primary-nav">
+          <span class="visually-hidden">Menü</span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+        </button>
       </div>
     </div>
-  </div>
+  </header>
 
   <section class="hp-hero" id="top">
     <div class="hp-hero-content">
@@ -74,78 +90,249 @@
         <div class="hp-hero-copy">
           <div id="homepage-placeholders-root" aria-live="polite"></div>
           <h1 id="hero-headline">
-            Digitale Mobilität<br />
-            für Fahrgäste, Unternehmen<br />
-            und Partnerbetriebe
+            Die Plattform für Taxi, Krankenfahrten und <em>Mobilität</em>
           </h1>
           <p class="hp-hero-lead" id="hero-subline">
-            ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System –
-            für einfache Buchung und strukturierte Abläufe.
+            ONRODA verbindet Fahrgäste, Fahrer und Unternehmen auf einer intelligenten Plattform –
+            für effiziente Abläufe, transparente Prozesse und beste Mobilität.
           </p>
           <div class="hp-hero-cta">
-            <a class="hp-btn-primary" id="hero-cta1" href="#jetzt-buchen">Jetzt buchen</a>
-            <a class="hp-btn-ghost" id="hero-cta2" href="#services">Mehr erfahren</a>
+            <a class="hp-btn-primary" id="hero-cta1" href="#jetzt-buchen">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                <circle cx="7" cy="17" r="2" />
+                <circle cx="17" cy="17" r="2" />
+              </svg>
+              Fahrt buchen
+            </a>
+            <a class="hp-btn-ghost" id="hero-cta2" href="#partner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              Unternehmer werden
+            </a>
+            <a class="hp-btn-ghost hp-btn-ghost--play" href="#services">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              Demo ansehen
+            </a>
           </div>
         </div>
-        <div class="hp-hero-visual" aria-hidden="true">
-          <div class="hp-hero-visual__grid"></div>
-          <div class="hp-hero-visual__core">
-            <div class="hp-hero-visual__ring hp-hero-visual__ring--outer"></div>
-            <div class="hp-hero-visual__ring hp-hero-visual__ring--mid"></div>
-            <div class="hp-hero-visual__ring hp-hero-visual__ring--inner"></div>
-            <div class="hp-hero-visual__glow"></div>
-            <div class="hp-hero-visual__dot hp-hero-visual__dot--center"></div>
+
+        <div class="hp-hero-mockups" aria-hidden="true">
+          <div class="hp-mockup-laptop">
+            <div class="hp-mockup-laptop__screen">
+              <div class="hp-mockup-dash">
+                <div class="hp-mockup-dash__head">
+                  <strong>Übersicht</strong>
+                  <span>Live</span>
+                </div>
+                <div class="hp-mockup-dash__kpis">
+                  <div><small>Gesamtfahrten</small><strong>1.284</strong></div>
+                  <div><small>Umsatz</small><strong>€ 42,8k</strong></div>
+                  <div><small>Aktive Fahrer</small><strong>86</strong></div>
+                  <div><small>Zufriedenheit</small><strong>98%</strong></div>
+                </div>
+                <div class="hp-mockup-dash__chart"></div>
+                <div class="hp-mockup-dash__list">
+                  <span>Letzte Fahrten</span>
+                  <div class="hp-mockup-dash__row"></div>
+                  <div class="hp-mockup-dash__row"></div>
+                  <div class="hp-mockup-dash__row"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="hp-hero-visual__connector hp-hero-visual__connector--a"></div>
-          <div class="hp-hero-visual__connector hp-hero-visual__connector--b"></div>
-          <div class="hp-hero-visual__connector hp-hero-visual__connector--c"></div>
-          <div class="hp-hero-visual__node hp-hero-visual__node--a"></div>
-          <div class="hp-hero-visual__node hp-hero-visual__node--b"></div>
-          <div class="hp-hero-visual__node hp-hero-visual__node--c"></div>
-          <div class="hp-hero-visual__node hp-hero-visual__node--d"></div>
-          <div class="hp-hero-visual__panel">
-            <span class="hp-hero-visual__eyebrow">ONRODA PLATFORM</span>
-            <strong>Systemisch statt klassisch</strong>
-            <p>Ein vernetztes Mobilitäts-OS mit klaren digitalen Prozessen statt einer reinen Taxi-Website.</p>
+          <div class="hp-mockup-phone">
+            <div class="hp-mockup-phone__screen">
+              <div class="hp-mockup-app">
+                <div class="hp-mockup-app__map"></div>
+                <div class="hp-mockup-app__card">
+                  <small>Aktuelle Fahrt</small>
+                  <strong>28,40 €</strong>
+                  <span>ETA 4 Min.</span>
+                  <button type="button">Fahrt starten</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="hp-section" id="fuer-wen" aria-labelledby="fuer-wen-heading">
+  <section class="hp-stats" aria-label="Kennzahlen">
+    <div class="hp-wrap">
+      <ul class="hp-stats-list">
+        <li>
+          <span class="hp-stats-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <strong>500+ Fahrer</strong>
+        </li>
+        <li>
+          <span class="hp-stats-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </span>
+          <strong>24/7 Plattform</strong>
+        </li>
+        <li>
+          <span class="hp-stats-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <strong>Krankenfahrten verlässlich &amp; sicher</strong>
+        </li>
+        <li>
+          <span class="hp-stats-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          </span>
+          <strong>Live Disposition</strong>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--audience" id="fuer-wen" aria-labelledby="fuer-wen-heading">
     <div class="hp-wrap">
       <div class="hp-section-head">
         <h2 id="fuer-wen-heading">Für wen ist ONRODA?</h2>
       </div>
 
-      <div class="hp-grid-2" id="section2-cards">
-        <article class="hp-card" id="section2-card-1">
-          <div class="hp-card-icon" id="section2-card-1-icon" aria-hidden="true">🚕</div>
-          <h3 id="section2-card-1-title">Für Fahrgäste</h3>
-          <p id="section2-card-1-body">Fahrten sofort buchen oder planen. Einfach, schnell und transparent.</p>
-          <a class="hp-btn-primary" id="section2-card-1-cta" href="#jetzt-buchen">Jetzt buchen</a>
+      <div class="hp-audience-grid" id="section2-cards">
+        <article class="hp-audience-card hp-audience-card--passengers" id="section2-card-1">
+          <div class="hp-audience-card__body">
+            <div class="hp-card-icon" id="section2-card-1-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <h3 id="section2-card-1-title">Für Fahrgäste</h3>
+            <p id="section2-card-1-body">Einfach buchen, live verfolgen und sicher ankommen.</p>
+            <a class="hp-link" id="section2-card-1-cta" href="#jetzt-buchen">Mehr erfahren →</a>
+          </div>
         </article>
 
-        <article class="hp-card" id="section2-card-2">
-          <div class="hp-card-icon" id="section2-card-2-icon" aria-hidden="true">🏢</div>
-          <h3 id="section2-card-2-title">Für Unternehmen</h3>
-          <p id="section2-card-2-body">Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.</p>
-          <a class="hp-btn-primary" id="section2-card-2-cta" href="#unternehmen">Partner werden</a>
+        <article class="hp-audience-card hp-audience-card--business" id="section2-card-2">
+          <div class="hp-audience-card__body">
+            <div class="hp-card-icon" id="section2-card-2-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+            </div>
+            <h3 id="section2-card-2-title">Für Unternehmen</h3>
+            <p id="section2-card-2-body">Flottenmanagement, Disposition und Abrechnung in einem System.</p>
+            <a class="hp-link" id="section2-card-2-cta" href="#unternehmen">Mehr erfahren →</a>
+          </div>
         </article>
 
-        <article class="hp-card" id="section2-card-3" hidden>
-          <div class="hp-card-icon" id="section2-card-3-icon" aria-hidden="true">🏨</div>
-          <h3 id="section2-card-3-title">Für Hotels</h3>
-          <p id="section2-card-3-body">Gästemobilität zentral koordinieren und Abläufe im Team entlasten.</p>
-          <a class="hp-btn-primary" id="section2-card-3-cta" href="#unternehmen">Mehr erfahren</a>
+        <article class="hp-audience-card hp-audience-card--medical" id="section2-card-3">
+          <div class="hp-audience-card__body">
+            <div class="hp-card-icon" id="section2-card-3-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <h3 id="section2-card-3-title">Krankenfahrten</h3>
+            <p id="section2-card-3-body">Transportscheine, Genehmigungen und Abrechnung digital verwalten.</p>
+            <a class="hp-link" id="section2-card-3-cta" href="#care">Mehr erfahren →</a>
+          </div>
         </article>
 
-        <article class="hp-card" id="section2-card-4" hidden>
-          <div class="hp-card-icon" id="section2-card-4-icon" aria-hidden="true">🏥</div>
-          <h3 id="section2-card-4-title">Für medizinische Partner</h3>
-          <p id="section2-card-4-body">Organisierte Fahrten mit klaren digitalen Prozessen und verlässlicher Abwicklung.</p>
-          <a class="hp-btn-primary" id="section2-card-4-cta" href="#care">ONRODA Care</a>
+        <article class="hp-audience-card hp-audience-card--partner" id="section2-card-4">
+          <div class="hp-audience-card__body">
+            <div class="hp-card-icon" id="section2-card-4-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/></svg>
+            </div>
+            <h3 id="section2-card-4-title">Partner &amp; Betriebe</h3>
+            <p id="section2-card-4-body">Hotel, Firmenkunden oder Plattformpartner werden und profitieren.</p>
+            <a class="hp-link" id="section2-card-4-cta" href="#partner">Mehr erfahren →</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-process" id="how-it-works" aria-labelledby="how-it-works-title">
+    <div class="hp-wrap">
+      <div class="hp-process-head">
+        <div>
+          <h2 id="how-it-works-title">Einfach. Digital. Effizient.</h2>
+          <p>ONRODA digitalisiert den gesamten Mobilitätsprozess.</p>
+        </div>
+      </div>
+      <ol class="hp-process-steps" id="how-cards-root">
+        <li class="hp-process-step" id="how-card-1">
+          <span class="hp-process-step__icon" id="how-card-1-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+          </span>
+          <strong id="how-card-1-title">Buchen</strong>
+          <span id="how-card-1-body">Fahrt online oder per App buchen</span>
+        </li>
+        <li class="hp-process-step" id="how-card-2">
+          <span class="hp-process-step__icon" id="how-card-2-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/></svg>
+          </span>
+          <strong id="how-card-2-title">Dispatch</strong>
+          <span id="how-card-2-body">Intelligente Zuweisung an den passenden Fahrer</span>
+        </li>
+        <li class="hp-process-step" id="how-card-3">
+          <span class="hp-process-step__icon" id="how-card-3-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <strong id="how-card-3-title">Fahrer</strong>
+          <span id="how-card-3-body">Fahrer erhält Auftrag in Echtzeit</span>
+        </li>
+        <li class="hp-process-step" id="how-card-4">
+          <span class="hp-process-step__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+          </span>
+          <strong>Fahrt</strong>
+          <span>Sichere und komfortable Durchführung</span>
+        </li>
+        <li class="hp-process-step" id="how-card-5">
+          <span class="hp-process-step__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+          </span>
+          <strong>Abrechnung</strong>
+          <span>Automatische Abrechnung und Reporting</span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--trust" id="trust" aria-labelledby="trust-title">
+    <div class="hp-wrap">
+      <div class="hp-section-head">
+        <h2 id="trust-title">Vertrauen &amp; Qualität</h2>
+        <p class="hp-sub">Strukturierte Prozesse für sichere Mobilität in der Region</p>
+      </div>
+      <div class="hp-trust-grid" id="trust-cards-root">
+        <article class="hp-trust-badge" id="trust-card-1">
+          <span class="hp-trust-badge__icon" aria-hidden="true">✓</span>
+          <h3 id="trust-card-1-value">Geprüfte Fahrer</h3>
+          <p id="trust-card-1-label" class="visually-hidden">Geprüfte Fahrer</p>
+          <p id="trust-card-1-desc">Qualifizierte Partnerfahrer im Netzwerk.</p>
+        </article>
+        <article class="hp-trust-badge" id="trust-card-2">
+          <span class="hp-trust-badge__icon" aria-hidden="true">⏱</span>
+          <h3 id="trust-card-2-value">Taxameter</h3>
+          <p id="trust-card-2-label" class="visually-hidden">Taxameter</p>
+          <p id="trust-card-2-desc">Tarifkonforme Abrechnung nach Vorgaben.</p>
+        </article>
+        <article class="hp-trust-badge" id="trust-card-3">
+          <span class="hp-trust-badge__icon" aria-hidden="true">🔒</span>
+          <h3 id="trust-card-3-value">Datenschutz</h3>
+          <p id="trust-card-3-label" class="visually-hidden">Datenschutz</p>
+          <p id="trust-card-3-desc">DSGVO-konforme Verarbeitung und Transparenz.</p>
+        </article>
+        <article class="hp-trust-badge" id="trust-card-4">
+          <span class="hp-trust-badge__icon" aria-hidden="true">🚕</span>
+          <h3 id="trust-card-4-value">Regionale Taxiunternehmen</h3>
+          <p id="trust-card-4-label" class="visually-hidden">Regionale Taxiunternehmen</p>
+          <p id="trust-card-4-desc">Lokale Partner statt anonyme Vermittlung.</p>
+        </article>
+        <article class="hp-trust-badge hp-trust-badge--extra">
+          <span class="hp-trust-badge__icon" aria-hidden="true">🧾</span>
+          <h3>Sichere Abrechnung</h3>
+          <p>Nachvollziehbare Belege und Reporting.</p>
         </article>
       </div>
     </div>
@@ -228,62 +415,6 @@
             <p id="manifest-card-4-body">Wir versprechen nicht nur Mobilität, wir liefern sie. Ein Maximum an Planungssicherheit für Sie und Ihre Partner.</p>
             <a class="hp-link" id="manifest-card-4-cta" href="#care">Mehr erfahren →</a>
           </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="hp-section hp-section--muted" id="how-it-works" aria-labelledby="how-it-works-title">
-    <div class="hp-wrap">
-      <div class="hp-section-head">
-        <p class="hp-kicker">So funktioniert ONRODA</p>
-        <h2 id="how-it-works-title">In 3 Schritten zur organisierten Fahrt</h2>
-      </div>
-      <div class="hp-grid-4" id="how-cards-root">
-        <article class="hp-card" id="how-card-1">
-          <div class="hp-card-icon" id="how-card-1-icon" aria-hidden="true">1</div>
-          <h3 id="how-card-1-title">Fahrt anfragen</h3>
-          <p id="how-card-1-body">Start, Ziel und Bedarf digital erfassen.</p>
-        </article>
-        <article class="hp-card" id="how-card-2">
-          <div class="hp-card-icon" id="how-card-2-icon" aria-hidden="true">2</div>
-          <h3 id="how-card-2-title">Vermittlung läuft</h3>
-          <p id="how-card-2-body">Passendes Partnerunternehmen wird strukturiert zugeordnet.</p>
-        </article>
-        <article class="hp-card" id="how-card-3">
-          <div class="hp-card-icon" id="how-card-3-icon" aria-hidden="true">3</div>
-          <h3 id="how-card-3-title">Status &amp; Abrechnung</h3>
-          <p id="how-card-3-body">Fahrtstatus, Kostenstelle und Nachweise bleiben nachvollziehbar.</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="hp-section" id="trust" aria-labelledby="trust-title">
-    <div class="hp-wrap">
-      <div class="hp-section-head">
-        <h2 id="trust-title">Vertrauen durch strukturierte Prozesse</h2>
-      </div>
-      <div class="hp-grid-4" id="trust-cards-root">
-        <article class="hp-card" id="trust-card-1">
-          <h3 id="trust-card-1-value">Digitale Fahrten</h3>
-          <p id="trust-card-1-label">Digitale Fahrten</p>
-          <p id="trust-card-1-desc">Organisation und Status digital geführt.</p>
-        </article>
-        <article class="hp-card" id="trust-card-2">
-          <h3 id="trust-card-2-value">Partnerbetriebe</h3>
-          <p id="trust-card-2-label">Partnerbetriebe</p>
-          <p id="trust-card-2-desc">Strukturierte Zusammenarbeit im Netzwerk.</p>
-        </article>
-        <article class="hp-card" id="trust-card-3">
-          <h3 id="trust-card-3-value">Schnelle Vermittlung</h3>
-          <p id="trust-card-3-label">Schnelle Vermittlung</p>
-          <p id="trust-card-3-desc">Kurze Wege von Anfrage bis Disposition.</p>
-        </article>
-        <article class="hp-card" id="trust-card-4">
-          <h3 id="trust-card-4-value">Strukturierte Abrechnung</h3>
-          <p id="trust-card-4-label">Strukturierte Abrechnung</p>
-          <p id="trust-card-4-desc">Kostenstellen und Referenzen sauber zuordenbar.</p>
         </article>
       </div>
     </div>
