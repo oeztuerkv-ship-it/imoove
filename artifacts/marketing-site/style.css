@@ -548,16 +548,142 @@
     }
 
     .hp-device-laptop__screen {
-      aspect-ratio: 1240 / 775;
+      aspect-ratio: 16 / 10;
       width: 100%;
+      min-height: 220px;
       border-radius: 8px;
       overflow: hidden;
-      background-color: #f8fafc;
-      background-image: url("/mockups/admin-dashboard.svg?v=3");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
+      background: #fff;
       border: 1px solid #27272a;
+    }
+
+    .hp-screen-dash {
+      display: grid;
+      grid-template-columns: 28% 1fr;
+      height: 100%;
+      min-height: 220px;
+      font-size: 0.62rem;
+    }
+
+    .hp-screen-dash__side {
+      background: #111827;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .hp-screen-dash__logo {
+      width: 100%;
+      max-width: 108px;
+      height: auto;
+      display: block;
+      filter: brightness(0) invert(1);
+    }
+
+    .hp-screen-dash__vision {
+      margin: 0;
+      font-size: 0.58rem;
+      line-height: 1.35;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .hp-screen-dash__nav {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 8px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .hp-screen-dash__nav--active {
+      background: var(--onroda-red);
+      color: #fff;
+    }
+
+    .hp-screen-dash__main {
+      padding: 12px;
+      background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .hp-screen-dash__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .hp-screen-dash__head strong {
+      font-size: 0.82rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hp-screen-dash__kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .hp-screen-dash__kpis div {
+      background: #fff;
+      border: 1px solid #ececec;
+      border-radius: 8px;
+      padding: 6px 5px;
+    }
+
+    .hp-screen-dash__kpis small {
+      display: block;
+      font-size: 0.5rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .hp-screen-dash__kpis strong {
+      font-size: 0.72rem;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .hp-screen-dash__chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      flex: 1;
+      min-height: 56px;
+      padding: 8px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid #ececec;
+    }
+
+    .hp-screen-dash__chart span {
+      flex: 1;
+      height: var(--h, 50%);
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(180deg, rgba(213, 0, 28, 0.88), rgba(213, 0, 28, 0.35));
+    }
+
+    .hp-screen-pill {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #475569;
+      flex-shrink: 0;
+    }
+
+    .hp-screen-pill--live {
+      color: #15803d;
+      background: #dcfce7;
     }
 
     .hp-device-laptop__hinge {
@@ -605,14 +731,106 @@
     .hp-device-phone__screen {
       aspect-ratio: 390 / 844;
       width: 100%;
+      min-height: 360px;
       border-radius: 28px;
       overflow: hidden;
-      background-color: #fff;
-      background-image: url("/mockups/mobile-driver.svg?v=3");
-      background-size: cover;
-      background-position: center top;
-      background-repeat: no-repeat;
+      background: #fff;
       border: 1px solid #27272a;
+    }
+
+    .hp-screen-app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 360px;
+      background: #fff;
+    }
+
+    .hp-screen-app__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 28px 10px 8px;
+    }
+
+    .hp-screen-app__logo {
+      width: auto;
+      height: 22px;
+      display: block;
+    }
+
+    .hp-screen-app__map {
+      position: relative;
+      flex: 1;
+      min-height: 140px;
+      margin: 0 8px;
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 65% 35%, rgba(213, 0, 28, 0.18), transparent 40%),
+        linear-gradient(160deg, #e2e8f0 0%, #f8fafc 55%, #dbeafe 100%);
+      overflow: hidden;
+    }
+
+    .hp-screen-app__pin {
+      position: absolute;
+      top: 38%;
+      left: 58%;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--onroda-red);
+      box-shadow: 0 0 0 5px rgba(213, 0, 28, 0.2);
+    }
+
+    .hp-screen-app__route {
+      position: absolute;
+      inset: 28% 20% 30% 16%;
+      border: 2px solid var(--onroda-red);
+      border-radius: 999px;
+      border-top-color: transparent;
+      border-left-color: transparent;
+      transform: rotate(16deg);
+    }
+
+    .hp-screen-app__card {
+      margin: 8px;
+      padding: 12px;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+      display: grid;
+      gap: 4px;
+    }
+
+    .hp-screen-app__card small {
+      color: #64748b;
+      font-size: 0.58rem;
+      font-weight: 600;
+    }
+
+    .hp-screen-app__card strong {
+      font-size: 1.1rem;
+      color: var(--onroda-text-dark);
+      letter-spacing: -0.02em;
+    }
+
+    .hp-screen-app__card > span:not(.hp-screen-app__cta) {
+      font-size: 0.58rem;
+      color: #64748b;
+      line-height: 1.35;
+    }
+
+    .hp-screen-app__cta {
+      margin-top: 4px;
+      display: block;
+      text-align: center;
+      border-radius: 10px;
+      background: var(--onroda-red);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.68rem;
+      padding: 10px;
     }
 
     .hp-floating-card {
@@ -1839,6 +2057,18 @@
         width: 150px;
         right: 0;
         bottom: -12px;
+      }
+
+      .hp-device-phone__screen {
+        min-height: 260px;
+      }
+
+      .hp-screen-app {
+        min-height: 260px;
+      }
+
+      .hp-screen-dash__kpis {
+        grid-template-columns: repeat(2, 1fr);
       }
 
       .hp-card-live {

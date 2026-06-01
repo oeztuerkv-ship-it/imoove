@@ -19,8 +19,6 @@
   />
 
   <link rel="stylesheet" href="/style.css" />
-  <link rel="preload" href="/mockups/admin-dashboard.svg?v=3" as="image" type="image/svg+xml" />
-  <link rel="preload" href="/mockups/mobile-driver.svg?v=3" as="image" type="image/svg+xml" />
 </head>
 
 <body>
@@ -129,22 +127,70 @@
           <div class="hp-device-laptop">
             <div class="hp-device-laptop__lid">
               <span class="hp-device-laptop__notch" aria-hidden="true"></span>
-              <div
-                class="hp-device-laptop__screen"
-                role="img"
-                aria-label="ONRODA Partner-Dashboard mit Live-Übersicht"
-              ></div>
+              <div class="hp-device-laptop__screen">
+                <div class="hp-screen-dash">
+                  <aside class="hp-screen-dash__side">
+                    <img
+                      class="hp-screen-dash__logo"
+                      src="/onroda-logo-transparent.png"
+                      width="148"
+                      height="56"
+                      alt=""
+                      decoding="async"
+                    />
+                    <p class="hp-screen-dash__vision">Eine Plattform für alle Rollen</p>
+                    <span class="hp-screen-dash__nav hp-screen-dash__nav--active">Übersicht</span>
+                    <span class="hp-screen-dash__nav">Fahrten</span>
+                    <span class="hp-screen-dash__nav">Team</span>
+                  </aside>
+                  <main class="hp-screen-dash__main">
+                    <div class="hp-screen-dash__head">
+                      <strong>Live-Übersicht</strong>
+                      <span class="hp-screen-pill hp-screen-pill--live">Live</span>
+                    </div>
+                    <div class="hp-screen-dash__kpis">
+                      <div><small>Fahrten</small><strong>1.284</strong></div>
+                      <div><small>Umsatz</small><strong>€ 42,8k</strong></div>
+                      <div><small>Fahrer</small><strong>86</strong></div>
+                      <div><small>Quote</small><strong>98%</strong></div>
+                    </div>
+                    <div class="hp-screen-dash__chart" aria-hidden="true">
+                      <span style="--h: 42%"></span><span style="--h: 58%"></span><span style="--h: 48%"></span><span style="--h: 72%"></span><span style="--h: 65%"></span><span style="--h: 80%"></span>
+                    </div>
+                  </main>
+                </div>
+              </div>
             </div>
             <div class="hp-device-laptop__hinge" aria-hidden="true"></div>
             <div class="hp-device-laptop__base" aria-hidden="true"></div>
           </div>
           <div class="hp-device-phone">
             <span class="hp-device-phone__island" aria-hidden="true"></span>
-            <div
-              class="hp-device-phone__screen"
-              role="img"
-              aria-label="ONRODA Fahrer-App mit Live-Fahrt"
-            ></div>
+            <div class="hp-device-phone__screen">
+              <div class="hp-screen-app">
+                <header class="hp-screen-app__head">
+                  <img
+                    class="hp-screen-app__logo"
+                    src="/onroda-logo-transparent.png"
+                    width="92"
+                    height="34"
+                    alt=""
+                    decoding="async"
+                  />
+                  <span class="hp-screen-pill">Unterwegs</span>
+                </header>
+                <div class="hp-screen-app__map" aria-hidden="true">
+                  <span class="hp-screen-app__route"></span>
+                  <span class="hp-screen-app__pin"></span>
+                </div>
+                <div class="hp-screen-app__card">
+                  <small>Aktuelle Fahrt</small>
+                  <strong>28,40 €</strong>
+                  <span>ETA 4 Min. · Live-Dispatch</span>
+                  <span class="hp-screen-app__cta">Live verfolgen</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="hp-floating-card hp-card-live">
             <span class="hp-dot" aria-hidden="true"></span>
