@@ -1,0 +1,27 @@
+# ONRODA: Einziges Produkt-Logo (verbindlich)
+
+## Standard-Asset
+
+**Dateiname:** `onroda-logo-transparent.png`  
+**Kanonical im Repo:** `artifacts/api-server/assets/onroda-logo-transparent.png`  
+**Marketing (Live):** `artifacts/marketing-site/onroda-logo-transparent.png` (Deploy-Kopie für `/var/www/onroda`)
+
+Referenz-Code: `artifacts/api-server/src/lib/onrodaBrandLogoAsset.ts` (`ONRODA_BRAND_LOGO_FILENAME`).
+
+## Verwenden in
+
+- Marketing-Homepage Header + Footer (`<img src="/onroda-logo-transparent.png" alt="ONRODA">`)
+- Partner-Panel `OnrodaMark.jsx`
+- Admin-Panel Marken-Import
+- API-E-Mails / PDF (`onrodaBrandLogoAsset.ts`)
+
+## Nicht verwenden (verwirrt / veraltet)
+
+- `onroda-mark.png` — alte Kreis-Marke, **nicht** Homepage-Logo
+- `onroda-logo-official.png` — Duplikat, nicht Standard
+- `onroda-or-reference.png` / App-„OR“-Kachel — **nur** Mobile-UI, nicht Marketing/Panel
+- Text-Wordmark allein (`on`/`roda` spans) — nur Mobile `OnrodaOrMark`, **nicht** Marketing-Header
+
+## Für Agents
+
+Bei Homepage, Panel-Chrome oder Mail: **immer** `onroda-logo-transparent.png`. Keine neuen Logo-Varianten ohne Team-Freigabe.

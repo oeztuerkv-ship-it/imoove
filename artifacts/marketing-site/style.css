@@ -104,24 +104,25 @@
     .hp-logo {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
       text-decoration: none;
       color: var(--onroda-text-dark);
-      font-weight: 800;
-      font-size: 1.15rem;
-      letter-spacing: 0.04em;
     }
 
-    .hp-logo-mark {
-      width: 36px;
-      height: 36px;
+    .hp-brand-logo {
+      display: block;
+      width: auto;
+      height: 44px;
+      max-width: min(148px, 42vw);
       object-fit: contain;
-      flex-shrink: 0;
     }
 
-    .hp-logo-text {
-      font-weight: 800;
-      letter-spacing: 0.06em;
+    .hp-brand-logo--footer {
+      height: 52px;
+      filter: brightness(0) invert(1);
+    }
+
+    .hp-header--minimal .hp-header-inner {
+      grid-template-columns: 1fr auto;
     }
 
     .hp-nav {
@@ -472,175 +473,313 @@
 
     .hp-hero-mockups {
       position: relative;
-      min-height: 420px;
+      min-height: 440px;
+      isolation: isolate;
     }
 
-    .hp-mockup-laptop {
+    .hp-mockup-glow {
       position: absolute;
-      top: 12px;
-      right: 0;
-      width: min(92%, 520px);
-      padding: 10px 10px 14px;
-      border-radius: 16px;
-      background: #1a1a1a;
-      box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
-      transform: rotate(-1deg);
+      inset: 8% 5% 12%;
+      background:
+        radial-gradient(circle at 30% 40%, rgba(213, 0, 28, 0.14), transparent 55%),
+        radial-gradient(circle at 78% 28%, rgba(59, 130, 246, 0.12), transparent 50%);
+      filter: blur(18px);
+      z-index: 0;
     }
 
-    .hp-mockup-laptop__screen {
-      border-radius: 10px;
+    .hp-mockup-tablet {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: min(88%, 500px);
+      z-index: 1;
+      transform: rotate(-2deg);
+    }
+
+    .hp-mockup-tablet__shell {
+      padding: 12px;
+      border-radius: 22px;
+      background: linear-gradient(145deg, #2a2a2e 0%, #111 100%);
+      box-shadow: 0 32px 64px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    }
+
+    .hp-mockup-tablet__screen {
+      border-radius: 14px;
       overflow: hidden;
       background: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .hp-mockup-phone {
+      position: absolute;
+      left: 4%;
+      bottom: 0;
+      width: 200px;
+      z-index: 2;
+      transform: rotate(3deg);
+    }
+
+    .hp-mockup-phone__island {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 72px;
+      height: 22px;
+      border-radius: 999px;
+      background: #0a0a0a;
+      z-index: 3;
+    }
+
+    .hp-mockup-phone__shell {
+      padding: 10px 8px 12px;
+      border-radius: 34px;
+      background: linear-gradient(160deg, #1c1c1e 0%, #0a0a0a 100%);
+      box-shadow: 0 28px 56px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    }
+
+    .hp-mockup-phone__screen {
+      border-radius: 26px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .hp-mockup-pill {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .hp-mockup-pill--live {
+      color: #15803d;
+      background: #dcfce7;
     }
 
     .hp-mockup-dash {
-      padding: 14px;
-      min-height: 260px;
+      padding: 16px;
+      min-height: 270px;
+      background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
     }
 
     .hp-mockup-dash__head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .hp-mockup-dash__head strong {
-      font-size: 0.95rem;
-    }
-
-    .hp-mockup-dash__head span {
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: #16a34a;
-      background: #dcfce7;
-      padding: 3px 8px;
-      border-radius: 999px;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
     }
 
     .hp-mockup-dash__kpis {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .hp-mockup-dash__kpis div {
-      background: #f5f5f7;
-      border-radius: 8px;
-      padding: 8px;
+      background: #fff;
+      border: 1px solid #ececec;
+      border-radius: 12px;
+      padding: 10px 8px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
     }
 
     .hp-mockup-dash__kpis small {
       display: block;
-      font-size: 0.62rem;
-      color: #666;
-      margin-bottom: 2px;
+      font-size: 0.58rem;
+      color: #64748b;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
 
     .hp-mockup-dash__kpis strong {
-      font-size: 0.82rem;
+      font-size: 0.88rem;
+      display: block;
     }
 
+    .hp-mockup-trend {
+      display: block;
+      font-style: normal;
+      font-size: 0.58rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .hp-mockup-trend--up { color: #16a34a; }
+
     .hp-mockup-dash__chart {
-      height: 72px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      background:
-        linear-gradient(180deg, rgba(213, 0, 28, 0.08), rgba(213, 0, 28, 0)),
-        linear-gradient(90deg, #ececec 1px, transparent 1px),
-        linear-gradient(#ececec 1px, transparent 1px);
-      background-size: auto, 24px 100%, 100% 18px;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 78px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      background: #fff;
+      border: 1px solid #ececec;
+    }
+
+    .hp-mockup-dash__chart span {
+      flex: 1;
+      height: var(--h, 50%);
+      border-radius: 6px 6px 2px 2px;
+      background: linear-gradient(180deg, rgba(213, 0, 28, 0.85), rgba(213, 0, 28, 0.35));
     }
 
     .hp-mockup-dash__list span {
       display: block;
       font-size: 0.72rem;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      color: #334155;
     }
 
-    .hp-mockup-dash__row {
-      height: 10px;
-      border-radius: 999px;
-      background: #ececec;
-      margin-bottom: 6px;
-    }
-
-    .hp-mockup-dash__row:nth-child(3) { width: 88%; }
-    .hp-mockup-dash__row:nth-child(4) { width: 72%; }
-    .hp-mockup-dash__row:nth-child(5) { width: 64%; }
-
-    .hp-mockup-phone {
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      width: 190px;
-      padding: 10px 8px 12px;
-      border-radius: 28px;
-      background: #111;
-      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.22);
-      z-index: 2;
-    }
-
-    .hp-mockup-phone__screen {
-      border-radius: 20px;
-      overflow: hidden;
+    .hp-mockup-dash__trip {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 10px;
       background: #fff;
+      border: 1px solid #ececec;
+      margin-bottom: 6px;
+    }
+
+    .hp-mockup-dash__trip i {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--hp-icon-bg);
+      display: block;
+    }
+
+    .hp-mockup-dash__trip strong {
+      display: block;
+      font-size: 0.78rem;
+    }
+
+    .hp-mockup-dash__trip small {
+      color: #64748b;
+      font-size: 0.65rem;
+    }
+
+    .hp-mockup-dash__trip b {
+      font-size: 0.75rem;
+      color: var(--onroda-text-dark);
+    }
+
+    .hp-mockup-app__status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 14px 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .hp-mockup-app__signal {
+      width: 36px;
+      height: 8px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #111 0 70%, #cbd5e1 70%);
     }
 
     .hp-mockup-app__map {
-      height: 150px;
+      height: 168px;
+      margin: 0 10px;
+      border-radius: 16px;
       background:
-        radial-gradient(circle at 30% 40%, rgba(213, 0, 28, 0.18), transparent 42%),
-        linear-gradient(135deg, #dbeafe 0%, #eff6ff 45%, #f8fafc 100%);
+        radial-gradient(circle at 65% 35%, rgba(213, 0, 28, 0.2), transparent 38%),
+        linear-gradient(160deg, #e2e8f0 0%, #f8fafc 55%, #dbeafe 100%);
       position: relative;
+      overflow: hidden;
     }
 
-    .hp-mockup-app__map::after {
-      content: "";
+    .hp-mockup-app__pin {
       position: absolute;
-      inset: 28% 18% 32% 22%;
+      top: 38%;
+      left: 58%;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: var(--onroda-red);
+      box-shadow: 0 0 0 6px rgba(213, 0, 28, 0.18);
+    }
+
+    .hp-mockup-app__route {
+      position: absolute;
+      inset: 28% 22% 30% 18%;
       border: 3px solid var(--onroda-red);
       border-radius: 999px;
       border-top-color: transparent;
       border-left-color: transparent;
-      transform: rotate(20deg);
+      transform: rotate(18deg);
+      opacity: 0.9;
     }
 
     .hp-mockup-app__card {
-      padding: 12px;
+      margin: 10px;
+      padding: 14px;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
       display: grid;
-      gap: 4px;
+      gap: 6px;
+    }
+
+    .hp-mockup-app__card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     .hp-mockup-app__card small {
-      color: #666;
+      color: #64748b;
       font-size: 0.68rem;
       font-weight: 600;
     }
 
     .hp-mockup-app__card strong {
-      font-size: 1.15rem;
+      font-size: 1.35rem;
       color: var(--onroda-text-dark);
+      letter-spacing: -0.02em;
     }
 
-    .hp-mockup-app__card span {
+    .hp-mockup-app__card > span {
       font-size: 0.72rem;
-      color: #666;
+      color: #64748b;
+      line-height: 1.4;
     }
 
     .hp-mockup-app__card button {
-      margin-top: 6px;
+      margin-top: 4px;
       border: 0;
-      border-radius: 10px;
+      border-radius: 12px;
       background: var(--onroda-red);
       color: #fff;
       font-weight: 700;
-      font-size: 0.78rem;
-      padding: 10px;
+      font-size: 0.82rem;
+      padding: 12px;
       font-family: inherit;
+      box-shadow: 0 8px 20px rgba(213, 0, 28, 0.25);
+    }
+
+    .hp-mockup-laptop,
+    .hp-mockup-laptop__screen {
+      display: none;
     }
 
     .hp-hero-visual {
@@ -852,13 +991,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 56px;
-      height: 56px;
+      width: 64px;
+      height: 64px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       color: #fff;
+      background: linear-gradient(145deg, rgba(213, 0, 28, 0.95), rgba(160, 0, 20, 0.85));
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 12px 28px rgba(213, 0, 28, 0.28), 0 0 0 6px rgba(213, 0, 28, 0.12);
+    }
+
+    .hp-process-step__icon svg {
+      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15));
     }
 
     .hp-process-step strong {
@@ -897,13 +1041,53 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 44px;
-      height: 44px;
-      border-radius: 999px;
-      background: var(--hp-icon-bg);
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #fff5f5, #fde8ec);
       color: var(--onroda-red);
-      font-size: 1.1rem;
       margin-bottom: 10px;
+      border: 1px solid rgba(213, 0, 28, 0.08);
+    }
+
+    .hp-faq-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr);
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .hp-vision-panel {
+      background: #fff;
+      border: 1px solid var(--hp-card-border);
+      border-radius: 18px;
+      padding: 24px 22px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+    }
+
+    .hp-vision-panel h3 {
+      margin: 0 0 12px;
+      font-size: 1.15rem;
+    }
+
+    .hp-vision-panel p {
+      margin: 0 0 14px;
+      color: var(--onroda-text-grey);
+      font-size: 0.96rem;
+      line-height: 1.55;
+    }
+
+    .hp-vision-list {
+      margin: 0 0 18px;
+      padding-left: 1.1rem;
+      color: var(--onroda-text-grey);
+      font-size: 0.94rem;
+      line-height: 1.6;
+    }
+
+    .hp-faq-list {
+      display: grid;
+      gap: 10px;
     }
 
     .hp-trust-badge h3 {
@@ -1735,21 +1919,26 @@
         margin-top: 0.5rem;
       }
 
-      .hp-mockup-laptop {
+      .hp-mockup-tablet {
         position: relative;
         width: 100%;
         transform: none;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
       }
 
       .hp-mockup-phone {
         position: relative;
-        width: min(190px, 52%);
-        margin: -70px auto 0;
+        width: min(200px, 54%);
+        margin: -64px auto 0;
+        transform: none;
       }
 
       .hp-mockup-dash__kpis {
         grid-template-columns: repeat(2, 1fr);
+      }
+
+      .hp-faq-layout {
+        grid-template-columns: 1fr;
       }
 
       .hp-dynamic-placeholder {

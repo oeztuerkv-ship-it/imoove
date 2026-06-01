@@ -25,8 +25,7 @@
   <header class="hp-header" id="site-header">
     <div class="hp-wrap hp-header-inner">
       <a class="hp-logo" href="/" aria-label="ONRODA – Startseite">
-        <img class="hp-logo-mark" src="/onroda-mark.png" width="36" height="36" alt="" />
-        <span class="hp-logo-text">ONRODA</span>
+        <img class="hp-brand-logo" src="/onroda-logo-transparent.png" width="148" height="56" alt="ONRODA" decoding="async" />
       </a>
 
       <nav class="hp-nav" id="hp-primary-nav" aria-label="Hauptnavigation">
@@ -124,38 +123,55 @@
         </div>
 
         <div class="hp-hero-mockups" aria-hidden="true">
-          <div class="hp-mockup-laptop">
-            <div class="hp-mockup-laptop__screen">
-              <div class="hp-mockup-dash">
-                <div class="hp-mockup-dash__head">
-                  <strong>Übersicht</strong>
-                  <span>Live</span>
-                </div>
-                <div class="hp-mockup-dash__kpis">
-                  <div><small>Gesamtfahrten</small><strong>1.284</strong></div>
-                  <div><small>Umsatz</small><strong>€ 42,8k</strong></div>
-                  <div><small>Aktive Fahrer</small><strong>86</strong></div>
-                  <div><small>Zufriedenheit</small><strong>98%</strong></div>
-                </div>
-                <div class="hp-mockup-dash__chart"></div>
-                <div class="hp-mockup-dash__list">
-                  <span>Letzte Fahrten</span>
-                  <div class="hp-mockup-dash__row"></div>
-                  <div class="hp-mockup-dash__row"></div>
-                  <div class="hp-mockup-dash__row"></div>
+          <div class="hp-mockup-glow"></div>
+          <div class="hp-mockup-tablet">
+            <div class="hp-mockup-tablet__shell">
+              <div class="hp-mockup-tablet__screen">
+                <div class="hp-mockup-dash">
+                  <div class="hp-mockup-dash__head">
+                    <strong>Übersicht</strong>
+                    <span class="hp-mockup-pill hp-mockup-pill--live">Live</span>
+                  </div>
+                  <div class="hp-mockup-dash__kpis">
+                    <div><small>Gesamtfahrten</small><strong>1.284</strong><em class="hp-mockup-trend hp-mockup-trend--up">+12%</em></div>
+                    <div><small>Umsatz</small><strong>€ 42,8k</strong><em class="hp-mockup-trend hp-mockup-trend--up">+8%</em></div>
+                    <div><small>Aktive Fahrer</small><strong>86</strong></div>
+                    <div><small>Zufriedenheit</small><strong>98%</strong></div>
+                  </div>
+                  <div class="hp-mockup-dash__chart" role="presentation">
+                    <span style="--h:42%"></span><span style="--h:58%"></span><span style="--h:48%"></span><span style="--h:72%"></span><span style="--h:65%"></span><span style="--h:80%"></span><span style="--h:74%"></span>
+                  </div>
+                  <div class="hp-mockup-dash__list">
+                    <span>Letzte Fahrten</span>
+                    <div class="hp-mockup-dash__trip"><i></i><div><strong>Flughafen STR</strong><small>Heute, 14:20</small></div><b>€ 38,20</b></div>
+                    <div class="hp-mockup-dash__trip"><i></i><div><strong>Klinikum</strong><small>Heute, 11:05</small></div><b>€ 22,10</b></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div class="hp-mockup-phone">
-            <div class="hp-mockup-phone__screen">
-              <div class="hp-mockup-app">
-                <div class="hp-mockup-app__map"></div>
-                <div class="hp-mockup-app__card">
-                  <small>Aktuelle Fahrt</small>
-                  <strong>28,40 €</strong>
-                  <span>ETA 4 Min.</span>
-                  <button type="button">Fahrt starten</button>
+            <div class="hp-mockup-phone__island"></div>
+            <div class="hp-mockup-phone__shell">
+              <div class="hp-mockup-phone__screen">
+                <div class="hp-mockup-app">
+                  <div class="hp-mockup-app__status">
+                    <span>9:41</span>
+                    <span class="hp-mockup-app__signal"></span>
+                  </div>
+                  <div class="hp-mockup-app__map">
+                    <span class="hp-mockup-app__pin"></span>
+                    <span class="hp-mockup-app__route"></span>
+                  </div>
+                  <div class="hp-mockup-app__card">
+                    <div class="hp-mockup-app__card-top">
+                      <small>Aktuelle Fahrt</small>
+                      <span class="hp-mockup-pill">Unterwegs</span>
+                    </div>
+                    <strong>28,40 €</strong>
+                    <span>ETA 4 Min. · Fahrer 2 Min. entfernt</span>
+                    <button type="button">Live verfolgen</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -306,31 +322,41 @@
       </div>
       <div class="hp-trust-grid" id="trust-cards-root">
         <article class="hp-trust-badge" id="trust-card-1">
-          <span class="hp-trust-badge__icon" aria-hidden="true">✓</span>
+          <span class="hp-trust-badge__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
           <h3 id="trust-card-1-value">Geprüfte Fahrer</h3>
           <p id="trust-card-1-label" class="visually-hidden">Geprüfte Fahrer</p>
           <p id="trust-card-1-desc">Qualifizierte Partnerfahrer im Netzwerk.</p>
         </article>
         <article class="hp-trust-badge" id="trust-card-2">
-          <span class="hp-trust-badge__icon" aria-hidden="true">⏱</span>
+          <span class="hp-trust-badge__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </span>
           <h3 id="trust-card-2-value">Taxameter</h3>
           <p id="trust-card-2-label" class="visually-hidden">Taxameter</p>
           <p id="trust-card-2-desc">Tarifkonforme Abrechnung nach Vorgaben.</p>
         </article>
         <article class="hp-trust-badge" id="trust-card-3">
-          <span class="hp-trust-badge__icon" aria-hidden="true">🔒</span>
+          <span class="hp-trust-badge__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
           <h3 id="trust-card-3-value">Datenschutz</h3>
           <p id="trust-card-3-label" class="visually-hidden">Datenschutz</p>
           <p id="trust-card-3-desc">DSGVO-konforme Verarbeitung und Transparenz.</p>
         </article>
         <article class="hp-trust-badge" id="trust-card-4">
-          <span class="hp-trust-badge__icon" aria-hidden="true">🚕</span>
+          <span class="hp-trust-badge__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+          </span>
           <h3 id="trust-card-4-value">Regionale Taxiunternehmen</h3>
           <p id="trust-card-4-label" class="visually-hidden">Regionale Taxiunternehmen</p>
           <p id="trust-card-4-desc">Lokale Partner statt anonyme Vermittlung.</p>
         </article>
         <article class="hp-trust-badge hp-trust-badge--extra">
-          <span class="hp-trust-badge__icon" aria-hidden="true">🧾</span>
+          <span class="hp-trust-badge__icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+          </span>
           <h3>Sichere Abrechnung</h3>
           <p>Nachvollziehbare Belege und Reporting.</p>
         </article>
@@ -423,21 +449,56 @@
   <section class="hp-section hp-section--muted" id="faq" aria-labelledby="faq-title">
     <div class="hp-wrap">
       <div class="hp-section-head">
+        <p class="hp-kicker">Unsere Vision</p>
         <h2 id="faq-title">Häufige Fragen</h2>
+        <p class="hp-sub">ONRODA vernetzt Mobilität digital — von der Buchung bis zur Abrechnung. Transparent für Fahrgäste, steuerbar für Unternehmen, effizient für Partnerbetriebe.</p>
       </div>
-      <div id="faq-list-root">
-        <details class="hp-faq-item" id="faq-item-1" open>
-          <summary id="faq-item-1-question">Wie buche ich eine Fahrt?</summary>
-          <p id="faq-item-1-answer">Über die ONRODA App oder über Ihr Partner-Setup. Buchung und Status sind digital nachvollziehbar.</p>
-        </details>
-        <details class="hp-faq-item" id="faq-item-2">
-          <summary id="faq-item-2-question">Kann ich Fahrten vorplanen?</summary>
-          <p id="faq-item-2-answer">Ja, Vorbestellungen und Serienfahrten sind möglich.</p>
-        </details>
-        <details class="hp-faq-item" id="faq-item-3">
-          <summary id="faq-item-3-question">Wie erhalte ich Belege?</summary>
-          <p id="faq-item-3-answer">Digitale Quittungen und strukturierte Abrechnung stehen je nach Flow zur Verfügung.</p>
-        </details>
+      <div class="hp-faq-layout">
+        <aside class="hp-vision-panel" aria-labelledby="vision-heading">
+          <h3 id="vision-heading">Was wir wollen</h3>
+          <p>Keine klassische Taxi-Website, sondern eine Plattform: Fahrten buchen, Disposition steuern, Krankenfahrten organisieren und Partnerprozesse digital abbilden — in einer Region, mit klaren Abläufen.</p>
+          <ul class="hp-vision-list">
+            <li>Ein System statt Medienbrüche</li>
+            <li>Live-Status für alle Beteiligten</li>
+            <li>Regionale Partner statt anonyme Vermittlung</li>
+            <li>Offen für Taxi, Care, Firmen &amp; Hotels</li>
+          </ul>
+          <a class="hp-link" href="#partner">Partner werden →</a>
+        </aside>
+        <div id="faq-list-root" class="hp-faq-list">
+          <details class="hp-faq-item" id="faq-item-1" open>
+            <summary id="faq-item-1-question">Was ist die Vision von ONRODA?</summary>
+            <p id="faq-item-1-answer">ONRODA digitalisiert den gesamten Mobilitätsprozess — für Fahrgäste, Fahrer und Unternehmen. Ziel ist eine vernetzte Plattform mit transparenten Abläufen, live nachvollziehbaren Fahrten und strukturierter Abrechnung, nicht nur einzelne Fahrten vermitteln.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-2">
+            <summary id="faq-item-2-question">Wie buche ich eine Fahrt?</summary>
+            <p id="faq-item-2-answer">Über die ONRODA App oder über Ihr Partner-Setup (z. B. Firmen- oder Hotelzugang). Buchung, Status und Belege sind digital nachvollziehbar.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-3">
+            <summary id="faq-item-3-question">Kann ich Fahrten vorplanen?</summary>
+            <p id="faq-item-3-answer">Ja — Vorbestellungen, Terminfahrten und wiederkehrende Fahrten (z. B. Arzt oder Flughafen) sind möglich.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-4">
+            <summary id="faq-item-4-question">Für wen ist ONRODA gedacht?</summary>
+            <p id="faq-item-4-answer">Für Fahrgäste, Taxi- und Mobilitätsunternehmen, Krankenfahrten, Hotels, Firmenkunden und Partnerbetriebe, die Fahrten digital organisieren möchten — jeweils mit passenden Zugängen und Prozessen.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-5">
+            <summary id="faq-item-5-question">Wie funktioniert die Partner-Anbindung?</summary>
+            <p id="faq-item-5-answer">Taxibetriebe und Unternehmen stellen eine Partneranfrage. Nach Prüfung erhalten sie Zugang zum Partner-Portal — Disposition, Codes, Abrechnung und Teamverwaltung in einem System.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-6">
+            <summary id="faq-item-6-question">Sind Krankenfahrten über ONRODA möglich?</summary>
+            <p id="faq-item-6-answer">Ja. ONRODA Care unterstützt organisierte Krankenfahrten mit digitalen Prozessen — von der Anfrage bis zur nachvollziehbaren Abrechnung für Partner und Einrichtungen.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-7">
+            <summary id="faq-item-7-question">Wie erhalte ich Belege?</summary>
+            <p id="faq-item-7-answer">Digitale Quittungen und strukturierte Abrechnung stehen je nach Flow zur Verfügung — geeignet für Privatkunden, Firmen und Partner mit Kostenstellen.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-8">
+            <summary id="faq-item-8-question">Wo ist ONRODA verfügbar?</summary>
+            <p id="faq-item-8-answer">ONRODA startet in Stuttgart und der Region — mit regionalen Partnerbetrieben. Die Plattform wächst schrittweise mit freigeschalteten Partnern.</p>
+          </details>
+        </div>
       </div>
     </div>
   </section>
@@ -813,10 +874,8 @@
     <div class="hp-wrap">
       <div class="hp-footer-main">
         <div class="hp-footer-brand">
-          <a class="hp-footer-logo" href="/" aria-label="onroda – Startseite">
-            <span class="onroda-ui-wordmark">
-              <span class="onroda-ui-wordmark__on">on</span><span class="onroda-ui-wordmark__rest">roda</span>
-            </span>
+          <a class="hp-footer-logo" href="/" aria-label="ONRODA – Startseite">
+            <img class="hp-brand-logo hp-brand-logo--footer" src="/onroda-logo-transparent.png" width="148" height="56" alt="ONRODA" decoding="async" />
           </a>
           <p class="hp-footer-text">Digitale Mobilität für Stuttgart und die Region. Für Fahrgäste, Taxi-Unternehmen, Krankenkassen und Hotels.</p>
 
