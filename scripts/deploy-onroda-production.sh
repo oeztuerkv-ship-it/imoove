@@ -5,7 +5,8 @@
 #   3) Builds: API + admin-panel + partner-panel
 #   4) SQL-Migrationen (Tracker onroda_deploy_migrations) + Schema-Verifikation
 #   4b) Partner-Freigabe-DB-Prüfung (verify-onroda-partner-approve-db-prereqs.mjs: 031/032 u. a.)
-#   5) optional rsync (Panel-Dists + Marketing-Static api-server/static/)
+#   5) Marketing-Static (artifacts/marketing-site/) → /var/www/onroda (Default, rsync)
+#   5b) optional rsync (Panel-Dists)
 #   6) pm2 restart (ONRODA_PM2_APPS)
 #   7) optional nginx reload
 #   8) optional öffentliche Marketing-Status-URL (curl + grep)
@@ -20,12 +21,18 @@ MIG_DIR="${ROOT}/artifacts/api-server/src/db/migrations"
 API_DIR="${ROOT}/artifacts/api-server"
 ADMIN_DIR="${ROOT}/artifacts/admin-panel"
 PARTNER_DIR="${ROOT}/artifacts/partner-panel"
+MARKETING_DIR="${ROOT}/artifacts/marketing-site"
 TRACKER_TABLE="onroda_deploy_migrations"
 
 # Optional: lokale Overrides (gitignored), siehe scripts/onroda-deploy.example.env
 if [[ -f "${ROOT}/scripts/onroda-deploy.env" ]]; then
   # shellcheck disable=SC1091
   source "${ROOT}/scripts/onroda-deploy.env"
+fi
+
+# Marketing onroda.de: Standard-Ziel /var/www/onroda (Nginx root). Überspringen: ONRODA_SKIP_MARKETING_RSYNC=1
+if [[ "${ONRODA_SKIP_MARKETING_RSYNC:-0}" != "1" ]]; then
+  ONRODA_RSYNC_MARKETING_STATIC_TO="${ONRODA_RSYNC_MARKETING_STATIC_TO:-/var/www/onroda}"
 fi
 
 DRY_RUN=0
@@ -58,7 +65,9 @@ Umgebung (Auswahl):
   ONRODA_PM2_APPS           Leerzeichen-getrennt, Default: onroda-api
   ONRODA_RSYNC_ADMIN_DIST_TO    Optional: rsync admin-panel/dist/ dorthin (--delete)
   ONRODA_RSYNC_PARTNER_DIST_TO  Optional: rsync partner-panel/dist/
-  ONRODA_RSYNC_MARKETING_STATIC_TO  Optional: rsync artifacts/api-server/static/ → Nginx-Webroot (ohne --delete)
+  ONRODA_RSYNC_MARKETING_STATIC_TO  rsync artifacts/marketing-site/ → Nginx-Webroot (Default: /var/www/onroda)
+  ONRODA_SKIP_MARKETING_RSYNC   Wenn 1: Marketing-Rsync überspringen (nur Dev/Notfall)
+  ONRODA_MARKETING_HOME_VERIFY_URL  Optional nach Rsync: curl -I (Default: https://onroda.de/)
   ONRODA_RELOAD_NGINX       Wenn 1: nginx -t && systemctl reload nginx
   ONRODA_MARKETING_STATUS_VERIFY_URL  Optional: öffentliche URL z. B. https://www.onroda.de/partner/anfrage-status (curl: muss Status-HTML sein, nicht Startseite)
   ONRODA_MARKETING_STATUS_VERIFY_TIMEOUT  Sekunden für curl (Default: 25)
@@ -392,6 +401,35 @@ do_pm2() {
   done
 }
 
+do_marketing_rsync() {
+  if [[ "${ONRODA_SKIP_MARKETING_RSYNC:-0}" == "1" ]]; then
+    log "Marketing-Rsync übersprungen (ONRODA_SKIP_MARKETING_RSYNC=1)"
+    return 0
+  fi
+  local target="${ONRODA_RSYNC_MARKETING_STATIC_TO:-}"
+  if [[ -z "$target" ]]; then
+    log "Marketing-Rsync übersprungen (ONRODA_RSYNC_MARKETING_STATIC_TO leer)"
+    return 0
+  fi
+  [[ -d "$MARKETING_DIR" ]] || {
+    echo "[deploy-onroda] Fehlt: ${MARKETING_DIR} (Marketing-Quelle)" >&2
+    exit 1
+  }
+  log "rsync marketing-site → ${target}"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] rsync -a \"${MARKETING_DIR}/\" \"${target}/\""
+    return 0
+  fi
+  if [[ ! -d "$target" ]]; then
+    echo "[deploy-onroda] Marketing-Ziel existiert nicht: ${target} (Verzeichnis anlegen oder ONRODA_RSYNC_MARKETING_STATIC_TO setzen)" >&2
+    exit 1
+  fi
+  rsync -a "${MARKETING_DIR}/" "${target}/"
+  if [[ -x "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh" ]]; then
+    LIVE_MARKETING_ROOT="${target}" bash "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh"
+  fi
+}
+
 do_optional_rsync() {
   if [[ -n "${ONRODA_RSYNC_ADMIN_DIST_TO:-}" ]]; then
     log "rsync admin-panel/dist → ${ONRODA_RSYNC_ADMIN_DIST_TO}"
@@ -409,16 +447,25 @@ do_optional_rsync() {
       rsync -a --delete "${PARTNER_DIR}/dist/" "${ONRODA_RSYNC_PARTNER_DIST_TO}/"
     fi
   fi
-  if [[ -n "${ONRODA_RSYNC_MARKETING_STATIC_TO:-}" ]]; then
-    log "rsync api-server/static (Marketing) → ${ONRODA_RSYNC_MARKETING_STATIC_TO}"
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-      echo "[dry-run] rsync -a \"${API_DIR}/static/\" \"${ONRODA_RSYNC_MARKETING_STATIC_TO}/\""
-    else
-      rsync -a "${API_DIR}/static/" "${ONRODA_RSYNC_MARKETING_STATIC_TO}/"
-      if [[ -x "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh" ]]; then
-        LIVE_MARKETING_ROOT="${ONRODA_RSYNC_MARKETING_STATIC_TO}" bash "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh"
-      fi
-    fi
+}
+
+do_marketing_home_verify() {
+  [[ "$DRY_RUN" -eq 1 ]] && return 0
+  [[ "${ONRODA_SKIP_MARKETING_RSYNC:-0}" == "1" ]] && return 0
+  local url="${ONRODA_MARKETING_HOME_VERIFY_URL:-https://onroda.de/}"
+  local timeout="${ONRODA_MARKETING_HOME_VERIFY_TIMEOUT:-25}"
+  log "Marketing-Homepage prüfen: curl -I ${url}"
+  local headers
+  if ! headers="$(curl -fsSI --max-time "$timeout" "$url" 2>&1)"; then
+    echo "[deploy-onroda] Marketing-Homepage curl fehlgeschlagen: ${url}" >&2
+    echo "$headers" >&2
+    exit 1
+  fi
+  echo "$headers" | head -n 8
+  if echo "$headers" | grep -qi '^last-modified:'; then
+    log "Last-Modified: $(echo "$headers" | awk -F': ' 'tolower($1)=="last-modified"{print $2; exit}' | tr -d '\r')"
+  else
+    log "Hinweis: Kein Last-Modified-Header in der Antwort (Cache/CDN prüfen)."
   fi
 }
 
@@ -531,11 +578,13 @@ fi
 verify_schema_against_repo
 verify_partner_approve_db_prereqs
 
+do_marketing_rsync
 do_optional_rsync
 do_pm2
 do_optional_nginx
 do_optional_marketing_status_verify
+do_marketing_home_verify
 do_health_checks
 
-log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema + Partner-Freigabe-DB → rsync → PM2 → Nginx → Health)."
+log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema + Partner-Freigabe-DB → Marketing-Rsync → PM2 → Nginx → Health)."
 log "Hinweis: Freigabe-Mails brauchen PARTNER_REGISTRATION_SMTP_URL + PARTNER_REGISTRATION_MAIL_FROM in artifacts/api-server/.env (PM2 --update-env)."

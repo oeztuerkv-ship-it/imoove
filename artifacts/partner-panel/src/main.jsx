@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "../../api-server/static/onroda-brand.css";
+import "../../marketing-site/onroda-brand.css";
 import "./index.css";
 import "./styles/panel-shell.css";
 import "./styles/panel-login.css";

@@ -170,7 +170,7 @@ app.use(adminRouter);
 
 // Restliche Middleware und Static-Logik
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const staticRoot = path.join(__dirname, "../static");
+const staticRoot = path.join(__dirname, "../../marketing-site");
 const panelPublicRoot = path.join(__dirname, "../../partner-panel/dist");
 function resolvePublicRoot() { return path.join(__dirname, "../../admin-panel/dist"); }
 
