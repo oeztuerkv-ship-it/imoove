@@ -471,386 +471,127 @@
       align-items: center;
     }
 
-    .hp-hero-mockups {
+    @keyframes hp-device-float {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-6px);
+      }
+    }
+
+    @keyframes hp-card-float {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hp-device-phone,
+      .hp-floating-card {
+        animation: none !important;
+      }
+    }
+
+    .hp-hero-devices {
       position: relative;
-      min-height: 400px;
+      min-height: 620px;
+      width: 100%;
       display: flex;
+      justify-content: center;
       align-items: center;
-      justify-content: flex-end;
       isolation: isolate;
     }
 
-    .hp-mockup-glow {
+    .hp-hero-devices__glow {
       position: absolute;
-      inset: 10% 0 8%;
+      inset: 8% 0 6%;
       background:
         radial-gradient(circle at 35% 50%, rgba(213, 0, 28, 0.12), transparent 52%),
         radial-gradient(circle at 75% 40%, rgba(148, 163, 184, 0.14), transparent 48%);
       filter: blur(20px);
       z-index: 0;
+      pointer-events: none;
     }
 
-    .hp-mockup-stage {
+    .hp-device-laptop {
       position: relative;
+      width: min(620px, 100%);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.18);
       z-index: 1;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 0;
+      transform: none;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .hp-device-laptop img {
       width: 100%;
-      max-width: 540px;
-      margin-left: auto;
-      padding-bottom: 4px;
-    }
-
-    /* MacBook — gerade, keine Rotation */
-    .hp-mockup-macbook {
-      flex: 1 1 auto;
-      min-width: 0;
-      max-width: 440px;
-      transform: none;
-    }
-
-    .hp-mockup-macbook__lid {
-      position: relative;
-      padding: 11px 11px 8px;
-      border-radius: 14px 14px 4px 4px;
-      background: linear-gradient(180deg, #3d3d3f 0%, #1d1d1f 100%);
-      border: 1px solid #52525b;
-      box-shadow: 0 20px 48px rgba(15, 23, 42, 0.2);
-    }
-
-    .hp-mockup-macbook__notch {
-      position: absolute;
-      top: 9px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 56px;
-      height: 14px;
-      border-radius: 0 0 10px 10px;
-      background: #0a0a0a;
-      z-index: 2;
-    }
-
-    .hp-mockup-macbook__screen {
-      border-radius: 8px;
-      overflow: hidden;
-      background: #fff;
-      border: 1px solid #27272a;
-      aspect-ratio: 16 / 10;
-    }
-
-    .hp-mockup-macbook__hinge {
-      height: 5px;
-      margin: 0 6%;
-      background: linear-gradient(180deg, #18181b, #09090b);
-      border-radius: 0 0 2px 2px;
-    }
-
-    .hp-mockup-macbook__base {
-      height: 14px;
-      margin: 0 2% 0 4%;
-      border-radius: 0 0 14px 14px;
-      background: linear-gradient(180deg, #d4d4d8 0%, #a1a1aa 55%, #71717a 100%);
-      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .hp-mockup-macbook__trackpad {
+      height: auto;
       display: block;
-      width: 28%;
-      height: 6px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.35);
+      vertical-align: top;
     }
 
-    /* iPhone — gleiche Grundlinie wie MacBook-Basis */
-    .hp-mockup-phone {
-      flex: 0 0 auto;
-      width: 172px;
-      margin-left: -36px;
-      margin-bottom: 12px;
-      z-index: 2;
-      transform: none;
-    }
-
-    .hp-mockup-phone__frame {
-      position: relative;
-      padding: 9px;
-      border-radius: 36px;
-      background: linear-gradient(160deg, #2c2c2e 0%, #0a0a0a 100%);
-      border: 2px solid #3f3f46;
-      box-shadow:
-        0 24px 48px rgba(15, 23, 42, 0.22),
-        0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-    }
-
-    .hp-mockup-phone__island {
+    .hp-device-phone {
       position: absolute;
-      top: 14px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 64px;
-      height: 20px;
-      border-radius: 999px;
-      background: #000;
-      z-index: 3;
-    }
-
-    .hp-mockup-phone__screen {
-      border-radius: 28px;
+      right: 20px;
+      bottom: -20px;
+      width: 220px;
+      border-radius: 38px;
       overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+      z-index: 3;
+      border: 3px solid #1d1d1f;
+      animation: hp-device-float 5s ease-in-out infinite;
+    }
+
+    .hp-device-phone img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .hp-floating-card {
+      position: absolute;
       background: #fff;
-      border: 1px solid #27272a;
+      border-radius: 18px;
+      padding: 14px 18px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--onroda-text-dark);
+      z-index: 4;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      animation: hp-card-float 4.5s ease-in-out infinite;
     }
 
-    .hp-mockup-tablet,
-    .hp-mockup-tablet__shell,
-    .hp-mockup-tablet__screen,
-    .hp-mockup-laptop,
-    .hp-mockup-laptop__screen {
-      display: none;
-    }
-
-    .hp-mockup-pill {
+    .hp-card-live {
+      top: 90px;
+      left: 20px;
       display: inline-flex;
       align-items: center;
-      font-size: 0.65rem;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #f1f5f9;
-      color: #475569;
     }
 
-    .hp-mockup-pill--live {
-      color: #15803d;
-      background: #dcfce7;
+    .hp-card-ride {
+      bottom: 60px;
+      left: 40px;
+      animation-delay: 0.8s;
     }
 
-    .hp-mockup-dash {
-      padding: 16px;
-      min-height: 0;
-      height: 100%;
-      background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
-    }
-
-    .hp-mockup-dash__head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .hp-mockup-dash__head strong {
-      font-size: 1rem;
-      letter-spacing: -0.02em;
-    }
-
-    .hp-mockup-dash__kpis {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-
-    .hp-mockup-dash__kpis div {
-      background: #fff;
-      border: 1px solid #ececec;
-      border-radius: 12px;
-      padding: 10px 8px;
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
-    }
-
-    .hp-mockup-dash__kpis small {
-      display: block;
-      font-size: 0.58rem;
-      color: #64748b;
-      margin-bottom: 3px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .hp-mockup-dash__kpis strong {
-      font-size: 0.88rem;
-      display: block;
-    }
-
-    .hp-mockup-trend {
-      display: block;
-      font-style: normal;
-      font-size: 0.58rem;
-      font-weight: 700;
-      margin-top: 2px;
-    }
-
-    .hp-mockup-trend--up { color: #16a34a; }
-
-    .hp-mockup-dash__chart {
-      display: flex;
-      align-items: flex-end;
-      gap: 6px;
-      height: 78px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      margin-bottom: 12px;
-      background: #fff;
-      border: 1px solid #ececec;
-    }
-
-    .hp-mockup-dash__chart span {
-      flex: 1;
-      height: var(--h, 50%);
-      border-radius: 6px 6px 2px 2px;
-      background: linear-gradient(180deg, rgba(213, 0, 28, 0.85), rgba(213, 0, 28, 0.35));
-    }
-
-    .hp-mockup-dash__list span {
-      display: block;
-      font-size: 0.72rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: #334155;
-    }
-
-    .hp-mockup-dash__trip {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 10px;
-      align-items: center;
-      padding: 8px 10px;
-      border-radius: 10px;
-      background: #fff;
-      border: 1px solid #ececec;
-      margin-bottom: 6px;
-    }
-
-    .hp-mockup-dash__trip i {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      background: var(--hp-icon-bg);
-      display: block;
-    }
-
-    .hp-mockup-dash__trip strong {
-      display: block;
-      font-size: 0.78rem;
-    }
-
-    .hp-mockup-dash__trip small {
-      color: #64748b;
-      font-size: 0.65rem;
-    }
-
-    .hp-mockup-dash__trip b {
-      font-size: 0.75rem;
-      color: var(--onroda-text-dark);
-    }
-
-    .hp-mockup-app__status {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 28px 14px 8px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: #111;
-    }
-
-    .hp-mockup-app__signal {
-      width: 36px;
-      height: 8px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #111 0 70%, #cbd5e1 70%);
-    }
-
-    .hp-mockup-app__map {
-      height: 168px;
-      margin: 0 10px;
-      border-radius: 16px;
-      background:
-        radial-gradient(circle at 65% 35%, rgba(213, 0, 28, 0.2), transparent 38%),
-        linear-gradient(160deg, #e2e8f0 0%, #f8fafc 55%, #dbeafe 100%);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hp-mockup-app__pin {
-      position: absolute;
-      top: 38%;
-      left: 58%;
-      width: 14px;
-      height: 14px;
-      border-radius: 999px;
-      background: var(--onroda-red);
-      box-shadow: 0 0 0 6px rgba(213, 0, 28, 0.18);
-    }
-
-    .hp-mockup-app__route {
-      position: absolute;
-      inset: 28% 22% 30% 18%;
-      border: 3px solid var(--onroda-red);
-      border-radius: 999px;
-      border-top-color: transparent;
-      border-left-color: transparent;
-      transform: rotate(18deg);
-      opacity: 0.9;
-    }
-
-    .hp-mockup-app__card {
-      margin: 10px;
-      padding: 14px;
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
-      display: grid;
-      gap: 6px;
-    }
-
-    .hp-mockup-app__card-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .hp-mockup-app__card small {
-      color: #64748b;
-      font-size: 0.68rem;
-      font-weight: 600;
-    }
-
-    .hp-mockup-app__card strong {
-      font-size: 1.35rem;
-      color: var(--onroda-text-dark);
-      letter-spacing: -0.02em;
-    }
-
-    .hp-mockup-app__card > span {
-      font-size: 0.72rem;
-      color: #64748b;
-      line-height: 1.4;
-    }
-
-    .hp-mockup-app__card button {
-      margin-top: 4px;
-      border: 0;
-      border-radius: 12px;
-      background: var(--onroda-red);
-      color: #fff;
-      font-weight: 700;
-      font-size: 0.82rem;
-      padding: 12px;
-      font-family: inherit;
-      box-shadow: 0 8px 20px rgba(213, 0, 28, 0.25);
-    }
-
-    .hp-mockup-laptop,
-    .hp-mockup-laptop__screen {
-      display: none;
+    .hp-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+      background: #16a34a;
+      box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2);
+      flex-shrink: 0;
     }
 
     .hp-hero-visual {
@@ -2026,32 +1767,33 @@
         gap: 1.25rem;
       }
 
-      .hp-hero-mockups {
-        min-height: auto;
+      .hp-hero-devices {
+        min-height: 420px;
         margin-top: 0.5rem;
-        justify-content: center;
       }
 
-      .hp-mockup-stage {
-        flex-direction: column;
-        align-items: center;
-        max-width: 100%;
-        margin-left: 0;
-        padding-bottom: 0;
-      }
-
-      .hp-mockup-macbook {
-        max-width: 100%;
+      .hp-device-laptop {
         width: 100%;
       }
 
-      .hp-mockup-phone {
-        width: min(168px, 46vw);
-        margin: -28px 0 0;
+      .hp-device-phone {
+        width: 150px;
+        right: 0;
+        bottom: -12px;
       }
 
-      .hp-mockup-dash__kpis {
-        grid-template-columns: repeat(2, 1fr);
+      .hp-card-live {
+        top: 48px;
+        left: 8px;
+        font-size: 0.8rem;
+        padding: 10px 14px;
+      }
+
+      .hp-card-ride {
+        bottom: 36px;
+        left: 12px;
+        font-size: 0.8rem;
+        padding: 10px 14px;
       }
 
       .hp-faq-layout {

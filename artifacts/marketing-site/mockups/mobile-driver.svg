@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" role="img" aria-label="ONRODA Fahrer-App">
+  <defs>
+    <linearGradient id="map" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="55%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e81841"/>
+      <stop offset="100%" stop-color="#c4001f"/>
+    </linearGradient>
+  </defs>
+  <rect width="390" height="844" fill="#fff"/>
+  <rect x="0" y="0" width="390" height="52" fill="#fff"/>
+  <text x="32" y="34" fill="#111827" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="700">9:41</text>
+  <rect x="128" y="12" width="134" height="28" rx="14" fill="#0a0a0a"/>
+  <rect x="0" y="52" width="390" height="420" fill="url(#map)"/>
+  <path d="M70 360 Q150 220 260 280 T330 180" fill="none" stroke="#e81841" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="300" cy="200" r="14" fill="#e81841"/>
+  <circle cx="300" cy="200" r="24" fill="#e81841" opacity=".2"/>
+  <rect x="0" y="472" width="390" height="372" fill="#f8fafc"/>
+  <rect x="20" y="500" width="350" height="300" rx="24" fill="#fff" stroke="#e5e7eb"/>
+  <text x="40" y="538" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600">Aktuelle Fahrt</text>
+  <rect x="280" y="516" width="80" height="28" rx="14" fill="#fef2f2"/>
+  <text x="296" y="535" fill="#e81841" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700">Unterwegs</text>
+  <text x="40" y="590" fill="#111827" font-family="Inter, system-ui, sans-serif" font-size="40" font-weight="800">28,40 ¬</text>
+  <text x="40" y="628" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="14">ETA 4 Min. · Fahrer 2 Min.</text>
+  <rect x="40" y="660" width="310" height="52" rx="14" fill="url(#red)"/>
+  <text x="118" y="692" fill="#fff" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="700">Live verfolgen</text>
+</svg>
