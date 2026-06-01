@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ONRODA Motion-Test · Kunde (5s)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/motion/kunde/motion-kunde.css" />
+</head>
+<body class="motion-kunde">
+  <div>
+    <div class="motion-kunde__stage" role="img" aria-label="Motion-Test: Kunde bucht Fahrt und verfolgt live">
+      <span class="motion-kunde__island" aria-hidden="true"></span>
+      <div class="motion-kunde__screen">
+        <div class="motion-kunde__bg-grid" aria-hidden="true"></div>
+        <div class="motion-kunde__glow" aria-hidden="true"></div>
+
+        <header class="motion-kunde__header">
+          <img
+            class="motion-kunde__logo"
+            src="/onroda-logo-transparent.png"
+            width="148"
+            height="56"
+            alt=""
+            decoding="async"
+          />
+          <p class="motion-kunde__tagline-small">Deine Fahrt. Live.</p>
+        </header>
+
+        <div class="motion-kunde__map">
+          <svg class="motion-kunde__route" viewBox="0 0 320 280" aria-hidden="true">
+            <path d="M60 220 Q140 120 200 150 T280 70" />
+          </svg>
+          <span class="motion-kunde__pin-dest" aria-hidden="true"></span>
+          <span class="motion-kunde__pin-driver" aria-hidden="true"></span>
+          <button type="button" class="motion-kunde__book-btn" tabindex="-1" aria-hidden="true">Fahrt buchen</button>
+          <p class="motion-kunde__caption">Buchen. Verfolgen. Ankommen.</p>
+        </div>
+
+        <article class="motion-kunde__card">
+          <small>Aktuelle Fahrt · Live</small>
+          <strong>Unterwegs</strong>
+          <span>Fahrer 3 Min. · ETA 8 Min.</span>
+        </article>
+
+        <div class="motion-kunde__progress" aria-hidden="true"><i></i></div>
+      </div>
+    </div>
+    <p class="motion-kunde__meta">5-Sekunden-Loop · Stilframe-Test · Hochformat 390×844</p>
+  </div>
+</body>
+</html>

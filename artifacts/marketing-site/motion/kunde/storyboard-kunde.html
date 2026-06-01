@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ONRODA Storyboard · Kunde</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --red: #d5001c;
+      --dark: #0f172a;
+      --panel: #111827;
+      --muted: #94a3b8;
+      --border: #1e293b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: #020617;
+      color: #f8fafc;
+      line-height: 1.5;
+    }
+
+    .sb-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    .sb-head {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sb-head h1 {
+      margin: 0 0 0.5rem;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+    }
+
+    .sb-head p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 62ch;
+    }
+
+    .sb-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .sb-meta span {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+
+    .sb-styleframe {
+      margin-bottom: 2.5rem;
+      padding: 1.25rem;
+      border-radius: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+
+    .sb-styleframe h2 {
+      margin: 0 0 1rem;
+      font-size: 1.1rem;
+    }
+
+    .sb-styleframe img {
+      width: min(320px, 100%);
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      display: block;
+    }
+
+    .sb-grid {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .sb-panel {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+      .sb-panel { grid-template-columns: 1fr; }
+    }
+
+    .sb-panel__time {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--red);
+    }
+
+    .sb-panel__frame {
+      aspect-ratio: 9 / 16;
+      max-width: 120px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--dark);
+      border: 2px solid #334155;
+      position: relative;
+    }
+
+    .sb-panel__frame svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .sb-panel h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+    }
+
+    .sb-panel p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .sb-panel__note {
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      color: #cbd5e1;
+    }
+
+    .sb-footer {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .sb-footer a { color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div class="sb-wrap">
+    <header class="sb-head">
+      <h1>Storyboard · Kunde</h1>
+      <p>
+        Ziel-Clip ca. 18&nbsp;Sekunden, Anime/Motion-UI (kein Realfilm). Untertitel am Ende:
+        <strong>„Buchen. Verfolgen. Ankommen.“</strong>
+        Der 5-Sekunden-Test komprimiert dieselbe Story für Stil-Abnahme.
+      </p>
+      <div class="sb-meta">
+        <span>Format 9:16 · 1080×1920</span>
+        <span>ONRODA Rot / Dunkel</span>
+        <span>Kein Voiceover</span>
+        <span>Vision, keine Produktdoku</span>
+      </div>
+    </header>
+
+    <section class="sb-styleframe">
+      <h2>Stilframe (Referenz-Keyvisual)</h2>
+      <img src="/motion/kunde/styleframe-kunde.svg" width="320" height="569" alt="ONRODA Stilframe Kunde — App mit Live-Karte und Untertitel" />
+    </section>
+
+    <div class="sb-grid">
+      <article class="sb-panel">
+        <div>
+          <div class="sb-panel__time">0:00 – 0:03</div>
+          <div class="sb-panel__frame" aria-hidden="true">
+            <svg viewBox="0 0 90 160" xmlns="http://www.w3.org/2000/svg">
+              <rect width="90" height="160" fill="#0f172a"/>
+              <circle cx="45" cy="50" r="18" fill="#d5001c" opacity="0.5"/>
+              <text x="45" y="95" fill="#fff" text-anchor="middle" font-size="10" font-weight="700">ONRODA</text>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>1 · App öffnet</h3>
+          <p>Logo-Flash auf dunklem Hintergrund, Grid-Glow. Karte fadet ein.</p>
+          <p class="sb-panel__note">Motion: Scale 0.96→1, weicher Rot-Glow.</p>
+        </div>
+      </article>
+
+      <article class="sb-panel">
+        <div>
+          <div class="sb-panel__time">0:03 – 0:06</div>
+          <div class="sb-panel__frame" aria-hidden="true">
+            <svg viewBox="0 0 90 160" xmlns="http://www.w3.org/2000/svg">
+              <rect width="90" height="160" fill="#0f172a"/>
+              <rect x="10" y="30" width="70" height="80" rx="8" fill="#111827"/>
+              <circle cx="30" cy="95" r="6" fill="#38bdf8"/>
+              <rect x="22" y="115" width="46" height="12" rx="6" fill="#d5001c"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>2 · Ziel setzen &amp; buchen</h3>
+          <p>Pin drop am Ziel, Button „Fahrt buchen“ pulsiert, Tap-Feedback.</p>
+          <p class="sb-panel__note">Kein echtes Adressfeld — abstrakte UI.</p>
+        </div>
+      </article>
+
+      <article class="sb-panel">
+        <div>
+          <div class="sb-panel__time">0:06 – 0:09</div>
+          <div class="sb-panel__frame" aria-hidden="true">
+            <svg viewBox="0 0 90 160" xmlns="http://www.w3.org/2000/svg">
+              <rect width="90" height="160" fill="#0f172a"/>
+              <rect x="12" y="100" width="66" height="40" rx="8" fill="#fff"/>
+              <text x="18" y="118" fill="#64748b" font-size="7">Bestätigt</text>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>3 · Buchung bestätigt</h3>
+          <p>Weiße Ride-Card slide-up: „Suche Fahrer…“ → Häkchen.</p>
+          <p class="sb-panel__note">Ripple in ONRODA-Rot.</p>
+        </div>
+      </article>
+
+      <article class="sb-panel">
+        <div>
+          <div class="sb-panel__time">0:09 – 0:12</div>
+          <div class="sb-panel__frame" aria-hidden="true">
+            <svg viewBox="0 0 90 160" xmlns="http://www.w3.org/2000/svg">
+              <rect width="90" height="160" fill="#0f172a"/>
+              <rect x="10" y="30" width="70" height="80" rx="8" fill="#111827"/>
+              <circle cx="62" cy="55" r="6" fill="#22c55e"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>4 · Fahrer erscheint live</h3>
+          <p>Grüner Fahrer-Punkt auf Karte, Label „Fahrer 3 Min.“</p>
+          <p class="sb-panel__note">Parallax leicht auf Map-Layer.</p>
+        </div>
+      </article>
+
+      <article class="sb-panel">
+        <div>
+          <div class="sb-panel__time">0:12 – 0:15</div>
+          <div class="sb-panel__frame" aria-hidden="true">
+            <svg viewBox="0 0 90 160" xmlns="http://www.w3.org/2000/svg">
+              <rect width="90" height="160" fill="#0f172a"/>
+              <path d="M20 100 Q45 60 70 45" stroke="#d5001c" stroke-width="3" fill="none"/>
+              <circle cx="70" cy="45" r="5" fill="#d5001c"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>5 · Tracking</h3>
+          <p>Route zeichnet sich, Status „Unterwegs“, ETA tickt.</p>
+          <p class="sb-panel__note">Hauptmoment = Stilframe-Look.</p>
+        </div>
+      </article>
+
+      <article class="sb-panel">
+        <div>
+          <div class="sb-panel__time">0:15 – 0:18</div>
+          <div class="sb-panel__frame" aria-hidden="true">
+            <svg viewBox="0 0 90 160" xmlns="http://www.w3.org/2000/svg">
+              <rect width="90" height="160" fill="#0f172a"/>
+              <circle cx="30" cy="70" r="8" fill="#38bdf8"/>
+              <text x="45" y="130" fill="#fff" text-anchor="middle" font-size="6" font-weight="700">Buchen.</text>
+              <text x="45" y="140" fill="#fff" text-anchor="middle" font-size="6" font-weight="700">Verfolgen.</text>
+              <text x="45" y="150" fill="#fff" text-anchor="middle" font-size="6" font-weight="700">Ankommen.</text>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h3>6 · Ankommen + Untertitel</h3>
+          <p>Pin am Ziel, Card „Angekommen“. Vollbild-Text als Untertitel.</p>
+          <p class="sb-panel__note"><strong>„Buchen. Verfolgen. Ankommen.“</strong> — eingebrannt, kein Sprecher.</p>
+        </div>
+      </article>
+    </div>
+
+    <footer class="sb-footer">
+      <p>
+        <strong>5-Sekunden-Test:</strong>
+        <a href="/motion/kunde/motion-test-kunde.html">motion-test-kunde.html</a>
+        (Loop, gleiche Story komprimiert)
+      </p>
+      <p>Nächster Schritt nach Freigabe: Finaler 18-Sekunden-Export (MP4) — Clip 2 &amp; 3 erst danach.</p>
+    </footer>
+  </div>
+</body>
+</html>
