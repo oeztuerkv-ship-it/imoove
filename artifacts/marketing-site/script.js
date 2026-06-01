@@ -363,35 +363,8 @@
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
         return;
       }
-      fetch(publicApiBase() + "/public/homepage-how", { method: "GET", credentials: "omit" })
-        .then(function (r) {
-          if (!r.ok) return { ok: false, items: [] };
-          return r.json().catch(function () { return { ok: false, items: [] }; });
-        })
-        .then(function (j) {
-          var items = j && j.ok && Array.isArray(j.items) ? j.items : [];
-          for (var i = 1; i <= 3; i++) {
-            var wrap = document.getElementById("how-card-" + i);
-            var icon = document.getElementById("how-card-" + i + "-icon");
-            var title = document.getElementById("how-card-" + i + "-title");
-            var body = document.getElementById("how-card-" + i + "-body");
-            if (!wrap || !icon || !title || !body) continue;
-            var dIcon = icon.textContent || "";
-            var dTitle = title.textContent || "";
-            var dBody = body.textContent || "";
-            var it = items[i - 1] || null;
-            var active = it ? it.isActive !== false : true;
-            if (!active) {
-              wrap.setAttribute("hidden", "hidden");
-              continue;
-            }
-            wrap.removeAttribute("hidden");
-            setOptionalTextIcon(icon, it && it.icon ? it.icon : null, dIcon);
-            title.textContent = String(it && it.title ? it.title : dTitle);
-            body.textContent = String(it && it.body ? it.body : dBody);
-          }
-        })
-        .catch(function () {});
+      /* Prozess-Schritte: festes 5-Schritte-Layout in index.html (Buchen → Abrechnung).
+         Kein Override durch /public/homepage-how — DB hatte noch 3 alte „Fahrt anfragen“-Texte. */
 
       fetch(publicApiBase() + "/public/homepage-trust", { method: "GET", credentials: "omit" })
         .then(function (r) {

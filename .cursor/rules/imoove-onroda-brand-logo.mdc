@@ -22,6 +22,10 @@ Referenz-Code: `artifacts/api-server/src/lib/onrodaBrandLogoAsset.ts` (`ONRODA_B
 - `onroda-or-reference.png` / App-„OR“-Kachel — **nur** Mobile-UI, nicht Marketing/Panel
 - Text-Wordmark allein (`on`/`roda` spans) — nur Mobile `OnrodaOrMark`, **nicht** Marketing-Header
 
+## Homepage-Prozess (5 Schritte)
+
+Die Marketing-`index.html` nutzt **festes** HTML (Buchen → Abrechnung). **`/public/homepage-how` überschreibt die Schritte nicht** (DB kann noch 3 alte Texte haben).
+
 ## Für Agents
 
 Bei Homepage, Panel-Chrome oder Mail: **immer** `onroda-logo-transparent.png`. Keine neuen Logo-Varianten ohne Team-Freigabe.

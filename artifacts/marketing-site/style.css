@@ -938,26 +938,47 @@
 
     .hp-process {
       position: relative;
-      padding: 4.5rem 0;
+      padding: 4.75rem 0 5rem;
       color: #fff;
       background:
-        linear-gradient(rgba(10, 10, 10, 0.88), rgba(10, 10, 10, 0.92)),
-        radial-gradient(circle at 20% 10%, rgba(213, 0, 28, 0.18), transparent 45%),
-        #111;
+        linear-gradient(180deg, #0a0a0a 0%, #111 55%, #0d0d0d 100%);
       overflow: hidden;
     }
 
+    .hp-process::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(213, 0, 28, 0.22), transparent 42%),
+        radial-gradient(circle at 82% 30%, rgba(255, 255, 255, 0.04), transparent 40%);
+      pointer-events: none;
+    }
+
+    .hp-process .hp-wrap {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hp-process-head {
+      max-width: 40rem;
+      margin: 0 auto 2.75rem;
+      text-align: center;
+    }
+
     .hp-process-head h2 {
-      margin: 0 0 8px;
-      font-size: clamp(1.8rem, 1.2vw + 1.1rem, 2.6rem);
+      margin: 0 0 10px;
+      font-size: clamp(1.85rem, 1.4vw + 1rem, 2.75rem);
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
     }
 
     .hp-process-head p {
-      margin: 0 0 2rem;
-      color: rgba(255, 255, 255, 0.72);
-      font-size: 1rem;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.74);
+      font-size: 1.05rem;
+      line-height: 1.55;
     }
 
     .hp-process-steps {
@@ -966,17 +987,18 @@
       padding: 0;
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 1rem;
+      gap: 1.25rem;
       position: relative;
     }
 
     .hp-process-steps::before {
       content: "";
       position: absolute;
-      top: 28px;
-      left: 8%;
-      right: 8%;
-      border-top: 1px dashed rgba(255, 255, 255, 0.22);
+      top: 52px;
+      left: 10%;
+      right: 10%;
+      height: 0;
+      border-top: 2px dashed rgba(255, 255, 255, 0.2);
       z-index: 0;
     }
 
@@ -984,38 +1006,57 @@
       position: relative;
       z-index: 1;
       text-align: center;
-      padding: 0 8px;
+      padding: 0 6px;
+    }
+
+    .hp-process-step__num {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.45);
+      text-transform: uppercase;
     }
 
     .hp-process-step__icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 64px;
-      height: 64px;
+      width: 72px;
+      height: 72px;
       border-radius: 999px;
-      margin-bottom: 14px;
+      margin: 0 auto 16px;
       color: #fff;
-      background: linear-gradient(145deg, rgba(213, 0, 28, 0.95), rgba(160, 0, 20, 0.85));
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      box-shadow: 0 12px 28px rgba(213, 0, 28, 0.28), 0 0 0 6px rgba(213, 0, 28, 0.12);
+      background: linear-gradient(160deg, #e81841 0%, #b8001f 100%);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow:
+        0 16px 32px rgba(213, 0, 28, 0.35),
+        0 0 0 8px rgba(213, 0, 28, 0.1);
     }
 
     .hp-process-step__icon svg {
-      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15));
+      width: 26px;
+      height: 26px;
+      stroke-width: 2.2;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
     }
 
     .hp-process-step strong {
       display: block;
-      margin-bottom: 6px;
-      font-size: 0.98rem;
+      margin-bottom: 8px;
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: #fff;
     }
 
-    .hp-process-step span {
+    .hp-process-step > span:not(.hp-process-step__num):not(.hp-process-step__icon) {
       display: block;
-      color: rgba(255, 255, 255, 0.68);
-      font-size: 0.86rem;
-      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.88rem;
+      line-height: 1.5;
+      max-width: 16ch;
+      margin-inline: auto;
     }
 
     .hp-section--trust {
