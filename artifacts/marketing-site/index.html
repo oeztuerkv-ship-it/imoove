@@ -113,13 +113,13 @@
               </svg>
               Unternehmer werden
             </a>
-            <a class="hp-btn-ghost" href="#prozess">
+            <button type="button" class="hp-btn-ghost" id="hero-motion-open" aria-haspopup="dialog">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M5 12h14" />
                 <path d="m12 5 7 7-7 7" />
               </svg>
               So funktioniert's
-            </a>
+            </button>
           </div>
         </div>
 
@@ -954,6 +954,51 @@
       </div>
     </div>
   </footer>
+
+  <div
+    id="hp-motion-modal"
+    class="hp-motion-modal"
+    hidden
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="hp-motion-modal-title"
+    data-motion-iframe-src="/motion/kunde/motion-test-kunde.html"
+    data-motion-video-src="/videos/onroda-kunde.mp4"
+  >
+    <button type="button" class="hp-motion-modal__backdrop" data-motion-close aria-label="Dialog schließen"></button>
+    <div class="hp-motion-modal__panel" role="document">
+      <header class="hp-motion-modal__head">
+        <div>
+          <h2 id="hp-motion-modal-title">So funktioniert ONRODA</h2>
+          <p class="hp-motion-modal__note">Motion-Vorschau · 5-Sekunden-Loop · noch kein finales Produktvideo</p>
+        </div>
+        <button type="button" class="hp-motion-modal__close" data-motion-close aria-label="Schließen">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </header>
+      <div class="hp-motion-modal__body">
+        <iframe
+          id="hp-motion-iframe"
+          class="hp-motion-modal__iframe"
+          title="ONRODA Kunde — Motion-Vorschau"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+        ></iframe>
+        <video
+          id="hp-motion-video"
+          class="hp-motion-modal__video"
+          controls
+          playsinline
+          muted
+          preload="metadata"
+          hidden
+        ></video>
+      </div>
+    </div>
+  </div>
 
   <script src="/script.js"></script>
 </body>

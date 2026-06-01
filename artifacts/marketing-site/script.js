@@ -441,6 +441,80 @@
     loadHomepageContent();
     loadHomepageModules();
 
+    function initHeroMotionModal() {
+      var openBtn = document.getElementById("hero-motion-open");
+      var modal = document.getElementById("hp-motion-modal");
+      var iframe = document.getElementById("hp-motion-iframe");
+      var video = document.getElementById("hp-motion-video");
+      if (!openBtn || !modal || !iframe) return;
+
+      var iframeSrc = modal.getAttribute("data-motion-iframe-src") || "/motion/kunde/motion-test-kunde.html";
+      var videoSrc = modal.getAttribute("data-motion-video-src") || "/videos/onroda-kunde.mp4";
+      var useFinalVideo = modal.getAttribute("data-motion-use-video") === "1";
+      var lastFocus = null;
+
+      function closeModal() {
+        modal.hidden = true;
+        document.body.classList.remove("hp-motion-modal-open");
+        iframe.src = "about:blank";
+        if (video) {
+          video.pause();
+          video.removeAttribute("src");
+          video.load();
+          video.hidden = true;
+        }
+        iframe.hidden = false;
+        if (lastFocus && typeof lastFocus.focus === "function") {
+          lastFocus.focus();
+        }
+      }
+
+      function openModal() {
+        lastFocus = document.activeElement;
+        modal.hidden = false;
+        document.body.classList.add("hp-motion-modal-open");
+
+        if (useFinalVideo && video) {
+          iframe.hidden = true;
+          iframe.src = "about:blank";
+          video.hidden = false;
+          video.src = videoSrc;
+          video.muted = true;
+          video.removeAttribute("autoplay");
+        } else {
+          if (video) {
+            video.hidden = true;
+            video.pause();
+            video.removeAttribute("src");
+            video.load();
+          }
+          iframe.hidden = false;
+          iframe.src = iframeSrc;
+        }
+
+        var closeBtn = modal.querySelector(".hp-motion-modal__close");
+        if (closeBtn) closeBtn.focus();
+      }
+
+      openBtn.addEventListener("click", openModal);
+
+      modal.addEventListener("click", function (e) {
+        var t = e.target;
+        if (t && t.getAttribute && t.getAttribute("data-motion-close") != null) {
+          closeModal();
+        }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !modal.hidden) {
+          e.preventDefault();
+          closeModal();
+        }
+      });
+    }
+
+    initHeroMotionModal();
+
     function syncPartnerTaxiSection() {
       var wrap = document.getElementById("partner-taxi-fields");
       var ct = document.getElementById("companyType");
