@@ -473,75 +473,145 @@
 
     .hp-hero-mockups {
       position: relative;
-      min-height: 440px;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
       isolation: isolate;
     }
 
     .hp-mockup-glow {
       position: absolute;
-      inset: 8% 5% 12%;
+      inset: 10% 0 8%;
       background:
-        radial-gradient(circle at 30% 40%, rgba(213, 0, 28, 0.14), transparent 55%),
-        radial-gradient(circle at 78% 28%, rgba(59, 130, 246, 0.12), transparent 50%);
-      filter: blur(18px);
+        radial-gradient(circle at 35% 50%, rgba(213, 0, 28, 0.12), transparent 52%),
+        radial-gradient(circle at 75% 40%, rgba(148, 163, 184, 0.14), transparent 48%);
+      filter: blur(20px);
       z-index: 0;
     }
 
-    .hp-mockup-tablet {
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: min(88%, 500px);
+    .hp-mockup-stage {
+      position: relative;
       z-index: 1;
-      transform: rotate(-2deg);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 0;
+      width: 100%;
+      max-width: 540px;
+      margin-left: auto;
+      padding-bottom: 4px;
     }
 
-    .hp-mockup-tablet__shell {
-      padding: 12px;
-      border-radius: 22px;
-      background: linear-gradient(145deg, #2a2a2e 0%, #111 100%);
-      box-shadow: 0 32px 64px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    /* MacBook — gerade, keine Rotation */
+    .hp-mockup-macbook {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 440px;
+      transform: none;
     }
 
-    .hp-mockup-tablet__screen {
-      border-radius: 14px;
+    .hp-mockup-macbook__lid {
+      position: relative;
+      padding: 11px 11px 8px;
+      border-radius: 14px 14px 4px 4px;
+      background: linear-gradient(180deg, #3d3d3f 0%, #1d1d1f 100%);
+      border: 1px solid #52525b;
+      box-shadow: 0 20px 48px rgba(15, 23, 42, 0.2);
+    }
+
+    .hp-mockup-macbook__notch {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 56px;
+      height: 14px;
+      border-radius: 0 0 10px 10px;
+      background: #0a0a0a;
+      z-index: 2;
+    }
+
+    .hp-mockup-macbook__screen {
+      border-radius: 8px;
       overflow: hidden;
       background: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid #27272a;
+      aspect-ratio: 16 / 10;
     }
 
+    .hp-mockup-macbook__hinge {
+      height: 5px;
+      margin: 0 6%;
+      background: linear-gradient(180deg, #18181b, #09090b);
+      border-radius: 0 0 2px 2px;
+    }
+
+    .hp-mockup-macbook__base {
+      height: 14px;
+      margin: 0 2% 0 4%;
+      border-radius: 0 0 14px 14px;
+      background: linear-gradient(180deg, #d4d4d8 0%, #a1a1aa 55%, #71717a 100%);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hp-mockup-macbook__trackpad {
+      display: block;
+      width: 28%;
+      height: 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    /* iPhone — gleiche Grundlinie wie MacBook-Basis */
     .hp-mockup-phone {
-      position: absolute;
-      left: 4%;
-      bottom: 0;
-      width: 200px;
+      flex: 0 0 auto;
+      width: 172px;
+      margin-left: -36px;
+      margin-bottom: 12px;
       z-index: 2;
-      transform: rotate(3deg);
+      transform: none;
+    }
+
+    .hp-mockup-phone__frame {
+      position: relative;
+      padding: 9px;
+      border-radius: 36px;
+      background: linear-gradient(160deg, #2c2c2e 0%, #0a0a0a 100%);
+      border: 2px solid #3f3f46;
+      box-shadow:
+        0 24px 48px rgba(15, 23, 42, 0.22),
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset;
     }
 
     .hp-mockup-phone__island {
       position: absolute;
-      top: 16px;
+      top: 14px;
       left: 50%;
       transform: translateX(-50%);
-      width: 72px;
-      height: 22px;
+      width: 64px;
+      height: 20px;
       border-radius: 999px;
-      background: #0a0a0a;
+      background: #000;
       z-index: 3;
     }
 
-    .hp-mockup-phone__shell {
-      padding: 10px 8px 12px;
-      border-radius: 34px;
-      background: linear-gradient(160deg, #1c1c1e 0%, #0a0a0a 100%);
-      box-shadow: 0 28px 56px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-    }
-
     .hp-mockup-phone__screen {
-      border-radius: 26px;
+      border-radius: 28px;
       overflow: hidden;
       background: #fff;
+      border: 1px solid #27272a;
+    }
+
+    .hp-mockup-tablet,
+    .hp-mockup-tablet__shell,
+    .hp-mockup-tablet__screen,
+    .hp-mockup-laptop,
+    .hp-mockup-laptop__screen {
+      display: none;
     }
 
     .hp-mockup-pill {
@@ -562,7 +632,8 @@
 
     .hp-mockup-dash {
       padding: 16px;
-      min-height: 270px;
+      min-height: 0;
+      height: 100%;
       background: linear-gradient(180deg, #fafafa 0%, #fff 100%);
     }
 
@@ -1956,22 +2027,27 @@
       }
 
       .hp-hero-mockups {
-        min-height: 340px;
+        min-height: auto;
         margin-top: 0.5rem;
+        justify-content: center;
       }
 
-      .hp-mockup-tablet {
-        position: relative;
+      .hp-mockup-stage {
+        flex-direction: column;
+        align-items: center;
+        max-width: 100%;
+        margin-left: 0;
+        padding-bottom: 0;
+      }
+
+      .hp-mockup-macbook {
+        max-width: 100%;
         width: 100%;
-        transform: none;
-        margin-bottom: 0.75rem;
       }
 
       .hp-mockup-phone {
-        position: relative;
-        width: min(200px, 54%);
-        margin: -64px auto 0;
-        transform: none;
+        width: min(168px, 46vw);
+        margin: -28px 0 0;
       }
 
       .hp-mockup-dash__kpis {
