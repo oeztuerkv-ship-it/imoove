@@ -522,19 +522,57 @@
     .hp-device-laptop {
       position: relative;
       width: min(620px, 100%);
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.18);
       z-index: 1;
       transform: none;
-      border: 1px solid rgba(15, 23, 42, 0.08);
     }
 
-    .hp-device-laptop img {
+    .hp-device-laptop__lid {
+      position: relative;
+      padding: 11px 11px 8px;
+      border-radius: 14px 14px 4px 4px;
+      background: linear-gradient(180deg, #3d3d3f 0%, #1d1d1f 100%);
+      border: 1px solid #52525b;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.18);
+    }
+
+    .hp-device-laptop__notch {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 56px;
+      height: 14px;
+      border-radius: 0 0 10px 10px;
+      background: #0a0a0a;
+      z-index: 2;
+    }
+
+    .hp-device-laptop__screen {
+      aspect-ratio: 1240 / 775;
       width: 100%;
-      height: auto;
-      display: block;
-      vertical-align: top;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #f8fafc;
+      background-image: url("/mockups/admin-dashboard.svg?v=3");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      border: 1px solid #27272a;
+    }
+
+    .hp-device-laptop__hinge {
+      height: 5px;
+      margin: 0 6%;
+      background: linear-gradient(180deg, #18181b, #09090b);
+      border-radius: 0 0 2px 2px;
+    }
+
+    .hp-device-laptop__base {
+      height: 14px;
+      margin: 0 2% 0 4%;
+      border-radius: 0 0 14px 14px;
+      background: linear-gradient(180deg, #d4d4d8 0%, #a1a1aa 55%, #71717a 100%);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
     }
 
     .hp-device-phone {
@@ -542,18 +580,39 @@
       right: 20px;
       bottom: -20px;
       width: 220px;
+      padding: 9px;
       border-radius: 38px;
-      overflow: hidden;
+      background: linear-gradient(160deg, #2c2c2e 0%, #0a0a0a 100%);
+      border: 2px solid #3f3f46;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
       z-index: 3;
-      border: 3px solid #1d1d1f;
       animation: hp-device-float 5s ease-in-out infinite;
     }
 
-    .hp-device-phone img {
+    .hp-device-phone__island {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 64px;
+      height: 20px;
+      border-radius: 999px;
+      background: #000;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .hp-device-phone__screen {
+      aspect-ratio: 390 / 844;
       width: 100%;
-      height: auto;
-      display: block;
+      border-radius: 28px;
+      overflow: hidden;
+      background-color: #fff;
+      background-image: url("/mockups/mobile-driver.svg?v=3");
+      background-size: cover;
+      background-position: center top;
+      background-repeat: no-repeat;
+      border: 1px solid #27272a;
     }
 
     .hp-floating-card {

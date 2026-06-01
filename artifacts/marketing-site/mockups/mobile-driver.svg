@@ -23,7 +23,7 @@
   <text x="40" y="538" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600">Aktuelle Fahrt</text>
   <rect x="280" y="516" width="80" height="28" rx="14" fill="#fef2f2"/>
   <text x="296" y="535" fill="#e81841" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700">Unterwegs</text>
-  <text x="40" y="590" fill="#111827" font-family="Inter, system-ui, sans-serif" font-size="40" font-weight="800">28,40 ¬</text>
+  <text x="40" y="590" fill="#111827" font-family="Inter, system-ui, sans-serif" font-size="40" font-weight="800">28,40 €</text>
   <text x="40" y="628" fill="#64748b" font-family="Inter, system-ui, sans-serif" font-size="14">ETA 4 Min. · Fahrer 2 Min.</text>
   <rect x="40" y="660" width="310" height="52" rx="14" fill="url(#red)"/>
   <text x="118" y="692" fill="#fff" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="700">Live verfolgen</text>

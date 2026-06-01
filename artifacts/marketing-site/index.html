@@ -19,6 +19,8 @@
   />
 
   <link rel="stylesheet" href="/style.css" />
+  <link rel="preload" href="/mockups/admin-dashboard.svg?v=3" as="image" type="image/svg+xml" />
+  <link rel="preload" href="/mockups/mobile-driver.svg?v=3" as="image" type="image/svg+xml" />
 </head>
 
 <body>
@@ -125,24 +127,24 @@
         <div class="hp-hero-devices" aria-hidden="true">
           <div class="hp-hero-devices__glow"></div>
           <div class="hp-device-laptop">
-            <img
-              src="/mockups/admin-dashboard.svg"
-              width="1240"
-              height="775"
-              alt="ONRODA Partner-Dashboard mit Live-Übersicht"
-              loading="eager"
-              decoding="async"
-            />
+            <div class="hp-device-laptop__lid">
+              <span class="hp-device-laptop__notch" aria-hidden="true"></span>
+              <div
+                class="hp-device-laptop__screen"
+                role="img"
+                aria-label="ONRODA Partner-Dashboard mit Live-Übersicht"
+              ></div>
+            </div>
+            <div class="hp-device-laptop__hinge" aria-hidden="true"></div>
+            <div class="hp-device-laptop__base" aria-hidden="true"></div>
           </div>
           <div class="hp-device-phone">
-            <img
-              src="/mockups/mobile-driver.svg"
-              width="390"
-              height="844"
-              alt="ONRODA Fahrer-App mit Live-Fahrt"
-              loading="eager"
-              decoding="async"
-            />
+            <span class="hp-device-phone__island" aria-hidden="true"></span>
+            <div
+              class="hp-device-phone__screen"
+              role="img"
+              aria-label="ONRODA Fahrer-App mit Live-Fahrt"
+            ></div>
           </div>
           <div class="hp-floating-card hp-card-live">
             <span class="hp-dot" aria-hidden="true"></span>
