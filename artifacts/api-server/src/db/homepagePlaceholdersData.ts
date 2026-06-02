@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, isNull, lte, or, gte } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { normalizeGermanMarketingText } from "../lib/germanMarketingText";
 import { getDb } from "./client";
 import { homepagePlaceholdersTable } from "./schema";
 
@@ -21,8 +22,8 @@ export function normalizeHomepageHintType(raw: string | null | undefined): Homep
 function rowToAdminDto(r: PlaceholderRow) {
   return {
     id: r.id,
-    title: r.title,
-    message: r.message,
+    title: normalizeGermanMarketingText(r.title),
+    message: normalizeGermanMarketingText(r.message),
     ctaLabel: r.cta_label,
     ctaUrl: r.cta_url,
     type: normalizeHomepageHintType(r.tone),
@@ -39,8 +40,8 @@ function rowToAdminDto(r: PlaceholderRow) {
 function rowToPublicDto(r: PlaceholderRow) {
   return {
     id: r.id,
-    title: r.title,
-    message: r.message,
+    title: normalizeGermanMarketingText(r.title),
+    message: normalizeGermanMarketingText(r.message),
     ctaLabel: r.cta_label,
     ctaUrl: r.cta_url,
     type: normalizeHomepageHintType(r.tone),
@@ -103,8 +104,8 @@ export async function createHomepagePlaceholder(input: {
   const storedType = normalizeHomepageHintType(input.type);
   await db.insert(homepagePlaceholdersTable).values({
     id,
-    title: input.title,
-    message: input.message,
+    title: normalizeGermanMarketingText(input.title.trim()),
+    message: normalizeGermanMarketingText(input.message.trim()),
     cta_label: input.ctaLabel ?? null,
     cta_url: input.ctaUrl ?? null,
     tone: storedType,
@@ -144,8 +145,8 @@ export async function patchHomepagePlaceholder(
     updated_at: new Date(),
     updated_by_admin_user_id: input.actorAdminUserId ?? null,
   };
-  if (typeof input.title === "string") patch.title = input.title;
-  if (typeof input.message === "string") patch.message = input.message;
+  if (typeof input.title === "string") patch.title = normalizeGermanMarketingText(input.title.trim());
+  if (typeof input.message === "string") patch.message = normalizeGermanMarketingText(input.message.trim());
   if (input.ctaLabel !== undefined) patch.cta_label = input.ctaLabel ?? null;
   if (input.ctaUrl !== undefined) patch.cta_url = input.ctaUrl ?? null;
   if (input.type !== undefined) patch.tone = normalizeHomepageHintType(input.type);

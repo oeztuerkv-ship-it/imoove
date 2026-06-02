@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { normalizeGermanMarketingText } from "../lib/germanMarketingText";
 import { getDb } from "./client";
 import { homepageContentTable } from "./schema";
 
@@ -194,9 +195,44 @@ function mapManifestCards(raw: unknown): HomepageManifestCard[] {
   });
 }
 
+export function normalizeHomepageContentDto(dto: HomepageContentDto): HomepageContentDto {
+  return {
+    ...dto,
+    section2Title: normalizeGermanMarketingText(dto.section2Title),
+    heroHeadline: normalizeGermanMarketingText(dto.heroHeadline),
+    heroSubline: normalizeGermanMarketingText(dto.heroSubline),
+    cta1Text: normalizeGermanMarketingText(dto.cta1Text),
+    cta2Text: normalizeGermanMarketingText(dto.cta2Text),
+    servicesKicker: normalizeGermanMarketingText(dto.servicesKicker),
+    servicesTitle: normalizeGermanMarketingText(dto.servicesTitle),
+    servicesSubline: normalizeGermanMarketingText(dto.servicesSubline),
+    manifestKicker: normalizeGermanMarketingText(dto.manifestKicker),
+    manifestTitle: normalizeGermanMarketingText(dto.manifestTitle),
+    manifestSubline: normalizeGermanMarketingText(dto.manifestSubline),
+    noticeText: normalizeGermanMarketingText(dto.noticeText),
+    section2Cards: dto.section2Cards.map((c) => ({
+      ...c,
+      title: normalizeGermanMarketingText(c.title),
+      body: normalizeGermanMarketingText(c.body),
+      ctaText: normalizeGermanMarketingText(c.ctaText),
+    })),
+    servicesCards: dto.servicesCards.map((c) => ({
+      ...c,
+      title: normalizeGermanMarketingText(c.title),
+      body: normalizeGermanMarketingText(c.body),
+    })),
+    manifestCards: dto.manifestCards.map((c) => ({
+      ...c,
+      title: normalizeGermanMarketingText(c.title),
+      body: normalizeGermanMarketingText(c.body),
+      ctaText: normalizeGermanMarketingText(c.ctaText),
+    })),
+  };
+}
+
 function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDto {
   const cards = Array.isArray(row.section2_cards) ? row.section2_cards : [];
-  return {
+  return normalizeHomepageContentDto({
     section2Title: row.section2_title,
     section2Cards: cards.map((c) => ({
       icon: String(c?.icon ?? ""),
@@ -226,7 +262,7 @@ function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDt
     noticeText: row.notice_text,
     noticeActive: row.notice_active,
     updatedAt: row.updated_at ? row.updated_at.toISOString() : null,
-  };
+  });
 }
 
 export async function getHomepageContentPublic(): Promise<HomepageContentDto | null> {
@@ -253,10 +289,10 @@ export async function patchHomepageContentAdmin(
   if (!db) return null;
   const existingRows = await db.select().from(homepageContentTable).where(eq(homepageContentTable.id, HOMEPAGE_CONTENT_ID)).limit(1);
   const existing = existingRows[0];
-  const merged = {
+  const merged = normalizeHomepageContentDto({
     ...(existing ? toDto(existing) : { ...DEFAULT_CONTENT, updatedAt: null }),
     ...patch,
-  };
+  });
   const now = new Date();
   if (!existing) {
     await db.insert(homepageContentTable).values({

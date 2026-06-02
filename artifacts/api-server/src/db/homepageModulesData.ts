@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
+import { normalizeGermanMarketingText } from "../lib/germanMarketingText";
 import { getDb } from "./client";
 import { homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable } from "./schema";
 
@@ -67,17 +68,30 @@ const TRUST_DEFAULTS: HomepageTrustMetricDto[] = [
 ];
 
 function mapFaqRow(r: typeof homepageFaqItemsTable.$inferSelect): HomepageFaqItemDto {
-  return { id: r.id, question: r.question, answer: r.answer, sortOrder: r.sort_order, isActive: r.is_active };
+  return {
+    id: r.id,
+    question: normalizeGermanMarketingText(r.question),
+    answer: normalizeGermanMarketingText(r.answer),
+    sortOrder: r.sort_order,
+    isActive: r.is_active,
+  };
 }
 function mapHowRow(r: typeof homepageHowStepsTable.$inferSelect): HomepageHowStepDto {
-  return { id: r.id, icon: r.icon, title: r.title, body: r.body, sortOrder: r.sort_order, isActive: r.is_active };
+  return {
+    id: r.id,
+    icon: r.icon,
+    title: normalizeGermanMarketingText(r.title),
+    body: normalizeGermanMarketingText(r.body),
+    sortOrder: r.sort_order,
+    isActive: r.is_active,
+  };
 }
 function mapTrustRow(r: typeof homepageTrustMetricsTable.$inferSelect): HomepageTrustMetricDto {
   return {
     id: r.id,
-    value: r.value,
-    label: r.label,
-    description: r.description,
+    value: normalizeGermanMarketingText(r.value),
+    label: normalizeGermanMarketingText(r.label),
+    description: normalizeGermanMarketingText(r.description),
     sortOrder: r.sort_order,
     isActive: r.is_active,
   };
@@ -114,10 +128,12 @@ export async function createHomepageFaqItem(input: {
   if (!db) return null;
   const now = new Date();
   const id = randomUUID();
+  const question = normalizeGermanMarketingText(input.question.trim());
+  const answer = normalizeGermanMarketingText(input.answer.trim());
   await db.insert(homepageFaqItemsTable).values({
     id,
-    question: input.question,
-    answer: input.answer,
+    question,
+    answer,
     sort_order: input.sortOrder,
     is_active: input.isActive,
     created_by_admin_user_id: input.actorAdminUserId ?? null,
@@ -125,7 +141,7 @@ export async function createHomepageFaqItem(input: {
     created_at: now,
     updated_at: now,
   });
-  return { id, question: input.question, answer: input.answer, sortOrder: input.sortOrder, isActive: input.isActive };
+  return { id, question, answer, sortOrder: input.sortOrder, isActive: input.isActive };
 }
 
 export async function patchHomepageFaqItem(
@@ -135,17 +151,15 @@ export async function patchHomepageFaqItem(
 ): Promise<HomepageFaqItemDto | null> {
   const db = getDb();
   if (!db) return null;
-  await db
-    .update(homepageFaqItemsTable)
-    .set({
-      question: patch.question,
-      answer: patch.answer,
-      sort_order: patch.sortOrder,
-      is_active: patch.isActive,
-      updated_by_admin_user_id: actorAdminUserId ?? null,
-      updated_at: new Date(),
-    })
-    .where(eq(homepageFaqItemsTable.id, id));
+  const set: Partial<typeof homepageFaqItemsTable.$inferInsert> = {
+    updated_by_admin_user_id: actorAdminUserId ?? null,
+    updated_at: new Date(),
+  };
+  if (typeof patch.question === "string") set.question = normalizeGermanMarketingText(patch.question.trim());
+  if (typeof patch.answer === "string") set.answer = normalizeGermanMarketingText(patch.answer.trim());
+  if (typeof patch.sortOrder === "number") set.sort_order = patch.sortOrder;
+  if (typeof patch.isActive === "boolean") set.is_active = patch.isActive;
+  await db.update(homepageFaqItemsTable).set(set).where(eq(homepageFaqItemsTable.id, id));
   const rows = await db.select().from(homepageFaqItemsTable).where(eq(homepageFaqItemsTable.id, id)).limit(1);
   return rows[0] ? mapFaqRow(rows[0]) : null;
 }
@@ -189,11 +203,13 @@ export async function createHomepageHowStep(input: {
   if (!db) return null;
   const now = new Date();
   const id = randomUUID();
+  const title = normalizeGermanMarketingText(input.title.trim());
+  const body = normalizeGermanMarketingText(input.body.trim());
   await db.insert(homepageHowStepsTable).values({
     id,
     icon: input.icon,
-    title: input.title,
-    body: input.body,
+    title,
+    body,
     sort_order: input.sortOrder,
     is_active: input.isActive,
     created_by_admin_user_id: input.actorAdminUserId ?? null,
@@ -201,7 +217,7 @@ export async function createHomepageHowStep(input: {
     created_at: now,
     updated_at: now,
   });
-  return { id, icon: input.icon, title: input.title, body: input.body, sortOrder: input.sortOrder, isActive: input.isActive };
+  return { id, icon: input.icon, title, body, sortOrder: input.sortOrder, isActive: input.isActive };
 }
 
 export async function patchHomepageHowStep(
@@ -211,18 +227,16 @@ export async function patchHomepageHowStep(
 ): Promise<HomepageHowStepDto | null> {
   const db = getDb();
   if (!db) return null;
-  await db
-    .update(homepageHowStepsTable)
-    .set({
-      icon: patch.icon,
-      title: patch.title,
-      body: patch.body,
-      sort_order: patch.sortOrder,
-      is_active: patch.isActive,
-      updated_by_admin_user_id: actorAdminUserId ?? null,
-      updated_at: new Date(),
-    })
-    .where(eq(homepageHowStepsTable.id, id));
+  const set: Partial<typeof homepageHowStepsTable.$inferInsert> = {
+    updated_by_admin_user_id: actorAdminUserId ?? null,
+    updated_at: new Date(),
+  };
+  if (typeof patch.icon === "string") set.icon = patch.icon;
+  if (typeof patch.title === "string") set.title = normalizeGermanMarketingText(patch.title.trim());
+  if (typeof patch.body === "string") set.body = normalizeGermanMarketingText(patch.body.trim());
+  if (typeof patch.sortOrder === "number") set.sort_order = patch.sortOrder;
+  if (typeof patch.isActive === "boolean") set.is_active = patch.isActive;
+  await db.update(homepageHowStepsTable).set(set).where(eq(homepageHowStepsTable.id, id));
   const rows = await db.select().from(homepageHowStepsTable).where(eq(homepageHowStepsTable.id, id)).limit(1);
   return rows[0] ? mapHowRow(rows[0]) : null;
 }
@@ -266,11 +280,14 @@ export async function createHomepageTrustMetric(input: {
   if (!db) return null;
   const now = new Date();
   const id = randomUUID();
+  const value = normalizeGermanMarketingText(input.value.trim());
+  const label = normalizeGermanMarketingText(input.label.trim());
+  const description = normalizeGermanMarketingText(input.description.trim());
   await db.insert(homepageTrustMetricsTable).values({
     id,
-    value: input.value,
-    label: input.label,
-    description: input.description,
+    value,
+    label,
+    description,
     sort_order: input.sortOrder,
     is_active: input.isActive,
     created_by_admin_user_id: input.actorAdminUserId ?? null,
@@ -280,9 +297,9 @@ export async function createHomepageTrustMetric(input: {
   });
   return {
     id,
-    value: input.value,
-    label: input.label,
-    description: input.description,
+    value,
+    label,
+    description,
     sortOrder: input.sortOrder,
     isActive: input.isActive,
   };
@@ -295,18 +312,18 @@ export async function patchHomepageTrustMetric(
 ): Promise<HomepageTrustMetricDto | null> {
   const db = getDb();
   if (!db) return null;
-  await db
-    .update(homepageTrustMetricsTable)
-    .set({
-      value: patch.value,
-      label: patch.label,
-      description: patch.description,
-      sort_order: patch.sortOrder,
-      is_active: patch.isActive,
-      updated_by_admin_user_id: actorAdminUserId ?? null,
-      updated_at: new Date(),
-    })
-    .where(eq(homepageTrustMetricsTable.id, id));
+  const set: Partial<typeof homepageTrustMetricsTable.$inferInsert> = {
+    updated_by_admin_user_id: actorAdminUserId ?? null,
+    updated_at: new Date(),
+  };
+  if (typeof patch.value === "string") set.value = normalizeGermanMarketingText(patch.value.trim());
+  if (typeof patch.label === "string") set.label = normalizeGermanMarketingText(patch.label.trim());
+  if (typeof patch.description === "string") {
+    set.description = normalizeGermanMarketingText(patch.description.trim());
+  }
+  if (typeof patch.sortOrder === "number") set.sort_order = patch.sortOrder;
+  if (typeof patch.isActive === "boolean") set.is_active = patch.isActive;
+  await db.update(homepageTrustMetricsTable).set(set).where(eq(homepageTrustMetricsTable.id, id));
   const rows = await db.select().from(homepageTrustMetricsTable).where(eq(homepageTrustMetricsTable.id, id)).limit(1);
   return rows[0] ? mapTrustRow(rows[0]) : null;
 }
