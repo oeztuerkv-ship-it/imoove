@@ -274,7 +274,7 @@
             section2TitleEl.textContent = pickCms(item && item.section2Title, defaultSection2Title);
           }
           var cards = item && Array.isArray(item.section2Cards) ? item.section2Cards : [];
-          for (var i = 1; i <= 5; i++) {
+          for (var i = 1; i <= 4; i++) {
             var cardWrap = document.getElementById("section2-card-" + i);
             var iconEl = document.getElementById("section2-card-" + i + "-icon");
             var titleEl = document.getElementById("section2-card-" + i + "-title");

@@ -52,16 +52,8 @@ export type HomepageContentDto = {
 };
 
 const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
-  section2Title: "Eine Plattform für Fahrer, Fahrgäste und Unternehmen",
+  section2Title: "Eine Plattform für Fahrgäste und Unternehmen",
   section2Cards: [
-    {
-      icon: "🚗",
-      title: "Für Fahrer",
-      body: "Aufträge in Echtzeit, Navigation und Abrechnung — alles in einer Fahrer-App.",
-      ctaText: "App entdecken",
-      ctaLink: "#jetzt-buchen",
-      isActive: true,
-    },
     {
       icon: "🚕",
       title: "Für Fahrgäste",

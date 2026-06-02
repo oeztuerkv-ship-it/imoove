@@ -1935,7 +1935,7 @@
 
     .hp-audience-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 1.1rem;
       align-items: stretch;
     }
@@ -2029,12 +2029,6 @@
       background-image:
         linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.72)),
         linear-gradient(135deg, #fde68a 0%, #fef3c7 45%, #f8fafc 100%);
-    }
-
-    .hp-audience-card--drivers .hp-audience-card__bottom {
-      background-image:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.72)),
-        linear-gradient(135deg, #bbf7d0 0%, #dcfce7 45%, #f8fafc 100%);
     }
 
     .hp-audience-card__badge {
@@ -3599,6 +3593,55 @@
       outline-offset: 2px;
     }
 
+    .hp-store-badge--google {
+      padding: 0;
+      border: none;
+      background: transparent;
+      min-width: 0;
+      min-height: 0;
+      line-height: 0;
+    }
+
+    .hp-store-badge--google img {
+      display: block;
+      width: 168px;
+      height: auto;
+    }
+
+    .hp-store-badge--google:hover {
+      box-shadow: none;
+    }
+
+    .hp-app-download__social {
+      margin: 1rem 0 0;
+    }
+
+    .hp-instagram-link,
+    .hp-footer-instagram {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--onroda-text-dark);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .hp-instagram-link:hover,
+    .hp-footer-instagram:hover {
+      color: var(--onroda-red);
+    }
+
+    .hp-footer-instagram {
+      margin-top: 12px;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .hp-footer-instagram:hover {
+      color: #fff;
+    }
+
     .hp-store-link {
       display: inline-flex;
       align-items: center;
@@ -3930,6 +3973,11 @@
       .hp-store-badge {
         min-width: min(168px, calc(50% - 6px));
         flex: 1 1 148px;
+      }
+
+      .hp-store-badge--google img {
+        width: min(168px, calc(50% - 6px));
+        min-width: 148px;
       }
     }
 
