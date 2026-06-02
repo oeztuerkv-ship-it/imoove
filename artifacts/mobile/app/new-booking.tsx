@@ -1565,8 +1565,8 @@ export default function NewBookingScreen() {
               ) : (
                 <Text style={[styles.medicalScanHint, { color: "#2563EB" }]}>
                   {isInstant
-                    ? "Bitte Transportschein scannen, um die Buchung freizugeben."
-                    : "Bitte Transportschein scannen, um die Reservierung freizugeben."}
+                    ? "Bitte Transportschein scannen, damit die KK-Abrechnung für die Buchung möglich ist. Letzte Entscheidung beim Fahrer."
+                    : "Bitte Transportschein scannen, damit die KK-Abrechnung für die Reservierung möglich ist. Letzte Entscheidung beim Fahrer."}
                 </Text>
               )}
             </View>

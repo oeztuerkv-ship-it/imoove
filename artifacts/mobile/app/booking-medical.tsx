@@ -826,7 +826,8 @@ export default function BookingMedicalScreen() {
                 </>
               ) : (
                 <Text style={styles.profileHint}>
-                  Bitte Transportschein scannen, um die Buchung freizugeben.
+                  Bitte Transportschein scannen, damit die KK-Abrechnung für die Buchung möglich ist. Letzte
+                  Entscheidung beim Fahrer.
                 </Text>
               )}
             </>

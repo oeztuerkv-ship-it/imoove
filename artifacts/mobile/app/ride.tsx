@@ -963,7 +963,8 @@ export default function RideScreen() {
               </>
             ) : (
               <Text style={{ fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#2563EB", lineHeight: 17 }}>
-                Bitte Transportschein scannen, um die Buchung freizugeben.
+                Bitte Transportschein scannen, damit die KK-Abrechnung für die Buchung möglich ist. Letzte
+                Entscheidung beim Fahrer.
               </Text>
             )}
             <View style={styles.paymentChip}>
