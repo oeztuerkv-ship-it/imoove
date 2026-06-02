@@ -43,7 +43,6 @@ import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
-import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { formatEuro } from "@/utils/fareCalculator";
 import type { RideAccessibilityOptions } from "@/context/RideRequestContext";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
@@ -320,6 +319,7 @@ export default function RideScreen() {
   const [pendingTransportScanId, setPendingTransportScanId] = useState<string | null>(null);
   const [transportScanTrafficLight, setTransportScanTrafficLight] = useState<MedicalTrafficLight | null>(null);
   const [transportScanReasonDe, setTransportScanReasonDe] = useState<string | null>(null);
+  const [brokerNoticeExpanded, setBrokerNoticeExpanded] = useState(false);
 
   const { config: appConfig } = useOnrodaAppConfig();
   const medicalTransportAvailable = appConfig.medicalTransportAvailable === true;
@@ -694,7 +694,8 @@ export default function RideScreen() {
   const scrollBottomInset = brokerInScroll ? bottomPad + rs(118) : bottomPad + rs(200);
 
   const renderBrokerNotice = () => (
-    <View
+    <Pressable
+      onPress={() => setBrokerNoticeExpanded((prev) => !prev)}
       style={[
         styles.brokerNoticeBox,
         {
@@ -714,7 +715,28 @@ export default function RideScreen() {
       ]}
     >
       <MaterialCommunityIcons name="information-outline" size={20} color="#0D9488" style={{ marginTop: 1 }} />
-      <Text style={[styles.brokerNoticeText, { color: colors.foreground }]}>{brokerNoticeDe}</Text>
+      <Text
+        style={[styles.brokerNoticeText, { color: colors.foreground }]}
+        numberOfLines={brokerNoticeExpanded ? 0 : 2}
+      >
+        {brokerNoticeDe}
+      </Text>
+      <Feather
+        name={brokerNoticeExpanded ? "chevron-down" : "chevron-right"}
+        size={16}
+        color="#0D9488"
+        style={{ marginTop: 2 }}
+      />
+    </Pressable>
+  );
+
+  const renderTaxameterLegalNotice = () => (
+    <View style={styles.taxameterNoticeBox}>
+      <Feather name="info" size={14} color="#374151" style={{ marginTop: 1 }} />
+      <Text style={styles.taxameterNoticeText}>
+        <Text style={styles.taxameterNoticeLead}>Schätzpreis – </Text>
+        <Text style={styles.taxameterNoticeStrong}>maßgeblich ist der Taxameterpreis.</Text>
+      </Text>
     </View>
   );
 
@@ -729,10 +751,10 @@ export default function RideScreen() {
           onPress={handleBack}
           style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
         >
-          <Feather name="arrow-left" size={20} color={colors.foreground} />
+          <Feather name="arrow-left" size={18} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Fahrt bestätigen</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
@@ -751,10 +773,10 @@ export default function RideScreen() {
               </Text>
             </View>
           </View>
-          <View style={[styles.routeConnector, { backgroundColor: colors.border }]} />
+          <View style={[styles.routeConnector, { backgroundColor: colors.success }]} />
           <View style={styles.locationRow}>
             <View style={[styles.destPin, { backgroundColor: colors.primary }]}>
-              <Feather name="map-pin" size={11} color={colors.primaryForeground} />
+              <Feather name="map-pin" size={10} color={colors.primaryForeground} />
             </View>
             <View style={styles.locationInfo}>
               <Text style={[styles.locationLabel, { color: colors.mutedForeground }]}>Ziel</Text>
@@ -783,7 +805,7 @@ export default function RideScreen() {
           </View>
         ) : null}
 
-        {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" style={{ marginBottom: 4 }} /> : null}
+        {fareBreakdown ? renderTaxameterLegalNotice() : null}
 
         <View style={[styles.tripSummaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {[
@@ -816,8 +838,8 @@ export default function RideScreen() {
                   style={[
                     styles.paymentBtn,
                     {
-                      backgroundColor: colors.card,
-                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? ONRODA_MARK_RED + "0F" : colors.card,
+                      borderColor: isSelected ? ONRODA_MARK_RED : colors.border,
                       borderWidth: isSelected ? 2 : 1.5,
                     },
                   ]}
@@ -837,22 +859,29 @@ export default function RideScreen() {
                     }
                   }}
                 >
-                  {opt.isEuro ? (
-                    <Text style={[styles.euroSymbol, { color: colors.foreground }]}>€</Text>
-                  ) : opt.isApp ? (
-                    <Feather name="smartphone" size={14} color={colors.foreground} />
-                  ) : opt.isPaypal ? (
-                    <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
-                  ) : opt.isCard ? (
-                    <Feather name="credit-card" size={14} color={colors.foreground} />
-                  ) : opt.isVoucher ? (
-                    <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
-                  ) : opt.isAccessCode ? (
-                    <MaterialCommunityIcons name="shield-check-outline" size={16} color="#15803D" />
-                  ) : (
-                    <Feather name="credit-card" size={14} color={colors.foreground} />
-                  )}
-                  <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
+                  <View style={styles.paymentBtnLeft}>
+                    {opt.isEuro ? (
+                      <Text style={[styles.euroSymbol, { color: colors.foreground }]}>€</Text>
+                    ) : opt.isApp ? (
+                      <Feather name="smartphone" size={14} color={colors.foreground} />
+                    ) : opt.isPaypal ? (
+                      <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
+                    ) : opt.isCard ? (
+                      <Feather name="credit-card" size={14} color={colors.foreground} />
+                    ) : opt.isVoucher ? (
+                      <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
+                    ) : opt.isAccessCode ? (
+                      <MaterialCommunityIcons name="shield-check-outline" size={16} color="#15803D" />
+                    ) : (
+                      <Feather name="credit-card" size={14} color={colors.foreground} />
+                    )}
+                    <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
+                  </View>
+                  {isSelected ? (
+                    <View style={styles.paymentCheck}>
+                      <Feather name="check" size={10} color="#fff" />
+                    </View>
+                  ) : null}
                 </Pressable>
               );
             })}
@@ -948,7 +977,7 @@ export default function RideScreen() {
               {fareBreakdown ? formatEuro(calculateCopayment(fareBreakdown.total, isExempted)) : "–"}
               {isExempted ? "  (befreit)" : ""}
             </Text>
-            {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" /> : null}
+            {fareBreakdown ? renderTaxameterLegalNotice() : null}
             <Pressable
               style={styles.exemptRow}
               onPress={() => {
@@ -1001,12 +1030,11 @@ export default function RideScreen() {
               </Text>
             </View>
           ) : (
-            <View style={[styles.priceBox, { borderColor: ONRODA_MARK_RED + "66", backgroundColor: ONRODA_MARK_RED + "12" }]}>
-              <Text style={[styles.bottomLabel, { color: ONRODA_MARK_RED }]}>Schätzpreis</Text>
-              <Text style={[styles.bottomPrice, { color: ONRODA_MARK_RED }]}>
+            <View style={[styles.priceBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <Text style={[styles.bottomLabel, { color: colors.mutedForeground }]}>Schätzpreis</Text>
+              <Text style={[styles.bottomPrice, { color: colors.foreground }]}>
                 {formatEuro(fareBreakdown.total)}
               </Text>
-              <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />
             </View>
           )}
           <Animated.View style={{ transform: [{ scale: btnScale }], flex: 1 }}>
@@ -1021,14 +1049,17 @@ export default function RideScreen() {
               onPress={handleOrder}
               disabled={!canPlaceOrder}
             >
-              <Text
-                style={[
-                  styles.orderBtnText,
-                  { color: canPlaceOrder ? "#fff" : colors.mutedForeground },
-                ]}
-              >
-                {orderCtaLabel}
-              </Text>
+              <View style={styles.orderBtnInner}>
+                <Text
+                  style={[
+                    styles.orderBtnText,
+                    { color: canPlaceOrder ? "#fff" : colors.mutedForeground },
+                  ]}
+                >
+                  {orderCtaLabel}
+                </Text>
+                <Feather name="arrow-right" size={16} color={canPlaceOrder ? "#fff" : colors.mutedForeground} />
+              </View>
             </Pressable>
           </Animated.View>
         </View>
@@ -1177,20 +1208,32 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: rs(20), paddingBottom: rs(16), borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rs(18), paddingBottom: rs(14), borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: rs(40), height: rs(40), borderRadius: rs(20), justifyContent: "center", alignItems: "center", borderWidth: 1 },
+  backBtn: { width: rs(36), height: rs(36), borderRadius: rs(18), justifyContent: "center", alignItems: "center", borderWidth: 1 },
   headerTitle: { fontSize: rf(18), fontFamily: "Inter_600SemiBold" },
-  content: { padding: rs(20), gap: rs(14) },
-  card: { borderRadius: rs(16), borderWidth: 1, padding: rs(16), gap: rs(10) },
+  content: { paddingHorizontal: rs(18), paddingTop: rs(16), gap: rs(12) },
+  card: { borderRadius: rs(16), borderWidth: 1, padding: rs(18), gap: rs(12) },
   cardLabel: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
   locationRow: { flexDirection: "row", alignItems: "flex-start", gap: rs(12) },
   originDot: { width: rs(14), height: rs(14), borderRadius: rs(7), marginTop: 3 },
-  destPin: { width: rs(22), height: rs(22), borderRadius: rs(11), justifyContent: "center", alignItems: "center", marginTop: 2 },
+  destPin: { width: rs(20), height: rs(20), borderRadius: rs(10), justifyContent: "center", alignItems: "center", marginTop: 2 },
   locationInfo: { flex: 1, gap: rs(2) },
   locationLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
   locationValue: { fontSize: rf(15), fontFamily: "Inter_500Medium", lineHeight: rf(22) },
-  routeConnector: { width: 1, height: rs(20), marginLeft: rs(6) },
+  routeConnector: { width: 2, height: rs(22), borderRadius: rs(2), marginLeft: rs(6), alignSelf: "flex-start" },
+  taxameterNoticeBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(8),
+    backgroundColor: "#F3F4F6",
+    borderRadius: rs(10),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
+  },
+  taxameterNoticeText: { flex: 1, fontSize: rf(12), lineHeight: rf(17) },
+  taxameterNoticeLead: { fontFamily: "Inter_500Medium", color: "#4B5563" },
+  taxameterNoticeStrong: { fontFamily: "Inter_700Bold", color: "#111827" },
   tripSummaryCard: { flexDirection: "row", borderRadius: rs(18), borderWidth: 1, paddingVertical: rs(14), paddingHorizontal: rs(8), gap: rs(4) },
   tripSummaryItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(5), minWidth: 0 },
   tripSummaryIcon: { width: rs(34), height: rs(34), borderRadius: rs(17), alignItems: "center", justifyContent: "center" },
@@ -1206,12 +1249,22 @@ const styles = StyleSheet.create({
   paymentBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(6),
-    paddingVertical: rs(10),
+    justifyContent: "space-between",
+    paddingVertical: rs(11),
     paddingHorizontal: rs(12),
     borderRadius: rs(12),
     minWidth: "47%",
+    minHeight: rs(46),
     flexGrow: 1,
+  },
+  paymentBtnLeft: { flexDirection: "row", alignItems: "center", gap: rs(6), flexShrink: 1 },
+  paymentCheck: {
+    width: rs(18),
+    height: rs(18),
+    borderRadius: rs(9),
+    backgroundColor: ONRODA_MARK_RED,
+    alignItems: "center",
+    justifyContent: "center",
   },
   paymentBtnText: { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
   euroSymbol: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
@@ -1242,7 +1295,7 @@ const styles = StyleSheet.create({
   selfPaySwitchBtnText: { color: "#0F172A", fontFamily: "Inter_700Bold", fontSize: rf(13) },
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(16), paddingHorizontal: rs(20),
+    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(14), paddingHorizontal: rs(18),
     gap: rs(12),
   },
   brokerNoticeBox: {
@@ -1254,11 +1307,20 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   brokerNoticeText: { flex: 1, fontSize: rf(11), fontFamily: "Inter_400Regular", lineHeight: rf(16) },
-  bottomContent: { flexDirection: "row", alignItems: "center", gap: rs(16) },
-  priceBox: { borderWidth: 1.5, borderRadius: rs(12), paddingHorizontal: rs(12), paddingVertical: rs(8), gap: rs(2) },
+  bottomContent: { flexDirection: "row", alignItems: "stretch", gap: rs(12) },
+  priceBox: {
+    borderWidth: 1.5,
+    borderRadius: rs(12),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(8),
+    gap: rs(2),
+    minHeight: rs(56),
+    justifyContent: "center",
+  },
   bottomLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
   bottomPrice: { fontSize: rf(22), fontFamily: "Inter_700Bold" },
-  orderBtn: { flex: 1, paddingVertical: rs(15), borderRadius: rs(14), alignItems: "center", justifyContent: "center" },
+  orderBtn: { flex: 1.15, paddingVertical: rs(15), borderRadius: rs(14), alignItems: "center", justifyContent: "center", minHeight: rs(56) },
+  orderBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingHorizontal: rs(14) },
   orderBtnText: { fontSize: rf(17), fontFamily: "Inter_700Bold", textAlign: "center" },
   noTokenOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: rs(24) },
   noTokenCard: { width: "100%", borderRadius: rs(20), borderWidth: 1, padding: rs(24), alignItems: "center", gap: rs(12) },
