@@ -27,6 +27,10 @@ import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
+  requestForegroundPermissionsSafe,
+  watchPositionSafe,
+} from "@/utils/safeExpoLocation";
+import {
   replaceDriverStackExclusive,
   setDriverNavigationPhaseParams,
 } from "@/utils/driverNavigationRoute";
@@ -383,7 +387,7 @@ export default function DriverNavigationScreen() {
 
   // API helpers
   const patchStatus = useCallback(
-    async (newStatus: string, finalFare?: number) => {
+    async (newStatus: string, finalFare?: number, actualDistanceKm?: number, actualDurationMinutes?: number) => {
       if (!params.rideId) return;
       const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
         method: "PATCH",
@@ -391,6 +395,8 @@ export default function DriverNavigationScreen() {
         body: JSON.stringify({
           status: newStatus,
           ...(finalFare != null ? { finalFare } : {}),
+          ...(actualDistanceKm != null ? { actualDistanceKm } : {}),
+          ...(actualDurationMinutes != null ? { actualDurationMinutes } : {}),
           driverLat: driverLat,
           driverLon: driverLon,
         }),
@@ -664,7 +670,9 @@ export default function DriverNavigationScreen() {
     }
     setCompletingRide(true);
     try {
-      await patchStatus("completed", fare);
+      const navDistanceKm = initialDistM > 0 ? Math.round(initialDistM / 100) / 10 : undefined;
+      const navDurationMin = initialEtaMin > 0 ? Math.round(initialEtaMin) : undefined;
+      await patchStatus("completed", fare, navDistanceKm, navDurationMin);
       await stopDriverBackgroundLocation();
       setShowFareModal(false);
       disconnectSocket();
@@ -682,10 +690,10 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     if (Platform.OS === "web") return;
     let sub: Location.LocationSubscription | null = null;
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-      sub = await Location.watchPositionAsync(
+    void (async () => {
+      const fg = await requestForegroundPermissionsSafe();
+      if (!fg || fg.status !== "granted") return;
+      sub = await watchPositionSafe(
         { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
         (loc) => {
           const { latitude, longitude } = loc.coords;
