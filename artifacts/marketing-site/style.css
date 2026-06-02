@@ -1302,6 +1302,34 @@
       margin-bottom: 0;
     }
 
+    .hp-about-list {
+      list-style: none;
+      margin: 0 0 1rem;
+      padding: 0;
+    }
+
+    .hp-about-list li {
+      position: relative;
+      padding: 0 0 0.45rem 1.35rem;
+      color: #333;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .hp-about-list li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: #333;
+      font-weight: 700;
+    }
+
+    .hp-about-tagline {
+      font-weight: 700;
+      color: #111;
+    }
+
     .hp-footer-link-btn {
       background: none;
       border: none;
