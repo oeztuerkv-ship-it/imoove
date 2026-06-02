@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import { Alert, Platform } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 
 import {
   DRIVER_BG_LOCATION_TASK,
@@ -9,8 +9,11 @@ import {
 import {
   getBackgroundPermissionsSafe,
   getForegroundPermissionsSafe,
+  hasStartedLocationUpdatesSafe,
   requestBackgroundPermissionsSafe,
   requestForegroundPermissionsSafe,
+  startLocationUpdatesSafe,
+  stopLocationUpdatesSafe,
 } from "@/utils/safeExpoLocation";
 
 const PROMPT_STORAGE_KEY = "@Onroda_driver_bg_location_prompted";
@@ -48,10 +51,23 @@ export async function ensureDriverBackgroundLocationPermissions(options?: {
 
   if (!options?.interactive) return false;
 
+  // iOS: wenn Permission permanent verweigert → Einstellungen öffnen
+  if (bgExisting.status === "denied" && !bgExisting.canAskAgain) {
+    Alert.alert(
+      "Standort „Immer erlauben" erforderlich",
+      "Bitte aktiviere in den Einstellungen unter Datenschutz → Ortungsdienste → ONRODA die Option „Immer".",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        { text: "Einstellungen öffnen", onPress: () => void Linking.openSettings() },
+      ],
+    );
+    return false;
+  }
+
   const prompted = await AsyncStorage.getItem(PROMPT_STORAGE_KEY);
   if (prompted === "1") {
-    const bgReq = await Location.requestBackgroundPermissionsAsync();
-    return bgReq.status === "granted";
+    const bgReq = await requestBackgroundPermissionsSafe();
+    return Boolean(bgReq && bgReq.status === "granted");
   }
 
   return new Promise((resolve) => {
@@ -84,11 +100,7 @@ export async function ensureDriverBackgroundLocationPermissions(options?: {
 
 export async function isDriverBackgroundLocationRunning(): Promise<boolean> {
   if (Platform.OS === "web") return false;
-  try {
-    return await Location.hasStartedLocationUpdatesAsync(DRIVER_BG_LOCATION_TASK);
-  } catch {
-    return false;
-  }
+  return hasStartedLocationUpdatesSafe(DRIVER_BG_LOCATION_TASK);
 }
 
 /** Start background GPS uploads for an active ride (idempotent per rideId). */
@@ -121,13 +133,9 @@ export async function startDriverBackgroundLocation(rideId: string): Promise<boo
 /** Stop background GPS and clear active ride binding. */
 export async function stopDriverBackgroundLocation(): Promise<void> {
   if (Platform.OS === "web") return;
-  try {
-    const running = await Location.hasStartedLocationUpdatesAsync(DRIVER_BG_LOCATION_TASK);
-    if (running) {
-      await Location.stopLocationUpdatesAsync(DRIVER_BG_LOCATION_TASK);
-    }
-  } catch {
-    /* ignore */
+  const running = await hasStartedLocationUpdatesSafe(DRIVER_BG_LOCATION_TASK);
+  if (running) {
+    await stopLocationUpdatesSafe(DRIVER_BG_LOCATION_TASK);
   }
   await AsyncStorage.removeItem(DRIVER_BG_RIDE_STORAGE_KEY).catch(() => {});
 }
