@@ -1,5 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "node:url";
 import pinoHttp from "pino-http";
@@ -18,6 +20,35 @@ function isAdminBrowserHost(h: string): boolean {
 }
 
 app.set("trust proxy", 1);
+
+// Security Headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Mobile App + diverse Origins
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Rate Limiting — Auth-Endpoints
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 Minuten
+  max: 20, // max 20 Requests pro IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "too_many_requests", message: "Zu viele Anfragen. Bitte warte 15 Minuten." },
+});
+const generalRateLimit = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 Minute
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "too_many_requests", message: "Zu viele Anfragen." },
+});
+app.use("/admin/auth/login", authRateLimit);
+app.use("/api/admin/auth/login", authRateLimit);
+app.use("/panel/v1/auth/login", authRateLimit);
+app.use("/api/panel/v1/auth/login", authRateLimit);
+app.use("/fleet/auth/login", authRateLimit);
+app.use("/api/fleet/auth/login", authRateLimit);
+app.use(generalRateLimit);
 
 function hostname(req: express.Request): string {
   const fromTrust = (req.hostname ?? "").toLowerCase();
