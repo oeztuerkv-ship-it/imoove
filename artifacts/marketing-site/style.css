@@ -952,7 +952,7 @@
     .hp-motion-modal__panel {
       position: relative;
       z-index: 1;
-      width: min(100%, calc((85vh - 6rem) * 9 / 16 + 2.2rem));
+      width: min(100%, 520px);
       max-width: min(100%, calc(100vw - 2rem));
       max-height: min(92vh, 900px);
       display: flex;
@@ -1060,9 +1060,9 @@
     }
 
     .hp-motion-frame {
-      --motion-iframe-h: min(720px, 70vh);
+      --motion-iframe-h: min(760px, 74vh);
       position: relative;
-      width: min(360px, calc(100vw - 2rem));
+      width: min(420px, calc(100vw - 2rem));
       max-width: 100%;
       margin: 0 auto;
       flex-shrink: 0;
