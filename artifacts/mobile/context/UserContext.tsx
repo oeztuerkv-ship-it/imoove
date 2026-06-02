@@ -134,6 +134,77 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue | null>(null);
 const PROFILE_KEY = USER_PROFILE_STORAGE_KEY;
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function isSameCustomerAccount(
+  existing: UserProfile,
+  incoming: { googleId?: string; email?: string },
+): boolean {
+  const existingId = existing.googleId?.trim();
+  const incomingId = incoming.googleId?.trim();
+  if (existingId && incomingId && existingId === incomingId) return true;
+  const existingEmail = normalizeEmail(existing.email);
+  const incomingEmail = normalizeEmail(incoming.email ?? "");
+  return Boolean(existingEmail && incomingEmail && existingEmail === incomingEmail);
+}
+
+async function readStoredUserProfile(): Promise<UserProfile | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PROFILE_KEY);
+    if (!raw?.trim()) return null;
+    return JSON.parse(raw) as UserProfile;
+  } catch {
+    return null;
+  }
+}
+
+/** Google-Login: Session-Felder aktualisieren, optionale Profildaten des gleichen Kontos behalten. */
+function mergeGoogleSessionIntoProfile(
+  existing: UserProfile,
+  incoming: Partial<UserProfile>,
+): UserProfile {
+  const base = isSameCustomerAccount(existing, incoming) ? existing : { ...DEFAULT_PROFILE };
+  return {
+    ...base,
+    isLoggedIn: true,
+    name: (incoming.name ?? "").trim() || base.name,
+    email: (incoming.email ?? "").trim() || base.email,
+    photoUri: incoming.photoUri !== undefined ? incoming.photoUri : base.photoUri,
+    googleId: incoming.googleId ?? base.googleId,
+    sessionToken: incoming.sessionToken ?? base.sessionToken,
+    googleIdToken: incoming.googleIdToken ?? base.googleIdToken,
+    googleAccessToken: incoming.googleAccessToken ?? base.googleAccessToken,
+    googleAccessTokenExpiresAt: incoming.googleAccessTokenExpiresAt ?? base.googleAccessTokenExpiresAt,
+    emailVerificationProofToken:
+      incoming.emailVerificationProofToken !== undefined
+        ? incoming.emailVerificationProofToken
+        : base.emailVerificationProofToken,
+  };
+}
+
+function mergeCustomerAuthSession(
+  existing: UserProfile,
+  customer: CustomerAuthDto,
+  sessionToken: string,
+): UserProfile {
+  const base = isSameCustomerAccount(existing, { googleId: customer.id, email: customer.email })
+    ? existing
+    : { ...DEFAULT_PROFILE };
+  return {
+    ...base,
+    isLoggedIn: true,
+    name: customer.name.trim() || base.name,
+    email: customer.email.trim() || base.email,
+    phone: (customer.phone ?? "").trim() || base.phone,
+    photoUri: base.photoUri,
+    googleId: customer.id,
+    sessionToken,
+    emailVerificationProofToken: null,
+  };
+}
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
 
@@ -173,13 +244,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginWithGoogle = useCallback((data: Partial<UserProfile> | Record<string, unknown>) => {
-    const merged: UserProfile = {
-      ...DEFAULT_PROFILE,
-      isLoggedIn: true,
-      ...(data as Partial<UserProfile>),
-    };
-    save(merged);
-  }, [save]);
+    const incoming = data as Partial<UserProfile>;
+    void (async () => {
+      const stored = await readStoredUserProfile();
+      setProfile((prev) => {
+        const merged = mergeGoogleSessionIntoProfile(stored ?? prev, incoming);
+        AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    })();
+  }, []);
 
   const registerLocalCustomer = useCallback(
     (data: { name: string; email: string; phone: string }, options?: { emailVerificationProofToken?: string }) => {
@@ -200,23 +274,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [save],
   );
 
-  const applyCustomerSession = useCallback(
-    (customer: CustomerAuthDto, sessionToken: string) => {
-      const updated: UserProfile = {
-        ...DEFAULT_PROFILE,
-        name: customer.name.trim(),
-        email: customer.email.trim(),
-        phone: (customer.phone ?? "").trim(),
-        isLoggedIn: true,
-        photoUri: null,
-        googleId: customer.id,
-        sessionToken,
-        emailVerificationProofToken: null,
-      };
-      save(updated);
-    },
-    [save],
-  );
+  const applyCustomerSession = useCallback((customer: CustomerAuthDto, sessionToken: string) => {
+    void (async () => {
+      const stored = await readStoredUserProfile();
+      setProfile((prev) => {
+        const merged = mergeCustomerAuthSession(stored ?? prev, customer, sessionToken);
+        AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    })();
+  }, []);
 
   const loginWithEmailAccount = useCallback(
     async (data: {
