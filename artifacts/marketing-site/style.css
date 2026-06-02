@@ -1757,6 +1757,60 @@
       align-items: center;
     }
 
+    .hp-enterprise__shell {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: clamp(1.25rem, 2.5vw, 2rem);
+      border-radius: 20px;
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+    }
+
+    .hp-enterprise__head {
+      margin-bottom: 1.5rem;
+    }
+
+    .hp-enterprise__intro {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.65;
+      color: var(--onroda-text-grey);
+      max-width: 62ch;
+    }
+
+    .hp-enterprise__benefits {
+      margin-bottom: 1.75rem;
+    }
+
+    @media (min-width: 720px) {
+      .hp-enterprise__benefits {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 1.5rem;
+      }
+    }
+
+    .hp-care-benefits__item div strong {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--onroda-text-dark);
+      margin-bottom: 2px;
+    }
+
+    .hp-care-benefits__item div {
+      font-size: 0.9rem;
+      line-height: 1.45;
+      color: var(--onroda-text-grey);
+    }
+
+    .hp-enterprise__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
     .hp-stats {
       padding: 0 0 2.5rem;
       background: #fff;
