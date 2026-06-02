@@ -968,7 +968,10 @@ export default function NewBookingScreen() {
     () =>
       [
         { id: "cash" as const, label: "Bar", isEuro: true },
+        { id: "paypal" as const, label: "PayPal", isPaypal: true },
+        { id: "app" as const, label: "App bezahlen", isApp: true },
         { id: "voucher" as const, label: "Transportschein (KK)", isVoucher: true },
+        { id: "access_code" as const, label: "Gutschein / Code", isAccessCode: true },
       ] as const,
     [],
   );
@@ -1184,6 +1187,10 @@ export default function NewBookingScreen() {
 
   const handleSubmit = async () => {
     if (!formComplete || submitting) return;
+    if (paymentMethod === "access_code" && accessCode.trim().length === 0) {
+      Alert.alert("Code fehlt", "Bitte Gutschein- oder Freigabe-Code eingeben.");
+      return;
+    }
     if (paymentMethod === "voucher") {
       if (!pendingTransportScanId || !transportScanTrafficLight) {
         Alert.alert("Transportschein", "Bitte zuerst den Transportschein scannen.");
@@ -1287,6 +1294,16 @@ export default function NewBookingScreen() {
       if (driverNote.trim()) partnerBookingMeta.customer_driver_note = driverNote.trim();
       const isVoucherPayment = paymentMethod === "voucher";
       if (isVoucherPayment) partnerBookingMeta.medical_ride = true;
+      const paymentLabel =
+        paymentMethod === "cash"
+          ? "Bar"
+          : paymentMethod === "paypal"
+            ? "PayPal"
+            : paymentMethod === "app"
+              ? "App"
+              : paymentMethod === "access_code"
+                ? "Gutschein / Freigabe (Code)"
+                : "Krankenkasse";
 
       await addRequest({
         from: from.name,
@@ -1300,7 +1317,7 @@ export default function NewBookingScreen() {
         distanceKm: bookingRoute.distanceKm,
         durationMinutes: bookingRoute.durationMinutes,
         estimatedFare: fareEstimates[selectedVehicle] ?? 0,
-        paymentMethod: isVoucherPayment ? "Krankenkasse" : "Bar",
+        paymentMethod: paymentLabel,
         vehicle: vehicleApiValue,
         customerName,
         passengerId: passengerId || undefined,
@@ -1480,6 +1497,12 @@ export default function NewBookingScreen() {
                   <View style={styles.paymentBtnLeft}>
                     {opt.id === "cash" ? (
                       <Text style={[styles.paymentEuro, { color: colors.foreground }]}>€</Text>
+                    ) : opt.id === "paypal" ? (
+                      <Text style={[styles.paypalBadge, { color: "#1565C0" }]}>P</Text>
+                    ) : opt.id === "app" ? (
+                      <Feather name="smartphone" size={14} color={colors.foreground} />
+                    ) : opt.id === "access_code" ? (
+                      <MaterialCommunityIcons name="shield-check-outline" size={16} color="#15803D" />
                     ) : (
                       <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
                     )}
@@ -2134,6 +2157,7 @@ const styles = StyleSheet.create({
   paymentBtnLeft: { flexDirection: "row", alignItems: "center", gap: rs(6), flexShrink: 1 },
   paymentBtnText: { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
   paymentEuro: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
+  paypalBadge: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
   paymentCheck: {
     width: rs(18),
     height: rs(18),
