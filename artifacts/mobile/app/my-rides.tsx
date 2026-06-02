@@ -457,6 +457,8 @@ function serverCompletedToHistoryEntry(r: RideRequest): RideHistoryEntry {
     destination: r.toFull || r.to,
     origin: r.fromFull || r.from,
     distanceKm: r.distanceKm,
+    actualDistanceKm: r.actualDistanceKm ?? null,
+    actualDurationMinutes: r.actualDurationMinutes ?? null,
     totalFare: finalN ?? est,
     estimatedFare:
       finalN != null && est > 0 && Math.abs(est - finalN) > 0.005 ? est : undefined,
@@ -807,8 +809,8 @@ export default function MyRidesScreen() {
       time:            date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
       origin:          ride.origin ?? "Esslingen am Neckar",
       destination:     ride.destination,
-      distanceKm:      ride.distanceKm,
-      durationMinutes: Math.round(ride.distanceKm * 3),
+      distanceKm:      ride.actualDistanceKm ?? ride.distanceKm,
+      durationMinutes: ride.actualDurationMinutes ?? null,
       vehicle:         vehicle?.name ?? "Standard",
       paymentMethod:   PAYMENT_LABELS[ride.paymentMethod ?? "cash"],
       totalFare:       ride.totalFare,
@@ -1146,13 +1148,17 @@ export default function MyRidesScreen() {
                         value:
                           ride.estimatedFare != null && Math.abs(ride.totalFare) < 0.005
                             ? "Geplant: " + `${ride.distanceKm.toFixed(1)} km`
+                            : ride.actualDistanceKm != null
+                            ? `${ride.actualDistanceKm.toFixed(1)} km`
                             : `${ride.distanceKm.toFixed(1)} km`,
                       },
                       {
                         value:
                           ride.estimatedFare != null && Math.abs(ride.totalFare) < 0.005
                             ? "Keine Fahrt"
-                            : `ca. ${Math.round(ride.distanceKm * 3)} Min.`,
+                            : ride.actualDurationMinutes != null
+                            ? `${ride.actualDurationMinutes} Min.`
+                            : undefined,
                       },
                       { value: vehicleLabelFromType(ride.vehicleType) },
                       { value: PAYMENT_LABELS[ride.paymentMethod] },

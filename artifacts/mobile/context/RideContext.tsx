@@ -55,6 +55,10 @@ export interface RideHistoryEntry {
   destination: string;
   origin: string;
   distanceKm: number;
+  /** Tatsächlich gefahrene km (vom Fahrer beim Abschluss gemeldet) — null wenn nicht vorhanden. */
+  actualDistanceKm?: number | null;
+  /** Tatsächliche Fahrtdauer in Minuten (vom Fahrer beim Abschluss gemeldet) — null wenn nicht vorhanden. */
+  actualDurationMinutes?: number | null;
   /** Anzeige- / Abrechnungsbetrag: i. d. R. Fahrer-Endpreis, sonst Schätzung. */
   totalFare: number;
   /** Schätzpreis zur Buchung — nur gesetzt wenn sich von `totalFare` unterscheidet (z. B. Fahrer-Endpreis). */

@@ -1026,13 +1026,20 @@ export default function StatusScreen() {
                 )}
                 <View style={styles.receiptRow}>
                   <Text style={styles.receiptLabel}>
-                    {driverFinalFare != null ? "Geplante Strecke:" : "Distanz:"}
+                    {completedForCurrentRide?.actualDistanceKm != null ? "Gefahrene Strecke:" : driverFinalFare != null ? "Geplante Strecke:" : "Distanz:"}
                   </Text>
                   <Text style={styles.receiptValue}>
-                    {(completedForCurrentRide?.distanceKm ?? route?.distanceKm ?? 0).toFixed(1)} km
+                    {(completedForCurrentRide?.actualDistanceKm ?? completedForCurrentRide?.distanceKm ?? route?.distanceKm ?? 0).toFixed(1)} km
                   </Text>
                 </View>
-                {driverFinalFare != null && driverFinalFare >= 0.005 ? (
+                {completedForCurrentRide?.actualDurationMinutes != null ? (
+                  <View style={styles.receiptRow}>
+                    <Text style={styles.receiptLabel}>Fahrtdauer:</Text>
+                    <Text style={styles.receiptValue}>
+                      {completedForCurrentRide.actualDurationMinutes} Min.
+                    </Text>
+                  </View>
+                ) : driverFinalFare != null && driverFinalFare >= 0.005 ? (
                   <View style={styles.receiptRow}>
                     <Text style={styles.receiptLabel}>Geschätzte Dauer:</Text>
                     <Text style={styles.receiptValue}>

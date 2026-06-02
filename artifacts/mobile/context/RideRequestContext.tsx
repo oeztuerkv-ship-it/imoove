@@ -115,6 +115,8 @@ export interface RideRequest {
   tariffSnapshot?: RideTariffSnapshot | null;
   pricingMode?: "taxi_tariff" | null;
   finalFare?: number | null;
+  actualDistanceKm?: number | null;
+  actualDurationMinutes?: number | null;
   paymentMethod: string;
   vehicle: string;
   customerName: string;
@@ -474,6 +476,8 @@ function normalizeRequest(r: any): RideRequest {
         ? "taxi_tariff"
         : null,
     finalFare: parseFinalFareFromApi(r as Record<string, unknown>),
+    actualDistanceKm: r.actualDistanceKm ?? r.actual_distance_km ?? null,
+    actualDurationMinutes: r.actualDurationMinutes ?? r.actual_duration_minutes ?? null,
     paymentMethod,
     vehicle,
     customerName: String(customerName),
