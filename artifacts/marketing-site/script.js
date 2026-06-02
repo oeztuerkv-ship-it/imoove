@@ -459,6 +459,8 @@
       var modal = document.getElementById("hp-motion-modal");
       var iframe = document.getElementById("hp-motion-iframe");
       var video = document.getElementById("hp-motion-video");
+      var fallback = document.getElementById("hp-motion-fallback");
+      var fallbackLink = document.getElementById("hp-motion-fallback-link");
       if (!openBtn || !modal || !iframe) return;
 
       var iframeSrc = modal.getAttribute("data-motion-iframe-src") || "/motion/kunde/motion-test-kunde.html";
@@ -468,10 +470,69 @@
       var videoSrc = modal.getAttribute("data-motion-video-src") || "/videos/onroda-kunde.mp4";
       var useFinalVideo = modal.getAttribute("data-motion-use-video") === "1";
       var lastFocus = null;
+      var loadTimer = null;
+
+      if (fallbackLink) {
+        fallbackLink.href = iframeSrc;
+      }
+
+      function hideFallback() {
+        if (fallback) fallback.hidden = true;
+      }
+
+      function showFallback(reason) {
+        if (fallback) fallback.hidden = false;
+        marketingDevLog("[onroda] motion modal fallback:", reason || "unknown");
+      }
+
+      function clearLoadTimer() {
+        if (loadTimer) {
+          clearTimeout(loadTimer);
+          loadTimer = null;
+        }
+      }
+
+      function frameHasSize() {
+        var frame = modal.querySelector(".hp-motion-frame");
+        return !!(frame && frame.offsetWidth > 40 && frame.offsetHeight > 80);
+      }
+
+      function iframeLooksLoaded() {
+        if (!frameHasSize()) return false;
+        try {
+          var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+          if (!doc) return false;
+          var stage = doc.querySelector(".motion-kunde__stage");
+          return !!(stage && stage.offsetWidth > 40 && stage.offsetHeight > 80);
+        } catch (err) {
+          return frameHasSize();
+        }
+      }
+
+      function scheduleLoadCheck() {
+        clearLoadTimer();
+        loadTimer = setTimeout(function () {
+          if (!iframeLooksLoaded()) {
+            showFallback("timeout-or-empty");
+          }
+        }, 4500);
+      }
+
+      iframe.addEventListener("load", function () {
+        clearLoadTimer();
+        if (iframeLooksLoaded()) {
+          hideFallback();
+          marketingDevLog("[onroda] motion modal iframe loaded");
+          return;
+        }
+        showFallback("empty-or-zero-size");
+      });
 
       function closeModal() {
         modal.hidden = true;
         document.body.classList.remove("hp-motion-modal-open");
+        clearLoadTimer();
+        hideFallback();
         iframe.src = "about:blank";
         if (video) {
           video.pause();
@@ -506,6 +567,8 @@
           }
           iframe.hidden = false;
           iframe.src = iframeSrc;
+          hideFallback();
+          scheduleLoadCheck();
         }
 
         var closeBtn = modal.querySelector(".hp-motion-modal__close");

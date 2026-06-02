@@ -1052,7 +1052,7 @@
             id="hp-motion-iframe"
             class="hp-motion-modal__iframe"
             title="ONRODA Kunde — Motion-Vorschau"
-            loading="lazy"
+            loading="eager"
             referrerpolicy="no-referrer"
           ></iframe>
           <video
@@ -1065,6 +1065,10 @@
             hidden
           ></video>
         </div>
+        <p id="hp-motion-fallback" class="hp-motion-modal__fallback" hidden>
+          Vorschau nicht geladen?
+          <a id="hp-motion-fallback-link" href="/motion/kunde/motion-test-kunde.html?embed=1" target="_blank" rel="noopener noreferrer">Vorschau in neuem Fenster öffnen</a>
+        </p>
       </div>
     </div>
   </div>

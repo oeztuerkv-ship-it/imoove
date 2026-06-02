@@ -8,8 +8,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/motion/kunde/motion-kunde.css" />
+  <script>
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) {
+      document.documentElement.classList.add("motion-kunde-embed");
+    }
+  </script>
 </head>
 <body class="motion-kunde">
+  <script>
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) {
+      document.body.classList.add("motion-kunde--embed");
+    }
+  </script>
   <div>
     <div class="motion-kunde__stage" role="img" aria-label="Motion-Test: Kunde bucht Fahrt und verfolgt live">
       <span class="motion-kunde__island" aria-hidden="true"></span>
@@ -50,11 +60,5 @@
     </div>
     <p class="motion-kunde__meta">5-Sekunden-Loop · Stilframe-Test · Hochformat 390×844</p>
   </div>
-  <script>
-    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) {
-      document.documentElement.classList.add("motion-kunde-embed");
-      document.body.classList.add("motion-kunde--embed");
-    }
-  </script>
 </body>
 </html>

@@ -948,9 +948,9 @@
     .hp-motion-modal__panel {
       position: relative;
       z-index: 1;
-      width: fit-content;
+      width: min(100%, calc((85vh - 6rem) * 9 / 16 + 2.2rem));
       max-width: min(100%, calc(100vw - 2rem));
-      max-height: 85vh;
+      max-height: min(92vh, 900px);
       display: flex;
       flex-direction: column;
       border-radius: 20px;
@@ -1003,30 +1003,54 @@
     }
 
     .hp-motion-modal__body {
-      flex: 1;
-      min-height: 0;
+      flex: 0 0 auto;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 0.75rem 0.85rem 1rem;
       background: #020617;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .hp-motion-frame {
-      --motion-max-h: calc(85vh - 5.75rem);
-      --motion-max-w: calc(100vw - 2.5rem);
+      --motion-max-h: min(78vh, calc(92vh - 6rem));
+      --motion-max-w: min(360px, calc(100vw - 2.5rem));
       position: relative;
       aspect-ratio: 9 / 16;
       width: min(var(--motion-max-w), calc(var(--motion-max-h) * 9 / 16));
-      height: min(var(--motion-max-h), calc(var(--motion-max-w) * 16 / 9));
+      height: auto;
       max-width: var(--motion-max-w);
       max-height: var(--motion-max-h);
+      min-width: 180px;
+      min-height: 320px;
       flex-shrink: 0;
       margin: 0 auto;
       overflow: hidden;
       border-radius: 16px;
       background: #020617;
+    }
+
+    .hp-motion-modal__fallback {
+      margin: 0.65rem 0 0;
+      font-size: 0.82rem;
+      text-align: center;
+      color: #94a3b8;
+    }
+
+    .hp-motion-modal__fallback[hidden] {
+      display: none !important;
+    }
+
+    .hp-motion-modal__fallback a {
+      color: #f8fafc;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .hp-motion-modal__fallback a:hover {
+      color: #fff;
     }
 
     .hp-motion-modal__iframe,
@@ -1063,8 +1087,9 @@
       }
 
       .hp-motion-frame {
-        --motion-max-h: calc(100vh - 5.5rem);
-        --motion-max-w: calc(100vw - 1.5rem);
+        --motion-max-h: min(calc(100vh - 5.5rem), 760px);
+        --motion-max-w: min(340px, calc(100vw - 1.5rem));
+        min-height: 280px;
       }
     }
 
