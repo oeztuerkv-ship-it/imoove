@@ -313,7 +313,7 @@ body.motion-kunde--embed .motion-kunde__meta {
 }
 
 body.motion-kunde--embed .motion-kunde__stage {
-  margin-top: 60px;
+  transform: translateY(60px);
   aspect-ratio: 390 / 844;
   height: 100%;
   width: auto;
