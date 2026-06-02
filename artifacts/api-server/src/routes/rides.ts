@@ -1933,17 +1933,15 @@ export async function patchRideStatusRoute(
         finalFareForPatch =
           parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare) ? parsedFinalFare : 0;
       } else {
-        const mergedFinal =
-          parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
-            ? parsedFinalFare
-            : cur.finalFare != null && Number.isFinite(Number(cur.finalFare))
-              ? Number(cur.finalFare)
-              : undefined;
-        // Fahrer hat explizit Preis eingegeben → direkt nehmen, kein Snapshot-Override
-        finalFareForPatch =
-          parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
-            ? parsedFinalFare
-            : effectiveTaxiGrossEur({ ...cur, finalFare: mergedFinal } as RideRequest);
+        // in_progress → completed: finalFare vom Fahrer ist Pflicht (Taxameter)
+        if (parsedFinalFare === undefined || !Number.isFinite(parsedFinalFare) || parsedFinalFare < 0) {
+          res.status(400).json({
+            error: "final_fare_required",
+            message: "Bitte den Taxameter-Endpreis eingeben, bevor die Fahrt abgeschlossen wird.",
+          });
+          return;
+        }
+        finalFareForPatch = parsedFinalFare;
       }
     }
 
