@@ -111,13 +111,14 @@
     .hp-brand-logo {
       display: block;
       width: auto;
-      height: 44px;
-      max-width: min(148px, 42vw);
+      height: 56px;
+      max-width: min(200px, 52vw);
       object-fit: contain;
     }
 
     .hp-brand-logo--footer {
-      height: 52px;
+      height: 60px;
+      max-width: min(200px, 70vw);
       filter: brightness(0) invert(1);
     }
 
