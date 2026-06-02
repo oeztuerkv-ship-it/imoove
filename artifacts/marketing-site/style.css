@@ -1076,9 +1076,9 @@
       position: relative;
       display: block;
       width: 100%;
-      height: min(760px, 78vh);
-      min-height: 560px;
-      max-height: min(760px, 78vh);
+      height: min(600px, 62vh);
+      min-height: 400px;
+      max-height: min(600px, 62vh);
       border: 0;
       background: #020617;
     }
