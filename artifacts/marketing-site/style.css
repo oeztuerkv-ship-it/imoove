@@ -1843,13 +1843,15 @@
 
     .hp-app-download {
       padding: clamp(2rem, 4vw, 2.75rem) 0;
+      overflow-x: clip;
     }
 
     .hp-app-download__grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.85fr);
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.85fr);
       gap: clamp(1.5rem, 4vw, 3rem);
       align-items: center;
+      min-width: 0;
     }
 
     .hp-app-download__kicker {
@@ -1900,11 +1902,174 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .hp-app-download__stage {
+      position: relative;
+      width: min(280px, 100%);
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 2.35rem 0 0.85rem;
+      box-sizing: border-box;
+    }
+
+    .hp-app-download__float {
+      position: absolute;
+      z-index: 4;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--onroda-text-dark);
+      white-space: nowrap;
+      max-width: calc(100% - 0.5rem);
+      box-sizing: border-box;
+    }
+
+    .hp-app-download__float--1 {
+      top: 0;
+      left: 0;
+    }
+
+    .hp-app-download__float--2 {
+      top: 34%;
+      right: 0;
+      left: auto;
+    }
+
+    .hp-app-download__float--3 {
+      bottom: 0;
+      left: 0;
+    }
+
+    .hp-app-download__float-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+      flex-shrink: 0;
+    }
+
+    html.hp-js .hp-app-download .hp-reveal:not(.hp-reveal--phone) {
+      transition:
+        opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+      transition-delay: calc(var(--reveal-order, 0) * 70ms + 90ms);
+    }
+
+    html.hp-js .hp-app-download:not(.is-visible) .hp-reveal:not(.hp-reveal--phone) {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+
+    html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone {
+      opacity: 0;
+      transform: translate(36px, 48px) scale(0.9);
+      transition: none;
+    }
+
+    .hp-app-download.is-visible .hp-reveal:not(.hp-reveal--phone) {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hp-app-download.is-visible .hp-reveal--phone {
+      opacity: 1;
+      animation: hp-app-phone-bump 0.85s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
+      animation-delay: 0.18s;
+    }
+
+    @keyframes hp-app-phone-bump {
+      0% {
+        opacity: 0;
+        transform: translate(36px, 48px) scale(0.9);
+      }
+      68% {
+        opacity: 1;
+        transform: translate(-5px, -8px) scale(1.02);
+      }
+      100% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+      }
+    }
+
+    .hp-app-download.is-visible .hp-app-download__float {
+      animation: hp-app-float-drift 4.2s ease-in-out 1.15s infinite;
+    }
+
+    .hp-app-download.is-visible .hp-app-download__float--2 {
+      animation-delay: 1.35s;
+    }
+
+    .hp-app-download.is-visible .hp-app-download__float--3 {
+      animation-delay: 1.55s;
+    }
+
+    @keyframes hp-app-float-drift {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    .hp-app-download.is-visible .hp-app-download__screen {
+      animation: hp-app-screen-glow 2.8s ease-in-out infinite;
+      animation-delay: 1s;
+    }
+
+    @keyframes hp-app-screen-glow {
+      0%,
+      100% {
+        box-shadow: 0 0 0 rgba(213, 0, 28, 0);
+      }
+      50% {
+        box-shadow:
+          0 0 0 2px rgba(213, 0, 28, 0.1),
+          0 0 28px rgba(213, 0, 28, 0.12);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html.hp-js .hp-app-download:not(.is-visible) .hp-reveal:not(.hp-reveal--phone),
+      html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+        animation: none !important;
+      }
+
+      .hp-app-download.is-visible .hp-reveal:not(.hp-reveal--phone),
+      .hp-app-download.is-visible .hp-reveal--phone {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+        animation: none !important;
+      }
+
+      .hp-app-download.is-visible .hp-app-download__float,
+      .hp-app-download.is-visible .hp-app-download__screen {
+        animation: none !important;
+      }
     }
 
     .hp-app-download__phone {
       position: relative;
       width: min(280px, 100%);
+      max-width: 100%;
       padding: 10px;
       border-radius: 38px;
       background: linear-gradient(160deg, #2c2c2e 0%, #0a0a0a 100%);
@@ -2247,8 +2412,59 @@
         max-width: none;
       }
 
+      .hp-app-download__device {
+        padding-inline: 0;
+      }
+
+      .hp-app-download__stage {
+        width: min(252px, calc(100% - 0.25rem));
+        padding-top: 2.1rem;
+      }
+
       .hp-app-download__phone {
-        width: min(260px, 88vw);
+        width: min(252px, 100%);
+        max-width: 100%;
+      }
+
+      .hp-app-download.is-visible .hp-reveal--phone {
+        animation-name: hp-app-phone-bump-mobile;
+      }
+
+      .hp-app-download__float {
+        font-size: 0.68rem;
+        padding: 6px 10px;
+        max-width: calc(100% - 0.25rem);
+      }
+
+      .hp-app-download__float--1 {
+        left: 0;
+        top: 0;
+      }
+
+      .hp-app-download__float--2 {
+        right: 0;
+        left: auto;
+        top: 32%;
+      }
+
+      .hp-app-download__float--3 {
+        left: 0;
+        bottom: 0;
+      }
+
+      @keyframes hp-app-phone-bump-mobile {
+        0% {
+          opacity: 0;
+          transform: translate(12px, 20px) scale(0.94);
+        }
+        68% {
+          opacity: 1;
+          transform: translate(-3px, -4px) scale(1.01);
+        }
+        100% {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
       }
 
       .hp-audience-grid {
@@ -2269,6 +2485,33 @@
 
       .hp-stats-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 390px) {
+      .hp-app-download__stage {
+        width: min(228px, 100%);
+        padding-top: 2rem;
+      }
+
+      .hp-app-download__phone {
+        width: min(228px, 100%);
+      }
+
+      .hp-app-download__screen {
+        min-height: 360px;
+      }
+
+      .hp-app-download__float {
+        font-size: 0.64rem;
+        padding: 5px 8px;
+        white-space: normal;
+        line-height: 1.25;
+        max-width: 9.75rem;
+      }
+
+      .hp-app-download__float--2 {
+        top: 30%;
       }
     }
 

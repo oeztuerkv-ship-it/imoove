@@ -1,3 +1,16 @@
+    document.documentElement.classList.add("hp-js");
+
+    function isMarketingDevHost() {
+      var h = window.location.hostname;
+      return h === "localhost" || h === "127.0.0.1";
+    }
+
+    function marketingDevLog() {
+      if (isMarketingDevHost()) {
+        console.log.apply(console, arguments);
+      }
+    }
+
     if ("scrollRestoration" in history) {
       history.scrollRestoration = "manual";
     }
@@ -517,6 +530,53 @@
     }
 
     initHeroMotionModal();
+
+    function initAppDownloadReveal() {
+      var section = document.querySelector(".hp-app-download");
+      if (!section) {
+        marketingDevLog("[onroda] app-download reveal: .hp-app-download not found, skip");
+        return;
+      }
+
+      var reveals = section.querySelectorAll("[data-reveal-order]");
+      for (var i = 0; i < reveals.length; i++) {
+        var order = reveals[i].getAttribute("data-reveal-order");
+        if (order != null) {
+          reveals[i].style.setProperty("--reveal-order", order);
+        }
+      }
+
+      function activate(source) {
+        section.classList.add("is-visible");
+        marketingDevLog("[onroda] app-download reveal: visible (" + (source || "unknown") + ")");
+      }
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        activate("reduced-motion");
+        return;
+      }
+      if (!("IntersectionObserver" in window)) {
+        activate("no-intersection-observer");
+        return;
+      }
+
+      var observer = new IntersectionObserver(
+        function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            if (entries[i].isIntersecting) {
+              activate("intersection");
+              observer.disconnect();
+              return;
+            }
+          }
+        },
+        { threshold: 0.16, rootMargin: "0px 0px -6% 0px" },
+      );
+      observer.observe(section);
+      marketingDevLog("[onroda] app-download reveal: observer attached");
+    }
+
+    initAppDownloadReveal();
 
     function syncPartnerTaxiSection() {
       var wrap = document.getElementById("partner-taxi-fields");
