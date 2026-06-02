@@ -62,6 +62,7 @@ export const ADMIN_PAGE_ROLES = {
   "access-codes": ["admin", "service", "taxi"],
   "homepage-placeholders": ["admin", "service"],
   "homepage-content": ["admin", "service"],
+  "fail2ban": ["admin"],
   "customer-accounts": ["admin", "service"],
   "app-news": ["admin", "service"],
   "app-faq": ["admin", "service"],
@@ -266,6 +267,7 @@ const ADMIN_NAV_GROUPS_RAW = [
       { pageKey: "settings-payments", label: "Zahlungsarten", icon: "wallet", roles: ["admin"] },
       { pageKey: "settings", label: "Konto & Sicherheit", icon: "cog", roles: ["admin", "service", "taxi", "insurance", "hotel"] },
       { pageKey: "settings-system", label: "System", icon: "cog", roles: ["admin"] },
+      { pageKey: "fail2ban", label: "Firewall & IPs", icon: "shield", roles: ["admin"] },
     ],
   },
 ];

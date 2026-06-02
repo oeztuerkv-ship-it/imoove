@@ -5,6 +5,7 @@ import authRouter from "./auth";
 import emailAuthRouter from "./emailAuth";
 import customerAuthRouter from "./customerAuth";
 import adminApiRouter from "./adminApi";
+import adminFail2banRouter from "./adminFail2banRouter";
 import panelAuthRouter from "./panelAuth";
 import panelApiRouter from "./panelApi";
 import panelInvoiceRoutesRouter from "./panelInvoiceRoutes";
@@ -36,6 +37,7 @@ router.use(panelApiRouter);
 router.use(panelInvoiceRoutesRouter);
 router.use(panelKrankenInvoiceRoutesRouter);
 router.use(adminApiRouter);
+router.use(adminFail2banRouter);
 router.use(customerApiRouter);
 router.use(ridesRouter);
 

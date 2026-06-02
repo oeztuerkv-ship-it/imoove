@@ -59,6 +59,7 @@ import PartnerMessagesPage from "./pages/PartnerMessagesPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 import DriversOverviewPage from "./pages/DriversOverviewPage.jsx";
+import Fail2BanPage from "./pages/Fail2BanPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -308,6 +309,10 @@ const PAGE_META = {
   "homepage-content": {
     title: "Homepage-Inhalte",
     subtitle: "Hero-Texte und Hinweiszeile der Marketing-Homepage ohne Codeänderung steuern",
+  },
+  "fail2ban": {
+    title: "Firewall & Gesperrte IPs",
+    subtitle: "Fail2Ban — gesperrte IPs einsehen und manuell entsperren oder sperren",
   },
   "customer-accounts": {
     title: "Kundenkonten (App)",
@@ -876,6 +881,8 @@ export default function App() {
         return <HomepagePlaceholdersPage />;
       case "homepage-content":
         return <HomepageContentPage />;
+      case "fail2ban":
+        return <Fail2BanPage />;
       case "customer-accounts":
         return <CustomerAccountsPage />;
       case "app-news":
