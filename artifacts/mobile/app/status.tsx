@@ -961,7 +961,8 @@ export default function StatusScreen() {
   const rawFinalFare = completedForCurrentRide?.finalFare;
   const driverFinalFare =
     rawFinalFare != null && Number.isFinite(Number(rawFinalFare)) ? Number(rawFinalFare) : null;
-  const totalFare = driverFinalFare ?? estimatedFare;
+  // Bei completed: nur Fahrer-Endpreis ist gültig — kein Schätzpreis als Fallback
+  const totalFare = driverFinalFare ?? (completedForCurrentRide ? 0 : estimatedFare);
   const tipAmount =
     selectedTip === -1 ? (parseFloat(customTipInput.replace(",", ".")) || 0)
     : selectedTip !== null ? TIP_OPTIONS[selectedTip].amt

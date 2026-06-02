@@ -977,7 +977,10 @@ function buildReceiptHtmlFromRide(r: RideRequest): string {
   const date = new Date(r.createdAt);
   const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-  const amount = effectiveTaxiGrossEur(r);
+  // Quittung: bei completed immer finalFare — kein Schätzwert
+  const amount = r.status === "completed" && r.finalFare != null && Number.isFinite(Number(r.finalFare))
+    ? Number(r.finalFare)
+    : effectiveTaxiGrossEur(r);
   const rideNr = String(r.id).slice(0, 8).toUpperCase();
   return `<!DOCTYPE html>
 <html lang="de">
@@ -1025,8 +1028,8 @@ function buildReceiptHtmlFromRide(r: RideRequest): string {
         <div class="pt">${escapeHtml(r.to ?? "—")}</div>
       </div>
       <div style="margin-top: 14px;">
-        <div class="row"><div class="k">Strecke</div><div class="v">${escapeHtml(String(r.distanceKm ?? 0))} km</div></div>
-        <div class="row"><div class="k">Dauer</div><div class="v">${escapeHtml(String(r.durationMinutes ?? 0))} Min</div></div>
+        <div class="row"><div class="k">${r.actualDistanceKm != null ? "Gefahrene Strecke" : "Geplante Strecke"}</div><div class="v">${escapeHtml(String((r.actualDistanceKm ?? r.distanceKm ?? 0).toFixed(1)))} km</div></div>
+        ${r.actualDurationMinutes != null ? `<div class="row"><div class="k">Fahrtdauer</div><div class="v">${escapeHtml(String(r.actualDurationMinutes))} Min</div></div>` : ""}
         <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(r.paymentMethod ?? "—")}</div></div>
         <div class="row"><div class="k">Produkt</div><div class="v">${escapeHtml(r.vehicle ?? "—")}</div></div>
       </div>
