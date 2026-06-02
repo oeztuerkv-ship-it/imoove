@@ -502,6 +502,9 @@
       var lastFocus = null;
       var loadTimer = null;
       var activeTab = "customer";
+      if (video) {
+        video.controls = false;
+      }
 
       function srcForTab(tab) {
         if (tab === "medical") return medicalSrc;
@@ -645,6 +648,7 @@
           iframe.hidden = true;
           iframe.src = "about:blank";
           video.hidden = false;
+          video.controls = false;
           video.src = videoSrc;
           video.muted = true;
           video.removeAttribute("autoplay");
