@@ -2072,6 +2072,7 @@ export async function patchRideStatusRoute(
         reason: "ride_completed_status_transition",
         actorType: mutActor.actorType,
         actorId: mutActor.actorId,
+        forceRecalc: true, // Taxameter-Endpreis muss Finance überschreiben
       });
       if (!finance.ok) {
         res.status(500).json({ error: finance.error });

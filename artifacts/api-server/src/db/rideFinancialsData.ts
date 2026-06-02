@@ -99,6 +99,7 @@ export interface UpsertRideFinancialSnapshotInput extends FinanceActor {
   ride: RideRequest;
   pricingContext?: FinancePricingContext | null;
   reason?: string;
+  forceRecalc?: boolean; // Bei completed: Lock ignorieren, Snapshot erzwingen
 }
 
 async function insertFinancialAuditLog(input: {
@@ -252,7 +253,7 @@ export async function upsertRideFinancialSnapshot(
     let existing = existingRows[0];
     const autoLockReason = await getAutoLockReasonDb(ride.id, tx);
 
-    if (existing?.locked_at) {
+    if (existing?.locked_at && !input.forceRecalc) {
       return { ok: true, snapshotId: existing.id, skipped: true };
     }
 
