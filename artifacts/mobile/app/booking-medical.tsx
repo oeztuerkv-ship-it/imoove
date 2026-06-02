@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
-import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -39,8 +38,7 @@ type PickerTarget =
   | "returnTime"
   | "seriesFrom"
   | "seriesTo";
-type RecognitionStatus = "pending_recognition" | "recognized" | "unclear" | "rejected";
-type ApprovalProofMode = "uploaded" | "show_to_driver" | "later";
+type ApprovalProofMode = "show_to_driver" | "later";
 type MedicalPaymentChoice = "cash" | "card" | "transportschein";
 
 const WEEKDAYS: { key: WeekdayKey; label: string; idx: number }[] = [
@@ -127,7 +125,6 @@ export default function BookingMedicalScreen() {
   const [authorizationReference, setAuthorizationReference] = useState("");
   const [approvalPresent, setApprovalPresent] = useState<boolean | null>(null);
   const [approvalProofMode, setApprovalProofMode] = useState<ApprovalProofMode>("later");
-  const [transportDocUri, setTransportDocUri] = useState<string | null>(null);
   const [driverNote, setDriverNote] = useState("");
 
   const [needsAssistance, setNeedsAssistance] = useState(false);
@@ -280,42 +277,6 @@ export default function BookingMedicalScreen() {
     cancelPicker();
   }
 
-  async function pickTransportDocumentFrom(source: "camera" | "library") {
-    if (source === "camera") {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (perm.status !== "granted") {
-        Alert.alert("Berechtigung fehlt", "Bitte Kamera erlauben.");
-        return;
-      }
-      const res = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.7,
-      });
-      if (!res.canceled && res.assets?.[0]?.uri) setTransportDocUri(res.assets[0].uri);
-      return;
-    }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== "granted") {
-      Alert.alert("Berechtigung fehlt", "Bitte Fotobibliothek erlauben.");
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.7,
-    });
-    if (!res.canceled && res.assets?.[0]?.uri) setTransportDocUri(res.assets[0].uri);
-  }
-
-  async function pickTransportDocument() {
-    Alert.alert("Transportschein", "Bildquelle wählen", [
-      { text: "Kamera", onPress: () => void pickTransportDocumentFrom("camera") },
-      { text: "Galerie", onPress: () => void pickTransportDocumentFrom("library") },
-      { text: "Abbrechen", style: "cancel" },
-    ]);
-  }
-
   function validateRequired(): string | null {
     if (!patientName.trim()) return "Bitte Patient/Fahrgast angeben.";
     if (!pickupStreet.trim() || !pickupHouseNumber.trim() || !pickupCity.trim() || !pickupPostalCode.trim()) {
@@ -325,9 +286,6 @@ export default function BookingMedicalScreen() {
       return "Bitte Zieladresse vollständig ausfüllen (Straße, Hausnummer, PLZ, Stadt).";
     }
     if (approvalPresent == null) return "Bitte Genehmigung vorhanden: ja/nein auswählen.";
-    if (approvalPresent === true && approvalProofMode === "uploaded" && !transportDocUri) {
-      return "Bitte Genehmigung jetzt hochladen oder andere Nachweis-Option wählen.";
-    }
     if (needsAssistance && (assistanceLevel == null || canTransfer == null || companionCount == null)) {
       return "Bitte Hilfe, Umsteigen (ja/nein) und Begleitperson auswählen.";
     }
@@ -380,13 +338,7 @@ export default function BookingMedicalScreen() {
       });
     }
 
-    const recognitionStatus: RecognitionStatus | null = transportDocUri ? "pending_recognition" : null;
-    const transportDocumentStatus =
-      approvalPresent === true
-        ? approvalProofMode
-        : transportDocUri
-          ? "uploaded"
-          : "missing";
+    const transportDocumentStatus = approvalPresent === true ? approvalProofMode : "missing";
     const medicalMeta: Record<string, unknown> = {
       medical_ride: true,
       approval_status:
@@ -397,8 +349,8 @@ export default function BookingMedicalScreen() {
       authorization_reference: authorizationReference.trim() || "",
       approval_proof_mode: approvalPresent === true ? approvalProofMode : "none",
       transport_document_status: transportDocumentStatus,
-      transport_document_processing_status: recognitionStatus ?? "missing",
-      transport_document_recognition_status: recognitionStatus,
+      transport_document_processing_status: "missing",
+      transport_document_recognition_status: null,
       transport_document_recognition_result: null,
       transport_document_recognition_next_states: ["recognized", "unclear", "rejected"],
       signature_required: true,
@@ -414,7 +366,7 @@ export default function BookingMedicalScreen() {
       partner_payout_amount: 0,
       return_ride: returnRide,
       return_time: returnRide ? returnTime : null,
-      transport_document_uri: transportDocUri ?? null,
+      transport_document_uri: null,
     };
 
     const createOne = async (dateObj: Date) => {
@@ -666,12 +618,6 @@ export default function BookingMedicalScreen() {
               <ChoiceRow
                 choices={[
                   {
-                    id: "approval-upload",
-                    label: "Jetzt hochladen",
-                    active: approvalProofMode === "uploaded",
-                    onPress: () => setApprovalProofMode("uploaded"),
-                  },
-                  {
                     id: "approval-show-driver",
                     label: "Vor Ort beim Fahrer zeigen",
                     active: approvalProofMode === "show_to_driver",
@@ -688,13 +634,6 @@ export default function BookingMedicalScreen() {
             </>
           ) : null}
         </View>
-
-        <Pressable style={styles.uploadBtn} onPress={pickTransportDocument}>
-          <Feather name="upload" size={16} color="#fff" />
-          <Text style={styles.uploadText}>
-            {transportDocUri ? "Transportschein hochgeladen (Erkennung ausstehend)" : "Transportschein hochladen/fotografieren"}
-          </Text>
-        </Pressable>
         <Text style={styles.profileHint}>
           Eventuelle gesetzliche Zuzahlung wird nach geltenden Regeln berechnet.
         </Text>
