@@ -28,6 +28,7 @@
 --   038 → homepage_content (Homepage-CMS MVP)
 --   039 → homepage_content.section2_title, homepage_content.section2_cards
 --   040 → homepage_content (services_*, manifest_*)
+--   096 → homepage_content (about_* — Über-ONRODA Modal)
 --   041 → insurer_cost_centers, insurer_ride_transport_documents
 --   042 → homepage_faq_items, homepage_how_steps, homepage_trust_metrics
 --   044 → fleet_drivers.approval_status
@@ -629,6 +630,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'manifest_cards'
   ) THEN
     errs := array_append(errs, 'homepage_content.manifest_cards (Migration 040)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'about_title'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.about_title (Migration 096)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'about_bullets'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.about_bullets (Migration 096)');
   END IF;
 
   IF NOT EXISTS (

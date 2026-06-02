@@ -48,6 +48,13 @@ export type HomepageContentDto = {
   cta2Link: string;
   noticeText: string;
   noticeActive: boolean;
+  aboutTitle: string;
+  aboutIntro: string;
+  aboutVision: string;
+  aboutChallengesIntro: string;
+  aboutBullets: string[];
+  aboutClosing: string;
+  aboutTagline: string;
   updatedAt: string | null;
 };
 
@@ -160,6 +167,22 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   cta2Link: "#services",
   noticeText: "",
   noticeActive: false,
+  aboutTitle: "Über ONRODA",
+  aboutIntro:
+    "ONRODA verbindet Fahrgäste, Unternehmen, Partner und Fahrer in einem gemeinsamen digitalen System – für Mobilität, die einfacher funktioniert.",
+  aboutVision:
+    "Unsere Vision ist eine Mobilität ohne Papierchaos, unnötige Rückfragen und komplizierte Abläufe. Von der Buchung über Live-Disposition und Krankenfahrten bis zur transparenten Abrechnung soll alles nachvollziehbar, schnell und digital funktionieren.",
+  aboutChallengesIntro: "Wir entwickeln ONRODA für echte Herausforderungen im Alltag:",
+  aboutBullets: [
+    "Taxi & Alltagsmobilität",
+    "Krankenfahrten & Transportscheine",
+    "Unternehmen & Kostenstellen",
+    "Hotels, Gutscheine & Partnernetzwerke",
+    "Digitale Prozesse statt Medienbrüche",
+  ],
+  aboutClosing:
+    "Gemeinsam mit Partnerbetrieben, Hotels, Kliniken und Unternehmen bauen wir eine regionale Plattform für moderne Mobilität – persönlich, transparent und verlässlich.",
+  aboutTagline: "ONRODA – Mobilität neu organisiert.",
 };
 
 function mapServiceCards(raw: unknown): HomepageServiceCard[] {
@@ -175,6 +198,16 @@ function mapServiceCards(raw: unknown): HomepageServiceCard[] {
       isActive: o?.isActive !== false,
     };
   });
+}
+
+function mapAboutBullets(raw: unknown): string[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return [...DEFAULT_CONTENT.aboutBullets];
+  }
+  return raw
+    .slice(0, 8)
+    .map((b) => String(b ?? "").trim())
+    .filter((b) => b.length > 0);
 }
 
 function mapManifestCards(raw: unknown): HomepageManifestCard[] {
@@ -210,6 +243,13 @@ export function normalizeHomepageContentDto(dto: HomepageContentDto): HomepageCo
     manifestTitle: normalizeGermanMarketingText(dto.manifestTitle),
     manifestSubline: normalizeGermanMarketingText(dto.manifestSubline),
     noticeText: normalizeGermanMarketingText(dto.noticeText),
+    aboutTitle: normalizeGermanMarketingText(dto.aboutTitle),
+    aboutIntro: normalizeGermanMarketingText(dto.aboutIntro),
+    aboutVision: normalizeGermanMarketingText(dto.aboutVision),
+    aboutChallengesIntro: normalizeGermanMarketingText(dto.aboutChallengesIntro),
+    aboutBullets: dto.aboutBullets.map((b) => normalizeGermanMarketingText(b)),
+    aboutClosing: normalizeGermanMarketingText(dto.aboutClosing),
+    aboutTagline: normalizeGermanMarketingText(dto.aboutTagline),
     section2Cards: dto.section2Cards.map((c) => ({
       ...c,
       title: normalizeGermanMarketingText(c.title),
@@ -261,6 +301,13 @@ function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDt
     cta2Link: row.cta2_link,
     noticeText: row.notice_text,
     noticeActive: row.notice_active,
+    aboutTitle: (row.about_title || "").trim() || DEFAULT_CONTENT.aboutTitle,
+    aboutIntro: (row.about_intro || "").trim() || DEFAULT_CONTENT.aboutIntro,
+    aboutVision: (row.about_vision || "").trim() || DEFAULT_CONTENT.aboutVision,
+    aboutChallengesIntro: (row.about_challenges_intro || "").trim() || DEFAULT_CONTENT.aboutChallengesIntro,
+    aboutBullets: mapAboutBullets(row.about_bullets),
+    aboutClosing: (row.about_closing || "").trim() || DEFAULT_CONTENT.aboutClosing,
+    aboutTagline: (row.about_tagline || "").trim() || DEFAULT_CONTENT.aboutTagline,
     updatedAt: row.updated_at ? row.updated_at.toISOString() : null,
   });
 }
@@ -315,6 +362,13 @@ export async function patchHomepageContentAdmin(
       cta2_link: merged.cta2Link,
       notice_text: merged.noticeText,
       notice_active: merged.noticeActive,
+      about_title: merged.aboutTitle,
+      about_intro: merged.aboutIntro,
+      about_vision: merged.aboutVision,
+      about_challenges_intro: merged.aboutChallengesIntro,
+      about_bullets: merged.aboutBullets,
+      about_closing: merged.aboutClosing,
+      about_tagline: merged.aboutTagline,
       updated_by_admin_user_id: actorAdminUserId ?? null,
       created_at: now,
       updated_at: now,
@@ -341,6 +395,13 @@ export async function patchHomepageContentAdmin(
         cta2_link: merged.cta2Link,
         notice_text: merged.noticeText,
         notice_active: merged.noticeActive,
+        about_title: merged.aboutTitle,
+        about_intro: merged.aboutIntro,
+        about_vision: merged.aboutVision,
+        about_challenges_intro: merged.aboutChallengesIntro,
+        about_bullets: merged.aboutBullets,
+        about_closing: merged.aboutClosing,
+        about_tagline: merged.aboutTagline,
         updated_by_admin_user_id: actorAdminUserId ?? null,
         updated_at: now,
       })

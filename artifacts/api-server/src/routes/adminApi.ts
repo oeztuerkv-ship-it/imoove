@@ -2690,6 +2690,15 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
               };
             })
           : undefined;
+    const aboutBullets =
+      b.aboutBullets === undefined
+        ? undefined
+        : Array.isArray(b.aboutBullets)
+          ? b.aboutBullets
+              .slice(0, 8)
+              .map((raw) => (typeof raw === "string" ? raw.trim() : ""))
+              .filter((s) => s.length > 0)
+          : undefined;
     const item = await patchHomepageContentAdmin(
       {
         section2Title: toText(b.section2Title),
@@ -2710,6 +2719,13 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
         cta2Link: toText(b.cta2Link),
         noticeText: toText(b.noticeText),
         noticeActive: typeof b.noticeActive === "boolean" ? b.noticeActive : undefined,
+        aboutTitle: toText(b.aboutTitle),
+        aboutIntro: toText(b.aboutIntro),
+        aboutVision: toText(b.aboutVision),
+        aboutChallengesIntro: toText(b.aboutChallengesIntro),
+        aboutBullets,
+        aboutClosing: toText(b.aboutClosing),
+        aboutTagline: toText(b.aboutTagline),
       },
       req.adminAuth?.adminUserId ?? null,
     );

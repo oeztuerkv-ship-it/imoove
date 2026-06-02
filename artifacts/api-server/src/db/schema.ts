@@ -1154,6 +1154,13 @@ export const homepageContentTable = pgTable("homepage_content", {
     >()
     .notNull()
     .default([]),
+  about_title: text("about_title").notNull().default(""),
+  about_intro: text("about_intro").notNull().default(""),
+  about_vision: text("about_vision").notNull().default(""),
+  about_challenges_intro: text("about_challenges_intro").notNull().default(""),
+  about_bullets: jsonb("about_bullets").$type<string[]>().notNull().default([]),
+  about_closing: text("about_closing").notNull().default(""),
+  about_tagline: text("about_tagline").notNull().default(""),
   updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
     onDelete: "set null",
   }),

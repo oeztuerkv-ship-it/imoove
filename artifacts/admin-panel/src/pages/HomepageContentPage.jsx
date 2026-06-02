@@ -74,6 +74,23 @@ function mergeManifest(incoming) {
   });
 }
 
+const defaultAboutBullets = () => [
+  "Taxi & Alltagsmobilität",
+  "Krankenfahrten & Transportscheine",
+  "Unternehmen & Kostenstellen",
+  "Hotels, Gutscheine & Partnernetzwerke",
+  "Digitale Prozesse statt Medienbrüche",
+];
+
+function mergeAboutBullets(incoming) {
+  const d = defaultAboutBullets();
+  const arr = Array.isArray(incoming) ? incoming.slice(0, 8) : [];
+  return d.map((text, idx) => {
+    const v = arr[idx];
+    return typeof v === "string" && v.trim() !== "" ? v.trim() : text;
+  });
+}
+
 export default function HomepageContentPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -98,6 +115,13 @@ export default function HomepageContentPage() {
     cta2Link: "",
     noticeText: "",
     noticeActive: false,
+    aboutTitle: "",
+    aboutIntro: "",
+    aboutVision: "",
+    aboutChallengesIntro: "",
+    aboutBullets: defaultAboutBullets(),
+    aboutClosing: "",
+    aboutTagline: "",
   });
   const [faqItems, setFaqItems] = useState([]);
   const [howItems, setHowItems] = useState([]);
@@ -139,6 +163,13 @@ export default function HomepageContentPage() {
         cta2Link: item.cta2Link || "",
         noticeText: item.noticeText || "",
         noticeActive: item.noticeActive === true,
+        aboutTitle: item.aboutTitle || "",
+        aboutIntro: item.aboutIntro || "",
+        aboutVision: item.aboutVision || "",
+        aboutChallengesIntro: item.aboutChallengesIntro || "",
+        aboutBullets: mergeAboutBullets(item.aboutBullets),
+        aboutClosing: item.aboutClosing || "",
+        aboutTagline: item.aboutTagline || "",
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unbekannter Fehler");
@@ -227,6 +258,13 @@ export default function HomepageContentPage() {
           cta2Link: form.cta2Link,
           noticeText: form.noticeText,
           noticeActive: !!form.noticeActive,
+          aboutTitle: form.aboutTitle,
+          aboutIntro: form.aboutIntro,
+          aboutVision: form.aboutVision,
+          aboutChallengesIntro: form.aboutChallengesIntro,
+          aboutBullets: form.aboutBullets.map((b) => String(b || "").trim()).filter(Boolean),
+          aboutClosing: form.aboutClosing,
+          aboutTagline: form.aboutTagline,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -585,6 +623,84 @@ export default function HomepageContentPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
+            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Über ONRODA (Modal)</div>
+            <div className="admin-form-vertical">
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Titel</span>
+                <input
+                  className="admin-input"
+                  value={form.aboutTitle}
+                  onChange={(e) => setForm((p) => ({ ...p, aboutTitle: e.target.value }))}
+                />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Einleitung</span>
+                <textarea
+                  className="admin-textarea"
+                  rows={3}
+                  value={form.aboutIntro}
+                  onChange={(e) => setForm((p) => ({ ...p, aboutIntro: e.target.value }))}
+                />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Vision</span>
+                <textarea
+                  className="admin-textarea"
+                  rows={3}
+                  value={form.aboutVision}
+                  onChange={(e) => setForm((p) => ({ ...p, aboutVision: e.target.value }))}
+                />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Überschrift vor Aufzählung</span>
+                <input
+                  className="admin-input"
+                  value={form.aboutChallengesIntro}
+                  onChange={(e) => setForm((p) => ({ ...p, aboutChallengesIntro: e.target.value }))}
+                />
+              </label>
+              <div className="admin-panel-card" style={{ padding: 12 }}>
+                <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Aufzählung (max. 8)</div>
+                <div className="admin-form-vertical">
+                  {form.aboutBullets.map((bullet, idx) => (
+                    <label key={`about-bullet-${idx}`} className="admin-form-pair">
+                      <span className="admin-field-label">Punkt {idx + 1}</span>
+                      <input
+                        className="admin-input"
+                        value={bullet}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const next = [...p.aboutBullets];
+                            next[idx] = e.target.value;
+                            return { ...p, aboutBullets: next };
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Abschlusstext</span>
+                <textarea
+                  className="admin-textarea"
+                  rows={3}
+                  value={form.aboutClosing}
+                  onChange={(e) => setForm((p) => ({ ...p, aboutClosing: e.target.value }))}
+                />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Tagline</span>
+                <input
+                  className="admin-input"
+                  value={form.aboutTagline}
+                  onChange={(e) => setForm((p) => ({ ...p, aboutTagline: e.target.value }))}
+                />
+              </label>
             </div>
           </div>
 

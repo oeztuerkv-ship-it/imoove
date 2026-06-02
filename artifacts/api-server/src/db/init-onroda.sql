@@ -914,6 +914,13 @@ CREATE TABLE IF NOT EXISTS homepage_content (
   manifest_title TEXT NOT NULL DEFAULT '',
   manifest_subline TEXT NOT NULL DEFAULT '',
   manifest_cards JSONB NOT NULL DEFAULT '[]'::jsonb,
+  about_title TEXT NOT NULL DEFAULT '',
+  about_intro TEXT NOT NULL DEFAULT '',
+  about_vision TEXT NOT NULL DEFAULT '',
+  about_challenges_intro TEXT NOT NULL DEFAULT '',
+  about_bullets JSONB NOT NULL DEFAULT '[]'::jsonb,
+  about_closing TEXT NOT NULL DEFAULT '',
+  about_tagline TEXT NOT NULL DEFAULT '',
   updated_by_admin_user_id TEXT REFERENCES admin_auth_users (id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

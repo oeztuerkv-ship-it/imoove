@@ -1,0 +1,10 @@
+-- Homepage-CMS: Über-ONRODA Modal (Marketing, Admin)
+
+ALTER TABLE homepage_content
+  ADD COLUMN IF NOT EXISTS about_title TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS about_intro TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS about_vision TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS about_challenges_intro TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS about_bullets JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS about_closing TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS about_tagline TEXT NOT NULL DEFAULT '';

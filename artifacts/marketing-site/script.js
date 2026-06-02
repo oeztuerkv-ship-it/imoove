@@ -387,6 +387,54 @@
             mCta.textContent = pickCms(mc && mc.ctaText, dMCt);
             mCta.setAttribute("href", String(mc && mc.ctaLink ? mc.ctaLink : dMCh));
           }
+          var aboutTitleEl = document.getElementById("hp-about-modal-title");
+          var aboutIntroEl = document.getElementById("about-intro");
+          var aboutVisionEl = document.getElementById("about-vision");
+          var aboutChallengesIntroEl = document.getElementById("about-challenges-intro");
+          var aboutBulletsEl = document.getElementById("about-bullets");
+          var aboutClosingEl = document.getElementById("about-closing");
+          var aboutTaglineEl = document.getElementById("about-tagline");
+          var dAboutTitle = aboutTitleEl ? aboutTitleEl.textContent || "" : "";
+          var dAboutIntro = aboutIntroEl ? aboutIntroEl.textContent || "" : "";
+          var dAboutVision = aboutVisionEl ? aboutVisionEl.textContent || "" : "";
+          var dAboutChallengesIntro = aboutChallengesIntroEl ? aboutChallengesIntroEl.textContent || "" : "";
+          var dAboutClosing = aboutClosingEl ? aboutClosingEl.textContent || "" : "";
+          var dAboutTagline = aboutTaglineEl ? aboutTaglineEl.textContent || "" : "";
+          if (aboutTitleEl) {
+            aboutTitleEl.textContent = pickCms(item && item.aboutTitle, dAboutTitle);
+          }
+          if (aboutIntroEl) {
+            aboutIntroEl.textContent = pickCms(item && item.aboutIntro, dAboutIntro);
+          }
+          if (aboutVisionEl) {
+            aboutVisionEl.textContent = pickCms(item && item.aboutVision, dAboutVision);
+          }
+          if (aboutChallengesIntroEl) {
+            aboutChallengesIntroEl.textContent = pickCms(item && item.aboutChallengesIntro, dAboutChallengesIntro);
+          }
+          if (aboutClosingEl) {
+            aboutClosingEl.textContent = pickCms(item && item.aboutClosing, dAboutClosing);
+          }
+          if (aboutTaglineEl) {
+            aboutTaglineEl.textContent = pickCms(item && item.aboutTagline, dAboutTagline);
+          }
+          if (aboutBulletsEl) {
+            var defaultBullets = [];
+            var defaultLis = aboutBulletsEl.querySelectorAll("li");
+            for (var ab = 0; ab < defaultLis.length; ab++) {
+              defaultBullets.push(defaultLis[ab].textContent || "");
+            }
+            var cmsBullets = item && Array.isArray(item.aboutBullets) ? item.aboutBullets : [];
+            var useBullets = cmsBullets.length > 0 ? cmsBullets : defaultBullets;
+            aboutBulletsEl.innerHTML = "";
+            for (var ab2 = 0; ab2 < useBullets.length; ab2++) {
+              var bulletText = String(useBullets[ab2] || "").trim();
+              if (!bulletText) continue;
+              var liEl = document.createElement("li");
+              liEl.textContent = bulletText;
+              aboutBulletsEl.appendChild(liEl);
+            }
+          }
           renderHomepageBanners(item);
         })
         .catch(function () {
