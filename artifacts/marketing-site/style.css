@@ -924,6 +924,10 @@
       display: none !important;
     }
 
+    .hp-motion-modal.is-open {
+      display: flex;
+    }
+
     .hp-motion-modal {
       position: fixed;
       inset: 0;
@@ -1014,20 +1018,38 @@
     }
 
     .hp-motion-frame {
-      --motion-max-h: min(78vh, calc(92vh - 6rem));
-      --motion-max-w: min(360px, calc(100vw - 2.5rem));
+      --motion-iframe-h: min(720px, 70vh);
       position: relative;
-      aspect-ratio: 9 / 16;
-      width: min(var(--motion-max-w), calc(var(--motion-max-h) * 9 / 16));
-      height: auto;
-      max-width: var(--motion-max-w);
-      max-height: var(--motion-max-h);
-      min-width: 180px;
-      min-height: 320px;
-      flex-shrink: 0;
+      width: min(360px, calc(100vw - 2rem));
+      max-width: 100%;
       margin: 0 auto;
+      flex-shrink: 0;
       overflow: hidden;
       border-radius: 16px;
+      background: #020617;
+    }
+
+    .hp-motion-modal iframe,
+    .hp-motion-modal__iframe {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: var(--motion-iframe-h);
+      min-height: min(560px, 70vh);
+      max-height: 78vh;
+      border: 0;
+      background: #020617;
+    }
+
+    .hp-motion-modal__video {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: var(--motion-iframe-h);
+      min-height: min(560px, 70vh);
+      max-height: 78vh;
+      border: 0;
+      object-fit: contain;
       background: #020617;
     }
 
@@ -1053,21 +1075,6 @@
       color: #fff;
     }
 
-    .hp-motion-modal__iframe,
-    .hp-motion-modal__video {
-      position: absolute;
-      inset: 0;
-      display: block;
-      width: 100%;
-      height: 100%;
-      border: 0;
-      background: #020617;
-    }
-
-    .hp-motion-modal__video {
-      object-fit: contain;
-    }
-
     @media (max-width: 640px) {
       .hp-motion-modal {
         padding: 0;
@@ -1087,9 +1094,15 @@
       }
 
       .hp-motion-frame {
-        --motion-max-h: min(calc(100vh - 5.5rem), 760px);
-        --motion-max-w: min(340px, calc(100vw - 1.5rem));
-        min-height: 280px;
+        --motion-iframe-h: min(calc(100vh - 5.5rem), 720px);
+        width: min(340px, calc(100vw - 1.5rem));
+      }
+
+      .hp-motion-modal iframe,
+      .hp-motion-modal__iframe,
+      .hp-motion-modal__video {
+        min-height: min(480px, calc(100vh - 6rem));
+        max-height: calc(100vh - 5.5rem);
       }
     }
 

@@ -454,14 +454,25 @@
     loadHomepageContent();
     loadHomepageModules();
 
+    function motionModalLog() {
+      if (
+        isMarketingDevHost() ||
+        /[?&]motion_debug=1(?:&|$)/.test(window.location.search)
+      ) {
+        console.log.apply(console, arguments);
+      }
+    }
+
     function initHeroMotionModal() {
-      var openBtn = document.getElementById("hero-motion-open");
       var modal = document.getElementById("hp-motion-modal");
       var iframe = document.getElementById("hp-motion-iframe");
       var video = document.getElementById("hp-motion-video");
       var fallback = document.getElementById("hp-motion-fallback");
       var fallbackLink = document.getElementById("hp-motion-fallback-link");
-      if (!openBtn || !modal || !iframe) return;
+      if (!modal || !iframe) {
+        motionModalLog("[motion-modal] init skipped: modal or iframe missing");
+        return;
+      }
 
       var iframeSrc = modal.getAttribute("data-motion-iframe-src") || "/motion/kunde/motion-test-kunde.html";
       if (iframeSrc.indexOf("embed=1") < 0) {
@@ -482,7 +493,7 @@
 
       function showFallback(reason) {
         if (fallback) fallback.hidden = false;
-        marketingDevLog("[onroda] motion modal fallback:", reason || "unknown");
+        motionModalLog("[motion-modal] fallback shown:", reason || "unknown");
       }
 
       function clearLoadTimer() {
@@ -498,20 +509,28 @@
       }
 
       function iframeLooksLoaded() {
-        if (!frameHasSize()) return false;
+        if (!frameHasSize() || iframe.offsetHeight < 80) return false;
         try {
           var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
           if (!doc) return false;
           var stage = doc.querySelector(".motion-kunde__stage");
           return !!(stage && stage.offsetWidth > 40 && stage.offsetHeight > 80);
         } catch (err) {
-          return frameHasSize();
+          return iframe.offsetHeight >= 80;
         }
+      }
+
+      function logIframeMetrics(phase) {
+        motionModalLog("[motion-modal] " + (phase || "metrics"));
+        motionModalLog("[motion-modal] iframe src", iframe.src);
+        motionModalLog("[motion-modal] iframe height", iframe.offsetHeight);
+        motionModalLog("[motion-modal] frame height", modal.querySelector(".hp-motion-frame")?.offsetHeight);
       }
 
       function scheduleLoadCheck() {
         clearLoadTimer();
         loadTimer = setTimeout(function () {
+          logIframeMetrics("load-check");
           if (!iframeLooksLoaded()) {
             showFallback("timeout-or-empty");
           }
@@ -520,16 +539,18 @@
 
       iframe.addEventListener("load", function () {
         clearLoadTimer();
+        logIframeMetrics("iframe load");
         if (iframeLooksLoaded()) {
           hideFallback();
-          marketingDevLog("[onroda] motion modal iframe loaded");
           return;
         }
         showFallback("empty-or-zero-size");
       });
 
-      function closeModal() {
+      function closeMotionModal() {
         modal.hidden = true;
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
         document.body.classList.remove("hp-motion-modal-open");
         clearLoadTimer();
         hideFallback();
@@ -544,11 +565,15 @@
         if (lastFocus && typeof lastFocus.focus === "function") {
           lastFocus.focus();
         }
+        motionModalLog("[motion-modal] closed");
       }
 
-      function openModal() {
+      function openMotionModal() {
+        motionModalLog("[motion-modal] open clicked");
         lastFocus = document.activeElement;
         modal.hidden = false;
+        modal.classList.add("is-open");
+        modal.setAttribute("aria-hidden", "false");
         document.body.classList.add("hp-motion-modal-open");
 
         if (useFinalVideo && video) {
@@ -566,30 +591,63 @@
             video.load();
           }
           iframe.hidden = false;
-          iframe.src = iframeSrc;
           hideFallback();
+          iframe.src = iframeSrc;
           scheduleLoadCheck();
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              logIframeMetrics("after open");
+              if (!iframeLooksLoaded()) {
+                showFallback("zero-height-after-open");
+              }
+            });
+          });
         }
 
         var closeBtn = modal.querySelector(".hp-motion-modal__close");
         if (closeBtn) closeBtn.focus();
       }
 
-      openBtn.addEventListener("click", openModal);
+      window.openMotionModal = openMotionModal;
+      window.closeMotionModal = closeMotionModal;
+
+      var openBtn = document.getElementById("hero-motion-open");
+      if (openBtn) {
+        openBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          openMotionModal();
+        });
+        motionModalLog("[motion-modal] listener on #hero-motion-open");
+      } else {
+        motionModalLog("[motion-modal] #hero-motion-open not found, delegation only");
+      }
+
+      document.addEventListener("click", function (e) {
+        var trigger =
+          e.target && e.target.closest
+            ? e.target.closest("#hero-motion-open, [data-motion-open]")
+            : null;
+        if (!trigger || trigger === openBtn) return;
+        if (!document.getElementById("hp-motion-modal")) return;
+        e.preventDefault();
+        openMotionModal();
+      });
 
       modal.addEventListener("click", function (e) {
         var t = e.target;
         if (t && t.getAttribute && t.getAttribute("data-motion-close") != null) {
-          closeModal();
+          closeMotionModal();
         }
       });
 
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && !modal.hidden) {
           e.preventDefault();
-          closeModal();
+          closeMotionModal();
         }
       });
+
+      motionModalLog("[motion-modal] init ok, iframeSrc=", iframeSrc);
     }
 
     initHeroMotionModal();

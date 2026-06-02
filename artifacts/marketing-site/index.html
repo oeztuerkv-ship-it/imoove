@@ -113,7 +113,7 @@
               </svg>
               Unternehmer werden
             </a>
-            <button type="button" class="hp-btn-ghost" id="hero-motion-open" aria-haspopup="dialog">
+            <button type="button" class="hp-btn-ghost" id="hero-motion-open" data-motion-open aria-haspopup="dialog" aria-controls="hp-motion-modal">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M5 12h14" />
                 <path d="m12 5 7 7-7 7" />
@@ -1026,10 +1026,11 @@
     id="hp-motion-modal"
     class="hp-motion-modal"
     hidden
+    aria-hidden="true"
     role="dialog"
     aria-modal="true"
     aria-labelledby="hp-motion-modal-title"
-    data-motion-iframe-src="/motion/kunde/motion-test-kunde.html"
+    data-motion-iframe-src="/motion/kunde/motion-test-kunde.html?embed=1"
     data-motion-video-src="/videos/onroda-kunde.mp4"
   >
     <button type="button" class="hp-motion-modal__backdrop" data-motion-close aria-label="Dialog schließen"></button>
