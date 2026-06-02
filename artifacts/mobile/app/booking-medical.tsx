@@ -517,7 +517,7 @@ export default function BookingMedicalScreen() {
       return;
     }
     if (scanTrafficLight === "red") {
-      Alert.alert("Transportschein", "Der Schein wurde als ungültig erkannt. Bitte erneut scannen oder selbst zahlen.");
+      Alert.alert("Transportschein", "Der Schein wurde als ungültig erkannt. Bitte erneut scannen oder Barzahlung wählen.");
       return;
     }
     await executeBooking(pendingScanId);
@@ -820,7 +820,7 @@ export default function BookingMedicalScreen() {
                   ) : null}
                   {scanTrafficLight === "red" ? (
                     <Pressable style={styles.selfPayBtn} onPress={switchToSelfPay}>
-                      <Text style={styles.selfPayBtnText}>Stattdessen selbst zahlen</Text>
+                      <Text style={styles.selfPayBtnText}>Stattdessen Bar zahlen</Text>
                     </Pressable>
                   ) : null}
                 </>
