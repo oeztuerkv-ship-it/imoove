@@ -578,6 +578,8 @@ export const ridesTable = pgTable("rides", {
   duration_minutes: integer("duration_minutes").notNull(),
   estimated_fare: doublePrecision("estimated_fare").notNull(),
   final_fare: doublePrecision("final_fare"),
+  actual_distance_km: doublePrecision("actual_distance_km"),
+  actual_duration_minutes: integer("actual_duration_minutes"),
   payment_method: text("payment_method").notNull(),
   vehicle: text("vehicle").notNull(),
   pricing_mode: text("pricing_mode"),

@@ -1695,6 +1695,8 @@ export async function patchRideStatusRoute(
       cancelReason?: string;
     };
     const parsedFinalFare = parseOptionalFinalFareFromBody(req.body);
+    const parsedActualDistanceKm = typeof req.body?.actualDistanceKm === "number" && Number.isFinite(req.body.actualDistanceKm) && req.body.actualDistanceKm > 0 ? req.body.actualDistanceKm : undefined;
+    const parsedActualDurationMinutes = typeof req.body?.actualDurationMinutes === "number" && Number.isInteger(req.body.actualDurationMinutes) && req.body.actualDurationMinutes > 0 ? req.body.actualDurationMinutes : undefined;
     const nextStatus = normalizeStatusInput(status);
     if (!nextStatus) {
       res.status(400).json({ error: "status_invalid" });
@@ -1979,6 +1981,8 @@ export async function patchRideStatusRoute(
         {
           status: nextStatus,
           ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
+          ...(parsedActualDistanceKm !== undefined ? { actualDistanceKm: parsedActualDistanceKm } : {}),
+          ...(parsedActualDurationMinutes !== undefined ? { actualDurationMinutes: parsedActualDurationMinutes } : {}),
           ...(driverId != null ? { driverId } : {}),
           ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
         },

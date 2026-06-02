@@ -152,6 +152,8 @@ export interface RideRequest {
   tariffSnapshot?: TariffBookingSnapshotV1 | null;
   /** Tatsächlicher Preis nach Fahrtende — Abrechnungsbetrag gegen Kostenträger bei Code-/Firmenlogik. */
   finalFare?: number | null;
+  actualDistanceKm?: number | null;
+  actualDurationMinutes?: number | null;
   paymentMethod: string;
   vehicle: string;
   pricingMode?: "taxi_tariff" | "fixed_price" | "hybrid" | null;
