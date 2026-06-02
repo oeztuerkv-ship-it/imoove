@@ -1375,7 +1375,41 @@
     }
 
     .hp-medical-usp__tags--care {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
       margin-bottom: 14px;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .hp-medical-usp__tags--care > .hp-medical-usp__tag {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 0;
+      justify-content: center;
+      text-align: center;
+      font-size: clamp(0.68rem, 2.4vw, 0.82rem);
+      padding: 8px 10px;
+      margin: 0;
+      list-style: none;
+    }
+
+    @media (min-width: 520px) {
+      .hp-medical-usp__tags--care {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: fit-content;
+        max-width: 100%;
+      }
+
+      .hp-medical-usp__tags--care > .hp-medical-usp__tag {
+        text-align: left;
+        justify-content: flex-start;
+        font-size: 0.82rem;
+        padding: 8px 12px;
+      }
     }
 
     .hp-medical-usp__tag {
