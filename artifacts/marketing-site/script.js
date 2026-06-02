@@ -643,6 +643,10 @@
         modal.classList.add("is-open");
         modal.setAttribute("aria-hidden", "false");
         document.body.classList.add("hp-motion-modal-open");
+        modal.classList.toggle("hp-motion-modal--video", !!(useFinalVideo && video));
+        if (typeof console !== "undefined" && typeof console.log === "function") {
+          console.log("[motion-modal] mode", useFinalVideo && video ? "video" : "iframe");
+        }
 
         if (useFinalVideo && video) {
           iframe.hidden = true;

@@ -1098,6 +1098,10 @@
       background: #020617;
     }
 
+    .hp-motion-modal:not(.hp-motion-modal--video) #hp-motion-video {
+      display: none !important;
+    }
+
     .hp-motion-modal__fallback {
       margin: 0.65rem 0 0;
       font-size: 0.82rem;
