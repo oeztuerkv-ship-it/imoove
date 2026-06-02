@@ -305,7 +305,7 @@ body.motion-kunde--embed > div {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: clamp(8px, 1.8vh, 20px);
+  padding-bottom: clamp(10px, 2.2vh, 24px);
 }
 
 body.motion-kunde--embed .motion-kunde__meta {
@@ -314,7 +314,7 @@ body.motion-kunde--embed .motion-kunde__meta {
 
 body.motion-kunde--embed .motion-kunde__stage {
   aspect-ratio: 390 / 844;
-  height: 100%;
+  height: calc(100% - clamp(10px, 2.2vh, 24px));
   width: auto;
   max-width: 100%;
   max-height: 100%;
