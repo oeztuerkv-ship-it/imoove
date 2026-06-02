@@ -67,9 +67,25 @@
       return { cls: "info", icon: "ℹ️" };
     }
 
+    /** Fallback falls API noch alt — Server normalisiert beim Speichern (germanMarketingText.ts). */
+    function normalizeDeUmlauts(str) {
+      if (str == null || typeof str !== "string") return str;
+      return str
+        .replace(/Für Fahrgaeste/gi, "Für Fahrgäste")
+        .replace(/\bFahrgaeste\b/gi, "Fahrgäste")
+        .replace(/\bFahrgaste\b/gi, "Fahrgäste")
+        .replace(/\bfuer\b/gi, "für")
+        .replace(/\bGaeste\b/gi, "Gäste");
+    }
+
+    function pickCms(value, fallback) {
+      var raw = value != null && String(value).trim() !== "" ? String(value) : String(fallback || "");
+      return normalizeDeUmlauts(raw).trim();
+    }
+
     function setMultilineText(target, text) {
       if (!target) return;
-      var s = String(text || "");
+      var s = normalizeDeUmlauts(String(text || ""));
       target.innerHTML = "";
       var parts = s.split(/\r?\n/);
       for (var i = 0; i < parts.length; i++) {
@@ -241,21 +257,21 @@
         .then(function (data) {
           var item = data && data.ok ? data.item : null;
           if (headlineEl) {
-            setMultilineText(headlineEl, item && item.heroHeadline ? item.heroHeadline : defaultHeadline);
+            setMultilineText(headlineEl, pickCms(item && item.heroHeadline, defaultHeadline));
           }
           if (sublineEl) {
-            sublineEl.textContent = (item && item.heroSubline ? item.heroSubline : defaultSubline).trim();
+            sublineEl.textContent = pickCms(item && item.heroSubline, defaultSubline);
           }
           if (cta1El) {
-            cta1El.textContent = (item && item.cta1Text ? item.cta1Text : defaultCta1Text).trim();
+            cta1El.textContent = pickCms(item && item.cta1Text, defaultCta1Text);
             cta1El.setAttribute("href", (item && item.cta1Link ? item.cta1Link : defaultCta1Link) || "#jetzt-buchen");
           }
           if (cta2El) {
-            cta2El.textContent = (item && item.cta2Text ? item.cta2Text : defaultCta2Text).trim();
+            cta2El.textContent = pickCms(item && item.cta2Text, defaultCta2Text);
             cta2El.setAttribute("href", (item && item.cta2Link ? item.cta2Link : defaultCta2Link) || "#services");
           }
           if (section2TitleEl) {
-            section2TitleEl.textContent = (item && item.section2Title ? item.section2Title : defaultSection2Title).trim();
+            section2TitleEl.textContent = pickCms(item && item.section2Title, defaultSection2Title);
           }
           var cards = item && Array.isArray(item.section2Cards) ? item.section2Cards : [];
           for (var i = 1; i <= 4; i++) {
@@ -278,9 +294,16 @@
             }
             cardWrap.removeAttribute("hidden");
             setOptionalTextIcon(iconEl, c && c.icon ? c.icon : null, defaultIcon);
-            titleEl.textContent = String(c && c.title ? c.title : defaultTitle);
-            bodyEl.textContent = String(c && c.body ? c.body : defaultBody);
-            ctaEl.textContent = String(c && c.ctaText ? c.ctaText : defaultCtaText);
+            titleEl.textContent = pickCms(c && c.title, defaultTitle);
+            bodyEl.textContent = pickCms(c && c.body, defaultBody);
+            var ctaLabel = ctaEl.querySelector(".hp-audience-card__link-label");
+            var ctaRaw = pickCms(c && c.ctaText, defaultCtaText);
+            var ctaClean = String(ctaRaw).replace(/\s*→\s*$/u, "").trim();
+            if (ctaLabel) {
+              ctaLabel.textContent = ctaClean || defaultCtaText.replace(/\s*→\s*$/u, "").trim();
+            } else {
+              ctaEl.textContent = ctaRaw;
+            }
             ctaEl.setAttribute("href", String(c && c.ctaLink ? c.ctaLink : defaultCtaHref));
           }
           var servicesKickerEl = document.getElementById("services-kicker");
@@ -290,13 +313,13 @@
           var defaultSt = servicesTitleEl ? servicesTitleEl.textContent || "" : "";
           var defaultSs = servicesSubEl ? servicesSubEl.textContent || "" : "";
           if (servicesKickerEl) {
-            servicesKickerEl.textContent = (item && item.servicesKicker ? item.servicesKicker : defaultSk).trim();
+            servicesKickerEl.textContent = pickCms(item && item.servicesKicker, defaultSk);
           }
           if (servicesTitleEl) {
-            servicesTitleEl.textContent = (item && item.servicesTitle ? item.servicesTitle : defaultSt).trim();
+            servicesTitleEl.textContent = pickCms(item && item.servicesTitle, defaultSt);
           }
           if (servicesSubEl) {
-            servicesSubEl.textContent = (item && item.servicesSubline ? item.servicesSubline : defaultSs).trim();
+            servicesSubEl.textContent = pickCms(item && item.servicesSubline, defaultSs);
           }
           var svc = item && Array.isArray(item.servicesCards) ? item.servicesCards : [];
           for (var s = 1; s <= 3; s++) {
@@ -316,8 +339,8 @@
             }
             scWrap.removeAttribute("hidden");
             setOptionalTextIcon(scIcon, sc && sc.icon ? sc.icon : null, dIcon);
-            scTitle.textContent = String(sc && sc.title ? sc.title : dTitle);
-            scBody.textContent = String(sc && sc.body ? sc.body : dBody);
+            scTitle.textContent = pickCms(sc && sc.title, dTitle);
+            scBody.textContent = pickCms(sc && sc.body, dBody);
           }
           var manKEl = document.getElementById("manifest-kicker");
           var manTitleEl = document.getElementById("manifest-title");
@@ -326,13 +349,13 @@
           var dMt = manTitleEl ? manTitleEl.textContent || "" : "";
           var dMs = manSubEl ? manSubEl.textContent || "" : "";
           if (manKEl) {
-            manKEl.textContent = (item && item.manifestKicker ? item.manifestKicker : dMk).trim();
+            manKEl.textContent = pickCms(item && item.manifestKicker, dMk);
           }
           if (manTitleEl) {
-            manTitleEl.textContent = (item && item.manifestTitle ? item.manifestTitle : dMt).trim();
+            manTitleEl.textContent = pickCms(item && item.manifestTitle, dMt);
           }
           if (manSubEl) {
-            manSubEl.textContent = (item && item.manifestSubline ? item.manifestSubline : dMs).trim();
+            manSubEl.textContent = pickCms(item && item.manifestSubline, dMs);
           }
           var mcards = item && Array.isArray(item.manifestCards) ? item.manifestCards : [];
           for (var m = 1; m <= 4; m++) {
@@ -359,9 +382,9 @@
             var n = mc && String(mc.num || "").trim() ? String(mc.num).trim() : dNum;
             mNum.textContent = n;
             setOptionalTextIcon(mIcon, mc && mc.icon ? mc.icon : null, dMI);
-            mTit.textContent = String(mc && mc.title ? mc.title : dMTi);
-            mBody.textContent = String(mc && mc.body ? mc.body : dMBo);
-            mCta.textContent = String(mc && mc.ctaText ? mc.ctaText : dMCt);
+            mTit.textContent = pickCms(mc && mc.title, dMTi);
+            mBody.textContent = pickCms(mc && mc.body, dMBo);
+            mCta.textContent = pickCms(mc && mc.ctaText, dMCt);
             mCta.setAttribute("href", String(mc && mc.ctaLink ? mc.ctaLink : dMCh));
           }
           renderHomepageBanners(item);
@@ -402,9 +425,9 @@
               continue;
             }
             wrap.removeAttribute("hidden");
-            value.textContent = String(it && it.value ? it.value : dVal);
-            label.textContent = String(it && it.label ? it.label : dLbl);
-            desc.textContent = String(it && it.description ? it.description : dDesc);
+            value.textContent = pickCms(it && it.value, dVal);
+            label.textContent = pickCms(it && it.label, dLbl);
+            desc.textContent = pickCms(it && it.description, dDesc);
           }
         })
         .catch(function () {});
@@ -444,8 +467,8 @@
               continue;
             }
             wrap.removeAttribute("hidden");
-            q.textContent = String(it && it.question ? it.question : dQ);
-            a.textContent = String(it && it.answer ? it.answer : dA);
+            q.textContent = pickCms(it && it.question, dQ);
+            a.textContent = pickCms(it && it.answer, dA);
           }
         })
         .catch(function () {});
