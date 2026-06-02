@@ -3494,7 +3494,31 @@
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
-      align-items: stretch;
+      align-items: center;
+    }
+
+    .hp-store-badge {
+      display: inline-block;
+      line-height: 0;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .hp-store-badge img {
+      display: block;
+      width: 168px;
+      height: auto;
+    }
+
+    .hp-store-badge:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
+    }
+
+    .hp-store-badge:focus-visible {
+      outline: 2px solid var(--onroda-red);
+      outline-offset: 2px;
     }
 
     .hp-store-link {
@@ -3825,9 +3849,9 @@
         min-height: 300px;
       }
 
-      .hp-store-link {
-        min-width: 0;
-        flex: 1 1 calc(50% - 6px);
+      .hp-store-badge img {
+        width: min(168px, calc(50% - 6px));
+        min-width: 148px;
       }
     }
 

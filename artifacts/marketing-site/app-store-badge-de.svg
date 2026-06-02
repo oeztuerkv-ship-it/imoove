@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="54" viewBox="0 0 180 54" role="img" aria-label="Laden im App Store">
+  <rect width="180" height="54" rx="10" fill="#fff" stroke="#d1d5db" stroke-width="1"/>
+  <g transform="translate(14 11)">
+    <path fill="#000" d="M15.769 11.517c-.02-2.093 1.686-3.104 1.763-3.161-1.003-1.474-2.556-1.675-3.101-1.693-1.322-.134-2.588.779-3.258.779-.679 0-1.713-.758-2.817-.739-1.453.02-2.785.842-3.523 2.143-1.512 2.624-.388 6.515 1.073 8.651.725 1.045 1.582 2.219 2.708 2.178 1.091-.042 1.499-.704 2.816-.704 1.308 0 1.676.704 2.814.681 1.166-.021 1.904-1.063 2.617-2.116.831-1.196 1.17-2.356 1.188-2.416-.025-.011-2.277-.873-2.294-3.471zm-2.123-6.362c.599-.725 1.002-1.733.892-2.738-.863.035-1.905.575-2.524 1.3-.555.643-1.04 1.672-.911 2.654.965.074 1.951-.491 2.543-1.216z"/>
+  </g>
+  <text x="58" y="22" fill="#000" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10" font-weight="400">Laden im</text>
+  <text x="58" y="38" fill="#000" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="600" letter-spacing="-0.02em">App Store</text>
+</svg>
