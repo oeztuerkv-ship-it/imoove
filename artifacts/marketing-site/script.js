@@ -535,7 +535,7 @@
 
       function frameHasSize() {
         var frame = modal.querySelector(".hp-motion-frame");
-        return !!(frame && frame.offsetWidth > 40 && frame.offsetHeight > 80);
+        return !!(frame && frame.offsetWidth > 40);
       }
       function iframeLooksLoaded() {
         if (!frameHasSize()) return false;
