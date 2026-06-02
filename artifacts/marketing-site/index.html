@@ -205,6 +205,81 @@
     </div>
   </section>
 
+  <section class="hp-medical-usp" id="krankenfahrten-usp" aria-labelledby="medical-usp-title">
+    <div class="hp-wrap">
+      <div class="hp-medical-usp__grid">
+        <div class="hp-medical-usp__copy">
+          <span class="hp-medical-usp__badge">Digitalisierte Krankenfahrten</span>
+          <h2 id="medical-usp-title">Mehr als eine Taxi-App — Krankenfahrten mit System</h2>
+          <p class="hp-medical-usp__lead">
+            ONRODA digitalisiert den kompletten Krankenfahrt-Prozess: <strong>Transportschein scannen</strong>,
+            <strong>Krankenkasse prüfen</strong>, Fahrt freigeben — ohne Papierchaos.
+          </p>
+          <ul class="hp-medical-usp__tags" aria-label="Kernfunktionen Krankenfahrt">
+            <li class="hp-medical-usp__tag">
+              <span class="hp-medical-usp__tag-ico" aria-hidden="true">📄</span>
+              Transportschein-Scan
+            </li>
+            <li class="hp-medical-usp__tag">
+              <span class="hp-medical-usp__tag-ico" aria-hidden="true">🏥</span>
+              Krankenkassen-Prozess
+            </li>
+            <li class="hp-medical-usp__tag">
+              <span class="hp-medical-usp__tag-ico" aria-hidden="true">♿</span>
+              Rollstuhl &amp; Sonderbedarf
+            </li>
+          </ul>
+          <div class="hp-medical-usp__actions">
+            <a class="hp-btn-primary" href="#care">Krankenfahrten entdecken</a>
+            <button type="button" class="hp-btn-ghost hp-btn-ghost--on-dark" data-motion-open="medical">
+              Motion: Scan → Kasse → Freigabe
+            </button>
+          </div>
+        </div>
+        <div class="hp-medical-usp__aside">
+          <p class="hp-medical-usp__flow-title">So läuft es in der App</p>
+          <ol class="hp-medical-flow" aria-label="Prozess Krankenfahrt">
+            <li class="hp-medical-flow__step">
+              <span class="hp-medical-flow__num">1</span>
+              <span class="hp-medical-flow__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M10 12h4"/></svg>
+              </span>
+              <span class="hp-medical-flow__text"><strong>Transportschein</strong> scannen</span>
+            </li>
+            <li class="hp-medical-flow__step">
+              <span class="hp-medical-flow__num">2</span>
+              <span class="hp-medical-flow__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+              </span>
+              <span class="hp-medical-flow__text"><strong>Dokument</strong> erkannt (OCR)</span>
+            </li>
+            <li class="hp-medical-flow__step">
+              <span class="hp-medical-flow__num">3</span>
+              <span class="hp-medical-flow__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </span>
+              <span class="hp-medical-flow__text"><strong>Krankenkasse</strong> geprüft</span>
+            </li>
+            <li class="hp-medical-flow__step">
+              <span class="hp-medical-flow__num">4</span>
+              <span class="hp-medical-flow__icon hp-medical-flow__icon--ampel" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span class="hp-medical-flow__text"><strong>Ampel</strong> grün — freigegeben</span>
+            </li>
+            <li class="hp-medical-flow__step">
+              <span class="hp-medical-flow__num">5</span>
+              <span class="hp-medical-flow__icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+              </span>
+              <span class="hp-medical-flow__text"><strong>Fahrt</strong> &amp; Abrechnung</span>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="hp-stats" aria-label="Kennzahlen">
     <div class="hp-wrap">
       <ul class="hp-stats-list">
@@ -242,7 +317,7 @@
         <h2 id="fuer-wen-heading">Für wen ist ONRODA?</h2>
       </div>
 
-      <div class="hp-audience-grid" id="section2-cards">
+      <div class="hp-audience-grid hp-audience-grid--medical-focus" id="section2-cards">
         <article class="hp-audience-card hp-audience-card--passengers" id="section2-card-1">
           <div class="hp-audience-card__body">
             <div class="hp-card-icon" id="section2-card-1-icon" aria-hidden="true">
@@ -297,13 +372,19 @@
           </div>
         </article>
 
-        <article class="hp-audience-card hp-audience-card--medical" id="section2-card-3">
+        <article class="hp-audience-card hp-audience-card--medical hp-audience-card--medical-featured" id="section2-card-3">
           <div class="hp-audience-card__body">
+            <span class="hp-audience-card__badge">Digitalisierte Krankenfahrten</span>
             <div class="hp-card-icon" id="section2-card-3-icon" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
             </div>
             <h3 id="section2-card-3-title">Krankenfahrten</h3>
-            <p id="section2-card-3-body">Transportscheine, Genehmigungen und Abrechnung digital verwalten.</p>
+            <p id="section2-card-3-body">Transportschein scannen, Krankenkasse prüfen, Rollstuhl buchen — digital bis zur Abrechnung.</p>
+            <ul class="hp-audience-card__chips" aria-label="Krankenfahrt Highlights">
+              <li>Transportschein</li>
+              <li>Krankenkasse</li>
+              <li>Rollstuhl</li>
+            </ul>
             <a class="hp-link hp-audience-card__link" id="section2-card-3-cta" href="#care">
               <span class="hp-audience-card__link-label">Mehr erfahren</span>
               <svg class="hp-audience-card__link-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
@@ -593,7 +674,13 @@
     <div class="hp-split-bleed">
       <div class="hp-split-bleed__text">
         <p class="hp-kicker">♥ ONRODA Care &amp; Alltag</p>
+        <span class="hp-medical-usp__badge hp-medical-usp__badge--inline">Digitalisierte Krankenfahrten</span>
         <h2>Mobilität mit Herz für Ihren Alltag</h2>
+        <ul class="hp-medical-usp__tags hp-medical-usp__tags--care" aria-label="Krankenfahrt Leistungen">
+          <li class="hp-medical-usp__tag"><span class="hp-medical-usp__tag-ico" aria-hidden="true">📄</span>Transportschein</li>
+          <li class="hp-medical-usp__tag"><span class="hp-medical-usp__tag-ico" aria-hidden="true">🏥</span>Krankenkasse</li>
+          <li class="hp-medical-usp__tag"><span class="hp-medical-usp__tag-ico" aria-hidden="true">♿</span>Rollstuhl</li>
+        </ul>
         <p class="hp-lead" style="color:var(--onroda-red);font-weight:600;">
           Sicher, persönlich und verlässlich – für Krankenfahrten und mehr
         </p>
@@ -1104,7 +1191,10 @@
           <p class="hp-motion-modal__note">Interaktive ONRODA Vorschau</p>
           <div class="hp-motion-tabs" role="tablist" aria-label="Motion-Vorschau auswählen">
             <button type="button" class="hp-motion-tab" data-motion-tab="customer" role="tab" aria-selected="true">Kunde</button>
-            <button type="button" class="hp-motion-tab" data-motion-tab="medical" role="tab" aria-selected="false">Krankenfahrt</button>
+            <button type="button" class="hp-motion-tab hp-motion-tab--medical" data-motion-tab="medical" role="tab" aria-selected="false">
+              <span class="hp-motion-tab__label">Krankenfahrt</span>
+              <span class="hp-motion-tab__pill">USP</span>
+            </button>
             <button type="button" class="hp-motion-tab" data-motion-tab="platform" role="tab" aria-selected="false">Unternehmen</button>
             <button type="button" class="hp-motion-tab" data-motion-tab="voucher" role="tab" aria-selected="false">Gutschein</button>
           </div>

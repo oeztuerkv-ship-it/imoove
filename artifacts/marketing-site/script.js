@@ -733,6 +733,11 @@
         if (!trigger || trigger === openBtn) return;
         if (!document.getElementById("hp-motion-modal")) return;
         e.preventDefault();
+        var tabHint = trigger.getAttribute("data-motion-open");
+        if (tabHint && tabHint !== "" && tabHint !== "true") {
+          activeTab = tabHint;
+          setActiveTab(tabHint, { forceLoad: true });
+        }
         openMotionModal();
       });
 
