@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { requireAdminApiBearer } from "../lib/adminAuth";
+import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 
 const execAsync = promisify(exec);
 const router = Router();
