@@ -1199,7 +1199,15 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
-    const rides = visiblePartnerRideList(await listRidesForCompany(ctx.claims.companyId));
+    const accessCodeId =
+      typeof req.query.accessCodeId === "string" && req.query.accessCodeId.trim()
+        ? req.query.accessCodeId.trim()
+        : undefined;
+    const rides = visiblePartnerRideList(
+      accessCodeId
+        ? await listRidesForCompanyFiltered(ctx.claims.companyId, { accessCodeId })
+        : await listRidesForCompany(ctx.claims.companyId)
+    );
     const ids = rides.map((r) => r.createdByPanelUserId).filter((x): x is string => Boolean(x));
     const names = await getPanelUsernamesInCompany(ctx.claims.companyId, ids);
     const ridesOut = rides.map((r) => ({
@@ -1207,7 +1215,7 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
     })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
-    res.json({ ok: true, rides: withTrace     });
+    res.json({ ok: true, rides: withTrace });
   } catch (e) {
     next(e);
   }
