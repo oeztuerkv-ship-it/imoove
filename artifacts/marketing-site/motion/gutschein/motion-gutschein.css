@@ -82,9 +82,8 @@ body.motion-voucher {
   left: 12px;
   right: 12px;
   top: 82px;
-  bottom: 52px;
-  min-height: 52%;
-}
+  bottom: 64px;
+  min-height: 50%;
   border-radius: 20px;
   border: 1px solid #334155;
   background: linear-gradient(165deg, #1e293b 0%, #0b1220 100%);
@@ -196,7 +195,7 @@ body.motion-voucher {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: 10px;
+  bottom: 12px;
   padding: 12px;
   border-radius: 14px;
   background: #fff;
@@ -370,15 +369,15 @@ body.motion-voucher--embed .motion-voucher__stage {
 
 @media (max-width: 420px) {
   body.motion-voucher--embed .motion-voucher__screen {
-    padding: 40px 10px 10px;
+    padding: 40px 10px 8px;
   }
 
   body.motion-voucher--embed .motion-voucher__step {
     left: 8px;
     right: 8px;
     top: 76px;
-    bottom: 48px;
-    min-height: 54%;
+    bottom: 56px;
+    min-height: 50%;
   }
 
   body.motion-voucher--embed .motion-voucher__qr-box {
@@ -389,8 +388,8 @@ body.motion-voucher--embed .motion-voucher__stage {
   body.motion-voucher--embed .motion-voucher__bottom {
     left: 8px;
     right: 8px;
-    bottom: 6px;
-    padding: 10px;
+    bottom: 8px;
+    padding: 9px 10px;
   }
 
   body.motion-voucher--embed .motion-voucher__bottom strong {

@@ -1049,14 +1049,14 @@
     }
 
     .hp-motion-modal__body {
-      flex: 0 0 auto;
+      flex: 1 1 auto;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 0.75rem 0.85rem 1rem;
+      padding: 0.25rem 0.25rem 0.5rem;
       background: #020617;
-      overflow: visible;
+      overflow: hidden;
     }
 
     .hp-motion-frame {
@@ -1149,19 +1149,21 @@
       }
 
       .hp-motion-modal__body {
-        padding: 0.5rem 0.75rem 0.85rem;
+        padding: 0;
       }
 
       .hp-motion-frame {
-        --motion-iframe-h: min(calc(100vh - 5.5rem), 720px);
-        width: min(340px, calc(100vw - 1.5rem));
+        --motion-iframe-h: calc(100vh - 10.2rem);
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0;
       }
 
       .hp-motion-modal iframe,
       .hp-motion-modal__iframe,
       .hp-motion-modal__video {
-        min-height: min(480px, calc(100vh - 6rem));
-        max-height: calc(100vh - 5.5rem);
+        min-height: 0;
+        max-height: none;
       }
     }
 
@@ -1185,9 +1187,9 @@
       }
 
       .hp-motion-tab {
-        font-size: 0.72rem;
-        padding: 8px 6px;
-        white-space: normal;
+        font-size: 0.69rem;
+        padding: 8px 4px;
+        white-space: nowrap;
         text-align: center;
         line-height: 1.2;
         min-height: 2.5rem;
@@ -1201,15 +1203,15 @@
       }
 
       .hp-motion-frame {
-        --motion-iframe-h: min(calc(100vh - 4.75rem), 680px);
+        --motion-iframe-h: calc(100vh - 11.1rem);
         width: 100%;
       }
 
       .hp-motion-modal iframe,
       .hp-motion-modal__iframe,
       .hp-motion-modal__video {
-        min-height: min(420px, calc(100vh - 4.75rem));
-        max-height: calc(100vh - 4.75rem);
+        min-height: 0;
+        max-height: none;
       }
     }
 
