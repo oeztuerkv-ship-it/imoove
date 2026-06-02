@@ -52,7 +52,7 @@ export type HomepageContentDto = {
 };
 
 const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
-  section2Title: "ONRODA für Fahrgäste, Partner und Fahrer",
+  section2Title: "Eine Plattform für Fahrer, Fahrgäste und Unternehmen",
   section2Cards: [
     {
       icon: "🚕",

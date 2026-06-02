@@ -86,9 +86,10 @@
 
     .hp-header-inner {
       display: grid;
-      grid-template-columns: auto 1fr auto auto;
+      grid-template-columns: auto auto 1fr auto;
       align-items: center;
-      gap: 1rem;
+      column-gap: 1.1rem;
+      row-gap: 0.75rem;
       padding-top: 0.85rem;
       padding-bottom: 0.85rem;
     }
@@ -114,8 +115,8 @@
     .hp-brand-logo {
       display: block;
       width: auto;
-      height: 56px;
-      max-width: min(200px, 52vw);
+      height: 62px;
+      max-width: min(210px, 52vw);
       object-fit: contain;
     }
 
@@ -132,8 +133,8 @@
     .hp-nav {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 1.35rem;
+      justify-content: flex-start;
+      gap: 1.15rem;
       flex-wrap: wrap;
     }
 
@@ -141,7 +142,8 @@
       color: #333;
       text-decoration: none;
       font-weight: 600;
-      font-size: 0.92rem;
+      font-size: 1rem;
+      line-height: 1.2;
     }
 
     .hp-nav-link:hover {
@@ -152,7 +154,12 @@
       background: none;
       border: none;
       padding: 0;
+      margin: 0;
       font: inherit;
+      font-weight: 600;
+      font-size: 1rem;
+      line-height: 1.2;
+      color: #333;
       cursor: pointer;
     }
 
@@ -1266,14 +1273,23 @@
       }
     }
 
+    .hp-about-modal .hp-motion-modal__panel {
+      background: #fff;
+    }
+
+    .hp-about-modal .hp-motion-modal__head h2 {
+      color: #111;
+    }
+
     .hp-about-modal .hp-motion-modal__body {
       overflow-y: auto;
       max-height: min(68vh, 560px);
       padding: 1.25rem 1.5rem 1.5rem;
+      background: #fff;
     }
 
     .hp-about-prose {
-      color: var(--onroda-text-grey);
+      color: #333;
       font-size: 0.95rem;
       line-height: 1.65;
     }
@@ -3609,6 +3625,11 @@
     .hp-instagram-link:hover,
     .hp-footer-instagram:hover {
       color: var(--onroda-red);
+    }
+
+    .hp-instagram-link--icon-only {
+      gap: 0;
+      padding: 2px;
     }
 
     .hp-footer-instagram {
