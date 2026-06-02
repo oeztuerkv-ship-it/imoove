@@ -815,6 +815,32 @@
 
     initAppDownloadReveal();
 
+    function initAppDownloadTabs() {
+      var section = document.querySelector(".hp-app-download");
+      if (!section) return;
+      var tabs = section.querySelectorAll("[data-app-tab]");
+      if (!tabs.length) return;
+
+      function setTab(next) {
+        var tab = next === "medical" || next === "partner" ? next : "taxi";
+        section.setAttribute("data-app-active-tab", tab);
+        for (var i = 0; i < tabs.length; i++) {
+          var btn = tabs[i];
+          var active = btn.getAttribute("data-app-tab") === tab;
+          btn.classList.toggle("is-active", active);
+          btn.setAttribute("aria-selected", active ? "true" : "false");
+        }
+      }
+
+      for (var j = 0; j < tabs.length; j++) {
+        tabs[j].addEventListener("click", function () {
+          setTab(this.getAttribute("data-app-tab"));
+        });
+      }
+    }
+
+    initAppDownloadTabs();
+
     function syncPartnerTaxiSection() {
       var wrap = document.getElementById("partner-taxi-fields");
       var ct = document.getElementById("companyType");

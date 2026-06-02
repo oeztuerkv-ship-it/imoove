@@ -2781,137 +2781,228 @@
 
     .hp-app-download__grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.85fr);
+      grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr);
       gap: clamp(1.5rem, 4vw, 3rem);
       align-items: center;
       min-width: 0;
     }
 
-    .hp-app-download__kicker {
-      margin-bottom: 0.65rem;
+    .hp-app-download__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(213, 0, 28, 0.08);
+      border: 1px solid rgba(213, 0, 28, 0.18);
+      color: var(--onroda-red);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hp-app-download__badge svg {
+      flex-shrink: 0;
     }
 
     .hp-app-download__title {
       margin: 0 0 0.65rem;
       font-family: var(--font-sans);
-      font-size: clamp(1.65rem, 3.2vw, 2.15rem);
+      font-size: clamp(1.65rem, 3.2vw, 2.35rem);
       font-weight: 800;
       letter-spacing: -0.03em;
-      line-height: 1.15;
+      line-height: 1.12;
       color: var(--onroda-text-dark);
     }
 
+    .hp-app-download__title-accent {
+      color: var(--onroda-red);
+      display: block;
+    }
+
+    @media (min-width: 520px) {
+      .hp-app-download__title-accent {
+        display: inline;
+      }
+    }
+
     .hp-app-download__lead {
-      margin: 0 0 1.25rem;
+      margin: 0 0 1.1rem;
       font-size: 1.02rem;
       line-height: 1.55;
       color: var(--onroda-text-grey);
-      max-width: 34ch;
+      max-width: 40ch;
     }
 
-    .hp-app-download__trust {
+    .hp-app-download__tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 1.15rem;
+    }
+
+    .hp-app-download__tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      background: #fff;
+      color: var(--onroda-text-grey);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .hp-app-download__tab svg {
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .hp-app-download__tab:hover {
+      border-color: rgba(213, 0, 28, 0.3);
+      color: var(--onroda-text-dark);
+    }
+
+    .hp-app-download__tab.is-active {
+      background: var(--onroda-red);
+      border-color: var(--onroda-red);
+      color: #fff;
+    }
+
+    .hp-app-download__tab.is-active svg {
+      opacity: 1;
+      stroke: #fff;
+    }
+
+    .hp-app-download__features {
       list-style: none;
       margin: 0 0 1.35rem;
       padding: 0;
       display: grid;
-      gap: 0.55rem;
+      gap: 12px;
     }
 
-    .hp-app-download__trust li {
+    .hp-app-download__feature {
       display: flex;
-      align-items: center;
-      gap: 0.55rem;
-      font-size: 0.92rem;
-      font-weight: 600;
-      color: var(--onroda-text-dark);
+      align-items: flex-start;
+      gap: 12px;
     }
 
-    .hp-app-download__trust svg {
+    .hp-app-download__feature-icon {
       flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(213, 0, 28, 0.1);
       color: var(--onroda-red);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hp-app-download__feature strong {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--onroda-text-dark);
+      margin-bottom: 2px;
+    }
+
+    .hp-app-download__feature span {
+      display: block;
+      font-size: 0.84rem;
+      line-height: 1.4;
+      color: var(--onroda-text-grey);
+    }
+
+    .hp-app-download[data-app-active-tab="taxi"] [data-app-feature="medical"],
+    .hp-app-download[data-app-active-tab="partner"] [data-app-feature="medical"] {
+      opacity: 0.55;
     }
 
     .hp-app-download__device {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
       min-width: 0;
       max-width: 100%;
       overflow: hidden;
+      gap: 1rem;
     }
 
     .hp-app-download__stage {
       position: relative;
-      width: min(280px, 100%);
+      width: min(520px, 100%);
       max-width: 100%;
       margin: 0 auto;
-      padding: 2.35rem 0 0.85rem;
+      padding: 0.5rem 0 0;
       box-sizing: border-box;
+      min-height: 420px;
     }
 
-    .hp-app-download__float {
+    .hp-app-download__phones {
+      position: relative;
+      width: min(340px, 88%);
+      margin: 0 auto;
+      min-height: 380px;
+    }
+
+    .hp-app-download__phone--taxi {
+      position: relative;
+      z-index: 3;
+      margin-right: 18%;
+    }
+
+    .hp-app-download__phone--medical {
       position: absolute;
-      z-index: 4;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 12px;
-      border-radius: 12px;
-      background: #fff;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: var(--onroda-text-dark);
-      white-space: nowrap;
-      max-width: calc(100% - 0.5rem);
-      box-sizing: border-box;
-    }
-
-    .hp-app-download__float--1 {
-      top: 0;
-      left: 0;
-    }
-
-    .hp-app-download__float--2 {
-      top: 34%;
+      top: 2.5rem;
       right: 0;
-      left: auto;
+      z-index: 2;
+      width: min(240px, 72%);
+      transform: rotate(4deg);
     }
 
-    .hp-app-download__float--3 {
-      bottom: 0;
-      left: 0;
+    .hp-app-download[data-app-active-tab="medical"] .hp-app-download__phone--taxi {
+      z-index: 2;
+      opacity: 0.88;
+      transform: scale(0.96);
     }
 
-    .hp-app-download__float-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
-      flex-shrink: 0;
+    .hp-app-download[data-app-active-tab="medical"] .hp-app-download__phone--medical {
+      z-index: 4;
+      transform: rotate(0deg) scale(1.02);
     }
 
-    html.hp-js .hp-app-download .hp-reveal:not(.hp-reveal--phone) {
+    .hp-app-download[data-app-active-tab="partner"] .hp-app-download__phone--medical {
+      opacity: 0.75;
+    }
+
+    html.hp-js .hp-app-download .hp-reveal:not(.hp-reveal--phone):not(.hp-reveal--phone-2) {
       transition:
         opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
         transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
       transition-delay: calc(var(--reveal-order, 0) * 70ms + 90ms);
     }
 
-    html.hp-js .hp-app-download:not(.is-visible) .hp-reveal:not(.hp-reveal--phone) {
+    html.hp-js .hp-app-download:not(.is-visible) .hp-reveal:not(.hp-reveal--phone):not(.hp-reveal--phone-2) {
       opacity: 0;
       transform: translateY(22px);
     }
 
-    html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone {
+    html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone,
+    html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone-2 {
       opacity: 0;
       transform: translate(36px, 48px) scale(0.9);
       transition: none;
     }
 
-    .hp-app-download.is-visible .hp-reveal:not(.hp-reveal--phone) {
+    .hp-app-download.is-visible .hp-reveal:not(.hp-reveal--phone):not(.hp-reveal--phone-2) {
       opacity: 1;
       transform: translateY(0);
     }
@@ -2920,6 +3011,12 @@
       opacity: 1;
       animation: hp-app-phone-bump 0.85s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
       animation-delay: 0.18s;
+    }
+
+    .hp-app-download.is-visible .hp-reveal--phone-2 {
+      opacity: 1;
+      animation: hp-app-phone-bump 0.85s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
+      animation-delay: 0.32s;
     }
 
     @keyframes hp-app-phone-bump {
@@ -2934,28 +3031,6 @@
       100% {
         opacity: 1;
         transform: translate(0, 0) scale(1);
-      }
-    }
-
-    .hp-app-download.is-visible .hp-app-download__float {
-      animation: hp-app-float-drift 4.2s ease-in-out 1.15s infinite;
-    }
-
-    .hp-app-download.is-visible .hp-app-download__float--2 {
-      animation-delay: 1.35s;
-    }
-
-    .hp-app-download.is-visible .hp-app-download__float--3 {
-      animation-delay: 1.55s;
-    }
-
-    @keyframes hp-app-float-drift {
-      0%,
-      100% {
-        transform: translateY(0);
-      }
-      50% {
-        transform: translateY(-5px);
       }
     }
 
@@ -2977,23 +3052,24 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      html.hp-js .hp-app-download:not(.is-visible) .hp-reveal:not(.hp-reveal--phone),
-      html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone {
+      html.hp-js .hp-app-download:not(.is-visible) .hp-reveal:not(.hp-reveal--phone):not(.hp-reveal--phone-2),
+      html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone,
+      html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone-2 {
         opacity: 1 !important;
         transform: none !important;
         transition: none !important;
         animation: none !important;
       }
 
-      .hp-app-download.is-visible .hp-reveal:not(.hp-reveal--phone),
-      .hp-app-download.is-visible .hp-reveal--phone {
+      .hp-app-download.is-visible .hp-reveal:not(.hp-reveal--phone):not(.hp-reveal--phone-2),
+      .hp-app-download.is-visible .hp-reveal--phone,
+      .hp-app-download.is-visible .hp-reveal--phone-2 {
         opacity: 1 !important;
         transform: none !important;
         transition: none !important;
         animation: none !important;
       }
 
-      .hp-app-download.is-visible .hp-app-download__float,
       .hp-app-download.is-visible .hp-app-download__screen {
         animation: none !important;
       }
@@ -3001,7 +3077,7 @@
 
     .hp-app-download__phone {
       position: relative;
-      width: min(280px, 100%);
+      width: min(260px, 100%);
       max-width: 100%;
       padding: 10px;
       border-radius: 38px;
@@ -3010,6 +3086,7 @@
       box-shadow:
         0 28px 56px rgba(15, 23, 42, 0.18),
         0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+      transition: transform 0.35s ease, opacity 0.35s ease, z-index 0s;
     }
 
     .hp-app-download__island {
@@ -3029,28 +3106,76 @@
       overflow: hidden;
       background: #fff;
       border: 1px solid #27272a;
-      min-height: 420px;
+      min-height: 400px;
       display: flex;
       flex-direction: column;
     }
 
-    .hp-app-download__screen-head {
+    .hp-app-download__screen--medical {
+      min-height: 380px;
+    }
+
+    .hp-app-download__screen-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 32px 12px 8px;
+    }
+
+    .hp-app-download__screen-top small {
+      display: block;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    .hp-app-download__screen-top strong {
+      display: block;
+      font-size: 0.95rem;
+      color: var(--onroda-text-dark);
+      letter-spacing: -0.02em;
+    }
+
+    .hp-app-download__driver {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 32px 12px 10px;
+      margin: 0 10px 8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
     }
 
-    .hp-app-download__screen-head img {
-      height: 22px;
-      width: auto;
+    .hp-app-download__driver strong {
+      display: block;
+      font-size: 0.88rem;
+    }
+
+    .hp-app-download__stars {
+      display: block;
+      font-size: 0.65rem;
+      color: #f59e0b;
+      letter-spacing: 0.02em;
+    }
+
+    .hp-app-download__stars em {
+      font-style: normal;
+      color: var(--onroda-text-dark);
+      font-weight: 700;
+    }
+
+    .hp-app-download__car-ico {
+      font-size: 1.5rem;
+      line-height: 1;
     }
 
     .hp-app-download__map {
       position: relative;
       flex: 1;
-      min-height: 200px;
+      min-height: 160px;
       margin: 0 10px;
       border-radius: 16px;
       background:
@@ -3059,10 +3184,22 @@
       overflow: hidden;
     }
 
+    .hp-app-download__car-dot {
+      position: absolute;
+      top: 48%;
+      left: 38%;
+      width: 14px;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--onroda-red);
+      box-shadow: 0 2px 6px rgba(213, 0, 28, 0.35);
+      z-index: 2;
+    }
+
     .hp-app-download__pin {
       position: absolute;
-      top: 36%;
-      left: 58%;
+      top: 30%;
+      left: 62%;
       width: 12px;
       height: 12px;
       border-radius: 999px;
@@ -3082,30 +3219,171 @@
 
     .hp-app-download__ride {
       margin: 10px;
-      padding: 14px;
+      padding: 12px 14px;
       border-radius: 16px;
       background: #fff;
       box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
-      display: grid;
-      gap: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     .hp-app-download__ride small {
       color: #64748b;
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 600;
+      display: block;
     }
 
     .hp-app-download__ride strong {
-      font-size: 1.35rem;
+      font-size: 1.15rem;
       letter-spacing: -0.02em;
-      color: var(--onroda-text-dark);
+      color: var(--onroda-red);
+      display: block;
     }
 
-    .hp-app-download__ride span {
+    .hp-app-download__ride-cta {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #fff;
+      background: var(--onroda-red);
+      padding: 8px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .hp-app-download__approval {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 10px 12px;
+      padding: 12px;
+      border-radius: 14px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+
+    .hp-app-download__approval-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: #22c55e;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .hp-app-download__approval strong {
+      display: block;
+      font-size: 0.9rem;
+      color: #15803d;
+    }
+
+    .hp-app-download__approval span {
       font-size: 0.72rem;
       color: #64748b;
+    }
+
+    .hp-app-download__timeline {
+      list-style: none;
+      margin: 0 10px 12px;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .hp-app-download__timeline li {
+      position: relative;
+      padding-left: 22px;
+      font-size: 0.72rem;
       line-height: 1.35;
+      color: #94a3b8;
+    }
+
+    .hp-app-download__timeline li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.35em;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px #e2e8f0;
+    }
+
+    .hp-app-download__timeline li.is-done {
+      color: var(--onroda-text-dark);
+      font-weight: 600;
+    }
+
+    .hp-app-download__timeline li.is-done::before {
+      background: #22c55e;
+      box-shadow: 0 0 0 1px #22c55e;
+    }
+
+    .hp-app-download__trust-card {
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 5;
+      width: min(148px, 38%);
+      padding: 14px 12px;
+      border-radius: 16px;
+      background: linear-gradient(165deg, #fff7f7 0%, #fff 55%, #fef2f2 100%);
+      border: 1px solid rgba(213, 0, 28, 0.12);
+      box-shadow: 0 14px 32px rgba(213, 0, 28, 0.1);
+    }
+
+    .hp-app-download__trust-icon {
+      display: inline-flex;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(213, 0, 28, 0.1);
+      color: var(--onroda-red);
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .hp-app-download__trust-card strong {
+      display: block;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      color: var(--onroda-text-dark);
+      margin-bottom: 6px;
+    }
+
+    .hp-app-download__trust-card p {
+      margin: 0;
+      font-size: 0.68rem;
+      line-height: 1.45;
+      color: var(--onroda-text-grey);
+    }
+
+    .hp-app-download__trust-art {
+      display: block;
+      margin-top: 10px;
+      height: 48px;
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at 70% 30%, rgba(213, 0, 28, 0.15), transparent 50%),
+        linear-gradient(180deg, #fce7f3 0%, #f8fafc 100%);
+    }
+
+    .hp-store-links--copy {
+      display: none;
+    }
+
+    .hp-store-links--device {
+      width: 100%;
+      justify-content: center;
     }
 
     .hp-store-links {
@@ -3350,40 +3628,41 @@
         padding-inline: 0;
       }
 
+      .hp-store-links--copy {
+        display: flex;
+      }
+
+      .hp-store-links--device {
+        display: none;
+      }
+
       .hp-app-download__stage {
-        width: min(252px, calc(100% - 0.25rem));
-        padding-top: 2.1rem;
+        width: min(100%, 400px);
+        min-height: 360px;
+      }
+
+      .hp-app-download__phones {
+        width: min(300px, 100%);
+        min-height: 340px;
       }
 
       .hp-app-download__phone {
-        width: min(252px, 100%);
-        max-width: 100%;
+        width: min(220px, 78%);
       }
 
-      .hp-app-download.is-visible .hp-reveal--phone {
+      .hp-app-download__phone--medical {
+        width: min(200px, 68%);
+        top: 1.5rem;
+      }
+
+      .hp-app-download__trust-card {
+        width: min(130px, 42%);
+        padding: 10px;
+      }
+
+      .hp-app-download.is-visible .hp-reveal--phone,
+      .hp-app-download.is-visible .hp-reveal--phone-2 {
         animation-name: hp-app-phone-bump-mobile;
-      }
-
-      .hp-app-download__float {
-        font-size: 0.68rem;
-        padding: 6px 10px;
-        max-width: calc(100% - 0.25rem);
-      }
-
-      .hp-app-download__float--1 {
-        left: 0;
-        top: 0;
-      }
-
-      .hp-app-download__float--2 {
-        right: 0;
-        left: auto;
-        top: 32%;
-      }
-
-      .hp-app-download__float--3 {
-        left: 0;
-        bottom: 0;
       }
 
       @keyframes hp-app-phone-bump-mobile {
@@ -3423,29 +3702,35 @@
     }
 
     @media (max-width: 390px) {
-      .hp-app-download__stage {
-        width: min(228px, 100%);
-        padding-top: 2rem;
+      .hp-app-download__tabs {
+        gap: 6px;
+      }
+
+      .hp-app-download__tab {
+        padding: 7px 10px;
+        font-size: 0.75rem;
+      }
+
+      .hp-app-download__phones {
+        width: 100%;
+        min-height: 300px;
       }
 
       .hp-app-download__phone {
-        width: min(228px, 100%);
+        width: min(200px, 82%);
+      }
+
+      .hp-app-download__phone--medical {
+        width: min(180px, 72%);
+      }
+
+      .hp-app-download__trust-card {
+        width: 38%;
+        font-size: 0.9em;
       }
 
       .hp-app-download__screen {
-        min-height: 360px;
-      }
-
-      .hp-app-download__float {
-        font-size: 0.64rem;
-        padding: 5px 8px;
-        white-space: normal;
-        line-height: 1.25;
-        max-width: 9.75rem;
-      }
-
-      .hp-app-download__float--2 {
-        top: 30%;
+        min-height: 340px;
       }
     }
 
@@ -3602,10 +3887,6 @@
 
       .hp-footer-contact-mail {
         max-width: none;
-      }
-
-      .hp-app-download__trust {
-        margin-bottom: 1.15rem;
       }
 
       .hp-store-links {
