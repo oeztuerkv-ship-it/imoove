@@ -969,7 +969,7 @@
       align-items: flex-start;
       justify-content: space-between;
       gap: 1rem;
-      padding: 1rem 1.1rem 0.85rem;
+      padding: 1.35rem 1.1rem 0.85rem;
       border-bottom: 1px solid rgba(148, 163, 184, 0.15);
     }
 
@@ -1135,7 +1135,7 @@
         flex-wrap: wrap;
         align-items: flex-start;
         gap: 0.65rem;
-        padding-bottom: 0.65rem;
+        padding: 1.05rem 1.1rem 0.65rem;
       }
 
       .hp-motion-modal__head > div:first-child {
