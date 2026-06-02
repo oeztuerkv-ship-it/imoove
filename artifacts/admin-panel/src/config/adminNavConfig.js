@@ -471,6 +471,7 @@ const ADMIN_TOP_NAV = [
       { pageKey: "settings-branding", label: "Branding (PDF)" },
       { pageKey: "settings-payments", label: "Zahlungsarten" },
       { pageKey: "settings-system", label: "System" },
+      { pageKey: "fail2ban", label: "Firewall & IPs" },
     ],
   },
 ];
