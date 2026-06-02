@@ -927,7 +927,6 @@ export default function NewBookingScreen() {
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
   const { config: appCfg } = useOnrodaAppConfig();
-  const medicalTransportAvailable = appCfg.medicalTransportAvailable === true;
   const brokerNoticeDe =
     (typeof appCfg.system?.globalNoticeDe === "string" ? appCfg.system.globalNoticeDe.trim() : "") ||
     CUSTOMER_BROKER_NOTICE_DE;
@@ -969,11 +968,9 @@ export default function NewBookingScreen() {
     () =>
       [
         { id: "cash" as const, label: "Bar", isEuro: true },
-        ...(medicalTransportAvailable
-          ? [{ id: "voucher" as const, label: "Transportschein (KK)", isVoucher: true }]
-          : []),
+        { id: "voucher" as const, label: "Transportschein (KK)", isVoucher: true },
       ] as const,
-    [medicalTransportAvailable],
+    [],
   );
 
   const [searchUserGps, setSearchUserGps] = useState<{ lat: number; lon: number } | null>(null);

@@ -110,7 +110,6 @@ const RIDE_PAYMENT_OPTIONS: {
   isAccessCode?: boolean;
 }[] = [
   { id: "cash", label: "Bar", isEuro: true },
-  { id: "card", label: "Karte", isCard: true },
   { id: "paypal", label: "PayPal", isPaypal: true },
   { id: "voucher", label: "Transportschein (KK)", isVoucher: true },
   { id: "app", label: "App bezahlen", isApp: true },
@@ -322,11 +321,7 @@ export default function RideScreen() {
   const [brokerNoticeExpanded, setBrokerNoticeExpanded] = useState(false);
 
   const { config: appConfig } = useOnrodaAppConfig();
-  const medicalTransportAvailable = appConfig.medicalTransportAvailable === true;
-  const ridePaymentOptions = React.useMemo(
-    () => RIDE_PAYMENT_OPTIONS.filter((o) => o.id !== "voucher" || medicalTransportAvailable),
-    [medicalTransportAvailable],
-  );
+  const ridePaymentOptions = RIDE_PAYMENT_OPTIONS;
 
   function dismissTransportScan() {
     setPendingTransportScanId(null);
