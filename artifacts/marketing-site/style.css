@@ -947,8 +947,9 @@
     .hp-motion-modal__panel {
       position: relative;
       z-index: 1;
-      width: min(960px, 100%);
-      max-height: min(92vh, 920px);
+      width: fit-content;
+      max-width: min(100%, calc(100vw - 2rem));
+      max-height: 85vh;
       display: flex;
       flex-direction: column;
       border-radius: 20px;
@@ -1003,15 +1004,37 @@
     .hp-motion-modal__body {
       flex: 1;
       min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 0.85rem 1rem;
+      background: #020617;
+      overflow: hidden;
+    }
+
+    .hp-motion-frame {
+      --motion-max-h: calc(85vh - 5.75rem);
+      --motion-max-w: calc(100vw - 2.5rem);
+      position: relative;
+      aspect-ratio: 9 / 16;
+      width: min(var(--motion-max-w), calc(var(--motion-max-h) * 9 / 16));
+      height: min(var(--motion-max-h), calc(var(--motion-max-w) * 16 / 9));
+      max-width: var(--motion-max-w);
+      max-height: var(--motion-max-h);
+      flex-shrink: 0;
+      margin: 0 auto;
+      overflow: hidden;
+      border-radius: 16px;
       background: #020617;
     }
 
     .hp-motion-modal__iframe,
     .hp-motion-modal__video {
+      position: absolute;
+      inset: 0;
       display: block;
       width: 100%;
-      height: min(72vh, 720px);
-      min-height: 360px;
+      height: 100%;
       border: 0;
       background: #020617;
     }
@@ -1028,15 +1051,19 @@
 
       .hp-motion-modal__panel {
         width: 100%;
+        max-width: 100%;
         max-height: 100vh;
+        height: 100vh;
         border-radius: 0;
-        min-height: 100vh;
       }
 
-      .hp-motion-modal__iframe,
-      .hp-motion-modal__video {
-        height: calc(100vh - 88px);
-        min-height: 280px;
+      .hp-motion-modal__body {
+        padding: 0.5rem 0.75rem 0.85rem;
+      }
+
+      .hp-motion-frame {
+        --motion-max-h: calc(100vh - 5.5rem);
+        --motion-max-w: calc(100vw - 1.5rem);
       }
     }
 

@@ -449,6 +449,9 @@
       if (!openBtn || !modal || !iframe) return;
 
       var iframeSrc = modal.getAttribute("data-motion-iframe-src") || "/motion/kunde/motion-test-kunde.html";
+      if (iframeSrc.indexOf("embed=1") < 0) {
+        iframeSrc += (iframeSrc.indexOf("?") >= 0 ? "&" : "?") + "embed=1";
+      }
       var videoSrc = modal.getAttribute("data-motion-video-src") || "/videos/onroda-kunde.mp4";
       var useFinalVideo = modal.getAttribute("data-motion-use-video") === "1";
       var lastFocus = null;
