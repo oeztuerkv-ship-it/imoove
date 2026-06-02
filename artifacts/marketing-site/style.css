@@ -2850,17 +2850,41 @@
     .hp-app-download__badge {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      margin: 0 0 12px;
-      padding: 6px 12px;
+      gap: 10px;
+      margin: 0 0 14px;
+      padding: 6px 14px 6px 6px;
       border-radius: 999px;
-      background: rgba(213, 0, 28, 0.08);
-      border: 1px solid rgba(213, 0, 28, 0.18);
+      background: linear-gradient(135deg, #fff 0%, #fff8f8 100%);
+      border: 1px solid rgba(213, 0, 28, 0.14);
+      box-shadow:
+        0 10px 28px rgba(213, 0, 28, 0.08),
+        0 1px 0 rgba(255, 255, 255, 0.9) inset;
       color: var(--onroda-red);
-      font-size: 0.72rem;
+      width: fit-content;
+    }
+
+    .hp-app-download__badge-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, var(--onroda-red) 0%, #b8001f 100%);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 6px 14px rgba(213, 0, 28, 0.28);
+    }
+
+    .hp-app-download__badge-icon svg {
+      display: block;
+    }
+
+    .hp-app-download__badge-text {
+      font-size: 0.74rem;
       font-weight: 800;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
+      line-height: 1;
     }
 
     .hp-app-download__badge svg {
@@ -2951,32 +2975,33 @@
     }
 
     .hp-app-download__feature {
-      display: grid;
-      grid-template-columns: 40px minmax(0, 1fr);
+      display: flex;
       align-items: center;
       gap: 14px;
     }
 
     .hp-app-download__feature-icon {
-      flex-shrink: 0;
-      width: 40px;
-      height: 40px;
+      flex: 0 0 44px;
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
       background: rgba(213, 0, 28, 0.1);
       color: var(--onroda-red);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      align-self: center;
+      display: grid;
+      place-items: center;
+      line-height: 0;
     }
 
     .hp-app-download__feature-icon svg {
       display: block;
-      width: 18px;
-      height: 18px;
+      width: 20px;
+      height: 20px;
+      margin: 0;
     }
 
-    .hp-app-download__feature > div {
+    .hp-app-download__feature > div,
+    .hp-app-download__feature-body {
+      flex: 1;
       min-width: 0;
     }
 
@@ -3012,18 +3037,21 @@
 
     .hp-app-download__stage {
       position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
       width: min(480px, 100%);
       max-width: 100%;
       margin: 0 auto;
       padding: 0;
       box-sizing: border-box;
-      height: clamp(380px, 42vw, 430px);
     }
 
     .hp-app-download__phones {
       position: relative;
       width: 100%;
-      height: 100%;
+      height: clamp(340px, 38vw, 400px);
     }
 
     .hp-app-download__phone {
@@ -3423,16 +3451,16 @@
     }
 
     .hp-app-download__trust-card {
-      position: absolute;
-      right: 0;
-      bottom: 12%;
-      z-index: 5;
-      width: min(152px, 36%);
-      padding: 14px 12px;
+      position: relative;
+      z-index: 1;
+      width: min(280px, 100%);
+      padding: 14px 16px;
       border-radius: 16px;
       background: linear-gradient(165deg, #fff7f7 0%, #fff 55%, #fef2f2 100%);
       border: 1px solid rgba(213, 0, 28, 0.12);
-      box-shadow: 0 14px 32px rgba(213, 0, 28, 0.1);
+      box-shadow: 0 14px 32px rgba(213, 0, 28, 0.08);
+      align-self: stretch;
+      margin: 0;
     }
 
     .hp-app-download__trust-icon {
@@ -3457,19 +3485,9 @@
 
     .hp-app-download__trust-card p {
       margin: 0;
-      font-size: 0.68rem;
+      font-size: 0.78rem;
       line-height: 1.45;
       color: var(--onroda-text-grey);
-    }
-
-    .hp-app-download__trust-art {
-      display: block;
-      margin-top: 10px;
-      height: 48px;
-      border-radius: 10px;
-      background:
-        radial-gradient(circle at 70% 30%, rgba(213, 0, 28, 0.15), transparent 50%),
-        linear-gradient(180deg, #fce7f3 0%, #f8fafc 100%);
     }
 
     .hp-store-links {
@@ -3717,7 +3735,10 @@
 
       .hp-app-download__stage {
         width: min(100%, 420px);
-        height: clamp(340px, 72vw, 400px);
+      }
+
+      .hp-app-download__phones {
+        height: clamp(300px, 68vw, 360px);
       }
 
       .hp-app-download__phone--taxi {
@@ -3729,9 +3750,8 @@
       }
 
       .hp-app-download__trust-card {
-        width: min(130px, 40%);
-        bottom: 8%;
-        padding: 10px;
+        width: 100%;
+        padding: 12px 14px;
       }
 
       .hp-app-download.is-visible .hp-reveal--phone,
@@ -3785,8 +3805,8 @@
         font-size: 0.75rem;
       }
 
-      .hp-app-download__stage {
-        height: 320px;
+      .hp-app-download__phones {
+        height: 290px;
       }
 
       .hp-app-download__phone--taxi {
@@ -3798,8 +3818,7 @@
       }
 
       .hp-app-download__trust-card {
-        width: 42%;
-        font-size: 0.9em;
+        font-size: 0.95em;
       }
 
       .hp-app-download__screen {
