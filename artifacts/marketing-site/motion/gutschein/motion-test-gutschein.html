@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ONRODA Motion · Gutschein (11s)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/motion/gutschein/motion-gutschein.css" />
+  <script>
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) {
+      document.documentElement.classList.add("motion-voucher-embed");
+    }
+  </script>
+</head>
+<body class="motion-voucher">
+  <script>
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) {
+      document.body.classList.add("motion-voucher--embed");
+    }
+  </script>
+  <div>
+    <div class="motion-voucher__stage" role="img" aria-label="Motion-Demo: digitaler Gutschein-Flow von Erstellung bis Sammelrechnung">
+      <span class="motion-voucher__island" aria-hidden="true"></span>
+      <div class="motion-voucher__screen">
+        <header class="motion-voucher__header">
+          <img class="motion-voucher__logo" src="/onroda-logo-transparent.png" width="120" height="44" alt="" decoding="async" />
+          <span class="motion-voucher__badge">Gutschein</span>
+        </header>
+
+        <div class="motion-voucher__step motion-voucher__step--create">
+          <div class="motion-voucher__step-label">1 Partner</div>
+          <p class="motion-voucher__step-title">Digitalen Gutschein erstellen</p>
+          <div class="motion-voucher__card">
+            <strong>Fahrtzweck · Hotelgast</strong>
+            <span>gültig bis 31.12 · mehrfach nutzbar</span>
+          </div>
+        </div>
+
+        <div class="motion-voucher__step motion-voucher__step--qr">
+          <div class="motion-voucher__step-label">2 Code</div>
+          <p class="motion-voucher__step-title">QR-Code / Code wird erzeugt</p>
+          <div class="motion-voucher__qr">
+            <span class="motion-voucher__qr-box" aria-hidden="true"></span>
+            <span class="motion-voucher__qr-copy">Code: ONR-VCH-4K8P<br/>Link: onroda://voucher/…</span>
+          </div>
+        </div>
+
+        <div class="motion-voucher__step motion-voucher__step--customer">
+          <div class="motion-voucher__step-label">3 Kunde</div>
+          <p class="motion-voucher__step-title">Kunde zeigt digitalen Gutschein</p>
+          <div class="motion-voucher__card">
+            <strong>„Digitale Gutscheine statt Papierkram.“</strong>
+            <span>UI-Demo · keine echten Personendaten</span>
+          </div>
+        </div>
+
+        <div class="motion-voucher__step motion-voucher__step--scan">
+          <div class="motion-voucher__step-label">4 Fahrer</div>
+          <p class="motion-voucher__step-title">Scan &amp; Systemprüfung</p>
+          <div class="motion-voucher__scan">
+            <span class="motion-voucher__scan-line" aria-hidden="true"></span>
+          </div>
+          <div class="motion-voucher__status">
+            <span class="motion-voucher__status-dot" aria-hidden="true"></span>
+            Gutschein gültig
+          </div>
+        </div>
+
+        <div class="motion-voucher__step motion-voucher__step--ride">
+          <div class="motion-voucher__step-label">5 Fahrt</div>
+          <p class="motion-voucher__step-title">Fahrt wird dem Gutschein zugeordnet</p>
+          <div class="motion-voucher__card">
+            <strong>Ride #demo-1042</strong>
+            <span>Zuweisung erfolgt · Taxameter abrechenbar</span>
+          </div>
+        </div>
+
+        <div class="motion-voucher__step motion-voucher__step--billing">
+          <div class="motion-voucher__step-label">6 Abrechnung</div>
+          <p class="motion-voucher__step-title">Einlösung + spätere Sammelrechnung</p>
+          <div class="motion-voucher__card">
+            <strong>Gutschein erstellen. Fahrt zuordnen. Abrechnung nachvollziehen.</strong>
+            <span>Partner sieht Status im Panel</span>
+          </div>
+        </div>
+
+        <article class="motion-voucher__bottom">
+          <small>Partner-Panel</small>
+          <strong>Einlösung gebucht · Monatsrechnung vorbereitet</strong>
+        </article>
+
+        <div class="motion-voucher__progress" aria-hidden="true"><i></i></div>
+      </div>
+    </div>
+    <p class="motion-voucher__meta">11-Sekunden-Loop · UI-Demo · keine echten Kundendaten</p>
+  </div>
+</body>
+</html>

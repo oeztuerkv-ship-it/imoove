@@ -493,6 +493,9 @@
       var platformSrc = normalizeEmbedUrl(
         modal.getAttribute("data-motion-platform-iframe-src") || "/motion/plattform/motion-test-plattform.html",
       );
+      var voucherSrc = normalizeEmbedUrl(
+        modal.getAttribute("data-motion-voucher-iframe-src") || "/motion/gutschein/motion-test-gutschein.html",
+      );
 
       var videoSrc = modal.getAttribute("data-motion-video-src") || "/videos/onroda-kunde.mp4";
       var useFinalVideo = modal.getAttribute("data-motion-use-video") === "1";
@@ -503,6 +506,7 @@
       function srcForTab(tab) {
         if (tab === "medical") return medicalSrc;
         if (tab === "platform") return platformSrc;
+        if (tab === "voucher") return voucherSrc;
         return customerSrc;
       }
 
@@ -539,7 +543,7 @@
         try {
           var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
           if (!doc) return false;
-          var stage = doc.querySelector(".motion-kunde__stage");
+          var stage = doc.querySelector("[class*='__stage']");
           return !!(stage && stage.offsetWidth > 40 && stage.offsetHeight > 80);
         } catch (err) {
           return iframe.offsetHeight >= 80;
@@ -597,7 +601,7 @@
 
       function setActiveTab(nextTab, opts) {
         var force = !!(opts && opts.forceLoad);
-        var next = nextTab === "medical" || nextTab === "platform" ? nextTab : "customer";
+        var next = nextTab === "medical" || nextTab === "platform" || nextTab === "voucher" ? nextTab : "customer";
         activeTab = next;
         syncFallbackLink();
 
@@ -615,6 +619,8 @@
               ? "ONRODA Krankenfahrt — Motion-Vorschau"
               : activeTab === "platform"
                 ? "ONRODA Unternehmen — Motion-Vorschau"
+                : activeTab === "voucher"
+                  ? "ONRODA Gutschein — Motion-Vorschau"
                 : "ONRODA Kunde — Motion-Vorschau",
           );
           hideFallback();
@@ -712,6 +718,7 @@
         customerSrc: customerSrc,
         medicalSrc: medicalSrc,
         platformSrc: platformSrc,
+        voucherSrc: voucherSrc,
       });
     }
 

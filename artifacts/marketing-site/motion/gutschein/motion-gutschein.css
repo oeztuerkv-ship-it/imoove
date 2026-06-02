@@ -1,0 +1,400 @@
+:root {
+  --onroda-red: #d5001c;
+  --onroda-dark: #0f172a;
+  --onroda-muted: #94a3b8;
+  --onroda-text: #f8fafc;
+  --motion-duration: 11s;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body.motion-voucher {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 55%);
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--onroda-text);
+}
+
+.motion-voucher__stage {
+  position: relative;
+  width: min(390px, 92vw);
+  aspect-ratio: 390 / 844;
+  border-radius: 44px;
+  padding: 10px;
+  background: linear-gradient(160deg, #334155 0%, #0f172a 100%);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55);
+}
+
+.motion-voucher__island {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96px;
+  height: 28px;
+  border-radius: 999px;
+  background: #000;
+  z-index: 5;
+}
+
+.motion-voucher__screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 36px;
+  overflow: hidden;
+  background: var(--onroda-dark);
+  padding: 44px 12px 12px;
+}
+
+.motion-voucher__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.motion-voucher__logo {
+  height: 24px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+.motion-voucher__badge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(213, 0, 28, 0.16);
+  color: #fecaca;
+}
+
+.motion-voucher__step {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 82px;
+  bottom: 52px;
+  min-height: 52%;
+}
+  border-radius: 20px;
+  border: 1px solid #334155;
+  background: linear-gradient(165deg, #1e293b 0%, #0b1220 100%);
+  padding: 14px;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.motion-voucher__step-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fda4af;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.motion-voucher__step-title {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.motion-voucher__card {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid #334155;
+}
+
+.motion-voucher__card strong {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.motion-voucher__card span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.68rem;
+  color: var(--onroda-muted);
+}
+
+.motion-voucher__qr {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+}
+
+.motion-voucher__qr-box {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(0deg, #111 0 6px, #fff 6px 12px),
+    repeating-linear-gradient(90deg, #111 0 6px, #fff 6px 12px);
+  outline: 2px solid #e2e8f0;
+}
+
+.motion-voucher__qr-copy {
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.motion-voucher__scan {
+  margin-top: 10px;
+  height: 128px;
+  border-radius: 14px;
+  border: 2px dashed rgba(248, 113, 113, 0.5);
+  background: rgba(15, 23, 42, 0.85);
+  position: relative;
+  overflow: hidden;
+}
+
+.motion-voucher__scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #fda4af, transparent);
+  animation: v-scan-line 1.2s ease-in-out infinite;
+}
+
+.motion-voucher__status {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #86efac;
+}
+
+.motion-voucher__status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #22c55e;
+  box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.25);
+}
+
+.motion-voucher__bottom {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  color: #0f172a;
+  transform: translateY(120%);
+  animation: v-bottom-card var(--motion-duration) cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+}
+
+.motion-voucher__bottom small {
+  display: block;
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.motion-voucher__bottom strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.94rem;
+}
+
+.motion-voucher__progress {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 6px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.motion-voucher__progress i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--onroda-red);
+  animation: v-progress var(--motion-duration) linear infinite;
+}
+
+.motion-voucher__meta {
+  margin-top: 18px;
+  text-align: center;
+  color: var(--onroda-muted);
+  font-size: 0.85rem;
+}
+
+.motion-voucher__step--create { animation: v-step-create var(--motion-duration) ease-in-out infinite; }
+.motion-voucher__step--qr { animation: v-step-qr var(--motion-duration) ease-in-out infinite; }
+.motion-voucher__step--customer { animation: v-step-customer var(--motion-duration) ease-in-out infinite; }
+.motion-voucher__step--scan { animation: v-step-scan var(--motion-duration) ease-in-out infinite; }
+.motion-voucher__step--ride { animation: v-step-ride var(--motion-duration) ease-in-out infinite; }
+.motion-voucher__step--billing { animation: v-step-billing var(--motion-duration) ease-in-out infinite; }
+
+@keyframes v-step-create {
+  0%, 6% { opacity: 0; transform: translateY(10px); }
+  10%, 20% { opacity: 1; transform: translateY(0); }
+  24%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes v-step-qr {
+  0%, 20% { opacity: 0; transform: translateY(10px); }
+  24%, 34% { opacity: 1; transform: translateY(0); }
+  38%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes v-step-customer {
+  0%, 34% { opacity: 0; transform: translateY(10px); }
+  38%, 48% { opacity: 1; transform: translateY(0); }
+  52%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes v-step-scan {
+  0%, 48% { opacity: 0; transform: translateY(10px); }
+  52%, 62% { opacity: 1; transform: translateY(0); }
+  66%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes v-step-ride {
+  0%, 62% { opacity: 0; transform: translateY(10px); }
+  66%, 76% { opacity: 1; transform: translateY(0); }
+  80%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes v-step-billing {
+  0%, 76% { opacity: 0; transform: translateY(10px); }
+  80%, 94% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes v-scan-line {
+  0% { top: 8%; }
+  100% { top: 88%; }
+}
+
+@keyframes v-bottom-card {
+  0%, 78% { transform: translateY(120%); opacity: 0; }
+  84%, 96% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(8%); opacity: 0; }
+}
+
+@keyframes v-progress {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-voucher__step,
+  .motion-voucher__scan-line,
+  .motion-voucher__bottom,
+  .motion-voucher__progress i {
+    animation: none !important;
+  }
+
+  .motion-voucher__step--billing {
+    opacity: 1;
+    transform: none;
+  }
+
+  .motion-voucher__bottom {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .motion-voucher__progress i {
+    width: 100%;
+  }
+}
+
+html.motion-voucher-embed,
+html.motion-voucher-embed body.motion-voucher {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.motion-voucher--embed {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: #020617;
+}
+
+body.motion-voucher--embed > div {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.motion-voucher--embed .motion-voucher__meta {
+  display: none;
+}
+
+body.motion-voucher--embed .motion-voucher__stage {
+  aspect-ratio: 390 / 844;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: clamp(14px, 3.5vw, 36px);
+  padding: clamp(5px, 1.2vw, 10px);
+  box-shadow: none;
+}
+
+@media (max-width: 420px) {
+  body.motion-voucher--embed .motion-voucher__screen {
+    padding: 40px 10px 10px;
+  }
+
+  body.motion-voucher--embed .motion-voucher__step {
+    left: 8px;
+    right: 8px;
+    top: 76px;
+    bottom: 48px;
+    min-height: 54%;
+  }
+
+  body.motion-voucher--embed .motion-voucher__qr-box {
+    width: 64px;
+    height: 64px;
+  }
+
+  body.motion-voucher--embed .motion-voucher__bottom {
+    left: 8px;
+    right: 8px;
+    bottom: 6px;
+    padding: 10px;
+  }
+
+  body.motion-voucher--embed .motion-voucher__bottom strong {
+    font-size: 0.88rem;
+    line-height: 1.3;
+  }
+}

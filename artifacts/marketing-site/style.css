@@ -989,13 +989,17 @@
 
     .hp-motion-tabs {
       margin-top: 0.75rem;
-      display: inline-flex;
+      display: flex;
+      flex-wrap: nowrap;
       gap: 8px;
       padding: 6px;
       border-radius: 14px;
       background: rgba(2, 6, 23, 0.35);
       border: 1px solid rgba(148, 163, 184, 0.18);
-      flex-wrap: wrap;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
     }
 
     .hp-motion-tab {
@@ -1009,7 +1013,9 @@
       border-radius: 12px;
       cursor: pointer;
       font-family: inherit;
-      line-height: 1;
+      line-height: 1.15;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .hp-motion-tab[aria-selected="true"] {
@@ -1125,6 +1131,23 @@
         border-radius: 0;
       }
 
+      .hp-motion-modal__head {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding-bottom: 0.65rem;
+      }
+
+      .hp-motion-modal__head > div:first-child {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+
+      .hp-motion-modal__note {
+        font-size: 0.72rem;
+        line-height: 1.35;
+      }
+
       .hp-motion-modal__body {
         padding: 0.5rem 0.75rem 0.85rem;
       }
@@ -1134,23 +1157,59 @@
         width: min(340px, calc(100vw - 1.5rem));
       }
 
-      .hp-motion-tabs {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        width: 100%;
-      }
-
-      .hp-motion-tab {
-        justify-content: center;
-        text-align: center;
-        padding: 9px 8px;
-      }
-
       .hp-motion-modal iframe,
       .hp-motion-modal__iframe,
       .hp-motion-modal__video {
         min-height: min(480px, calc(100vh - 6rem));
         max-height: calc(100vh - 5.5rem);
+      }
+    }
+
+    @media (max-width: 420px) {
+      .hp-motion-modal__head {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .hp-motion-modal__close {
+        align-self: flex-end;
+      }
+
+      .hp-motion-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        padding: 5px;
+        overflow: visible;
+        flex-wrap: wrap;
+      }
+
+      .hp-motion-tab {
+        font-size: 0.72rem;
+        padding: 8px 6px;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.2;
+        min-height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .hp-motion-modal__note {
+        display: none;
+      }
+
+      .hp-motion-frame {
+        --motion-iframe-h: min(calc(100vh - 4.75rem), 680px);
+        width: 100%;
+      }
+
+      .hp-motion-modal iframe,
+      .hp-motion-modal__iframe,
+      .hp-motion-modal__video {
+        min-height: min(420px, calc(100vh - 4.75rem));
+        max-height: calc(100vh - 4.75rem);
       }
     }
 
