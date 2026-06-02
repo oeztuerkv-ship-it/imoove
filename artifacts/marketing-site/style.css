@@ -954,7 +954,7 @@
       z-index: 1;
       width: min(100%, 520px);
       max-width: min(100%, calc(100vw - 2rem));
-      max-height: min(92vh, 900px);
+      max-height: 92vh;
       display: flex;
       flex-direction: column;
       border-radius: 20px;
@@ -1059,14 +1059,18 @@
       overflow: hidden;
     }
 
-    .hp-motion-frame {
+    .hp-motion-frame,
+    .hp-motion-modal__frame {
       --motion-iframe-h: min(760px, 74vh);
       position: relative;
       width: min(420px, calc(100vw - 2rem));
       max-width: 100%;
       margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       flex-shrink: 0;
-      overflow: hidden;
+      overflow: visible;
       border-radius: 16px;
       background: #020617;
     }
@@ -1076,9 +1080,8 @@
       position: relative;
       display: block;
       width: 100%;
-      height: min(600px, 62vh);
-      min-height: 400px;
-      max-height: min(600px, 62vh);
+      height: 760px;
+      min-height: 560px;
       border: 0;
       background: #020617;
     }

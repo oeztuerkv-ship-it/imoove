@@ -553,8 +553,13 @@
       function logIframeMetrics(phase) {
         motionModalLog("[motion-modal] " + (phase || "metrics"));
         motionModalLog("[motion-modal] iframe src", iframe.src);
+        motionModalLog("[motion-modal] iframe width", iframe.offsetWidth);
         motionModalLog("[motion-modal] iframe height", iframe.offsetHeight);
+        motionModalLog("[motion-modal] frame width", modal.querySelector(".hp-motion-frame")?.offsetWidth);
         motionModalLog("[motion-modal] frame height", modal.querySelector(".hp-motion-frame")?.offsetHeight);
+        if (typeof console !== "undefined" && typeof console.log === "function") {
+          console.log("[motion-modal]", iframe.src, iframe.offsetWidth, iframe.offsetHeight);
+        }
       }
 
       function scheduleLoadCheck() {
