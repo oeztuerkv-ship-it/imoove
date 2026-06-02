@@ -6,6 +6,7 @@ import { router, useLocalSearchParams, type Href } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -51,6 +52,7 @@ import {
 import {
   startDriverBackgroundLocation,
   stopDriverBackgroundLocation,
+  isDriverBackgroundLocationRunning,
 } from "@/utils/driverBackgroundLocation";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import {
@@ -631,6 +633,24 @@ export default function DriverNavigationScreen() {
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId) return;
     void startDriverBackgroundLocation(rideId);
+  }, [params.rideId]);
+
+  // GPS-Recovery: wenn App aus Hintergrund kommt, prüfen ob GPS noch läuft
+  useEffect(() => {
+    const rideId = params.rideId?.trim() ?? "";
+    if (!rideId) return;
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void (async () => {
+          const running = await isDriverBackgroundLocationRunning();
+          if (!running) {
+            console.log("[driverNav] GPS not running after resume — restarting");
+            await startDriverBackgroundLocation(rideId);
+          }
+        })();
+      }
+    });
+    return () => sub.remove();
   }, [params.rideId]);
 
   const fareSettlementPreview = useMemo(() => {

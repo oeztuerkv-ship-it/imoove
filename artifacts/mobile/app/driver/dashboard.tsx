@@ -22,6 +22,7 @@ import {
   Text,
   TextInput,
   View,
+  AppState,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -47,6 +48,7 @@ import {
   ensureDriverBackgroundLocationPermissions,
   startDriverBackgroundLocation,
   stopDriverBackgroundLocation,
+  isDriverBackgroundLocationRunning,
 } from "@/utils/driverBackgroundLocation";
 import {
   buildDriverNavigationHref,
@@ -1903,7 +1905,7 @@ function ActiveRideScreen({
   // GPS tracking — send driver position via WebSocket + HTTP every ~5s
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
-    (async () => {
+    void (async () => {
       const fg = await requestForegroundPermissionsSafe();
       if (!fg || fg.status !== "granted") return;
       // Get initial position immediately so navigation can start right away
@@ -1932,7 +1934,7 @@ function ActiveRideScreen({
           }).catch(() => {});
         },
       );
-    })();
+    })().catch(() => {});
     return () => { sub?.remove(); };
   }, [phase, req.id, req.fromLat, req.fromLon]);
 
@@ -2858,7 +2860,7 @@ export default function DriverDashboard() {
   useEffect(() => {
     if (Platform.OS === "web") return;
     let sub: Location.LocationSubscription | null = null;
-    (async () => {
+    void (async () => {
       const fg = await requestForegroundPermissionsSafe();
       if (!fg || fg.status !== "granted") return;
       const pos = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
@@ -2868,7 +2870,7 @@ export default function DriverDashboard() {
         { accuracy: Location.Accuracy.Balanced, timeInterval: 10000, distanceInterval: 50 },
         (loc) => setDriverPos({ lat: loc.coords.latitude, lon: loc.coords.longitude }),
       );
-    })();
+    })().catch(() => {});
     return () => { sub?.remove(); };
   }, []);
 
@@ -2992,7 +2994,7 @@ export default function DriverDashboard() {
   useEffect(() => {
     if (!driver?.authToken || !driverMarketOnline || bgLocationPromptedRef.current) return;
     bgLocationPromptedRef.current = true;
-    void ensureDriverBackgroundLocationPermissions({ interactive: true });
+    void ensureDriverBackgroundLocationPermissions({ interactive: true }).catch(() => {});
   }, [driver?.authToken, driverMarketOnline]);
 
   useEffect(() => {
@@ -3001,6 +3003,24 @@ export default function DriverDashboard() {
       return;
     }
     void startDriverBackgroundLocation(activeDriverRequest.id);
+  }, [activeDriverRequest?.id]);
+
+  // GPS-Recovery: wenn App aus Hintergrund kommt
+  useEffect(() => {
+    const rideId = activeDriverRequest?.id;
+    if (!rideId) return;
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void (async () => {
+          const running = await isDriverBackgroundLocationRunning();
+          if (!running) {
+            console.log("[driverDash] GPS not running after resume — restarting");
+            await startDriverBackgroundLocation(rideId);
+          }
+        })();
+      }
+    });
+    return () => sub.remove();
   }, [activeDriverRequest?.id]);
 
   useEffect(() => {
