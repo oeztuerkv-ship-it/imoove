@@ -1664,6 +1664,24 @@
       font-size: 0.92rem;
     }
 
+    .hp-partner-flow p {
+      margin: 0 0 0.65rem;
+      line-height: 1.55;
+    }
+
+    .hp-partner-flow p:last-child {
+      margin-bottom: 0;
+    }
+
+    .hp-partner-flow__steps {
+      color: var(--onroda-text-dark);
+      font-weight: 500;
+    }
+
+    .hp-partner-flow__note {
+      padding-top: 0.15rem;
+    }
+
     .hp-honeypot {
       position: absolute;
       left: -10000px;

@@ -644,13 +644,19 @@
 
           <div class="hp-form-card">
             <h3>Partneranfrage</h3>
-            <p class="hint">
-              <strong>Ablauf:</strong> Anfrage senden → unter
-              <a href="/partner/anfrage-status">Partner-Anfrage: Status</a> mit <strong>dieser E-Mail</strong> und der
-              <strong>Referenz-ID</strong> den Stand prüfen und ggf. Unterlagen nachreichen → nach Prüfung Freigabe →
-              Zugang zum Partner-Portal. Hier entsteht <strong>noch kein</strong> Portal-Login; die Statusseite ist
-              <strong>keine</strong> Anmeldung zum Partner-Portal.
-            </p>
+            <div class="hint hp-partner-flow">
+              <p class="hp-partner-flow__lead"><strong>So funktioniert's:</strong></p>
+              <p class="hp-partner-flow__steps">
+                Anfrage absenden → Status prüfen → Unterlagen ergänzen → Freigabe erhalten → Partner-Portal nutzen
+              </p>
+              <p>
+                Status prüfen Sie jederzeit mit Ihrer E-Mail-Adresse und Referenz-ID unter
+                <a href="/partner/anfrage-status">Partneranfrage: Status</a>.
+              </p>
+              <p class="hp-partner-flow__note">
+                <strong>Wichtig:</strong> Die Statusseite ist keine Anmeldung zum Partner-Portal.
+              </p>
+            </div>
 
             <form id="partner-form" action="#" method="post" novalidate>
               <div class="hp-partner-form-grid">
