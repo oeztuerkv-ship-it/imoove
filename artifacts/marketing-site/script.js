@@ -537,16 +537,14 @@
         var frame = modal.querySelector(".hp-motion-frame");
         return !!(frame && frame.offsetWidth > 40 && frame.offsetHeight > 80);
       }
-
       function iframeLooksLoaded() {
-        if (!frameHasSize() || iframe.offsetHeight < 80) return false;
+        if (!frameHasSize()) return false;
         try {
           var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
           if (!doc) return false;
-          var stage = doc.querySelector("[class*='__stage']");
-          return !!(stage && stage.offsetWidth > 40 && stage.offsetHeight > 80);
+          return doc.readyState === 'complete';
         } catch (err) {
-          return iframe.offsetHeight >= 80;
+          return true;
         }
       }
 
