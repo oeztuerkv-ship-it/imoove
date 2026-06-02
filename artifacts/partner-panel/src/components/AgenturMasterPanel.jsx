@@ -333,8 +333,12 @@ function GutscheineView({ token, user }) {
                       { label: "Datum", value: fmtDate(r.createdAt || r.created_at) },
                       { label: "Abholung", value: String(r.fromFull || r.from || "—") },
                       { label: "Ziel", value: String(r.toFull || r.to || "—") },
-                      r.distanceKm != null ? { label: "Strecke", value: Number(r.distanceKm).toFixed(1) + " km" } : null,
-                      r.durationMinutes != null ? { label: "Fahrzeit", value: r.durationMinutes + " Min." } : null,
+                      (r.actualDistanceKm != null || r.distanceKm != null) ? { 
+                        label: r.actualDistanceKm != null ? "Gefahrene Strecke" : "Geplante Strecke", 
+                        value: Number(r.actualDistanceKm ?? r.distanceKm).toFixed(1) + " km" 
+                      } : null,
+                      r.actualDurationMinutes != null ? { label: "Fahrtdauer", value: r.actualDurationMinutes + " Min." } : 
+                      r.durationMinutes != null ? { label: "Geplante Dauer", value: r.durationMinutes + " Min." } : null,
                     ].filter(Boolean).map(row => (
                       <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                         <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", flexShrink: 0 }}>{row.label}</span>
@@ -344,7 +348,7 @@ function GutscheineView({ token, user }) {
                   </div>
                   <div style={{ borderTop: "0.5px solid rgba(0,0,0,0.08)", marginTop: 10, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 13, fontWeight: 500 }}>Gesamtbetrag</span>
-                    <span style={{ fontSize: 18, fontWeight: 700, color: RED }}>{fmtMoney(r.finalFare || r.estimatedFare)}</span>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: RED }}>{fmtMoney(r.finalFare != null ? r.finalFare : r.status !== "completed" ? r.estimatedFare : null)}</span>
                   </div>
                   <p style={{ fontSize: 11, color: "rgba(0,0,0,0.3)", textAlign: "center", margin: "8px 0 0" }}>
                     Fahrtnachweis · {company?.name || "ONRODA"} · onroda.de
@@ -386,7 +390,7 @@ function FahrtenView({ token }) {
             <div key={r.id || i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: i % 2 === 0 ? "#fafafa" : "#fff", borderRadius: 8, fontSize: 13 }}>
               <span style={{ color: "rgba(0,0,0,0.35)", fontSize: 11, minWidth: 60 }}>{fmtDate(r.createdAt || r.created_at)}</span>
               <span style={{ flex: 1, color: "#1c1c1e" }}>{String(r.fromFull || r.from || "—").split(",")[0]} → {String(r.toFull || r.to || "—").split(",")[0]}</span>
-              <span style={{ fontWeight: 600, color: "#1c1c1e" }}>{fmtMoney(r.finalFare || r.estimatedFare)}</span>
+              <span style={{ fontWeight: 600, color: "#1c1c1e" }}>{fmtMoney(r.finalFare != null ? r.finalFare : r.status !== "completed" ? r.estimatedFare : null)}</span>
               <Badge tone={r.status === "completed" ? "ok" : r.status === "cancelled" ? "err" : "muted"}>{r.status || "—"}</Badge>
             </div>
           ))}
