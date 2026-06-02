@@ -1286,37 +1286,6 @@
       margin-bottom: 0;
     }
 
-    .hp-about-highlights {
-      list-style: none;
-      margin: 0 0 1rem;
-      padding: 0;
-      display: grid;
-      gap: 10px;
-    }
-
-    .hp-about-highlights li {
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-    }
-
-    .hp-about-highlights strong {
-      display: block;
-      color: var(--onroda-red);
-      font-size: 0.78rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .hp-about-highlights span {
-      display: block;
-      color: var(--onroda-text-dark);
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-
     .hp-footer-link-btn {
       background: none;
       border: none;
@@ -2029,6 +1998,12 @@
       background-image:
         linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.72)),
         linear-gradient(135deg, #fde68a 0%, #fef3c7 45%, #f8fafc 100%);
+    }
+
+    .hp-audience-card--drivers .hp-audience-card__bottom {
+      background-image:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.72)),
+        linear-gradient(135deg, #bbf7d0 0%, #dcfce7 45%, #f8fafc 100%);
     }
 
     .hp-audience-card__badge {
@@ -3593,7 +3568,8 @@
       outline-offset: 2px;
     }
 
-    .hp-store-badge--google {
+    .hp-store-badge--google,
+    .hp-store-badge--apple {
       padding: 0;
       border: none;
       background: transparent;
@@ -3602,13 +3578,15 @@
       line-height: 0;
     }
 
-    .hp-store-badge--google img {
+    .hp-store-badge--google img,
+    .hp-store-badge--apple img {
       display: block;
       width: 168px;
       height: auto;
     }
 
-    .hp-store-badge--google:hover {
+    .hp-store-badge--google:hover,
+    .hp-store-badge--apple:hover {
       box-shadow: none;
     }
 
@@ -3975,7 +3953,8 @@
         flex: 1 1 148px;
       }
 
-      .hp-store-badge--google img {
+      .hp-store-badge--google img,
+      .hp-store-badge--apple img {
         width: min(168px, calc(50% - 6px));
         min-width: 148px;
       }

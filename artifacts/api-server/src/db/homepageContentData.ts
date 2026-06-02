@@ -52,7 +52,7 @@ export type HomepageContentDto = {
 };
 
 const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
-  section2Title: "Eine Plattform für Fahrgäste und Unternehmen",
+  section2Title: "ONRODA für Fahrgäste, Partner und Fahrer",
   section2Cards: [
     {
       icon: "🚕",
@@ -79,11 +79,11 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
       isActive: true,
     },
     {
-      icon: "🏢",
-      title: "Für Unternehmen",
-      body: "Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.",
-      ctaText: "Partner werden",
-      ctaLink: "#unternehmen",
+      icon: "🚗",
+      title: "Für Fahrer",
+      body: "Mehr Aufträge, weniger Leerzeit — Aufträge, Navigation und Abrechnung in einer App.",
+      ctaText: "App entdecken",
+      ctaLink: "#jetzt-buchen",
       isActive: true,
     },
   ],
