@@ -1309,6 +1309,62 @@
       font-weight: 700;
     }
 
+    .hp-medical-usp__lead--sub {
+      margin-top: -6px;
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+    }
+
+    .hp-care-benefits--compact {
+      margin-bottom: 16px;
+      gap: 8px;
+    }
+
+    .hp-medical-usp__audience {
+      margin: 0 0 18px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.5;
+      color: var(--onroda-text-dark);
+    }
+
+    .hp-medical-usp__actions--topics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 8px;
+    }
+
+    .hp-medical-usp__topic-cta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(213, 0, 28, 0.2);
+      color: var(--onroda-text-dark);
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.3;
+      text-decoration: none;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+      transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+
+    .hp-medical-usp__topic-cta::after {
+      content: "→";
+      flex-shrink: 0;
+      color: var(--onroda-red);
+      font-weight: 800;
+    }
+
+    .hp-medical-usp__topic-cta:hover {
+      border-color: rgba(213, 0, 28, 0.45);
+      color: var(--onroda-red);
+      box-shadow: 0 8px 22px rgba(213, 0, 28, 0.1);
+    }
+
     .hp-medical-usp__tags {
       list-style: none;
       padding: 0;
