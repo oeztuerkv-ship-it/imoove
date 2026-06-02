@@ -701,8 +701,11 @@
       });
 
       modal.addEventListener("click", function (e) {
-        var t = e.target;
-        if (t && t.getAttribute && t.getAttribute("data-motion-close") != null) {
+        var closeTrigger =
+          e.target && e.target.closest
+            ? e.target.closest("[data-motion-close]")
+            : null;
+        if (closeTrigger) {
           closeMotionModal();
         }
       });
