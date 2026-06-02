@@ -1428,6 +1428,8 @@
       margin: 0;
     }
 
+    /* legacy aliases — section merged into .hp-app-download */
+
     .hp-section-head {
       text-align: center;
       max-width: 48rem;
@@ -1812,32 +1814,187 @@
       margin-bottom: 10px;
     }
 
-    .app-download-section {
-      background-color: #f5f5f7;
+    .app-download-section,
+    .hp-app-download {
+      background:
+        radial-gradient(circle at 85% 20%, rgba(213, 0, 28, 0.06), transparent 42%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      border-top: 1px solid rgba(15, 23, 42, 0.06);
     }
 
-    .hp-download-band {
-      padding: 2.75rem 0;
+    .hp-app-download {
+      padding: clamp(2rem, 4vw, 2.75rem) 0;
+    }
+
+    .hp-app-download__grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.85fr);
+      gap: clamp(1.5rem, 4vw, 3rem);
+      align-items: center;
+    }
+
+    .hp-app-download__kicker {
+      margin-bottom: 0.65rem;
+    }
+
+    .hp-app-download__title {
+      margin: 0 0 0.65rem;
+      font-family: var(--font-sans);
+      font-size: clamp(1.65rem, 3.2vw, 2.15rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
       color: var(--onroda-text-dark);
     }
 
-    .hp-download-wrap {
+    .hp-app-download__lead {
+      margin: 0 0 1.25rem;
+      font-size: 1.02rem;
+      line-height: 1.55;
+      color: var(--onroda-text-grey);
+      max-width: 34ch;
+    }
+
+    .hp-app-download__trust {
+      list-style: none;
+      margin: 0 0 1.35rem;
+      padding: 0;
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .hp-app-download__trust li {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--onroda-text-dark);
+    }
+
+    .hp-app-download__trust svg {
+      flex-shrink: 0;
+      color: var(--onroda-red);
+    }
+
+    .hp-app-download__device {
       display: flex;
       justify-content: center;
       align-items: center;
     }
 
-    .hp-download-stores-row {
+    .hp-app-download__phone {
+      position: relative;
+      width: min(280px, 100%);
+      padding: 10px;
+      border-radius: 38px;
+      background: linear-gradient(160deg, #2c2c2e 0%, #0a0a0a 100%);
+      border: 2px solid #3f3f46;
+      box-shadow:
+        0 28px 56px rgba(15, 23, 42, 0.18),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    }
+
+    .hp-app-download__island {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 72px;
+      height: 20px;
+      border-radius: 999px;
+      background: #000;
+      z-index: 2;
+    }
+
+    .hp-app-download__screen {
+      border-radius: 28px;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid #27272a;
+      min-height: 420px;
       display: flex;
-      justify-content: center;
-      width: 100%;
+      flex-direction: column;
+    }
+
+    .hp-app-download__screen-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 32px 12px 10px;
+    }
+
+    .hp-app-download__screen-head img {
+      height: 22px;
+      width: auto;
+    }
+
+    .hp-app-download__map {
+      position: relative;
+      flex: 1;
+      min-height: 200px;
+      margin: 0 10px;
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 65% 35%, rgba(213, 0, 28, 0.16), transparent 40%),
+        linear-gradient(160deg, #e2e8f0 0%, #f8fafc 55%, #dbeafe 100%);
+      overflow: hidden;
+    }
+
+    .hp-app-download__pin {
+      position: absolute;
+      top: 36%;
+      left: 58%;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--onroda-red);
+      box-shadow: 0 0 0 6px rgba(213, 0, 28, 0.2);
+    }
+
+    .hp-app-download__route {
+      position: absolute;
+      inset: 28% 20% 32% 16%;
+      border: 2px solid var(--onroda-red);
+      border-radius: 999px;
+      border-top-color: transparent;
+      border-left-color: transparent;
+      transform: rotate(14deg);
+    }
+
+    .hp-app-download__ride {
+      margin: 10px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+      display: grid;
+      gap: 4px;
+    }
+
+    .hp-app-download__ride small {
+      color: #64748b;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .hp-app-download__ride strong {
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+      color: var(--onroda-text-dark);
+    }
+
+    .hp-app-download__ride span {
+      font-size: 0.72rem;
+      color: #64748b;
+      line-height: 1.35;
     }
 
     .hp-store-links {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
-      justify-content: center;
+      gap: 12px;
     }
 
     .hp-store-link {
@@ -1892,19 +2049,19 @@
     .hp-footer {
       background: var(--hp-footer-bg);
       color: #fff;
-      padding: 3.5rem 0 2.5rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.02);
+      padding: clamp(2.75rem, 5vw, 3.75rem) 0 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
     }
 
     .hp-footer-main {
       display: grid;
-      grid-template-columns: minmax(260px, 1.4fr) repeat(3, minmax(160px, 0.72fr));
-      gap: 2.5rem;
+      grid-template-columns: minmax(240px, 1.35fr) repeat(4, minmax(120px, 1fr));
+      gap: clamp(1.75rem, 3vw, 2.5rem) clamp(1.25rem, 2.5vw, 2rem);
       align-items: start;
     }
 
     .hp-footer-brand {
-      max-width: 340px;
+      max-width: 360px;
     }
 
     .hp-footer-logo {
@@ -1915,7 +2072,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .hp-footer-logo .on {
@@ -1932,14 +2089,22 @@
 
     .hp-footer-text {
       color: var(--hp-footer-muted);
-      margin: 0 0 22px;
-      font-size: 0.98rem;
+      margin: 0 0 1.25rem;
+      font-size: 0.94rem;
+      line-height: 1.6;
+    }
+
+    .hp-footer-contact {
+      padding-top: 0.25rem;
     }
 
     .hp-footer-contact-title {
-      margin: 0 0 10px;
+      margin: 0 0 8px;
       font-weight: 700;
-      color: #fff;
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.92);
     }
 
     .hp-footer-contact-list {
@@ -1947,7 +2112,7 @@
       padding: 0;
       margin: 0;
       display: grid;
-      gap: 10px;
+      gap: 8px;
       color: var(--hp-footer-muted);
     }
 
@@ -1962,10 +2127,12 @@
     }
 
     .hp-footer-col h4 {
-      margin: 0 0 18px;
-      font-size: 1.02rem;
+      margin: 0 0 14px;
+      font-size: 0.82rem;
       font-weight: 700;
-      color: #fff;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.92);
     }
 
     .hp-footer-nav {
@@ -1973,12 +2140,14 @@
       padding: 0;
       margin: 0;
       display: grid;
-      gap: 12px;
+      gap: 10px;
     }
 
     .hp-footer-nav a {
       color: var(--hp-footer-muted);
       text-decoration: none;
+      font-size: 0.94rem;
+      line-height: 1.4;
     }
 
     .hp-footer-nav a:hover {
@@ -1987,8 +2156,8 @@
     }
 
     .hp-footer-bottom {
-      margin-top: 2.5rem;
-      padding-top: 1.5rem;
+      margin-top: clamp(2rem, 4vw, 2.75rem);
+      padding-top: 1.25rem;
       border-top: 1px solid var(--hp-footer-line);
       display: flex;
       align-items: center;
@@ -2028,6 +2197,23 @@
 
       .hp-footer-main {
         grid-template-columns: 1fr 1fr;
+      }
+
+      .hp-footer-brand {
+        grid-column: 1 / -1;
+        max-width: none;
+      }
+
+      .hp-app-download__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hp-app-download__lead {
+        max-width: none;
+      }
+
+      .hp-app-download__phone {
+        width: min(260px, 88vw);
       }
 
       .hp-audience-grid {
@@ -2184,7 +2370,20 @@
       }
 
       .hp-footer-main {
-        gap: 2rem;
+        gap: 1.75rem;
+      }
+
+      .hp-app-download__trust {
+        margin-bottom: 1.15rem;
+      }
+
+      .hp-store-links {
+        flex-direction: column;
+      }
+
+      .hp-store-link {
+        width: 100%;
+        max-width: 320px;
       }
 
       .hp-hero-layout {
