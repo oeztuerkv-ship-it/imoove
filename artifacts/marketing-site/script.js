@@ -274,7 +274,7 @@
             section2TitleEl.textContent = pickCms(item && item.section2Title, defaultSection2Title);
           }
           var cards = item && Array.isArray(item.section2Cards) ? item.section2Cards : [];
-          for (var i = 1; i <= 4; i++) {
+          for (var i = 1; i <= 5; i++) {
             var cardWrap = document.getElementById("section2-card-" + i);
             var iconEl = document.getElementById("section2-card-" + i + "-icon");
             var titleEl = document.getElementById("section2-card-" + i + "-title");
@@ -767,6 +767,59 @@
     }
 
     initHeroMotionModal();
+
+    function initAboutModal() {
+      var modal = document.getElementById("hp-about-modal");
+      if (!modal) return;
+
+      function openAboutModal() {
+        modal.hidden = false;
+        modal.setAttribute("aria-hidden", "false");
+        modal.classList.add("is-open");
+        document.body.classList.add("hp-motion-modal-open");
+        var closeBtn = modal.querySelector(".hp-motion-modal__close");
+        if (closeBtn) closeBtn.focus();
+      }
+
+      function closeAboutModal() {
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+        modal.classList.remove("is-open");
+        document.body.classList.remove("hp-motion-modal-open");
+      }
+
+      window.openAboutModal = openAboutModal;
+      window.closeAboutModal = closeAboutModal;
+
+      document.addEventListener("click", function (e) {
+        var trigger =
+          e.target && e.target.closest
+            ? e.target.closest("[data-about-open]")
+            : null;
+        if (!trigger) return;
+        e.preventDefault();
+        openAboutModal();
+      });
+
+      modal.addEventListener("click", function (e) {
+        var closeTrigger =
+          e.target && e.target.closest
+            ? e.target.closest("[data-about-close]")
+            : null;
+        if (closeTrigger) {
+          closeAboutModal();
+        }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !modal.hidden) {
+          e.preventDefault();
+          closeAboutModal();
+        }
+      });
+    }
+
+    initAboutModal();
 
     function initAppDownloadReveal() {
       var section = document.querySelector(".hp-app-download");

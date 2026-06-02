@@ -52,22 +52,22 @@ export type HomepageContentDto = {
 };
 
 const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
-  section2Title: "Für wen ist ONRODA?",
+  section2Title: "Eine Plattform für Fahrer, Fahrgäste und Unternehmen",
   section2Cards: [
+    {
+      icon: "🚗",
+      title: "Für Fahrer",
+      body: "Aufträge in Echtzeit, Navigation und Abrechnung — alles in einer Fahrer-App.",
+      ctaText: "App entdecken",
+      ctaLink: "#jetzt-buchen",
+      isActive: true,
+    },
     {
       icon: "🚕",
       title: "Für Fahrgäste",
       body: "Fahrten sofort buchen oder planen. Einfach, schnell und transparent.",
       ctaText: "Jetzt buchen",
       ctaLink: "#jetzt-buchen",
-      isActive: true,
-    },
-    {
-      icon: "🏢",
-      title: "Für Unternehmen",
-      body: "Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.",
-      ctaText: "Partner werden",
-      ctaLink: "#unternehmen",
       isActive: true,
     },
     {
@@ -84,6 +84,14 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
       body: "Hotel, Firmenkunden oder Plattformpartner werden und profitieren.",
       ctaText: "Mehr erfahren",
       ctaLink: "#partner",
+      isActive: true,
+    },
+    {
+      icon: "🏢",
+      title: "Für Unternehmen",
+      body: "Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.",
+      ctaText: "Partner werden",
+      ctaLink: "#unternehmen",
       isActive: true,
     },
   ],
