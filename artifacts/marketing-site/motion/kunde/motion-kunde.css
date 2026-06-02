@@ -322,7 +322,7 @@ body.motion-kunde--embed .motion-kunde__stage {
   max-height: 100%;
   margin: 0 auto;
   transform-origin: center bottom;
-  transform: scale(0.82) translateY(20px);
+  transform: scale(0.82) translateY(-6px);
   border-radius: clamp(14px, 3.5vw, 36px);
   padding: clamp(5px, 1.2vw, 10px);
   box-shadow: none;
