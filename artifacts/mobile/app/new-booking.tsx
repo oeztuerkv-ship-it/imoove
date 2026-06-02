@@ -34,7 +34,14 @@ import {
 import { CUSTOMER_BROKER_NOTICE_DE } from "@/constants/customerBrokerNoticeDe";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
-import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
+import {
+  effectivePricingModeForCustomerRide,
+  VEHICLES,
+  type PaymentMethod,
+  type VehicleType,
+  type VehicleOption,
+} from "@/context/RideContext";
+import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import {
@@ -940,7 +947,7 @@ export default function NewBookingScreen() {
   const [wheelchairCompanion, setWheelchairCompanion] = useState(false);
   const [showDriverNoteModal, setShowDriverNoteModal] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [medicalRideEnabled, setMedicalRideEnabled] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [transportScanBusy, setTransportScanBusy] = useState(false);
   const [pendingTransportScanId, setPendingTransportScanId] = useState<string | null>(null);
   const [transportScanTrafficLight, setTransportScanTrafficLight] = useState<MedicalTrafficLight | null>(null);
@@ -952,11 +959,22 @@ export default function NewBookingScreen() {
     setTransportScanReasonDe(null);
   }, []);
 
-  const switchMedicalToBar = useCallback(() => {
-    setMedicalRideEnabled(false);
+  const switchVoucherToBar = useCallback(() => {
+    setPaymentMethod("cash");
     dismissTransportScan();
     Haptics.selectionAsync();
   }, [dismissTransportScan]);
+
+  const reservePaymentOptions = useMemo(
+    () =>
+      [
+        { id: "cash" as const, label: "Bar", isEuro: true },
+        ...(medicalTransportAvailable
+          ? [{ id: "voucher" as const, label: "Transportschein (KK)", isVoucher: true }]
+          : []),
+      ] as const,
+    [medicalTransportAvailable],
+  );
 
   const [searchUserGps, setSearchUserGps] = useState<{ lat: number; lon: number } | null>(null);
   const originAddressInputRef = useRef<TextInput>(null);
@@ -1037,7 +1055,7 @@ export default function NewBookingScreen() {
     setAccessCode("");
     setDriverNote("");
     setFareEstimates({});
-    setMedicalRideEnabled(false);
+    setPaymentMethod("cash");
     dismissTransportScan();
   }, [dismissTransportScan]);
 
@@ -1048,22 +1066,18 @@ export default function NewBookingScreen() {
 
   const canSubmitReservation = useMemo(() => {
     if (!formComplete || submitting) return false;
-    if (!medicalRideEnabled) return true;
+    if (paymentMethod !== "voucher") return true;
     if (!pendingTransportScanId || !transportScanTrafficLight) return false;
     return transportScanTrafficLight === "green" || transportScanTrafficLight === "yellow";
-  }, [
-    formComplete,
-    submitting,
-    medicalRideEnabled,
-    pendingTransportScanId,
-    transportScanTrafficLight,
-  ]);
+  }, [formComplete, submitting, paymentMethod, pendingTransportScanId, transportScanTrafficLight]);
 
   const submitButtonLabel = useMemo(() => {
     if (submitting) return "Wird gesendet…";
-    if (medicalRideEnabled && transportScanTrafficLight === "yellow") return "Trotzdem buchen";
-    return "Reservierung absenden";
-  }, [submitting, medicalRideEnabled, transportScanTrafficLight]);
+    if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") {
+      return isInstant ? "Trotzdem buchen" : "Trotzdem reservieren";
+    }
+    return isInstant ? "Jetzt buchen" : "Reservierung absenden";
+  }, [submitting, paymentMethod, transportScanTrafficLight, isInstant]);
 
   async function runTransportScan(fromCamera: boolean) {
     const token = profile.sessionToken?.trim() ?? "";
@@ -1173,6 +1187,19 @@ export default function NewBookingScreen() {
 
   const handleSubmit = async () => {
     if (!formComplete || submitting) return;
+    if (paymentMethod === "voucher") {
+      if (!pendingTransportScanId || !transportScanTrafficLight) {
+        Alert.alert("Transportschein", "Bitte zuerst den Transportschein scannen.");
+        return;
+      }
+      if (transportScanTrafficLight === "red") {
+        Alert.alert(
+          "Transportschein",
+          "Der Schein wurde als ungültig erkannt. Bitte erneut scannen oder Bar wählen.",
+        );
+        return;
+      }
+    }
     setSubmitting(true);
     const vehicleApiValue = selectedVehicle;
     const customerName = profile?.name
@@ -1261,7 +1288,8 @@ export default function NewBookingScreen() {
 
       const partnerBookingMeta: Record<string, unknown> = {};
       if (driverNote.trim()) partnerBookingMeta.customer_driver_note = driverNote.trim();
-      if (medicalRideEnabled) partnerBookingMeta.medical_ride = true;
+      const isVoucherPayment = paymentMethod === "voucher";
+      if (isVoucherPayment) partnerBookingMeta.medical_ride = true;
 
       await addRequest({
         from: from.name,
@@ -1275,16 +1303,16 @@ export default function NewBookingScreen() {
         distanceKm: bookingRoute.distanceKm,
         durationMinutes: bookingRoute.durationMinutes,
         estimatedFare: fareEstimates[selectedVehicle] ?? 0,
-        paymentMethod: medicalRideEnabled ? "Krankenkasse" : "Bar",
+        paymentMethod: isVoucherPayment ? "Krankenkasse" : "Bar",
         vehicle: vehicleApiValue,
         customerName,
         passengerId: passengerId || undefined,
         scheduledAt: isInstant ? null : scheduledAt,
-        rideKind: medicalRideEnabled ? "medical" : "standard",
-        payerKind: medicalRideEnabled ? "insurance" : "passenger",
+        rideKind: isVoucherPayment ? "medical" : "standard",
+        payerKind: isVoucherPayment ? "insurance" : "passenger",
         ...(pricingMode ? { pricingMode } : {}),
         ...(Object.keys(partnerBookingMeta).length > 0 ? { partnerBookingMeta } : {}),
-        ...(medicalRideEnabled && pendingTransportScanId
+        ...(isVoucherPayment && pendingTransportScanId
           ? { customerMedicalScanId: pendingTransportScanId }
           : {}),
         ...(codeTrim ? { accessCode: codeTrim } : {}),
@@ -1430,92 +1458,100 @@ export default function NewBookingScreen() {
           </Pressable>
         </View>
 
-        {medicalTransportAvailable ? (
-          <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
-            <View style={styles.medicalToggleRow}>
-              <View style={{ flex: 1, gap: rs(4) }}>
-                <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
-                  Krankenfahrt (Transportschein)
-                </Text>
-                <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
-                  Optional — Zahlung über Krankenkasse nach Scan-Vorprüfung.
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => {
-                  const next = !medicalRideEnabled;
-                  setMedicalRideEnabled(next);
-                  if (!next) dismissTransportScan();
-                  Haptics.selectionAsync();
-                }}
-                style={[
-                  styles.medicalToggleTrack,
-                  { backgroundColor: medicalRideEnabled ? "#16A34A" : colors.border },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.medicalToggleThumb,
-                    { alignSelf: medicalRideEnabled ? "flex-end" : "flex-start" },
-                  ]}
-                />
-              </Pressable>
-            </View>
-            {medicalRideEnabled ? (
-              <View style={styles.medicalScanBox}>
-                <Text style={[styles.medicalScanLabel, { color: "#1D4ED8" }]}>Zahlungsart: Krankenkasse (KK)</Text>
+        <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Zahlungsart wählen</Text>
+          <View style={styles.paymentGrid}>
+            {reservePaymentOptions.map((opt) => {
+              const isSelected = paymentMethod === opt.id;
+              return (
                 <Pressable
-                  style={[styles.transportScanBtn, transportScanBusy && { opacity: 0.65 }]}
-                  disabled={transportScanBusy || submitting}
-                  onPress={openTransportScanPicker}
+                  key={opt.id}
+                  style={[
+                    styles.paymentBtn,
+                    {
+                      borderColor: isSelected ? ONRODA_MARK_RED : colors.border,
+                      backgroundColor: isSelected ? `${ONRODA_MARK_RED}0F` : HOME_SHEET_INNER,
+                      borderWidth: isSelected ? 2 : 1.5,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (opt.id !== "voucher") dismissTransportScan();
+                    setPaymentMethod(opt.id);
+                    Haptics.selectionAsync();
+                  }}
                 >
-                  {transportScanBusy ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Feather name="camera" size={16} color="#fff" />
-                  )}
-                  <Text style={styles.transportScanBtnText}>
-                    {transportScanBusy ? "Transportschein wird geprüft…" : "Transportschein scannen"}
-                  </Text>
+                  <View style={styles.paymentBtnLeft}>
+                    {opt.id === "cash" ? (
+                      <Text style={[styles.paymentEuro, { color: colors.foreground }]}>€</Text>
+                    ) : (
+                      <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
+                    )}
+                    <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
+                  </View>
+                  {isSelected ? (
+                    <View style={styles.paymentCheck}>
+                      <Feather name="check" size={10} color="#fff" />
+                    </View>
+                  ) : null}
                 </Pressable>
-                {transportScanTrafficLight ? (
-                  <>
-                    <MedicalTrafficLightCard
-                      scanApi="customer"
-                      trafficLight={transportScanTrafficLight}
-                      warnings={[]}
-                      customerReasonOverride={transportScanReasonDe}
-                      onPrimaryAction={() => {}}
-                      hidePrimaryButton
-                    />
-                    {transportScanTrafficLight === "green" ? (
-                      <Text style={styles.medicalScanHint}>Fahrer prüft vor Ort nochmals.</Text>
-                    ) : null}
-                    {transportScanTrafficLight === "yellow" ? (
-                      <Text style={[styles.medicalScanHint, { color: "#B45309" }]}>
-                        Letzte Entscheidung beim Fahrer.
-                      </Text>
-                    ) : null}
-                    {transportScanTrafficLight === "red" ? (
-                      <>
-                        <Text style={[styles.medicalScanHint, { color: "#B91C1C", fontFamily: "Inter_600SemiBold" }]}>
-                          Schein ungültig — weiter ohne KK?
-                        </Text>
-                        <Pressable style={styles.selfPaySwitchBtn} onPress={switchMedicalToBar}>
-                          <Text style={styles.selfPaySwitchBtnText}>Stattdessen Bar zahlen</Text>
-                        </Pressable>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <Text style={[styles.medicalScanHint, { color: "#2563EB" }]}>
-                    Bitte Transportschein scannen, um die Reservierung freizugeben.
-                  </Text>
-                )}
-              </View>
-            ) : null}
+              );
+            })}
           </View>
-        ) : null}
+          {paymentMethod === "voucher" ? (
+            <View style={styles.medicalScanBox}>
+              <Pressable
+                style={[styles.transportScanBtn, transportScanBusy && { opacity: 0.65 }]}
+                disabled={transportScanBusy || submitting}
+                onPress={openTransportScanPicker}
+              >
+                {transportScanBusy ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Feather name="camera" size={16} color="#fff" />
+                )}
+                <Text style={styles.transportScanBtnText}>
+                  {transportScanBusy ? "Transportschein wird geprüft…" : "Transportschein scannen"}
+                </Text>
+              </Pressable>
+              {transportScanTrafficLight ? (
+                <>
+                  <MedicalTrafficLightCard
+                    scanApi="customer"
+                    trafficLight={transportScanTrafficLight}
+                    warnings={[]}
+                    customerReasonOverride={transportScanReasonDe}
+                    onPrimaryAction={() => {}}
+                    hidePrimaryButton
+                  />
+                  {transportScanTrafficLight === "green" ? (
+                    <Text style={styles.medicalScanHint}>Fahrer prüft vor Ort nochmals.</Text>
+                  ) : null}
+                  {transportScanTrafficLight === "yellow" ? (
+                    <Text style={[styles.medicalScanHint, { color: "#B45309" }]}>
+                      Letzte Entscheidung beim Fahrer.
+                    </Text>
+                  ) : null}
+                  {transportScanTrafficLight === "red" ? (
+                    <>
+                      <Text style={[styles.medicalScanHint, { color: "#B91C1C", fontFamily: "Inter_600SemiBold" }]}>
+                        Schein ungültig — weiter ohne KK?
+                      </Text>
+                      <Pressable style={styles.selfPaySwitchBtn} onPress={switchVoucherToBar}>
+                        <Text style={styles.selfPaySwitchBtnText}>Stattdessen Bar zahlen</Text>
+                      </Pressable>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <Text style={[styles.medicalScanHint, { color: "#2563EB" }]}>
+                  {isInstant
+                    ? "Bitte Transportschein scannen, um die Buchung freizugeben."
+                    : "Bitte Transportschein scannen, um die Reservierung freizugeben."}
+                </Text>
+              )}
+            </View>
+          ) : null}
+        </View>
 
         {/* Vehicle — only after all fields filled */}
         {formComplete && (
@@ -2080,6 +2116,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 2,
+  },
+  paymentGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rs(8),
+    marginTop: rs(8),
+  },
+  paymentBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: rs(11),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(12),
+    minWidth: "47%",
+    minHeight: rs(46),
+    flexGrow: 1,
+  },
+  paymentBtnLeft: { flexDirection: "row", alignItems: "center", gap: rs(6), flexShrink: 1 },
+  paymentBtnText: { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
+  paymentEuro: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
+  paymentCheck: {
+    width: rs(18),
+    height: rs(18),
+    borderRadius: rs(9),
+    backgroundColor: ONRODA_MARK_RED,
+    alignItems: "center",
+    justifyContent: "center",
   },
   medicalScanBox: {
     marginTop: rs(12),

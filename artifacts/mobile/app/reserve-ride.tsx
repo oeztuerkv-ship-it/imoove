@@ -610,6 +610,9 @@ export default function ReserveRideScreen() {
       });
     }
     setCustomerDriverNote(trimmed);
+    if (transportschein === true) {
+      setPaymentMethod("voucher");
+    }
     setTimeout(() => {
       router.push("/ride");
     }, 0);
@@ -622,6 +625,8 @@ export default function ReserveRideScreen() {
     commitSchedule,
     skipWhere,
     scheduleMode,
+    transportschein,
+    setPaymentMethod,
     setScheduledTime,
     setCustomerDriverNote,
     driverNote,

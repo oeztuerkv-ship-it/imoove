@@ -350,7 +350,9 @@ export default function RideScreen() {
 
   const orderCtaLabel = React.useMemo(() => {
     if (preAuthLoading) return "Vorautorisierung…";
-    if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") return "Trotzdem buchen";
+    if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") {
+      return scheduledTime !== null ? "Trotzdem reservieren" : "Trotzdem buchen";
+    }
     return rideConfirmCtaLabel(selectedVehicle, scheduledTime !== null);
   }, [preAuthLoading, paymentMethod, transportScanTrafficLight, selectedVehicle, scheduledTime]);
 
