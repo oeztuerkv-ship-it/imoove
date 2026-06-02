@@ -1050,7 +1050,6 @@
 
     .hp-motion-modal__body {
       flex: 1 1 auto;
-      min-height: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1061,14 +1060,12 @@
     }
 
     .hp-motion-frame {
+      --motion-iframe-h: min(760px, 74vh);
       position: relative;
       width: min(420px, calc(100vw - 2rem));
       max-width: 100%;
       margin: 0 auto;
-      flex: 1 1 auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
+      flex-shrink: 0;
       overflow: hidden;
       border-radius: 16px;
       background: #020617;
@@ -1076,12 +1073,12 @@
 
     .hp-motion-modal iframe,
     .hp-motion-modal__iframe {
+      position: relative;
       display: block;
       width: 100%;
-      flex: 1 1 auto;
-      min-height: 0;
-      height: 100%;
-      max-height: none;
+      height: min(760px, 78vh);
+      min-height: 560px;
+      max-height: min(760px, 78vh);
       border: 0;
       background: #020617;
     }
