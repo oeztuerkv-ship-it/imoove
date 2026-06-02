@@ -1030,7 +1030,9 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="hp-motion-modal-title"
-    data-motion-iframe-src="/motion/kunde/motion-test-kunde.html?embed=1"
+    data-motion-customer-iframe-src="/motion/kunde/motion-test-kunde.html?embed=1"
+    data-motion-medical-iframe-src="/motion/krankenfahrt/motion-test-krankenfahrt.html?embed=1"
+    data-motion-platform-iframe-src="/motion/plattform/motion-test-plattform.html?embed=1"
     data-motion-video-src="/videos/onroda-kunde.mp4"
   >
     <button type="button" class="hp-motion-modal__backdrop" data-motion-close aria-label="Dialog schließen"></button>
@@ -1039,6 +1041,11 @@
         <div>
           <h2 id="hp-motion-modal-title">So funktioniert ONRODA</h2>
           <p class="hp-motion-modal__note">Motion-Vorschau · 5-Sekunden-Loop · noch kein finales Produktvideo</p>
+          <div class="hp-motion-tabs" role="tablist" aria-label="Motion-Vorschau auswählen">
+            <button type="button" class="hp-motion-tab" data-motion-tab="customer" role="tab" aria-selected="true">Kunde</button>
+            <button type="button" class="hp-motion-tab" data-motion-tab="medical" role="tab" aria-selected="false">Krankenfahrt</button>
+            <button type="button" class="hp-motion-tab" data-motion-tab="platform" role="tab" aria-selected="false">Unternehmen</button>
+          </div>
         </div>
         <button type="button" class="hp-motion-modal__close" data-motion-close aria-label="Schließen">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1052,7 +1059,7 @@
           <iframe
             id="hp-motion-iframe"
             class="hp-motion-modal__iframe"
-            title="ONRODA Kunde — Motion-Vorschau"
+            title="ONRODA Motion-Vorschau"
             loading="eager"
             referrerpolicy="no-referrer"
           ></iframe>

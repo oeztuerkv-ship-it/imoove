@@ -1,0 +1,465 @@
+/* ONRODA Motion — Krankenfahrt (12s Loop). Nur UI-Demo, keine echten Gesundheitsdaten. */
+:root {
+  --onroda-teal: #0d9488;
+  --onroda-teal-glow: rgba(13, 148, 136, 0.4);
+  --onroda-dark: #0f172a;
+  --onroda-text: #f8fafc;
+  --onroda-muted: #94a3b8;
+  --motion-duration: 12s;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body.motion-medical {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 0%, #134e4a 0%, #020617 55%);
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--onroda-text);
+}
+
+.motion-medical__stage {
+  position: relative;
+  width: min(390px, 92vw);
+  aspect-ratio: 390 / 844;
+  border-radius: 44px;
+  padding: 10px;
+  background: linear-gradient(160deg, #334155 0%, #0f172a 100%);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55);
+}
+
+.motion-medical__island {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96px;
+  height: 28px;
+  border-radius: 999px;
+  background: #000;
+  z-index: 5;
+}
+
+.motion-medical__screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 36px;
+  overflow: hidden;
+  background: var(--onroda-dark);
+  padding: 44px 16px 16px;
+}
+
+.motion-medical__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.motion-medical__logo {
+  height: 24px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+.motion-medical__badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.2);
+  color: #5eead4;
+  border: 1px solid rgba(94, 234, 212, 0.35);
+}
+
+.motion-medical__chips {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.motion-medical__chip {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--onroda-muted);
+  opacity: 0.55;
+}
+
+.motion-medical__chip--active {
+  border-color: var(--onroda-teal);
+  background: rgba(13, 148, 136, 0.15);
+  color: #ccfbf1;
+  opacity: 0;
+  animation: m-chip-select var(--motion-duration) ease-in-out infinite;
+}
+
+.motion-medical__panel {
+  position: relative;
+  min-height: 62%;
+  border-radius: 20px;
+  background: linear-gradient(165deg, #1e293b 0%, #0b1220 100%);
+  border: 1px solid #334155;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.motion-medical__step {
+  position: absolute;
+  inset: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.motion-medical__step-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5eead4;
+}
+
+.motion-medical__step-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.motion-medical__scan-frame {
+  width: 88%;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  border: 2px dashed rgba(94, 234, 212, 0.5);
+  background: rgba(15, 23, 42, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.motion-medical__scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #5eead4, transparent);
+  animation: m-scan-line 1.2s ease-in-out infinite;
+}
+
+.motion-medical__doc {
+  width: 76%;
+  padding: 12px;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+}
+
+.motion-medical__doc-line {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  margin-bottom: 8px;
+}
+
+.motion-medical__doc-line--short {
+  width: 62%;
+}
+
+.motion-medical__doc-line--accent {
+  background: linear-gradient(90deg, #99f6e4, #0d9488);
+  animation: m-doc-pulse 0.8s ease-in-out infinite;
+}
+
+.motion-medical__insurance {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  color: #0f172a;
+}
+
+.motion-medical__insurance-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+}
+
+.motion-medical__insurance-text strong {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.motion-medical__insurance-text span {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.motion-medical__ampel {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.motion-medical__ampel span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #334155;
+  opacity: 0.35;
+}
+
+.motion-medical__ampel span:nth-child(3) {
+  background: #22c55e;
+  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.25);
+  opacity: 0;
+  animation: m-ampel-green var(--motion-duration) ease-out infinite;
+}
+
+.motion-medical__success {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.15);
+  border: 2px solid #22c55e;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  color: #22c55e;
+}
+
+.motion-medical__footer-card {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  color: #0f172a;
+  transform: translateY(120%);
+  animation: m-footer-card var(--motion-duration) cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.motion-medical__footer-card small {
+  display: block;
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.motion-medical__footer-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1rem;
+}
+
+.motion-medical__progress {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.motion-medical__progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--onroda-teal);
+  animation: m-progress var(--motion-duration) linear infinite;
+}
+
+.motion-medical__meta {
+  margin-top: 18px;
+  text-align: center;
+  color: var(--onroda-muted);
+  font-size: 0.85rem;
+}
+
+/* Step timeline (12s) */
+.motion-medical__step--select {
+  animation: m-step-select var(--motion-duration) ease-in-out infinite;
+}
+
+.motion-medical__step--scan {
+  animation: m-step-scan var(--motion-duration) ease-in-out infinite;
+}
+
+.motion-medical__step--ocr {
+  animation: m-step-ocr var(--motion-duration) ease-in-out infinite;
+}
+
+.motion-medical__step--insurance {
+  animation: m-step-insurance var(--motion-duration) ease-in-out infinite;
+}
+
+.motion-medical__step--ampel {
+  animation: m-step-ampel var(--motion-duration) ease-in-out infinite;
+}
+
+.motion-medical__step--done {
+  animation: m-step-done var(--motion-duration) ease-in-out infinite;
+}
+
+@keyframes m-chip-select {
+  0%, 4% { opacity: 0; }
+  8%, 18% { opacity: 1; }
+  22%, 100% { opacity: 0.55; }
+}
+
+@keyframes m-step-select {
+  0%, 6% { opacity: 0; transform: translateY(10px); }
+  10%, 16% { opacity: 1; transform: translateY(0); }
+  20%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes m-step-scan {
+  0%, 16% { opacity: 0; transform: translateY(10px); }
+  20%, 30% { opacity: 1; transform: translateY(0); }
+  34%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes m-step-ocr {
+  0%, 30% { opacity: 0; transform: translateY(10px); }
+  34%, 46% { opacity: 1; transform: translateY(0); }
+  50%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes m-step-insurance {
+  0%, 46% { opacity: 0; transform: translateY(10px); }
+  50%, 62% { opacity: 1; transform: translateY(0); }
+  66%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes m-step-ampel {
+  0%, 62% { opacity: 0; transform: translateY(10px); }
+  66%, 76% { opacity: 1; transform: translateY(0); }
+  80%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes m-step-done {
+  0%, 76% { opacity: 0; transform: translateY(10px); }
+  80%, 94% { opacity: 1; transform: translateY(0); }
+  98%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes m-ampel-green {
+  0%, 64% { opacity: 0; transform: scale(0.6); }
+  68%, 78% { opacity: 1; transform: scale(1); }
+  82%, 100% { opacity: 0.35; transform: scale(1); }
+}
+
+@keyframes m-scan-line {
+  0% { top: 8%; }
+  100% { top: 88%; }
+}
+
+@keyframes m-doc-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes m-footer-card {
+  0%, 78% { transform: translateY(120%); opacity: 0; }
+  84%, 96% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(8%); opacity: 0; }
+}
+
+@keyframes m-progress {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-medical__chip--active,
+  .motion-medical__step,
+  .motion-medical__ampel span:nth-child(3),
+  .motion-medical__footer-card,
+  .motion-medical__progress i,
+  .motion-medical__scan-line,
+  .motion-medical__doc-line--accent {
+    animation: none !important;
+  }
+
+  .motion-medical__chip--active {
+    opacity: 1;
+  }
+
+  .motion-medical__step--done {
+    opacity: 1;
+    transform: none;
+  }
+
+  .motion-medical__footer-card {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .motion-medical__progress i {
+    width: 100%;
+  }
+}
+
+html.motion-medical-embed,
+html.motion-medical-embed body.motion-medical {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.motion-medical--embed {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: #020617;
+}
+
+body.motion-medical--embed > div {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.motion-medical--embed .motion-medical__meta {
+  display: none;
+}
+
+body.motion-medical--embed .motion-medical__stage {
+  aspect-ratio: 390 / 844;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: clamp(14px, 3.5vw, 36px);
+  padding: clamp(5px, 1.2vw, 10px);
+  box-shadow: none;
+}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ONRODA Motion · Krankenfahrt (12s)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/motion/krankenfahrt/motion-krankenfahrt.css" />
+  <script>
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) {
+      document.documentElement.classList.add("motion-medical-embed");
+    }
+  </script>
+</head>
+<body class="motion-medical">
+  <script>
+    if (/[?&]embed=1(?:&|$)/.test(window.location.search)) {
+      document.body.classList.add("motion-medical--embed");
+    }
+  </script>
+  <div>
+    <div class="motion-medical__stage" role="img" aria-label="Motion-Demo: Krankenfahrt mit Transportschein-Prüfung">
+      <span class="motion-medical__island" aria-hidden="true"></span>
+      <div class="motion-medical__screen">
+        <header class="motion-medical__header">
+          <img class="motion-medical__logo" src="/onroda-logo-transparent.png" width="120" height="44" alt="" decoding="async" />
+          <span class="motion-medical__badge">Medical</span>
+        </header>
+
+        <div class="motion-medical__chips" aria-hidden="true">
+          <span class="motion-medical__chip">Taxi</span>
+          <span class="motion-medical__chip motion-medical__chip--active">Krankenfahrt</span>
+          <span class="motion-medical__chip">Geplant</span>
+        </div>
+
+        <div class="motion-medical__panel">
+          <div class="motion-medical__step motion-medical__step--select">
+            <span class="motion-medical__step-label">Schritt 1</span>
+            <p class="motion-medical__step-title">Krankenfahrt auswählen</p>
+          </div>
+
+          <div class="motion-medical__step motion-medical__step--scan">
+            <span class="motion-medical__step-label">Schritt 2</span>
+            <p class="motion-medical__step-title">Transportschein scannen</p>
+            <div class="motion-medical__scan-frame">
+              <span class="motion-medical__scan-line" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <div class="motion-medical__step motion-medical__step--ocr">
+            <span class="motion-medical__step-label">Schritt 3</span>
+            <p class="motion-medical__step-title">OCR erkennt Dokument</p>
+            <div class="motion-medical__doc" aria-hidden="true">
+              <span class="motion-medical__doc-line"></span>
+              <span class="motion-medical__doc-line motion-medical__doc-line--short"></span>
+              <span class="motion-medical__doc-line motion-medical__doc-line--accent"></span>
+              <span class="motion-medical__doc-line"></span>
+            </div>
+          </div>
+
+          <div class="motion-medical__step motion-medical__step--insurance">
+            <span class="motion-medical__step-label">Schritt 4</span>
+            <p class="motion-medical__step-title">Krankenkasse erkannt</p>
+            <div class="motion-medical__insurance" aria-hidden="true">
+              <span class="motion-medical__insurance-icon"></span>
+              <div class="motion-medical__insurance-text">
+                <strong>Kasse · Demo</strong>
+                <span>Plausibilität geprüft</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="motion-medical__step motion-medical__step--ampel">
+            <span class="motion-medical__step-label">Schritt 5</span>
+            <p class="motion-medical__step-title">Ampel grün</p>
+            <div class="motion-medical__ampel" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="motion-medical__step motion-medical__step--done">
+            <span class="motion-medical__step-label">Schritt 6</span>
+            <p class="motion-medical__step-title">Fahrt bestätigt</p>
+            <div class="motion-medical__success" aria-hidden="true">✓</div>
+          </div>
+        </div>
+
+        <article class="motion-medical__footer-card">
+          <small>Krankenfahrt · System</small>
+          <strong>Fahrt freigegeben</strong>
+        </article>
+
+        <div class="motion-medical__progress" aria-hidden="true"><i></i></div>
+      </div>
+    </div>
+    <p class="motion-medical__meta">12-Sekunden-Loop · UI-Demo · keine echten Gesundheitsdaten</p>
+  </div>
+</body>
+</html>

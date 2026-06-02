@@ -469,23 +469,49 @@
       var video = document.getElementById("hp-motion-video");
       var fallback = document.getElementById("hp-motion-fallback");
       var fallbackLink = document.getElementById("hp-motion-fallback-link");
+      var tabs = modal ? modal.querySelectorAll("[data-motion-tab]") : [];
       if (!modal || !iframe) {
         motionModalLog("[motion-modal] init skipped: modal or iframe missing");
         return;
       }
 
-      var iframeSrc = modal.getAttribute("data-motion-iframe-src") || "/motion/kunde/motion-test-kunde.html";
-      if (iframeSrc.indexOf("embed=1") < 0) {
-        iframeSrc += (iframeSrc.indexOf("?") >= 0 ? "&" : "?") + "embed=1";
+      function normalizeEmbedUrl(url) {
+        var u = String(url || "");
+        if (!u) return "";
+        if (u.indexOf("embed=1") < 0) {
+          u += (u.indexOf("?") >= 0 ? "&" : "?") + "embed=1";
+        }
+        return u;
       }
+
+      var customerSrc = normalizeEmbedUrl(
+        modal.getAttribute("data-motion-customer-iframe-src") || "/motion/kunde/motion-test-kunde.html",
+      );
+      var medicalSrc = normalizeEmbedUrl(
+        modal.getAttribute("data-motion-medical-iframe-src") || "/motion/krankenfahrt/motion-test-krankenfahrt.html",
+      );
+      var platformSrc = normalizeEmbedUrl(
+        modal.getAttribute("data-motion-platform-iframe-src") || "/motion/plattform/motion-test-plattform.html",
+      );
+
       var videoSrc = modal.getAttribute("data-motion-video-src") || "/videos/onroda-kunde.mp4";
       var useFinalVideo = modal.getAttribute("data-motion-use-video") === "1";
       var lastFocus = null;
       var loadTimer = null;
+      var activeTab = "customer";
 
-      if (fallbackLink) {
-        fallbackLink.href = iframeSrc;
+      function srcForTab(tab) {
+        if (tab === "medical") return medicalSrc;
+        if (tab === "platform") return platformSrc;
+        return customerSrc;
       }
+
+      function syncFallbackLink() {
+        if (!fallbackLink) return;
+        fallbackLink.href = srcForTab(activeTab);
+      }
+
+      syncFallbackLink();
 
       function hideFallback() {
         if (fallback) fallback.hidden = true;
@@ -555,6 +581,7 @@
         clearLoadTimer();
         hideFallback();
         iframe.src = "about:blank";
+        iframe.setAttribute("title", "ONRODA Motion-Vorschau");
         if (video) {
           video.pause();
           video.removeAttribute("src");
@@ -566,6 +593,33 @@
           lastFocus.focus();
         }
         motionModalLog("[motion-modal] closed");
+      }
+
+      function setActiveTab(nextTab, opts) {
+        var force = !!(opts && opts.forceLoad);
+        var next = nextTab === "medical" || nextTab === "platform" ? nextTab : "customer";
+        activeTab = next;
+        syncFallbackLink();
+
+        for (var i = 0; i < tabs.length; i++) {
+          var t = tabs[i];
+          var isActive = t.getAttribute("data-motion-tab") === activeTab;
+          t.setAttribute("aria-selected", isActive ? "true" : "false");
+        }
+
+        if (!modal.hidden || force) {
+          iframe.src = srcForTab(activeTab);
+          iframe.setAttribute(
+            "title",
+            activeTab === "medical"
+              ? "ONRODA Krankenfahrt — Motion-Vorschau"
+              : activeTab === "platform"
+                ? "ONRODA Unternehmen — Motion-Vorschau"
+                : "ONRODA Kunde — Motion-Vorschau",
+          );
+          hideFallback();
+          scheduleLoadCheck();
+        }
       }
 
       function openMotionModal() {
@@ -592,8 +646,7 @@
           }
           iframe.hidden = false;
           hideFallback();
-          iframe.src = iframeSrc;
-          scheduleLoadCheck();
+          setActiveTab(activeTab, { forceLoad: true });
           requestAnimationFrame(function () {
             requestAnimationFrame(function () {
               logIframeMetrics("after open");
@@ -622,6 +675,14 @@
         motionModalLog("[motion-modal] #hero-motion-open not found, delegation only");
       }
 
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].addEventListener("click", function (e) {
+          var tab = e.currentTarget && e.currentTarget.getAttribute ? e.currentTarget.getAttribute("data-motion-tab") : "";
+          if (!tab) return;
+          setActiveTab(tab, { forceLoad: true });
+        });
+      }
+
       document.addEventListener("click", function (e) {
         var trigger =
           e.target && e.target.closest
@@ -647,7 +708,11 @@
         }
       });
 
-      motionModalLog("[motion-modal] init ok, iframeSrc=", iframeSrc);
+      motionModalLog("[motion-modal] init ok", {
+        customerSrc: customerSrc,
+        medicalSrc: medicalSrc,
+        platformSrc: platformSrc,
+      });
     }
 
     initHeroMotionModal();
