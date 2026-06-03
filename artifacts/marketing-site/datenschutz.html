@@ -10,86 +10,150 @@
     .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
     .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 32px; box-shadow: 0 8px 24px rgba(15,23,42,0.05); }
     h1 { margin: 0 0 24px; font-size: 1.7rem; }
-    h2 { margin: 28px 0 8px; font-size: 1.1rem; color: #1e293b; }
+    h2 { margin: 32px 0 8px; font-size: 1.1rem; color: #1e293b; border-top: 1px solid #f1f5f9; padding-top: 20px; }
     h3 { margin: 16px 0 6px; font-size: 0.95rem; color: #334155; }
     p { margin: 0 0 10px; line-height: 1.7; }
     ul { margin: 0 0 10px; padding-left: 20px; line-height: 1.7; }
     a { color: #be123c; text-decoration: none; }
     a:hover { text-decoration: underline; }
     .links { margin-top: 24px; display: flex; gap: 14px; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+    th { background: #f8fafc; text-align: left; padding: 8px 12px; border: 1px solid #e2e8f0; }
+    td { padding: 8px 12px; border: 1px solid #e2e8f0; vertical-align: top; }
   </style>
 </head>
 <body>
   <main class="wrap">
     <article class="card">
       <h1>Datenschutzerklärung</h1>
+      <p>Stand: Juni 2026</p>
 
       <h2>1. Verantwortlicher</h2>
       <p>Vedat Öztürk<br>Oberdorfstr. 53<br>70771 Leinfelden-Echterdingen<br>Deutschland</p>
-      <p>Telefon: <a href="tel:+4917684229016">+49 176 84229016</a><br>E-Mail: <a href="mailto:onroda@mail.de">onroda@mail.de</a></p>
+      <p>Telefon: <a href="tel:+4917684229016">+49 176 84229016</a><br>
+      E-Mail: <a href="mailto:onroda@mail.de">onroda@mail.de</a></p>
 
-      <h2>2. Erhebung und Verarbeitung personenbezogener Daten</h2>
-      <h3>2.1 Beim Besuch unserer Website</h3>
-      <p>Beim Aufrufen unserer Website werden durch den Browser automatisch folgende Daten an unseren Server übermittelt:</p>
+      <h2>2. Übersicht der verarbeiteten Daten</h2>
+
+      <h3>2.1 Fahrgäste (App-Nutzer)</h3>
       <ul>
-        <li>IP-Adresse des anfragenden Geräts</li>
-        <li>Datum und Uhrzeit des Zugriffs</li>
-        <li>Name und URL der abgerufenen Datei</li>
-        <li>Browsertyp und Betriebssystem</li>
-      </ul>
-      <p>Diese Daten werden ausschließlich zur Sicherstellung des Betriebs und zur Abwehr von Angriffen verarbeitet (Art. 6 Abs. 1 lit. f DSGVO).</p>
-
-      <h3>2.2 Bei Nutzung der ONRODA App</h3>
-      <p>Bei der Registrierung und Nutzung der ONRODA-App verarbeiten wir folgende Daten:</p>
-      <ul>
-        <li>Name, E-Mail-Adresse (bei Registrierung)</li>
-        <li>Standortdaten (für Fahrtbuchung und -verfolgung)</li>
-        <li>Fahrtdaten (Abholung, Ziel, Preis, Dauer)</li>
-        <li>Zahlungsinformationen (Zahlungsart)</li>
-        <li>Gerätekennungen (Push-Benachrichtigungen)</li>
-      </ul>
-      <p>Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung) sowie Art. 6 Abs. 1 lit. a DSGVO (Einwilligung bei Standort).</p>
-
-      <h3>2.3 Krankenfahrten</h3>
-      <p>Bei der Vermittlung von Krankenfahrten werden zusätzlich Gesundheitsdaten (Transportschein, Diagnose) verarbeitet. Rechtsgrundlage ist Art. 9 Abs. 2 lit. h DSGVO.</p>
-
-      <h2>3. Weitergabe von Daten</h2>
-      <p>Personenbezogene Daten werden nicht an Dritte weitergegeben, es sei denn:</p>
-      <ul>
-        <li>Sie haben ausdrücklich eingewilligt</li>
-        <li>Es besteht eine gesetzliche Verpflichtung</li>
-        <li>Es ist zur Vertragserfüllung notwendig (z. B. Fahrervermittlung)</li>
+        <li>Name, E-Mail-Adresse bei Registrierung</li>
+        <li>Telefonnummer (optional, bei Buchungsregeln erforderlich)</li>
+        <li>Live-Standort bei aktiver Fahrtsuche und Fahrt (Vordergrund)</li>
+        <li>Abholadresse und Zieladresse</li>
+        <li>Fahrtdaten (Datum, Uhrzeit, Strecke, Preis, Fahrtdauer)</li>
+        <li>Zahlungsart (z. B. Bar, Rechnung)</li>
+        <li>Push-Token für Fahrtbenachrichtigungen</li>
+        <li>Buchungshistorie</li>
       </ul>
 
-      <h2>4. Hosting</h2>
-      <p>Unsere Website und App-Infrastruktur wird gehostet bei:</p>
-      <p>Hetzner Online GmbH, Industriestr. 25, 91710 Gunzenhausen, Deutschland.</p>
-      <p>Mit Hetzner besteht ein Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO.</p>
-
-      <h2>5. Speicherdauer</h2>
-      <p>Personenbezogene Daten werden gelöscht, sobald sie für die jeweiligen Zwecke nicht mehr erforderlich sind. Fahrtdaten werden für die Dauer gesetzlicher Aufbewahrungsfristen (bis zu 10 Jahre für steuerrelevante Daten) gespeichert.</p>
-
-      <h2>6. Ihre Rechte</h2>
-      <p>Sie haben gegenüber uns folgende Rechte:</p>
+      <h3>2.2 Fahrer</h3>
       <ul>
-        <li>Recht auf Auskunft (Art. 15 DSGVO)</li>
-        <li>Recht auf Berichtigung (Art. 16 DSGVO)</li>
-        <li>Recht auf Löschung (Art. 17 DSGVO)</li>
-        <li>Recht auf Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
-        <li>Recht auf Datenübertragbarkeit (Art. 20 DSGVO)</li>
-        <li>Widerspruchsrecht (Art. 21 DSGVO)</li>
+        <li>Name, E-Mail-Adresse, Telefonnummer</li>
+        <li>Fahrzeugdaten (Kennzeichen, Fahrzeugtyp)</li>
+        <li>Führerschein, P-Schein, Konzessionsdaten (Upload zur Verifikation)</li>
+        <li>Live-Standort während aktiver Fahrten (Vorder- und Hintergrund)</li>
+        <li>Fahrtdaten, Umsatzdaten, Abrechnungsdaten</li>
+        <li>Push-Token für Fahrtangebote</li>
+        <li>Verfügbarkeitsstatus (Online/Offline)</li>
       </ul>
-      <p>Zur Ausübung Ihrer Rechte wenden Sie sich bitte an: <a href="mailto:onroda@mail.de">onroda@mail.de</a></p>
 
-      <h2>7. Beschwerderecht</h2>
-      <p>Sie haben das Recht, sich bei der zuständigen Datenschutzaufsichtsbehörde zu beschweren. Zuständig ist der Landesbeauftragte für den Datenschutz und die Informationsfreiheit Baden-Württemberg:</p>
-      <p><a href="https://www.baden-wuerttemberg.datenschutz.de" target="_blank" rel="noopener">www.baden-wuerttemberg.datenschutz.de</a></p>
+      <h3>2.3 Partnerunternehmen</h3>
+      <ul>
+        <li>Unternehmensname, Adresse, Kontaktdaten</li>
+        <li>Zugangsdaten zum Partner-Panel</li>
+        <li>Fahrtdaten der vermittelten Fahrten</li>
+        <li>Abrechnungs- und Rechnungsdaten</li>
+        <li>Zugangscodes und Kostenstellen</li>
+      </ul>
 
-      <h2>8. Cookies</h2>
-      <p>Unsere Website verwendet ausschließlich technisch notwendige Cookies. Es werden keine Tracking- oder Analyse-Cookies eingesetzt.</p>
+      <h3>2.4 Krankenfahrten</h3>
+      <p>Bei der Vermittlung von Krankenfahrten werden zusätzlich verarbeitet:</p>
+      <ul>
+        <li>Transportschein-Daten (Verordnungsdaten, Beförderungsart)</li>
+        <li>Medizinisch erforderliche Beförderungsangaben</li>
+        <li>Abrechnungsdaten gegenüber Krankenkassen</li>
+        <li>Dokument-Uploads (Transportschein, Unterschrift)</li>
+      </ul>
+      <p>Rechtsgrundlage: Art. 9 Abs. 2 lit. h DSGVO (medizinische Versorgung) sowie Art. 6 Abs. 1 lit. b DSGVO.</p>
+      <p><strong>Hinweis zur Datenminimierung:</strong> ONRODA speichert keine Diagnosedaten. Nur die für die Beförderung und Abrechnung notwendigen Angaben werden verarbeitet.</p>
 
-      <h2>9. Kontakt</h2>
-      <p>Bei Fragen zum Datenschutz: <a href="mailto:onroda@mail.de">onroda@mail.de</a></p>
+      <h2>3. Standortdaten</h2>
+      <p>ONRODA verarbeitet Standortdaten zur Vermittlung von Fahrten:</p>
+      <table>
+        <tr><th>Nutzergruppe</th><th>Art der Ortung</th><th>Zweck</th><th>Speicherdauer</th></tr>
+        <tr><td>Fahrgast</td><td>Vordergrund (bei Buchung)</td><td>Abholadresse bestimmen</td><td>Fahrtende</td></tr>
+        <tr><td>Fahrer</td><td>Vordergrund + Hintergrund (aktive Fahrt)</td><td>Live-Tracking, Fahrtnachweis</td><td>30 Tage nach Fahrt</td></tr>
+      </table>
+      <p>Die Hintergrund-Ortung des Fahrers ist nur während aktiver Fahrten aktiv und wird nach Fahrtende beendet. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.</p>
+
+      <h2>4. Push-Benachrichtigungen</h2>
+      <p>Für Push-Benachrichtigungen verwenden wir Expo Push Notifications (Expo Inc., San Francisco, USA). Dabei werden Geräte-Push-Token gespeichert:</p>
+      <ul>
+        <li>Fahrgäste: Token für Fahrtstatusbenachrichtigungen (Fahrer gefunden, Fahrer da)</li>
+        <li>Fahrer: Token für Fahrtangebote und Marktbenachrichtigungen</li>
+      </ul>
+      <p>Push-Token werden getrennt gespeichert und beim Wechsel zwischen Fahrer- und Fahrgast-Rolle automatisch aktualisiert. Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).</p>
+
+      <h2>5. Datenweitergabe</h2>
+      <ul>
+        <li><strong>Fahrer:</strong> erhalten Abholadresse, Zieladresse und Fahrgastname bei Fahrtannahme</li>
+        <li><strong>Partnerunternehmen:</strong> erhalten Fahrtdaten ihrer gebuchten Fahrten</li>
+        <li><strong>Krankenkassen:</strong> erhalten abrechnungsrelevante Transportdaten</li>
+        <li><strong>Hetzner Online GmbH:</strong> Hosting-Dienstleister (Auftragsverarbeitung gemäß Art. 28 DSGVO)</li>
+        <li><strong>Expo Inc.:</strong> Push-Benachrichtigungsdienst</li>
+      </ul>
+      <p>Eine Weitergabe an sonstige Dritte erfolgt nicht, sofern keine gesetzliche Verpflichtung besteht.</p>
+
+      <h2>6. Datensicherheit</h2>
+      <ul>
+        <li>Alle Datenübertragungen erfolgen verschlüsselt via HTTPS/TLS</li>
+        <li>Passwörter werden mit sicheren Hash-Algorithmen gespeichert</li>
+        <li>Zugriff auf Daten ist rollenbasiert eingeschränkt (Admin, Fahrer, Partner, Krankenkasse)</li>
+        <li>Server-Zugriff ist durch Firewall und Zwei-Faktor-Authentifizierung gesichert</li>
+        <li>Sicherheitslogs werden zur Erkennung von Angriffen und Missbrauch geführt</li>
+        <li>Regelmäßige Datensicherungen auf geografisch getrennten Systemen</li>
+      </ul>
+
+      <h2>7. Speicherdauer</h2>
+      <table>
+        <tr><th>Datenkategorie</th><th>Speicherdauer</th></tr>
+        <tr><td>Rechnungs- und Abrechnungsdaten</td><td>10 Jahre (gesetzliche Aufbewahrungspflicht)</td></tr>
+        <tr><td>Vertragsdaten</td><td>Vertragslaufzeit + 3 Jahre</td></tr>
+        <tr><td>Fahrtdaten</td><td>3 Jahre nach Fahrtdurchführung</td></tr>
+        <tr><td>Standortdaten (Fahrer)</td><td>30 Tage nach Fahrtende</td></tr>
+        <tr><td>Sicherheitslogs / API-Logs</td><td>90 Tage</td></tr>
+        <tr><td>Push-Token</td><td>Bis zur Abmeldung oder Token-Erneuerung</td></tr>
+        <tr><td>Dokument-Uploads (Krankenfahrt)</td><td>Gesetzliche Aufbewahrungspflicht</td></tr>
+      </table>
+
+      <h2>8. Cookies und lokale Speicherung</h2>
+      <p>Unsere Website und App verwenden:</p>
+      <ul>
+        <li>Technisch notwendige Session-Tokens (JWT) zur Authentifizierung</li>
+        <li>Lokale Speicherung (AsyncStorage) in der App für Sitzungsdaten</li>
+        <li>Keine Tracking-, Analyse- oder Werbe-Cookies</li>
+      </ul>
+
+      <h2>9. Ihre Rechte</h2>
+      <ul>
+        <li>Auskunft über gespeicherte Daten (Art. 15 DSGVO)</li>
+        <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
+        <li>Löschung Ihrer Daten (Art. 17 DSGVO)</li>
+        <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
+        <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
+        <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
+        <li>Widerruf einer Einwilligung (Art. 7 Abs. 3 DSGVO)</li>
+      </ul>
+      <p>Zur Ausübung Ihrer Rechte oder zur Kontolöschung wenden Sie sich an: <a href="mailto:onroda@mail.de">onroda@mail.de</a></p>
+
+      <h2>10. Beschwerderecht</h2>
+      <p>Sie haben das Recht, sich bei der zuständigen Aufsichtsbehörde zu beschweren:</p>
+      <p>Landesbeauftragter für den Datenschutz und die Informationsfreiheit Baden-Württemberg<br>
+      <a href="https://www.baden-wuerttemberg.datenschutz.de" target="_blank" rel="noopener">www.baden-wuerttemberg.datenschutz.de</a></p>
+
+      <h2>11. Änderungen</h2>
+      <p>Wir behalten uns vor, diese Datenschutzerklärung bei Änderungen der Plattform oder der Rechtslage anzupassen. Die aktuelle Version ist stets unter <a href="/datenschutz">onroda.de/datenschutz</a> abrufbar.</p>
 
       <div class="links">
         <a href="/">Zur Startseite</a>
