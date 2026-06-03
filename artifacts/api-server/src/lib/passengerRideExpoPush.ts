@@ -57,6 +57,19 @@ export async function notifyPassengerDriverAccepted(passengerId: string, rideId:
   );
 }
 
+/** Fahrer unterwegs zum Abholort (`driver_arriving`) → Kunde informieren. */
+export async function notifyPassengerDriverArriving(passengerId: string, rideId: string): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrer unterwegs",
+      body: "Ihr Fahrer ist auf dem Weg zu Ihnen. Bitte bereithalten.",
+      data: { kind: "driver_arriving", rideId },
+    })),
+  );
+}
 /** Cron/System: keine Fahrerannahme rechtzeitig → Buchung beendet. */
 export async function notifyPassengerRideCancelledBySystem(passengerId: string, rideId: string): Promise<void> {
   const tokens = await listPassengerExpoPushTokens(passengerId);

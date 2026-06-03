@@ -107,6 +107,7 @@ import {
 } from "../lib/rideReservationStornoDeadline";
 import {
   notifyPassengerDriverAccepted,
+  notifyPassengerDriverArriving,
   notifyPassengerDriverWaiting,
   notifyPassengerReservationActivated,
   notifyPassengerReservationConfirmed,
@@ -2107,6 +2108,10 @@ export async function patchRideStatusRoute(
     if (nextStatus === "accepted" && cur.status !== "accepted") {
       const pid = (updated.passengerId ?? "").trim();
       if (pid) void notifyPassengerDriverAccepted(pid, updated.id);
+    }
+    if (nextStatus === "driver_arriving" && cur.status !== "driver_arriving") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerDriverArriving(pid, updated.id);
     }
     if (nextStatus === "driver_waiting" && cur.status !== "driver_waiting") {
       const pid = (updated.passengerId ?? "").trim();
