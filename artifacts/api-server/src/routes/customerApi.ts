@@ -1,4 +1,7 @@
 import { Router } from "express";
+import { getDb } from "../db";
+import { customerAccountsTable, passengerExpoPushTokensTable } from "../db/schema";
+import { eq } from "drizzle-orm";
 import { cancelRideForVerifiedCustomerSession } from "./rides";
 import { listAssignmentsForCompany } from "../db/fleetAssignmentsData";
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
@@ -405,6 +408,40 @@ router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res
     });
   } catch (err) {
     next(err);
+  }
+});
+
+
+
+router.delete("/customer/v1/account", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerAuthRequest).customerSession;
+    const passengerId = customerPassengerId(sess);
+    if (!passengerId) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const db = getDb();
+    if (!db) {
+      res.status(500).json({ error: "database_not_configured" });
+      return;
+    }
+    // Push-Token löschen
+    await db.delete(passengerExpoPushTokensTable)
+      .where(eq(passengerExpoPushTokensTable.passenger_id, passengerId));
+    // Konto anonymisieren (DSGVO Art. 17)
+    await db.update(customerAccountsTable)
+      .set({
+        email: `deleted_${passengerId}@deleted.onroda.de`,
+        name: "Gelöschter Nutzer",
+        password_hash: "DELETED",
+        phone: null,
+        updated_at: new Date(),
+      })
+      .where(eq(customerAccountsTable.id, passengerId));
+    res.json({ ok: true, message: "Konto wurde gelöscht. Deine Daten wurden anonymisiert." });
+  } catch (e) {
+    next(e);
   }
 });
 
