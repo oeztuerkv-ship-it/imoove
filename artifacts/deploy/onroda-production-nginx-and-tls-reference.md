@@ -107,6 +107,14 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
 
    ```nginx
    # Webroot = z. B. /var/www/onroda — an root angleichen
+   location = /impressum {
+       alias /var/www/onroda/impressum.html;
+       default_type text/html;
+   }
+   location = /datenschutz {
+       alias /var/www/onroda/datenschutz.html;
+       default_type text/html;
+   }
    location = /partner/anfrage-status {
        alias /var/www/onroda/partner-status.html;
        default_type text/html;
@@ -117,7 +125,9 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
    }
    ```
 
-   Referenz im Repo: `artifacts/deploy/nginx-onroda.example.conf` (Marketing-`server`).
+   **Ohne** `location = /impressum` und `/datenschutz` liefert `try_files … /index.html` die **Startseite** unter `/impressum` und `/datenschutz`.
+
+   Referenz im Repo: `artifacts/deploy/nginx-onroda.example.conf` (Marketing-`server`). Static-Sync: `./scripts/deploy-home.sh` oder `deploy-onroda-production.sh` (Quelle **`artifacts/marketing-site/`**).
 
 4. **`sudo nginx -t`** → bei Erfolg **`sudo systemctl reload nginx`** (oder euer Reload-Kommando).
 
