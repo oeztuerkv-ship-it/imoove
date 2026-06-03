@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getDb } from "../db";
+import { getDb } from "../db/client";
 import { customerAccountsTable, passengerExpoPushTokensTable } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { cancelRideForVerifiedCustomerSession } from "./rides";
