@@ -3,6 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import {
+  getCurrentPositionSafe,
+  requestForegroundPermissionsSafe,
+} from "@/utils/safeExpoLocation";
+import {
   Redirect,
   router,
   useFocusEffect,
@@ -1475,22 +1479,29 @@ export default function HomeScreen() {
   /* ── GPS ── */
   const handleGpsLocate = async (silent = false) => {
     setGpsLoading(true);
-    if (!silent) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!silent) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") { setGpsLoading(false); return; }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const fg = await requestForegroundPermissionsSafe();
+      if (!fg || fg.status !== "granted") return;
+      const loc = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      if (!loc) return;
       setUserGps({ lat: loc.coords.latitude, lon: loc.coords.longitude });
       const geoLoc = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
       setOrigin(geoLoc);
       if (isSearchActive) setOriginQuery(geoLoc.displayName.split(",")[0]);
       if (!silent) setMapCenterKey((k) => k + 1);
-      if (!silent) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {}
-    finally { setGpsLoading(false); }
+      if (!silent) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch {
+      /* GPS optional */
+    } finally {
+      setGpsLoading(false);
+    }
   };
 
-  useEffect(() => { handleGpsLocate(true); }, []);
+  useEffect(() => {
+    if (isDriverLoggedIn || !isHomeFocused) return;
+    void handleGpsLocate(true);
+  }, [isDriverLoggedIn, isHomeFocused]);
 
   const homeHistorySlice = history.slice(0, MAX_HOME_HISTORY);
   const showOriginResults = isEditingOrigin && editingViaIndex === null && (originResults.length > 0 || isSearchingOrigin);

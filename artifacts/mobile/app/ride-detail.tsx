@@ -55,7 +55,9 @@ function buildReceiptFromHistory(ride: ReturnType<typeof useRide>["history"][num
     origin: ride.origin ?? "—",
     destination: ride.destination ?? "—",
     distanceKm: ride.actualDistanceKm ?? ride.distanceKm ?? 0,
-    durationMinutes: ride.actualDurationMinutes ?? null,
+    durationMinutes:
+      ride.actualDurationMinutes ??
+      Math.max(1, Math.round((ride.actualDistanceKm ?? ride.distanceKm ?? 0) * 3)),
     vehicle: vehicle?.name ?? "Standard",
     paymentMethod: ride.paymentMethod ?? "cash",
     totalFare: ride.totalFare ?? 0,

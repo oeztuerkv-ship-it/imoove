@@ -810,7 +810,9 @@ export default function MyRidesScreen() {
       origin:          ride.origin ?? "Esslingen am Neckar",
       destination:     ride.destination,
       distanceKm:      ride.actualDistanceKm ?? ride.distanceKm,
-      durationMinutes: ride.actualDurationMinutes ?? null,
+      durationMinutes:
+        ride.actualDurationMinutes ??
+        Math.max(1, Math.round((ride.actualDistanceKm ?? ride.distanceKm) * 3)),
       vehicle:         vehicle?.name ?? "Standard",
       paymentMethod:   PAYMENT_LABELS[ride.paymentMethod ?? "cash"],
       totalFare:       ride.totalFare,
@@ -1158,7 +1160,7 @@ export default function MyRidesScreen() {
                             ? "Keine Fahrt"
                             : ride.actualDurationMinutes != null
                             ? `${ride.actualDurationMinutes} Min.`
-                            : undefined,
+                            : "",
                       },
                       { value: vehicleLabelFromType(ride.vehicleType) },
                       { value: PAYMENT_LABELS[ride.paymentMethod] },

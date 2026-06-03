@@ -54,8 +54,8 @@ export async function ensureDriverBackgroundLocationPermissions(options?: {
   // iOS: wenn Permission permanent verweigert → Einstellungen öffnen
   if (bgExisting.status === "denied" && !bgExisting.canAskAgain) {
     Alert.alert(
-      "Standort „Immer erlauben" erforderlich",
-      "Bitte aktiviere in den Einstellungen unter Datenschutz → Ortungsdienste → ONRODA die Option „Immer".",
+      "Standort „Immer erlauben“ erforderlich",
+      "Bitte aktiviere in den Einstellungen unter Datenschutz → Ortungsdienste → ONRODA die Option „Immer“.",
       [
         { text: "Abbrechen", style: "cancel" },
         { text: "Einstellungen öffnen", onPress: () => void Linking.openSettings() },
