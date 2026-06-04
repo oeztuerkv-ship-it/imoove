@@ -883,7 +883,7 @@ export default function ProfileScreen() {
   const loginPadH = Math.max(rs(16), Math.min(rs(24), Math.round(screenWidth * 0.055)));
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
-  const { t, setLocale, languageLabel } = useTranslation();
+  const { t, setLocale } = useTranslation();
 
   const { profile, loginWithGoogle, loginWithEmailAccount, updateProfile, logout, registerCustomerAccount } = useUser();
 
@@ -1647,9 +1647,6 @@ export default function ProfileScreen() {
                   <AccountRow
                     icon={<MaterialCommunityIcons name="web" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label={t("profile.language")}
-                    valueText={languageLabel}
-                    valueTint="accent"
-                    trailingReorder
                     isFirst
                     onPress={pickLanguage}
                   />
