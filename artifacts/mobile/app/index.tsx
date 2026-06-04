@@ -298,7 +298,7 @@ export default function HomeScreen() {
 
   const APP_NEWS_CAROUSEL_PAD = 20;
   const APP_NEWS_CAROUSEL_GAP = 12;
-  const SPONSORS_DETAIL_ROUTE = "/sponsors?open=top";
+  const SPONSORS_ROUTE = "/sponsors";
   const appNewsSlideWidth = useMemo(() => {
     const w = Math.min(Math.max(screenWidth - APP_NEWS_CAROUSEL_PAD * 2 - APP_NEWS_CAROUSEL_GAP, 260), screenWidth - 24);
     return Math.round(w);
@@ -356,7 +356,7 @@ export default function HomeScreen() {
     const tt = String(item.targetType ?? "").trim();
     const tv = String(item.targetValue ?? "").trim();
     if (tt === "internal_screen" && tv === "/sponsors") {
-      router.push(SPONSORS_DETAIL_ROUTE as Href);
+      router.push(SPONSORS_ROUTE as Href);
       return;
     }
     if (tt === "internal_screen" && tv && internalRe.test(tv)) {
@@ -368,7 +368,7 @@ export default function HomeScreen() {
       return;
     }
     setAppNewsDetail(item);
-  }, [SPONSORS_DETAIL_ROUTE]);
+  }, [SPONSORS_ROUTE]);
 
   type OnboardingCustomerStep =
     | "social"
@@ -1721,7 +1721,7 @@ export default function HomeScreen() {
           {!showOnboarding && homeTopOrder !== "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
               style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: SPONSOR_NEWS_CARD_BORDER, backgroundColor: SPONSOR_NEWS_CARD_WHITE }]}
-              onPress={() => router.push(SPONSORS_DETAIL_ROUTE as Href)}
+              onPress={() => router.push(SPONSORS_ROUTE as Href)}
             >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Exklusive Angebote</Text>
@@ -1848,7 +1848,7 @@ export default function HomeScreen() {
           {!showOnboarding && homeTopOrder === "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
               style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: SPONSOR_NEWS_CARD_BORDER, backgroundColor: SPONSOR_NEWS_CARD_WHITE }]}
-              onPress={() => router.push(SPONSORS_DETAIL_ROUTE as Href)}
+              onPress={() => router.push(SPONSORS_ROUTE as Href)}
             >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Exklusive Angebote</Text>
@@ -2145,7 +2145,7 @@ export default function HomeScreen() {
                   onPress={() => {
                     const p = appNewsDetail.targetValue?.trim();
                     if (p === "/sponsors") {
-                      router.push(SPONSORS_DETAIL_ROUTE as Href);
+                      router.push(SPONSORS_ROUTE as Href);
                     } else if (p) {
                       router.push(p as Href);
                     }
