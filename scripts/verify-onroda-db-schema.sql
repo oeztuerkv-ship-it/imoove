@@ -1197,6 +1197,13 @@ BEGIN
     errs := array_append(errs, 'admin_companies.panel_access_enabled (Migration 091)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'homepage_analytics_events'
+  ) THEN
+    errs := array_append(errs, 'table homepage_analytics_events (Migration 097)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

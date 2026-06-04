@@ -42,6 +42,7 @@ import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
 import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
 import HomepageContentPage from "./pages/HomepageContentPage.jsx";
 import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
+import VisitorAnalyticsPage from "./pages/VisitorAnalyticsPage.jsx";
 import AppOperationalTariffsPage from "./pages/AppOperationalTariffsPage.jsx";
 import AppOperationalRegionsPage from "./pages/AppOperationalRegionsPage.jsx";
 import AppOperationalCommissionPage from "./pages/AppOperationalCommissionPage.jsx";
@@ -309,6 +310,10 @@ const PAGE_META = {
   "homepage-content": {
     title: "Homepage-Inhalte",
     subtitle: "Hero-Texte und Hinweiszeile der Marketing-Homepage ohne Codeänderung steuern",
+  },
+  "visitor-analytics": {
+    title: "Besucherstatistik",
+    subtitle: "Anonyme Nutzung der Marketing-Homepage — ohne IP, DSGVO-freundlich vorbereitet",
   },
   "fail2ban": {
     title: "Firewall & Gesperrte IPs",
@@ -881,6 +886,8 @@ export default function App() {
         return <HomepagePlaceholdersPage />;
       case "homepage-content":
         return <HomepageContentPage />;
+      case "visitor-analytics":
+        return <VisitorAnalyticsPage />;
       case "fail2ban":
         return <Fail2BanPage />;
       case "customer-accounts":

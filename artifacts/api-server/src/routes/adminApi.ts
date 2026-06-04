@@ -270,6 +270,7 @@ import { logger } from "../lib/logger";
 import adminInsuranceRouter from "./adminInsuranceApi";
 import adminKrankenInvoiceRouter from "./adminKrankenInvoiceRoutes";
 import adminAppNewsRouter from "./adminAppNewsRouter";
+import adminAnalyticsRouter from "./adminAnalyticsRouter";
 import adminCustomerAccountsRouter from "./adminCustomerAccountsRouter";
 import adminAppSponsorsRouter from "./adminAppSponsorsRouter";
 import adminAppFaqRouter from "./adminAppFaqRouter";
@@ -903,6 +904,7 @@ adminJson.use("/insurance", adminInsuranceRouter);
 adminJson.use(adminKrankenInvoiceRouter);
 /** Mobile App-Neuigkeiten (CMS, Admin + Service). */
 adminJson.use("/app-news", adminAppNewsRouter);
+adminJson.use("/analytics", adminAnalyticsRouter);
 adminJson.use("/customer-accounts", adminCustomerAccountsRouter);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter);
 adminJson.use("/faq", adminAppFaqRouter);

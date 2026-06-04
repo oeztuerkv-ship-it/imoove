@@ -69,6 +69,11 @@ export function canManageAdminAuthUsersApi(role: AdminRole): boolean {
   return role === "admin";
 }
 
+/** Plattform-Operator: anonyme Homepage-Besucherstatistik (Marketing only). */
+export function canAccessAdminHomepageAnalytics(role: AdminRole): boolean {
+  return role === "admin" || role === "service";
+}
+
 export function canAdminReleaseRide(role: AdminRole): boolean {
   return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
 }

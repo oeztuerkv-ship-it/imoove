@@ -1438,3 +1438,16 @@ export const krankenInvoiceSequencesTable = pgTable(
     pk: primaryKey({ columns: [t.company_id, t.year] }),
   }),
 );
+
+/** Marketing-Homepage: anonyme Besucher-Events (ohne IP, DSGVO-freundlich). */
+export const homepageAnalyticsEventsTable = pgTable("homepage_analytics_events", {
+  id: text("id").primaryKey(),
+  event_type: text("event_type").notNull(),
+  page_path: text("page_path").notNull().default("/"),
+  referrer: text("referrer"),
+  device_type: text("device_type"),
+  browser: text("browser"),
+  country: text("country"),
+  anonymous_visitor_id: text("anonymous_visitor_id").notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
