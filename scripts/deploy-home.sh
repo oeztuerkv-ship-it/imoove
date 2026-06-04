@@ -33,7 +33,7 @@ rsync -av \
   --exclude='mockups/' \
   "${SRC}/" "${TARGET}/"
 
-for f in index.html style.css script.js datenschutz.html impressum.html partner-status.html onroda-brand.css; do
+for f in index.html style.css script.js datenschutz.html impressum.html ueber-onroda.html partner-status.html onroda-brand.css; do
   if [[ ! -f "${TARGET}/${f}" ]]; then
     echo "[deploy-home] FEHLER: fehlt nach rsync: ${TARGET}/${f}" >&2
     exit 1

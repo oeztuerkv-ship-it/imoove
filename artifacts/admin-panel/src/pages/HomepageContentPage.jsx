@@ -75,11 +75,11 @@ function mergeManifest(incoming) {
 }
 
 const defaultAboutBullets = () => [
-  "Taxi & Alltagsmobilität",
-  "Krankenfahrten & Transportscheine",
-  "Unternehmen & Kostenstellen",
-  "Hotels, Gutscheine & Partnernetzwerke",
-  "Digitale Prozesse statt Medienbrüche",
+  "Taxi & Alltagsmobilität — Sofortfahrten und Reservierungen, Live-Tracking, digitale Quittung",
+  "Krankenfahrten & Transportscheine — digitale Verordnungserfassung, G-BA-konforme Abrechnung",
+  "Unternehmen & Kostenstellen — Firmenkunden, Zugangscodes, automatische Abrechnung",
+  "Hotels, Gutscheine & Partnernetzwerke — eigene Panels, Belege, Statistiken",
+  "Digitale Prozesse statt Medienbrüche — alles in einem System, keine Zettelwirtschaft",
 ];
 
 function mergeAboutBullets(incoming) {
@@ -627,10 +627,19 @@ export default function HomepageContentPage() {
           </div>
 
           <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
-            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Über ONRODA (Modal)</div>
+            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>
+              Über ONRODA (Seite /ueber-onroda + Modal auf der Startseite)
+            </div>
+            <p className="admin-field-hint" style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>
+              Gleicher Inhalt für{" "}
+              <a href="https://onroda.de/ueber-onroda" target="_blank" rel="noopener noreferrer">
+                onroda.de/ueber-onroda
+              </a>{" "}
+              und den Über-ONRODA-Dialog. Aufzählung: „Titel — Zusatztext“ (Gedankenstrich).
+            </p>
             <div className="admin-form-vertical">
               <label className="admin-form-pair">
-                <span className="admin-field-label">Titel</span>
+                <span className="admin-field-label">Seiten-Überschrift (H1)</span>
                 <input
                   className="admin-input"
                   value={form.aboutTitle}
@@ -638,10 +647,18 @@ export default function HomepageContentPage() {
                 />
               </label>
               <label className="admin-form-pair">
+                <span className="admin-field-label">Unterzeile (rot, nur Seite)</span>
+                <input
+                  className="admin-input"
+                  value={form.aboutChallengesIntro}
+                  onChange={(e) => setForm((p) => ({ ...p, aboutChallengesIntro: e.target.value }))}
+                />
+              </label>
+              <label className="admin-form-pair">
                 <span className="admin-field-label">Einleitung</span>
                 <textarea
                   className="admin-textarea"
-                  rows={3}
+                  rows={4}
                   value={form.aboutIntro}
                   onChange={(e) => setForm((p) => ({ ...p, aboutIntro: e.target.value }))}
                 />
@@ -653,14 +670,6 @@ export default function HomepageContentPage() {
                   rows={3}
                   value={form.aboutVision}
                   onChange={(e) => setForm((p) => ({ ...p, aboutVision: e.target.value }))}
-                />
-              </label>
-              <label className="admin-form-pair">
-                <span className="admin-field-label">Überschrift vor Aufzählung</span>
-                <input
-                  className="admin-input"
-                  value={form.aboutChallengesIntro}
-                  onChange={(e) => setForm((p) => ({ ...p, aboutChallengesIntro: e.target.value }))}
                 />
               </label>
               <div className="admin-panel-card" style={{ padding: 12 }}>

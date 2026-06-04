@@ -387,30 +387,20 @@
             mCta.textContent = pickCms(mc && mc.ctaText, dMCt);
             mCta.setAttribute("href", String(mc && mc.ctaLink ? mc.ctaLink : dMCh));
           }
-          var aboutTitleEl = document.getElementById("hp-about-modal-title");
           var aboutIntroEl = document.getElementById("about-intro");
           var aboutVisionEl = document.getElementById("about-vision");
-          var aboutChallengesIntroEl = document.getElementById("about-challenges-intro");
           var aboutBulletsEl = document.getElementById("about-bullets");
           var aboutClosingEl = document.getElementById("about-closing");
           var aboutTaglineEl = document.getElementById("about-tagline");
-          var dAboutTitle = aboutTitleEl ? aboutTitleEl.textContent || "" : "";
           var dAboutIntro = aboutIntroEl ? aboutIntroEl.textContent || "" : "";
           var dAboutVision = aboutVisionEl ? aboutVisionEl.textContent || "" : "";
-          var dAboutChallengesIntro = aboutChallengesIntroEl ? aboutChallengesIntroEl.textContent || "" : "";
           var dAboutClosing = aboutClosingEl ? aboutClosingEl.textContent || "" : "";
           var dAboutTagline = aboutTaglineEl ? aboutTaglineEl.textContent || "" : "";
-          if (aboutTitleEl) {
-            aboutTitleEl.textContent = pickCms(item && item.aboutTitle, dAboutTitle);
-          }
           if (aboutIntroEl) {
-            aboutIntroEl.textContent = pickCms(item && item.aboutIntro, dAboutIntro);
+            setMultilineText(aboutIntroEl, pickCms(item && item.aboutIntro, dAboutIntro));
           }
           if (aboutVisionEl) {
             aboutVisionEl.textContent = pickCms(item && item.aboutVision, dAboutVision);
-          }
-          if (aboutChallengesIntroEl) {
-            aboutChallengesIntroEl.textContent = pickCms(item && item.aboutChallengesIntro, dAboutChallengesIntro);
           }
           if (aboutClosingEl) {
             aboutClosingEl.textContent = pickCms(item && item.aboutClosing, dAboutClosing);
@@ -431,7 +421,11 @@
               var bulletText = String(useBullets[ab2] || "").trim();
               if (!bulletText) continue;
               var liEl = document.createElement("li");
-              liEl.textContent = bulletText;
+              var dash = bulletText.indexOf(" — ");
+              if (dash < 0) {
+                dash = bulletText.indexOf(" - ");
+              }
+              liEl.textContent = dash > 0 ? bulletText.slice(0, dash).trim() : bulletText;
               aboutBulletsEl.appendChild(liEl);
             }
           }
@@ -440,6 +434,102 @@
         .catch(function () {
           renderHomepageBanners(null);
         });
+    }
+
+    function setAboutPageBulletText(span, text) {
+      if (!span) return;
+      var raw = String(text || "").trim();
+      span.textContent = "";
+      if (!raw) return;
+      var idx = raw.indexOf(" — ");
+      if (idx < 0) {
+        idx = raw.indexOf(" - ");
+      }
+      if (idx > 0) {
+        var strong = document.createElement("strong");
+        strong.textContent = raw.slice(0, idx).trim();
+        span.appendChild(strong);
+        span.appendChild(document.createTextNode(" — " + raw.slice(idx + 3).trim()));
+        return;
+      }
+      span.textContent = raw;
+    }
+
+    function applyAboutCmsToPage(item) {
+      var headlineEl = document.getElementById("about-page-headline");
+      if (!headlineEl) return;
+
+      var sublineEl = document.getElementById("about-page-subline");
+      var introEl = document.getElementById("about-page-intro");
+      var visionEl = document.getElementById("about-page-vision");
+      var closingEl = document.getElementById("about-page-closing");
+      var taglineEl = document.getElementById("about-page-tagline");
+      var bulletsRoot = document.getElementById("about-page-bullets");
+
+      var dHead = headlineEl.textContent || "";
+      var dSub = sublineEl ? sublineEl.textContent || "" : "";
+      var dIntro = introEl ? introEl.textContent || "" : "";
+      var dVision = visionEl ? visionEl.textContent || "" : "";
+      var dClosing = closingEl ? closingEl.textContent || "" : "";
+      var dTag = taglineEl ? taglineEl.textContent || "" : "";
+
+      headlineEl.textContent = pickCms(item && item.aboutTitle, dHead);
+      if (sublineEl) {
+        sublineEl.textContent = pickCms(item && item.aboutChallengesIntro, dSub);
+      }
+      if (introEl) {
+        setMultilineText(introEl, pickCms(item && item.aboutIntro, dIntro));
+      }
+      if (visionEl) {
+        visionEl.textContent = pickCms(item && item.aboutVision, dVision);
+      }
+      if (closingEl) {
+        closingEl.textContent = pickCms(item && item.aboutClosing, dClosing);
+      }
+      if (taglineEl) {
+        taglineEl.textContent = pickCms(item && item.aboutTagline, dTag);
+      }
+
+      if (bulletsRoot) {
+        var textSpans = bulletsRoot.querySelectorAll(".about-page-bullet-text");
+        var defaultBullets = [];
+        for (var bi = 0; bi < textSpans.length; bi++) {
+          defaultBullets.push(textSpans[bi].textContent || "");
+        }
+        var cmsBullets = item && Array.isArray(item.aboutBullets) ? item.aboutBullets : [];
+        var useBullets = cmsBullets.length > 0 ? cmsBullets : defaultBullets;
+        for (var bj = 0; bj < textSpans.length; bj++) {
+          var bulletRaw = bj < useBullets.length ? useBullets[bj] : "";
+          setAboutPageBulletText(textSpans[bj], bulletRaw);
+          var li = textSpans[bj].closest ? textSpans[bj].closest("li") : null;
+          if (li) {
+            if (String(bulletRaw || "").trim()) {
+              li.removeAttribute("hidden");
+            } else {
+              li.setAttribute("hidden", "hidden");
+            }
+          }
+        }
+      }
+    }
+
+    function loadAboutPageContent() {
+      if (!document.getElementById("about-page-headline")) return;
+      var host = window.location.hostname;
+      if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
+        return;
+      }
+      var url = publicApiBase() + "/public/homepage-content";
+      fetch(url, { method: "GET", credentials: "omit" })
+        .then(function (res) {
+          if (!res.ok) return { ok: false, item: null };
+          return res.json().catch(function () { return { ok: false, item: null }; });
+        })
+        .then(function (data) {
+          var item = data && data.ok ? data.item : null;
+          applyAboutCmsToPage(item);
+        })
+        .catch(function () {});
     }
 
     function loadHomepageModules() {
@@ -523,6 +613,7 @@
     }
 
     loadHomepageContent();
+    loadAboutPageContent();
     loadHomepageModules();
 
     function motionModalLog() {

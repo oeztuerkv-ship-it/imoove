@@ -14,7 +14,7 @@
     .logo-text { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.05em; color: #0f172a; }
     h1 { margin: 0 0 8px; font-size: 2rem; line-height: 1.2; color: #0f172a; }
     .tagline { font-size: 1.1rem; color: #EF1D26; font-weight: 600; margin: 0 0 28px; }
-    .intro { font-size: 1.05rem; line-height: 1.8; color: #334155; margin: 0 0 32px; }
+    .intro { font-size: 1.05rem; line-height: 1.8; color: #334155; margin: 0 0 32px; white-space: pre-line; }
     .vision { background: #fef2f2; border-left: 4px solid #EF1D26; border-radius: 0 12px 12px 0; padding: 20px 24px; margin: 0 0 32px; }
     .vision p { margin: 0; line-height: 1.7; color: #1e293b; font-size: 1rem; }
     .checklist { list-style: none; padding: 0; margin: 0 0 32px; display: grid; gap: 10px; }
@@ -22,7 +22,7 @@
     .check { width: 22px; height: 22px; background: #EF1D26; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
     .check svg { width: 12px; height: 12px; stroke: #fff; stroke-width: 2.5; fill: none; }
     .partners { margin: 0 0 32px; }
-    .partners p { font-size: 0.97rem; line-height: 1.7; color: #334155; }
+    .partners p { font-size: 0.97rem; line-height: 1.7; color: #334155; margin: 0; }
     .closing { font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 32px; padding: 20px 24px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; }
     .links { display: flex; gap: 14px; flex-wrap: wrap; }
     a { color: #EF1D26; text-decoration: none; }
@@ -39,46 +39,47 @@
         <span class="logo-text">ONRODA</span>
       </div>
 
-      <h1>Mobilität neu organisiert.</h1>
-      <p class="tagline">Für Fahrgäste, Fahrer, Unternehmen und Partner.</p>
+      <h1 id="about-page-headline">Mobilität neu organisiert.</h1>
+      <p class="tagline" id="about-page-subline">Für Fahrgäste, Fahrer, Unternehmen und Partner.</p>
 
-      <p class="intro">
-        Mobilität ohne Papierchaos. Ohne unnötige Rückfragen. Ohne komplizierte Abläufe.<br><br>
+      <p class="intro" id="about-page-intro">
+        Mobilität ohne Papierchaos. Ohne unnötige Rückfragen. Ohne komplizierte Abläufe.
+
         ONRODA verbindet Fahrgäste, Fahrer, Unternehmen und Partner in einer gemeinsamen Plattform — von der Buchung über Live-Disposition und Krankenfahrten bis zur transparenten Abrechnung.
       </p>
 
       <div class="vision">
-        <p>Unsere Vision ist eine Mobilität, die einfacher funktioniert. Alles digital, nachvollziehbar und schnell — für alle Beteiligten.</p>
+        <p id="about-page-vision">Unsere Vision ist eine Mobilität, die einfacher funktioniert. Alles digital, nachvollziehbar und schnell — für alle Beteiligten.</p>
       </div>
 
-      <ul class="checklist">
+      <ul class="checklist" id="about-page-bullets">
         <li>
           <span class="check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></span>
-          <span><strong>Taxi & Alltagsmobilität</strong> — Sofortfahrten und Reservierungen, Live-Tracking, digitale Quittung</span>
+          <span class="about-page-bullet-text"><strong>Taxi &amp; Alltagsmobilität</strong> — Sofortfahrten und Reservierungen, Live-Tracking, digitale Quittung</span>
         </li>
         <li>
           <span class="check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></span>
-          <span><strong>Krankenfahrten & Transportscheine</strong> — digitale Verordnungserfassung, G-BA-konforme Abrechnung</span>
+          <span class="about-page-bullet-text"><strong>Krankenfahrten &amp; Transportscheine</strong> — digitale Verordnungserfassung, G-BA-konforme Abrechnung</span>
         </li>
         <li>
           <span class="check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></span>
-          <span><strong>Unternehmen & Kostenstellen</strong> — Firmenkunden, Zugangscodes, automatische Abrechnung</span>
+          <span class="about-page-bullet-text"><strong>Unternehmen &amp; Kostenstellen</strong> — Firmenkunden, Zugangscodes, automatische Abrechnung</span>
         </li>
         <li>
           <span class="check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></span>
-          <span><strong>Hotels, Gutscheine & Partnernetzwerke</strong> — eigene Panels, Belege, Statistiken</span>
+          <span class="about-page-bullet-text"><strong>Hotels, Gutscheine &amp; Partnernetzwerke</strong> — eigene Panels, Belege, Statistiken</span>
         </li>
         <li>
           <span class="check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></span>
-          <span><strong>Digitale Prozesse statt Medienbrüche</strong> — alles in einem System, keine Zettelwirtschaft</span>
+          <span class="about-page-bullet-text"><strong>Digitale Prozesse statt Medienbrüche</strong> — alles in einem System, keine Zettelwirtschaft</span>
         </li>
       </ul>
 
       <div class="partners">
-        <p>Gemeinsam mit Partnerbetrieben, Hotels, Kliniken und Unternehmen bauen wir eine regionale Plattform für moderne Mobilität — persönlich, transparent und verlässlich.</p>
+        <p id="about-page-closing">Gemeinsam mit Partnerbetrieben, Hotels, Kliniken und Unternehmen bauen wir eine regionale Plattform für moderne Mobilität — persönlich, transparent und verlässlich.</p>
       </div>
 
-      <p class="closing">ONRODA – Mobilität neu organisiert.</p>
+      <p class="closing" id="about-page-tagline">ONRODA – Mobilität neu organisiert.</p>
 
       <div class="links">
         <a href="/" class="btn">Zur Startseite</a>
@@ -87,5 +88,6 @@
       </div>
     </article>
   </main>
+  <script src="/script.js" defer></script>
 </body>
 </html>

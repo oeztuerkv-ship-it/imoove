@@ -115,6 +115,10 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
        alias /var/www/onroda/datenschutz.html;
        default_type text/html;
    }
+   location = /ueber-onroda {
+       alias /var/www/onroda/ueber-onroda.html;
+       default_type text/html;
+   }
    location = /partner/anfrage-status {
        alias /var/www/onroda/partner-status.html;
        default_type text/html;
@@ -125,7 +129,7 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
    }
    ```
 
-   **Ohne** `location = /impressum` und `/datenschutz` liefert `try_files … /index.html` die **Startseite** unter `/impressum` und `/datenschutz`.
+   **Ohne** explizite `location = /…` liefert `try_files … /index.html` die **Startseite** (z. B. unter `/impressum`, `/datenschutz`, `/ueber-onroda`).
 
    Referenz im Repo: `artifacts/deploy/nginx-onroda.example.conf` (Marketing-`server`). Static-Sync: `./scripts/deploy-home.sh` oder `deploy-onroda-production.sh` (Quelle **`artifacts/marketing-site/`**).
 

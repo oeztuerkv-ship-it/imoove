@@ -167,18 +167,18 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   cta2Link: "#services",
   noticeText: "",
   noticeActive: false,
-  aboutTitle: "Über ONRODA",
+  aboutTitle: "Mobilität neu organisiert.",
   aboutIntro:
-    "ONRODA verbindet Fahrgäste, Unternehmen, Partner und Fahrer in einem gemeinsamen digitalen System – für Mobilität, die einfacher funktioniert.",
+    "Mobilität ohne Papierchaos. Ohne unnötige Rückfragen. Ohne komplizierte Abläufe.\n\nONRODA verbindet Fahrgäste, Fahrer, Unternehmen und Partner in einer gemeinsamen Plattform — von der Buchung über Live-Disposition und Krankenfahrten bis zur transparenten Abrechnung.",
   aboutVision:
-    "Unsere Vision ist eine Mobilität ohne Papierchaos, unnötige Rückfragen und komplizierte Abläufe. Von der Buchung über Live-Disposition und Krankenfahrten bis zur transparenten Abrechnung soll alles nachvollziehbar, schnell und digital funktionieren.",
-  aboutChallengesIntro: "Wir entwickeln ONRODA für echte Herausforderungen im Alltag:",
+    "Unsere Vision ist eine Mobilität, die einfacher funktioniert. Alles digital, nachvollziehbar und schnell — für alle Beteiligten.",
+  aboutChallengesIntro: "Für Fahrgäste, Fahrer, Unternehmen und Partner.",
   aboutBullets: [
-    "Taxi & Alltagsmobilität",
-    "Krankenfahrten & Transportscheine",
-    "Unternehmen & Kostenstellen",
-    "Hotels, Gutscheine & Partnernetzwerke",
-    "Digitale Prozesse statt Medienbrüche",
+    "Taxi & Alltagsmobilität — Sofortfahrten und Reservierungen, Live-Tracking, digitale Quittung",
+    "Krankenfahrten & Transportscheine — digitale Verordnungserfassung, G-BA-konforme Abrechnung",
+    "Unternehmen & Kostenstellen — Firmenkunden, Zugangscodes, automatische Abrechnung",
+    "Hotels, Gutscheine & Partnernetzwerke — eigene Panels, Belege, Statistiken",
+    "Digitale Prozesse statt Medienbrüche — alles in einem System, keine Zettelwirtschaft",
   ],
   aboutClosing:
     "Gemeinsam mit Partnerbetrieben, Hotels, Kliniken und Unternehmen bauen wir eine regionale Plattform für moderne Mobilität – persönlich, transparent und verlässlich.",

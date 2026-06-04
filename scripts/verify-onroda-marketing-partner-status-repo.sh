@@ -14,6 +14,7 @@ IDX="${STATIC}/index.html"
 [[ -f "$IDX" ]] || err "Fehlt: $IDX"
 [[ -f "${STATIC}/impressum.html" ]] || err "Fehlt: ${STATIC}/impressum.html"
 [[ -f "${STATIC}/datenschutz.html" ]] || err "Fehlt: ${STATIC}/datenschutz.html"
+[[ -f "${STATIC}/ueber-onroda.html" ]] || err "Fehlt: ${STATIC}/ueber-onroda.html"
 
 grep -qF "Status Ihrer Partner-Registrierung" "$STATUS" || err "partner-status.html: erwarteter Titel-Text fehlt"
 grep -qF "registration-request" "$STATUS" || err "partner-status.html: API-Pfad-Hinweis fehlt"

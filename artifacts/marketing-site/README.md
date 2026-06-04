@@ -8,6 +8,7 @@ Kanoniche Quelle für die öffentliche Homepage und Marketing-Static.
 |-------|--------|
 | `index.html` | Startseite |
 | `impressum.html`, `datenschutz.html` | Rechtstexte (Nginx: `/impressum`, `/datenschutz`) |
+| `ueber-onroda.html` | Über-ONRODA-Seite (CMS: Admin → Homepage-Inhalte; Nginx: `/ueber-onroda`) |
 | `partner-status.html` | Partner-Anfrage-Status (`/partner/anfrage-status`) |
 | `style.css`, `script.js` | Layout & Partner-Formular |
 | `onroda-logo-transparent.png` | **Einziges Produkt-Logo** (Header/Footer) — siehe `.cursor/rules/imoove-onroda-brand-logo.mdc` |

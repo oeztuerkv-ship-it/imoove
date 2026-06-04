@@ -28,6 +28,7 @@ grep -q 'location ^~ /partners' "$F" || err "panel: location ^~ /partners (Redir
 
 grep -q 'location = /impressum' "$F" || err "Marketing: location = /impressum fehlt (try_files → Homepage)"
 grep -q 'location = /datenschutz' "$F" || err "Marketing: location = /datenschutz fehlt (try_files → Homepage)"
+grep -q 'location = /ueber-onroda' "$F" || err "Marketing: location = /ueber-onroda fehlt (try_files → Homepage)"
 
 grep -qE 'client_max_body_size[[:space:]]+25M' "$F" || \
   err "api: client_max_body_size 25M fehlt (413 bei Partner-PDF-Registrierung vor Node)"
