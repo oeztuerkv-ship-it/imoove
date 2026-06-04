@@ -78,11 +78,11 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
       isActive: true,
     },
     {
-      icon: "🤝",
-      title: "Partner & Betriebe",
-      body: "Hotel, Firmenkunden oder Plattformpartner werden und profitieren.",
+      icon: "💼",
+      title: "Für Unternehmen",
+      body: "Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.",
       ctaText: "Mehr erfahren",
-      ctaLink: "#partner",
+      ctaLink: "#unternehmen",
       isActive: true,
     },
     {
