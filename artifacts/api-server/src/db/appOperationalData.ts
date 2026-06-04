@@ -10,7 +10,7 @@ import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { findCompanyById } from "./adminData";
 import { financePricingContextFromCompanyRow } from "../lib/adminCompanyProvision";
 import { getDb, isPostgresConfigured } from "./client";
-import { isMedicalTransportPlatformAvailable } from "../lib/medical/medicalTransportAuthorization";
+import { isCustomerMedicalTransportScanAvailable } from "../lib/medical/medicalTransportAuthorization";
 import { appOperationalConfigTable, appServiceRegionsTable } from "./schema";
 import {
   findServiceRegionIdForPickup,
@@ -907,7 +907,8 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     tariffsPerServiceRegion[r.id] = mergeTariffsForServiceRegion(tSec, isPlainObject(o) ? o : null);
   }
 
-  const medicalTransportAvailable = await isMedicalTransportPlatformAvailable();
+  /** Kundensicht: Transportschein-Scan technisch nutzbar (nicht an Mandanten-KK-Freigabe gekoppelt). */
+  const medicalTransportAvailable = isCustomerMedicalTransportScanAvailable();
 
   return {
     ok: true,

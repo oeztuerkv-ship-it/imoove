@@ -101,7 +101,7 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
   unauthorized: "Nicht angemeldet.",
   test_scan_disabled: "Testscan ist auf dem Server deaktiviert.",
   medical_transport_not_authorized:
-    "Krankenfahrten sind für Sie derzeit nicht freigeschaltet. Bitte wenden Sie sich an ONRODA: onroda@mail.de",
+    "Transportschein-Scan ist derzeit nicht verfügbar. Bitte später erneut versuchen oder ONRODA kontaktieren: onroda@mail.de",
   kk_module_not_enabled: "Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.",
   kk_module_not_authorized: "Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.",
   http_413: "Foto ist zu groß für den Upload. Bitte erneut aufnehmen.",

@@ -35,7 +35,7 @@ import {
 import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument, type MedicalOcrExtracted } from "./medicalOcrNormalize";
 import { evaluateMedicalTrafficLight, type MedicalWarning } from "./medicalTrafficLight";
 import {
-  assertMedicalTransportPlatformAvailable,
+  assertCustomerMedicalTransportScanAvailable,
   resolveMedicalTransportAuthorizationForFleetDriver,
 } from "./medicalTransportAuthorization";
 import {
@@ -113,9 +113,9 @@ export async function runMedicalTransportDocumentScanForCustomerBooking(
     return { ok: false, error: "bad_request", status: 400 };
   }
 
-  const platform = await assertMedicalTransportPlatformAvailable();
-  if (!platform.ok) {
-    return { ok: false, error: platform.error, status: 403 };
+  const scanReady = assertCustomerMedicalTransportScanAvailable();
+  if (!scanReady.ok) {
+    return { ok: false, error: scanReady.error, status: scanReady.status };
   }
 
   const b64 = input.imageBase64.trim();
@@ -433,9 +433,9 @@ export async function runMedicalTransportDocumentScanTestForCustomer(
     return { ok: false, error: "bad_request", status: 400 };
   }
 
-  const platform = await assertMedicalTransportPlatformAvailable();
-  if (!platform.ok) {
-    return { ok: false, error: platform.error, status: 403 };
+  const scanReady = assertCustomerMedicalTransportScanAvailable();
+  if (!scanReady.ok) {
+    return { ok: false, error: scanReady.error, status: scanReady.status };
   }
 
   return runMedicalTransportDocumentScanTestCore({

@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "../../db/client";
 import { findFleetDriverInCompany } from "../../db/fleetDriversData";
 import { adminCompaniesTable } from "../../db/schema";
+import { getAnthropicApiKey, isMedicalOcrEnabled } from "./claudeVisionOcr";
 
 export const MEDICAL_TRANSPORT_NOT_AUTHORIZED = "medical_transport_not_authorized";
 
@@ -69,7 +70,10 @@ export async function resolveMedicalTransportAuthorizationForFleetDriver(
   return medicalTransportAuthorizationFromRows(driverRow, companyRow);
 }
 
-/** Kunden-Plattform-Gate: mindestens ein aktiver, nicht gesperrter Mandant mit Krankenfahrt-Freigabe. */
+/**
+ * Fahrer-/Mandanten-Gate: mindestens ein aktiver Mandant mit `medical_transport_enabled`.
+ * Nicht für Kunden-Transportschein-Scan — siehe `isCustomerMedicalTransportScanAvailable`.
+ */
 export async function isMedicalTransportPlatformAvailable(): Promise<boolean> {
   if (!isPostgresConfigured()) return false;
   const db = getDb();
@@ -105,6 +109,24 @@ export async function assertMedicalTransportPlatformAvailable(): Promise<
   const available = await isMedicalTransportPlatformAvailable();
   if (!available) {
     return { ok: false, error: MEDICAL_TRANSPORT_NOT_AUTHORIZED };
+  }
+  return { ok: true };
+}
+
+/** Kunden-Scan: für jeden eingeloggten Kunden, wenn DB + OCR konfiguriert sind (ohne Mandanten-Freigabe). */
+export function isCustomerMedicalTransportScanAvailable(): boolean {
+  if (!isPostgresConfigured()) return false;
+  return isMedicalOcrEnabled() && !!getAnthropicApiKey();
+}
+
+export function assertCustomerMedicalTransportScanAvailable():
+  | { ok: true }
+  | { ok: false; error: "database_not_configured" | "ocr_disabled"; status: number } {
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+  if (!isMedicalOcrEnabled() || !getAnthropicApiKey()) {
+    return { ok: false, error: "ocr_disabled", status: 503 };
   }
   return { ok: true };
 }
