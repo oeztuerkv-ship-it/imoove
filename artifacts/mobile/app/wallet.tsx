@@ -1,6 +1,8 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { usePaymentSheet } from "@stripe/stripe-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import { SectionHeadingPill } from "@/components/SectionHeadingPill";
 import {
@@ -19,9 +21,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
+import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY } from "@/constants/stripe";
 import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
+import { fetchCustomerRides, pickRideIdForStripeLink } from "@/utils/customerRidesApi";
+import { postCustomerCreatePaymentIntent } from "@/utils/stripePaymentApi";
+import { presentStripePaymentSheet } from "@/utils/stripePaymentSheet";
 import { rs, rf } from "@/utils/scale";
 
 const isWeb = Platform.OS === "web";
@@ -232,8 +238,73 @@ export default function WalletScreen() {
   const { t } = useTranslation();
 
   const { profile, updateProfile } = useUser();
+  const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
   const [billingOpen, setBillingOpen] = useState(false);
+  const [cardLinked, setCardLinked] = useState(false);
+  const [cardLinkBusy, setCardLinkBusy] = useState(false);
+
+  React.useEffect(() => {
+    void AsyncStorage.getItem(STRIPE_CARD_TOKEN_KEY)
+      .then((v) => setCardLinked(!!v?.trim()))
+      .catch(() => setCardLinked(false));
+  }, []);
+
+  const handleLinkCard = useCallback(async () => {
+    if (!STRIPE_PUBLISHABLE_KEY) {
+      Alert.alert(t("wallet.card"), "Stripe ist in der App noch nicht konfiguriert (Publishable Key fehlt).");
+      return;
+    }
+    const authToken = profile.sessionToken?.trim() ?? "";
+    if (!authToken) {
+      Alert.alert(t("wallet.card"), "Bitte zuerst anmelden, um eine Karte zu hinterlegen.");
+      return;
+    }
+    setCardLinkBusy(true);
+    try {
+      const rides = await fetchCustomerRides(authToken);
+      const rideId = pickRideIdForStripeLink(rides);
+      if (!rideId) {
+        Alert.alert(
+          t("wallet.card"),
+          "Noch keine offene Fahrt vorhanden. Wähle bei der nächsten Buchung „Kreditkarte“ — die Zahlung erfolgt dann direkt im Buchungsflow.",
+        );
+        return;
+      }
+      const ride = rides.find((r) => r.id === rideId);
+      const amountRaw =
+        typeof ride?.estimatedFare === "number" && Number.isFinite(ride.estimatedFare) && ride.estimatedFare > 0
+          ? ride.estimatedFare
+          : 0.5;
+      const intent = await postCustomerCreatePaymentIntent({
+        authToken,
+        amount: amountRaw,
+        currency: "eur",
+        rideId,
+      });
+      if (!intent.ok) {
+        Alert.alert(t("wallet.card"), intent.error === "stripe_not_configured"
+          ? "Kartenzahlung ist auf dem Server noch nicht freigeschaltet."
+          : "Zahlung konnte nicht vorbereitet werden. Bitte später erneut versuchen.");
+        return;
+      }
+      const sheet = await presentStripePaymentSheet(
+        { initPaymentSheet, presentPaymentSheet },
+        intent.clientSecret,
+      );
+      if (!sheet.ok) {
+        if (sheet.message !== "Zahlung abgebrochen.") {
+          Alert.alert(t("wallet.card"), sheet.message);
+        }
+        return;
+      }
+      await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked");
+      setCardLinked(true);
+      Alert.alert(t("alerts.saved"), "Kreditkarte wurde hinterlegt. Du kannst sie bei der Buchung nutzen.");
+    } finally {
+      setCardLinkBusy(false);
+    }
+  }, [initPaymentSheet, presentPaymentSheet, profile.sessionToken, t]);
 
 
 
@@ -276,9 +347,12 @@ export default function WalletScreen() {
               icon={<MaterialCommunityIcons name="credit-card" size={WALLET_TILE_ICON} color="#FFFFFF" />}
               iconBg={WALLET_TILE.indigo}
               label={t("wallet.card")}
-              sublabel={t("wallet.cardSublabel")}
-              badge={t("wallet.cardSoon")}
-              onPress={() => Alert.alert(t("wallet.card"), t("wallet.cardAlertMessage"))}
+              sublabel={cardLinked ? "Hinterlegt · Stripe" : t("wallet.cardSublabel")}
+              isActive={cardLinked}
+              onPress={() => {
+                if (cardLinkBusy) return;
+                void handleLinkCard();
+              }}
             />
             <ListRow
               icon={<MaterialCommunityIcons name="ticket-percent" size={WALLET_TILE_ICON} color="#FFFFFF" />}

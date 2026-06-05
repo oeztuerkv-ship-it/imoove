@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { usePaymentSheet } from "@stripe/stripe-react-native";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams, usePathname, useSegments } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -52,6 +53,10 @@ import {
   postCustomerMedicalTransportScan,
   type MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
+import { STRIPE_CARD_TOKEN_KEY } from "@/constants/stripe";
+import { cancelCustomerRide } from "@/utils/customerRidesApi";
+import { postCustomerCreatePaymentIntent } from "@/utils/stripePaymentApi";
+import { presentStripePaymentSheet } from "@/utils/stripePaymentSheet";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Bar",
@@ -295,6 +300,7 @@ export default function RideScreen() {
   } = useRide();
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
+  const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const btnScale = useRef(new Animated.Value(1)).current;
   const rideScrollRef = useRef<ScrollView>(null);
   const accessibilityScrollRef = useRef<ScrollView>(null);
@@ -473,8 +479,9 @@ export default function RideScreen() {
 
     const pm = paymentMethod;
 
-    /* ── 1. Token / Pre-Auth nur bei Online-Zahlung (nicht Bar, Transportschein, Freigabe-Code) ── */
-    const skipWalletSteps = pm === "cash" || pm === "voucher" || pm === "access_code";
+    /* ── 1. Token / Pre-Auth (Karte: Zahlung nach Buchung via Stripe Payment Sheet) ── */
+    const skipWalletSteps =
+      pm === "cash" || pm === "voucher" || pm === "access_code" || pm === "card";
     if (!skipWalletSteps) {
       const hasToken = await checkPaymentTokenFor(pm);
       if (!hasToken) {
@@ -483,11 +490,19 @@ export default function RideScreen() {
         setNoTokenVisible(true);
         return;
       }
-      const copayment = calculateCopayment(fareBreakdown.total, isExempted);
       const chargeAmount = fareBreakdown.total;
       const preAuthOk = await runPreAuthorization(chargeAmount, pm);
       if (!preAuthOk) {
         Alert.alert("Zahlung fehlgeschlagen", "Die Vorautorisierung konnte nicht durchgeführt werden. Bitte Zahlungsmittel prüfen.");
+        return;
+      }
+    }
+    if (pm === "card") {
+      const hasCard = await checkPaymentTokenFor("card");
+      if (!hasCard) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setTokenErrorMethod("card");
+        setNoTokenVisible(true);
         return;
       }
     }
@@ -588,7 +603,7 @@ export default function RideScreen() {
               partnerBookingMeta: partnerBookingMetaPayload.partnerBookingMeta,
             });
           }
-          const rideRequestId = await addRequest({
+          let rideRequestId = await addRequest({
             from: origin.displayName.split(",")[0],
             fromFull: origin.displayName,
             to: destination?.displayName.split(",")[0] ?? "Ziel",
@@ -632,6 +647,37 @@ export default function RideScreen() {
                 }
               : {}),
           });
+          if (pm === "card") {
+            const authToken = profile.sessionToken?.trim() ?? "";
+            const intent = await postCustomerCreatePaymentIntent({
+              authToken,
+              amount: chargeAmount,
+              currency: "eur",
+              rideId: rideRequestId,
+            });
+            if (!intent.ok) {
+              await cancelCustomerRide(authToken, rideRequestId);
+              Alert.alert(
+                "Zahlung fehlgeschlagen",
+                intent.error === "stripe_not_configured"
+                  ? "Kartenzahlung ist derzeit nicht verfügbar."
+                  : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.",
+              );
+              return;
+            }
+            const sheet = await presentStripePaymentSheet(
+              { initPaymentSheet, presentPaymentSheet },
+              intent.clientSecret,
+            );
+            if (!sheet.ok) {
+              await cancelCustomerRide(authToken, rideRequestId);
+              if (sheet.message !== "Zahlung abgebrochen.") {
+                Alert.alert("Zahlung fehlgeschlagen", sheet.message);
+              }
+              return;
+            }
+            await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);
+          }
           router.replace({ pathname: "/status", params: { rideId: rideRequestId } } as any);
         } catch (err) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
