@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
         "NSLocationWhenInUseUsageDescription": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
