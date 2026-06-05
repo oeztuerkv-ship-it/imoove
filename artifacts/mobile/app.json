@@ -79,7 +79,13 @@
           "recordAudioAndroid": false
         }
       ],
-      "@stripe/stripe-react-native",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.vedat.mobile",
+          "enableGooglePay": false
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-location",
