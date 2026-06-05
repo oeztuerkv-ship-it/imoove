@@ -20,6 +20,7 @@ import {
   requireCustomerSession,
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
+import { getStripeClient } from "../lib/stripeClient.js";
 
 const router = Router();
 
@@ -411,7 +412,87 @@ router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res
   }
 });
 
-
+router.post("/customer/v1/payment/create-intent", requireCustomerSession, async (req, res, next) => {
+  try {
+    const stripe = getStripeClient();
+    if (!stripe) {
+      res.status(503).json({
+        error: "stripe_not_configured",
+        message: "Kartenzahlung ist derzeit nicht verfügbar.",
+      });
+      return;
+    }
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const body = req.body as { amount?: unknown; currency?: unknown; rideId?: unknown };
+    const amountRaw = body.amount;
+    const amount =
+      typeof amountRaw === "number"
+        ? amountRaw
+        : typeof amountRaw === "string"
+          ? Number(amountRaw.trim())
+          : NaN;
+    const currency = String(body.currency ?? "")
+      .trim()
+      .toLowerCase();
+    const rideId = String(body.rideId ?? "").trim();
+    if (!Number.isFinite(amount) || amount <= 0) {
+      res.status(400).json({ error: "invalid_amount" });
+      return;
+    }
+    if (currency !== "eur") {
+      res.status(400).json({ error: "invalid_currency" });
+      return;
+    }
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (
+      ride.status === "completed" ||
+      ride.status === "cancelled" ||
+      ride.status === "cancelled_by_customer" ||
+      ride.status === "cancelled_by_driver" ||
+      ride.status === "cancelled_by_system" ||
+      ride.status === "expired" ||
+      ride.status === "rejected"
+    ) {
+      res.status(409).json({ error: "payment_not_allowed_for_status" });
+      return;
+    }
+    const amountCents = Math.round(amount * 100);
+    if (amountCents < 50) {
+      res.status(400).json({ error: "amount_below_minimum" });
+      return;
+    }
+    const intent = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency: "eur",
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        ride_id: rideId,
+        passenger_id: passengerId,
+      },
+    });
+    const clientSecret = intent.client_secret?.trim();
+    if (!clientSecret) {
+      res.status(500).json({ error: "stripe_client_secret_missing" });
+      return;
+    }
+    res.json({ clientSecret });
+  } catch (e) {
+    next(e);
+  }
+});
 
 router.delete("/customer/v1/account", requireCustomerSession, async (req, res, next) => {
   try {
