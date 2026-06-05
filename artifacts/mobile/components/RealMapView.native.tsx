@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 
 import { useColors } from "@/hooks/useColors";
+import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { type GeoLocation } from "@/utils/routing";
 
 const DEFAULT_REGION = {
@@ -153,8 +154,13 @@ export function RealMapView({
 
   const handleMapReady = useCallback(() => {
     mapReadyRef.current = true;
+    logMapsRuntimeDiagnosticsOnce("RealMapView.onMapReady");
     setTimeout(fitMap, 300);
   }, [fitMap]);
+
+  useEffect(() => {
+    logMapsRuntimeDiagnosticsOnce("RealMapView.mount");
+  }, []);
 
   useEffect(() => {
     if (!mapReadyRef.current) return;

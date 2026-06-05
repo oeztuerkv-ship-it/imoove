@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
 
 export type CustomerRideListItem = {
   id?: string;
@@ -7,9 +8,9 @@ export type CustomerRideListItem = {
 };
 
 export async function fetchCustomerRides(
-  authToken: string,
+  authToken?: string | null,
 ): Promise<CustomerRideListItem[]> {
-  const token = authToken.trim();
+  const token = (await resolveCustomerBearerToken(authToken)) ?? "";
   const apiBase = getApiBaseUrl();
   if (!token || !apiBase) return [];
   const res = await fetch(`${apiBase}/customer/v1/rides`, {
@@ -42,8 +43,8 @@ export function pickRideIdForStripeLink(rides: CustomerRideListItem[]): string |
   return any?.id?.trim() ?? null;
 }
 
-export async function cancelCustomerRide(authToken: string, rideId: string): Promise<void> {
-  const token = authToken.trim();
+export async function cancelCustomerRide(authToken: string | null | undefined, rideId: string): Promise<void> {
+  const token = (await resolveCustomerBearerToken(authToken)) ?? "";
   const id = rideId.trim();
   const apiBase = getApiBaseUrl();
   if (!token || !id || !apiBase) return;

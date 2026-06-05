@@ -283,9 +283,15 @@ export default function WalletScreen() {
         rideId,
       });
       if (!intent.ok) {
-        Alert.alert(t("wallet.card"), intent.error === "stripe_not_configured"
-          ? "Kartenzahlung ist auf dem Server noch nicht freigeschaltet."
-          : "Zahlung konnte nicht vorbereitet werden. Bitte später erneut versuchen.");
+        const msg =
+          intent.error === "stripe_not_configured"
+            ? "Kartenzahlung ist auf dem Server noch nicht freigeschaltet."
+            : intent.error === "not_found"
+              ? "Diese Fahrt passt nicht zu deinem Konto. Bitte eine neue Buchung mit Kreditkarte starten."
+              : intent.error === "invalid_token" || intent.error === "unauthorized"
+                ? "Bitte erneut anmelden und es nochmal versuchen."
+                : "Zahlung konnte nicht vorbereitet werden. Bitte später erneut versuchen.";
+        Alert.alert(t("wallet.card"), msg);
         return;
       }
       const sheet = await presentStripePaymentSheet(

@@ -621,7 +621,7 @@ export default function RideScreen() {
             customerName: profile.name
               ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
               : "Gast",
-            passengerId: passengerId || undefined,
+            passengerId: profile.googleId?.trim() || passengerId || undefined,
             scheduledAt: scheduledTime ?? null,
             ...partnerBookingMetaPayload,
             ...(pm === "voucher" && pendingTransportScanId
@@ -657,12 +657,15 @@ export default function RideScreen() {
             });
             if (!intent.ok) {
               await cancelCustomerRide(authToken, rideRequestId);
-              Alert.alert(
-                "Zahlung fehlgeschlagen",
+              const userMessage =
                 intent.error === "stripe_not_configured"
                   ? "Kartenzahlung ist derzeit nicht verfügbar."
-                  : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.",
-              );
+                  : intent.error === "not_found"
+                    ? "Die Buchung konnte der Zahlung nicht zugeordnet werden. Bitte erneut anmelden und nochmal buchen."
+                    : intent.error === "invalid_token" || intent.error === "unauthorized"
+                      ? "Sitzung abgelaufen. Bitte erneut anmelden und die Buchung wiederholen."
+                      : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.";
+              Alert.alert("Zahlung fehlgeschlagen", userMessage);
               return;
             }
             const sheet = await presentStripePaymentSheet(

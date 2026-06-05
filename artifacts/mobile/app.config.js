@@ -10,9 +10,34 @@ const easProjectId =
   (appJson.expo?.extra?.eas?.projectId || "").trim() ||
   "";
 
+/** Maps-SDK (nicht Places): landet per EAS-Prebuild in AppDelegate + Info.plist GMSApiKey. */
+const iosGoogleMapsApiKey =
+  (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "").trim() ||
+  (appJson.expo?.ios?.config?.googleMapsApiKey || "").trim();
+const androidGoogleMapsApiKey =
+  (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "").trim() ||
+  (appJson.expo?.android?.config?.googleMaps?.apiKey || "").trim();
+
 module.exports = {
   expo: {
     ...appJson.expo,
+    ios: {
+      ...appJson.expo.ios,
+      config: {
+        ...(appJson.expo.ios?.config || {}),
+        ...(iosGoogleMapsApiKey ? { googleMapsApiKey: iosGoogleMapsApiKey } : {}),
+      },
+    },
+    android: {
+      ...appJson.expo.android,
+      config: {
+        ...(appJson.expo.android?.config || {}),
+        googleMaps: {
+          ...(appJson.expo.android?.config?.googleMaps || {}),
+          ...(androidGoogleMapsApiKey ? { apiKey: androidGoogleMapsApiKey } : {}),
+        },
+      },
+    },
     extra: {
       ...(appJson.expo.extra || {}),
       eas: {
