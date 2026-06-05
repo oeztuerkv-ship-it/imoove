@@ -64,6 +64,10 @@ import { findFleetDriverAuthRow, getFleetDriverMarketOnline } from "../db/fleetD
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { notifyMarketOnlineDriversInstantRideOffer } from "../lib/driverRideExpoPush";
 import {
+  assertKkModuleAccessForFleetDriver,
+  kkModuleDeniedJson,
+} from "../lib/kkModuleAccess.js";
+import {
   assertMedicalTransportAuthorizedForFleetDriver,
   MEDICAL_TRANSPORT_NOT_AUTHORIZED,
 } from "../lib/medical/medicalTransportAuthorization";
@@ -1876,6 +1880,11 @@ export async function patchRideStatusRoute(
             error: MEDICAL_TRANSPORT_NOT_AUTHORIZED,
             message: "Krankenfahrten für dieses Unternehmen oder diesen Fahrer sind nicht freigeschaltet.",
           });
+          return;
+        }
+        const kkAuthz = await assertKkModuleAccessForFleetDriver(capabilityCompanyId, driverId);
+        if (!kkAuthz.ok) {
+          res.status(403).json(kkModuleDeniedJson(kkAuthz.error));
           return;
         }
       }

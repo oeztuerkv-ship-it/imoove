@@ -337,7 +337,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         );
       }
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
-      if (ride.rideKind === "medical" && !medicalTransportAuthorized) return false;
+      if (ride.rideKind === "medical" && (!companyKkModuleEnabled || !medicalTransportAuthorized)) return false;
       const inMarket =
         ride.status === "pending" ||
         ride.status === "requested" ||
