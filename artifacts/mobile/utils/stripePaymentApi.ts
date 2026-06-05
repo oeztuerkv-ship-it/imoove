@@ -12,7 +12,7 @@ export type CreatePaymentIntentInput = {
 
 export type CreatePaymentIntentResult =
   | { ok: true; clientSecret: string }
-  | { ok: false; error: string; status?: number; detail?: string };
+  | { ok: false; error: string; status?: number; detail?: string; rideStatus?: string };
 
 /** Nutzer-Alert inkl. exaktem API-Fehlercode (TestFlight-Diagnose). */
 export function formatStripePaymentIntentAlertMessage(
@@ -21,7 +21,11 @@ export function formatStripePaymentIntentAlertMessage(
 ): string {
   const httpPart =
     typeof result.status === "number" ? `\nHTTP: ${result.status}` : "";
-  return `${userMessage}\n\nAPI-Code: ${result.error}${httpPart}`;
+  const statusPart =
+    typeof result.rideStatus === "string" && result.rideStatus.trim()
+      ? `\nFahrt-Status: ${result.rideStatus.trim()}`
+      : "";
+  return `${userMessage}\n\nAPI-Code: ${result.error}${httpPart}${statusPart}`;
 }
 
 export async function postCustomerCreatePaymentIntent(
@@ -77,7 +81,7 @@ export async function postCustomerCreatePaymentIntent(
   }
 
   const raw = await res.text();
-  let parsed: { clientSecret?: string; error?: string; message?: string } = {};
+  let parsed: { clientSecret?: string; error?: string; message?: string; rideStatus?: string } = {};
   try {
     parsed = raw ? (JSON.parse(raw) as typeof parsed) : {};
   } catch {
@@ -86,10 +90,13 @@ export async function postCustomerCreatePaymentIntent(
 
   if (!res.ok) {
     const error = parsed.error ?? parsed.message ?? `http_${res.status}`;
+    const rideStatus =
+      typeof parsed.rideStatus === "string" ? parsed.rideStatus.trim() : undefined;
     console.error(LOG_TAG, "create-intent: api error", {
       status: res.status,
       error,
       message: parsed.message ?? null,
+      rideStatus: rideStatus ?? null,
       rideId: input.rideId,
       amount: input.amount,
       responseSnippet: raw.slice(0, 400),
@@ -99,6 +106,7 @@ export async function postCustomerCreatePaymentIntent(
       error,
       status: res.status,
       detail: raw.slice(0, 400),
+      ...(rideStatus ? { rideStatus } : {}),
     };
   }
 

@@ -672,8 +672,21 @@ export async function findRide(id: string): Promise<RideRequest | null> {
   return rowToRide(row);
 }
 
+export type FindRideForPassengerOptions = {
+  /**
+   * Standard: vergangene `scheduled`-Reservierungen werden beim Lesen auf `expired` gesetzt.
+   * Für Stripe `create-intent` direkt nach Buchung: `true`, damit die Zahlung nicht durch
+   * denselben Read-Pfad blockiert wird.
+   */
+  skipLifecycleExpiry?: boolean;
+};
+
 /** Kunde: Einzel-Fahrt, nur wenn sie dem Passenger gehört. */
-export async function findRideForPassenger(id: string, passengerId: string): Promise<RideRequest | null> {
+export async function findRideForPassenger(
+  id: string,
+  passengerId: string,
+  options?: FindRideForPassengerOptions,
+): Promise<RideRequest | null> {
   const rideId = id.trim();
   const pid = passengerId.trim();
   if (!rideId || !pid) return null;
@@ -689,6 +702,9 @@ export async function findRideForPassenger(id: string, passengerId: string): Pro
     .where(and(eq(ridesTable.id, rideId), eq(ridesTable.passenger_id, pid)))
     .limit(1);
   if (!rows[0]) return null;
+  if (options?.skipLifecycleExpiry) {
+    return rowToRide(rows[0]);
+  }
   const expired = await expirePastOpenReservationsByIds(db, [rows[0].id]);
   const row = withLifecycleExpiredRows([rows[0]], expired)[0];
   return rowToRide(row);

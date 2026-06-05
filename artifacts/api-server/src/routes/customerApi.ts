@@ -21,6 +21,7 @@ import {
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
+import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
 
 const router = Router();
 
@@ -452,21 +453,16 @@ router.post("/customer/v1/payment/create-intent", requireCustomerSession, async 
       return;
     }
     const passengerId = customerPassengerId(sess);
-    const ride = await findRideForPassenger(rideId, passengerId);
+    const ride = await findRideForPassenger(rideId, passengerId, { skipLifecycleExpiry: true });
     if (!ride) {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    if (
-      ride.status === "completed" ||
-      ride.status === "cancelled" ||
-      ride.status === "cancelled_by_customer" ||
-      ride.status === "cancelled_by_driver" ||
-      ride.status === "cancelled_by_system" ||
-      ride.status === "expired" ||
-      ride.status === "rejected"
-    ) {
-      res.status(409).json({ error: "payment_not_allowed_for_status" });
+    if (!isPaymentAllowedForRideStatus(ride.status)) {
+      res.status(409).json({
+        error: "payment_not_allowed_for_status",
+        rideStatus: ride.status,
+      });
       return;
     }
     const amountCents = Math.round(amount * 100);

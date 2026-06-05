@@ -14,6 +14,28 @@ export const RIDE_TERMINAL_STATUSES: ReadonlySet<RideRequest["status"]> = new Se
   "expired",
 ]);
 
+/** Kartenzahlung (Stripe PaymentIntent): alle aktiven Buchungs-/Fahrt-Stati, nicht nur Terminal-Gegenteil. */
+export const RIDE_PAYMENT_ALLOWED_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
+  "draft",
+  "scheduled",
+  "scheduled_assigned",
+  "ready_for_dispatch",
+  "requested",
+  "searching_driver",
+  "offered",
+  "pending",
+  "accepted",
+  "driver_arriving",
+  "driver_waiting",
+  "passenger_onboard",
+  "arrived",
+  "in_progress",
+]);
+
+export function isPaymentAllowedForRideStatus(status: RideRequest["status"]): boolean {
+  return RIDE_PAYMENT_ALLOWED_STATUSES.has(status);
+}
+
 const TRANSITIONS: Partial<Record<RideRequest["status"], RideRequest["status"][]>> = {
   draft: ["requested", "cancelled_by_customer", "cancelled"],
   scheduled: [

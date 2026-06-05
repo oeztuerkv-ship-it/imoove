@@ -667,7 +667,9 @@ export default function RideScreen() {
                     ? "Die Buchung konnte der Zahlung nicht zugeordnet werden. Bitte erneut anmelden und nochmal buchen."
                     : intent.error === "invalid_token" || intent.error === "unauthorized"
                       ? "Sitzung abgelaufen. Bitte erneut anmelden und die Buchung wiederholen."
-                      : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.";
+                      : intent.error === "payment_not_allowed_for_status"
+                        ? "Die Buchung ist für die Kartenzahlung nicht mehr gültig. Bitte erneut buchen."
+                        : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.";
               Alert.alert(
                 "Zahlung fehlgeschlagen",
                 formatStripePaymentIntentAlertMessage(userMessage, intent),
