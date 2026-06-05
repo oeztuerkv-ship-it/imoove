@@ -14,6 +14,16 @@ export type CreatePaymentIntentResult =
   | { ok: true; clientSecret: string }
   | { ok: false; error: string; status?: number; detail?: string };
 
+/** Nutzer-Alert inkl. exaktem API-Fehlercode (TestFlight-Diagnose). */
+export function formatStripePaymentIntentAlertMessage(
+  userMessage: string,
+  result: Extract<CreatePaymentIntentResult, { ok: false }>,
+): string {
+  const httpPart =
+    typeof result.status === "number" ? `\nHTTP: ${result.status}` : "";
+  return `${userMessage}\n\nAPI-Code: ${result.error}${httpPart}`;
+}
+
 export async function postCustomerCreatePaymentIntent(
   input: CreatePaymentIntentInput,
 ): Promise<CreatePaymentIntentResult> {

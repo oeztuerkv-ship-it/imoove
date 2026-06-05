@@ -55,7 +55,10 @@ import {
 } from "@/utils/medicalScanApi";
 import { STRIPE_CARD_TOKEN_KEY } from "@/constants/stripe";
 import { cancelCustomerRide } from "@/utils/customerRidesApi";
-import { postCustomerCreatePaymentIntent } from "@/utils/stripePaymentApi";
+import {
+  formatStripePaymentIntentAlertMessage,
+  postCustomerCreatePaymentIntent,
+} from "@/utils/stripePaymentApi";
 import { presentStripePaymentSheet } from "@/utils/stripePaymentSheet";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -665,7 +668,10 @@ export default function RideScreen() {
                     : intent.error === "invalid_token" || intent.error === "unauthorized"
                       ? "Sitzung abgelaufen. Bitte erneut anmelden und die Buchung wiederholen."
                       : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.";
-              Alert.alert("Zahlung fehlgeschlagen", userMessage);
+              Alert.alert(
+                "Zahlung fehlgeschlagen",
+                formatStripePaymentIntentAlertMessage(userMessage, intent),
+              );
               return;
             }
             const sheet = await presentStripePaymentSheet(

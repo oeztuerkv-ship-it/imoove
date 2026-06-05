@@ -26,7 +26,10 @@ import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
 import { fetchCustomerRides, pickRideIdForStripeLink } from "@/utils/customerRidesApi";
-import { postCustomerCreatePaymentIntent } from "@/utils/stripePaymentApi";
+import {
+  formatStripePaymentIntentAlertMessage,
+  postCustomerCreatePaymentIntent,
+} from "@/utils/stripePaymentApi";
 import { presentStripePaymentSheet } from "@/utils/stripePaymentSheet";
 import { rs, rf } from "@/utils/scale";
 
@@ -291,7 +294,7 @@ export default function WalletScreen() {
               : intent.error === "invalid_token" || intent.error === "unauthorized"
                 ? "Bitte erneut anmelden und es nochmal versuchen."
                 : "Zahlung konnte nicht vorbereitet werden. Bitte später erneut versuchen.";
-        Alert.alert(t("wallet.card"), msg);
+        Alert.alert(t("wallet.card"), formatStripePaymentIntentAlertMessage(msg, intent));
         return;
       }
       const sheet = await presentStripePaymentSheet(
