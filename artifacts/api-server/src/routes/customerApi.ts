@@ -21,6 +21,7 @@ import {
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
+import { getOrCreateStripeCustomerForPassenger } from "../lib/stripePassengerCustomer";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
 
 const router = Router();
@@ -480,6 +481,41 @@ router.post("/customer/v1/payment/create-intent", requireCustomerSession, async 
       },
     });
     const clientSecret = intent.client_secret?.trim();
+    if (!clientSecret) {
+      res.status(500).json({ error: "stripe_client_secret_missing" });
+      return;
+    }
+    res.json({ clientSecret });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Karte ohne Fahrt hinterlegen (Stripe SetupIntent, Payment Sheet mit setupIntentClientSecret). */
+router.post("/customer/v1/payment/setup-intent", requireCustomerSession, async (req, res, next) => {
+  try {
+    const stripe = getStripeClient();
+    if (!stripe) {
+      res.status(503).json({
+        error: "stripe_not_configured",
+        message: "Kartenzahlung ist derzeit nicht verfügbar.",
+      });
+      return;
+    }
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const customerId = await getOrCreateStripeCustomerForPassenger(stripe, passengerId, sess.email);
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      automatic_payment_methods: { enabled: true },
+      usage: "off_session",
+      metadata: { passenger_id: passengerId },
+    });
+    const clientSecret = setupIntent.client_secret?.trim();
     if (!clientSecret) {
       res.status(500).json({ error: "stripe_client_secret_missing" });
       return;

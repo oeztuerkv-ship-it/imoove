@@ -124,3 +124,63 @@ export async function postCustomerCreatePaymentIntent(
   });
   return { ok: true, clientSecret };
 }
+
+export type CreateSetupIntentInput = {
+  authToken?: string | null;
+};
+
+export type CreateSetupIntentResult =
+  | { ok: true; clientSecret: string }
+  | { ok: false; error: string; status?: number; detail?: string };
+
+/** SetupIntent ohne Fahrt (Wallet / gespeicherte Karte) — Route: POST …/payment/setup-intent */
+export async function postCustomerCreateSetupIntent(
+  input: CreateSetupIntentInput,
+): Promise<CreateSetupIntentResult> {
+  const token = await resolveCustomerBearerToken(input.authToken);
+  const apiBase = getApiBaseUrl();
+  const url = apiBase ? `${apiBase}/customer/v1/payment/setup-intent` : "";
+
+  if (!token) {
+    return { ok: false, error: "unauthorized", detail: "no_bearer_token" };
+  }
+  if (!apiBase) {
+    return { ok: false, error: "api_not_configured", detail: "no_api_base" };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(LOG_TAG, "setup-intent: network error", { url, message });
+    return { ok: false, error: "network_error", detail: message };
+  }
+
+  const raw = await res.text();
+  let parsed: { clientSecret?: string; error?: string; message?: string } = {};
+  try {
+    parsed = raw ? (JSON.parse(raw) as typeof parsed) : {};
+  } catch {
+    parsed = {};
+  }
+
+  if (!res.ok) {
+    const error = parsed.error ?? parsed.message ?? `http_${res.status}`;
+    return { ok: false, error, status: res.status, detail: raw.slice(0, 400) };
+  }
+
+  const clientSecret = typeof parsed.clientSecret === "string" ? parsed.clientSecret.trim() : "";
+  if (!clientSecret) {
+    return { ok: false, error: "missing_client_secret", status: res.status, detail: raw.slice(0, 200) };
+  }
+
+  return { ok: true, clientSecret };
+}
