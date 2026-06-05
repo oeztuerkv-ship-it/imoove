@@ -2,11 +2,10 @@
  * PM2-Produktions-Definition (Onroda).
  *
  * Pfade: an den Server-Clone anpassen (Default: /root/imoove).
- * API bleibt intern Port 3000 (siehe .env / PORT).
- * Optional getrennte Vite-Preview-Apps (nur wenn Nginx nicht auf API :3000 proxyt):
- *   - onroda-admin-panel   → admin-panel  preview:prod  127.0.0.1:3001  (base /partners/)
- *   - onroda-partner-panel → partner-panel preview:prod  127.0.0.1:3001  (nur einer pro Port!)
- * Standard (Repo-Nginx-Beispiel): panel.onroda.de + admin → proxy_pass API :3000 (kein separates Panel-PM2 nötig).
+ * - onroda-api:            API intern Port 3000 (siehe artifacts/api-server/.env / PORT)
+ * - onroda-partner-panel:  Vite preview auf 127.0.0.1:3001 (Nginx panel.onroda.de)
+ *
+ * Admin-Panel: statisch via Nginx (/var/www/admin.onroda.de/) — kein PM2-Prozess.
  *
  * Start (einmalig):  pm2 start ecosystem.config.cjs
  * Update:             pm2 reload ecosystem.config.cjs --update-env
@@ -20,16 +19,6 @@ module.exports = {
       cwd: `${root}/artifacts/api-server`,
       script: "node",
       args: "--enable-source-maps ./dist/index.mjs",
-      interpreter: "none",
-      env: {
-        NODE_ENV: "production",
-      },
-    },
-    {
-      name: "onroda-admin-panel",
-      cwd: `${root}/artifacts/admin-panel`,
-      script: "pnpm",
-      args: "run preview:prod",
       interpreter: "none",
       env: {
         NODE_ENV: "production",
