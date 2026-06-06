@@ -53,7 +53,8 @@ import {
   postCustomerMedicalTransportScan,
   type MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
-import { STRIPE_CARD_TOKEN_KEY } from "@/constants/stripe";
+import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY } from "@/constants/stripe";
+import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
 import { cancelCustomerRide } from "@/utils/customerRidesApi";
 import {
   formatStripePaymentIntentAlertMessage,
@@ -103,8 +104,8 @@ function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: bool
   return "Jetzt buchen";
 }
 
-/* Zahlungsmethoden, die einen hinterlegten Token benötigen */
-const TOKEN_REQUIRED: PaymentMethod[] = ["paypal", "card", "app"];
+/* Online-Zahlung mit vorher verknüpftem Wallet-Token (Karte: Stripe Sheet direkt beim Buchen). */
+const TOKEN_REQUIRED: PaymentMethod[] = ["paypal", "app"];
 
 const RIDE_PAYMENT_OPTIONS: {
   id: PaymentMethod;
@@ -353,7 +354,9 @@ export default function RideScreen() {
   }, [paymentMethod, preAuthLoading, pendingTransportScanId, transportScanTrafficLight]);
 
   const orderCtaLabel = React.useMemo(() => {
-    if (preAuthLoading) return "Vorautorisierung…";
+    if (preAuthLoading) {
+      return paymentMethod === "card" ? "Kartenzahlung…" : "Vorautorisierung…";
+    }
     if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") {
       return scheduledTime !== null ? "Trotzdem reservieren" : "Trotzdem buchen";
     }
@@ -482,7 +485,7 @@ export default function RideScreen() {
 
     const pm = paymentMethod;
 
-    /* ── 1. Token / Pre-Auth (Karte: Zahlung nach Buchung via Stripe Payment Sheet) ── */
+    /* ── 1. Token / Pre-Auth (Karte: kein Wallet — Payment Sheet nach Fahrtanlage) ── */
     const skipWalletSteps =
       pm === "cash" || pm === "voucher" || pm === "access_code" || pm === "card";
     if (!skipWalletSteps) {
@@ -500,14 +503,12 @@ export default function RideScreen() {
         return;
       }
     }
-    if (pm === "card") {
-      const hasCard = await checkPaymentTokenFor("card");
-      if (!hasCard) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setTokenErrorMethod("card");
-        setNoTokenVisible(true);
-        return;
-      }
+    if (pm === "card" && !STRIPE_PUBLISHABLE_KEY) {
+      Alert.alert(
+        "Kartenzahlung",
+        "Kartenzahlung ist in dieser App-Version noch nicht konfiguriert. Bitte Bar wählen oder die App aktualisieren.",
+      );
+      return;
     }
 
     /* ── 2. Buchung absenden ── */
@@ -518,6 +519,7 @@ export default function RideScreen() {
       Animated.timing(btnScale, { toValue: 1, duration: 80, useNativeDriver: true }),
     ]).start(() => {
       void (async () => {
+        if (pm === "card") setPreAuthLoading(true);
         try {
           if (!destination) return;
           const readCoord = (
@@ -651,7 +653,15 @@ export default function RideScreen() {
               : {}),
           });
           if (pm === "card") {
-            const authToken = profile.sessionToken?.trim() ?? "";
+            const authToken = await resolveCustomerBearerToken(profile.sessionToken);
+            if (!authToken) {
+              await cancelCustomerRide(profile.sessionToken?.trim() ?? "", rideRequestId);
+              Alert.alert(
+                "Anmeldung",
+                "Bitte erneut anmelden und die Buchung mit Kreditkarte wiederholen.",
+              );
+              return;
+            }
             const intent = await postCustomerCreatePaymentIntent({
               authToken,
               amount: chargeAmount,
@@ -708,6 +718,8 @@ export default function RideScreen() {
             "Buchung fehlgeschlagen",
             userFacingBookingErrorMessage(err, accessCodeBookingErrorMessage),
           );
+        } finally {
+          if (pm === "card") setPreAuthLoading(false);
         }
       })();
     });
