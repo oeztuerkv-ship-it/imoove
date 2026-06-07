@@ -17,9 +17,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
+import { fetchPlaceDetails } from "@/utils/googlePlacesApi";
 import { rf, rs } from "@/utils/scale";
-
-const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "";
 
 type PlaceDetail = {
   name: string;
@@ -54,10 +53,12 @@ export default function OrteDetailScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,formatted_address,formatted_phone_number,website,opening_hours,geometry,types&language=de&key=${GOOGLE_PLACES_API_KEY}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        setDetail(data.result ?? null);
+        const result = await fetchPlaceDetails(String(placeId ?? ""));
+        if (!result.ok) {
+          setDetail(null);
+          return;
+        }
+        setDetail((result.data.result ?? null) as PlaceDetail | null);
       } catch {
         setDetail(null);
       } finally {

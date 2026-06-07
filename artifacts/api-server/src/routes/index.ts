@@ -17,6 +17,7 @@ import companyOnboardingPanelRoutes from "./companyOnboardingPanelRoutes";
 import insurerPanelApiRouter from "./insurerPanelApi";
 import publicHomepageApiRouter from "./publicHomepageApi";
 import publicAnalyticsApiRouter from "./publicAnalyticsApi";
+import publicPlacesApiRouter from "./publicPlacesApi";
 import appConfigApiRouter from "./appConfigApi";
 import customerApiRouter from "./customerApi";
 
@@ -35,6 +36,7 @@ router.use(companyOnboardingPanelRoutes);
 router.use(insurerPanelApiRouter);
 router.use(publicHomepageApiRouter);
 router.use(publicAnalyticsApiRouter);
+router.use(publicPlacesApiRouter);
 router.use(panelApiRouter);
 router.use(panelInvoiceRoutesRouter);
 router.use(panelKrankenInvoiceRoutesRouter);

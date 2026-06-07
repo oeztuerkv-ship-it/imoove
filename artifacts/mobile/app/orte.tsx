@@ -17,9 +17,8 @@ import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingB
 import { accountSheetHeaderTitle } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
+import { fetchPlacesNearbySearch, fetchPlacesTextSearch } from "@/utils/googlePlacesApi";
 import { rf, rs } from "@/utils/scale";
-
-const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "";
 
 type OrtCategoryIconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -203,6 +202,7 @@ export default function OrteScreen() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [placesError, setPlacesError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationReady, setLocationReady] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -221,36 +221,39 @@ export default function OrteScreen() {
   }, []);
 
   const searchPlaces = useCallback(async (kat: Kategorie, subKeyword: string, q: string, subId = "alle") => {
-    if (!GOOGLE_PLACES_API_KEY) {
-      setResults([]);
-      return;
-    }
     setLoading(true);
+    setPlacesError(null);
     try {
       const qTrim = q.trim();
       const origin = userLocation ?? FALLBACK_CENTER;
       const { lat, lng } = origin;
+      const location = `${lat},${lng}`;
       const notapothekeOnly = isNotapothekeSubfilter(kat, subId);
-      const openNowParam = notapothekeOnly ? "&opennow=true" : "";
-      let url: string;
+      const openNow = notapothekeOnly;
 
-      if (qTrim.length >= ORTE_TEXT_SEARCH_MIN_LEN) {
-        const textQuery = buildTextSearchQuery(kat, subKeyword, qTrim);
-        url =
-          `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(textQuery)}` +
-          `&type=${kat.googleType}&language=de&location=${lat},${lng}&radius=500000` +
-          `${openNowParam}&key=${GOOGLE_PLACES_API_KEY}`;
-      } else {
-        const keyword = qTrim || subKeyword;
-        const rankByDistance = userLocation != null;
-        url = rankByDistance
-          ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&rankby=distance&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de${openNowParam}&key=${GOOGLE_PLACES_API_KEY}`
-          : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de${openNowParam}&key=${GOOGLE_PLACES_API_KEY}`;
+      const fetched =
+        qTrim.length >= ORTE_TEXT_SEARCH_MIN_LEN
+          ? await fetchPlacesTextSearch({
+              query: buildTextSearchQuery(kat, subKeyword, qTrim),
+              type: kat.googleType,
+              location,
+              openNow,
+            })
+          : await fetchPlacesNearbySearch({
+              location,
+              type: kat.googleType,
+              keyword: qTrim || subKeyword,
+              rankByDistance: userLocation != null,
+              openNow,
+            });
+
+      if (!fetched.ok) {
+        setResults([]);
+        setPlacesError(fetched.userMessage);
+        return;
       }
 
-      const res = await fetch(url);
-      const data = (await res.json()) as { results?: Record<string, unknown>[]; status?: string };
-      const raw = data.results ?? [];
+      const raw = fetched.data.results ?? [];
       const places = filterPlacesForSub(
         kat,
         subId,
@@ -259,6 +262,7 @@ export default function OrteScreen() {
       setResults(withDistanceFrom(places, origin));
     } catch {
       setResults([]);
+      setPlacesError("Orte-Suche fehlgeschlagen.");
     } finally {
       setLoading(false);
     }
@@ -415,6 +419,9 @@ export default function OrteScreen() {
 
         {/* Ergebnisse */}
         {loading && <ActivityIndicator color="#EF1D26" style={{ marginTop: 24 }} />}
+        {!loading && placesError ? (
+          <Text style={[styles.empty, { color: "#DC2626", marginTop: 16 }]}>{placesError}</Text>
+        ) : null}
         {!loading && results.map((place) => {
           const isOpen = place.opening_hours?.open_now;
           return (
@@ -447,7 +454,7 @@ export default function OrteScreen() {
           );
         })}
 
-        {!loading && selectedKat && results.length === 0 && (
+        {!loading && !placesError && selectedKat && results.length === 0 && (
           <Text style={[styles.empty, { color: colors.mutedForeground }]}>
             {isNotapothekeSubfilter(selectedKat, selectedSub)
               ? "Keine geöffnete Notapotheke in der Nähe gefunden."

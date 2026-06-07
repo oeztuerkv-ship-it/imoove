@@ -30,6 +30,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.onroda.de",
         "EXPO_PUBLIC_GOOGLE_PLACES_KEY": "AIzaSyB-38lSMwwhRll_HMbgabScZzOBwsPJwB8",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyC6-pFE0kCcB-57r2ALZ81SAXys8_PpeoQ",
         "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51Teq6CPvQfl3yXdAU8JB32kfYRQNptHX4FKikTqd1yB6o3vRL9YruSQ5Qveo8lYkA0KOsDI9INejFFnhkSbOH0gD00ZcnPyAVj"
       },
       "android": {
