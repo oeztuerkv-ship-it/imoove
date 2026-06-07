@@ -11,8 +11,14 @@ export type CreatePaymentIntentInput = {
 };
 
 export type CreatePaymentIntentResult =
-  | { ok: true; clientSecret: string }
+  | { ok: true; paid: true; paymentIntentId?: string }
+  | { ok: true; paid: false; clientSecret: string; requiresAction?: boolean }
   | { ok: false; error: string; status?: number; detail?: string; rideStatus?: string };
+
+export type CustomerSavedCardResult =
+  | { ok: true; saved: true; brand: string | null; last4: string | null }
+  | { ok: true; saved: false }
+  | { ok: false; error: string; status?: number };
 
 /** Nutzer-Alert inkl. exaktem API-Fehlercode (TestFlight-Diagnose). */
 export function formatStripePaymentIntentAlertMessage(
@@ -81,7 +87,15 @@ export async function postCustomerCreatePaymentIntent(
   }
 
   const raw = await res.text();
-  let parsed: { clientSecret?: string; error?: string; message?: string; rideStatus?: string } = {};
+  let parsed: {
+    clientSecret?: string;
+    error?: string;
+    message?: string;
+    rideStatus?: string;
+    paid?: boolean;
+    paymentIntentId?: string;
+    requiresAction?: boolean;
+  } = {};
   try {
     parsed = raw ? (JSON.parse(raw) as typeof parsed) : {};
   } catch {
@@ -110,6 +124,18 @@ export async function postCustomerCreatePaymentIntent(
     };
   }
 
+  if (parsed.paid === true) {
+    console.log(LOG_TAG, "create-intent: paid off-session", {
+      rideId: input.rideId,
+      paymentIntentId: parsed.paymentIntentId ?? null,
+    });
+    return {
+      ok: true,
+      paid: true,
+      ...(typeof parsed.paymentIntentId === "string" ? { paymentIntentId: parsed.paymentIntentId } : {}),
+    };
+  }
+
   const clientSecret = typeof parsed.clientSecret === "string" ? parsed.clientSecret.trim() : "";
   if (!clientSecret) {
     console.error(LOG_TAG, "create-intent: missing clientSecret in 200 body", {
@@ -118,11 +144,66 @@ export async function postCustomerCreatePaymentIntent(
     return { ok: false, error: "missing_client_secret", status: res.status, detail: raw.slice(0, 200) };
   }
 
-  console.log(LOG_TAG, "create-intent: ok", {
+  console.log(LOG_TAG, "create-intent: payment sheet", {
     rideId: input.rideId,
+    requiresAction: parsed.requiresAction === true,
     clientSecretPrefix: clientSecret.slice(0, 20),
   });
-  return { ok: true, clientSecret };
+  return {
+    ok: true,
+    paid: false,
+    clientSecret,
+    ...(parsed.requiresAction === true ? { requiresAction: true } : {}),
+  };
+}
+
+export async function fetchCustomerSavedCard(
+  authToken?: string | null,
+): Promise<CustomerSavedCardResult> {
+  const token = await resolveCustomerBearerToken(authToken);
+  const apiBase = getApiBaseUrl();
+  const url = apiBase ? `${apiBase}/customer/v1/payment/saved-card` : "";
+
+  if (!token) {
+    return { ok: false, error: "unauthorized" };
+  }
+  if (!apiBase) {
+    return { ok: false, error: "api_not_configured" };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
+
+  const raw = await res.text();
+  let parsed: { saved?: boolean; brand?: string | null; last4?: string | null; error?: string } = {};
+  try {
+    parsed = raw ? (JSON.parse(raw) as typeof parsed) : {};
+  } catch {
+    parsed = {};
+  }
+
+  if (!res.ok) {
+    return { ok: false, error: parsed.error ?? `http_${res.status}`, status: res.status };
+  }
+
+  if (parsed.saved === true) {
+    return {
+      ok: true,
+      saved: true,
+      brand: typeof parsed.brand === "string" ? parsed.brand : null,
+      last4: typeof parsed.last4 === "string" ? parsed.last4 : null,
+    };
+  }
+
+  return { ok: true, saved: false };
 }
 
 export type CreateSetupIntentInput = {

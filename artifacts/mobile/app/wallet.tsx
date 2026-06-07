@@ -1,5 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { usePaymentSheet } from "@stripe/stripe-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import { SectionHeadingPill } from "@/components/SectionHeadingPill";
@@ -19,13 +21,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
-import { STRIPE_CARD_TOKEN_KEY } from "@/constants/stripe";
+import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY } from "@/constants/stripe";
 import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
+import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
+import { fetchCustomerSavedCard, postCustomerCreateSetupIntent } from "@/utils/stripePaymentApi";
+import { presentStripeSetupSheet } from "@/utils/stripePaymentSheet";
 import { rs, rf } from "@/utils/scale";
 
-const WALLET_CARD_BOOKING_HINT = "Karte beim nächsten Buchungsvorgang hinterlegen";
+function formatSavedCardSublabel(brand: string | null, last4: string | null): string {
+  const label = brand?.trim() ? brand.trim().toUpperCase() : "Karte";
+  return last4?.trim() ? `${label} •••• ${last4.trim()} · Stripe` : `${label} · Stripe`;
+}
 
 const isWeb = Platform.OS === "web";
 
@@ -235,19 +243,79 @@ export default function WalletScreen() {
   const { t } = useTranslation();
 
   const { profile, updateProfile } = useUser();
+  const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
   const [billingOpen, setBillingOpen] = useState(false);
   const [cardLinked, setCardLinked] = useState(false);
+  const [cardSublabel, setCardSublabel] = useState("Karte hinterlegen · Stripe");
+  const [cardLinkBusy, setCardLinkBusy] = useState(false);
 
-  React.useEffect(() => {
-    void AsyncStorage.getItem(STRIPE_CARD_TOKEN_KEY)
-      .then((v) => setCardLinked(!!v?.trim()))
-      .catch(() => setCardLinked(false));
-  }, []);
+  const refreshSavedCard = useCallback(async () => {
+    const authToken = await resolveCustomerBearerToken(profile.sessionToken);
+    if (!authToken) {
+      setCardLinked(false);
+      setCardSublabel("Anmelden, um Karte zu hinterlegen");
+      return;
+    }
+    const saved = await fetchCustomerSavedCard(authToken);
+    if (saved.ok && saved.saved) {
+      setCardLinked(true);
+      setCardSublabel(formatSavedCardSublabel(saved.brand, saved.last4));
+      await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);
+      return;
+    }
+    const local = await AsyncStorage.getItem(STRIPE_CARD_TOKEN_KEY).catch(() => null);
+    setCardLinked(!!local?.trim());
+    setCardSublabel(local?.trim() ? "Hinterlegt · Stripe" : "Karte hinterlegen · Stripe");
+  }, [profile.sessionToken]);
 
-  const handleLinkCard = useCallback(() => {
-    Alert.alert(t("wallet.card"), WALLET_CARD_BOOKING_HINT);
-  }, [t]);
+  useFocusEffect(
+    useCallback(() => {
+      void refreshSavedCard();
+    }, [refreshSavedCard]),
+  );
+
+  const handleLinkCard = useCallback(async () => {
+    if (cardLinkBusy) return;
+    if (!STRIPE_PUBLISHABLE_KEY) {
+      Alert.alert(t("wallet.card"), "Stripe ist in der App noch nicht konfiguriert (Publishable Key fehlt).");
+      return;
+    }
+    const authToken = await resolveCustomerBearerToken(profile.sessionToken);
+    if (!authToken) {
+      Alert.alert(t("wallet.card"), "Bitte zuerst anmelden, um eine Karte zu hinterlegen.");
+      return;
+    }
+    setCardLinkBusy(true);
+    try {
+      const setup = await postCustomerCreateSetupIntent({ authToken });
+      if (!setup.ok) {
+        const msg =
+          setup.error === "stripe_not_configured"
+            ? "Kartenzahlung ist auf dem Server noch nicht freigeschaltet."
+            : setup.error === "unauthorized" || setup.error === "invalid_token"
+              ? "Bitte erneut anmelden und es nochmal versuchen."
+              : "Die Karte konnte nicht vorbereitet werden. Bitte später erneut versuchen.";
+        Alert.alert(t("wallet.card"), msg);
+        return;
+      }
+      const sheet = await presentStripeSetupSheet(
+        { initPaymentSheet, presentPaymentSheet },
+        setup.clientSecret,
+      );
+      if (!sheet.ok) {
+        if (sheet.message !== "Zahlung abgebrochen.") {
+          Alert.alert(t("wallet.card"), sheet.message);
+        }
+        return;
+      }
+      await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);
+      await refreshSavedCard();
+      Alert.alert(t("alerts.saved"), "Kreditkarte wurde hinterlegt. Buchungen mit Karte werden automatisch belastet.");
+    } finally {
+      setCardLinkBusy(false);
+    }
+  }, [cardLinkBusy, initPaymentSheet, presentPaymentSheet, profile.sessionToken, refreshSavedCard, t]);
 
 
 
@@ -290,9 +358,11 @@ export default function WalletScreen() {
               icon={<MaterialCommunityIcons name="credit-card" size={WALLET_TILE_ICON} color="#FFFFFF" />}
               iconBg={WALLET_TILE.indigo}
               label={t("wallet.card")}
-              sublabel={cardLinked ? "Hinterlegt · Stripe" : WALLET_CARD_BOOKING_HINT}
+              sublabel={cardLinkBusy ? "Karte wird hinterlegt…" : cardSublabel}
               isActive={cardLinked}
-              onPress={handleLinkCard}
+              onPress={() => {
+                void handleLinkCard();
+              }}
             />
             <ListRow
               icon={<MaterialCommunityIcons name="ticket-percent" size={WALLET_TILE_ICON} color="#FFFFFF" />}

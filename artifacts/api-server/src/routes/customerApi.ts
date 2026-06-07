@@ -21,7 +21,7 @@ import {
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
-import { getOrCreateStripeCustomerForPassenger } from "../lib/stripePassengerCustomer";
+import { getOrCreateStripeCustomerForPassenger, chargePassengerSavedCard, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
 
 const router = Router();
@@ -471,21 +471,80 @@ router.post("/customer/v1/payment/create-intent", requireCustomerSession, async 
       res.status(400).json({ error: "amount_below_minimum" });
       return;
     }
+    const metadata = {
+      ride_id: rideId,
+      passenger_id: passengerId,
+    };
+    const { customerId, card } = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId, sess.email);
+
+    if (card?.paymentMethodId) {
+      const charge = await chargePassengerSavedCard({
+        stripe,
+        customerId,
+        paymentMethodId: card.paymentMethodId,
+        amountCents,
+        metadata,
+      });
+      if (charge.kind === "succeeded") {
+        res.json({ paid: true, paymentIntentId: charge.paymentIntentId });
+        return;
+      }
+      if (charge.kind === "requires_action") {
+        res.json({
+          paid: false,
+          clientSecret: charge.clientSecret,
+          requiresAction: true,
+          paymentIntentId: charge.paymentIntentId,
+        });
+        return;
+      }
+      res.status(402).json({ error: charge.error });
+      return;
+    }
+
     const intent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: "eur",
+      customer: customerId,
       automatic_payment_methods: { enabled: true },
-      metadata: {
-        ride_id: rideId,
-        passenger_id: passengerId,
-      },
+      setup_future_usage: "off_session",
+      metadata,
     });
     const clientSecret = intent.client_secret?.trim();
     if (!clientSecret) {
       res.status(500).json({ error: "stripe_client_secret_missing" });
       return;
     }
-    res.json({ clientSecret });
+    res.json({ paid: false, clientSecret });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Hinterlegte Karte (Stripe Customer PaymentMethod) für Wallet / Buchung. */
+router.get("/customer/v1/payment/saved-card", requireCustomerSession, async (req, res, next) => {
+  try {
+    const stripe = getStripeClient();
+    if (!stripe) {
+      res.status(503).json({ error: "stripe_not_configured" });
+      return;
+    }
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const { card } = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId, sess.email);
+    if (!card) {
+      res.json({ saved: false });
+      return;
+    }
+    res.json({
+      saved: true,
+      brand: card.brand,
+      last4: card.last4,
+    });
   } catch (e) {
     next(e);
   }

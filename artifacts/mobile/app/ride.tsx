@@ -679,23 +679,27 @@ export default function RideScreen() {
                       ? "Sitzung abgelaufen. Bitte erneut anmelden und die Buchung wiederholen."
                       : intent.error === "payment_not_allowed_for_status"
                         ? "Die Buchung ist für die Kartenzahlung nicht mehr gültig. Bitte erneut buchen."
-                        : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.";
+                        : intent.error === "card_declined" || intent.status === 402
+                          ? "Die hinterlegte Karte wurde abgelehnt. Bitte in der Geldbörse eine neue Karte hinterlegen."
+                          : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.";
               Alert.alert(
                 "Zahlung fehlgeschlagen",
                 formatStripePaymentIntentAlertMessage(userMessage, intent),
               );
               return;
             }
-            const sheet = await presentStripePaymentSheet(
-              { initPaymentSheet, presentPaymentSheet },
-              intent.clientSecret,
-            );
-            if (!sheet.ok) {
-              await cancelCustomerRide(authToken, rideRequestId);
-              if (sheet.message !== "Zahlung abgebrochen.") {
-                Alert.alert("Zahlung fehlgeschlagen", sheet.message);
+            if (!intent.paid) {
+              const sheet = await presentStripePaymentSheet(
+                { initPaymentSheet, presentPaymentSheet },
+                intent.clientSecret,
+              );
+              if (!sheet.ok) {
+                await cancelCustomerRide(authToken, rideRequestId);
+                if (sheet.message !== "Zahlung abgebrochen.") {
+                  Alert.alert("Zahlung fehlgeschlagen", sheet.message);
+                }
+                return;
               }
-              return;
             }
             await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);
           }
