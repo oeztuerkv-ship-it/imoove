@@ -4,7 +4,6 @@
  * Setzen via `EXPO_PUBLIC_EAS_PROJECT_ID` oder nach `npx eas init` in app.json → extra.eas.projectId.
  */
 const appJson = require("./app.json");
-const { withInfoPlist } = require("@expo/config-plugins");
 
 const easProjectId =
   (process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "").trim() ||
@@ -19,41 +18,32 @@ const androidGoogleMapsApiKey =
   (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "").trim() ||
   (appJson.expo?.android?.config?.googleMaps?.apiKey || "").trim();
 
-module.exports = ({ config }) => {
-  const base = {
-    expo: {
-      ...appJson.expo,
-      ios: {
-        ...appJson.expo.ios,
-        config: {
-          ...(appJson.expo.ios?.config || {}),
-          ...(iosGoogleMapsApiKey ? { googleMapsApiKey: iosGoogleMapsApiKey } : {}),
-        },
+module.exports = {
+  expo: {
+    ...appJson.expo,
+    ios: {
+      ...appJson.expo.ios,
+      config: {
+        ...(appJson.expo.ios?.config || {}),
+        ...(iosGoogleMapsApiKey ? { googleMapsApiKey: iosGoogleMapsApiKey } : {}),
       },
-      android: {
-        ...appJson.expo.android,
-        config: {
-          ...(appJson.expo.android?.config || {}),
-          googleMaps: {
-            ...(appJson.expo.android?.config?.googleMaps || {}),
-            ...(androidGoogleMapsApiKey ? { apiKey: androidGoogleMapsApiKey } : {}),
-          },
-        },
-      },
-      extra: {
-        ...(appJson.expo.extra || {}),
-        eas: {
-          ...(appJson.expo.extra?.eas || {}),
-          ...(easProjectId ? { projectId: easProjectId } : {}),
+    },
+    android: {
+      ...appJson.expo.android,
+      config: {
+        ...(appJson.expo.android?.config || {}),
+        googleMaps: {
+          ...(appJson.expo.android?.config?.googleMaps || {}),
+          ...(androidGoogleMapsApiKey ? { apiKey: androidGoogleMapsApiKey } : {}),
         },
       },
     },
-  };
-
-  if (!iosGoogleMapsApiKey) return base;
-
-  return withInfoPlist(base, (cfg) => {
-    cfg.modResults.GMSApiKey = iosGoogleMapsApiKey;
-    return cfg;
-  });
+    extra: {
+      ...(appJson.expo.extra || {}),
+      eas: {
+        ...(appJson.expo.extra?.eas || {}),
+        ...(easProjectId ? { projectId: easProjectId } : {}),
+      },
+    },
+  },
 };
