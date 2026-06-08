@@ -17,9 +17,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
-      "buildNumber": "12",
+      "buildNumber": "13",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
+        "NSCameraUsageDescription": "ONRODA nutzt die Kamera zum Scannen von Transportscheinen und Fahrt-QR-Codes.",
         "NSLocationWhenInUseUsageDescription": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
         "NSLocationAlwaysUsageDescription": "ONRODA benötigt deinen Standort während aktiver Fahrten, auch im Hintergrund.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",

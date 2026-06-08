@@ -1,6 +1,8 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
+
+import { requestTransportscheinCameraCapture } from "@/utils/transportscheinCameraCaptureBridge";
 
 /** Lange Seite max. — OCR reicht; verhindert 6MB-JSON-Limit auf der API. */
 const MEDICAL_SCAN_MAX_WIDTH = 2000;
@@ -11,7 +13,7 @@ export type PickTransportImageOptions = {
   jpegQuality?: number;
 };
 
-async function compressTransportImageUri(
+export async function compressTransportImageUri(
   uri: string,
   opts?: PickTransportImageOptions,
 ): Promise<string | null> {
@@ -39,6 +41,10 @@ export async function pickTransportImageBase64(
   fromCamera: boolean,
   compressOpts?: PickTransportImageOptions,
 ): Promise<string | null> {
+  if (fromCamera && Platform.OS !== "web") {
+    return requestTransportscheinCameraCapture(compressOpts);
+  }
+
   const perm = fromCamera
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
