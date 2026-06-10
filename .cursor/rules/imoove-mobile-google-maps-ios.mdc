@@ -1,0 +1,30 @@
+# Mobile iOS: Google Maps graue Kacheln (TestFlight)
+
+## Symptom
+
+- `MapView` + `PROVIDER_GOOGLE`: **graue Fläche**, keine Kacheln
+- **Polyline/Route** (OSRM) sichtbar — Routing ≠ Maps-Tiles
+- Expo Go oft OK, **EAS/TestFlight** leer
+
+## Ursachen (Reihenfolge prüfen)
+
+1. **AppDelegate-Reihenfolge:** `GMSServices.provideAPIKey` muss **vor** `startReactNative` laufen. Expo-Prebuild setzte den Key danach → Fix: `artifacts/mobile/plugins/withGoogleMapsEarlyInit.js` in `app.config.js`.
+2. **Google Cloud:** Key `ios.config.googleMapsApiKey` / `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` — **Maps SDK for iOS** aktiv, Billing an, iOS-Restriction **Bundle `com.vedat.mobile`** (nicht Places-only-Key).
+3. **Nicht** `EXPO_PUBLIC_GOOGLE_PLACES_KEY` für Kacheln (Places ≠ Maps SDK).
+
+## Diagnose
+
+- Metro: `[MapsDiag]` / `[DriverNav]` — `probeGoogleMapsApiKey()`
+- Xcode Device Log Filter: `GMSServices`, `API key not valid`, `Google Maps SDK`
+- Prebuild-Check: `npx expo prebuild --platform ios` → `AppDelegate.swift` Key **vor** `startReactNative`, `Info.plist` `GMSApiKey`
+
+## Dateien
+
+- `app.json` → `ios.config.googleMapsApiKey`, optional `infoPlist.GMSApiKey`
+- `app.config.js` → Plugin + Env-Fallback
+- `eas.json` production → `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`
+- `components/RealMapView.native.tsx`, `app/driver/navigation.tsx`
+
+## Abnahme
+
+Neuer **EAS iOS Build** (nicht OTA): Karte auf Start, `/status`, Fahrer-Navi zeigt Kacheln.

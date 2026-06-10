@@ -21,7 +21,9 @@ export function logMapsRuntimeDiagnosticsOnce(context: string): void {
     buildNumber: Constants.expoConfig?.ios?.buildNumber ?? "",
     googleMapsApiKey: keyProbe,
     note:
-      "Native GMSServices/AppDelegate wird beim EAS-Prebuild aus app.json ios.config.googleMapsApiKey gesetzt; Expo Go nutzt einen anderen Key.",
+      "Native GMSServices muss vor startReactNative in AppDelegate laufen (Plugin withGoogleMapsEarlyInit). Expo Go nutzt einen anderen Key.",
     xcodeFilter: "GMSServices OR Google Maps SDK OR API key not valid",
+    gcpChecklist:
+      "Maps SDK for iOS aktiv, Billing an, Key-Bundle com.vedat.mobile — sonst graue Kacheln trotz korrektem Prebuild.",
   });
 }

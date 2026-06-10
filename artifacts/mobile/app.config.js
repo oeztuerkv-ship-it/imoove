@@ -4,6 +4,7 @@
  * Setzen via `EXPO_PUBLIC_EAS_PROJECT_ID` oder nach `npx eas init` in app.json → extra.eas.projectId.
  */
 const appJson = require("./app.json");
+const withGoogleMapsEarlyInit = require("./plugins/withGoogleMapsEarlyInit");
 
 const easProjectId =
   (process.env.EXPO_PUBLIC_EAS_PROJECT_ID || "").trim() ||
@@ -21,6 +22,7 @@ const androidGoogleMapsApiKey =
 module.exports = {
   expo: {
     ...appJson.expo,
+    plugins: [...(appJson.expo.plugins || []), withGoogleMapsEarlyInit],
     ios: {
       ...appJson.expo.ios,
       config: {
