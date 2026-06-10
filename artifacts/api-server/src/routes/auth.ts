@@ -2,6 +2,7 @@ import { ClientAuthentication, OAuth2Client } from "google-auth-library";
 import { Router, type Request, type Response } from "express";
 import { createHash, randomBytes } from "crypto";
 import { getFirebaseAuth, isFirebaseAdminConfigured } from "../lib/firebaseAdmin";
+import { upsertPassengerProfile } from "../db/passengerProfilesData";
 import { applePassengerSubject, verifyAppleIdentityToken } from "../lib/appleSignInVerify";
 import {
   isSessionJwtConfigured,
@@ -351,6 +352,13 @@ router.get("/auth/google/callback", async (req, res) => {
       return;
     }
 
+    void upsertPassengerProfile({
+      passengerId: profile.sub,
+      name: profile.name ?? "",
+      email: profile.email ?? "",
+      authProvider: "google",
+    }).catch(() => undefined);
+
     res.redirect(appendQueryParams(returnUrl, { token: sessionToken }));
   } catch (e) {
     console.error("[auth] exception:", e);
@@ -516,6 +524,12 @@ router.post("/auth/apple/session", async (req, res) => {
       email,
       photoUri: null,
     });
+    void upsertPassengerProfile({
+      passengerId,
+      name: fullName,
+      email,
+      authProvider: "apple",
+    }).catch(() => undefined);
     res.json({
       ok: true,
       sessionToken,

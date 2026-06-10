@@ -1,10 +1,13 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "./client";
 
+export type PassengerAuthProvider = "email" | "google" | "apple";
+
 export type CustomerAdminListItem = {
   passengerId: string;
   name: string;
   email: string;
+  authProvider: PassengerAuthProvider;
   registeredAt: string;
   rideCount: number;
   cancellationCount: number;
@@ -24,6 +27,7 @@ type CustomerAdminRow = {
   passenger_id: string;
   name: string;
   email: string;
+  auth_provider: string | null;
   registered_at: Date | string;
   ride_count: number | string | null;
   cancellation_count: number | string | null;
@@ -31,6 +35,13 @@ type CustomerAdminRow = {
   suspended_until: Date | string | null;
   suspension_reason: string | null;
 };
+
+function normalizeAuthProvider(raw: string | null | undefined): PassengerAuthProvider {
+  const v = String(raw ?? "").trim().toLowerCase();
+  if (v === "email") return "email";
+  if (v === "apple") return "apple";
+  return "google";
+}
 
 function mapListRow(row: CustomerAdminRow): CustomerAdminListItem {
   const registeredAt =
@@ -46,6 +57,7 @@ function mapListRow(row: CustomerAdminRow): CustomerAdminListItem {
     passengerId: row.passenger_id,
     name: row.name,
     email: row.email,
+    authProvider: normalizeAuthProvider(row.auth_provider),
     registeredAt,
     rideCount: Number(row.ride_count ?? 0),
     cancellationCount: Number(row.cancellation_count ?? 0),
@@ -56,7 +68,7 @@ function mapListRow(row: CustomerAdminRow): CustomerAdminListItem {
 }
 
 const CUSTOMERS_ADMIN_FROM_SQL = sql`
-  FROM customer_accounts ca
+  FROM passenger_profiles pp
   LEFT JOIN (
     SELECT
       passenger_id,
@@ -65,9 +77,9 @@ const CUSTOMERS_ADMIN_FROM_SQL = sql`
     FROM rides
     WHERE passenger_id IS NOT NULL
     GROUP BY passenger_id
-  ) rs ON rs.passenger_id = ca.id
+  ) rs ON rs.passenger_id = pp.passenger_id
   LEFT JOIN customer_cancellation_suspension s
-    ON s.passenger_id = ca.id
+    ON s.passenger_id = pp.passenger_id
     AND s.lifted_at IS NULL
     AND s.suspended_until >= NOW()
 `;
@@ -76,8 +88,26 @@ function customersSearchSql(q: string) {
   const needle = q.trim();
   if (!needle) return sql``;
   const pattern = `%${needle.replace(/[%_\\]/g, "\\$&")}%`;
-  return sql`WHERE (ca.name ILIKE ${pattern} OR ca.email ILIKE ${pattern})`;
+  return sql`WHERE (
+    pp.name ILIKE ${pattern}
+    OR pp.email ILIKE ${pattern}
+    OR pp.passenger_id ILIKE ${pattern}
+  )`;
 }
+
+const CUSTOMERS_ADMIN_SELECT_SQL = sql`
+  SELECT
+    pp.passenger_id,
+    pp.name,
+    pp.email,
+    pp.auth_provider,
+    pp.first_seen_at AS registered_at,
+    COALESCE(rs.ride_count, 0) AS ride_count,
+    COALESCE(rs.cancellation_count, 0) AS cancellation_count,
+    (s.passenger_id IS NOT NULL) AS is_suspended,
+    s.suspended_until,
+    s.reason AS suspension_reason
+`;
 
 export async function listCustomersAdmin(input: {
   q?: string;
@@ -100,19 +130,10 @@ export async function listCustomersAdmin(input: {
   const total = Number((countResult.rows[0] as { c?: number })?.c ?? 0);
 
   const listResult = await db.execute(sql`
-    SELECT
-      ca.id AS passenger_id,
-      ca.name,
-      ca.email,
-      ca.created_at AS registered_at,
-      COALESCE(rs.ride_count, 0) AS ride_count,
-      COALESCE(rs.cancellation_count, 0) AS cancellation_count,
-      (s.passenger_id IS NOT NULL) AS is_suspended,
-      s.suspended_until,
-      s.reason AS suspension_reason
+    ${CUSTOMERS_ADMIN_SELECT_SQL}
     ${CUSTOMERS_ADMIN_FROM_SQL}
     ${search}
-    ORDER BY ca.created_at DESC
+    ORDER BY pp.first_seen_at DESC
     LIMIT ${pageSize}
     OFFSET ${offset}
   `);
@@ -131,19 +152,10 @@ export async function listCustomersAdminForExport(q = "", limit = 5000): Promise
   const cap = Math.min(Math.max(1, limit), 10000);
   const search = customersSearchSql(q.trim());
   const listResult = await db.execute(sql`
-    SELECT
-      ca.id AS passenger_id,
-      ca.name,
-      ca.email,
-      ca.created_at AS registered_at,
-      COALESCE(rs.ride_count, 0) AS ride_count,
-      COALESCE(rs.cancellation_count, 0) AS cancellation_count,
-      (s.passenger_id IS NOT NULL) AS is_suspended,
-      s.suspended_until,
-      s.reason AS suspension_reason
+    ${CUSTOMERS_ADMIN_SELECT_SQL}
     ${CUSTOMERS_ADMIN_FROM_SQL}
     ${search}
-    ORDER BY ca.created_at DESC
+    ORDER BY pp.first_seen_at DESC
     LIMIT ${cap}
   `);
   return (listResult.rows as CustomerAdminRow[]).map(mapListRow);

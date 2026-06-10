@@ -28,6 +28,7 @@ function customersToCsv(rows: Awaited<ReturnType<typeof listCustomersAdminForExp
   const header = [
     "Name",
     "E-Mail",
+    "Anmeldung",
     "Passenger-ID",
     "Registriert",
     "Fahrten",
@@ -36,10 +37,12 @@ function customersToCsv(rows: Awaited<ReturnType<typeof listCustomersAdminForExp
     "Gesperrt bis",
     "Sperrgrund",
   ].join(";");
+  const authLabel = (p: string) => (p === "email" ? "E-Mail" : p === "apple" ? "Apple" : "Google");
   const lines = rows.map((r) =>
     [
       csvEscape(r.name),
       csvEscape(r.email),
+      authLabel(r.authProvider),
       csvEscape(r.passengerId),
       csvEscape(r.registeredAt),
       String(r.rideCount),

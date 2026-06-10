@@ -406,6 +406,17 @@ export const adminAuthUsersTable = pgTable("admin_auth_users", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Kunden-Identität (E-Mail-Konto, Google sub, apple:sub) — zentrale passenger_id-Registry. */
+export const passengerProfilesTable = pgTable("passenger_profiles", {
+  passenger_id: text("passenger_id").primaryKey(),
+  name: text("name").notNull().default(""),
+  email: text("email").notNull().default(""),
+  auth_provider: text("auth_provider").notNull().default("google"),
+  first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Kunden-Storno-Sperre (passenger_id = JWT sub / customer_accounts.id / OAuth sub). */
 export const customerCancellationSuspensionTable = pgTable("customer_cancellation_suspension", {
   passenger_id: text("passenger_id").primaryKey(),

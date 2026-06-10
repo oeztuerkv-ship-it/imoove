@@ -5,6 +5,12 @@ import { adminApiHeaders, adminFetch } from "../lib/adminApiHeaders.js";
 const BASE = `${API_BASE}/admin/customers`;
 const PAGE_SIZE = 50;
 
+function authProviderLabel(provider) {
+  if (provider === "email") return "E-Mail";
+  if (provider === "apple") return "Apple";
+  return "Google";
+}
+
 function formatDt(iso) {
   if (!iso) return "—";
   try {
@@ -142,8 +148,8 @@ export default function CustomersPage() {
   return (
     <div className="admin-page">
       <p className="admin-page-lead">
-        Registrierte Kunden mit Fahrt- und Storno-Statistik. Sperre nach zu vielen Stornos oder manuell durch
-        Operator.
+        Alle Kunden (E-Mail, Google, Apple) mit Fahrt- und Storno-Statistik. OAuth-Nutzer ohne gespeicherte E-Mail
+        erscheinen mit Anmeldetyp Google/Apple.
       </p>
 
       <div className="admin-filter-card">
@@ -181,6 +187,7 @@ export default function CustomersPage() {
             <tr>
               <th>Name</th>
               <th>E-Mail</th>
+              <th>Anmeldung</th>
               <th>Registriert</th>
               <th>Fahrten</th>
               <th>Stornos</th>
@@ -191,15 +198,16 @@ export default function CustomersPage() {
           <tbody>
             {items.length === 0 && !loading ? (
               <tr>
-                <td colSpan={7}>Keine Kunden gefunden.</td>
+                <td colSpan={8}>Keine Kunden gefunden.</td>
               </tr>
             ) : null}
             {items.map((row) => {
               const busy = actionBusyId === row.passengerId;
               return (
                 <tr key={row.passengerId}>
-                  <td>{row.name}</td>
-                  <td>{row.email}</td>
+                  <td>{row.name || "—"}</td>
+                  <td>{row.email || "—"}</td>
+                  <td>{authProviderLabel(row.authProvider)}</td>
                   <td>{formatDt(row.registeredAt)}</td>
                   <td>{row.rideCount}</td>
                   <td>{row.cancellationCount}</td>

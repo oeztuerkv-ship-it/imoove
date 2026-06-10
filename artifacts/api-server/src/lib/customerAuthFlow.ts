@@ -15,6 +15,7 @@ import {
 import { verifyEmailVerificationProofJwt } from "./emailVerificationJwt";
 import { hashPassword, verifyPassword } from "./password";
 import { passwordsMatch, validateCustomerPassword } from "./customerPasswordPolicy";
+import { touchPassengerProfileFromEmailAccount } from "../db/passengerProfilesData";
 import { signSessionJwt } from "./sessionJwt";
 import { rateLimitCustomerLogin } from "./customerLoginRateLimit";
 
@@ -35,6 +36,11 @@ function toPublicDto(row: CustomerAccountRow): CustomerPublicDto {
 }
 
 async function issueSession(row: CustomerAccountRow): Promise<string> {
+  void touchPassengerProfileFromEmailAccount({
+    passengerId: row.id,
+    name: row.name,
+    email: row.email,
+  }).catch(() => undefined);
   return signSessionJwt({
     googleId: row.id,
     email: row.email,
