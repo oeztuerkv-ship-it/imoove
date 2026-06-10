@@ -3149,7 +3149,7 @@ export default function DriverDashboard() {
         await refreshRequests?.();
         Alert.alert(
           "Annahme nicht möglich",
-          "Für diese Buchung ist aktuell kein passendes Taxi-Fahrzeug (Klasse) zugewiesen. Bitte Fahrzeug/Rechtsart im Partner-Panel prüfen. Der Auftrag wird für dich ausgeblendet.",
+          "Für diese Buchung fehlt ein passendes Fahrzeug (z. B. Rollstuhl-Taxi bei Rollstuhlfahrten). Bitte im Partner-Panel ein rollstuhlgeeignetes Fahrzeug zuweisen.",
         );
         return;
       }
