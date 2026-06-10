@@ -58,6 +58,7 @@ import {
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 import { navigateToCustomerStartScreen } from "@/utils/navigateToCustomerStart";
+import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
 import { rs, rf } from "@/utils/scale";
 
@@ -998,6 +999,7 @@ export default function ProfileScreen() {
     return () => cancelAnimationFrame(id);
   }, [regSubStep]);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
@@ -1055,6 +1057,35 @@ export default function ProfileScreen() {
       Alert.alert("Fehler", message);
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    if (Platform.OS !== "ios") {
+      Alert.alert(t("common.comingSoon"), t("profile.appleLoginSoon"));
+      return;
+    }
+    setAppleLoading(true);
+    try {
+      if (!API_URL) {
+        throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
+      }
+      const session = await runNativeAppleSignIn(API_URL);
+      if (!session) return;
+      loginWithGoogle({
+        name: session.name,
+        email: session.email,
+        photoUri: session.photoUri,
+        googleId: session.googleId,
+        sessionToken: session.sessionToken,
+      });
+    } catch (e: unknown) {
+      const err = e as { code?: string };
+      if (err?.code === "ERR_REQUEST_CANCELED") return;
+      const message = e instanceof Error ? e.message : "Apple-Anmeldung fehlgeschlagen.";
+      Alert.alert("Fehler", message);
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -1809,30 +1840,35 @@ export default function ProfileScreen() {
                       </LoginActionLabel>
                     </Pressable>
 
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.socialBtn,
-                        socialLoginButtonStyle({
-                          backgroundColor: HOME_SHEET_PANEL,
-                          borderColor: HOME_SHEET_RIM,
-                          paddingVertical: rs(16),
-                          opacity: pressed ? 0.9 : 1,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.05,
-                          shadowRadius: 4,
-                          elevation: 1,
-                        }),
-                      ]}
-                      onPress={() => Alert.alert(t("common.comingSoon"), t("profile.appleLoginSoon"))}
-                    >
-                      <LoginActionIcon>
-                        <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
-                      </LoginActionIcon>
-                      <LoginActionLabel color={colors.foreground}>
-                        Weiter mit Apple
-                      </LoginActionLabel>
-                    </Pressable>
+                    {Platform.OS === "ios" ? (
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.socialBtn,
+                          socialLoginButtonStyle({
+                            backgroundColor: HOME_SHEET_PANEL,
+                            borderColor: HOME_SHEET_RIM,
+                            paddingVertical: rs(16),
+                            opacity: pressed || appleLoading ? 0.9 : 1,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 4,
+                            elevation: 1,
+                          }),
+                        ]}
+                        onPress={handleAppleLogin}
+                        disabled={appleLoading}
+                      >
+                        <LoginActionIcon>
+                          {appleLoading
+                            ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                            : <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />}
+                        </LoginActionIcon>
+                        <LoginActionLabel color={colors.foreground}>
+                          {appleLoading ? "Anmeldung läuft…" : "Weiter mit Apple"}
+                        </LoginActionLabel>
+                      </Pressable>
+                    ) : null}
                   </View>
                 </View>
 

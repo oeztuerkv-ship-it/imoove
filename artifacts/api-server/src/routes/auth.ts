@@ -2,6 +2,7 @@ import { ClientAuthentication, OAuth2Client } from "google-auth-library";
 import { Router, type Request, type Response } from "express";
 import { createHash, randomBytes } from "crypto";
 import { getFirebaseAuth, isFirebaseAdminConfigured } from "../lib/firebaseAdmin";
+import { applePassengerSubject, verifyAppleIdentityToken } from "../lib/appleSignInVerify";
 import {
   isSessionJwtConfigured,
   signSessionJwt,
@@ -477,6 +478,58 @@ router.post("/auth/firebase/verify-id-token", async (req, res) => {
   } catch (err) {
     console.warn("[auth/firebase/verify-id-token] invalid token", err);
     res.status(401).json({ error: "invalid_id_token" });
+  }
+});
+
+/**
+ * Native Sign in with Apple (Expo): Identity-Token verifizieren → Session-JWT wie Google-OAuth.
+ * Body: { identityToken, fullName?, email? } — Name/E-Mail nur beim ersten Apple-Login von der App.
+ */
+router.post("/auth/apple/session", async (req, res) => {
+  if (!isSessionJwtConfigured()) {
+    res.status(503).json({
+      error: "session_jwt_unconfigured",
+      hint: "Set AUTH_JWT_SECRET in the API environment.",
+    });
+    return;
+  }
+
+  const identityToken =
+    typeof req.body?.identityToken === "string" ? req.body.identityToken.trim() : "";
+  if (!identityToken) {
+    res.status(400).json({ error: "identity_token_required" });
+    return;
+  }
+
+  const fullName =
+    typeof req.body?.fullName === "string" ? req.body.fullName.trim().slice(0, 120) : "";
+  const clientEmail =
+    typeof req.body?.email === "string" ? req.body.email.trim().slice(0, 254) : "";
+
+  try {
+    const verified = await verifyAppleIdentityToken(identityToken);
+    const passengerId = applePassengerSubject(verified.sub);
+    const email = verified.email ?? clientEmail;
+    const sessionToken = await signSessionJwt({
+      googleId: passengerId,
+      name: fullName,
+      email,
+      photoUri: null,
+    });
+    res.json({
+      ok: true,
+      sessionToken,
+      profile: {
+        googleId: passengerId,
+        name: fullName,
+        email,
+        photoUri: null,
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[auth/apple/session] verify failed:", msg);
+    res.status(401).json({ error: "invalid_apple_identity_token" });
   }
 });
 

@@ -16,7 +16,9 @@
     "dev:replit": "node scripts/assert-port-8081-free.mjs && EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN npx expo start . --port 8081 --clear --lan --go",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",
@@ -32,6 +34,7 @@
     "@tanstack/react-query": "catalog:",
     "babel-preset-expo": "~54.0.10",
     "expo": "~54.0.27",
+    "expo-apple-authentication": "~8.0.8",
     "expo-asset": "~12.0.12",
     "expo-auth-session": "^7.0.10",
     "expo-av": "~16.0.8",

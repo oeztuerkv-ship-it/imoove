@@ -96,6 +96,7 @@ import {
   isEmailStartAccountExistsResponse,
   mapEmailVerificationApiError,
 } from "@/utils/emailVerificationErrors";
+import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
@@ -727,6 +728,7 @@ export default function HomeScreen() {
 
   const [gpsLoading, setGpsLoading] = useState(false);
   const [googleSignInLoading, setGoogleSignInLoading] = useState(false);
+  const [appleSignInLoading, setAppleSignInLoading] = useState(false);
 
   /* ── Google OAuth ── */
   const handleGoogleSignIn = useCallback(async () => {
@@ -782,6 +784,35 @@ export default function HomeScreen() {
       Alert.alert("Fehler", message);
     } finally {
       setGoogleSignInLoading(false);
+    }
+  }, [loginWithGoogle]);
+
+  const handleAppleSignIn = useCallback(async () => {
+    if (Platform.OS !== "ios") {
+      Alert.alert("Hinweis", "Sign in with Apple ist nur auf iOS verfügbar.");
+      return;
+    }
+    setAppleSignInLoading(true);
+    try {
+      if (!API_URL) {
+        throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
+      }
+      const session = await runNativeAppleSignIn(API_URL);
+      if (!session) return;
+      loginWithGoogle({
+        name: session.name,
+        email: session.email,
+        photoUri: session.photoUri,
+        googleId: session.googleId,
+        sessionToken: session.sessionToken,
+      });
+    } catch (e: unknown) {
+      const err = e as { code?: string };
+      if (err?.code === "ERR_REQUEST_CANCELED") return;
+      const message = e instanceof Error ? e.message : "Apple-Anmeldung fehlgeschlagen.";
+      Alert.alert("Fehler", message);
+    } finally {
+      setAppleSignInLoading(false);
     }
   }, [loginWithGoogle]);
 
@@ -2651,26 +2682,32 @@ export default function HomeScreen() {
                         Mit E-Mail anmelden
                       </LoginActionLabel>
                     </Pressable>
-                    <Pressable
-                      style={[styles.socialBtn, socialLoginButtonStyle({
-                        backgroundColor: "#FFFFFF",
-                        borderColor: colors.border,
-                        paddingVertical: isSmallScreen ? 13 : 16,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 4,
-                        elevation: 1,
-                      })]}
-                      onPress={() => Alert.alert("Apple-Login", "Apple-Anmeldung ist noch nicht verfügbar.")}
-                    >
-                      <LoginActionIcon>
-                        <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
-                      </LoginActionIcon>
-                      <LoginActionLabel color={colors.foreground}>
-                        Weiter mit Apple
-                      </LoginActionLabel>
-                    </Pressable>
+                    {Platform.OS === "ios" ? (
+                      <Pressable
+                        style={[styles.socialBtn, socialLoginButtonStyle({
+                          backgroundColor: "#FFFFFF",
+                          borderColor: colors.border,
+                          paddingVertical: isSmallScreen ? 13 : 16,
+                          opacity: appleSignInLoading ? 0.75 : 1,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 4,
+                          elevation: 1,
+                        })]}
+                        onPress={handleAppleSignIn}
+                        disabled={appleSignInLoading}
+                      >
+                        <LoginActionIcon>
+                          {appleSignInLoading
+                            ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                            : <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />}
+                        </LoginActionIcon>
+                        <LoginActionLabel color={colors.foreground}>
+                          {appleSignInLoading ? "Anmeldung läuft…" : "Weiter mit Apple"}
+                        </LoginActionLabel>
+                      </Pressable>
+                    ) : null}
                   </View>
                 </View>
 
