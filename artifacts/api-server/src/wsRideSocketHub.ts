@@ -14,6 +14,38 @@ const socketMeta = new WeakMap<WebSocket, RideSocketMeta>();
 /** rideId → Teilnehmer (nur nach erfolgreichem Join mit gültigem JWT). */
 const rooms = new Map<string, Set<WebSocket>>();
 
+const JOIN_IDLE_TIMEOUT_MS = 15_000;
+
+/** Live-Status an alle WS-Clients im Fahrt-Room (nach Cron oder PATCH). */
+export function broadcastToRideRoom(rideId: string, payload: Record<string, unknown>): void {
+  const set = rooms.get(rideId.trim());
+  if (!set || set.size === 0) return;
+  const msg = JSON.stringify(payload);
+  set.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(msg);
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+}
+
+export function broadcastRideStatusChange(
+  rideId: string,
+  status: string,
+  previousStatus?: string,
+): void {
+  broadcastToRideRoom(rideId, {
+    type: "ride:status:update",
+    rideId,
+    status,
+    ...(previousStatus ? { previousStatus } : {}),
+    ts: new Date().toISOString(),
+  });
+}
+
 function leaveRoom(socket: WebSocket, rideId: string): void {
   const set = rooms.get(rideId);
   if (!set) return;
@@ -32,6 +64,13 @@ function sendWsError(socket: WebSocket, code: string): void {
 
 export function registerRideWebSockets(wss: WebSocketServer): void {
   wss.on("connection", (socket) => {
+    const joinIdleTimer = setTimeout(() => {
+      if (!socketMeta.has(socket) && socket.readyState === WebSocket.OPEN) {
+        sendWsError(socket, "join_timeout");
+        socket.close(4401, "join_timeout");
+      }
+    }, JOIN_IDLE_TIMEOUT_MS);
+
     socket.on("message", async (data) => {
       try {
         const msg = JSON.parse(data.toString()) as {
@@ -187,6 +226,7 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
     });
 
     socket.on("close", () => {
+      clearTimeout(joinIdleTimer);
       const m = socketMeta.get(socket);
       socketMeta.delete(socket);
       if (m) leaveRoom(socket, m.rideId);

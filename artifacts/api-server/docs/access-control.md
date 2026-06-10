@@ -65,6 +65,17 @@ Details: Konstante `ROLE_MATRIX` in `panelPermissions.ts`.
 - **Sperre:** Unternehmer setzt im Partner-Panel „Sperren“ → `session_version` wird erhöht; bestehende Tokens scheitern am nächsten API-Call mit `401 token_revoked` bzw. `403 driver_suspended`.
 - **Verwaltung:** Partner-Routen unter `/api/panel/v1/fleet/*` — Rechte `fleet.read` / `fleet.manage` in `panelPermissions.ts`, Modul-Whitelist `taxi_fleet` (`domain/panelModules.ts`). **Kein** globaler Zugriff: alle Queries an `company_id` des Panel-JWT gebunden.
 
+## 5. WebSocket Fahrt-Room (`/ws`)
+
+- **Pfad:** `GET` Upgrade auf `/ws` (gleicher Host wie API, z. B. `wss://api.onroda.de/ws`).
+- **Join:** Erste Nachricht muss `{ type: "join", rideId, token }` sein (alternativ `auth` statt `token`). **Ohne gültiges JWT kein Room-Join** — Fehlercodes `join_token_required`, `join_auth_invalid`, `join_forbidden`, `join_ride_id_required`, `join_ride_not_found`.
+- **Akzeptierte Token:** Fleet-Fahrer-JWT (`kind: fleet_driver`), Kunden-Session-JWT (`googleId` = `rides.passenger_id`), Partner-Panel-JWT (`company_id` muss zur Fahrt passen).
+- **Zuordnung:** `wsJoinPrincipalMatchesRide` in `src/lib/wsRideJoinAuth.ts` — Kunde nur eigene Fahrt, Fahrer nur zugewiesene Fahrt desselben Mandanten, Partner nur Fahrten des Mandanten.
+- **Nach Join:** Location/Chat nur mit gebundener `rideId`; fremde `rideId` → `ride_id_mismatch`; ohne Join → `join_required`.
+- **Idle:** Verbindung ohne Join innerhalb von 15 s → `join_timeout` + Close.
+- **Status-Broadcast:** Cron und `PATCH /rides/:id/status` senden `ride:status:update` an den Room (`broadcastRideStatusChange` in `wsRideSocketHub.ts`).
+- **Mobile:** `connectToRide` übergibt JWT via `readFleetJwtForWsJoin` / `readCustomerSessionJwtForWsJoin` (`artifacts/mobile/utils/wsJoinAuth.ts`).
+
 ## Verifikation nach Deploy
 
 1. **Admin:** `curl -H "Authorization: Bearer …" https://api…/api/admin/health` (oder ein bekannter Admin-GET) → 200.

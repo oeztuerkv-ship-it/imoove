@@ -20,6 +20,20 @@ let _getJoinToken: (() => Promise<string | null>) | null = null;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let _pendingMessages: string[] = [];
 let _appActive = true;
+let _joinAuthBlocked = false;
+
+export type RideStatusWsPayload = {
+  rideId: string;
+  status: string;
+  previousStatus?: string;
+};
+
+let _rideStatusHandler: ((payload: RideStatusWsPayload) => void) | null = null;
+
+/** Globaler Handler für `ride:status:update` (z. B. RideRequestContext). */
+export function setRideStatusWsHandler(handler: ((payload: RideStatusWsPayload) => void) | null): void {
+  _rideStatusHandler = handler;
+}
 
 function _scheduleReconnect() {
   if (_reconnectTimer || !_rideId) return;
@@ -84,10 +98,22 @@ function _connect() {
         if (type === "ws_error") {
           const code = typeof msg.code === "string" ? msg.code : "ws_error";
           _onWsError?.(code);
-          if (code === "join_auth_invalid" || code === "join_forbidden" || code === "join_token_required") {
+          if (code === "join_forbidden") {
+            _joinAuthBlocked = true;
+            socket.close();
+            return;
+          }
+          if (!_joinAuthBlocked && (code === "join_auth_invalid" || code === "join_token_required")) {
             void _sendJoin(socket);
           }
           return;
+        }
+        if (type === "ride:status:update" && typeof msg.rideId === "string" && typeof msg.status === "string") {
+          _rideStatusHandler?.({
+            rideId: msg.rideId,
+            status: msg.status,
+            previousStatus: typeof msg.previousStatus === "string" ? msg.previousStatus : undefined,
+          });
         }
         _onMessage?.(msg);
       } catch {
@@ -119,6 +145,7 @@ export function connectToRide(
   onWsError?: (code: string) => void,
 ) {
   disconnectSocket();
+  _joinAuthBlocked = false;
   _rideId = rideId;
   _onMessage = onMessage;
   _getJoinToken = getJoinToken;
@@ -185,6 +212,7 @@ export function disconnectSocket() {
   _onWsError = null;
   _getJoinToken = null;
   _pendingMessages = [];
+  _joinAuthBlocked = false;
 }
 
 /** Pause reconnect while app is backgrounded; resume + reconnect when active. */
