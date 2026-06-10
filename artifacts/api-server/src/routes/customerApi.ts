@@ -408,6 +408,8 @@ router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res
       primaryReasonDe: result.primaryReasonDe || null,
       scannedAt: result.scannedAt,
       copayment: result.copayment,
+      pickupAddress: result.pickupAddress,
+      destinationAddress: result.destinationAddress,
     });
   } catch (err) {
     next(err);

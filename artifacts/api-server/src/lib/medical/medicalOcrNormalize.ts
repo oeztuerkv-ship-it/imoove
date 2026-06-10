@@ -23,7 +23,22 @@ export const MEDICAL_OCR_EXTRACTED_FIELDS = [
   "dauerhafteMobilitaetsbeeintraechtigung",
   "fernbehandlungErkannt",
   "genehmigungsnummer",
+  "pickupStreet",
+  "pickupHouseNumber",
+  "pickupPostalCode",
+  "pickupCity",
+  "destinationStreet",
+  "destinationHouseNumber",
+  "destinationPostalCode",
+  "destinationCity",
 ] as const;
+
+export type MedicalOcrAddressParts = {
+  street: string;
+  houseNumber: string;
+  postalCode: string;
+  city: string;
+};
 
 export type MedicalOcrDocumentKind = "transport_sheet" | "signature_image" | "other";
 export type MedicalBehandlungsArt = "stationaer" | "ambulant" | "unbekannt";
@@ -77,6 +92,14 @@ const EMPTY_EXTRACTED: MedicalOcrExtracted = {
   dauerhafteMobilitaetsbeeintraechtigung: false,
   fernbehandlungErkannt: false,
   genehmigungsnummer: null,
+  pickupStreet: "",
+  pickupHouseNumber: "",
+  pickupPostalCode: "",
+  pickupCity: "",
+  destinationStreet: "",
+  destinationHouseNumber: "",
+  destinationPostalCode: "",
+  destinationCity: "",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -91,6 +114,98 @@ function normalizeOcrToken(raw: unknown): string {
     .replace(/ö/g, "oe")
     .replace(/ü/g, "ue")
     .replace(/ß/g, "ss");
+}
+
+function normalizeGermanPostalCode(raw: unknown): string {
+  const s = String(raw ?? "").trim();
+  if (!s) return "";
+  const digits = s.replace(/\D/g, "");
+  if (digits.length === 5) return digits;
+  return s.slice(0, 10);
+}
+
+function normalizeAddressLine(raw: unknown, maxLen: number): string {
+  return String(raw ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, maxLen);
+}
+
+function pickAddressPartsFromNested(
+  nested: Record<string, unknown>,
+  prefix: "pickup" | "destination",
+): MedicalOcrAddressParts {
+  const nestedKey = prefix === "pickup" ? "pickupAddress" : "destinationAddress";
+  const nestedSnake = prefix === "pickup" ? "pickup_address" : "destination_address";
+  const block =
+    (isRecord(nested[nestedKey]) && nested[nestedKey]) ||
+    (isRecord(nested[nestedSnake]) && nested[nestedSnake]) ||
+    null;
+
+  const streetKeys =
+    prefix === "pickup"
+      ? ["pickupStreet", "pickup_street", "abholStrasse", "abhol_strasse", "startStreet", "start_street"]
+      : ["destinationStreet", "destination_street", "zielStrasse", "ziel_strasse", "targetStreet", "target_street"];
+  const houseKeys =
+    prefix === "pickup"
+      ? ["pickupHouseNumber", "pickup_house_number", "abholHausnummer", "abhol_hausnummer", "startHouseNumber"]
+      : [
+          "destinationHouseNumber",
+          "destination_house_number",
+          "zielHausnummer",
+          "ziel_hausnummer",
+          "targetHouseNumber",
+        ];
+  const postalKeys =
+    prefix === "pickup"
+      ? ["pickupPostalCode", "pickup_postal_code", "abholPlz", "abhol_plz", "startPostalCode"]
+      : ["destinationPostalCode", "destination_postal_code", "zielPlz", "ziel_plz", "targetPostalCode"];
+  const cityKeys =
+    prefix === "pickup"
+      ? ["pickupCity", "pickup_city", "abholOrt", "abhol_ort", "startCity"]
+      : ["destinationCity", "destination_city", "zielOrt", "ziel_ort", "targetCity"];
+
+  const blockRecord = block && isRecord(block) ? block : null;
+  const source = blockRecord ?? nested;
+
+  return {
+    street: normalizeAddressLine(
+      pickString(source, [...streetKeys, "street", "strasse", "straße"]),
+      120,
+    ),
+    houseNumber: normalizeAddressLine(
+      pickString(source, [...houseKeys, "houseNumber", "house_number", "hausnummer", "hnr"]),
+      16,
+    ),
+    postalCode: normalizeGermanPostalCode(
+      pickString(source, [...postalKeys, "postalCode", "postal_code", "plz", "zip"]),
+    ),
+    city: normalizeAddressLine(pickString(source, [...cityKeys, "city", "ort", "stadt"]), 80),
+  };
+}
+
+export function medicalOcrAddressPartsFromExtracted(
+  extracted: MedicalOcrExtracted,
+  kind: "pickup" | "destination",
+): MedicalOcrAddressParts {
+  if (kind === "pickup") {
+    return {
+      street: extracted.pickupStreet,
+      houseNumber: extracted.pickupHouseNumber,
+      postalCode: extracted.pickupPostalCode,
+      city: extracted.pickupCity,
+    };
+  }
+  return {
+    street: extracted.destinationStreet,
+    houseNumber: extracted.destinationHouseNumber,
+    postalCode: extracted.destinationPostalCode,
+    city: extracted.destinationCity,
+  };
+}
+
+export function medicalOcrAddressHasContent(parts: MedicalOcrAddressParts): boolean {
+  return Boolean(parts.street.trim() || parts.houseNumber.trim() || parts.postalCode.trim() || parts.city.trim());
 }
 
 function pickString(raw: Record<string, unknown>, keys: string[]): string {
@@ -536,6 +651,9 @@ export function normalizeMedicalOcrPayload(raw: unknown): {
       nested.kk_genehmigungsnummer,
   );
 
+  const pickupParts = pickAddressPartsFromNested(nested, "pickup");
+  const destinationParts = pickAddressPartsFromNested(nested, "destination");
+
   const confidence = pickConfidence(raw);
 
   return {
@@ -559,6 +677,14 @@ export function normalizeMedicalOcrPayload(raw: unknown): {
       dauerhafteMobilitaetsbeeintraechtigung,
       fernbehandlungErkannt,
       genehmigungsnummer,
+      pickupStreet: pickupParts.street,
+      pickupHouseNumber: pickupParts.houseNumber,
+      pickupPostalCode: pickupParts.postalCode,
+      pickupCity: pickupParts.city,
+      destinationStreet: destinationParts.street,
+      destinationHouseNumber: destinationParts.houseNumber,
+      destinationPostalCode: destinationParts.postalCode,
+      destinationCity: destinationParts.city,
     },
     confidence,
   };

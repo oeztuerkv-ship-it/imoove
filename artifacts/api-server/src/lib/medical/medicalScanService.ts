@@ -32,7 +32,13 @@ import {
   parseMedicalScanCopaymentInput,
   type MedicalScanCopaymentDto,
 } from "./medicalCopayment";
-import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument, type MedicalOcrExtracted } from "./medicalOcrNormalize";
+import {
+  medicalOcrAddressPartsFromExtracted,
+  normalizeMedicalOcrPayload,
+  parseHasSignatureOnDocument,
+  type MedicalOcrAddressParts,
+  type MedicalOcrExtracted,
+} from "./medicalOcrNormalize";
 import { evaluateMedicalTrafficLight, type MedicalWarning } from "./medicalTrafficLight";
 import {
   assertCustomerMedicalTransportScanAvailable,
@@ -97,6 +103,8 @@ export type MedicalScanCustomerBookingServiceResult =
       primaryReasonDe: string;
       scannedAt: string;
       copayment: MedicalScanCopaymentDto;
+      pickupAddress: MedicalOcrAddressParts;
+      destinationAddress: MedicalOcrAddressParts;
     }
   | { ok: false; error: string; status: number };
 
@@ -202,6 +210,8 @@ export async function runMedicalTransportDocumentScanForCustomerBooking(
     primaryReasonDe,
     scannedAt,
     copayment,
+    pickupAddress: medicalOcrAddressPartsFromExtracted(pipeline.extracted, "pickup"),
+    destinationAddress: medicalOcrAddressPartsFromExtracted(pipeline.extracted, "destination"),
   };
 }
 

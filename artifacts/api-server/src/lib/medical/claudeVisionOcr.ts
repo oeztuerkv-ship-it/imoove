@@ -51,6 +51,14 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
   "dauerhafteMobilitaetsbeeintraechtigung": boolean,
   "fernbehandlungErkannt": boolean,
   "genehmigungsnummer": string | null,
+  "pickupStreet": string,
+  "pickupHouseNumber": string,
+  "pickupPostalCode": string,
+  "pickupCity": string,
+  "destinationStreet": string,
+  "destinationHouseNumber": string,
+  "destinationPostalCode": string,
+  "destinationCity": string,
   "hasSignatureOnDocument": boolean,
   "confidence": {
     "patientDisplayName": number,
@@ -69,7 +77,15 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Fließtext) 
     "merkzeichen": number,
     "dauerhafteMobilitaetsbeeintraechtigung": number,
     "fernbehandlungErkannt": number,
-    "genehmigungsnummer": number
+    "genehmigungsnummer": number,
+    "pickupStreet": number,
+    "pickupHouseNumber": number,
+    "pickupPostalCode": number,
+    "pickupCity": number,
+    "destinationStreet": number,
+    "destinationHouseNumber": number,
+    "destinationPostalCode": number,
+    "destinationCity": number
   }
 }
 
@@ -86,6 +102,9 @@ Regeln:
 - genehmigungsnummer: KK-Genehmigungsnummer falls lesbar, sonst null.
 - validFrom/validUntil: Gültigkeitszeitraum/Dauerverordnung falls lesbar.
 - fernbehandlungErkannt: true wenn „Videosprechstunde“, „telefonisch“, Fernbehandlung o. Ä. auf dem Schein erkennbar (§2 Abs. 5).
+- pickupStreet/pickupHouseNumber/pickupPostalCode/pickupCity: Abholadresse (Wohnadresse Patient oder Start der Fahrt) — Straße ohne Hausnummer, PLZ 5-stellig.
+- destinationStreet/destinationHouseNumber/destinationPostalCode/destinationCity: Zieladresse (Praxis, Klinik, Dialyse, Reha o. Ä.) — Straße ohne Hausnummer, PLZ 5-stellig.
+- Wenn nur eine Adresszeile lesbar ist: Patientenadresse bevorzugt als Abholadresse; Behandlungsort/Ziel als Zieladresse.
 - hasSignatureOnDocument: true wenn Patientenunterschrift sichtbar.
 - confidence: 0.0–1.0 pro Feld; bei Unsicherheit niedrig wählen.
 - Wenn das Bild kein Transportschein ist: documentKind "other", sonstige Felder leer lassen.`;
