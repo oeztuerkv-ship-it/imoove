@@ -90,6 +90,7 @@ function RootLayoutNav() {
       <Stack.Screen name="booking-center" options={{ headerShown: false, gestureEnabled: false, presentation: "fullScreenModal" }} />
       <Stack.Screen name="booking-medical" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
+      <Stack.Screen name="camera-test" options={{ headerShown: true, title: "Kamera-Test" }} />
       <Stack.Screen name="service-detail" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="fahrer-login" options={{ headerShown: false }} />
       <Stack.Screen name="partner" options={{ headerShown: false, gestureEnabled: false }} />
