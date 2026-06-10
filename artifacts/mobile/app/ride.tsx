@@ -61,7 +61,7 @@ import {
   postCustomerCreatePaymentIntent,
 } from "@/utils/stripePaymentApi";
 import { presentStripePaymentSheet } from "@/utils/stripePaymentSheet";
-import { presentStripeApplePayPayment } from "@/utils/stripePlatformPay";
+import { presentStripeApplePayPayment, presentStripeGooglePayPayment, platformPaySupportParams } from "@/utils/stripePlatformPay";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Bar",
@@ -118,6 +118,7 @@ const RIDE_PAYMENT_OPTIONS_BASE: {
   isEuro?: boolean;
   isCard?: boolean;
   isApplePay?: boolean;
+  isGooglePay?: boolean;
   isVoucher?: boolean;
   isApp?: boolean;
   isAccessCode?: boolean;
@@ -312,6 +313,7 @@ export default function RideScreen() {
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const { isPlatformPaySupported, confirmPlatformPayPayment } = usePlatformPay();
   const [applePaySupported, setApplePaySupported] = useState(false);
+  const [googlePaySupported, setGooglePaySupported] = useState(false);
   const btnScale = useRef(new Animated.Value(1)).current;
   const rideScrollRef = useRef<ScrollView>(null);
   const accessibilityScrollRef = useRef<ScrollView>(null);
@@ -340,11 +342,23 @@ export default function RideScreen() {
   const { config: appConfig } = useOnrodaAppConfig();
 
   useEffect(() => {
-    if (Platform.OS !== "ios" || !STRIPE_PUBLISHABLE_KEY) {
+    if (!STRIPE_PUBLISHABLE_KEY) {
+      setApplePaySupported(false);
+      setGooglePaySupported(false);
+      return;
+    }
+    if (Platform.OS === "ios") {
+      void isPlatformPaySupported().then(setApplePaySupported);
+      setGooglePaySupported(false);
+      return;
+    }
+    if (Platform.OS === "android") {
+      void isPlatformPaySupported(platformPaySupportParams()).then(setGooglePaySupported);
       setApplePaySupported(false);
       return;
     }
-    void isPlatformPaySupported().then(setApplePaySupported);
+    setApplePaySupported(false);
+    setGooglePaySupported(false);
   }, [isPlatformPaySupported]);
 
   const ridePaymentOptions = React.useMemo(() => {
@@ -352,8 +366,16 @@ export default function RideScreen() {
     if (applePaySupported) {
       opts.splice(3, 0, { id: "apple_pay", label: "Apple Pay", isApplePay: true });
     }
+    if (googlePaySupported) {
+      const cardIdx = opts.findIndex((o) => o.id === "card");
+      opts.splice(cardIdx >= 0 ? cardIdx + 1 : opts.length, 0, {
+        id: "google_pay",
+        label: "Google Pay",
+        isGooglePay: true,
+      });
+    }
     return opts;
-  }, [applePaySupported]);
+  }, [applePaySupported, googlePaySupported]);
 
   function dismissTransportScan() {
     setPendingTransportScanId(null);
@@ -377,7 +399,7 @@ export default function RideScreen() {
 
   const orderCtaLabel = React.useMemo(() => {
     if (preAuthLoading) {
-      return paymentMethod === "card" || paymentMethod === "apple_pay"
+      return paymentMethod === "card" || paymentMethod === "apple_pay" || paymentMethod === "google_pay"
         ? "Zahlung…"
         : "Vorautorisierung…";
     }
@@ -515,7 +537,8 @@ export default function RideScreen() {
       pm === "voucher" ||
       pm === "access_code" ||
       pm === "card" ||
-      pm === "apple_pay";
+      pm === "apple_pay" ||
+      pm === "google_pay";
     if (!skipWalletSteps) {
       const hasToken = await checkPaymentTokenFor(pm);
       if (!hasToken) {
@@ -531,7 +554,7 @@ export default function RideScreen() {
         return;
       }
     }
-    if ((pm === "card" || pm === "apple_pay") && !STRIPE_PUBLISHABLE_KEY) {
+    if ((pm === "card" || pm === "apple_pay" || pm === "google_pay") && !STRIPE_PUBLISHABLE_KEY) {
       Alert.alert(
         "Online-Zahlung",
         "Kartenzahlung ist in dieser App-Version noch nicht konfiguriert. Bitte Bar wählen oder die App aktualisieren.",
@@ -540,6 +563,10 @@ export default function RideScreen() {
     }
     if (pm === "apple_pay" && Platform.OS !== "ios") {
       Alert.alert("Apple Pay", "Apple Pay ist nur auf iOS verfügbar.");
+      return;
+    }
+    if (pm === "google_pay" && Platform.OS !== "android") {
+      Alert.alert("Google Pay", "Google Pay ist nur auf Android verfügbar.");
       return;
     }
 
@@ -551,7 +578,7 @@ export default function RideScreen() {
       Animated.timing(btnScale, { toValue: 1, duration: 80, useNativeDriver: true }),
     ]).start(() => {
       void (async () => {
-        if (pm === "card" || pm === "apple_pay") setPreAuthLoading(true);
+        if (pm === "card" || pm === "apple_pay" || pm === "google_pay") setPreAuthLoading(true);
         try {
           if (!destination) return;
           const readCoord = (
@@ -616,6 +643,7 @@ export default function RideScreen() {
             pm === "paypal" ? "PayPal" :
             pm === "app" ? "App" :
             pm === "apple_pay" ? "Apple Pay" :
+            pm === "google_pay" ? "Google Pay" :
             pm === "card" ? "Kreditkarte" :
             pm === "access_code" ? "Gutschein / Freigabe (Code)" :
             pm === "voucher"
@@ -685,7 +713,7 @@ export default function RideScreen() {
                 }
               : {}),
           });
-          if (pm === "card" || pm === "apple_pay") {
+          if (pm === "card" || pm === "apple_pay" || pm === "google_pay") {
             const authToken = await resolveCustomerBearerToken(profile.sessionToken);
             if (!authToken) {
               await cancelCustomerRide(profile.sessionToken?.trim() ?? "", rideRequestId);
@@ -729,12 +757,18 @@ export default function RideScreen() {
                       intent.clientSecret,
                       chargeAmount,
                     )
-                  : await presentStripePaymentSheet(
-                      { initPaymentSheet, presentPaymentSheet },
-                      intent.clientSecret,
-                      "ONRODA",
-                      chargeAmount,
-                    );
+                  : pm === "google_pay"
+                    ? await presentStripeGooglePayPayment(
+                        { confirmPlatformPayPayment },
+                        intent.clientSecret,
+                        chargeAmount,
+                      )
+                    : await presentStripePaymentSheet(
+                        { initPaymentSheet, presentPaymentSheet },
+                        intent.clientSecret,
+                        "ONRODA",
+                        chargeAmount,
+                      );
               if (!paid.ok) {
                 await cancelCustomerRide(authToken, rideRequestId);
                 if (paid.message !== "Zahlung abgebrochen.") {
@@ -765,7 +799,7 @@ export default function RideScreen() {
             userFacingBookingErrorMessage(err, accessCodeBookingErrorMessage),
           );
         } finally {
-          if (pm === "card" || pm === "apple_pay") setPreAuthLoading(false);
+          if (pm === "card" || pm === "apple_pay" || pm === "google_pay") setPreAuthLoading(false);
         }
       })();
     });
@@ -982,6 +1016,8 @@ export default function RideScreen() {
                       <Feather name="credit-card" size={14} color={colors.foreground} />
                     ) : opt.isApplePay ? (
                       <MaterialCommunityIcons name="apple" size={16} color={colors.foreground} />
+                    ) : opt.isGooglePay ? (
+                      <MaterialCommunityIcons name="google" size={16} color={colors.foreground} />
                     ) : opt.isVoucher ? (
                       <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
                     ) : opt.isAccessCode ? (
