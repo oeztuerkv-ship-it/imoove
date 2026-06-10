@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { assertPassengerCanBook } from "../lib/customerCancellationSuspensionPolicy";
 import { isSessionJwtConfigured, type SessionClaims, verifySessionJwt } from "../lib/sessionJwt";
 
 function bearerToken(req: Request): string | null {
@@ -37,3 +38,22 @@ export const requireCustomerSession: RequestHandler = async (
 export function customerPassengerId(claims: SessionClaims): string {
   return claims.googleId.trim();
 }
+
+/** Buchungs-Sperre nach zu vielen Stornos — Storno-Routen ausnehmen. */
+export const rejectSuspendedCustomerBooking: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const sess = (req as CustomerSessionRequest).customerSession;
+  if (!sess) {
+    res.status(401).json({ ok: false, error: "unauthorized" });
+    return;
+  }
+  const gate = await assertPassengerCanBook(customerPassengerId(sess));
+  if (!gate.ok) {
+    res.status(403).json({ ok: false, error: gate.error, message: gate.message });
+    return;
+  }
+  next();
+};

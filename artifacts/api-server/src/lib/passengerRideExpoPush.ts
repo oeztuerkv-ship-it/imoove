@@ -1,4 +1,6 @@
 import { listPassengerExpoPushTokens } from "../db/passengerExpoPushData";
+import { CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE } from "./customerCancellationSuspensionPolicy";
+import { sendCustomerCancellationSuspensionEmail } from "./customerSuspensionMail";
 import { sendExpoPushMessages } from "./expoPushGateway";
 
 /** Reservierung: Fahrer zugewiesen (scheduled → scheduled_assigned) → Kunde informieren. */
@@ -110,6 +112,26 @@ export async function notifyPassengerReservationExpired(passengerId: string, rid
       data: { kind: "reservation_expired", rideId },
     })),
   );
+}
+
+/** Zu viele Kunden-Stornos in 24h → Buchungssperre. */
+export async function notifyPassengerCancellationSuspended(passengerId: string): Promise<void> {
+  const pax = passengerId.trim();
+  if (!pax) return;
+
+  const tokens = await listPassengerExpoPushTokens(pax);
+  if (tokens.length > 0) {
+    await sendExpoPushMessages(
+      tokens.map((to) => ({
+        to,
+        title: "Konto vorübergehend gesperrt",
+        body: CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE,
+        data: { kind: "customer_cancellation_suspended" },
+      })),
+    );
+  }
+
+  await sendCustomerCancellationSuspensionEmail(pax);
 }
 
 /** Cron/System: keine Fahrerannahme rechtzeitig → Buchung beendet. */

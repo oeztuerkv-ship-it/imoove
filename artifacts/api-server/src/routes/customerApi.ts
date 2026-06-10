@@ -17,6 +17,7 @@ import {
 } from "../lib/medical/medicalScanService";
 import {
   customerPassengerId,
+  rejectSuspendedCustomerBooking,
   requireCustomerSession,
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
@@ -381,7 +382,7 @@ router.post("/customer/v1/medical/scan-test", requireCustomerSession, async (req
 });
 
 /** Kunden-Transportschein-Scan vor Krankenfahrt-Buchung (persistierter Snapshot, kein Test-Modus). */
-router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res, next) => {
+router.post("/customer/v1/medical/scan", requireCustomerSession, rejectSuspendedCustomerBooking, async (req, res, next) => {
   try {
     const sess = (req as CustomerSessionRequest).customerSession;
     if (!sess) {
@@ -416,7 +417,11 @@ router.post("/customer/v1/medical/scan", requireCustomerSession, async (req, res
   }
 });
 
-router.post("/customer/v1/payment/create-intent", requireCustomerSession, async (req, res, next) => {
+router.post(
+  "/customer/v1/payment/create-intent",
+  requireCustomerSession,
+  rejectSuspendedCustomerBooking,
+  async (req, res, next) => {
   try {
     const stripe = getStripeClient();
     if (!stripe) {

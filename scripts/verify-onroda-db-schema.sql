@@ -1204,6 +1204,20 @@ BEGIN
     errs := array_append(errs, 'table homepage_analytics_events (Migration 097)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'customer_cancellation_suspension'
+  ) THEN
+    errs := array_append(errs, 'table customer_cancellation_suspension (Migration 098)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'customer_cancellation_suspension' AND column_name = 'suspended_until'
+  ) THEN
+    errs := array_append(errs, 'customer_cancellation_suspension.suspended_until (Migration 098)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

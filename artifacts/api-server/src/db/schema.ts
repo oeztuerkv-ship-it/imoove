@@ -406,6 +406,18 @@ export const adminAuthUsersTable = pgTable("admin_auth_users", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Kunden-Storno-Sperre (passenger_id = JWT sub / customer_accounts.id / OAuth sub). */
+export const customerCancellationSuspensionTable = pgTable("customer_cancellation_suspension", {
+  passenger_id: text("passenger_id").primaryKey(),
+  suspended_until: timestamp("suspended_until", { withTimezone: true }).notNull(),
+  suspended_at: timestamp("suspended_at", { withTimezone: true }).notNull().defaultNow(),
+  reason: text("reason").notNull().default("too_many_cancellations"),
+  lifted_at: timestamp("lifted_at", { withTimezone: true }),
+  lifted_by_admin: text("lifted_by_admin"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Kunden-App: Registrierung per E-Mail + Passwort (JWT sub = id). */
 export const customerAccountsTable = pgTable("customer_accounts", {
   id: text("id").primaryKey(),

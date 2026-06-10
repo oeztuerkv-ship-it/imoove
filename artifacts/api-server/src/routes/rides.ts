@@ -99,6 +99,10 @@ import {
   resolveCustomerMedicalScanForBooking,
 } from "../db/customerMedicalTransportScansData";
 import { createMedicalQrToken, formatMedicalQrPayload } from "../lib/medicalQrToken";
+import {
+  assertPassengerCanBook,
+  evaluateCustomerCancellationSuspensionAfterCancel,
+} from "../lib/customerCancellationSuspensionPolicy";
 import { broadcastRideStatusChange } from "../wsRideSocketHub";
 import { signReceiptHtmlAccessJwt, verifyReceiptHtmlAccessJwt } from "../lib/receiptAccessJwt";
 import type { RideMutateActor } from "../lib/rideRouteAuth";
@@ -1120,6 +1124,11 @@ router.post("/rides", async (req, res, next) => {
     const raw = req.body as Partial<RideRequest> & { accessCodeVerifyToken?: unknown };
     if (!raw.customerName || String(raw.customerName).trim() === "" || !raw.passengerId) {
       res.status(401).json({ error: "Unauthorized: Bitte anmelden, um eine Fahrt zu buchen." });
+      return;
+    }
+    const bookGate = await assertPassengerCanBook(String(raw.passengerId).trim());
+    if (!bookGate.ok) {
+      res.status(403).json({ error: bookGate.error, message: bookGate.message });
       return;
     }
     if (
@@ -2353,6 +2362,8 @@ export async function cancelRideForVerifiedCustomerSession(
     actorId: mutActor.actorId,
   });
   if (!financeCf.ok) return { ok: false, status: 500, error: financeCf.error };
+
+  void evaluateCustomerCancellationSuspensionAfterCancel(pax).catch(() => undefined);
 
   return { ok: true, ride: updated, cancelReason: cancelReasonClean };
 }
