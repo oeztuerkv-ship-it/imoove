@@ -116,6 +116,9 @@ import {
   notifyPassengerReservationActivated,
   notifyPassengerReservationConfirmed,
   notifyPassengerRideCancelledBySystem,
+  notifyPassengerRideCompleted,
+  notifyPassengerRideInProgress,
+  notifyPassengerReservationExpired,
 } from "../lib/passengerRideExpoPush";
 import { isSessionJwtConfigured, verifySessionJwt } from "../lib/sessionJwt";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
@@ -2125,6 +2128,18 @@ export async function patchRideStatusRoute(
     if (nextStatus === "driver_waiting" && cur.status !== "driver_waiting") {
       const pid = (updated.passengerId ?? "").trim();
       if (pid) void notifyPassengerDriverWaiting(pid, updated.id);
+    }
+    if (nextStatus === "in_progress" && cur.status !== "in_progress") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerRideInProgress(pid, updated.id);
+    }
+    if (nextStatus === "completed" && cur.status !== "completed") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerRideCompleted(pid, updated.id);
+    }
+    if (nextStatus === "expired" && cur.status !== "expired") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerReservationExpired(pid, updated.id);
     }
     if (nextStatus === "cancelled_by_system") {
       const pid = (updated.passengerId ?? "").trim();

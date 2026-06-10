@@ -911,20 +911,23 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   }, [isDriverSurface, fleetAuthToken, fetchDriverMarket]);
 
   useEffect(() => {
-    if (!fleetAuthToken || !isDriverSurface) return;
     let sub: { remove: () => void } | null = null;
     void import("expo-notifications").then((Notifications) => {
       sub = Notifications.addNotificationReceivedListener((notification) => {
         const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
-        if (kind === "instant_ride_offer") {
+        if (isDriverSurface && fleetAuthToken && kind === "instant_ride_offer") {
           void fetchDriverMarket({ hardReset: false });
+          return;
+        }
+        if (!isDriverSurface && typeof kind === "string" && kind !== "instant_ride_offer") {
+          void fetchAll();
         }
       });
     });
     return () => {
       sub?.remove();
     };
-  }, [fleetAuthToken, isDriverSurface, fetchDriverMarket]);
+  }, [fleetAuthToken, isDriverSurface, fetchDriverMarket, fetchAll]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {

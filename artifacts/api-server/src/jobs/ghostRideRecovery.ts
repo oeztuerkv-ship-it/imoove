@@ -66,6 +66,12 @@ export async function expireStaleOpenRides(nowMs: number = Date.now()): Promise<
     );
     if (!updated) continue;
 
+    const pid = (updated.passengerId ?? "").trim();
+    if (pid) {
+      const { notifyPassengerReservationExpired } = await import("../lib/passengerRideExpoPush.js");
+      void notifyPassengerReservationExpired(pid, id);
+    }
+
     await insertSupplementalRideEvent(id, {
       eventType: "stale_ride_expired",
       fromStatus,

@@ -8,8 +8,8 @@ export async function notifyPassengerReservationConfirmed(passengerId: string, r
   await sendExpoPushMessages(
     tokens.map((to) => ({
       to,
-      title: "Reservierung",
-      body: "Deine Reservierung wurde bestätigt.",
+      title: "Fahrer zugewiesen",
+      body: "Ein Fahrer wurde Ihrer Reservierung zugewiesen. Details in der App.",
       data: { kind: "reservation_confirmed", rideId },
     })),
   );
@@ -70,6 +70,48 @@ export async function notifyPassengerDriverArriving(passengerId: string, rideId:
     })),
   );
 }
+/** Fahrt gestartet (`in_progress`) → Kunde informieren. */
+export async function notifyPassengerRideInProgress(passengerId: string, rideId: string): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrt läuft",
+      body: "Ihre Fahrt hat begonnen. Sie können den Verlauf in der App verfolgen.",
+      data: { kind: "ride_in_progress", rideId },
+    })),
+  );
+}
+
+/** Fahrt abgeschlossen → Quittung in der App. */
+export async function notifyPassengerRideCompleted(passengerId: string, rideId: string): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrt beendet",
+      body: "Ihre Fahrt ist abgeschlossen. Die Quittung finden Sie in der App.",
+      data: { kind: "ride_completed", rideId },
+    })),
+  );
+}
+
+/** Reservierung/Fahrt abgelaufen (`expired`, z. B. Cron). */
+export async function notifyPassengerReservationExpired(passengerId: string, rideId: string): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Reservierung abgelaufen",
+      body: "Ihre Reservierung ist abgelaufen. Bitte bei Bedarf erneut buchen.",
+      data: { kind: "reservation_expired", rideId },
+    })),
+  );
+}
+
 /** Cron/System: keine Fahrerannahme rechtzeitig → Buchung beendet. */
 export async function notifyPassengerRideCancelledBySystem(passengerId: string, rideId: string): Promise<void> {
   const tokens = await listPassengerExpoPushTokens(passengerId);

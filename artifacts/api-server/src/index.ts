@@ -114,9 +114,14 @@ httpServer.listen(port, () => {
         .update(ridesTable)
         .set({ status: "expired" })
         .where(and(eq(ridesTable.status, "scheduled_assigned"), isNotNull(ridesTable.scheduled_at), lt(ridesTable.scheduled_at, now)))
-        .returning({ id: ridesTable.id });
+        .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
       if (expiredAssigned.length > 0) {
         logger.info({ count: expiredAssigned.length }, "[Cron] scheduled_assigned → expired");
+        const { notifyPassengerReservationExpired } = await import("./lib/passengerRideExpoPush.js");
+        for (const row of expiredAssigned) {
+          const pid = typeof row.passenger_id === "string" ? row.passenger_id.trim() : "";
+          if (pid) void notifyPassengerReservationExpired(pid, row.id);
+        }
       }
 
       // Job 5: scheduled in Vergangenheit → expired
@@ -124,9 +129,14 @@ httpServer.listen(port, () => {
         .update(ridesTable)
         .set({ status: "expired" })
         .where(and(eq(ridesTable.status, "scheduled"), isNotNull(ridesTable.scheduled_at), lt(ridesTable.scheduled_at, now)))
-        .returning({ id: ridesTable.id });
+        .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
       if (expiredScheduled.length > 0) {
         logger.info({ count: expiredScheduled.length }, "[Cron] scheduled → expired");
+        const { notifyPassengerReservationExpired } = await import("./lib/passengerRideExpoPush.js");
+        for (const row of expiredScheduled) {
+          const pid = typeof row.passenger_id === "string" ? row.passenger_id.trim() : "";
+          if (pid) void notifyPassengerReservationExpired(pid, row.id);
+        }
       }
 
       // Job 6: accepted ohne GPS-Fortschritt → zurück in Pool (Ghost-Ride Recovery)

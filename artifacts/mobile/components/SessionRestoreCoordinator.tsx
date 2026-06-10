@@ -8,6 +8,7 @@ import {
   buildDriverNavigationHref,
   replaceDriverStackExclusive,
 } from "@/utils/driverNavigationRoute";
+import { setupExpoPushResponseRouting } from "@/utils/expoPushDeepLink";
 import {
   pickCustomerSessionRestoreRide,
   pickDriverSessionRestoreRide,
@@ -35,6 +36,8 @@ const DRIVER_SKIP_PREFIXES = ["/driver/login"];
  * Einmaliger Restore nach Server-Load: Kunde → Status, Fahrer mit aktiver Fahrt → Navigation (Stack reset).
  */
 export function SessionRestoreCoordinator() {
+  useEffect(() => setupExpoPushResponseRouting(), []);
+
   const pathname = usePathname();
   const segments = useSegments();
   const { profile } = useUser();
