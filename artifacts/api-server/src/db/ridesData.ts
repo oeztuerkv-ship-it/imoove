@@ -48,41 +48,6 @@ import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
 
-async function expirePastOpenReservationsByIds(
-  db: NodePgDatabase<typeof schemaNs>,
-  rideIds: string[],
-): Promise<Set<string>> {
-  const ids = Array.from(new Set(rideIds.map((v) => v.trim()).filter((v) => v.length > 0)));
-  if (ids.length === 0) return new Set<string>();
-
-  const rows = await db
-    .update(ridesTable)
-    .set({ status: "expired" })
-    .where(
-      and(
-        inArray(ridesTable.id, ids),
-        eq(ridesTable.status, "scheduled"),
-        isNotNull(ridesTable.scheduled_at),
-        lt(ridesTable.scheduled_at, new Date()),
-      ),
-    )
-    .returning({ id: ridesTable.id });
-
-  return new Set(rows.map((r) => r.id));
-}
-
-/** Nur `scheduled` + Abholzeit in der Vergangenheit → `expired` (Read-Pfad, DB-Update). Kein Auto-`ready_for_dispatch`. */
-function withLifecycleExpiredRows(
-  rows: Array<typeof ridesTable.$inferSelect>,
-  expiredIds: Set<string>,
-): Array<typeof ridesTable.$inferSelect> {
-  if (expiredIds.size === 0) return rows;
-  return rows.map((r) => {
-    if (expiredIds.has(r.id)) return { ...r, status: "expired" };
-    return r;
-  });
-}
-
 /**
  * Legacy-safe company filter:
  * - current schema: rides.company_id is TEXT
@@ -421,8 +386,7 @@ export async function listRidesForCompanyFiltered(
     .from(ridesTable)
     .where(and(...cond))
     .orderBy(desc(ridesTable.created_at));
-  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
+  return rows.map(rowToRide);
 }
 
 export async function listRides(): Promise<RideRequest[]> {
@@ -431,8 +395,7 @@ export async function listRides(): Promise<RideRequest[]> {
     return [...memoryRides];
   }
   const rows = await db.select().from(ridesTable).orderBy(desc(ridesTable.created_at));
-  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
+  return rows.map(rowToRide);
 }
 
 /** Nur Fahrten mit gesetzter company_id = Mandant (Partner-Panel-Scope). */
@@ -449,8 +412,7 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
     .from(ridesTable)
     .where(companyIdMatchCondition(companyId))
     .orderBy(desc(ridesTable.created_at));
-  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
+  return rows.map(rowToRide);
 }
 
 /** Kunde: nur eigene Fahrten über `passenger_id`. */
@@ -469,8 +431,7 @@ export async function listRidesForPassenger(passengerId: string): Promise<RideRe
     .from(ridesTable)
     .where(eq(ridesTable.passenger_id, pid))
     .orderBy(desc(ridesTable.created_at));
-  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
+  return rows.map(rowToRide);
 }
 
 /** Letzte Fahrt des Fahrers im Mandanten (Näherung: kein Fahrzeug-FK auf rides). */
@@ -667,17 +628,11 @@ export async function findRide(id: string): Promise<RideRequest | null> {
   }
   const rows = await db.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
   if (!rows[0]) return null;
-  const expired = await expirePastOpenReservationsByIds(db, [rows[0].id]);
-  const row = withLifecycleExpiredRows([rows[0]], expired)[0];
-  return rowToRide(row);
+  return rowToRide(rows[0]);
 }
 
 export type FindRideForPassengerOptions = {
-  /**
-   * Standard: vergangene `scheduled`-Reservierungen werden beim Lesen auf `expired` gesetzt.
-   * Für Stripe `create-intent` direkt nach Buchung: `true`, damit die Zahlung nicht durch
-   * denselben Read-Pfad blockiert wird.
-   */
+  /** @deprecated Lifecycle-Expiry läuft nur noch über Cron (`jobs/reservationLifecycle.ts`). */
   skipLifecycleExpiry?: boolean;
 };
 
@@ -702,12 +657,8 @@ export async function findRideForPassenger(
     .where(and(eq(ridesTable.id, rideId), eq(ridesTable.passenger_id, pid)))
     .limit(1);
   if (!rows[0]) return null;
-  if (options?.skipLifecycleExpiry) {
-    return rowToRide(rows[0]);
-  }
-  const expired = await expirePastOpenReservationsByIds(db, [rows[0].id]);
-  const row = withLifecycleExpiredRows([rows[0]], expired)[0];
-  return rowToRide(row);
+  void options;
+  return rowToRide(rows[0]);
 }
 
 /** Plattform-Admin: Listenfilter + Pagination (kein `stripPartnerOnlyRideFields`). */

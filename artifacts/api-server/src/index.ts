@@ -43,7 +43,7 @@ httpServer.listen(port, () => {
       const db = getDb();
       if (!db) return;
       const { ridesTable } = await import("./db/schema.js");
-      const { and, eq, inArray, isNotNull, lt, lte } = await import("drizzle-orm");
+      const { and, eq, isNotNull, lte } = await import("drizzle-orm");
       const { setReservationSuspension } = await import("./db/fleetDriversData.js");
       const now = new Date();
       const nowMs = now.getTime();
@@ -57,8 +57,10 @@ httpServer.listen(port, () => {
         .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
       if (noDriverCancelled.length > 0) {
         logger.info({ count: noDriverCancelled.length }, "[Cron] Kein Fahrer → cancelled_by_system");
+        const { broadcastRideStatusChange } = await import("./wsRideSocketHub.js");
         const { notifyPassengerRideCancelledBySystem } = await import("./lib/passengerRideExpoPush.js");
         for (const row of noDriverCancelled) {
+          broadcastRideStatusChange(row.id, "cancelled_by_system", "scheduled");
           const pid = typeof row.passenger_id === "string" ? row.passenger_id.trim() : "";
           if (pid) void notifyPassengerRideCancelledBySystem(pid, row.id);
         }
@@ -76,28 +78,9 @@ httpServer.listen(port, () => {
 
       // Job 3: Fahrer hat 45 min nach Abholzeit noch nicht aktiviert → 24h Sperre + Fahrt freigeben
       const activationDeadline = new Date(nowMs - 45 * 60 * 1000);
-      const missedActivation = await db
-        .select({ id: ridesTable.id, driver_id: ridesTable.driver_id, company_id: ridesTable.company_id })
-        .from(ridesTable)
-        .where(
-          and(
-            eq(ridesTable.status, "scheduled_assigned"),
-            isNotNull(ridesTable.scheduled_at),
-            lte(ridesTable.scheduled_at, activationDeadline),
-          ),
-        );
-      const missedIds = missedActivation.map((r) => r.id).filter((id) => id.length > 0);
-      if (missedIds.length > 0) {
-        await db
-          .update(ridesTable)
-          .set({
-            status: "scheduled",
-            driver_id: null,
-            push_driver_activation_reminder_at: null,
-            push_customer_reservation_assigned_at: null,
-          })
-          .where(inArray(ridesTable.id, missedIds));
-      }
+      const { releaseMissedActivationReservations, expirePastAssignedReservations, expirePastScheduledReservations } =
+        await import("./jobs/reservationLifecycle.js");
+      const missedActivation = await releaseMissedActivationReservations(activationDeadline);
       const { notifyDriverMissedActivationReservation } = await import("./lib/driverRideExpoPush.js");
       for (const ride of missedActivation) {
         const did = typeof ride.driver_id === "string" ? ride.driver_id.trim() : "";
@@ -110,11 +93,7 @@ httpServer.listen(port, () => {
       }
 
       // Job 4: scheduled_assigned in Vergangenheit → expired
-      const expiredAssigned = await db
-        .update(ridesTable)
-        .set({ status: "expired" })
-        .where(and(eq(ridesTable.status, "scheduled_assigned"), isNotNull(ridesTable.scheduled_at), lt(ridesTable.scheduled_at, now)))
-        .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
+      const expiredAssigned = await expirePastAssignedReservations(now);
       if (expiredAssigned.length > 0) {
         logger.info({ count: expiredAssigned.length }, "[Cron] scheduled_assigned → expired");
         const { notifyPassengerReservationExpired } = await import("./lib/passengerRideExpoPush.js");
@@ -125,11 +104,7 @@ httpServer.listen(port, () => {
       }
 
       // Job 5: scheduled in Vergangenheit → expired
-      const expiredScheduled = await db
-        .update(ridesTable)
-        .set({ status: "expired" })
-        .where(and(eq(ridesTable.status, "scheduled"), isNotNull(ridesTable.scheduled_at), lt(ridesTable.scheduled_at, now)))
-        .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
+      const expiredScheduled = await expirePastScheduledReservations(now);
       if (expiredScheduled.length > 0) {
         logger.info({ count: expiredScheduled.length }, "[Cron] scheduled → expired");
         const { notifyPassengerReservationExpired } = await import("./lib/passengerRideExpoPush.js");

@@ -95,6 +95,7 @@ import {
   resolveCustomerMedicalScanForBooking,
 } from "../db/customerMedicalTransportScansData";
 import { createMedicalQrToken, formatMedicalQrPayload } from "../lib/medicalQrToken";
+import { broadcastRideStatusChange } from "../wsRideSocketHub";
 import { signReceiptHtmlAccessJwt, verifyReceiptHtmlAccessJwt } from "../lib/receiptAccessJwt";
 import type { RideMutateActor } from "../lib/rideRouteAuth";
 import {
@@ -2144,6 +2145,10 @@ export async function patchRideStatusRoute(
     if (nextStatus === "cancelled_by_system") {
       const pid = (updated.passengerId ?? "").trim();
       if (pid) void notifyPassengerRideCancelledBySystem(pid, updated.id);
+    }
+
+    if (cur.status !== nextStatus) {
+      broadcastRideStatusChange(id, nextStatus, cur.status);
     }
 
     const opsEv = supplementalEventForTransition(cur.status, nextStatus);

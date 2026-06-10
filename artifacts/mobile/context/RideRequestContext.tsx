@@ -28,6 +28,7 @@ import {
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
 import { sendNewRideNotification, stopRideSound } from "@/utils/notifications";
+import { setRideStatusWsHandler } from "@/utils/socket";
 
 export type RequestStatus =
   | "draft"
@@ -928,6 +929,25 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       sub?.remove();
     };
   }, [fleetAuthToken, isDriverSurface, fetchDriverMarket, fetchAll]);
+
+  useEffect(() => {
+    setRideStatusWsHandler(({ rideId, status }) => {
+      const id = rideId.trim();
+      const next = status.trim() as RequestStatus;
+      if (!id || !next) return;
+      setRequests((prev) => {
+        const idx = prev.findIndex((r) => r.id === id);
+        if (idx < 0) return prev;
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], status: next };
+        return copy;
+      });
+      if (isDriverSurfaceRef.current && fleetAuthToken) {
+        void fetchDriverMarket({ hardReset: false });
+      }
+    });
+    return () => setRideStatusWsHandler(null);
+  }, [fetchDriverMarket, fleetAuthToken]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {

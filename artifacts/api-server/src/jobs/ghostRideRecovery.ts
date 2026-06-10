@@ -6,6 +6,7 @@ import { insertSupplementalRideEvent, updateRide } from "../db/ridesData";
 import { rideEventsTable, ridesTable } from "../db/schema";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { logger } from "../lib/logger";
+import { broadcastRideStatusChange } from "../wsRideSocketHub";
 
 const DEFAULT_IDLE_MINUTES = 15;
 const DEFAULT_STALE_EXPIRE_HOURS = 8;
@@ -65,6 +66,8 @@ export async function expireStaleOpenRides(nowMs: number = Date.now()): Promise<
       { mutationActor: { actorType: "system", actorId: null } },
     );
     if (!updated) continue;
+
+    broadcastRideStatusChange(id, "expired", fromStatus);
 
     const pid = (updated.passengerId ?? "").trim();
     if (pid) {
@@ -156,6 +159,8 @@ export async function recoverGhostAcceptedRides(nowMs: number = Date.now()): Pro
       { mutationActor: { actorType: "system", actorId: null } },
     );
     if (!updated) continue;
+
+    broadcastRideStatusChange(id, revertStatus, "accepted");
 
     await insertSupplementalRideEvent(id, {
       eventType: "ghost_ride_recovered",
