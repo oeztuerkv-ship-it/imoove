@@ -5,6 +5,8 @@ const PAYMENT_DISPLAY: Record<PaymentMethod, string> = {
   cash: "Bar",
   paypal: "PayPal",
   card: "Kreditkarte",
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
   voucher: "Transportschein (Krankenkasse)",
   app: "App-Zahlung",
   access_code: "Gutschein / Freigabe-Code",

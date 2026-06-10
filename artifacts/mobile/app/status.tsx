@@ -70,6 +70,8 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Barzahlung",
   paypal: "PayPal",
   card: "Kreditkarte",
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
   voucher: "Transportschein",
   app: "App-Zahlung",
   access_code: "Gutschein / Freigabe",

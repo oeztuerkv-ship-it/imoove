@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { usePaymentSheet } from "@stripe/stripe-react-native";
+import { usePaymentSheet, usePlatformPay } from "@stripe/stripe-react-native";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams, usePathname, useSegments } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -61,11 +61,14 @@ import {
   postCustomerCreatePaymentIntent,
 } from "@/utils/stripePaymentApi";
 import { presentStripePaymentSheet } from "@/utils/stripePaymentSheet";
+import { presentStripeApplePayPayment } from "@/utils/stripePlatformPay";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Bar",
   paypal: "PayPal",
   card: "Kreditkarte",
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
   voucher: "Transportschein",
   app: "App",
   access_code: "Gutschein / Freigabe",
@@ -107,19 +110,21 @@ function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: bool
 /* Online-Zahlung mit vorher verknüpftem Wallet-Token (Karte: Stripe Sheet direkt beim Buchen). */
 const TOKEN_REQUIRED: PaymentMethod[] = ["paypal", "app"];
 
-const RIDE_PAYMENT_OPTIONS: {
+const RIDE_PAYMENT_OPTIONS_BASE: {
   id: PaymentMethod;
   label: string;
   featherIcon?: string;
   isPaypal?: boolean;
   isEuro?: boolean;
   isCard?: boolean;
+  isApplePay?: boolean;
   isVoucher?: boolean;
   isApp?: boolean;
   isAccessCode?: boolean;
 }[] = [
   { id: "cash", label: "Bar", isEuro: true },
   { id: "paypal", label: "PayPal", isPaypal: true },
+  { id: "card", label: "Kreditkarte", isCard: true },
   { id: "voucher", label: "Transportschein (KK)", isVoucher: true },
   { id: "app", label: "App bezahlen", isApp: true },
   { id: "access_code", label: "Gutschein / Code", isAccessCode: true },
@@ -305,6 +310,8 @@ export default function RideScreen() {
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
+  const { isPlatformPaySupported, confirmPlatformPayPayment } = usePlatformPay();
+  const [applePaySupported, setApplePaySupported] = useState(false);
   const btnScale = useRef(new Animated.Value(1)).current;
   const rideScrollRef = useRef<ScrollView>(null);
   const accessibilityScrollRef = useRef<ScrollView>(null);
@@ -331,7 +338,22 @@ export default function RideScreen() {
   const [brokerNoticeExpanded, setBrokerNoticeExpanded] = useState(false);
 
   const { config: appConfig } = useOnrodaAppConfig();
-  const ridePaymentOptions = RIDE_PAYMENT_OPTIONS;
+
+  useEffect(() => {
+    if (Platform.OS !== "ios" || !STRIPE_PUBLISHABLE_KEY) {
+      setApplePaySupported(false);
+      return;
+    }
+    void isPlatformPaySupported().then(setApplePaySupported);
+  }, [isPlatformPaySupported]);
+
+  const ridePaymentOptions = React.useMemo(() => {
+    const opts = [...RIDE_PAYMENT_OPTIONS_BASE];
+    if (applePaySupported) {
+      opts.splice(3, 0, { id: "apple_pay", label: "Apple Pay", isApplePay: true });
+    }
+    return opts;
+  }, [applePaySupported]);
 
   function dismissTransportScan() {
     setPendingTransportScanId(null);
@@ -355,7 +377,9 @@ export default function RideScreen() {
 
   const orderCtaLabel = React.useMemo(() => {
     if (preAuthLoading) {
-      return paymentMethod === "card" ? "Kartenzahlung…" : "Vorautorisierung…";
+      return paymentMethod === "card" || paymentMethod === "apple_pay"
+        ? "Zahlung…"
+        : "Vorautorisierung…";
     }
     if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") {
       return scheduledTime !== null ? "Trotzdem reservieren" : "Trotzdem buchen";
@@ -487,7 +511,11 @@ export default function RideScreen() {
 
     /* ── 1. Token / Pre-Auth (Karte: kein Wallet — Payment Sheet nach Fahrtanlage) ── */
     const skipWalletSteps =
-      pm === "cash" || pm === "voucher" || pm === "access_code" || pm === "card";
+      pm === "cash" ||
+      pm === "voucher" ||
+      pm === "access_code" ||
+      pm === "card" ||
+      pm === "apple_pay";
     if (!skipWalletSteps) {
       const hasToken = await checkPaymentTokenFor(pm);
       if (!hasToken) {
@@ -503,11 +531,15 @@ export default function RideScreen() {
         return;
       }
     }
-    if (pm === "card" && !STRIPE_PUBLISHABLE_KEY) {
+    if ((pm === "card" || pm === "apple_pay") && !STRIPE_PUBLISHABLE_KEY) {
       Alert.alert(
-        "Kartenzahlung",
+        "Online-Zahlung",
         "Kartenzahlung ist in dieser App-Version noch nicht konfiguriert. Bitte Bar wählen oder die App aktualisieren.",
       );
+      return;
+    }
+    if (pm === "apple_pay" && Platform.OS !== "ios") {
+      Alert.alert("Apple Pay", "Apple Pay ist nur auf iOS verfügbar.");
       return;
     }
 
@@ -519,7 +551,7 @@ export default function RideScreen() {
       Animated.timing(btnScale, { toValue: 1, duration: 80, useNativeDriver: true }),
     ]).start(() => {
       void (async () => {
-        if (pm === "card") setPreAuthLoading(true);
+        if (pm === "card" || pm === "apple_pay") setPreAuthLoading(true);
         try {
           if (!destination) return;
           const readCoord = (
@@ -583,6 +615,7 @@ export default function RideScreen() {
             pm === "cash" ? "Bar" :
             pm === "paypal" ? "PayPal" :
             pm === "app" ? "App" :
+            pm === "apple_pay" ? "Apple Pay" :
             pm === "card" ? "Kreditkarte" :
             pm === "access_code" ? "Gutschein / Freigabe (Code)" :
             pm === "voucher"
@@ -652,7 +685,7 @@ export default function RideScreen() {
                 }
               : {}),
           });
-          if (pm === "card") {
+          if (pm === "card" || pm === "apple_pay") {
             const authToken = await resolveCustomerBearerToken(profile.sessionToken);
             if (!authToken) {
               await cancelCustomerRide(profile.sessionToken?.trim() ?? "", rideRequestId);
@@ -689,14 +722,23 @@ export default function RideScreen() {
               return;
             }
             if (!intent.paid) {
-              const sheet = await presentStripePaymentSheet(
-                { initPaymentSheet, presentPaymentSheet },
-                intent.clientSecret,
-              );
-              if (!sheet.ok) {
+              const paid =
+                pm === "apple_pay"
+                  ? await presentStripeApplePayPayment(
+                      { confirmPlatformPayPayment },
+                      intent.clientSecret,
+                      chargeAmount,
+                    )
+                  : await presentStripePaymentSheet(
+                      { initPaymentSheet, presentPaymentSheet },
+                      intent.clientSecret,
+                      "ONRODA",
+                      chargeAmount,
+                    );
+              if (!paid.ok) {
                 await cancelCustomerRide(authToken, rideRequestId);
-                if (sheet.message !== "Zahlung abgebrochen.") {
-                  Alert.alert("Zahlung fehlgeschlagen", sheet.message);
+                if (paid.message !== "Zahlung abgebrochen.") {
+                  Alert.alert("Zahlung fehlgeschlagen", paid.message);
                 }
                 return;
               }
@@ -723,7 +765,7 @@ export default function RideScreen() {
             userFacingBookingErrorMessage(err, accessCodeBookingErrorMessage),
           );
         } finally {
-          if (pm === "card") setPreAuthLoading(false);
+          if (pm === "card" || pm === "apple_pay") setPreAuthLoading(false);
         }
       })();
     });
@@ -938,6 +980,8 @@ export default function RideScreen() {
                       <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
                     ) : opt.isCard ? (
                       <Feather name="credit-card" size={14} color={colors.foreground} />
+                    ) : opt.isApplePay ? (
+                      <MaterialCommunityIcons name="apple" size={16} color={colors.foreground} />
                     ) : opt.isVoucher ? (
                       <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
                     ) : opt.isAccessCode ? (

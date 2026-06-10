@@ -15,7 +15,15 @@ import { type GeoLocation, type RouteResult, getRoute, getRouteThrough } from "@
 
 export type VehicleType = "standard" | "xl" | "wheelchair";
 export type RideServiceClass = "rollstuhl" | "xl" | "taxi";
-export type PaymentMethod = "cash" | "paypal" | "card" | "voucher" | "app" | "access_code";
+export type PaymentMethod =
+  | "cash"
+  | "paypal"
+  | "card"
+  | "apple_pay"
+  | "google_pay"
+  | "voucher"
+  | "app"
+  | "access_code";
 
 export interface VehicleOption {
   id: VehicleType;
