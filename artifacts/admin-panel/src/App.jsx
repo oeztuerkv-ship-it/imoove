@@ -52,6 +52,7 @@ import AppOperationalDriverRulesPage from "./pages/AppOperationalDriverRulesPage
 import AppOperationalBookingRulesPage from "./pages/AppOperationalBookingRulesPage.jsx";
 import AppOperationalSystemPage from "./pages/AppOperationalSystemPage.jsx";
 import CustomerAccountsPage from "./pages/CustomerAccountsPage.jsx";
+import CustomersPage from "./pages/CustomersPage.jsx";
 import AppNewsPage from "./pages/AppNewsPage.jsx";
 import AppFaqPage from "./pages/AppFaqPage.jsx";
 import AppSponsorsPage from "./pages/AppSponsorsPage.jsx";
@@ -892,6 +893,8 @@ export default function App() {
         return <Fail2BanPage />;
       case "customer-accounts":
         return <CustomerAccountsPage />;
+      case "customers":
+        return <CustomersPage />;
       case "app-news":
         return <AppNewsPage />;
       case "app-faq":
