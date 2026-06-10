@@ -193,7 +193,7 @@ interface RideRequestContextValue {
   /** Manuelles Neuladen der Aufträge (z. B. „Erneut suchen“). */
   refreshRequests: () => Promise<void>;
   /** Fahrer-Markt: State leeren, dann frisch vom Server (nach ONLINE / Storno). */
-  refreshDriverMarketHard: () => Promise<boolean>;
+  refreshDriverMarketHard: (opts?: { lat?: number; lon?: number }) => Promise<boolean>;
   /** Sofort-Markt in der UI leeren (z. B. vor OFFLINE — kein Aufblitzen). */
   clearDriverMarketRequests: () => void;
   /** Kein erneutes Klingeln/Banner für diese Auftrags-ID (Abbruch, Ablehnung, Storno). */
@@ -728,7 +728,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   const fetchDriverMarket = useCallback(
-    async (opts?: { hardReset?: boolean }): Promise<boolean> => {
+    async (opts?: { hardReset?: boolean; lat?: number; lon?: number }): Promise<boolean> => {
       if (!API_BASE) return false;
       const token = await readFleetAuthToken();
       if (!token) return false;
@@ -746,6 +746,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       }
 
       const bust = Date.now();
+      const marketQs = new URLSearchParams({ _: String(bust) });
+      if (
+        opts?.lat != null &&
+        opts?.lon != null &&
+        Number.isFinite(opts.lat) &&
+        Number.isFinite(opts.lon)
+      ) {
+        marketQs.set("lat", String(opts.lat));
+        marketQs.set("lon", String(opts.lon));
+      }
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,
         "Cache-Control": "no-cache",
@@ -753,7 +763,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       };
       try {
         const [marketRes, schedRes] = await Promise.all([
-          fetch(`${API_BASE}/fleet-driver/v1/market-rides?_=${bust}`, { cache: "no-store", headers }),
+          fetch(`${API_BASE}/fleet-driver/v1/market-rides?${marketQs}`, { cache: "no-store", headers }),
           fetch(`${API_BASE}/fleet-driver/v1/scheduled-rides?_=${bust}`, { cache: "no-store", headers }),
         ]);
         if (!marketRes.ok) throw new Error("fetch failed");
@@ -789,7 +799,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   const refreshDriverMarketHard = useCallback(
-    () => fetchDriverMarket({ hardReset: true }),
+    (opts?: { lat?: number; lon?: number }) => fetchDriverMarket({ hardReset: true, ...opts }),
     [fetchDriverMarket],
   );
 

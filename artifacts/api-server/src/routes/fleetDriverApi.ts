@@ -12,6 +12,8 @@ import { listAssignmentsForCompany, setDriverVehicleAssignment } from "../db/fle
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
+import { findFollowUpOfferForDriver } from "../db/fleetFollowUpOfferData";
+import { filterOpenInstantMarketRides, listMarketRidesForFleetDriver } from "../db/fleetDriverMarketPool";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
 import { dismissDriverMessage, listDriverMessagesForFleetDriver } from "../db/driverMessagesData";
 import {
@@ -267,89 +269,51 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       res.status(401).json({ error: "not_found" });
       return;
     }
-    const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
-    if ("error" in readinessR) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+
+    const pool = await listMarketRidesForFleetDriver(a.fleetDriverId, a.companyId);
+    if (!pool.ok) {
       res.status(401).json({ error: "not_found" });
       return;
     }
-    if (!readinessR.ready) {
+    if (!pool.einsatzbereit) {
       res.json({
         ok: true,
         rides: [],
         einsatzbereit: false,
-        readiness: readinessR,
-        message:
-          "Noch nicht freigegeben oder Voraussetzungen unvollständig. Aufträge sind gesperrt, bis alles erfüllt ist.",
+        ...("readiness" in pool && pool.readiness ? { readiness: pool.readiness } : {}),
+        message: pool.message,
       });
       return;
     }
-    /** Gleiche Quelle wie bei `PATCH /rides/:id/status` (Annahme): Zuweisung Fahrer↔Fahrzeug, sonst Fallback Fahrerprofil. */
-    const capability = await getFleetDriverCapability(a.fleetDriverId, a.companyId);
-    if (!capability?.vehicleLegalType) {
-      res.json({
-        ok: true,
-        rides: [],
-        einsatzbereit: false,
-        message:
-          "Kein fahrbereites Fahrzeug: Zuweisung prüfen und Freigabe durch Onroda abwarten (nur freigegebene Fahrzeuge).",
+
+    const latRaw = typeof req.query.lat === "string" ? Number(req.query.lat) : NaN;
+    const lonRaw = typeof req.query.lon === "string" ? Number(req.query.lon) : NaN;
+    const hasPos = Number.isFinite(latRaw) && Number.isFinite(lonRaw);
+    let marketRows = pool.rides;
+    if (hasPos) {
+      const { haversineDistanceKm } = await import("../lib/serviceRegionMatch.js");
+      const openInstant = filterOpenInstantMarketRides(marketRows, a.fleetDriverId);
+      const openIds = new Set(openInstant.map((r) => r.id));
+      const sortedOpen = [...openInstant].sort((a, b) => {
+        const da =
+          a.fromLat != null && a.fromLon != null
+            ? haversineDistanceKm(latRaw, lonRaw, a.fromLat, a.fromLon)
+            : Infinity;
+        const db =
+          b.fromLat != null && b.fromLon != null
+            ? haversineDistanceKm(latRaw, lonRaw, b.fromLat, b.fromLon)
+            : Infinity;
+        return da - db;
       });
-      return;
+      const assigned = marketRows.filter((r) => !openIds.has(r.id));
+      marketRows = [...sortedOpen, ...assigned];
     }
-    const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
-    const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
-      a.companyId,
-      a.fleetDriverId,
-    );
-    const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
-    const companyKkModuleEnabled = await getCompanyFeatureKkModule(a.companyId);
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    const all = await listRides();
-    const terminalMarketStatuses = new Set([
-      "completed",
-      "cancelled",
-      "cancelled_by_customer",
-      "cancelled_by_driver",
-      "cancelled_by_system",
-      "no_driver",
-      "expired",
-      "rejected",
-    ]);
-    const marketRows = all.filter((ride) => {
-      if (terminalMarketStatuses.has(ride.status)) return false;
-      if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return false;
-      const isAssignedToDriver = ride.driverId === a.fleetDriverId;
-      const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;
-      if (isAssignedToOtherDriver) return false;
-      // Mandantenfilter: wenn companyId gesetzt ist, muss sie zur Fahrerfirma passen.
-      // Legacy/Test-Fahrten können ohne companyId erstellt sein; die Capability-Prüfung
-      // entscheidet dann weiterhin nach Taxi-Klasse.
-      if (ride.companyId && ride.companyId !== a.companyId) return false;
-      if (isAssignedToDriver) {
-        return (
-          ride.status === "ready_for_dispatch" ||
-          ride.status === "accepted" ||
-          ride.status === "driver_arriving" ||
-          ride.status === "driver_waiting" ||
-          ride.status === "passenger_onboard" ||
-          ride.status === "arrived" ||
-          ride.status === "in_progress"
-        );
-      }
-      if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
-      if (ride.rideKind === "medical" && (!companyKkModuleEnabled || !medicalTransportAuthorized)) return false;
-      const inMarket =
-        ride.status === "pending" ||
-        ride.status === "requested" ||
-        ride.status === "searching_driver" ||
-        ride.status === "offered";
-      if (!inMarket) return false;
-      if (!marketOnline) return false;
-      return isRideCompatibleWithCapability(ride, capability);
-    });
+
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
-    const openInstantIds = marketRows
+    const openInstantIds = pool.rides
       .filter((r) => !r.driverId && isInstantDispatchRideStatus(r.status))
       .map((r) => r.id);
     void recordDispatchOffersSentForDriver(a.fleetDriverId, a.companyId, openInstantIds);
@@ -361,6 +325,54 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         withCodes.length === 0
           ? "Aktuell kein passendes Fahrzeug verfügbar"
           : null,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/fleet-driver/v1/follow-up-offer", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const lat = typeof req.query.lat === "string" ? Number(req.query.lat) : NaN;
+    const lon = typeof req.query.lon === "string" ? Number(req.query.lon) : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      res.status(400).json({ error: "lat_lon_required" });
+      return;
+    }
+    const excludeRideId =
+      typeof req.query.excludeRideId === "string" ? req.query.excludeRideId.trim() : undefined;
+    const lastRideId =
+      typeof req.query.lastRideId === "string" ? req.query.lastRideId.trim() : undefined;
+
+    const offer = await findFollowUpOfferForDriver({
+      fleetDriverId: a.fleetDriverId,
+      companyId: a.companyId,
+      lat,
+      lon,
+      excludeRideId,
+      lastRideId,
+    });
+
+    if (!offer) {
+      res.json({ ok: true, suggestion: null });
+      return;
+    }
+
+    const [publicRide] = await attachAccessCodeSummariesToRides([
+      stripPartnerOnlyRideFields(offer.ride),
+    ]);
+    res.json({
+      ok: true,
+      suggestion: {
+        ride: publicRide,
+        distanceKm: Math.round(offer.distanceKm * 10) / 10,
+        directionMatch: offer.directionMatch,
+      },
     });
   } catch (e) {
     next(e);

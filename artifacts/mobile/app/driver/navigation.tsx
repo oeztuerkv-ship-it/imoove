@@ -697,7 +697,15 @@ export default function DriverNavigationScreen() {
       setShowFareModal(false);
       disconnectSocket();
       trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);
-      replaceDriverStackExclusive("/driver/dashboard");
+      replaceDriverStackExclusive({
+        pathname: "/driver/dashboard",
+        params: {
+          followUp: "1",
+          lastRideId: params.rideId ?? "",
+          followUpLat: String(driverLat),
+          followUpLon: String(driverLon),
+        },
+      } as import("expo-router").Href);
     } catch (e) {
       const code = e instanceof Error ? e.message : "status_update_failed";
       Alert.alert("Abschluss fehlgeschlagen", `Endpreis konnte nicht gespeichert werden (${code}).`);

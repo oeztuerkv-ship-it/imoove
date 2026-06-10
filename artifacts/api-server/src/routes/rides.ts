@@ -62,7 +62,11 @@ import {
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow, getFleetDriverMarketOnline } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
-import { notifyMarketOnlineDriversInstantRideOffer } from "../lib/driverRideExpoPush";
+import {
+  notifyDriverFollowUpOffer,
+  notifyMarketOnlineDriversInstantRideOffer,
+} from "../lib/driverRideExpoPush";
+import { findFollowUpOfferForDriver } from "../db/fleetFollowUpOfferData";
 import {
   assertKkModuleAccessForFleetDriver,
   kkModuleDeniedJson,
@@ -2144,6 +2148,42 @@ export async function patchRideStatusRoute(
     if (nextStatus === "completed" && cur.status !== "completed") {
       const pid = (updated.passengerId ?? "").trim();
       if (pid) void notifyPassengerRideCompleted(pid, updated.id);
+      const fleetDriverId = (updated.driverId ?? "").trim();
+      const companyId = (updated.companyId ?? "").trim();
+      if (fleetDriverId && companyId) {
+        const bodyLat = typeof req.body?.driverLat === "number" ? req.body.driverLat : NaN;
+        const bodyLon = typeof req.body?.driverLon === "number" ? req.body.driverLon : NaN;
+        const cached = driverLocations.get(id);
+        const lat = Number.isFinite(bodyLat)
+          ? bodyLat
+          : cached && Number.isFinite(cached.lat)
+            ? cached.lat
+            : updated.toLat != null && Number.isFinite(updated.toLat)
+              ? updated.toLat
+              : NaN;
+        const lon = Number.isFinite(bodyLon)
+          ? bodyLon
+          : cached && Number.isFinite(cached.lon)
+            ? cached.lon
+            : updated.toLon != null && Number.isFinite(updated.toLon)
+              ? updated.toLon
+              : NaN;
+        if (Number.isFinite(lat) && Number.isFinite(lon)) {
+          void (async () => {
+            const offer = await findFollowUpOfferForDriver({
+              fleetDriverId,
+              companyId,
+              lat,
+              lon,
+              excludeRideId: updated.id,
+              lastRideId: updated.id,
+            });
+            if (offer) {
+              void notifyDriverFollowUpOffer(fleetDriverId, companyId, offer.ride, offer.distanceKm);
+            }
+          })();
+        }
+      }
     }
     if (nextStatus === "expired" && cur.status !== "expired") {
       const pid = (updated.passengerId ?? "").trim();

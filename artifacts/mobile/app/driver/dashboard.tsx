@@ -2,7 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { useKeepAwake } from "expo-keep-awake";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -864,6 +864,7 @@ function TabUebersicht({
   isAvailable,
   marketLoading,
   fleetAuthToken,
+  followUpHighlight,
 }: {
   pendingRequests: RideRequest[];
   onAccept: (id: string) => void;
@@ -872,15 +873,36 @@ function TabUebersicht({
   isAvailable: boolean;
   marketLoading?: boolean;
   fleetAuthToken?: string;
+  followUpHighlight?: { ride: RideRequest; distanceKm: number } | null;
 }) {
   const slideAnim = useRef(new Animated.Value(300)).current;
   const prevCountRef = useRef(0);
-  const instantReqs = pendingRequests.filter(
-    (r) =>
-      r.status !== "scheduled" &&
-      !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 60 * 60 * 1000),
+  const instantReqs = useMemo(() => {
+    const base = pendingRequests.filter(
+      (r) =>
+        r.status !== "scheduled" &&
+        !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 60 * 60 * 1000),
+    );
+    if (!driverPos) return base;
+    return [...base].sort((a, b) => {
+      const da =
+        a.fromLat != null && a.fromLon != null
+          ? haversineDistance(driverPos.lat, driverPos.lon, a.fromLat, a.fromLon)
+          : Infinity;
+      const db =
+        b.fromLat != null && b.fromLon != null
+          ? haversineDistance(driverPos.lat, driverPos.lon, b.fromLat, b.fromLon)
+          : Infinity;
+      return da - db;
+    });
+  }, [pendingRequests, driverPos]);
+  const firstReq =
+    followUpHighlight?.ride ??
+    instantReqs[0] ??
+    null;
+  const showFollowUpLabel = Boolean(
+    followUpHighlight?.ride && firstReq?.id === followUpHighlight.ride.id,
   );
-  const firstReq = instantReqs[0] ?? null;
 
   // Slide in the card when a new request appears
   useEffect(() => {
@@ -955,6 +977,17 @@ function TabUebersicht({
       {/* Ride request popup — slides up from bottom (nur wenn ONLINE) */}
       {firstReq && isAvailable && !marketLoading && (
         <Animated.View style={[styles.mapReqOverlay, { transform: [{ translateY: slideAnim }] }]}>
+          {showFollowUpLabel ? (
+            <View style={styles.followUpChip}>
+              <Feather name="navigation" size={14} color="#166534" />
+              <Text style={styles.followUpChipText}>
+                Nächste Fahrt in der Nähe
+                {followUpHighlight?.distanceKm != null
+                  ? ` · ${followUpHighlight.distanceKm < 1 ? `${Math.round(followUpHighlight.distanceKm * 1000)} m` : `${followUpHighlight.distanceKm.toFixed(1)} km`}`
+                  : ""}
+              </Text>
+            </View>
+          ) : null}
           <InstantCard
             req={firstReq}
             driverPos={driverPos}
@@ -2655,6 +2688,16 @@ export default function DriverDashboard() {
   const [codeRideVerified, setCodeRideVerified] = useState(false);
   const [codeRideSubmitting, setCodeRideSubmitting] = useState(false);
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
+  const [followUpHighlight, setFollowUpHighlight] = useState<{
+    ride: RideRequest;
+    distanceKm: number;
+  } | null>(null);
+  const routeParams = useLocalSearchParams<{
+    followUp?: string;
+    lastRideId?: string;
+    followUpLat?: string;
+    followUpLon?: string;
+  }>();
   const refreshInboxState = useCallback(async () => {
     const token = driver?.authToken?.trim();
     if (!token) {
@@ -2679,11 +2722,70 @@ export default function DriverDashboard() {
     void refreshInboxState();
   }, [refreshInboxState]);
 
+  const loadFollowUpSuggestion = useCallback(async () => {
+    const token = driver?.authToken?.trim();
+    if (!token) return;
+    const lat = driverPos?.lat ?? Number(routeParams.followUpLat);
+    const lon = driverPos?.lon ?? Number(routeParams.followUpLon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    try {
+      const qs = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+      const lastRideId = typeof routeParams.lastRideId === "string" ? routeParams.lastRideId.trim() : "";
+      if (lastRideId) {
+        qs.set("lastRideId", lastRideId);
+        qs.set("excludeRideId", lastRideId);
+      }
+      const res = await fetch(`${API_BASE}/fleet-driver/v1/follow-up-offer?${qs}`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setFollowUpHighlight(null);
+        return;
+      }
+      const data = (await res.json()) as {
+        suggestion?: { ride?: RideRequest; distanceKm?: number } | null;
+      };
+      const ride = data?.suggestion?.ride;
+      if (ride?.id) {
+        setFollowUpHighlight({
+          ride,
+          distanceKm: Number(data.suggestion?.distanceKm ?? 0),
+        });
+        void refreshDriverMarketHard({ lat, lon });
+      } else {
+        setFollowUpHighlight(null);
+      }
+    } catch {
+      setFollowUpHighlight(null);
+    }
+  }, [
+    driver?.authToken,
+    driverPos?.lat,
+    driverPos?.lon,
+    routeParams.followUpLat,
+    routeParams.followUpLon,
+    routeParams.lastRideId,
+    refreshDriverMarketHard,
+  ]);
+
   useFocusEffect(
     useCallback(() => {
       void refreshInboxState();
-      if (driver?.authToken) void refreshDriverMarketHard();
-    }, [refreshInboxState, driver?.authToken, refreshDriverMarketHard]),
+      if (driver?.authToken) {
+        void refreshDriverMarketHard(
+          driverPos ? { lat: driverPos.lat, lon: driverPos.lon } : undefined,
+        );
+      }
+      if (routeParams.followUp === "1") void loadFollowUpSuggestion();
+    }, [
+      refreshInboxState,
+      driver?.authToken,
+      refreshDriverMarketHard,
+      driverPos,
+      routeParams.followUp,
+      loadFollowUpSuggestion,
+    ]),
   );
 
   // Foreground-Push: Posteingang + Sofortfahrt-Markt
@@ -2692,8 +2794,11 @@ export default function DriverDashboard() {
     import("expo-notifications").then((Notifications) => {
       sub = Notifications.addNotificationReceivedListener((notification) => {
         const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
-        if (kind === "instant_ride_offer") {
-          void refreshDriverMarketHard();
+        if (kind === "instant_ride_offer" || kind === "follow_up_offer") {
+          void refreshDriverMarketHard(
+            driverPos ? { lat: driverPos.lat, lon: driverPos.lon } : undefined,
+          );
+          if (kind === "follow_up_offer") void loadFollowUpSuggestion();
         } else {
           void refreshInboxState();
         }
@@ -2702,7 +2807,7 @@ export default function DriverDashboard() {
     return () => {
       sub?.remove();
     };
-  }, [refreshInboxState, refreshDriverMarketHard]);
+  }, [refreshInboxState, refreshDriverMarketHard, driverPos, loadFollowUpSuggestion]);
 
   const dismissAdminMessage = useCallback(async () => {
     if (!adminMessage) return;
@@ -3107,6 +3212,7 @@ export default function DriverDashboard() {
 
   const handleAccept = async (id: string) => {
     clearInstantOfferDeadline(id);
+    setFollowUpHighlight(null);
     if (!driver) return;
     if (!driverId.trim()) {
       Alert.alert("Annahme nicht möglich", "Bitte erneut als Fahrer anmelden (keine Fahrer-ID in der Sitzung).");
@@ -3614,6 +3720,7 @@ export default function DriverDashboard() {
                 driverPos={driverPos}
                 isAvailable={driver.einsatzbereit && driver.isAvailable}
                 marketLoading={marketRefreshing}
+                followUpHighlight={followUpHighlight}
               />
             )}
             {activeTab === "auftraege" && (
@@ -4332,6 +4439,22 @@ const styles = StyleSheet.create({
   mapStatusText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
   mapReqOverlay: {
     position: "absolute", bottom: 12, left: 12, right: 12,
+  },
+  followUpChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    marginBottom: 8,
+    backgroundColor: "#DCFCE7",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  followUpChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "#166534",
   },
   mapMoreReqs: {
     textAlign: "center", marginTop: 8,

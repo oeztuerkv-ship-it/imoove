@@ -58,6 +58,31 @@ export async function notifyMarketOnlineDriversInstantRideOffer(ride: RideReques
   await sendExpoPushMessages(messages);
 }
 
+/** Nach Fahrtabschluss: nächster Auftrag in der Nähe (nur dieser Fahrer). */
+export async function notifyDriverFollowUpOffer(
+  fleetDriverId: string,
+  companyId: string,
+  ride: RideRequest,
+  distanceKm: number,
+): Promise<void> {
+  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+  if (tokens.length === 0) return;
+  const fromLabel = (ride.fromFull || ride.from || "Abholung").trim().slice(0, 60);
+  const distLabel =
+    distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Nächste Fahrt in der Nähe",
+      body: `${distLabel} entfernt · ${fromLabel}`,
+      sound: "default",
+      priority: "high",
+      channelId: "ride-offers",
+      data: { kind: "follow_up_offer", rideId: ride.id, distanceKm },
+    })),
+  );
+}
+
 export async function notifyDriverMissedActivationReservation(
   fleetDriverId: string,
   companyId: string,
