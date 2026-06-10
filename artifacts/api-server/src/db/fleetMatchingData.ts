@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
+import type { FleetVehicleType } from "./fleetVehiclesData";
 import { getDb } from "./client";
 import { driverVehicleAssignmentsTable, fleetVehiclesTable } from "./schema";
 
@@ -10,6 +11,7 @@ export type PricingMode = "taxi_tariff";
 export interface DriverRideCapability {
   vehicleLegalType: VehicleLegalType | null;
   vehicleClass: VehicleClass | null;
+  vehicleType: FleetVehicleType | null;
 }
 
 function normalizeVehicleText(value: string | null | undefined): string {
@@ -21,14 +23,26 @@ function parsePricingMode(raw: unknown): PricingMode | null {
   return null;
 }
 
-function requiredClassForRide(vehicleText: string): VehicleClass | null {
-  if (vehicleText.includes("rollstuhl")) return "wheelchair";
-  if (vehicleText === "xl" || vehicleText.includes(" xl")) return "xl";
-  return null;
-}
+/** Rollstuhl-/XL-Anforderung aus Fahrzeuglabel, Service-Klasse oder accessibilityOptions. */
+export function rideRequiredVehicleClass(ride: RideRequest): VehicleClass | null {
+  const vehicleText = normalizeVehicleText(ride.vehicle);
 
-function inferPricingModeFromVehicle(_vehicleText: string): PricingMode {
-  return "taxi_tariff";
+  if (vehicleText.includes("rollstuhl") || vehicleText.includes("wheelchair")) {
+    return "wheelchair";
+  }
+
+  const opts = ride.accessibilityOptions;
+  if (opts && typeof opts === "object" && !Array.isArray(opts)) {
+    const wt = typeof opts.wheelchairType === "string" ? opts.wheelchairType.trim() : "";
+    if (wt === "foldable" || wt === "electric") return "wheelchair";
+    if (opts.rampRequired === true || opts.carryChairRequired === true) return "wheelchair";
+  }
+
+  if (vehicleText === "xl" || /\bxl\b/.test(vehicleText)) {
+    return "xl";
+  }
+
+  return null;
 }
 
 function requiredLegalTypeForRide(ride: RideRequest): VehicleLegalType {
@@ -37,19 +51,43 @@ function requiredLegalTypeForRide(ride: RideRequest): VehicleLegalType {
   return "taxi";
 }
 
+function inferPricingModeFromVehicle(_vehicleText: string): PricingMode {
+  return "taxi_tariff";
+}
+
+/** Fahrzeug ist rollstuhlgeeignet (Partner-Registrierung: Typ oder Klasse wheelchair). */
+export function isFleetVehicleWheelchairCapable(capability: DriverRideCapability): boolean {
+  return capability.vehicleClass === "wheelchair" || capability.vehicleType === "wheelchair";
+}
+
+function fleetVehicleSatisfiesRequiredClass(
+  capability: DriverRideCapability,
+  required: VehicleClass,
+): boolean {
+  if (required === "wheelchair") {
+    return isFleetVehicleWheelchairCapable(capability);
+  }
+  if (required === "xl") {
+    return capability.vehicleClass === "xl" || capability.vehicleClass === "wheelchair";
+  }
+  return true;
+}
+
 export function isRideCompatibleWithCapability(
   ride: RideRequest,
   capability: DriverRideCapability,
 ): boolean {
   const requiredLegalType = requiredLegalTypeForRide(ride);
-  const normalizedLegalType = capability.vehicleLegalType === "rental_car" ? "taxi" : capability.vehicleLegalType;
+  const normalizedLegalType =
+    capability.vehicleLegalType === "rental_car" ? "taxi" : capability.vehicleLegalType;
   if (!normalizedLegalType || normalizedLegalType !== requiredLegalType) {
     return false;
   }
-  const vehicleText = normalizeVehicleText(ride.vehicle);
-  const requiredClass = requiredClassForRide(vehicleText);
+
+  const requiredClass = rideRequiredVehicleClass(ride);
   if (!requiredClass) return true;
-  return capability.vehicleClass === requiredClass;
+
+  return fleetVehicleSatisfiesRequiredClass(capability, requiredClass);
 }
 
 export async function getFleetDriverCapability(
@@ -63,6 +101,7 @@ export async function getFleetDriverCapability(
     .select({
       vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
       vehicleClass: fleetVehiclesTable.vehicle_class,
+      vehicleType: fleetVehiclesTable.vehicle_type,
       approvalStatus: fleetVehiclesTable.approval_status,
       isActive: fleetVehiclesTable.is_active,
     })
@@ -85,8 +124,22 @@ export async function getFleetDriverCapability(
     return {
       vehicleLegalType: assigned[0].vehicleLegalType as VehicleLegalType,
       vehicleClass: assigned[0].vehicleClass as VehicleClass,
+      vehicleType: assigned[0].vehicleType as FleetVehicleType,
     };
   }
 
   return null;
+}
+
+/** Vor atomarer Fahrer-Zuweisung (Markt + Reservierung). */
+export async function assertFleetDriverMatchesRide(
+  ride: RideRequest,
+  driverId: string,
+  companyId: string,
+): Promise<{ ok: true } | { ok: false; code: "no_matching_vehicle_available" }> {
+  const capability = await getFleetDriverCapability(driverId, companyId);
+  if (!capability || !isRideCompatibleWithCapability(ride, capability)) {
+    return { ok: false, code: "no_matching_vehicle_available" };
+  }
+  return { ok: true };
 }

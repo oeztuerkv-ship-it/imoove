@@ -1370,7 +1370,7 @@ export async function tryFleetAcceptRideAtomic(input: {
   companyId?: string | null;
 }): Promise<
   | { ok: true; previous: RideRequest; ride: RideRequest }
-  | { ok: false; reason: "not_found" | "ride_already_claimed" }
+  | { ok: false; reason: "not_found" | "ride_already_claimed" | "no_matching_vehicle" }
 > {
   const rideId = String(input.rideId ?? "").trim();
   const driverId = String(input.driverId ?? "").trim();
@@ -1389,14 +1389,18 @@ export async function tryFleetAcceptRideAtomic(input: {
     const assigned = (cur.driverId ?? "").trim();
     if (assigned && assigned !== driverId) return { ok: false, reason: "ride_already_claimed" };
     const mergedCompany =
-      companyIdIn || (typeof cur.companyId === "string" ? cur.companyId.trim() : "") || null;
+      companyIdIn || (typeof cur.companyId === "string" ? cur.companyId.trim() : "") || "";
+    if (!mergedCompany) return { ok: false, reason: "not_found" };
+    const { assertFleetDriverMatchesRide } = await import("./fleetMatchingData.js");
+    const capMem = await assertFleetDriverMatchesRide(cur, driverId, mergedCompany);
+    if (!capMem.ok) return { ok: false, reason: "no_matching_vehicle" };
     const nextStatus: RideRequest["status"] =
       cur.status === "scheduled" ? "scheduled_assigned" : "accepted";
     const next: RideRequest = {
       ...cur,
       status: nextStatus,
       driverId,
-      companyId: mergedCompany,
+      companyId: mergedCompany || null,
     };
     memoryRides[idx] = next;
     return { ok: true, previous: cur, ride: next };
@@ -1409,6 +1413,14 @@ export async function tryFleetAcceptRideAtomic(input: {
 
   const prevSnapshot = await findRide(rideId);
   if (!prevSnapshot) return { ok: false, reason: "not_found" };
+
+  const capabilityCompanyId =
+    companyIdIn || (typeof prevSnapshot.companyId === "string" ? prevSnapshot.companyId.trim() : "");
+  if (!capabilityCompanyId) return { ok: false, reason: "not_found" };
+
+  const { assertFleetDriverMatchesRide } = await import("./fleetMatchingData.js");
+  const cap = await assertFleetDriverMatchesRide(prevSnapshot, driverId, capabilityCompanyId);
+  if (!cap.ok) return { ok: false, reason: "no_matching_vehicle" };
 
   const nextStatusExpr = sql<string>`case when ${ridesTable.status} = 'scheduled' then 'scheduled_assigned' else 'accepted' end`;
   const rows = await db

@@ -1832,7 +1832,7 @@ export async function patchRideStatusRoute(
     }
 
     let companyIdOnAccept: string | undefined;
-    if (nextStatus === "accepted" && driverId) {
+    if (nextStatus === "accepted" && bodyDriverIdTrim) {
       const driverAuth = await findFleetDriverAuthRow(driverId);
       const capabilityCompanyId = cur.companyId ?? driverAuth?.company_id ?? null;
       if (!capabilityCompanyId) {
@@ -1849,7 +1849,7 @@ export async function patchRideStatusRoute(
         });
         return;
       }
-      const readinessR = await getFleetDriverReadinessById(driverId, capabilityCompanyId);
+      const readinessR = await getFleetDriverReadinessById(bodyDriverIdTrim, capabilityCompanyId);
       if (!("error" in readinessR) && !readinessR.ready) {
         res.status(409).json({
           error: "driver_not_einsatzbereit",
@@ -1858,7 +1858,7 @@ export async function patchRideStatusRoute(
         });
         return;
       }
-      const marketOnline = await getFleetDriverMarketOnline(driverId, capabilityCompanyId);
+      const marketOnline = await getFleetDriverMarketOnline(bodyDriverIdTrim, capabilityCompanyId);
       if (!marketOnline) {
         res.status(409).json({
           error: "driver_market_offline",
@@ -1866,7 +1866,7 @@ export async function patchRideStatusRoute(
         });
         return;
       }
-      const capability = await getFleetDriverCapability(driverId, capabilityCompanyId);
+      const capability = await getFleetDriverCapability(bodyDriverIdTrim, capabilityCompanyId);
       if (!capability || !isRideCompatibleWithCapability(cur, capability)) {
         res.status(409).json({
           error: "no_matching_vehicle_available",
@@ -1877,7 +1877,7 @@ export async function patchRideStatusRoute(
       if (cur.rideKind === "medical") {
         const medicalAuthz = await assertMedicalTransportAuthorizedForFleetDriver(
           capabilityCompanyId,
-          driverId,
+          bodyDriverIdTrim,
         );
         if (!medicalAuthz.ok) {
           res.status(403).json({
@@ -1886,7 +1886,7 @@ export async function patchRideStatusRoute(
           });
           return;
         }
-        const kkAuthz = await assertKkModuleAccessForFleetDriver(capabilityCompanyId, driverId);
+        const kkAuthz = await assertKkModuleAccessForFleetDriver(capabilityCompanyId, bodyDriverIdTrim);
         if (!kkAuthz.ok) {
           res.status(403).json(kkModuleDeniedJson(kkAuthz.error));
           return;
@@ -1983,6 +1983,13 @@ export async function patchRideStatusRoute(
           res.status(409).json({
             error: "ride_already_claimed",
             message: "Die Fahrt wurde bereits angenommen.",
+          });
+          return;
+        }
+        if (claimed.reason === "no_matching_vehicle") {
+          res.status(409).json({
+            error: "no_matching_vehicle_available",
+            message: "Aktuell kein passendes Fahrzeug verfügbar",
           });
           return;
         }

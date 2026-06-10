@@ -585,6 +585,15 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       res.status(400).json({ error: "vehicle_class_invalid" });
       return;
     }
+    const resolvedClass: FleetVehicleClass =
+      vehicleType === "wheelchair" ? "wheelchair" : vehicleClass;
+    if (vehicleType === "wheelchair" && vehicleClass !== "wheelchair") {
+      res.status(400).json({
+        error: "wheelchair_vehicle_class_required",
+        message: "Rollstuhlfahrzeuge müssen die Fahrzeugklasse „wheelchair“ haben.",
+      });
+      return;
+    }
     const ins = await insertFleetVehicle({
       companyId: ctx.claims.companyId,
       licensePlate,
@@ -593,7 +602,7 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       model: typeof b.model === "string" ? b.model : "",
       vehicleType,
       vehicleLegalType,
-      vehicleClass,
+      vehicleClass: resolvedClass,
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
       konzessionNumber: konzessionRaw,
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
@@ -657,6 +666,9 @@ router.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, 
         return;
       }
       patch.vehicleType = vt;
+      if (vt === "wheelchair") {
+        patch.vehicleClass = "wheelchair";
+      }
     }
     const r = await patchFleetVehicle(req.params.id, ctx.claims.companyId, patch);
     if (!r.ok) {
