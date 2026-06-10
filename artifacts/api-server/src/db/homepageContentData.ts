@@ -160,7 +160,7 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   ],
   heroHeadline: "Digitale Mobilität\nfür Fahrgäste, Unternehmen\nund Partnerbetriebe",
   heroSubline:
-    "ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für einfache Buchung und strukturierte Abläufe.",
+    "Ihr Taxi- und Krankenfahrten-Service in Stuttgart, Leinfelden-Echterdingen, Filderstadt, Echterdingen und Umgebung. Jetzt Fahrt buchen oder als Taxiunternehmen Partner werden – schnell, zuverlässig, 24/7.",
   cta1Text: "Jetzt buchen",
   cta1Link: "#jetzt-buchen",
   cta2Text: "Mehr erfahren",
