@@ -25,6 +25,7 @@ type MemRow = {
   label: string;
   max_uses: number | null;
   uses_count: number;
+  reserved_count: number;
   valid_from: Date | null;
   valid_until: Date | null;
   is_active: boolean;
@@ -85,7 +86,7 @@ function validateMemRow(row: MemRow, bookingCompanyId: string | null): RedeemErr
   const t = new Date();
   if (row.valid_from && row.valid_from > t) return "access_code_not_yet_valid";
   if (row.valid_until && row.valid_until < t) return "access_code_expired";
-  if (row.max_uses != null && row.uses_count >= row.max_uses) return "access_code_exhausted";
+  if (row.max_uses != null && row.uses_count + row.reserved_count >= row.max_uses) return "access_code_exhausted";
   if (bookingCompanyId && row.company_id && row.company_id !== bookingCompanyId) {
     return "access_code_wrong_company";
   }
@@ -108,7 +109,7 @@ export function redeemAccessCodeMemory(
   if (!row) return { ok: false, error: "access_code_invalid" };
   const err = validateMemRow(row, bookingCompanyId);
   if (err) return { ok: false, error: err };
-  row.uses_count += 1;
+  row.reserved_count += 1;
   return {
     ok: true,
     id: row.id,
@@ -205,7 +206,13 @@ export async function redeemAccessCodeInTransaction(
     eq(accessCodesTable.is_active, true),
     or(isNull(accessCodesTable.valid_from), lte(accessCodesTable.valid_from, tnow)),
     or(isNull(accessCodesTable.valid_until), gte(accessCodesTable.valid_until, tnow)),
-    or(isNull(accessCodesTable.max_uses), lt(accessCodesTable.uses_count, accessCodesTable.max_uses)),
+    or(
+      isNull(accessCodesTable.max_uses),
+      lt(
+        sql`${accessCodesTable.uses_count} + ${accessCodesTable.reserved_count}`,
+        accessCodesTable.max_uses,
+      ),
+    ),
   ];
   if (bookingCompanyId != null && bookingCompanyId !== "") {
     whereParts.push(
@@ -215,7 +222,7 @@ export async function redeemAccessCodeInTransaction(
 
   const [row] = await tx
     .update(accessCodesTable)
-    .set({ uses_count: sql`${accessCodesTable.uses_count} + 1` })
+    .set({ reserved_count: sql`${accessCodesTable.reserved_count} + 1` })
     .where(and(...whereParts))
     .returning({
       id: accessCodesTable.id,
@@ -324,20 +331,93 @@ function memToAdmin(m: MemRow): AdminAccessCodeRow {
   };
 }
 
+const ACCESS_CODE_RELEASE_STATUSES = new Set([
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+  "expired",
+  "rejected",
+]);
+
+function releaseAccessCodeReservationMemory(id: string): void {
+  for (const row of memByNormalized.values()) {
+    if (row.id === id) {
+      row.reserved_count = Math.max(0, row.reserved_count - 1);
+      return;
+    }
+  }
+}
+
+function completeAccessCodeUsageMemory(id: string): void {
+  for (const row of memByNormalized.values()) {
+    if (row.id === id) {
+      row.reserved_count = Math.max(0, row.reserved_count - 1);
+      row.uses_count += 1;
+      return;
+    }
+  }
+}
+
 export async function releaseAccessCodeReservation(id: string): Promise<void> {
   const db = getDb();
-  if (!db) return;
+  if (!db) {
+    releaseAccessCodeReservationMemory(id);
+    return;
+  }
   await db.update(accessCodesTable)
-    .set({ reserved_count: sql`GREATEST(0, ${accessCodesTable.reserved_count} - 1)` })
+    .set({
+      reserved_count: sql`GREATEST(0, ${accessCodesTable.reserved_count} - 1)`,
+      lifecycle_status: sql`CASE WHEN GREATEST(0, ${accessCodesTable.reserved_count} - 1) = 0 THEN 'active' ELSE ${accessCodesTable.lifecycle_status} END`,
+      reserved_ride_id: sql`CASE WHEN GREATEST(0, ${accessCodesTable.reserved_count} - 1) = 0 THEN NULL ELSE ${accessCodesTable.reserved_ride_id} END`,
+    })
     .where(eq(accessCodesTable.id, id));
 }
 
 export async function completeAccessCodeUsage(id: string): Promise<void> {
   const db = getDb();
-  if (!db) return;
+  if (!db) {
+    completeAccessCodeUsageMemory(id);
+    return;
+  }
   await db.update(accessCodesTable)
-    .set({ reserved_count: sql`GREATEST(0, ${accessCodesTable.reserved_count} - 1)`, uses_count: sql`${accessCodesTable.uses_count} + 1` })
+    .set({
+      reserved_count: sql`GREATEST(0, ${accessCodesTable.reserved_count} - 1)`,
+      uses_count: sql`${accessCodesTable.uses_count} + 1`,
+      lifecycle_status: sql`CASE WHEN ${accessCodesTable.max_uses} IS NOT NULL AND (${accessCodesTable.uses_count} + 1) >= ${accessCodesTable.max_uses} THEN 'redeemed' ELSE 'active' END`,
+      reserved_ride_id: sql`CASE WHEN GREATEST(0, ${accessCodesTable.reserved_count} - 1) = 0 THEN NULL ELSE ${accessCodesTable.reserved_ride_id} END`,
+    })
     .where(eq(accessCodesTable.id, id));
+}
+
+/** Storno/Expiry: Reservierung freigeben; Abschluss: Einlösung verbuchen. */
+export async function syncAccessCodeOnRideStatusChange(
+  fromStatus: string,
+  toStatus: string,
+  accessCodeId: string | null | undefined,
+): Promise<void> {
+  const codeId = typeof accessCodeId === "string" ? accessCodeId.trim() : "";
+  if (!codeId || fromStatus === toStatus) return;
+  const wasTerminal =
+    ACCESS_CODE_RELEASE_STATUSES.has(fromStatus) || fromStatus === "completed";
+  if (ACCESS_CODE_RELEASE_STATUSES.has(toStatus) && !wasTerminal) {
+    await releaseAccessCodeReservation(codeId).catch(() => {});
+  } else if (toStatus === "completed" && fromStatus !== "completed") {
+    await completeAccessCodeUsage(codeId).catch(() => {});
+  }
+}
+
+/** Bulk-Cron-Updates, die `updateRide` umgehen. */
+export async function releaseAccessCodesForRideRows(
+  rows: { access_code_id?: string | null }[],
+): Promise<void> {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const id = typeof row.access_code_id === "string" ? row.access_code_id.trim() : "";
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    await releaseAccessCodeReservation(id).catch(() => {});
+  }
 }
 
 /** Partner-Panel: gleiche Struktur ohne interne Notiz. */
@@ -561,6 +641,7 @@ async function insertAccessCodeRow(args: InsertRowArgs): Promise<InsertAccessCod
       label,
       max_uses: maxUses,
       uses_count: 0,
+      reserved_count: 0,
       valid_from: vf,
       valid_until: vu,
       is_active: true,

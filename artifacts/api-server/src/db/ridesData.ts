@@ -37,7 +37,11 @@ import {
   isAuthorizationSource,
   normalizeAccessCodeInput,
 } from "../domain/rideAuthorization";
-import { redeemAccessCodeInTransaction, redeemAccessCodeMemory, releaseAccessCodeReservation, completeAccessCodeUsage } from "./accessCodesData";
+import {
+  redeemAccessCodeInTransaction,
+  redeemAccessCodeMemory,
+  syncAccessCodeOnRideStatusChange,
+} from "./accessCodesData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
@@ -1503,14 +1507,7 @@ export async function applyRideMutationPersistence(
       payload: {},
     });
   }
-  const CANCEL_STATUSES = new Set(["cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"]);
-  if (cur.status !== next.status && cur.accessCodeId) {
-    if (CANCEL_STATUSES.has(next.status) && !CANCEL_STATUSES.has(cur.status)) {
-      await releaseAccessCodeReservation(cur.accessCodeId).catch(() => {});
-    } else if (next.status === "completed" && cur.status !== "completed") {
-      await completeAccessCodeUsage(cur.accessCodeId).catch(() => {});
-    }
-  }
+  await syncAccessCodeOnRideStatusChange(cur.status, next.status, cur.accessCodeId);
 }
 
 export async function updateRide(
@@ -1531,6 +1528,7 @@ export async function updateRide(
   const db = getDb();
   if (!db) {
     memoryRides = memoryRides.map((x) => (x.id === id ? next : x));
+    await syncAccessCodeOnRideStatusChange(cur.status, next.status, cur.accessCodeId);
     return next;
   }
   await db.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));

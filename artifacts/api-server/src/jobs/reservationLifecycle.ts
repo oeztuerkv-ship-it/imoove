@@ -1,9 +1,14 @@
 import { and, eq, inArray, isNotNull, lt, lte } from "drizzle-orm";
+import { releaseAccessCodesForRideRows } from "../db/accessCodesData";
 import { getDb, isPostgresConfigured } from "../db/client";
 import { ridesTable } from "../db/schema";
 import { broadcastRideStatusChange } from "../wsRideSocketHub";
 
-export type ExpiredScheduledRow = { id: string; passenger_id: string | null };
+export type ExpiredScheduledRow = {
+  id: string;
+  passenger_id: string | null;
+  access_code_id: string | null;
+};
 
 /**
  * Aktiver Cron: `scheduled` mit Abholzeit in der Vergangenheit → `expired`.
@@ -26,7 +31,13 @@ export async function expirePastScheduledReservations(
         lt(ridesTable.scheduled_at, now),
       ),
     )
-    .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
+    .returning({
+      id: ridesTable.id,
+      passenger_id: ridesTable.passenger_id,
+      access_code_id: ridesTable.access_code_id,
+    });
+
+  await releaseAccessCodesForRideRows(rows);
 
   for (const row of rows) {
     broadcastRideStatusChange(row.id, "expired", "scheduled");
@@ -35,7 +46,11 @@ export async function expirePastScheduledReservations(
   return rows;
 }
 
-export type ExpiredAssignedRow = { id: string; passenger_id: string | null };
+export type ExpiredAssignedRow = {
+  id: string;
+  passenger_id: string | null;
+  access_code_id: string | null;
+};
 
 /** Aktiver Cron: `scheduled_assigned` mit Abholzeit in der Vergangenheit → `expired`. */
 export async function expirePastAssignedReservations(
@@ -55,7 +70,13 @@ export async function expirePastAssignedReservations(
         lt(ridesTable.scheduled_at, now),
       ),
     )
-    .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
+    .returning({
+      id: ridesTable.id,
+      passenger_id: ridesTable.passenger_id,
+      access_code_id: ridesTable.access_code_id,
+    });
+
+  await releaseAccessCodesForRideRows(rows);
 
   for (const row of rows) {
     broadcastRideStatusChange(row.id, "expired", "scheduled_assigned");

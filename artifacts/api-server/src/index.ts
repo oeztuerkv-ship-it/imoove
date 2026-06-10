@@ -54,9 +54,15 @@ httpServer.listen(port, () => {
         .update(ridesTable)
         .set({ status: "cancelled_by_system" })
         .where(and(eq(ridesTable.status, "scheduled"), isNotNull(ridesTable.scheduled_at), lte(ridesTable.scheduled_at, cancelThreshold)))
-        .returning({ id: ridesTable.id, passenger_id: ridesTable.passenger_id });
+        .returning({
+          id: ridesTable.id,
+          passenger_id: ridesTable.passenger_id,
+          access_code_id: ridesTable.access_code_id,
+        });
       if (noDriverCancelled.length > 0) {
         logger.info({ count: noDriverCancelled.length }, "[Cron] Kein Fahrer → cancelled_by_system");
+        const { releaseAccessCodesForRideRows } = await import("./db/accessCodesData.js");
+        await releaseAccessCodesForRideRows(noDriverCancelled);
         const { broadcastRideStatusChange } = await import("./wsRideSocketHub.js");
         const { notifyPassengerRideCancelledBySystem } = await import("./lib/passengerRideExpoPush.js");
         for (const row of noDriverCancelled) {
