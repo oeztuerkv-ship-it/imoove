@@ -8,10 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "simulator": false,
-        "entitlements": {
-          "com.apple.developer.applesignin": ["Default"]
-        }
+        "simulator": false
       },
       "android": {
         "buildType": "apk"
@@ -40,10 +37,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "simulator": false,
-        "entitlements": {
-          "com.apple.developer.applesignin": ["Default"]
-        }
+        "simulator": false
       }
     }
   },
