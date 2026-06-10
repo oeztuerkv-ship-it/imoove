@@ -27,6 +27,7 @@ import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
 import {
   medicalScanErrorMessageDe,
   postCustomerMedicalTransportScan,
+  type MedicalOcrAddressParts,
   type MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
 import { rf, rs } from "@/utils/scale";
@@ -94,6 +95,26 @@ function joinAddress(street: string, house: string, postal: string, city: string
   const line1 = `${street.trim()} ${house.trim()}`.trim();
   const line2 = `${postal.trim()} ${city.trim()}`.trim();
   return `${line1}, ${line2}`.trim();
+}
+
+function applyOcrAddressParts(
+  parts: MedicalOcrAddressParts | undefined,
+  setters: {
+    setStreet: (v: string) => void;
+    setHouse: (v: string) => void;
+    setPostal: (v: string) => void;
+    setCity: (v: string) => void;
+  },
+) {
+  if (!parts) return;
+  const hasContent = Boolean(
+    parts.street.trim() || parts.houseNumber.trim() || parts.postalCode.trim() || parts.city.trim(),
+  );
+  if (!hasContent) return;
+  if (parts.street.trim()) setters.setStreet(parts.street.trim());
+  if (parts.houseNumber.trim()) setters.setHouse(parts.houseNumber.trim());
+  if (parts.postalCode.trim()) setters.setPostal(parts.postalCode.trim());
+  if (parts.city.trim()) setters.setCity(parts.city.trim());
 }
 
 export default function BookingMedicalScreen() {
@@ -472,6 +493,18 @@ export default function BookingMedicalScreen() {
       setPendingScanId(result.scanId);
       setScanTrafficLight(result.trafficLight);
       setScanPrimaryReasonDe(result.primaryReasonDe);
+      applyOcrAddressParts(result.pickupAddress, {
+        setStreet: setPickupStreet,
+        setHouse: setPickupHouseNumber,
+        setPostal: setPickupPostalCode,
+        setCity: setPickupCity,
+      });
+      applyOcrAddressParts(result.destinationAddress, {
+        setStreet: setDestinationStreet,
+        setHouse: setDestinationHouseNumber,
+        setPostal: setDestinationPostalCode,
+        setCity: setDestinationCity,
+      });
       Haptics.notificationAsync(
         result.trafficLight === "green"
           ? Haptics.NotificationFeedbackType.Success

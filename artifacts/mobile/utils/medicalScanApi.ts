@@ -8,6 +8,13 @@ export type MedicalScanWarning = {
   severity: "info" | "warn" | "block_recommended";
 };
 
+export type MedicalOcrAddressParts = {
+  street: string;
+  houseNumber: string;
+  postalCode: string;
+  city: string;
+};
+
 export type MedicalScanExtracted = {
   patientDisplayName: string;
   patientReference: string;
@@ -20,6 +27,14 @@ export type MedicalScanExtracted = {
   documentKind: string;
   behandlungsArt?: string;
   genehmigungsnummer?: string | null;
+  pickupStreet?: string;
+  pickupHouseNumber?: string;
+  pickupPostalCode?: string;
+  pickupCity?: string;
+  destinationStreet?: string;
+  destinationHouseNumber?: string;
+  destinationPostalCode?: string;
+  destinationCity?: string;
 };
 
 export type MedicalDateLogicResultDto = {
@@ -116,6 +131,17 @@ export function medicalScanErrorMessageDe(code: string, serverMessage?: string):
 }
 
 const INSURANCE_PROFILES: MedicalInsuranceProfileId[] = ["AOK_BW", "VDEK_STANDARD", "PRIVATE", "UNKNOWN"];
+
+function parseMedicalOcrAddressParts(raw: unknown): MedicalOcrAddressParts | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const r = raw as Record<string, unknown>;
+  const street = typeof r.street === "string" ? r.street.trim() : "";
+  const houseNumber = typeof r.houseNumber === "string" ? r.houseNumber.trim() : "";
+  const postalCode = typeof r.postalCode === "string" ? r.postalCode.trim() : "";
+  const city = typeof r.city === "string" ? r.city.trim() : "";
+  if (!street && !houseNumber && !postalCode && !city) return undefined;
+  return { street, houseNumber, postalCode, city };
+}
 
 function parseInsuranceRules(raw: unknown): MedicalInsuranceRuleResult | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -335,6 +361,8 @@ export type CustomerMedicalBookingScanSuccess = {
   trafficLight: MedicalTrafficLight;
   primaryReasonDe: string | null;
   scannedAt: string;
+  pickupAddress?: MedicalOcrAddressParts;
+  destinationAddress?: MedicalOcrAddressParts;
 };
 
 export type CustomerMedicalBookingScanResult = CustomerMedicalBookingScanSuccess | MedicalScanError;
@@ -395,6 +423,8 @@ export async function postCustomerMedicalTransportScan(
         ? data.primaryReasonDe.trim()
         : null,
     scannedAt: typeof data.scannedAt === "string" ? data.scannedAt : new Date().toISOString(),
+    pickupAddress: parseMedicalOcrAddressParts(data.pickupAddress),
+    destinationAddress: parseMedicalOcrAddressParts(data.destinationAddress),
   };
 }
 
