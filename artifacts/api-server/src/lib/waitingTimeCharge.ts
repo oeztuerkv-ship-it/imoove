@@ -13,6 +13,20 @@ export function waitingChargeEurFromMinutes(waitingMinutes: number, eurPerHour: 
   return Math.round(((mins / 60) * rate + Number.EPSILON) * 100) / 100;
 }
 
+export function computeWaitingChargeForRide(
+  waitingStartedAtIso: string | null | undefined,
+  bookingRules: Record<string, unknown> | undefined,
+  now = Date.now(),
+): { waitingMinutesBilled: number; waitingChargeEur: number; eurPerHour: number } {
+  const waitingMinutesBilled = liveWaitingMinutesSince(waitingStartedAtIso, now);
+  const eurPerHour = resolveWaitingEurPerHour(bookingRules);
+  return {
+    waitingMinutesBilled,
+    waitingChargeEur: waitingChargeEurFromMinutes(waitingMinutesBilled, eurPerHour),
+    eurPerHour,
+  };
+}
+
 export function liveWaitingMinutesSince(waitingStartedAtIso: string | null | undefined, now = Date.now()): number {
   if (!waitingStartedAtIso) return 0;
   const t = Date.parse(waitingStartedAtIso);

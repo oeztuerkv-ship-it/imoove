@@ -182,6 +182,9 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
       ? r.no_show_countdown_started_at.toISOString()
       : null,
     noShowEvidenceAt: r.no_show_evidence_at ? r.no_show_evidence_at.toISOString() : null,
+    driverTripStartedAt: r.driver_trip_started_at ? r.driver_trip_started_at.toISOString() : null,
+    waitingMinutesBilled: r.waiting_minutes_billed ?? null,
+    waitingChargeEur: r.waiting_charge_eur ?? null,
   };
 }
 
@@ -254,6 +257,9 @@ function rideToUpdate(r: RideRequest) {
     driver_waiting_started_at: r.driverWaitingStartedAt ? new Date(r.driverWaitingStartedAt) : null,
     no_show_countdown_started_at: r.noShowCountdownStartedAt ? new Date(r.noShowCountdownStartedAt) : null,
     no_show_evidence_at: r.noShowEvidenceAt ? new Date(r.noShowEvidenceAt) : null,
+    driver_trip_started_at: r.driverTripStartedAt ? new Date(r.driverTripStartedAt) : null,
+    waiting_minutes_billed: r.waitingMinutesBilled ?? null,
+    waiting_charge_eur: r.waitingChargeEur ?? null,
   };
 }
 
@@ -305,6 +311,9 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     driver_waiting_started_at: r.driverWaitingStartedAt ? new Date(r.driverWaitingStartedAt) : null,
     no_show_countdown_started_at: r.noShowCountdownStartedAt ? new Date(r.noShowCountdownStartedAt) : null,
     no_show_evidence_at: r.noShowEvidenceAt ? new Date(r.noShowEvidenceAt) : null,
+    driver_trip_started_at: r.driverTripStartedAt ? new Date(r.driverTripStartedAt) : null,
+    waiting_minutes_billed: r.waitingMinutesBilled ?? null,
+    waiting_charge_eur: r.waitingChargeEur ?? null,
   };
 }
 

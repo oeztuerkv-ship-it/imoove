@@ -190,6 +190,9 @@ export interface RideRequest {
   driverWaitingStartedAt?: string | null;
   noShowCountdownStartedAt?: string | null;
   noShowEvidenceAt?: string | null;
+  driverTripStartedAt?: string | null;
+  waitingMinutesBilled?: number | null;
+  waitingChargeEur?: number | null;
 
   /** Optional: angereichert in `GET /panel/v1/rides` (nicht persistiert). */
   accessCodeTripOutcome?: AccessCodeTripOutcome;

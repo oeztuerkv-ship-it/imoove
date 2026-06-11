@@ -68,6 +68,7 @@ import {
   driverFinalFareNeedsAcknowledgement,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
+import { formatWaitingChargeDe } from "@/utils/waitingTimeCharge";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
 import { formatEuro } from "@/utils/fareCalculator";
 
@@ -257,6 +258,9 @@ export default function DriverNavigationScreen() {
   const [fareInput, setFareInput] = useState(
     formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
   );
+  const [waitingChargeEur, setWaitingChargeEur] = useState(0);
+  const [waitingMinutes, setWaitingMinutes] = useState(0);
+  const [waitingEurPerHour, setWaitingEurPerHour] = useState(38);
   const [showCancelReasonModal, setShowCancelReasonModal] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [customCancelReason, setCustomCancelReason] = useState("");
@@ -429,6 +433,36 @@ export default function DriverNavigationScreen() {
     },
     [params.rideId, driverLat, driverLon],
   );
+
+  useEffect(() => {
+    if (!params.rideId) return;
+    let cancelled = false;
+    const loadWaiting = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/rides/${params.rideId}/waiting-charge-live`, {
+          headers: await fleetAuthHeadersJson(),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          waitingMinutesBilled?: number;
+          waitingChargeEur?: number;
+          eurPerHour?: number;
+        };
+        if (cancelled || !res.ok || !data.ok) return;
+        setWaitingMinutes(Number(data.waitingMinutesBilled ?? 0));
+        setWaitingChargeEur(Number(data.waitingChargeEur ?? 0));
+        setWaitingEurPerHour(Number(data.eurPerHour ?? 38));
+      } catch {
+        // ignore
+      }
+    };
+    void loadWaiting();
+    const id = setInterval(() => void loadWaiting(), 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [params.rideId, hasArrived, isPickupPhase]);
 
   const handleAngekommen = useCallback(async () => {
     await patchStatus("driver_waiting");
@@ -1008,6 +1042,11 @@ export default function DriverNavigationScreen() {
               <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
             </Animated.View>
           </View>
+          {waitingMinutes > 0 ? (
+            <Text style={styles.waitingLiveBanner}>
+              {formatWaitingChargeDe(waitingMinutes, waitingChargeEur, waitingEurPerHour)}
+            </Text>
+          ) : null}
           {noShowCountdownEndsAt ? (
             <Text style={styles.noShowCountdownText}>
               No-Show in {Math.floor(noShowRemainingSec / 60)}:
@@ -1245,6 +1284,12 @@ export default function DriverNavigationScreen() {
                   keyboardType="numeric"
                   selectTextOnFocus
                 />
+                {waitingChargeEur > 0.009 ? (
+                  <Text style={styles.waitingFareHint}>
+                    + Wartezeit {waitingChargeEur.toFixed(2).replace(".", ",")} € ({waitingMinutes} Min) wird beim
+                    Abschluss addiert.
+                  </Text>
+                ) : null}
               </View>
             ) : null}
             {driverMayBillPositiveFare(rideFleetStatus) &&
@@ -1724,6 +1769,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
+  },
+  waitingLiveBanner: {
+    color: "#BFDBFE",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  waitingFareHint: {
+    marginTop: 8,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#6B7280",
+    lineHeight: 17,
   },
 
   /* Fare Modal */

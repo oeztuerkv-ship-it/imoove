@@ -644,6 +644,9 @@ export const ridesTable = pgTable("rides", {
   driver_waiting_started_at: timestamp("driver_waiting_started_at", { withTimezone: true }),
   no_show_countdown_started_at: timestamp("no_show_countdown_started_at", { withTimezone: true }),
   no_show_evidence_at: timestamp("no_show_evidence_at", { withTimezone: true }),
+  driver_trip_started_at: timestamp("driver_trip_started_at", { withTimezone: true }),
+  waiting_minutes_billed: integer("waiting_minutes_billed"),
+  waiting_charge_eur: doublePrecision("waiting_charge_eur"),
 });
 
 /** Letzte Fahrer-GPS pro Fahrt (Geofence, Live-Tracking, Recovery). */

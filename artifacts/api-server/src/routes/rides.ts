@@ -134,7 +134,11 @@ import {
   notifyPassengerReservationExpired,
 } from "../lib/passengerRideExpoPush";
 import { resolveNoShowPolicy } from "../lib/noShowPolicy";
-import { liveWaitingMinutesSince } from "../lib/waitingTimeCharge";
+import {
+  computeWaitingChargeForRide,
+  liveWaitingMinutesSince,
+  resolveWaitingEurPerHour,
+} from "../lib/waitingTimeCharge";
 import { isSessionJwtConfigured, verifySessionJwt } from "../lib/sessionJwt";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
 import { customerPassengerId, requireCustomerSession, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
@@ -913,6 +917,50 @@ router.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, 
       payload: { fileKey: rel },
     });
     res.json({ ok: true, fileKey: rel, signedAt });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/rides/:id/waiting-charge-live", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (!assigned || assigned !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const opPayload = await getOperationalConfigPayload();
+    const br =
+      opPayload.bookingRules && typeof opPayload.bookingRules === "object" && !Array.isArray(opPayload.bookingRules)
+        ? (opPayload.bookingRules as Record<string, unknown>)
+        : {};
+    if (ride.status === "driver_waiting") {
+      const live = computeWaitingChargeForRide(ride.driverWaitingStartedAt, br);
+      res.json({ ok: true, mode: "live", ...live });
+      return;
+    }
+    if (ride.waitingMinutesBilled != null && ride.waitingChargeEur != null) {
+      res.json({
+        ok: true,
+        mode: "frozen",
+        waitingMinutesBilled: ride.waitingMinutesBilled,
+        waitingChargeEur: ride.waitingChargeEur,
+        eurPerHour: resolveWaitingEurPerHour(br),
+      });
+      return;
+    }
+    res.json({ ok: true, mode: "none", waitingMinutesBilled: 0, waitingChargeEur: 0, eurPerHour: resolveWaitingEurPerHour(br) });
   } catch (e) {
     next(e);
   }
@@ -2199,8 +2247,26 @@ export async function patchRideStatusRoute(
           });
           return;
         }
-        finalFareForPatch = parsedFinalFare;
+        const waitingSurcharge = Number(cur.waitingChargeEur ?? 0);
+        finalFareForPatch =
+          Math.round((parsedFinalFare + (Number.isFinite(waitingSurcharge) ? waitingSurcharge : 0) + Number.EPSILON) * 100) /
+          100;
       }
+    }
+
+    let tripStartWaitingPatch: Partial<RideRequest> = {};
+    if (nextStatus === "in_progress" && cur.status !== "in_progress") {
+      const opW = await getOperationalConfigPayload();
+      const br =
+        opW.bookingRules && typeof opW.bookingRules === "object" && !Array.isArray(opW.bookingRules)
+          ? (opW.bookingRules as Record<string, unknown>)
+          : {};
+      const w = computeWaitingChargeForRide(cur.driverWaitingStartedAt, br);
+      tripStartWaitingPatch = {
+        driverTripStartedAt: new Date().toISOString(),
+        waitingMinutesBilled: w.waitingMinutesBilled,
+        waitingChargeEur: w.waitingChargeEur,
+      };
     }
 
     let finalFarePlausibilityAudit:
@@ -2271,6 +2337,7 @@ export async function patchRideStatusRoute(
           ...(nextStatus === "driver_waiting" && cur.status !== "driver_waiting"
             ? { driverWaitingStartedAt: new Date().toISOString() }
             : {}),
+          ...tripStartWaitingPatch,
         },
         { mutationActor: mutActor },
       );
