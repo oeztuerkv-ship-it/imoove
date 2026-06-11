@@ -202,13 +202,17 @@ import {
   adminReleaseRide,
   countRidesAdmin,
   findRideAdminById,
+  insertSupplementalRideEvent,
   listAdminPartnerDayStats,
   listAdminRidesAgendaForDay,
   listAdminRideEventsByRideId,
   listRidesAdminPage,
   parseAdminDashboardDayBounds,
+  updateRide,
   type AdminRideListQuery,
 } from "../db/ridesData";
+import { getStripeClient } from "../lib/stripeClient.js";
+import { notifyPassengerRideRefunded } from "../lib/passengerRefundNotify.js";
 import { listDispatchOffersForRide } from "../db/rideDispatchOfferData";
 import {
   getRideFinancialSnapshotByRideId,
@@ -5441,6 +5445,97 @@ adminJson.get("/rides/:id", async (req, res, next) => {
     }
     const [ride] = await attachAccessCodeSummariesToRides([row]);
     res.json({ ok: true, ride });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/rides/:id/refund", async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    if (!canAdminReleaseRide(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const existing = await findRideAdminById(rideId);
+    if (!existing || !adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, existing)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (existing.paymentStatus === "refunded") {
+      res.json({
+        ok: true,
+        idempotent: true,
+        rideId: existing.id,
+        paymentStatus: "refunded",
+        refundId: existing.stripeRefundId ?? null,
+      });
+      return;
+    }
+    const pi = (existing.stripePaymentIntentId ?? "").trim();
+    if (!pi) {
+      res.status(400).json({ error: "no_stripe_payment_intent", message: "Keine Stripe-Zahlung für diese Fahrt hinterlegt." });
+      return;
+    }
+    const amountRaw = (req.body as { amount?: unknown })?.amount;
+    const amount =
+      typeof amountRaw === "number"
+        ? amountRaw
+        : typeof amountRaw === "string"
+          ? Number(amountRaw.trim())
+          : NaN;
+    const maxRefundable = Number(existing.finalFare ?? existing.estimatedFare ?? 0);
+    const refundAmountEur = Number.isFinite(amount) && amount > 0 ? amount : maxRefundable;
+    if (!Number.isFinite(refundAmountEur) || refundAmountEur <= 0) {
+      res.status(400).json({ error: "invalid_refund_amount" });
+      return;
+    }
+    const stripe = getStripeClient();
+    if (!stripe) {
+      res.status(503).json({ error: "stripe_not_configured" });
+      return;
+    }
+    const amountCents = Math.round(refundAmountEur * 100);
+    const refund = await stripe.refunds.create({
+      payment_intent: pi,
+      amount: amountCents,
+    });
+    const refundedAt = new Date().toISOString();
+    const updated = await updateRide(
+      rideId,
+      {
+        paymentStatus: "refunded",
+        stripeRefundId: refund.id,
+        refundedAt,
+      },
+      { mutationActor: { actorType: "admin", actorId: req.adminAuth?.username ?? null } },
+    );
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertSupplementalRideEvent(rideId, {
+      eventType: "ride_refunded",
+      fromStatus: existing.status,
+      toStatus: existing.status,
+      actorType: "admin",
+      actorId: req.adminAuth?.username ?? null,
+      payload: { refundId: refund.id, amountEur: refundAmountEur, paymentIntentId: pi },
+    });
+    const pid = (updated.passengerId ?? "").trim();
+    if (pid) void notifyPassengerRideRefunded(pid, rideId, refundAmountEur);
+    res.json({
+      ok: true,
+      rideId: updated.id,
+      paymentStatus: updated.paymentStatus,
+      refundId: refund.id,
+      amountEur: refundAmountEur,
+    });
   } catch (e) {
     next(e);
   }

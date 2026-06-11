@@ -185,6 +185,11 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     driverTripStartedAt: r.driver_trip_started_at ? r.driver_trip_started_at.toISOString() : null,
     waitingMinutesBilled: r.waiting_minutes_billed ?? null,
     waitingChargeEur: r.waiting_charge_eur ?? null,
+    paymentStatus: (r.payment_status as RideRequest["paymentStatus"]) ?? "pending",
+    stripePaymentIntentId: r.stripe_payment_intent_id ?? null,
+    stripeRefundId: r.stripe_refund_id ?? null,
+    refundedAt: r.refunded_at ? r.refunded_at.toISOString() : null,
+    cashConfirmedAt: r.cash_confirmed_at ? r.cash_confirmed_at.toISOString() : null,
   };
 }
 
@@ -260,6 +265,11 @@ function rideToUpdate(r: RideRequest) {
     driver_trip_started_at: r.driverTripStartedAt ? new Date(r.driverTripStartedAt) : null,
     waiting_minutes_billed: r.waitingMinutesBilled ?? null,
     waiting_charge_eur: r.waitingChargeEur ?? null,
+    payment_status: r.paymentStatus ?? "pending",
+    stripe_payment_intent_id: r.stripePaymentIntentId ?? null,
+    stripe_refund_id: r.stripeRefundId ?? null,
+    refunded_at: r.refundedAt ? new Date(r.refundedAt) : null,
+    cash_confirmed_at: r.cashConfirmedAt ? new Date(r.cashConfirmedAt) : null,
   };
 }
 
@@ -314,6 +324,11 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     driver_trip_started_at: r.driverTripStartedAt ? new Date(r.driverTripStartedAt) : null,
     waiting_minutes_billed: r.waitingMinutesBilled ?? null,
     waiting_charge_eur: r.waitingChargeEur ?? null,
+    payment_status: r.paymentStatus ?? "pending",
+    stripe_payment_intent_id: r.stripePaymentIntentId ?? null,
+    stripe_refund_id: r.stripeRefundId ?? null,
+    refunded_at: r.refundedAt ? new Date(r.refundedAt) : null,
+    cash_confirmed_at: r.cashConfirmedAt ? new Date(r.cashConfirmedAt) : null,
   };
 }
 

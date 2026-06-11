@@ -193,6 +193,11 @@ export interface RideRequest {
   driverTripStartedAt?: string | null;
   waitingMinutesBilled?: number | null;
   waitingChargeEur?: number | null;
+  paymentStatus?: "pending" | "paid" | "failed" | "refunded" | null;
+  stripePaymentIntentId?: string | null;
+  stripeRefundId?: string | null;
+  refundedAt?: string | null;
+  cashConfirmedAt?: string | null;
 
   /** Optional: angereichert in `GET /panel/v1/rides` (nicht persistiert). */
   accessCodeTripOutcome?: AccessCodeTripOutcome;

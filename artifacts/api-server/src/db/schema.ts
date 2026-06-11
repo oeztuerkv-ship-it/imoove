@@ -647,6 +647,11 @@ export const ridesTable = pgTable("rides", {
   driver_trip_started_at: timestamp("driver_trip_started_at", { withTimezone: true }),
   waiting_minutes_billed: integer("waiting_minutes_billed"),
   waiting_charge_eur: doublePrecision("waiting_charge_eur"),
+  payment_status: text("payment_status").notNull().default("pending"),
+  stripe_payment_intent_id: text("stripe_payment_intent_id"),
+  stripe_refund_id: text("stripe_refund_id"),
+  refunded_at: timestamp("refunded_at", { withTimezone: true }),
+  cash_confirmed_at: timestamp("cash_confirmed_at", { withTimezone: true }),
 });
 
 /** Letzte Fahrer-GPS pro Fahrt (Geofence, Live-Tracking, Recovery). */
