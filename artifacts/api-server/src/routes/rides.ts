@@ -36,6 +36,8 @@ import {
   supplementalEventForTransition,
 } from "../lib/rideStatusMachine";
 import { logRideAntiFraudAttempt } from "../lib/rideAntiFraud";
+import { evaluateFinalFarePlausibility } from "../lib/driverFinalFarePlausibility";
+import { resolveReceiptDriverInfo, type ReceiptDriverInfo } from "../lib/receiptDriverInfo";
 import { validateRideStatusTransition } from "../lib/rideOpsTransitionGuards";
 import { markDispatchOfferAccepted } from "../db/rideDispatchOfferData";
 import {
@@ -990,7 +992,10 @@ function escapeHtml(s: string): string {
     .replaceAll("'", "&#039;");
 }
 
-function buildReceiptHtmlFromRide(r: RideRequest): string {
+function buildReceiptHtmlFromRide(
+  r: RideRequest,
+  driverInfo: ReceiptDriverInfo = { driverName: null, driverPlate: null },
+): string {
   const date = new Date(r.createdAt);
   const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -998,7 +1003,22 @@ function buildReceiptHtmlFromRide(r: RideRequest): string {
   const amount = r.status === "completed" && r.finalFare != null && Number.isFinite(Number(r.finalFare))
     ? Number(r.finalFare)
     : effectiveTaxiGrossEur(r);
+  const estimate =
+    r.status === "completed" && r.estimatedFare != null && Number.isFinite(Number(r.estimatedFare))
+      ? Number(r.estimatedFare)
+      : null;
+  const showEstimateNote =
+    estimate != null && Math.abs(amount - estimate) > 0.05 && amount > 0;
   const rideNr = String(r.id).slice(0, 8).toUpperCase();
+  const paymentLabel = (() => {
+    const pm = String(r.paymentMethod ?? "").trim().toLowerCase();
+    if (pm === "cash" || pm === "bar") return "Bar";
+    if (pm === "card" || pm === "karte") return "Karte";
+    if (pm === "apple_pay") return "Apple Pay";
+    if (pm === "google_pay") return "Google Pay";
+    if (pm === "transportschein" || pm === "medical") return "Krankenkasse / Transportschein";
+    return r.paymentMethod ?? "—";
+  })();
   return `<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -1047,10 +1067,14 @@ function buildReceiptHtmlFromRide(r: RideRequest): string {
       <div style="margin-top: 14px;">
         <div class="row"><div class="k">${r.actualDistanceKm != null ? "Gefahrene Strecke" : "Geplante Strecke"}</div><div class="v">${escapeHtml(String((r.actualDistanceKm ?? r.distanceKm ?? 0).toFixed(1)))} km</div></div>
         ${r.actualDurationMinutes != null ? `<div class="row"><div class="k">Fahrtdauer</div><div class="v">${escapeHtml(String(r.actualDurationMinutes))} Min</div></div>` : ""}
-        <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(r.paymentMethod ?? "—")}</div></div>
+        ${showEstimateNote ? `<div class="row"><div class="k">Geschätzter Preis (Buchung)</div><div class="v">${formatEuroHtml(estimate!)}</div></div>` : ""}
+        ${driverInfo.driverName ? `<div class="row"><div class="k">Fahrer*in</div><div class="v">${escapeHtml(driverInfo.driverName)}</div></div>` : ""}
+        ${driverInfo.driverPlate ? `<div class="row"><div class="k">Kennzeichen</div><div class="v">${escapeHtml(driverInfo.driverPlate)}</div></div>` : ""}
+        <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(paymentLabel)}</div></div>
         <div class="row"><div class="k">Produkt</div><div class="v">${escapeHtml(r.vehicle ?? "—")}</div></div>
       </div>
-      <div class="total"><div class="lbl">Gesamtbetrag</div><div class="amt">${formatEuroHtml(amount)}</div></div>
+      <div class="total"><div class="lbl">Gesamtbetrag (Taxameter)</div><div class="amt">${formatEuroHtml(amount)}</div></div>
+      ${r.status === "completed" ? `<p class="muted" style="margin-top:12px;font-size:11px;line-height:1.5;">Maßgeblich ist der im Fahrzeug angezeigte Taxameter-Endpreis. App-Schätzungen dienen nur der Orientierung.</p>` : ""}
     </div>
     <div class="footer">
       ONRODA · Deutschland<br/>
@@ -1080,8 +1104,9 @@ router.get("/rides/:rideId/receipt", async (req, res, next) => {
       });
       return;
     }
+    const driverInfo = await resolveReceiptDriverInfo(ride.driverId);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(buildReceiptHtmlFromRide(ride));
+    res.send(buildReceiptHtmlFromRide(ride, driverInfo));
   } catch (e) {
     next(e);
   }
@@ -1714,11 +1739,13 @@ export async function patchRideStatusRoute(
 ): Promise<void> {
   try {
     const { id } = req.params;
-    const { status, driverId, cancelReason } = req.body as {
+    const { status, driverId, cancelReason, finalFarePlausibilityAck } = req.body as {
       status: unknown;
       driverId?: string;
       cancelReason?: string;
+      finalFarePlausibilityAck?: unknown;
     };
+    const plausibilityAck = finalFarePlausibilityAck === true;
     const parsedFinalFare = parseOptionalFinalFareFromBody(req.body);
     const parsedActualDistanceKm = typeof req.body?.actualDistanceKm === "number" && Number.isFinite(req.body.actualDistanceKm) && req.body.actualDistanceKm > 0 ? req.body.actualDistanceKm : undefined;
     const parsedActualDurationMinutes = typeof req.body?.actualDurationMinutes === "number" && Number.isInteger(req.body.actualDurationMinutes) && req.body.actualDurationMinutes > 0 ? req.body.actualDurationMinutes : undefined;
@@ -1973,7 +2000,38 @@ export async function patchRideStatusRoute(
           });
           return;
         }
+        const plausibility = evaluateFinalFarePlausibility(cur.estimatedFare ?? 0, parsedFinalFare);
+        if (!plausibility.ok && !plausibilityAck) {
+          res.status(400).json({
+            error: "final_fare_plausibility_failed",
+            message: `Der eingegebene Preis weicht stark von der Schätzung (${Number(cur.estimatedFare ?? 0).toFixed(2)} €) ab. Max. ohne Bestätigung: ${plausibility.maxAllowedEur.toFixed(2)} €. Taxameter-Preis erneut prüfen oder bestätigen.`,
+            estimatedFareEur: cur.estimatedFare ?? null,
+            maxAllowedFinalFareEur: plausibility.maxAllowedEur,
+            ratio: plausibility.ratio,
+          });
+          return;
+        }
         finalFareForPatch = parsedFinalFare;
+      }
+    }
+
+    let finalFarePlausibilityAudit:
+      | { flagged: boolean; estimatedFareEur: number; finalFareEur: number; acknowledged: boolean }
+      | null = null;
+    if (
+      nextStatus === "completed" &&
+      cur.status === "in_progress" &&
+      finalFareForPatch != null &&
+      Number.isFinite(finalFareForPatch)
+    ) {
+      const pl = evaluateFinalFarePlausibility(cur.estimatedFare ?? 0, finalFareForPatch);
+      if (plausibilityAck || (pl.ok && pl.flagged)) {
+        finalFarePlausibilityAudit = {
+          flagged: !pl.ok || pl.flagged,
+          estimatedFareEur: Number(cur.estimatedFare ?? 0),
+          finalFareEur: finalFareForPatch,
+          acknowledged: plausibilityAck,
+        };
       }
     }
 
@@ -2099,6 +2157,16 @@ export async function patchRideStatusRoute(
     }
 
     let driverSettlement: ReturnType<typeof previewDriverSettlementFromGross> | null = null;
+    if (finalFarePlausibilityAudit) {
+      await insertSupplementalRideEvent(id, {
+        eventType: "final_fare_plausibility",
+        fromStatus: cur.status,
+        toStatus: nextStatus,
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId,
+        payload: finalFarePlausibilityAudit,
+      });
+    }
     if (nextStatus === "completed") {
       const opPayloadComplete = await getOperationalConfigPayload();
       const regionsComplete = await listServiceRegionsForApi();

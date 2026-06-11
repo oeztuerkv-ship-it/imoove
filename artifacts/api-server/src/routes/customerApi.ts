@@ -509,14 +509,17 @@ router.post(
       return;
     }
 
-    const intent = await stripe.paymentIntents.create({
-      amount: amountCents,
-      currency: "eur",
-      customer: customerId,
-      automatic_payment_methods: { enabled: true },
-      setup_future_usage: "off_session",
-      metadata,
-    });
+    const intent = await stripe.paymentIntents.create(
+      {
+        amount: amountCents,
+        currency: "eur",
+        customer: customerId,
+        automatic_payment_methods: { enabled: true },
+        setup_future_usage: "off_session",
+        metadata,
+      },
+      { idempotencyKey: `onroda-ride-pi-${rideId}` },
+    );
     const clientSecret = intent.client_secret?.trim();
     if (!clientSecret) {
       res.status(500).json({ error: "stripe_client_secret_missing" });
