@@ -92,6 +92,7 @@ import {
 import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
 import { decodeValidatedMedicalTransportImage } from "../lib/medicalTransportImage";
 import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
+import { evaluateMedicalUploadBillingLock } from "../lib/medicalUploadBillingLock";
 import {
   customerTransportScanMetaToPartnerJson,
   parseCustomerMedicalScanIdFromBody,
@@ -228,6 +229,22 @@ function mergeMedicalPartnerMeta(ride: RideRequest, patch: Record<string, unknow
   merged.billing_ready = ready.billingReady;
   merged.billing_missing_reasons = ready.missingReasons;
   return merged;
+}
+
+async function respondMedicalUploadLockedAfterBilling(
+  res: import("express").Response,
+  ride: RideRequest,
+): Promise<boolean> {
+  const lock = await evaluateMedicalUploadBillingLock(ride);
+  if (!lock.locked) return false;
+  res.status(409).json({
+    ok: false,
+    error: "medical_upload_locked_after_billing",
+    message:
+      "Nach Abrechnung können Muster-4-Nachweise nicht mehr geändert werden. Bitte das Partner-Panel oder den Support kontaktieren.",
+    lockReason: lock.reason,
+  });
+  return true;
 }
 
 const CODE_VERIFY_TTL_MS = 5 * 60 * 1000;
@@ -671,6 +688,7 @@ router.post("/rides/:id/medical/verify-qr", requireFleetDriverAuth, async (req, 
       res.status(403).json({ ok: false, error: "not_assigned_driver" });
       return;
     }
+    if (await respondMedicalUploadLockedAfterBilling(res, ride)) return;
     const expected = typeof meta.medical_qr_token === "string" ? meta.medical_qr_token.trim() : "";
     if (!expected || !timingSafeEqualUtf8(token, expected)) {
       res.status(400).json({ ok: false, error: "invalid_qr_token" });
@@ -749,6 +767,7 @@ router.post("/rides/:id/medical/transport-document", requireFleetDriverAuth, asy
       res.status(403).json({ ok: false, error: "not_assigned_driver" });
       return;
     }
+    if (await respondMedicalUploadLockedAfterBilling(res, ride)) return;
     const meta = asMedicalFlatMeta(ride);
     if (!meta) {
       res.status(400).json({ ok: false, error: "no_medical_meta" });
@@ -843,6 +862,7 @@ router.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, 
       res.status(403).json({ ok: false, error: "not_assigned_driver" });
       return;
     }
+    if (await respondMedicalUploadLockedAfterBilling(res, ride)) return;
     const meta = asMedicalFlatMeta(ride);
     if (!meta) {
       res.status(400).json({ ok: false, error: "no_medical_meta" });
