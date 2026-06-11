@@ -6,7 +6,7 @@ import {
   type AdminTaxiFleetDriverRow,
 } from "./fleetDriverReadiness";
 import { computeFleetDriverComplianceGaps } from "./fleetDriversData";
-import { adminCompaniesTable, fleetDriversTable, ridesTable } from "./schema";
+import { adminCompaniesTable, fleetDriversTable, rideEventsTable, ridesTable } from "./schema";
 import { listRidesAdminPage, type AdminRideRow } from "./ridesData";
 
 const ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"] as const;
@@ -62,6 +62,8 @@ export type AdminFleetDriverOverviewRow = {
   suspensionReason: string;
   readinessReady: boolean;
   createdAt: string;
+  /** Verspätungs-Events (5+ Min nach Abholzeit), letzte 90 Tage */
+  driverLateCount90d: number;
 };
 
 /** Sortierschlüssel = sichtbarer Name in der Tabelle („Vorname Nachname“, A–Z). */
@@ -238,6 +240,7 @@ export async function listAdminFleetDriversOverview(
     const drivers = await listAdminTaxiFleetDriverRows(companyId);
     const driverIds = drivers.map((d) => d.id);
     const rideStats = await loadRideStatsByDriverId(driverIds);
+    const lateCounts = await loadDriverLateCountsByDriverId(driverIds);
     const companyName = nameById.get(companyId) ?? companyId;
 
     for (const d of drivers) {
@@ -275,6 +278,7 @@ export async function listAdminFleetDriversOverview(
         suspensionReason: d.suspensionReason,
         readinessReady: Boolean(d.readiness?.ready),
         createdAt: d.createdAt,
+        driverLateCount90d: lateCounts.get(d.id) ?? 0,
       };
       if (rowMatchesFilters(overview, filters)) allRows.push(overview);
     }
@@ -284,6 +288,38 @@ export async function listAdminFleetDriversOverview(
   return allRows;
 }
 
+async function loadDriverLateCountsByDriverId(driverIds: string[], days = 90): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (!driverIds.length || !isPostgresConfigured()) return out;
+  const db = getDb();
+  if (!db) return out;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({
+      driverId: sql<string>`${rideEventsTable.payload}->>'driverId'`,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(rideEventsTable)
+    .where(
+      and(
+        eq(rideEventsTable.event_type, "driver_late"),
+        sql`${rideEventsTable.created_at} >= ${since}`,
+        inArray(sql`${rideEventsTable.payload}->>'driverId'`, driverIds),
+      ),
+    )
+    .groupBy(sql`${rideEventsTable.payload}->>'driverId'`);
+  for (const row of rows) {
+    const id = String(row.driverId ?? "").trim();
+    if (id) out.set(id, Number(row.n ?? 0));
+  }
+  return out;
+}
+
+export async function countDriverLateEventsForDriver(driverId: string, days = 90): Promise<number> {
+  const map = await loadDriverLateCountsByDriverId([driverId.trim()], days);
+  return map.get(driverId.trim()) ?? 0;
+}
+
 export async function getAdminFleetDriverOverviewDetail(
   driverId: string,
 ): Promise<
@@ -291,6 +327,7 @@ export async function getAdminFleetDriverOverviewDetail(
       driver: AdminTaxiFleetDriverRow;
       companyName: string;
       recentRides: AdminRideRow[];
+      driverLateCount90d: number;
     }
   | null
 > {
@@ -313,11 +350,15 @@ export async function getAdminFleetDriverOverviewDetail(
     getAdminTaxiFleetDriverDetail(companyId, driverId.trim()),
   ]);
   if (!driver) return null;
-  const recentRides = await listRidesAdminPage({ driverId: driverId.trim(), companyId }, 30, 0);
+  const [recentRides, driverLateCount90d] = await Promise.all([
+    listRidesAdminPage({ driverId: driverId.trim(), companyId }, 30, 0),
+    countDriverLateEventsForDriver(driverId.trim()),
+  ]);
   return {
     driver,
     companyName: coRows[0]?.name ?? companyId,
     recentRides,
+    driverLateCount90d,
   };
 }
 

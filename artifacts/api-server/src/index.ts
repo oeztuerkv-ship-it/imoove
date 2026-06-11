@@ -133,6 +133,13 @@ httpServer.listen(port, () => {
         logger.info({ count: staleExpired.length, rideIds: staleExpired }, "[Cron] Stale open rides → expired");
       }
 
+      // Job 8: Fahrer 5+ Min nach Abholzeit noch nicht vor Ort
+      const { flagDriverLateReservations } = await import("./jobs/driverLateDetection.js");
+      const lateFlagged = await flagDriverLateReservations(now);
+      if (lateFlagged.length > 0) {
+        logger.warn({ count: lateFlagged.length, rideIds: lateFlagged }, "[Cron] driver_late flagged");
+      }
+
     } catch (err) {
       logger.error({ err }, "[Cron] reservationLifecycle failed");
     }
