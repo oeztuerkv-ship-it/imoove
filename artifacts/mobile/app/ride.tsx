@@ -110,25 +110,23 @@ function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: bool
 /* Online-Zahlung mit vorher verknüpftem Wallet-Token (Karte: Stripe Sheet direkt beim Buchen). */
 const TOKEN_REQUIRED: PaymentMethod[] = ["paypal", "app"];
 
-const RIDE_PAYMENT_OPTIONS_BASE: {
+type RidePaymentOption = {
   id: PaymentMethod;
   label: string;
-  featherIcon?: string;
-  isPaypal?: boolean;
   isEuro?: boolean;
   isCard?: boolean;
   isApplePay?: boolean;
   isGooglePay?: boolean;
   isVoucher?: boolean;
-  isApp?: boolean;
   isAccessCode?: boolean;
-}[] = [
-  { id: "cash", label: "Bar", isEuro: true },
-  { id: "paypal", label: "PayPal", isPaypal: true },
+};
+
+/** Reihenfolge unterhalb von Apple/Google Pay: Karte → Bar → Gutschein → Transportschein. */
+const RIDE_PAYMENT_OPTIONS_STANDARD: RidePaymentOption[] = [
   { id: "card", label: "Kreditkarte", isCard: true },
-  { id: "voucher", label: "Transportschein (KK)", isVoucher: true },
-  { id: "app", label: "App bezahlen", isApp: true },
+  { id: "cash", label: "Bar", isEuro: true },
   { id: "access_code", label: "Gutschein / Code", isAccessCode: true },
+  { id: "voucher", label: "Transportschein (KK)", isVoucher: true },
 ];
 
 const SERVICE_CLASS_LABELS = {
@@ -361,27 +359,42 @@ export default function RideScreen() {
     setGooglePaySupported(false);
   }, [isPlatformPaySupported]);
 
-  const ridePaymentOptions = React.useMemo(() => {
-    const opts = [...RIDE_PAYMENT_OPTIONS_BASE];
+  const platformPayOption = React.useMemo((): RidePaymentOption | null => {
     if (applePaySupported) {
-      opts.splice(3, 0, { id: "apple_pay", label: "Apple Pay", isApplePay: true });
+      return { id: "apple_pay", label: "Apple Pay", isApplePay: true };
     }
     if (googlePaySupported) {
-      const cardIdx = opts.findIndex((o) => o.id === "card");
-      opts.splice(cardIdx >= 0 ? cardIdx + 1 : opts.length, 0, {
-        id: "google_pay",
-        label: "Google Pay",
-        isGooglePay: true,
-      });
+      return { id: "google_pay", label: "Google Pay", isGooglePay: true };
     }
-    return opts;
+    return null;
   }, [applePaySupported, googlePaySupported]);
+
+  const standardPaymentOptions = RIDE_PAYMENT_OPTIONS_STANDARD;
 
   function dismissTransportScan() {
     setPendingTransportScanId(null);
     setTransportScanTrafficLight(null);
     setTransportScanReasonDe(null);
   }
+
+  const selectPaymentMethod = React.useCallback(
+    (optId: PaymentMethod) => {
+      if (optId !== "voucher") {
+        setIsExempted(false);
+        dismissTransportScan();
+      }
+      if (optId !== "access_code") {
+        setAccessCodeInput("");
+        setShowAccessCodeModal(false);
+      }
+      setPaymentMethod(optId);
+      Haptics.selectionAsync();
+      if (optId === "access_code") {
+        setShowAccessCodeModal(true);
+      }
+    },
+    [setAccessCodeInput, setIsExempted, setPaymentMethod],
+  );
 
   function switchVoucherToSelfPay() {
     dismissTransportScan();
@@ -975,8 +988,43 @@ export default function RideScreen() {
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNGSART WÄHLEN</Text>
-          <View style={styles.paymentGrid}>
-            {ridePaymentOptions.map((opt) => {
+
+          {platformPayOption ? (
+            <View style={styles.platformPaySection}>
+              <Text style={[styles.platformPayTagline, { color: colors.mutedForeground }]}>
+                Schnell & sicher bezahlen
+              </Text>
+              <Pressable
+                style={[
+                  platformPayOption.isApplePay ? styles.applePayBtn : styles.googlePayBtn,
+                  paymentMethod === platformPayOption.id && styles.platformPayBtnSelected,
+                ]}
+                onPress={() => selectPaymentMethod(platformPayOption.id)}
+                accessibilityRole="button"
+                accessibilityLabel={platformPayOption.label}
+              >
+                {platformPayOption.isApplePay ? (
+                  <View style={styles.applePayBtnInner}>
+                    <MaterialCommunityIcons name="apple" size={22} color="#fff" />
+                    <Text style={styles.applePayBtnText}>Pay</Text>
+                  </View>
+                ) : (
+                  <View style={styles.googlePayBtnInner}>
+                    <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
+                    <Text style={styles.googlePayBtnText}>Pay</Text>
+                  </View>
+                )}
+                {paymentMethod === platformPayOption.id ? (
+                  <View style={styles.platformPayCheck}>
+                    <Feather name="check" size={12} color={platformPayOption.isApplePay ? "#000" : "#fff"} />
+                  </View>
+                ) : null}
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View style={[styles.paymentList, platformPayOption ? styles.paymentListAfterPlatform : null]}>
+            {standardPaymentOptions.map((opt) => {
               const isSelected = paymentMethod === opt.id;
               return (
                 <Pressable
@@ -989,41 +1037,19 @@ export default function RideScreen() {
                       borderWidth: isSelected ? 2 : 1.5,
                     },
                   ]}
-                  onPress={() => {
-                    if (opt.id !== "voucher") {
-                      setIsExempted(false);
-                      dismissTransportScan();
-                    }
-                    if (opt.id !== "access_code") {
-                      setAccessCodeInput("");
-                      setShowAccessCodeModal(false);
-                    }
-                    setPaymentMethod(opt.id);
-                    Haptics.selectionAsync();
-                    if (opt.id === "access_code") {
-                      setShowAccessCodeModal(true);
-                    }
-                  }}
+                  onPress={() => selectPaymentMethod(opt.id)}
                 >
                   <View style={styles.paymentBtnLeft}>
                     {opt.isEuro ? (
                       <Text style={[styles.euroSymbol, { color: colors.foreground }]}>€</Text>
-                    ) : opt.isApp ? (
-                      <Feather name="smartphone" size={14} color={colors.foreground} />
-                    ) : opt.isPaypal ? (
-                      <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
                     ) : opt.isCard ? (
-                      <Feather name="credit-card" size={14} color={colors.foreground} />
-                    ) : opt.isApplePay ? (
-                      <MaterialCommunityIcons name="apple" size={16} color={colors.foreground} />
-                    ) : opt.isGooglePay ? (
-                      <MaterialCommunityIcons name="google" size={16} color={colors.foreground} />
+                      <Feather name="credit-card" size={16} color={colors.foreground} />
                     ) : opt.isVoucher ? (
                       <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
                     ) : opt.isAccessCode ? (
                       <MaterialCommunityIcons name="shield-check-outline" size={16} color="#15803D" />
                     ) : (
-                      <Feather name="credit-card" size={14} color={colors.foreground} />
+                      <Feather name="credit-card" size={16} color={colors.foreground} />
                     )}
                     <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
                   </View>
@@ -1396,17 +1422,74 @@ const styles = StyleSheet.create({
   vehicleDesc: { fontSize: rf(13), fontFamily: "Inter_400Regular" },
   paymentChip: { flexDirection: "row", alignItems: "center", gap: rs(10) },
   paymentChipText: { fontSize: rf(15), fontFamily: "Inter_500Medium" },
-  paymentGrid: { flexDirection: "row", flexWrap: "wrap", gap: rs(8), marginTop: rs(4) },
+  platformPaySection: { marginTop: rs(8), gap: rs(8) },
+  platformPayTagline: {
+    fontSize: rf(13),
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  applePayBtn: {
+    backgroundColor: "#000000",
+    borderRadius: rs(12),
+    minHeight: rs(52),
+    paddingVertical: rs(14),
+    paddingHorizontal: rs(20),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#000000",
+  },
+  applePayBtnInner: { flexDirection: "row", alignItems: "center", gap: rs(4) },
+  applePayBtnText: {
+    color: "#FFFFFF",
+    fontSize: rf(22),
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.3,
+  },
+  googlePayBtn: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: rs(12),
+    minHeight: rs(52),
+    paddingVertical: rs(14),
+    paddingHorizontal: rs(20),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#DADCE0",
+  },
+  googlePayBtnInner: { flexDirection: "row", alignItems: "center", gap: rs(6) },
+  googlePayBtnText: {
+    color: "#3C4043",
+    fontSize: rf(20),
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.2,
+  },
+  platformPayBtnSelected: {
+    borderColor: ONRODA_MARK_RED,
+    borderWidth: 2.5,
+  },
+  platformPayCheck: {
+    position: "absolute",
+    top: rs(10),
+    right: rs(10),
+    width: rs(22),
+    height: rs(22),
+    borderRadius: rs(11),
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paymentList: { gap: rs(8), marginTop: rs(4) },
+  paymentListAfterPlatform: { marginTop: rs(14), paddingTop: rs(14), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E5E7EB" },
   paymentBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: rs(11),
-    paddingHorizontal: rs(12),
+    paddingVertical: rs(13),
+    paddingHorizontal: rs(14),
     borderRadius: rs(12),
-    minWidth: "47%",
-    minHeight: rs(46),
-    flexGrow: 1,
+    width: "100%",
+    minHeight: rs(48),
   },
   paymentBtnLeft: { flexDirection: "row", alignItems: "center", gap: rs(6), flexShrink: 1 },
   paymentCheck: {
@@ -1417,9 +1500,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  paymentBtnText: { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
-  euroSymbol: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
-  paypalText: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
+  paymentBtnText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
+  euroSymbol: { fontSize: rf(15), fontFamily: "Inter_700Bold" },
   exemptRow: { flexDirection: "row", alignItems: "center", gap: rs(10), marginTop: rs(4) },
   exemptCheckbox: { width: rs(22), height: rs(22), borderRadius: rs(6), borderWidth: 2, justifyContent: "center", alignItems: "center" },
   exemptText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_500Medium" },
