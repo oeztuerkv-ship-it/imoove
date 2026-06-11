@@ -1,11 +1,11 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTranslation } from "@/context/LanguageContext";
 import { useRideRequests } from "@/context/RideRequestContext";
+import { navigateToCustomerMainTab } from "@/utils/customerMainTabNavigation";
 import { onrodaTheme } from "../src/theme";
 import { rs, rf } from "@/utils/scale";
 
@@ -61,11 +61,11 @@ export function BottomTabBar({ active, offsetY = 0 }: { active: BottomTab; offse
   const NAV_TAB_ICON = rs(17);
 
   const tabs: { id: BottomTab; icon: React.ComponentProps<typeof Feather>["name"]; label: string; badge?: number; onPress: () => void }[] = [
-    { id: "start",      icon: "home",        label: t("tabs.start"),     onPress: () => router.replace("/") },
-    { id: "fahrten",    icon: "calendar",    label: t("tabs.rides"),   badge: ridesBadge, onPress: () => router.replace("/my-rides") },
-    { id: "buchen",     icon: "plus",        label: t("tabs.book"),    onPress: () => router.replace("/booking-center") },
-    { id: "orte",       icon: "map-pin",     label: t("tabs.places"),      onPress: () => router.replace("/orte") },
-    { id: "account",    icon: "user",        label: t("tabs.account"),     onPress: () => router.replace("/profile") },
+    { id: "start",      icon: "home",        label: t("tabs.start"),     onPress: () => navigateToCustomerMainTab("start") },
+    { id: "fahrten",    icon: "calendar",    label: t("tabs.rides"),   badge: ridesBadge, onPress: () => navigateToCustomerMainTab("fahrten") },
+    { id: "buchen",     icon: "plus",        label: t("tabs.book"),    onPress: () => navigateToCustomerMainTab("buchen") },
+    { id: "orte",       icon: "map-pin",     label: t("tabs.places"),      onPress: () => navigateToCustomerMainTab("orte") },
+    { id: "account",    icon: "user",        label: t("tabs.account"),     onPress: () => navigateToCustomerMainTab("account") },
   ];
 
   return (

@@ -57,6 +57,7 @@ import {
 } from "@/utils/emailVerificationErrors";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
+import { isGoogleOAuthProfile } from "@/utils/customerAuthProvider";
 import { navigateToCustomerStartScreen } from "@/utils/navigateToCustomerStart";
 import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
@@ -1051,6 +1052,7 @@ export default function ProfileScreen() {
         photoUri: typeof p.picture === "string" ? p.picture : null,
         googleId: String(p.sub),
         sessionToken,
+        authProvider: "google",
       });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
@@ -1078,6 +1080,7 @@ export default function ProfileScreen() {
         photoUri: session.photoUri,
         googleId: session.googleId,
         sessionToken: session.sessionToken,
+        authProvider: "apple",
       });
     } catch (e: unknown) {
       const err = e as { code?: string };
@@ -1720,7 +1723,7 @@ export default function ProfileScreen() {
               initialPhone={profile.phone ?? ""}
               initialAddress={profile.address ?? ""}
               initialCity={profile.city ?? ""}
-              isGoogleUser={!!profile.googleId}
+              isGoogleUser={isGoogleOAuthProfile(profile)}
               onClose={(data) => {
                 if (data) {
                   updateProfile(data);

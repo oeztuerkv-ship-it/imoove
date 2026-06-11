@@ -30,6 +30,7 @@ export default function LoginSuccessScreen() {
         photoUri: typeof p.picture === "string" ? p.picture : null,
         googleId: String(p.sub),
         sessionToken: raw,
+        authProvider: "google",
       });
     }
     router.replace("/");

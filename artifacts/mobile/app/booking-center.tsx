@@ -88,14 +88,14 @@ export default function BookingCenterScreen() {
       title: "Krankenfahrt",
       subtitle: "Fahrtrelevante Angaben ohne Diagnose speichern.",
       icon: "heart",
-      onPress: () => router.push("/booking-medical"),
+      onPress: () => router.replace("/booking-medical"),
     },
     {
       key: "series",
       title: "Serienfahrt",
       subtitle: "Wiederkehrende Krankenfahrten über Zeitraum anlegen.",
       icon: "repeat",
-      onPress: () => router.push("/booking-medical?mode=series"),
+      onPress: () => router.replace("/booking-medical?mode=series"),
     },
     {
       key: "qr",

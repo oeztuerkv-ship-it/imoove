@@ -19,6 +19,8 @@ export interface UserProfile {
   city: string;
   photoUri: string | null;
   googleId?: string;
+  /** Login-Kanal (Apple nutzt intern ebenfalls googleId/passenger_id). */
+  authProvider?: "google" | "apple" | "email";
   /** OpenID JWT von Google (einmal nach Login von `/auth/google/profile`). */
   googleIdToken?: string;
   /** OAuth2 Access Token; kurzlebig, für direkte Google-API-Aufrufe von der App. */
@@ -200,6 +202,7 @@ function mergeCustomerAuthSession(
     phone: (customer.phone ?? "").trim() || base.phone,
     photoUri: base.photoUri,
     googleId: customer.id,
+    authProvider: "email",
     sessionToken,
     emailVerificationProofToken: null,
   };

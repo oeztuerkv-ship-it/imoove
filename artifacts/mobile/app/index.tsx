@@ -250,7 +250,7 @@ export default function HomeScreen() {
     }
     resetRide();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/booking-medical" as Href);
+    router.replace("/booking-medical" as Href);
   }, [customerAppBlocked, blockedCustomerAlert, resetRide]);
 
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
@@ -775,6 +775,7 @@ export default function HomeScreen() {
           photoUri: typeof p.picture === "string" ? p.picture : null,
           googleId: String(p.sub),
           sessionToken,
+          authProvider: "google",
         });
         return;
       }
@@ -805,6 +806,7 @@ export default function HomeScreen() {
         photoUri: session.photoUri,
         googleId: session.googleId,
         sessionToken: session.sessionToken,
+        authProvider: "apple",
       });
     } catch (e: unknown) {
       const err = e as { code?: string };
