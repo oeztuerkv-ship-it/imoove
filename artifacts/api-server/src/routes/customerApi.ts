@@ -493,6 +493,10 @@ router.post(
         metadata,
       });
       if (charge.kind === "succeeded") {
+        await updateRide(rideId, {
+          paymentStatus: "paid",
+          stripePaymentIntentId: charge.paymentIntentId,
+        });
         res.json({ paid: true, paymentIntentId: charge.paymentIntentId });
         return;
       }
@@ -505,6 +509,7 @@ router.post(
         });
         return;
       }
+      await updateRide(rideId, { paymentStatus: "failed" });
       res.status(402).json({ error: charge.error });
       return;
     }
@@ -525,7 +530,41 @@ router.post(
       res.status(500).json({ error: "stripe_client_secret_missing" });
       return;
     }
-    res.json({ paid: false, clientSecret });
+    res.json({ paid: false, clientSecret, paymentIntentId: intent.id });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/customer/v1/payment/confirm-ride", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const body = req.body as { rideId?: unknown; paymentIntentId?: unknown };
+    const rideId = String(body.rideId ?? "").trim();
+    const paymentIntentId = String(body.paymentIntentId ?? "").trim();
+    if (!rideId || !paymentIntentId) {
+      res.status(400).json({ error: "ride_id_and_payment_intent_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId, { skipLifecycleExpiry: true });
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (ride.paymentStatus === "refunded") {
+      res.status(409).json({ error: "ride_already_refunded" });
+      return;
+    }
+    const updated = await updateRide(rideId, {
+      paymentStatus: "paid",
+      stripePaymentIntentId: paymentIntentId,
+    });
+    res.json({ ok: true, paymentStatus: updated?.paymentStatus ?? "paid" });
   } catch (e) {
     next(e);
   }

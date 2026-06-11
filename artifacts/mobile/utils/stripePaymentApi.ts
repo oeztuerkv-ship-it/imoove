@@ -12,8 +12,15 @@ export type CreatePaymentIntentInput = {
 
 export type CreatePaymentIntentResult =
   | { ok: true; paid: true; paymentIntentId?: string }
-  | { ok: true; paid: false; clientSecret: string; requiresAction?: boolean }
+  | { ok: true; paid: false; clientSecret: string; paymentIntentId?: string; requiresAction?: boolean }
   | { ok: false; error: string; status?: number; detail?: string; rideStatus?: string };
+
+/** Stripe client_secret → PaymentIntent-ID (pi_…). */
+export function stripePaymentIntentIdFromClientSecret(clientSecret: string): string {
+  const secret = clientSecret.trim();
+  const idx = secret.indexOf("_secret_");
+  return idx > 0 ? secret.slice(0, idx) : "";
+}
 
 export type CustomerSavedCardResult =
   | { ok: true; saved: true; brand: string | null; last4: string | null }
@@ -149,12 +156,43 @@ export async function postCustomerCreatePaymentIntent(
     requiresAction: parsed.requiresAction === true,
     clientSecretPrefix: clientSecret.slice(0, 20),
   });
+  const paymentIntentId =
+    typeof parsed.paymentIntentId === "string" && parsed.paymentIntentId.trim()
+      ? parsed.paymentIntentId.trim()
+      : stripePaymentIntentIdFromClientSecret(clientSecret);
   return {
     ok: true,
     paid: false,
     clientSecret,
+    ...(paymentIntentId ? { paymentIntentId } : {}),
     ...(parsed.requiresAction === true ? { requiresAction: true } : {}),
   };
+}
+
+export async function confirmRideStripePayment(input: {
+  rideId: string;
+  paymentIntentId: string;
+  authToken?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const token = await resolveCustomerBearerToken(input.authToken);
+  const apiBase = getApiBaseUrl();
+  if (!token || !apiBase) return { ok: false, error: "unauthorized" };
+  const res = await fetch(`${apiBase}/customer/v1/payment/confirm-ride`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      rideId: input.rideId,
+      paymentIntentId: input.paymentIntentId,
+    }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    return { ok: false, error: typeof body.error === "string" ? body.error : `http_${res.status}` };
+  }
+  return { ok: true };
 }
 
 export async function fetchCustomerSavedCard(

@@ -57,6 +57,7 @@ import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY } from "@/constants/strip
 import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
 import { cancelCustomerRide } from "@/utils/customerRidesApi";
 import {
+  confirmRideStripePayment,
   formatStripePaymentIntentAlertMessage,
   postCustomerCreatePaymentIntent,
 } from "@/utils/stripePaymentApi";
@@ -788,6 +789,17 @@ export default function RideScreen() {
                   Alert.alert("Zahlung fehlgeschlagen", paid.message);
                 }
                 return;
+              }
+              const piId = intent.paymentIntentId?.trim();
+              if (piId) {
+                const confirmed = await confirmRideStripePayment({
+                  rideId: rideRequestId,
+                  paymentIntentId: piId,
+                  authToken,
+                });
+                if (!confirmed.ok) {
+                  console.warn("[StripePayment] confirm-ride failed", confirmed.error);
+                }
               }
             }
             await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);
