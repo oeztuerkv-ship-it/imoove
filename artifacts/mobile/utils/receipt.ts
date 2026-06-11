@@ -12,6 +12,8 @@ export interface ReceiptData {
   paymentMethod: string;
   totalFare: number;
   driverName?: string;
+  driverPlate?: string;
+  estimatedFare?: number;
 }
 
 function formatEuroHtml(amount: number): string {
@@ -175,11 +177,15 @@ function buildReceiptHtml(data: ReceiptData): string {
       <span class="payment-label">Fahrzeug</span>
       <span class="payment-value">${data.vehicle}</span>
     </div>
+    ${data.driverName ? `<div class="payment-row" style="border-top:none; padding-top:0; margin-bottom:0;"><span class="payment-label">Fahrer*in</span><span class="payment-value">${data.driverName}</span></div>` : ""}
+    ${data.driverPlate ? `<div class="payment-row" style="border-top:none; padding-top:0; margin-bottom:0;"><span class="payment-label">Kennzeichen</span><span class="payment-value">${data.driverPlate}</span></div>` : ""}
+    ${data.estimatedFare != null && Math.abs(data.estimatedFare - data.totalFare) > 0.05 ? `<div class="payment-row" style="border-top:none; padding-top:0; margin-bottom:0;"><span class="payment-label">Geschätzter Preis (Buchung)</span><span class="payment-value">${formatEuroHtml(data.estimatedFare)}</span></div>` : ""}
 
     <div class="total-row">
-      <span class="total-label">Gesamtbetrag</span>
+      <span class="total-label">Gesamtbetrag (Taxameter)</span>
       <span class="total-amount">${formatEuroHtml(data.totalFare)}</span>
     </div>
+    <p style="font-size:11px;color:#888;margin-top:10px;line-height:1.5;">Maßgeblich ist der Taxameter-Endpreis. App-Schätzungen dienen nur der Orientierung.</p>
   </div>
 
   <div class="footer">

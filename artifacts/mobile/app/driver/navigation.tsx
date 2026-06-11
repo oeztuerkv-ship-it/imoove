@@ -65,6 +65,7 @@ import {
   defaultFinalFareForDriverCompletion,
   driverMayBillPositiveFare,
   formatDriverFareInputDe,
+  driverFinalFareNeedsAcknowledgement,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
@@ -389,7 +390,13 @@ export default function DriverNavigationScreen() {
 
   // API helpers
   const patchStatus = useCallback(
-    async (newStatus: string, finalFare?: number, actualDistanceKm?: number, actualDurationMinutes?: number) => {
+    async (
+      newStatus: string,
+      finalFare?: number,
+      actualDistanceKm?: number,
+      actualDurationMinutes?: number,
+      finalFarePlausibilityAck?: boolean,
+    ) => {
       if (!params.rideId) return;
       const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
         method: "PATCH",
@@ -399,6 +406,7 @@ export default function DriverNavigationScreen() {
           ...(finalFare != null ? { finalFare } : {}),
           ...(actualDistanceKm != null ? { actualDistanceKm } : {}),
           ...(actualDurationMinutes != null ? { actualDurationMinutes } : {}),
+          ...(finalFarePlausibilityAck ? { finalFarePlausibilityAck: true } : {}),
           driverLat: driverLat,
           driverLon: driverLon,
         }),
@@ -678,21 +686,12 @@ export default function DriverNavigationScreen() {
     setShowFareModal(true);
   };
 
-  const handleConfirmFare = async () => {
-    if (completingRide) return;
-    const parsed = parseFloat(fareInput.replace(",", "."));
-    const fallback = defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare);
-    const fare = isNaN(parsed) ? fallback : parsed;
-    const validation = validateDriverFinalFareInput(rideFleetStatus, fare);
-    if (!validation.ok) {
-      Alert.alert(validation.title, validation.message);
-      return;
-    }
+  const completeRideWithFare = async (fare: number, plausibilityAck = false) => {
     setCompletingRide(true);
     try {
       const navDistanceKm = initialDistM > 0 ? Math.round(initialDistM / 100) / 10 : undefined;
       const navDurationMin = initialEtaMin > 0 ? Math.round(initialEtaMin) : undefined;
-      await patchStatus("completed", fare, navDistanceKm, navDurationMin);
+      await patchStatus("completed", fare, navDistanceKm, navDurationMin, plausibilityAck);
       await stopDriverBackgroundLocation();
       setShowFareModal(false);
       disconnectSocket();
@@ -708,10 +707,35 @@ export default function DriverNavigationScreen() {
       } as import("expo-router").Href);
     } catch (e) {
       const code = e instanceof Error ? e.message : "status_update_failed";
-      Alert.alert("Abschluss fehlgeschlagen", `Endpreis konnte nicht gespeichert werden (${code}).`);
+      const userMessage = e instanceof Error && "userMessage" in e ? String((e as Error & { userMessage?: string }).userMessage ?? "") : "";
+      Alert.alert("Abschluss fehlgeschlagen", userMessage || `Endpreis konnte nicht gespeichert werden (${code}).`);
     } finally {
       setCompletingRide(false);
     }
+  };
+
+  const handleConfirmFare = async () => {
+    if (completingRide) return;
+    const parsed = parseFloat(fareInput.replace(",", "."));
+    const fallback = defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare);
+    const fare = isNaN(parsed) ? fallback : parsed;
+    const validation = validateDriverFinalFareInput(rideFleetStatus, fare);
+    if (!validation.ok) {
+      Alert.alert(validation.title, validation.message);
+      return;
+    }
+    if (driverFinalFareNeedsAcknowledgement(estimatedFare, fare)) {
+      Alert.alert(
+        "Preis deutlich über Schätzung",
+        `Taxameter: ${fare.toFixed(2).replace(".", ",")} € — Schätzung war ${estimatedFare.toFixed(2).replace(".", ",")} €. Nur bestätigen, wenn der Taxameter-Preis stimmt.`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          { text: "Taxameter bestätigen", style: "destructive", onPress: () => void completeRideWithFare(fare, true) },
+        ],
+      );
+      return;
+    }
+    await completeRideWithFare(fare, false);
   };
 
   // GPS tracking

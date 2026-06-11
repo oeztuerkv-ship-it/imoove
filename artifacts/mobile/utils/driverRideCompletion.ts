@@ -24,6 +24,25 @@ export function formatDriverFareInputDe(amount: number): string {
   return amount.toFixed(2).replace(".", ",");
 }
 
+const MIN_ESTIMATE_FOR_CHECK_EUR = 8;
+const RATIO_CAP = 2.5;
+const ABS_SURCHARGE_CAP_EUR = 40;
+
+export function maxAllowedDriverFinalFareEur(estimatedFare: number): number {
+  const est = Number(estimatedFare);
+  if (!Number.isFinite(est) || est <= 0) return Number.POSITIVE_INFINITY;
+  return Math.max(est * RATIO_CAP, est + ABS_SURCHARGE_CAP_EUR);
+}
+
+/** Starker Ausreißer vs. Schätzung — Server verlangt ggf. finalFarePlausibilityAck. */
+export function driverFinalFareNeedsAcknowledgement(estimatedFare: number, finalFare: number): boolean {
+  const est = Number(estimatedFare);
+  const fin = Number(finalFare);
+  if (!Number.isFinite(est) || est < MIN_ESTIMATE_FOR_CHECK_EUR) return false;
+  if (!Number.isFinite(fin) || fin < 0) return false;
+  return fin > maxAllowedDriverFinalFareEur(est) + 1e-9;
+}
+
 export function validateDriverFinalFareInput(
   status: string,
   fare: number,
