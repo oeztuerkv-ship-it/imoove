@@ -101,3 +101,4 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 070_driver_message_dismissals.sql
 071_ride_driver_locations.sql
 072_ride_driver_dispatch_offers.sql
+100_no_show_and_driver_waiting.sql

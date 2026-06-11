@@ -184,7 +184,12 @@ export interface RideRequest {
     | "expired"
     | "rejected"
     | "cancelled"
-    | "completed";
+    | "completed"
+    | "no_show";
+
+  driverWaitingStartedAt?: string | null;
+  noShowCountdownStartedAt?: string | null;
+  noShowEvidenceAt?: string | null;
 
   /** Optional: angereichert in `GET /panel/v1/rides` (nicht persistiert). */
   accessCodeTripOutcome?: AccessCodeTripOutcome;

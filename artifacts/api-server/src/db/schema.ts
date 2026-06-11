@@ -641,6 +641,9 @@ export const ridesTable = pgTable("rides", {
   push_customer_reservation_assigned_at: timestamp("push_customer_reservation_assigned_at", { withTimezone: true }),
   /** Fahrer: einmaliger Push ca. 45 Min. vor Abholung (Aktivierung erinnern). */
   push_driver_activation_reminder_at: timestamp("push_driver_activation_reminder_at", { withTimezone: true }),
+  driver_waiting_started_at: timestamp("driver_waiting_started_at", { withTimezone: true }),
+  no_show_countdown_started_at: timestamp("no_show_countdown_started_at", { withTimezone: true }),
+  no_show_evidence_at: timestamp("no_show_evidence_at", { withTimezone: true }),
 });
 
 /** Letzte Fahrer-GPS pro Fahrt (Geofence, Live-Tracking, Recovery). */

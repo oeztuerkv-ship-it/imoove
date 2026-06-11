@@ -121,6 +121,8 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
   kk_module_not_authorized: "Sie sind nicht berechtigt. Bitte wenden Sie sich an ONRODA.",
   http_413: "Foto ist zu groß für den Upload. Bitte erneut aufnehmen.",
   network_error: "Keine Verbindung zum Server.",
+  medical_upload_locked_after_billing:
+    "Nach Abrechnung können Nachweise nicht mehr geändert werden. Bitte Partner-Panel oder Support kontaktieren.",
 };
 
 export function medicalScanErrorMessageDe(code: string, serverMessage?: string): string {

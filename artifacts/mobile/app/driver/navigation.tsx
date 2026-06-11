@@ -436,6 +436,92 @@ export default function DriverNavigationScreen() {
     setHasArrived(true);   // ← stay on screen, button changes to "Fahrt beginnen"
   }, [patchStatus]);
 
+  const [noShowCountdownEndsAt, setNoShowCountdownEndsAt] = useState<number | null>(null);
+  const [noShowBusy, setNoShowBusy] = useState(false);
+  const [, setNoShowTick] = useState(0);
+
+  const finalizeNoShow = useCallback(async () => {
+    if (!params.rideId || noShowBusy) return;
+    setNoShowBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/rides/${params.rideId}/driver-no-show/finalize`, {
+        method: "POST",
+        headers: await fleetAuthHeadersJson(),
+      });
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; message?: string };
+      if (!res.ok || !body.ok) {
+        const code = typeof body.error === "string" ? body.error : "no_show_finalize_failed";
+        Alert.alert("No-Show", driverRideStatusUserMessage(code, body) ?? code);
+        return;
+      }
+      await stopDriverBackgroundLocation();
+      disconnectSocket();
+      trySpeak("Kunde nicht erschienen. Fahrt als No-Show abgeschlossen.", soundRef.current);
+      replaceDriverStackExclusive({ pathname: "/driver/dashboard" } as Href);
+    } catch {
+      Alert.alert("No-Show", "Abschluss fehlgeschlagen. Bitte erneut versuchen.");
+    } finally {
+      setNoShowBusy(false);
+      setNoShowCountdownEndsAt(null);
+    }
+  }, [noShowBusy, params.rideId]);
+
+  useEffect(() => {
+    if (!noShowCountdownEndsAt) return;
+    const id = setInterval(() => {
+      setNoShowTick((t) => t + 1);
+      if (Date.now() >= noShowCountdownEndsAt) {
+        void finalizeNoShow();
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [noShowCountdownEndsAt, finalizeNoShow]);
+
+  const noShowRemainingSec = noShowCountdownEndsAt
+    ? Math.max(0, Math.ceil((noShowCountdownEndsAt - Date.now()) / 1000))
+    : 0;
+
+  const handleNoShowStart = useCallback(async () => {
+    if (!params.rideId || noShowBusy) return;
+    Alert.alert(
+      "Kunde nicht da?",
+      "Nach dem Countdown wird eine No-Show-Gebühr berechnet und der Kunde benachrichtigt.",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Countdown starten",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setNoShowBusy(true);
+              try {
+                const res = await fetch(`${API_BASE}/rides/${params.rideId}/driver-no-show/start`, {
+                  method: "POST",
+                  headers: await fleetAuthHeadersJson(),
+                });
+                const body = (await res.json().catch(() => ({}))) as {
+                  ok?: boolean;
+                  error?: string;
+                  message?: string;
+                  finalizeAfterIso?: string;
+                };
+                if (!res.ok || !body.ok) {
+                  const code = typeof body.error === "string" ? body.error : "no_show_start_failed";
+                  Alert.alert("No-Show", driverRideStatusUserMessage(code, body) ?? code);
+                  return;
+                }
+                const endMs = body.finalizeAfterIso ? Date.parse(body.finalizeAfterIso) : Date.now() + 5 * 60_000;
+                setNoShowCountdownEndsAt(endMs);
+              } finally {
+                setNoShowBusy(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [noShowBusy, params.rideId]);
+
   const handleFahrtBeginnen = useCallback(async () => {
     try {
       await patchStatus("in_progress");
@@ -909,17 +995,33 @@ export default function DriverNavigationScreen() {
     } else {
       // Step 2: "Fahrt beginnen" via slide-right control
       actionBtn = (
-        <View
-          style={styles.slideStartTrack}
-          onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
-          {...sliderResponder.panHandlers}
-        >
-          <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
-          <Animated.View
-            style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
+        <View style={{ gap: 10 }}>
+          <View
+            style={styles.slideStartTrack}
+            onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
+            {...sliderResponder.panHandlers}
           >
-            <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
-          </Animated.View>
+            <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
+            <Animated.View
+              style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
+            >
+              <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
+            </Animated.View>
+          </View>
+          {noShowCountdownEndsAt ? (
+            <Text style={styles.noShowCountdownText}>
+              No-Show in {Math.floor(noShowRemainingSec / 60)}:
+              {String(noShowRemainingSec % 60).padStart(2, "0")} Min.
+            </Text>
+          ) : (
+            <Pressable
+              onPress={() => void handleNoShowStart()}
+              disabled={noShowBusy}
+              style={({ pressed }) => [styles.noShowLinkBtn, pressed && { opacity: 0.85 }, noShowBusy && { opacity: 0.5 }]}
+            >
+              <Text style={styles.noShowLinkText}>Kunde nicht da</Text>
+            </Pressable>
+          )}
         </View>
       );
     }
@@ -1605,6 +1707,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#DCFCE7",
+  },
+  noShowLinkBtn: {
+    alignSelf: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  noShowLinkText: {
+    color: "#FCA5A5",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    textDecorationLine: "underline",
+  },
+  noShowCountdownText: {
+    color: "#FEF3C7",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
   },
 
   /* Fare Modal */

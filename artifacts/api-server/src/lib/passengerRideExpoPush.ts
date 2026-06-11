@@ -134,6 +134,20 @@ export async function notifyPassengerCancellationSuspended(passengerId: string):
   await sendCustomerCancellationSuspensionEmail(pax);
 }
 
+/** Fahrer: Kunde nach Wartezeit nicht erschienen (No-Show). */
+export async function notifyPassengerNoShow(passengerId: string, rideId: string): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrer ist abgefahren",
+      body: "Der Fahrer hat am Abholort gewartet und ist abgefahren. Es kann eine No-Show-Gebühr anfallen.",
+      data: { kind: "ride_no_show", rideId },
+    })),
+  );
+}
+
 /** Cron/System: keine Fahrerannahme rechtzeitig → Buchung beendet. */
 export async function notifyPassengerRideCancelledBySystem(passengerId: string, rideId: string): Promise<void> {
   const tokens = await listPassengerExpoPushTokens(passengerId);

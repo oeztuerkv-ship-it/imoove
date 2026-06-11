@@ -177,6 +177,11 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
       r.accessibility_options_json && typeof r.accessibility_options_json === "object"
         ? (r.accessibility_options_json as RideRequest["accessibilityOptions"])
         : null,
+    driverWaitingStartedAt: r.driver_waiting_started_at ? r.driver_waiting_started_at.toISOString() : null,
+    noShowCountdownStartedAt: r.no_show_countdown_started_at
+      ? r.no_show_countdown_started_at.toISOString()
+      : null,
+    noShowEvidenceAt: r.no_show_evidence_at ? r.no_show_evidence_at.toISOString() : null,
   };
 }
 
@@ -246,6 +251,9 @@ function rideToUpdate(r: RideRequest) {
     tariff_snapshot_json: (r.tariffSnapshot
       ? (r.tariffSnapshot as unknown as Record<string, unknown>)
       : {}) as Record<string, unknown>,
+    driver_waiting_started_at: r.driverWaitingStartedAt ? new Date(r.driverWaitingStartedAt) : null,
+    no_show_countdown_started_at: r.noShowCountdownStartedAt ? new Date(r.noShowCountdownStartedAt) : null,
+    no_show_evidence_at: r.noShowEvidenceAt ? new Date(r.noShowEvidenceAt) : null,
   };
 }
 
@@ -294,6 +302,9 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     tariff_snapshot_json: (r.tariffSnapshot
       ? (r.tariffSnapshot as unknown as Record<string, unknown>)
       : {}) as Record<string, unknown>,
+    driver_waiting_started_at: r.driverWaitingStartedAt ? new Date(r.driverWaitingStartedAt) : null,
+    no_show_countdown_started_at: r.noShowCountdownStartedAt ? new Date(r.noShowCountdownStartedAt) : null,
+    no_show_evidence_at: r.noShowEvidenceAt ? new Date(r.noShowEvidenceAt) : null,
   };
 }
 

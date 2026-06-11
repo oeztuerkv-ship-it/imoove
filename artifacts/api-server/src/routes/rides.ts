@@ -128,10 +128,13 @@ import {
   notifyPassengerReservationActivated,
   notifyPassengerReservationConfirmed,
   notifyPassengerRideCancelledBySystem,
+  notifyPassengerNoShow,
   notifyPassengerRideCompleted,
   notifyPassengerRideInProgress,
   notifyPassengerReservationExpired,
 } from "../lib/passengerRideExpoPush";
+import { resolveNoShowPolicy } from "../lib/noShowPolicy";
+import { liveWaitingMinutesSince } from "../lib/waitingTimeCharge";
 import { isSessionJwtConfigured, verifySessionJwt } from "../lib/sessionJwt";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
 import { customerPassengerId, requireCustomerSession, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
@@ -297,6 +300,7 @@ function normalizeStatusInput(raw: unknown): RideRequest["status"] | null {
     "arrived",
     "in_progress",
     "completed",
+    "no_show",
     "cancelled_by_customer",
     "cancelled_by_driver",
     "cancelled_by_system",
@@ -909,6 +913,170 @@ router.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, 
       payload: { fileKey: rel },
     });
     res.json({ ok: true, fileKey: rel, signedAt });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/rides/:id/driver-no-show/start", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.status !== "driver_waiting") {
+      res.status(409).json({
+        ok: false,
+        error: "no_show_invalid_status",
+        message: "No-Show nur möglich, wenn Sie am Abholort warten.",
+      });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (!assigned || assigned !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const opPayload = await getOperationalConfigPayload();
+    const policy = resolveNoShowPolicy(opPayload);
+    const waitingSince = ride.driverWaitingStartedAt ?? null;
+    if (!waitingSince) {
+      res.status(409).json({ ok: false, error: "driver_waiting_since_missing" });
+      return;
+    }
+    const waitedMin = liveWaitingMinutesSince(waitingSince);
+    if (waitedMin < policy.minWaitBeforeStartMinutes) {
+      res.status(409).json({
+        ok: false,
+        error: "no_show_wait_too_short",
+        message: `Bitte noch ${policy.minWaitBeforeStartMinutes - waitedMin} Min. am Abholort warten.`,
+        waitedMinutes: waitedMin,
+        requiredMinutes: policy.minWaitBeforeStartMinutes,
+      });
+      return;
+    }
+    const countdownStartedAt = new Date().toISOString();
+    const updated = await updateRide(
+      rideId,
+      { noShowCountdownStartedAt: countdownStartedAt },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
+    );
+    if (!updated) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    const finalizeAfterMs = Date.now() + policy.countdownMinutes * 60_000;
+    res.json({
+      ok: true,
+      countdownStartedAt,
+      finalizeAfterIso: new Date(finalizeAfterMs).toISOString(),
+      countdownMinutes: policy.countdownMinutes,
+      feeEur: policy.feeEur,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/rides/:id/driver-no-show/finalize", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.status !== "driver_waiting") {
+      res.status(409).json({ ok: false, error: "no_show_invalid_status" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (!assigned || assigned !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const countdownStarted = ride.noShowCountdownStartedAt ?? null;
+    if (!countdownStarted) {
+      res.status(409).json({
+        ok: false,
+        error: "no_show_countdown_not_started",
+        message: "Bitte zuerst „Kunde nicht da“ starten.",
+      });
+      return;
+    }
+    const opPayload = await getOperationalConfigPayload();
+    const policy = resolveNoShowPolicy(opPayload);
+    const elapsedMs = Date.now() - Date.parse(countdownStarted);
+    const requiredMs = policy.countdownMinutes * 60_000;
+    if (!Number.isFinite(elapsedMs) || elapsedMs < requiredMs - 500) {
+      const remainingSec = Math.max(1, Math.ceil((requiredMs - Math.max(0, elapsedMs)) / 1000));
+      res.status(409).json({
+        ok: false,
+        error: "no_show_countdown_active",
+        message: `Countdown läuft noch (${remainingSec} Sek.).`,
+        remainingSeconds: remainingSec,
+      });
+      return;
+    }
+    const evidenceAt = new Date().toISOString();
+    const updated = await updateRide(
+      rideId,
+      {
+        status: "no_show",
+        finalFare: policy.feeEur,
+        noShowEvidenceAt: evidenceAt,
+      },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
+    );
+    if (!updated) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "passenger_no_show",
+      fromStatus: ride.status,
+      toStatus: "no_show",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: {
+        feeEur: policy.feeEur,
+        evidenceAt,
+        waitingStartedAt: ride.driverWaitingStartedAt ?? null,
+        countdownStartedAt: countdownStarted,
+      },
+    });
+    const pid = (updated.passengerId ?? "").trim();
+    if (pid) void notifyPassengerNoShow(pid, updated.id);
+    const opPayloadFin = await getOperationalConfigPayload();
+    const regionsFin = await listServiceRegionsForApi();
+    const pcFin = await resolveFinancePricingContextForRide(updated, opPayloadFin, regionsFin);
+    await upsertRideFinancialSnapshot({
+      ride: updated,
+      pricingContext: pcFin,
+      reason: "ride_no_show_status_transition",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      forceRecalc: true,
+    });
+    res.json({
+      ok: true,
+      rideId: updated.id,
+      status: updated.status,
+      finalFare: updated.finalFare,
+      evidenceAt,
+    });
   } catch (e) {
     next(e);
   }
@@ -2100,6 +2268,9 @@ export async function patchRideStatusRoute(
           ...(parsedActualDurationMinutes !== undefined ? { actualDurationMinutes: parsedActualDurationMinutes } : {}),
           ...(driverId != null ? { driverId } : {}),
           ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
+          ...(nextStatus === "driver_waiting" && cur.status !== "driver_waiting"
+            ? { driverWaitingStartedAt: new Date().toISOString() }
+            : {}),
         },
         { mutationActor: mutActor },
       );

@@ -152,6 +152,10 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     doNotStoreDiagnosis: true,
     cancellationWindowMinutes: 120,
     cancellationFeeAfterWindowEur: 0,
+    noShowMinWaitBeforeStartMinutes: 5,
+    noShowCountdownMinutes: 5,
+    noShowFeeEur: 5,
+    waitingEurPerHour: 38,
   },
   system: {
     maintenanceMode: false,

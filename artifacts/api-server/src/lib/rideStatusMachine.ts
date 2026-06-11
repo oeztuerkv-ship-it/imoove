@@ -6,6 +6,7 @@ import type { RideRequest } from "../domain/rideRequest";
  */
 export const RIDE_TERMINAL_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
   "completed",
+  "no_show",
   "cancelled_by_customer",
   "cancelled_by_driver",
   "cancelled_by_system",
@@ -104,6 +105,7 @@ const TRANSITIONS: Partial<Record<RideRequest["status"], RideRequest["status"][]
   driver_waiting: [
     "passenger_onboard",
     "in_progress",
+    "no_show",
     "cancelled_by_customer",
     "cancelled_by_driver",
     "cancelled_by_system",
@@ -137,6 +139,9 @@ export function supplementalEventForTransition(
   }
   if (to === "completed" && from !== "completed") {
     return { eventType: "ride_completed" };
+  }
+  if (to === "no_show" && from !== "no_show") {
+    return { eventType: "passenger_no_show" };
   }
   return null;
 }
