@@ -922,6 +922,55 @@ router.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, 
   }
 });
 
+router.post("/rides/:id/cash-confirmed", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.status !== "completed" && ride.status !== "no_show") {
+      res.status(409).json({ ok: false, error: "cash_confirm_requires_completed_ride" });
+      return;
+    }
+    const pm = String(ride.paymentMethod ?? "").toLowerCase();
+    if (pm !== "cash" && pm !== "bar") {
+      res.status(409).json({ ok: false, error: "not_cash_ride" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (!assigned || assigned !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const confirmedAt = new Date().toISOString();
+    const updated = await updateRide(
+      rideId,
+      { cashConfirmedAt: confirmedAt, paymentStatus: "paid" },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
+    );
+    if (!updated) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "cash_payment_confirmed",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: { confirmedAt },
+    });
+    res.json({ ok: true, cashConfirmedAt: confirmedAt, paymentStatus: "paid" });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/rides/:id/waiting-charge-live", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const rideId = String(req.params.id ?? "").trim();
@@ -1247,6 +1296,9 @@ function buildReceiptHtmlFromRide(
     estimate != null && Math.abs(amount - estimate) > 0.05 && amount > 0;
   const rideNr = String(r.id).slice(0, 8).toUpperCase();
   const paymentLabel = (() => {
+    if (r.cashConfirmedAt) return "Bar (vom Fahrer bestätigt)";
+    if (r.paymentStatus === "refunded") return "Erstattet";
+    if (r.paymentStatus === "paid" && String(r.paymentMethod ?? "").toLowerCase().includes("apple")) return "Apple Pay";
     const pm = String(r.paymentMethod ?? "").trim().toLowerCase();
     if (pm === "cash" || pm === "bar") return "Bar";
     if (pm === "card" || pm === "karte") return "Karte";

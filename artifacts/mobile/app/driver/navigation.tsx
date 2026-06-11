@@ -71,6 +71,10 @@ import {
 import { formatWaitingChargeDe } from "@/utils/waitingTimeCharge";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
 import { formatEuro } from "@/utils/fareCalculator";
+import {
+  driverRidePaymentLooksLikeCash,
+  postDriverCashConfirmed,
+} from "@/utils/driverCashPaymentApi";
 
 const API_BASE = getApiBaseUrl();
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
@@ -255,6 +259,8 @@ export default function DriverNavigationScreen() {
   const [rideFleetStatus, setRideFleetStatus] = useState("accepted");
   const [completingRide, setCompletingRide] = useState(false);
   const [showFareModal, setShowFareModal] = useState(false);
+  const [showCashConfirmModal, setShowCashConfirmModal] = useState(false);
+  const [cashConfirmBusy, setCashConfirmBusy] = useState(false);
   const [fareInput, setFareInput] = useState(
     formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
   );
@@ -806,6 +812,18 @@ export default function DriverNavigationScreen() {
     setShowFareModal(true);
   };
 
+  const goToDashboardAfterRide = useCallback(() => {
+    replaceDriverStackExclusive({
+      pathname: "/driver/dashboard",
+      params: {
+        followUp: "1",
+        lastRideId: params.rideId ?? "",
+        followUpLat: String(driverLat),
+        followUpLon: String(driverLon),
+      },
+    } as import("expo-router").Href);
+  }, [driverLat, driverLon, params.rideId]);
+
   const completeRideWithFare = async (fare: number, plausibilityAck = false) => {
     setCompletingRide(true);
     try {
@@ -816,15 +834,11 @@ export default function DriverNavigationScreen() {
       setShowFareModal(false);
       disconnectSocket();
       trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);
-      replaceDriverStackExclusive({
-        pathname: "/driver/dashboard",
-        params: {
-          followUp: "1",
-          lastRideId: params.rideId ?? "",
-          followUpLat: String(driverLat),
-          followUpLon: String(driverLon),
-        },
-      } as import("expo-router").Href);
+      if (driverRidePaymentLooksLikeCash(params.paymentMethod)) {
+        setShowCashConfirmModal(true);
+        return;
+      }
+      goToDashboardAfterRide();
     } catch (e) {
       const code = e instanceof Error ? e.message : "status_update_failed";
       const userMessage = e instanceof Error && "userMessage" in e ? String((e as Error & { userMessage?: string }).userMessage ?? "") : "";
@@ -1341,6 +1355,67 @@ export default function DriverNavigationScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={showCashConfirmModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => undefined}
+      >
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Feather name="dollar-sign" size={26} color="#22C55E" />
+              <Text style={styles.modalTitle}>Barzahlung</Text>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              Hast du den Fahrpreis in bar vom Kunden erhalten?
+            </Text>
+            <View style={styles.modalBtns}>
+              <Pressable
+                style={styles.cancelBtn}
+                disabled={cashConfirmBusy}
+                onPress={() => {
+                  setShowCashConfirmModal(false);
+                  goToDashboardAfterRide();
+                }}
+              >
+                <Text style={styles.cancelBtnText}>Später</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.submitBtn, cashConfirmBusy && { opacity: 0.65 }]}
+                disabled={cashConfirmBusy}
+                onPress={() => {
+                  void (async () => {
+                    const rideId = params.rideId?.trim();
+                    if (!rideId) {
+                      setShowCashConfirmModal(false);
+                      goToDashboardAfterRide();
+                      return;
+                    }
+                    setCashConfirmBusy(true);
+                    try {
+                      const res = await postDriverCashConfirmed(rideId);
+                      if (!res.ok) {
+                        Alert.alert("Barbestätigung", `Konnte nicht gespeichert werden (${res.error}).`);
+                      }
+                    } finally {
+                      setCashConfirmBusy(false);
+                      setShowCashConfirmModal(false);
+                      goToDashboardAfterRide();
+                    }
+                  })();
+                }}
+              >
+                <Feather name="check" size={16} color="#fff" />
+                <Text style={styles.submitBtnText}>
+                  {cashConfirmBusy ? "Wird gespeichert…" : "Bar erhalten"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <Modal
