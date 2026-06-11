@@ -27,7 +27,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { IntroSplash, wasIntroSplashShownThisSession } from "@/components/IntroSplash";
 import { SessionRestoreCoordinator } from "@/components/SessionRestoreCoordinator";
 import { StripeRootProvider } from "@/components/StripeRootProvider";
-import { TransportscheinCameraHost } from "@/components/TransportscheinCameraHost";
 import { HOME_SHEET_BG } from "@/constants/homeSheetChrome";
 import { AppConfigProvider } from "@/context/AppConfigContext";
 import { DriverProvider } from "@/context/DriverContext";
@@ -159,7 +158,6 @@ export default function RootLayout() {
                       <RideRequestProvider>
                         <RideProvider>
                           <SessionRestoreCoordinator />
-                          <TransportscheinCameraHost />
                           <RootLayoutNav />
                         </RideProvider>
                       </RideRequestProvider>
