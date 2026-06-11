@@ -26,6 +26,7 @@ import {
   instantMarketOfferIdsKey,
 } from "@/utils/driverInstantMarketOffers";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
+import { enqueueOfflineStatusPatch, flushOfflineStatusQueue } from "@/utils/offlineStatusQueue";
 import { setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
 import { sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
@@ -1021,7 +1022,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       });
       const customerCancelBody = JSON.stringify({ cancelReason: normalizedCancelReason });
 
+      void flushOfflineStatusQueue().catch(() => undefined);
+
       let res: Response;
+      const defaultPatchBody = JSON.stringify({
+        status,
+        ...(finalFare != null ? { finalFare } : {}),
+        ...(driverId != null ? { driverId } : {}),
+        ...(normalizedCancelReason ? { cancelReason: normalizedCancelReason } : {}),
+        ...(driverCoords ? { driverLat: driverCoords.lat, driverLon: driverCoords.lon } : {}),
+      });
       if (status === "cancelled_by_customer") {
         // Zuerst Legacy-Route (auf Prod immer vorhanden); neue Cancel-Route oft noch nicht deployt.
         res = await fetch(legacyStatusUrl, {
@@ -1046,19 +1056,22 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           if (alt.ok || alt.status !== 404) res = alt;
         }
       } else {
-        res = await fetch(legacyStatusUrl, {
-          method: "PATCH",
-          headers: patchHeaders,
-          body: JSON.stringify({
-            status,
-            ...(finalFare != null ? { finalFare } : {}),
-            ...(driverId != null ? { driverId } : {}),
-            ...(normalizedCancelReason ? { cancelReason: normalizedCancelReason } : {}),
-            ...(driverCoords
-              ? { driverLat: driverCoords.lat, driverLon: driverCoords.lon }
-              : {}),
-          }),
-        });
+        try {
+          res = await fetch(legacyStatusUrl, {
+            method: "PATCH",
+            headers: patchHeaders,
+            body: defaultPatchBody,
+          });
+        } catch {
+          await enqueueOfflineStatusPatch({
+            rideId: id,
+            url: legacyStatusUrl,
+            method: "PATCH",
+            headers: patchHeaders as Record<string, string>,
+            body: defaultPatchBody,
+          });
+          return;
+        }
       }
       if (!res.ok) {
         const { errorCode, errorBody } = await parseApiErrorResponse(res);
