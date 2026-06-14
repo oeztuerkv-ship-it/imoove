@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import type { StripeConnectPaymentParams } from "./stripeConnect";
 
 export type SavedStripeCard = {
   paymentMethodId: string;
@@ -92,6 +93,7 @@ export async function chargePassengerSavedCard(input: {
   paymentMethodId: string;
   amountCents: number;
   metadata: Record<string, string>;
+  connectParams?: StripeConnectPaymentParams | null;
 }): Promise<ChargeSavedCardResult> {
   try {
     const intent = await input.stripe.paymentIntents.create({
@@ -102,6 +104,7 @@ export async function chargePassengerSavedCard(input: {
       off_session: true,
       confirm: true,
       metadata: input.metadata,
+      ...(input.connectParams ?? {}),
     });
     if (intent.status === "succeeded") {
       return { kind: "succeeded", paymentIntentId: intent.id };

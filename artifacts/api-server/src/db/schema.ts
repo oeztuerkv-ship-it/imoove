@@ -118,6 +118,12 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   onboarding_approved_by: text("onboarding_approved_by"),
   /** Interne Notizen KK-Modul (Admin). */
   kk_module_notes: text("kk_module_notes").notNull().default(""),
+  /** Stripe Connect Express (acct_…); Zahlungen mit transfer_data.destination. */
+  stripe_connect_account_id: text("stripe_connect_account_id"),
+  stripe_connect_charges_enabled: boolean("stripe_connect_charges_enabled").notNull().default(false),
+  stripe_connect_payouts_enabled: boolean("stripe_connect_payouts_enabled").notNull().default(false),
+  stripe_connect_details_submitted: boolean("stripe_connect_details_submitted").notNull().default(false),
+  stripe_connect_onboarded_at: timestamp("stripe_connect_onboarded_at", { withTimezone: true }),
 });
 
 /** Taxi-Onboarding: Fahrzeugregister (vor / parallel zur fleet_vehicles-Flotte). */

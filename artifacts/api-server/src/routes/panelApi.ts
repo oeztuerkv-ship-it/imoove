@@ -101,6 +101,7 @@ import {
 } from "../lib/panelPermissions";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { generateTemporaryPassword } from "../lib/tempPassword";
+import { createStripeConnectOnboardingLink, getPanelStripeConnectStatus } from "../lib/stripeConnect";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
@@ -842,6 +843,36 @@ router.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
 
   res.json({ ok: true, company });
+});
+
+router.get("/panel/v1/stripe-connect", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_profile")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
+    const status = await getPanelStripeConnectStatus(ctx.claims.companyId);
+    res.json({ ok: true, stripeConnect: status });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/stripe-connect/onboarding-link", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_profile")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
+    const result = await createStripeConnectOnboardingLink(ctx.claims.companyId);
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true, url: result.url, accountId: result.accountId });
+  } catch (e) {
+    next(e);
+  }
 });
 
 router.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {

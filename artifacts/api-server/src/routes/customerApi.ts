@@ -23,6 +23,7 @@ import {
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
+import { resolveStripeConnectPaymentParams } from "../lib/stripeConnect.js";
 import { getOrCreateStripeCustomerForPassenger, chargePassengerSavedCard, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
 
@@ -479,10 +480,14 @@ router.post(
       res.status(400).json({ error: "amount_below_minimum" });
       return;
     }
-    const metadata = {
+    const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, amountCents);
+    const metadata: Record<string, string> = {
       ride_id: rideId,
       passenger_id: passengerId,
     };
+    if (ride.companyId?.trim()) {
+      metadata.company_id = ride.companyId.trim();
+    }
     const { customerId, card } = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId, sess.email);
 
     if (card?.paymentMethodId) {
@@ -492,6 +497,7 @@ router.post(
         paymentMethodId: card.paymentMethodId,
         amountCents,
         metadata,
+        connectParams,
       });
       if (charge.kind === "succeeded") {
         await updateRide(rideId, {
@@ -523,6 +529,7 @@ router.post(
         automatic_payment_methods: { enabled: true },
         setup_future_usage: "off_session",
         metadata,
+        ...(connectParams ?? {}),
       },
       { idempotencyKey: `onroda-ride-pi-${rideId}` },
     );

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { logger } from "../lib/logger.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
+import { syncStripeConnectAccountFromStripe } from "../lib/stripeConnect.js";
 
 /**
  * POST /api/stripe/webhook — Rohbody (express.raw in app.ts), Signatur via STRIPE_WEBHOOK_SECRET.
@@ -56,6 +57,22 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
           logger.warn(
             { rideId: outcome.rideId, reason: outcome.reason, eventType: event.type, piId: pi.id },
             "[Stripe] webhook PI not applied to ride",
+          );
+        }
+        break;
+      }
+      case "account.updated": {
+        const account = event.data.object;
+        const companyId = await syncStripeConnectAccountFromStripe(account);
+        if (companyId) {
+          logger.info(
+            {
+              companyId,
+              accountId: account.id,
+              chargesEnabled: account.charges_enabled,
+              payoutsEnabled: account.payouts_enabled,
+            },
+            "[Stripe] Connect account synced from webhook",
           );
         }
         break;
