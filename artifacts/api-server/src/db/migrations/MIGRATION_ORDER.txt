@@ -104,3 +104,5 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 100_no_show_and_driver_waiting.sql
 101_ride_waiting_charge.sql
 102_ride_payment_status.sql
+103_rides_lookup_indexes.sql
+104_admin_companies_stripe_connect.sql

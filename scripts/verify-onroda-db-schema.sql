@@ -1253,6 +1253,41 @@ BEGIN
     errs := array_append(errs, 'rides.payment_status (Migration 102)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'rides_passenger_id_idx'
+  ) THEN
+    errs := array_append(errs, 'index rides_passenger_id_idx (Migration 103)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'rides_driver_id_idx'
+  ) THEN
+    errs := array_append(errs, 'index rides_driver_id_idx (Migration 103)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'rides_status_idx'
+  ) THEN
+    errs := array_append(errs, 'index rides_status_idx (Migration 103)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'stripe_connect_account_id'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.stripe_connect_account_id (Migration 104)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'admin_companies_stripe_connect_account_uidx'
+  ) THEN
+    errs := array_append(errs, 'index admin_companies_stripe_connect_account_uidx (Migration 104)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

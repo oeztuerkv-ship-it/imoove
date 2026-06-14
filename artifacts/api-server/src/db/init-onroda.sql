@@ -107,6 +107,9 @@ CREATE TABLE IF NOT EXISTS rides (
 
 CREATE INDEX IF NOT EXISTS rides_company_id_idx ON rides (company_id);
 CREATE INDEX IF NOT EXISTS rides_created_at_desc_idx ON rides (created_at DESC);
+CREATE INDEX IF NOT EXISTS rides_passenger_id_idx ON rides (passenger_id);
+CREATE INDEX IF NOT EXISTS rides_driver_id_idx ON rides (driver_id);
+CREATE INDEX IF NOT EXISTS rides_status_idx ON rides (status);
 
 CREATE TABLE IF NOT EXISTS ride_events (
   id TEXT PRIMARY KEY,
