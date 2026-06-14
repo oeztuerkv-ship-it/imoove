@@ -16,6 +16,13 @@ const rooms = new Map<string, Set<WebSocket>>();
 
 const JOIN_IDLE_TIMEOUT_MS = 15_000;
 
+function rejectJoin(socket: WebSocket, code: string, closeReason?: string): void {
+  sendWsError(socket, code);
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.close(4403, closeReason ?? code);
+  }
+}
+
 /** Live-Status an alle WS-Clients im Fahrt-Room (nach Cron oder PATCH). */
 export function broadcastToRideRoom(rideId: string, payload: Record<string, unknown>): void {
   const set = rooms.get(rideId.trim());
@@ -92,31 +99,33 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
           const rideIdRaw = typeof msg.rideId === "string" ? msg.rideId.trim() : "";
           const tokenRaw = msg.token ?? msg.auth;
           if (!rideIdRaw) {
-            sendWsError(socket, "join_ride_id_required");
+            rejectJoin(socket, "join_ride_id_required");
             return;
           }
           if (typeof tokenRaw !== "string" || !tokenRaw.trim()) {
-            sendWsError(socket, "join_token_required");
+            rejectJoin(socket, "join_token_required");
             return;
           }
 
           const principal = await resolveWsJoinPrincipal(tokenRaw);
           if (principal.kind === "invalid") {
-            sendWsError(socket, "join_auth_invalid");
+            rejectJoin(socket, "join_auth_invalid");
             return;
           }
 
           const ride = await findRide(rideIdRaw);
           if (!ride) {
-            sendWsError(socket, "join_ride_not_found");
+            rejectJoin(socket, "join_ride_not_found");
             return;
           }
 
           if (!wsJoinPrincipalMatchesRide(ride, principal)) {
-            sendWsError(socket, "join_forbidden");
             logger.warn({ rideId: rideIdRaw, role: principal.kind }, "[ws] join forbidden");
+            rejectJoin(socket, "join_forbidden");
             return;
           }
+
+          clearTimeout(joinIdleTimer);
 
           const prev = socketMeta.get(socket);
           if (prev && prev.rideId !== rideIdRaw) {
