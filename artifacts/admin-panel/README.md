@@ -90,9 +90,7 @@ Das Admin-Panel wird unter **`/partners/`** ausgeliefert (`vite` mit `base: /par
 
 (Abhängigkeiten und Lockfile: **Repo-Root** `pnpm-lock.yaml` — keine `package-lock.json` in den Panel-Ordnern.)
 
-### Optional: eigenes PM2-App (Vite Preview auf Port 3001)
-
-Wenn Nginx `admin.*` direkt auf einen Node-Prozess legen soll (statt statisch über die API): nach `pnpm --filter admin-panel run build` **`ecosystem.config.cjs`** nutzen — App **`onroda-admin-panel`** führt **`pnpm run preview:prod`** aus (**127.0.0.1:3001**, `base` `/partners/`). Start: `pm2 start ecosystem.config.cjs --only onroda-admin-panel` (siehe Kommentare in der Datei).
+**Produktion:** Admin-Panel statisch (API-`dist` oder Nginx/rsync) — **kein** PM2-Prozess `onroda-admin-panel` (siehe `ecosystem.config.cjs`).
 
 ## Verifikation `/partners/` (Build + HTTP)
 
