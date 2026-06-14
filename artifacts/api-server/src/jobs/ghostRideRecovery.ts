@@ -6,7 +6,7 @@ import { insertSupplementalRideEvent, updateRide } from "../db/ridesData";
 import { rideEventsTable, ridesTable } from "../db/schema";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { logger } from "../lib/logger";
-import { broadcastRideStatusChange } from "../wsRideSocketHub";
+import { notifyCronRideStatusChange } from "../lib/cronRideStatusNotify";
 
 const DEFAULT_IDLE_MINUTES = 15;
 const DEFAULT_STALE_EXPIRE_HOURS = 8;
@@ -67,13 +67,12 @@ export async function expireStaleOpenRides(nowMs: number = Date.now()): Promise<
     );
     if (!updated) continue;
 
-    broadcastRideStatusChange(id, "expired", fromStatus);
-
-    const pid = (updated.passengerId ?? "").trim();
-    if (pid) {
-      const { notifyPassengerReservationExpired } = await import("../lib/passengerRideExpoPush.js");
-      void notifyPassengerReservationExpired(pid, id);
-    }
+    notifyCronRideStatusChange({
+      rideId: id,
+      fromStatus,
+      toStatus: "expired",
+      passengerId: updated.passengerId,
+    });
 
     await insertSupplementalRideEvent(id, {
       eventType: "stale_ride_expired",
@@ -160,7 +159,12 @@ export async function recoverGhostAcceptedRides(nowMs: number = Date.now()): Pro
     );
     if (!updated) continue;
 
-    broadcastRideStatusChange(id, revertStatus, "accepted");
+    notifyCronRideStatusChange({
+      rideId: id,
+      fromStatus: "accepted",
+      toStatus: revertStatus,
+      passengerId: updated.passengerId,
+    });
 
     await insertSupplementalRideEvent(id, {
       eventType: "ghost_ride_recovered",

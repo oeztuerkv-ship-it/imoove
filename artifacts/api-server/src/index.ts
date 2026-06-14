@@ -63,12 +63,14 @@ httpServer.listen(port, () => {
         logger.info({ count: noDriverCancelled.length }, "[Cron] Kein Fahrer → cancelled_by_system");
         const { releaseAccessCodesForRideRows } = await import("./db/accessCodesData.js");
         await releaseAccessCodesForRideRows(noDriverCancelled);
-        const { broadcastRideStatusChange } = await import("./wsRideSocketHub.js");
-        const { notifyPassengerRideCancelledBySystem } = await import("./lib/passengerRideExpoPush.js");
+        const { notifyCronRideStatusChange } = await import("./lib/cronRideStatusNotify.js");
         for (const row of noDriverCancelled) {
-          broadcastRideStatusChange(row.id, "cancelled_by_system", "scheduled");
-          const pid = typeof row.passenger_id === "string" ? row.passenger_id.trim() : "";
-          if (pid) void notifyPassengerRideCancelledBySystem(pid, row.id);
+          notifyCronRideStatusChange({
+            rideId: row.id,
+            fromStatus: "scheduled",
+            toStatus: "cancelled_by_system",
+            passengerId: row.passenger_id,
+          });
         }
       }
 
@@ -88,21 +90,11 @@ httpServer.listen(port, () => {
       const expiredAssigned = await expirePastAssignedReservations(now);
       if (expiredAssigned.length > 0) {
         logger.info({ count: expiredAssigned.length }, "[Cron] scheduled_assigned → expired");
-        const { notifyPassengerReservationExpired } = await import("./lib/passengerRideExpoPush.js");
-        for (const row of expiredAssigned) {
-          const pid = typeof row.passenger_id === "string" ? row.passenger_id.trim() : "";
-          if (pid) void notifyPassengerReservationExpired(pid, row.id);
-        }
       }
 
       const expiredScheduled = await expirePastScheduledReservations(now);
       if (expiredScheduled.length > 0) {
         logger.info({ count: expiredScheduled.length }, "[Cron] scheduled → expired");
-        const { notifyPassengerReservationExpired } = await import("./lib/passengerRideExpoPush.js");
-        for (const row of expiredScheduled) {
-          const pid = typeof row.passenger_id === "string" ? row.passenger_id.trim() : "";
-          if (pid) void notifyPassengerReservationExpired(pid, row.id);
-        }
       }
 
       // Job 4: 30-Min-Fenster vor Abholung → ready_for_dispatch

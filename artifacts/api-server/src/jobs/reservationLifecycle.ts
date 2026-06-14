@@ -2,7 +2,7 @@ import { and, eq, gt, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import { releaseAccessCodesForRideRows } from "../db/accessCodesData";
 import { getDb, isPostgresConfigured } from "../db/client";
 import { ridesTable } from "../db/schema";
-import { broadcastRideStatusChange } from "../wsRideSocketHub";
+import { notifyCronRideStatusChange } from "../lib/cronRideStatusNotify";
 
 export const DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
 
@@ -42,7 +42,12 @@ export async function expirePastScheduledReservations(
   await releaseAccessCodesForRideRows(rows);
 
   for (const row of rows) {
-    broadcastRideStatusChange(row.id, "expired", "scheduled");
+    notifyCronRideStatusChange({
+      rideId: row.id,
+      fromStatus: "scheduled",
+      toStatus: "expired",
+      passengerId: row.passenger_id,
+    });
   }
 
   return rows;
@@ -81,7 +86,12 @@ export async function expirePastAssignedReservations(
   await releaseAccessCodesForRideRows(rows);
 
   for (const row of rows) {
-    broadcastRideStatusChange(row.id, "expired", "scheduled_assigned");
+    notifyCronRideStatusChange({
+      rideId: row.id,
+      fromStatus: "scheduled_assigned",
+      toStatus: "expired",
+      passengerId: row.passenger_id,
+    });
   }
 
   return rows;
@@ -132,7 +142,12 @@ export async function releaseMissedActivationReservations(
     .where(inArray(ridesTable.id, missedIds));
 
   for (const row of missed) {
-    broadcastRideStatusChange(row.id, "scheduled", "scheduled_assigned");
+    notifyCronRideStatusChange({
+      rideId: row.id,
+      fromStatus: "scheduled_assigned",
+      toStatus: "scheduled",
+      passengerId: row.passenger_id,
+    });
   }
 
   return missed;
@@ -195,7 +210,12 @@ export async function promoteReservationsToReadyForDispatch(
       driver_id: row.driver_id,
       previous_status: prev,
     });
-    broadcastRideStatusChange(row.id, "ready_for_dispatch", prev);
+    notifyCronRideStatusChange({
+      rideId: row.id,
+      fromStatus: prev,
+      toStatus: "ready_for_dispatch",
+      passengerId: row.passenger_id,
+    });
   }
 
   return promoted;
