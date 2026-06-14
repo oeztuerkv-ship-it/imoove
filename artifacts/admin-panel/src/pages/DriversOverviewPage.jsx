@@ -146,6 +146,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [noteIn, setNoteIn] = useState("");
+  const [dispatchPriorityIn, setDispatchPriorityIn] = useState("C");
   const [actBusy, setActBusy] = useState(false);
 
   const [blockOpen, setBlockOpen] = useState(false);
@@ -238,6 +239,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         }
         setDetail(j);
         setNoteIn(j.driver?.adminInternalNote || "");
+        setDispatchPriorityIn(String(j.driver?.dispatchPriority || "C").toUpperCase());
         setDetailLoading(false);
       })
       .catch(() => {
@@ -279,6 +281,32 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         return;
       }
       loadDetail(id);
+    } finally {
+      setActBusy(false);
+    }
+  }
+
+  async function patchDispatchPriority() {
+    if (!detail?.driver) return;
+    setActBusy("dispatchPriority");
+    try {
+      const { companyId, id } = detail.driver;
+      const r = await fetch(
+        `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(id)}/dispatch-priority`,
+        {
+          method: "PATCH",
+          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ dispatchPriority: dispatchPriorityIn }),
+        },
+      );
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        window.alert(j.error || r.status);
+        return;
+      }
+      if (j.driver) setDetail((cur) => (cur ? { ...cur, driver: j.driver } : cur));
+      else loadDetail(id);
+      reloadLastSearch();
     } finally {
       setActBusy(false);
     }
@@ -672,6 +700,9 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                     <div>
                       <strong>Letzte Aktivität</strong> {fmtTs(detail.driver.lastHeartbeatAt || detail.driver.lastLoginAt)}
                     </div>
+                    <div>
+                      <strong>Dispatch-Priorität</strong> {detail.driver.dispatchPriority || "C"}
+                    </div>
                   </div>
 
                   {detail.driver.readiness && !detail.driver.readiness.ready ? (
@@ -681,6 +712,29 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                       ))}
                     </ul>
                   ) : null}
+
+                  <label className="admin-field-label" style={{ display: "block", marginTop: 12 }}>
+                    Premium-Dispatch (A / B / C)
+                  </label>
+                  <select
+                    className="admin-input"
+                    style={{ maxWidth: 140, display: "block", marginTop: 4 }}
+                    value={dispatchPriorityIn}
+                    onChange={(e) => setDispatchPriorityIn(e.target.value)}
+                  >
+                    <option value="A">A — zuerst am Markt</option>
+                    <option value="B">B</option>
+                    <option value="C">C — Standard</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="admin-btn-primary"
+                    style={{ marginTop: 8 }}
+                    disabled={!!actBusy}
+                    onClick={() => void patchDispatchPriority()}
+                  >
+                    Priorität speichern
+                  </button>
 
                   <label className="admin-field-label" style={{ display: "block", marginTop: 12 }}>
                     Admin-Notiz (intern)

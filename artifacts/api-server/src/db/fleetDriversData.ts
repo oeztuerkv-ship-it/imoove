@@ -3,7 +3,12 @@ import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { findCompanyById } from "./adminData";
 import { getDb, isPostgresConfigured } from "./client";
 import { findActivePanelUserByEmailNormalized } from "./panelAuthData";
-import { adminCompaniesTable, fleetDriversTable } from "./schema";
+import { adminCompaniesTable, adminAuthUsersTable, fleetDriversTable } from "./schema";
+import {
+  emailQualifiesForAutoDispatchPriorityA,
+  normalizeDispatchPriority,
+  type DispatchPriority,
+} from "../lib/dispatchPriorityTier";
 
 /** Eine E-Mail → genau ein `fleet_drivers`-Datensatz → genau ein Mandant (kein zweites Konto). */
 export type FleetDriverEmailRejectReason =
@@ -153,6 +158,8 @@ export interface FleetDriverListRow {
   permissionKkModule: boolean;
   /** Inhaber-Fahrerkonto. */
   isOwner: boolean;
+  /** Premium-Dispatch A/B/C (Admin). */
+  dispatchPriority: "A" | "B" | "C";
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -218,6 +225,7 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     medicalTransportInheritFromCompany: Boolean(r.medical_transport_inherit_from_company),
     permissionKkModule: Boolean(r.permission_kk_module),
     isOwner: Boolean(r.is_owner),
+    dispatchPriority: normalizeDispatchPriority((r as { dispatch_priority?: string }).dispatch_priority),
   };
 }
 
@@ -990,4 +998,62 @@ export async function listPendingFleetDriversForAdmin(limit?: number): Promise<F
     approvalStatus: r.approvalStatus,
     updatedAt: r.updatedAt.toISOString(),
   }));
+}
+
+export async function getFleetDriverDispatchPriority(
+  fleetDriverId: string,
+  companyId: string,
+): Promise<DispatchPriority> {
+  const row = await findFleetDriverInCompany(fleetDriverId, companyId);
+  if (!row) return "C";
+  return normalizeDispatchPriority((row as { dispatch_priority?: string }).dispatch_priority);
+}
+
+export async function setFleetDriverDispatchPriorityForAdmin(
+  companyId: string,
+  driverId: string,
+  priority: DispatchPriority,
+): Promise<{ ok: true } | { ok: false; error: "not_found" }> {
+  const p = normalizeDispatchPriority(priority);
+  const db = getDb();
+  if (!db) return { ok: false, error: "not_found" };
+  const u = await db
+    .update(fleetDriversTable)
+    .set({ dispatch_priority: p, updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+/** Plattform-Admin-E-Mail → automatisch Priorität A (Vedat / admin_auth_users). */
+export async function syncFleetDriverDispatchPriorityFromAdminEmail(
+  fleetDriverId: string,
+  companyId: string,
+): Promise<void> {
+  const row = await findFleetDriverInCompany(fleetDriverId, companyId);
+  if (!row) return;
+  const email = String(row.email ?? "").trim();
+  if (!email) return;
+
+  let autoA = emailQualifiesForAutoDispatchPriorityA(email);
+  if (!autoA && isPostgresConfigured()) {
+    const db = getDb();
+    if (db) {
+      const admins = await db
+        .select({ email: adminAuthUsersTable.email })
+        .from(adminAuthUsersTable)
+        .where(sql`lower(trim(${adminAuthUsersTable.email})) = lower(trim(${email}))`)
+        .limit(1);
+      autoA = admins.length > 0;
+    }
+  }
+  if (!autoA) return;
+  const cur = normalizeDispatchPriority((row as { dispatch_priority?: string }).dispatch_priority);
+  if (cur === "A") return;
+  const db = getDb();
+  if (!db) return;
+  await db
+    .update(fleetDriversTable)
+    .set({ dispatch_priority: "A", updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, fleetDriverId), eq(fleetDriversTable.company_id, companyId)));
 }

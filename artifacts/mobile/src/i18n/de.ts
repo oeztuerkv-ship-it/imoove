@@ -100,6 +100,8 @@ export const de: TranslationTree = {
       destination: "Ziel",
       destinationLocked: "Ziel nach Annahme sichtbar",
       reject: "Ablehnen",
+      release: "Freigeben",
+      releaseHint: "An Stufe B weitergeben",
       accept: "Annehmen",
       acceptHint: "Tippen zum Annehmen",
       seconds: "Sek.",

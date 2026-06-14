@@ -99,6 +99,7 @@ export default function AppOperationalDispatchPage() {
           {b("autoReassignOnTimeout", "Automatische Weitergabe bei Timeout (Angebot)")}
           {b("blockAfterMultipleRejects", "Nach mehreren Ablehnungen sperren (Policy)")}
           {n("exclusiveSeconds", "Exklusivzeit (Sekunden) — Angebot nur an einen Fahrer n sec")}
+          {n("premiumTierTimeoutSeconds", "Premium-Stufen-Timeout (Sekunden) — A→B→C je Stufe")}
           {n("radiusKm", "Suchradius (km) für anfragbare Fahrer — Planungsgröße")}
           <label className="admin-form-label" style={{ display: "block", marginTop: 8 }}>Priorität (distance | fairness | —)</label>
           <input

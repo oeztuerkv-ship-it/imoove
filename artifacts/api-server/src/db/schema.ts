@@ -241,6 +241,8 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   permission_kk_module: boolean("permission_kk_module").notNull().default(false),
   /** Inhaber-Fahrerkonto — voller KK-Zugriff bei aktivem Mandanten-Modul. */
   is_owner: boolean("is_owner").notNull().default(false),
+  /** Premium-Dispatch: A (zuerst), B, C — nur Admin. */
+  dispatch_priority: text("dispatch_priority").notNull().default("C"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true }),
@@ -658,6 +660,9 @@ export const ridesTable = pgTable("rides", {
   stripe_refund_id: text("stripe_refund_id"),
   refunded_at: timestamp("refunded_at", { withTimezone: true }),
   cash_confirmed_at: timestamp("cash_confirmed_at", { withTimezone: true }),
+  /** Sofortfahrt: aktuelle Angebots-Stufe A→B→C. */
+  dispatch_tier: text("dispatch_tier").notNull().default("A"),
+  dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),
 });
 
 /** Letzte Fahrer-GPS pro Fahrt (Geofence, Live-Tracking, Recovery). */

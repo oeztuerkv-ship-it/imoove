@@ -163,6 +163,9 @@ export interface RideRequest {
   passengerId?: string;
   driverId?: string | null;
   rejectedBy: string[];
+  /** Sofortfahrt: aktuelle Dispatch-Stufe (A→B→C). */
+  dispatchTier?: "A" | "B" | "C" | null;
+  dispatchTierStartedAt?: string | null;
   status:
     | "draft"
     | "scheduled"

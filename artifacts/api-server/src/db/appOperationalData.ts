@@ -115,6 +115,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     autoReassignOnTimeout: true,
     priority: "distance",
     blockAfterMultipleRejects: false,
+    /** Premium-Fahrer: Sekunden pro Stufe A→B→C bevor nächste Stufe am Markt erscheint. */
+    premiumTierTimeoutSeconds: 30,
   },
   features: {
     normalRide: true,

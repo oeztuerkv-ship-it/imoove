@@ -64,6 +64,7 @@ import {
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow, getFleetDriverMarketOnline } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
+import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
   notifyDriverFollowUpOffer,
   notifyMarketOnlineDriversInstantRideOffer,
@@ -1902,6 +1903,7 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
       scheduledAt: scheduledAtNormalized,
       rejectedBy: [],
       driverId: null,
+      ...initialDispatchTierFieldsForRide(scheduledAtNormalized),
       customerPhone: customerPhoneClean || null,
       partnerBookingMeta: normalizedPartnerMeta,
       rideKind,

@@ -1,10 +1,16 @@
 import type { RideRequest } from "../domain/rideRequest";
-import { getFleetDriverMarketOnline } from "./fleetDriversData";
+import { getFleetDriverMarketOnline, getFleetDriverDispatchPriority } from "./fleetDriversData";
 import { getFleetDriverReadinessById } from "./fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "./fleetMatchingData";
 import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { listRides } from "./ridesData";
+import { syncDispatchTiersForRides } from "./rideDispatchTierData";
+import {
+  driverMatchesDispatchTier,
+  isOpenInstantRideForDispatch,
+  normalizeDispatchPriority,
+} from "../lib/dispatchPriorityTier";
 
 const TERMINAL_MARKET_STATUSES = new Set([
   "completed",
@@ -83,7 +89,7 @@ export async function listMarketRidesForFleetDriver(
   const companyKkModuleEnabled = await getCompanyFeatureKkModule(companyId);
   const all = await listRides();
 
-  const marketRows = all.filter((ride) => {
+  const marketRowsRaw = all.filter((ride) => {
     if (TERMINAL_MARKET_STATUSES.has(ride.status)) return false;
     if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return false;
     const isAssignedToDriver = ride.driverId === fleetDriverId;
@@ -107,6 +113,16 @@ export async function listMarketRidesForFleetDriver(
     if (!inMarket) return false;
     if (!marketOnline) return false;
     return isRideCompatibleWithCapability(ride, capability);
+  });
+
+  const syncedRows = await syncDispatchTiersForRides(marketRowsRaw);
+  const driverPriority = await getFleetDriverDispatchPriority(fleetDriverId, companyId);
+  const marketRows = syncedRows.filter((ride) => {
+    if (isOpenInstantRideForDispatch(ride)) {
+      const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
+      if (!driverMatchesDispatchTier(driverPriority, rideTier)) return false;
+    }
+    return true;
   });
 
   return {

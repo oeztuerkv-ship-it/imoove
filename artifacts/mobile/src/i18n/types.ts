@@ -104,6 +104,8 @@ export type TranslationTree = {
       destination: string;
       destinationLocked: string;
       reject: string;
+      release: string;
+      releaseHint: string;
       accept: string;
       acceptHint: string;
       seconds: string;

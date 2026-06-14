@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
-import { findFleetDriverByEmailNormalized, getCompanyKind, touchFleetDriverLogin } from "../db/fleetDriversData";
+import { findFleetDriverByEmailNormalized, getCompanyKind, syncFleetDriverDispatchPriorityFromAdminEmail, touchFleetDriverLogin } from "../db/fleetDriversData";
 import { findActivePanelUserByEmailNormalized } from "../db/panelAuthData";
 import {
   getFleetLoginCompanyDenyReason,
@@ -109,6 +109,7 @@ router.post("/fleet-auth/login", async (req, res) => {
   }
 
   await touchFleetDriverLogin(row.id);
+  void syncFleetDriverDispatchPriorityFromAdminEmail(row.id, row.company_id);
 
   res.json({
     ok: true,

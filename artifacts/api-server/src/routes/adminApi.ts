@@ -246,8 +246,10 @@ import {
   setFleetDriverApprovalStatusOnlyForCompany,
   setFleetDriverReadinessOverrideSystem,
   setFleetDriverMedicalTransport,
+  setFleetDriverDispatchPriorityForAdmin,
   type FleetDriverApprovalStatus,
 } from "../db/fleetDriversData";
+import { normalizeDispatchPriority } from "../lib/dispatchPriorityTier";
 import {
   getAdminTaxiFleetDriverDetail,
   listAdminTaxiFleetDriverRows,
@@ -2083,6 +2085,45 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
       },
     });
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/dispatch-priority", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const raw = (req.body as { dispatchPriority?: unknown })?.dispatchPriority;
+    const rawStr = String(raw ?? "").trim().toUpperCase();
+    if (rawStr !== "A" && rawStr !== "B" && rawStr !== "C") {
+      res.status(400).json({ error: "invalid_dispatch_priority", hint: "A | B | C" });
+      return;
+    }
+    const priority = normalizeDispatchPriority(rawStr);
+    const patched = await setFleetDriverDispatchPriorityForAdmin(companyId, driverId, priority);
+    if (!patched.ok) {
+      res.status(404).json({ error: patched.error });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.dispatch_priority",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { dispatchPriority: priority, adminUserId: adminId },
+    });
+    const driver = await getAdminTaxiFleetDriverDetail(companyId, driverId);
+    res.json({ ok: true, driver });
   } catch (e) {
     next(e);
   }

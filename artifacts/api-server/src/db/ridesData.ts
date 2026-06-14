@@ -172,6 +172,10 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     vehicle: r.vehicle,
     pricingMode: parsePricingModeFromDb(r.pricing_mode),
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
+    dispatchTier: (r.dispatch_tier as RideRequest["dispatchTier"]) ?? "A",
+    dispatchTierStartedAt: r.dispatch_tier_started_at
+      ? r.dispatch_tier_started_at.toISOString()
+      : null,
     partnerBookingMeta: parsePartnerBookingMetaFromRow(r.partner_booking_meta, parsePartnerBookingMeta) ?? null,
     accessibilityOptions:
       r.accessibility_options_json && typeof r.accessibility_options_json === "object"
@@ -251,6 +255,8 @@ function rideToUpdate(r: RideRequest) {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
+    dispatch_tier: r.dispatchTier ?? "A",
+    dispatch_tier_started_at: r.dispatchTierStartedAt ? new Date(r.dispatchTierStartedAt) : null,
     partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson) as Record<
       string,
       unknown
@@ -310,6 +316,8 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
+    dispatch_tier: r.dispatchTier ?? "A",
+    dispatch_tier_started_at: r.dispatchTierStartedAt ? new Date(r.dispatchTierStartedAt) : null,
     partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson) as Record<
       string,
       unknown

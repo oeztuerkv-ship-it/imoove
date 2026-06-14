@@ -100,6 +100,8 @@ export const tr: TranslationTree = {
       destination: "Varış",
       destinationLocked: "Varış kabulden sonra görünür",
       reject: "Reddet",
+      release: "Serbest bırak",
+      releaseHint: "B seviyesine aktar",
       accept: "Kabul et",
       acceptHint: "Kabul etmek için dokunun",
       seconds: "Sn.",

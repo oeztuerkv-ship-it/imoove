@@ -5,6 +5,7 @@ import {
   fleetDriverTableRowToList,
   getFleetDriverMarketOnline,
   setFleetDriverMarketOnline,
+  syncFleetDriverDispatchPriorityFromAdminEmail,
   touchFleetDriverHeartbeat,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
@@ -26,6 +27,7 @@ import {
   recordDispatchOffersSentForDriver,
 } from "../db/rideDispatchOfferData";
 import { getFleetDriverRideEarnings } from "../lib/fleetDriverRideEarnings.js";
+import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
@@ -59,6 +61,8 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     res.status(401).json({ error: "not_found" });
     return;
   }
+  void syncFleetDriverDispatchPriorityFromAdminEmail(a.fleetDriverId, a.companyId);
+  const rowFresh = (await findFleetDriverInCompany(a.fleetDriverId, a.companyId)) ?? row;
   const [assignments, vehicles] = await Promise.all([
     listAssignmentsForCompany(a.companyId),
     listFleetVehiclesForCompany(a.companyId),
@@ -69,7 +73,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     assignedVehicle && assignedVehicle.isActive && assignedVehicle.approvalStatus === "approved"
       ? assignedVehicle
       : null;
-  const listRow = fleetDriverTableRowToList(row);
+  const listRow = fleetDriverTableRowToList(rowFresh);
   const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
   const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
   const driverWorkflow = deriveDriverWorkflowLabel(listRow);
@@ -105,6 +109,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     permissionKkModule: kkAccess?.permissionKkModule ?? false,
     isOwner: kkAccess?.isOwner ?? false,
     kkModuleAuthorized: kkAccess?.canAccess ?? false,
+    dispatchPriority: listRow.dispatchPriority,
     medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
     medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
     companyCommission: {
@@ -118,16 +123,17 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     driverWorkflow,
     ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
     driver: {
-      id: row.id,
-      companyId: row.company_id,
-      email: row.email,
-      firstName: row.first_name,
-      lastName: row.last_name,
-      accessStatus: row.access_status,
+      id: rowFresh.id,
+      companyId: rowFresh.company_id,
+      email: rowFresh.email,
+      firstName: rowFresh.first_name,
+      lastName: rowFresh.last_name,
+      accessStatus: rowFresh.access_status,
       approvalStatus: listRow.approvalStatus,
-      mustChangePassword: row.must_change_password,
-      vehicleLegalType: row.vehicle_legal_type,
-      vehicleClass: row.vehicle_class,
+      mustChangePassword: rowFresh.must_change_password,
+      vehicleLegalType: rowFresh.vehicle_legal_type,
+      vehicleClass: rowFresh.vehicle_class,
+      dispatchPriority: listRow.dispatchPriority,
     },
     assignedVehicle: assignedVehicleVisible
       ? {
@@ -548,6 +554,40 @@ router.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDr
       return;
     }
     res.json({ ok: true, rideId });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Premium A: Angebot freigeben → Stufe B am Markt (ohne persönliche Ablehnung). */
+router.post("/fleet-driver/v1/rides/:rideId/release-dispatch-offer", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const result = await releaseInstantRideDispatchOffer({
+      rideId,
+      fleetDriverId: a.fleetDriverId,
+      companyId: a.companyId,
+    });
+    if (!result.ok) {
+      const status =
+        result.error === "not_found"
+          ? 404
+          : result.error === "driver_not_priority_a" || result.error === "release_only_tier_a"
+            ? 403
+            : 409;
+      res.status(status).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true, rideId, dispatchTier: result.ride.dispatchTier ?? "B" });
   } catch (e) {
     next(e);
   }

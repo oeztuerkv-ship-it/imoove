@@ -76,6 +76,7 @@ import {
 } from "../db/appOperationalData";
 import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } from "../lib/rideBookingPricing";
 import { initialPanelRideStatus, isFarFutureReservation, RESERVATION_LEAD_MS } from "../lib/dispatchStatus";
+import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import { canTransitionRideStatus } from "../lib/rideStatusMachine";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
 import {
@@ -1862,6 +1863,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         status: initialPanelRideStatus(scheduledAtVal),
         rejectedBy: [],
         driverId: null,
+        ...initialDispatchTierFieldsForRide(scheduledAtVal),
         customerName,
         customerPhone: customerPhonePanel || null,
         ...(passengerId ? { passengerId } : {}),
@@ -2075,6 +2077,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       status: initialPanelRideStatus(leg.scheduledAt),
       rejectedBy: [],
       driverId: null,
+      ...initialDispatchTierFieldsForRide(leg.scheduledAt),
       customerName: guestName,
       customerPhone: guestPhone || null,
       ...(passengerId ? { passengerId } : {}),
@@ -2321,6 +2324,7 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
       createdAt: nowIso,
       rejectedBy: [] as string[],
       driverId: null as string | null,
+      ...initialDispatchTierFieldsForRide(outLeg.scheduledAt),
       customerName,
       customerPhone: medPhone || null,
       rideKind,
@@ -2610,6 +2614,7 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
         status: initialPanelRideStatus(leg.scheduledAt),
         rejectedBy: [],
         driverId: null,
+        ...initialDispatchTierFieldsForRide(leg.scheduledAt),
         customerName,
         customerPhone: seriesPhone || null,
         from: leg.from,

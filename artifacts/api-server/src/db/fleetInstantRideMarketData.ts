@@ -6,6 +6,8 @@ import { getFleetDriverCapability, isRideCompatibleWithCapability } from "./flee
 import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { fleetDriversTable } from "./schema";
+import { ensureRideDispatchTierCurrent } from "./rideDispatchTierData";
+import { normalizeDispatchPriority } from "../lib/dispatchPriorityTier";
 
 export type MarketOnlineDriverRef = { fleetDriverId: string; companyId: string };
 
@@ -25,6 +27,11 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
   if (!INSTANT_MARKET_STATUSES.has(ride.status)) return [];
   if (ride.driverId) return [];
 
+  const { ride: syncedRide } = await ensureRideDispatchTierCurrent(ride);
+  ride = syncedRide;
+
+  const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
+
   const db = getDb();
   if (!db || !isPostgresConfigured()) return [];
 
@@ -36,6 +43,7 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     eq(fleetDriversTable.is_active, true),
     eq(fleetDriversTable.access_status, "active"),
     eq(fleetDriversTable.approval_status, "approved"),
+    eq(fleetDriversTable.dispatch_priority, rideTier),
   ];
   if (rideCompanyId) {
     conditions.push(eq(fleetDriversTable.company_id, rideCompanyId));
