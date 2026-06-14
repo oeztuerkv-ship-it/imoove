@@ -8,7 +8,6 @@ import { insertComplianceDocumentUpload } from "../db/companyComplianceDocuments
 import { insertPanelAuditLog } from "../db/panelAuditData";
 import { isPostgresConfigured } from "../db/client";
 import {
-  activateFleetDriver,
   countFleetDriversOnline,
   countFleetDriversPScheinExpiringSoon,
   findFleetDriverInCompany,
@@ -19,7 +18,6 @@ import {
   listFleetDriversForCompany,
   patchFleetDriverProfile,
   patchFleetDriverKkPermissions,
-  suspendFleetDriver,
   type FleetVehicleClass as FleetDriverVehicleClass,
   type FleetVehicleLegalType as FleetDriverVehicleLegalType,
   updateFleetDriverPassword,
@@ -49,6 +47,11 @@ import {
   KK_MODULE_NOT_ENABLED,
   kkModuleDeniedJson,
 } from "../lib/kkModuleAccess.js";
+import {
+  PARTNER_FLEET_DRIVER_PATCH_ADMIN_FIELDS,
+  PARTNER_FLEET_VEHICLE_PATCH_ADMIN_FIELDS,
+  rejectPartnerAdminOnlyBodyFields,
+} from "../lib/fleetAdminOnlyFields.js";
 import { hashPassword } from "../lib/password";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
@@ -286,8 +289,9 @@ router.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, n
     const ctx = await assertFleetPanel(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
-    const id = req.params.id;
     const b = req.body as Record<string, unknown>;
+    if (rejectPartnerAdminOnlyBodyFields(res, b, PARTNER_FLEET_DRIVER_PATCH_ADMIN_FIELDS)) return;
+    const id = req.params.id;
     const patch: Parameters<typeof patchFleetDriverProfile>[2] = {};
     if (typeof b.firstName === "string") patch.firstName = b.firstName;
     if (typeof b.lastName === "string") patch.lastName = b.lastName;
@@ -408,54 +412,12 @@ router.patch("/panel/v1/fleet/:driverId/permissions", requirePanelAuth, async (r
   }
 });
 
-router.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
-  try {
-    const ctx = await assertFleetPanel(req as PanelAuthRequest, res);
-    if (!ctx) return;
-    if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
-    const ok = await suspendFleetDriver(req.params.id, ctx.claims.companyId);
-    if (!ok) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    await insertPanelAuditLog({
-      id: randomUUID(),
-      companyId: ctx.claims.companyId,
-      actorPanelUserId: ctx.claims.panelUserId,
-      action: "fleet.driver_suspended",
-      subjectType: "fleet_driver",
-      subjectId: req.params.id,
-      meta: {},
-    });
-    res.json({ ok: true });
-  } catch (e) {
-    next(e);
-  }
+router.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res) => {
+  res.status(403).json({ error: "admin_only_action", hint: "driver_access_status" });
 });
 
-router.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
-  try {
-    const ctx = await assertFleetPanel(req as PanelAuthRequest, res);
-    if (!ctx) return;
-    if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
-    const ok = await activateFleetDriver(req.params.id, ctx.claims.companyId);
-    if (!ok) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    await insertPanelAuditLog({
-      id: randomUUID(),
-      companyId: ctx.claims.companyId,
-      actorPanelUserId: ctx.claims.panelUserId,
-      action: "fleet.driver_activated",
-      subjectType: "fleet_driver",
-      subjectId: req.params.id,
-      meta: {},
-    });
-    res.json({ ok: true });
-  } catch (e) {
-    next(e);
-  }
+router.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res) => {
+  res.status(403).json({ error: "admin_only_action", hint: "driver_access_status" });
 });
 
 router.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
@@ -551,6 +513,10 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const b = req.body as Record<string, unknown>;
+    if (b.vehicleType === "wheelchair" || b.vehicleClass === "wheelchair") {
+      res.status(403).json({ error: "admin_only_field", field: "vehicleType" });
+      return;
+    }
     const gate = await requireFleetOnboardingEntityCreateAllowed(ctx.claims.companyId);
     if (!gate.ok) {
       res.status(403).json({ error: gate.error });
@@ -633,6 +599,7 @@ router.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, 
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const b = req.body as Record<string, unknown>;
+    if (rejectPartnerAdminOnlyBodyFields(res, b, PARTNER_FLEET_VEHICLE_PATCH_ADMIN_FIELDS)) return;
     const patch: Parameters<typeof patchFleetVehicle>[2] = {};
     if (typeof b.licensePlate === "string") patch.licensePlate = b.licensePlate;
     if (typeof b.vin === "string") patch.vin = b.vin;

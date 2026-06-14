@@ -106,6 +106,10 @@ import {
   isPanelInstantRideBooking,
   panelCompanyKindAllowsInstantRide,
 } from "../lib/panelInstantRidePolicy";
+import {
+  PARTNER_COMPANY_PATCH_ADMIN_FIELDS,
+  rejectPartnerAdminOnlyBodyFields,
+} from "../lib/fleetAdminOnlyFields";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
@@ -902,6 +906,7 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
 
     const body = req.body as Record<string, unknown>;
+    if (rejectPartnerAdminOnlyBodyFields(res, body, PARTNER_COMPANY_PATCH_ADMIN_FIELDS)) return;
     const str = (k: string) => (typeof body[k] === "string" ? body[k] : undefined);
 
     const patch: PanelCompanyProfilePatch = {};
@@ -920,8 +925,6 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const country = str("country");
     const legalForm = str("legalForm");
     const ownerName = str("ownerName");
-    const concessionNumber = str("concessionNumber");
-    const taxId = str("taxId");
     const bankIban = str("bankIban");
     if (dispoPhone !== undefined) patch.dispoPhone = dispoPhone;
     if (supportEmail !== undefined) patch.supportEmail = supportEmail;
@@ -938,8 +941,6 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     if (country !== undefined) patch.country = country;
     if (legalForm !== undefined) patch.legalForm = legalForm;
     if (ownerName !== undefined) patch.ownerName = ownerName;
-    if (concessionNumber !== undefined) patch.concessionNumber = concessionNumber;
-    if (taxId !== undefined) patch.taxId = taxId;
     if (bankIban !== undefined) patch.bankIban = bankIban;
 
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);

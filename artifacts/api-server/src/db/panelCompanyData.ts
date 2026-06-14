@@ -96,8 +96,6 @@ export type PanelCompanyProfilePatch = Partial<{
   country: string;
   legalForm: string;
   ownerName: string;
-  concessionNumber: string;
-  taxId: string;
   bankIban: string;
 }>;
 
@@ -343,14 +341,6 @@ export async function patchPanelCompanyProfile(
   if (patch.ownerName !== undefined && isDbEmpty(r0.owner_name)) {
     const v = clip(patch.ownerName, MAX.short);
     if (v) set.owner_name = v;
-  }
-  if (patch.concessionNumber !== undefined && isDbEmpty(r0.concession_number)) {
-    const v = clip(patch.concessionNumber, MAX.short);
-    if (v) set.concession_number = v;
-  }
-  if (patch.taxId !== undefined && isDbEmpty(r0.tax_id)) {
-    const v = clip(patch.taxId, MAX.short);
-    if (v) set.tax_id = v;
   }
   if (patch.bankIban !== undefined && isDbEmpty(r0.bank_iban)) {
     const v = clip(patch.bankIban, MAX.short);
