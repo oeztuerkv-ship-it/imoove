@@ -22,6 +22,7 @@ import {
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
+import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { getOrCreateStripeCustomerForPassenger, chargePassengerSavedCard, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
 
@@ -538,6 +539,11 @@ router.post(
 
 router.post("/customer/v1/payment/confirm-ride", requireCustomerSession, async (req, res, next) => {
   try {
+    const stripe = getStripeClient();
+    if (!stripe) {
+      res.status(503).json({ error: "stripe_not_configured" });
+      return;
+    }
     const sess = (req as CustomerSessionRequest).customerSession;
     if (!sess) {
       res.status(401).json({ error: "unauthorized" });
@@ -560,11 +566,44 @@ router.post("/customer/v1/payment/confirm-ride", requireCustomerSession, async (
       res.status(409).json({ error: "ride_already_refunded" });
       return;
     }
-    const updated = await updateRide(rideId, {
-      paymentStatus: "paid",
-      stripePaymentIntentId: paymentIntentId,
-    });
-    res.json({ ok: true, paymentStatus: updated?.paymentStatus ?? "paid" });
+
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch {
+      res.status(400).json({ error: "invalid_payment_intent" });
+      return;
+    }
+
+    const metaRideId = String(paymentIntent.metadata?.ride_id ?? "").trim();
+    if (metaRideId !== rideId) {
+      res.status(409).json({ error: "payment_intent_ride_mismatch" });
+      return;
+    }
+    const metaPassenger = String(paymentIntent.metadata?.passenger_id ?? "").trim();
+    if (metaPassenger && metaPassenger !== passengerId) {
+      res.status(403).json({ error: "payment_intent_passenger_mismatch" });
+      return;
+    }
+
+    const sync = await applyStripePaymentIntentToRide(paymentIntent);
+    if (!sync.applied) {
+      if (sync.reason === "ride_already_paid") {
+        res.json({ ok: true, paymentStatus: "paid", idempotent: true });
+        return;
+      }
+      if (paymentIntent.status !== "succeeded") {
+        res.status(409).json({
+          error: "payment_intent_not_succeeded",
+          status: paymentIntent.status,
+        });
+        return;
+      }
+      res.status(409).json({ error: sync.reason });
+      return;
+    }
+
+    res.json({ ok: true, paymentStatus: sync.paymentStatus });
   } catch (e) {
     next(e);
   }

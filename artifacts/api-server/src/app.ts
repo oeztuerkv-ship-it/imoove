@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import adminRouter from "./routes/admin";
+import { handleStripeWebhook } from "./routes/stripeWebhook.js";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -97,6 +98,15 @@ function buildCorsAllowedOrigins(): Set<string> {
 }
 
 const corsAllowedOrigins = buildCorsAllowedOrigins();
+
+/** Stripe Webhook: Signatur braucht unveränderten Raw-Body (vor express.json). */
+const stripeWebhookRawBody = express.raw({ type: "application/json" });
+app.post("/api/stripe/webhook", stripeWebhookRawBody, (req, res) => {
+  void handleStripeWebhook(req, res);
+});
+app.post("/stripe/webhook", stripeWebhookRawBody, (req, res) => {
+  void handleStripeWebhook(req, res);
+});
 
 app.use(
   pinoHttp({
