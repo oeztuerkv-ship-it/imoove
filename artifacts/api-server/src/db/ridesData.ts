@@ -1567,6 +1567,16 @@ export async function updateRide(
     tariffSnapshot: cur.tariffSnapshot,
     pricingMode: cur.pricingMode,
   };
+  const nextDriverId = (next.driverId ?? "").trim();
+  const prevDriverId = (cur.driverId ?? "").trim();
+  if (nextDriverId && nextDriverId !== prevDriverId) {
+    const companyId = (next.companyId ?? cur.companyId ?? "").trim();
+    if (companyId) {
+      const { assertFleetDriverMatchesRide } = await import("./fleetMatchingData.js");
+      const cap = await assertFleetDriverMatchesRide(next, nextDriverId, companyId);
+      if (!cap.ok) return null;
+    }
+  }
   const actor = opts?.mutationActor ?? { actorType: "system", actorId: null };
   const db = getDb();
   if (!db) {
