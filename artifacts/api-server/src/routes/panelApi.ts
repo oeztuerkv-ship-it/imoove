@@ -102,6 +102,10 @@ import {
 import { hashPassword, verifyPassword } from "../lib/password";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import { createStripeConnectOnboardingLink, getPanelStripeConnectStatus } from "../lib/stripeConnect";
+import {
+  isPanelInstantRideBooking,
+  panelCompanyKindAllowsInstantRide,
+} from "../lib/panelInstantRidePolicy";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
@@ -1761,6 +1765,13 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
       const billingReference = parseOptionalBillingTag(body.billingReference, 256);
       const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
+      if (isPanelInstantRideBooking(scheduledAtVal) && !panelCompanyKindAllowsInstantRide(ctx.profile.companyKind)) {
+        res.status(403).json({
+          error: "company_kind_not_allowed_for_instant_ride",
+          companyKind: ctx.profile.companyKind,
+        });
+        return;
+      }
       if (scheduledAtVal && !isFarFutureReservation(scheduledAtVal)) {
         res.status(400).json({
           error: "scheduled_at_too_soon",
