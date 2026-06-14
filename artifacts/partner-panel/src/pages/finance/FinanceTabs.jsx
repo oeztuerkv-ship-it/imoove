@@ -3,6 +3,7 @@ export default function FinanceTabs({ tab, onTabChange }) {
   const tabs = [
     { id: "overview", label: "Übersicht" },
     { id: "invoices", label: "Rechnungen" },
+    { id: "payouts", label: "Auszahlungen" },
     { id: "export", label: "Export" },
   ];
   return (

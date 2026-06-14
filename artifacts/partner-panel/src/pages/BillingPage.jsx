@@ -5,6 +5,7 @@ import { hasPanelModule } from "../lib/panelNavigation.js";
 import FinanceExportTab from "./finance/FinanceExportTab.jsx";
 import FinanceInvoicesTab from "./finance/FinanceInvoicesTab.jsx";
 import FinanceOverviewTab from "./finance/FinanceOverviewTab.jsx";
+import FinancePayoutsTab from "./finance/FinancePayoutsTab.jsx";
 import FinanceTabs from "./finance/FinanceTabs.jsx";
 import { defaultMonthYm, deriveFinanceKpis, formatYmDe } from "./finance/financeHelpers.js";
 
@@ -18,6 +19,7 @@ export default function BillingPage() {
   const showCodes = hasPanelModule(user?.panelModules, "access_codes");
 
   const [tab, setTab] = useState("overview");
+  const [payoutNotice, setPayoutNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [kpiLoading, setKpiLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -91,8 +93,29 @@ export default function BillingPage() {
   }, [loadKpiSnapshot]);
 
   useEffect(() => {
-    if (tab === "payouts" || tab === "medical") setTab("overview");
+    if (tab === "medical") setTab("overview");
   }, [tab]);
+
+  useEffect(() => {
+    try {
+      const u = new URL(window.location.href);
+      const sc = u.searchParams.get("stripe_connect");
+      if (sc === "return") {
+        setTab("payouts");
+        setPayoutNotice("Willkommen zurück — der Stripe-Status wird aktualisiert. Bei vollständiger Einrichtung erscheint „Auszahlung aktiv“.");
+      } else if (sc === "refresh") {
+        setTab("payouts");
+        setPayoutNotice("Bitte setzen Sie die Stripe-Einrichtung fort (Link unten).");
+      }
+      if (sc) {
+        u.searchParams.delete("stripe_connect");
+        const next = `${u.pathname}${u.search}${u.hash}`;
+        window.history.replaceState({}, "", next);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const onLoad = useCallback(async () => {
     if (!token || !canRead) return;
@@ -188,6 +211,14 @@ export default function BillingPage() {
         <FinanceOverviewTab kpiLoading={kpiLoading} kpiMonthLabel={kpiMonthLabel} kpi={kpi} onRefreshKpi={() => void loadKpiSnapshot()} />
       ) : null}
       {tab === "invoices" ? <FinanceInvoicesTab rides={rides} loading={loading} /> : null}
+      {tab === "payouts" ? (
+        <FinancePayoutsTab
+          rides={rides}
+          loading={loading}
+          notice={payoutNotice}
+          onConsumeNotice={() => setPayoutNotice("")}
+        />
+      ) : null}
       {tab === "export" ? (
         <FinanceExportTab
           rides={rides}
