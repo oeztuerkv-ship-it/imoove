@@ -1,8 +1,10 @@
-import { and, eq, inArray, isNotNull, lt, lte } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import { releaseAccessCodesForRideRows } from "../db/accessCodesData";
 import { getDb, isPostgresConfigured } from "../db/client";
 import { ridesTable } from "../db/schema";
 import { broadcastRideStatusChange } from "../wsRideSocketHub";
+
+export const DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
 
 export type ExpiredScheduledRow = {
   id: string;
@@ -134,4 +136,67 @@ export async function releaseMissedActivationReservations(
   }
 
   return missed;
+}
+
+export type PromotedReservationRow = {
+  id: string;
+  passenger_id: string | null;
+  driver_id: string | null;
+  previous_status: "scheduled" | "scheduled_assigned";
+};
+
+/**
+ * Aktiver Cron: Reservierung im 30-Min-Fenster vor Abholung → `ready_for_dispatch`.
+ * Ersetzt die frühere passive Promotion in `listRides` / `findRide`.
+ */
+export async function promoteReservationsToReadyForDispatch(
+  now: Date = new Date(),
+): Promise<PromotedReservationRow[]> {
+  if (!isPostgresConfigured()) return [];
+  const db = getDb();
+  if (!db) return [];
+
+  const threshold = new Date(
+    now.getTime() + DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1000,
+  );
+
+  const candidates = await db
+    .select({
+      id: ridesTable.id,
+      status: ridesTable.status,
+      passenger_id: ridesTable.passenger_id,
+      driver_id: ridesTable.driver_id,
+    })
+    .from(ridesTable)
+    .where(
+      and(
+        inArray(ridesTable.status, ["scheduled", "scheduled_assigned"]),
+        isNotNull(ridesTable.scheduled_at),
+        lte(ridesTable.scheduled_at, threshold),
+        gt(ridesTable.scheduled_at, now),
+      ),
+    );
+
+  const ids = candidates.map((r) => r.id).filter((id) => id.length > 0);
+  if (ids.length === 0) return [];
+
+  await db
+    .update(ridesTable)
+    .set({ status: "ready_for_dispatch" })
+    .where(inArray(ridesTable.id, ids));
+
+  const promoted: PromotedReservationRow[] = [];
+  for (const row of candidates) {
+    const prev = row.status;
+    if (prev !== "scheduled" && prev !== "scheduled_assigned") continue;
+    promoted.push({
+      id: row.id,
+      passenger_id: row.passenger_id,
+      driver_id: row.driver_id,
+      previous_status: prev,
+    });
+    broadcastRideStatusChange(row.id, "ready_for_dispatch", prev);
+  }
+
+  return promoted;
 }

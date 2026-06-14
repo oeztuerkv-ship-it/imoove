@@ -83,7 +83,7 @@ httpServer.listen(port, () => {
       }
 
       // Job 3: Vergangene Reservierungen → expired (vor Freigabe bei verpasster Aktivierung)
-      const { releaseMissedActivationReservations, expirePastAssignedReservations, expirePastScheduledReservations } =
+      const { releaseMissedActivationReservations, expirePastAssignedReservations, expirePastScheduledReservations, promoteReservationsToReadyForDispatch } =
         await import("./jobs/reservationLifecycle.js");
       const expiredAssigned = await expirePastAssignedReservations(now);
       if (expiredAssigned.length > 0) {
@@ -105,7 +105,13 @@ httpServer.listen(port, () => {
         }
       }
 
-      // Job 4: Fahrer hat 45 min nach Abholzeit noch nicht aktiviert → 24h Sperre + Fahrt freigeben
+      // Job 4: 30-Min-Fenster vor Abholung → ready_for_dispatch
+      const promoted = await promoteReservationsToReadyForDispatch(now);
+      if (promoted.length > 0) {
+        logger.info({ count: promoted.length, rideIds: promoted.map((r) => r.id) }, "[Cron] Reservierung → ready_for_dispatch");
+      }
+
+      // Job 5: Fahrer hat 45 min nach Abholzeit noch nicht aktiviert → 24h Sperre + Fahrt freigeben
       const activationDeadline = new Date(nowMs - 45 * 60 * 1000);
       const missedActivation = await releaseMissedActivationReservations(activationDeadline);
       const { notifyDriverMissedActivationReservation } = await import("./lib/driverRideExpoPush.js");
@@ -119,20 +125,20 @@ httpServer.listen(port, () => {
         }
       }
 
-      // Job 5: accepted ohne GPS-Fortschritt → zurück in Pool (Ghost-Ride Recovery)
+      // Job 6: accepted ohne GPS-Fortschritt → zurück in Pool (Ghost-Ride Recovery)
       const { recoverGhostAcceptedRides, expireStaleOpenRides } = await import("./jobs/ghostRideRecovery.js");
       const ghostRecovered = await recoverGhostAcceptedRides(nowMs);
       if (ghostRecovered.length > 0) {
         logger.info({ count: ghostRecovered.length, rideIds: ghostRecovered }, "[Cron] Ghost-Rides recovered");
       }
 
-      // Job 6: >8h in searching_driver / ready_for_dispatch / in_progress → expired (Test-Hänger)
+      // Job 7: >8h in searching_driver / ready_for_dispatch / in_progress → expired (Test-Hänger)
       const staleExpired = await expireStaleOpenRides(nowMs);
       if (staleExpired.length > 0) {
         logger.info({ count: staleExpired.length, rideIds: staleExpired }, "[Cron] Stale open rides → expired");
       }
 
-      // Job 7: Fahrer 5+ Min nach Abholzeit noch nicht vor Ort
+      // Job 8: Fahrer 5+ Min nach Abholzeit noch nicht vor Ort
       const { flagDriverLateReservations } = await import("./jobs/driverLateDetection.js");
       const lateFlagged = await flagDriverLateReservations(now);
       if (lateFlagged.length > 0) {
