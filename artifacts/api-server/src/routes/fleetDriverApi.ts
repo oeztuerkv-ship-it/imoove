@@ -25,6 +25,7 @@ import {
   recordDispatchOfferSeen,
   recordDispatchOffersSentForDriver,
 } from "../db/rideDispatchOfferData";
+import { getFleetDriverRideEarnings } from "../lib/fleetDriverRideEarnings.js";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
@@ -497,6 +498,33 @@ router.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAu
     }
     await dismissDriverMessage(a.fleetDriverId, messageId);
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/fleet-driver/v1/rides/:rideId/earnings", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const result = await getFleetDriverRideEarnings({
+      rideId,
+      fleetDriverId: a.fleetDriverId,
+      companyId: a.companyId,
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true, ...result.earnings });
   } catch (e) {
     next(e);
   }

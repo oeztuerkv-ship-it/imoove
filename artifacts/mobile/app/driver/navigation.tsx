@@ -24,6 +24,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
+import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -75,6 +76,10 @@ import {
   driverRidePaymentLooksLikeCash,
   postDriverCashConfirmed,
 } from "@/utils/driverCashPaymentApi";
+import {
+  fetchFleetDriverRideEarnings,
+  type DriverRideEarnings,
+} from "@/utils/fleetDriverRideEarnings";
 
 const API_BASE = getApiBaseUrl();
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
@@ -261,6 +266,8 @@ export default function DriverNavigationScreen() {
   const [showFareModal, setShowFareModal] = useState(false);
   const [showCashConfirmModal, setShowCashConfirmModal] = useState(false);
   const [cashConfirmBusy, setCashConfirmBusy] = useState(false);
+  const [showEarningsModal, setShowEarningsModal] = useState(false);
+  const [rideEarnings, setRideEarnings] = useState<DriverRideEarnings | null>(null);
   const [fareInput, setFareInput] = useState(
     formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
   );
@@ -824,6 +831,22 @@ export default function DriverNavigationScreen() {
     } as import("expo-router").Href);
   }, [driverLat, driverLon, params.rideId]);
 
+  const showEarningsThenDashboard = useCallback(async () => {
+    const rideId = params.rideId?.trim();
+    const token = driver?.authToken;
+    if (!rideId || !token) {
+      goToDashboardAfterRide();
+      return;
+    }
+    const earnings = await fetchFleetDriverRideEarnings(rideId, token);
+    if (!earnings) {
+      goToDashboardAfterRide();
+      return;
+    }
+    setRideEarnings(earnings);
+    setShowEarningsModal(true);
+  }, [driver?.authToken, goToDashboardAfterRide, params.rideId]);
+
   const completeRideWithFare = async (fare: number, plausibilityAck = false) => {
     setCompletingRide(true);
     try {
@@ -838,7 +861,7 @@ export default function DriverNavigationScreen() {
         setShowCashConfirmModal(true);
         return;
       }
-      goToDashboardAfterRide();
+      await showEarningsThenDashboard();
     } catch (e) {
       const code = e instanceof Error ? e.message : "status_update_failed";
       const userMessage = e instanceof Error && "userMessage" in e ? String((e as Error & { userMessage?: string }).userMessage ?? "") : "";
@@ -1378,7 +1401,7 @@ export default function DriverNavigationScreen() {
                 disabled={cashConfirmBusy}
                 onPress={() => {
                   setShowCashConfirmModal(false);
-                  goToDashboardAfterRide();
+                  void showEarningsThenDashboard();
                 }}
               >
                 <Text style={styles.cancelBtnText}>Später</Text>
@@ -1391,7 +1414,7 @@ export default function DriverNavigationScreen() {
                     const rideId = params.rideId?.trim();
                     if (!rideId) {
                       setShowCashConfirmModal(false);
-                      goToDashboardAfterRide();
+                      void showEarningsThenDashboard();
                       return;
                     }
                     setCashConfirmBusy(true);
@@ -1403,7 +1426,7 @@ export default function DriverNavigationScreen() {
                     } finally {
                       setCashConfirmBusy(false);
                       setShowCashConfirmModal(false);
-                      goToDashboardAfterRide();
+                      void showEarningsThenDashboard();
                     }
                   })();
                 }}
@@ -1417,6 +1440,16 @@ export default function DriverNavigationScreen() {
           </View>
         </View>
       </Modal>
+
+      <DriverRideEarningsModal
+        visible={showEarningsModal}
+        earnings={rideEarnings}
+        onClose={() => {
+          setShowEarningsModal(false);
+          setRideEarnings(null);
+          goToDashboardAfterRide();
+        }}
+      />
 
       <Modal
         visible={showCancelReasonModal}
