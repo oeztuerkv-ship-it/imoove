@@ -1186,9 +1186,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         setLastAddedRequestId(id);
         return id;
       }
+      const sessionTok = (await resolveCustomerBearerToken(customerSessionTokenLive)) ?? "";
+      if (!sessionTok) {
+        throw new Error("unauthorized");
+      }
       const res = await fetch(`${API_BASE}/rides`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionTok}`,
+        },
         body: JSON.stringify(payload),
       });
       const rawText = await res.text();
@@ -1250,7 +1257,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       await fetchAll();
       return id;
     },
-    [ensurePassengerId, fetchAll],
+    [ensurePassengerId, fetchAll, customerSessionTokenLive],
   );
 
   const acceptRequest = useCallback(

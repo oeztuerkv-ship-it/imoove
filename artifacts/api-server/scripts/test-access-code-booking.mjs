@@ -6,12 +6,31 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { SignJWT } from "jose";
 
 const PORT = Number(process.env.TEST_API_PORT || "19876");
 const base = `http://127.0.0.1:${PORT}`;
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CODE = "E2E-GUTSCHEIN-TEST";
 const adminBearer = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
+const TEST_PASSENGER_ID = "pass-e2e-access-code";
+const TEST_JWT_SECRET =
+  (process.env.AUTH_JWT_SECRET ?? "").trim() || "onroda-e2e-access-code-test-jwt-secret";
+
+async function signCustomerSessionJwt(passengerId) {
+  const secret = new TextEncoder().encode(TEST_JWT_SECRET);
+  return new SignJWT({
+    email: "e2e-access-code@test.onroda.local",
+    name: "Test Kunde",
+    picture: null,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(passengerId)
+    .setIssuedAt()
+    .setIssuer("onroda-api")
+    .setExpirationTime("1h")
+    .sign(secret);
+}
 
 async function waitForHealth(maxAttempts = 60) {
   for (let i = 0; i < maxAttempts; i += 1) {
@@ -27,7 +46,12 @@ async function waitForHealth(maxAttempts = 60) {
 }
 
 async function main() {
-  const env = { ...process.env, NODE_ENV: "development", PORT: String(PORT) };
+  const env = {
+    ...process.env,
+    NODE_ENV: "development",
+    PORT: String(PORT),
+    AUTH_JWT_SECRET: TEST_JWT_SECRET,
+  };
   delete env.DATABASE_URL;
 
   const proc = spawn("node", ["--enable-source-maps", "dist/index.mjs"], {
@@ -71,7 +95,7 @@ async function main() {
 
     const ridePayload = {
       customerName: "Test Kunde",
-      passengerId: "pass-e2e-access-code",
+      passengerId: TEST_PASSENGER_ID,
       from: "Teststraße 1",
       fromFull: "Teststraße 1, Stuttgart",
       fromLat: 48.78,
@@ -88,9 +112,14 @@ async function main() {
       accessCode: CODE,
     };
 
+    const customerToken = await signCustomerSessionJwt(TEST_PASSENGER_ID);
+
     res = await fetch(`${base}/api/rides`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${customerToken}`,
+      },
       body: JSON.stringify(ridePayload),
     });
     const ride = await res.json().catch(() => ({}));

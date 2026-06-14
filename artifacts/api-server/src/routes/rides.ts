@@ -141,7 +141,7 @@ import {
 } from "../lib/waitingTimeCharge";
 import { isSessionJwtConfigured, verifySessionJwt } from "../lib/sessionJwt";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
-import { customerPassengerId, requireCustomerSession, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
+import { customerPassengerId, requireCustomerSession, rejectSuspendedCustomerBooking, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 export type { RideRequest } from "../domain/rideRequest";
@@ -1432,14 +1432,29 @@ router.post("/rides/access-code/verify", async (req, res, next) => {
   }
 });
 
-router.post("/rides", async (req, res, next) => {
+router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, async (req, res, next) => {
   try {
-    const raw = req.body as Partial<RideRequest> & { accessCodeVerifyToken?: unknown };
-    if (!raw.customerName || String(raw.customerName).trim() === "" || !raw.passengerId) {
-      res.status(401).json({ error: "Unauthorized: Bitte anmelden, um eine Fahrt zu buchen." });
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized", ok: false });
       return;
     }
-    const bookGate = await assertPassengerCanBook(String(raw.passengerId).trim());
+    const sessionPassengerId = customerPassengerId(sess);
+    const raw = req.body as Partial<RideRequest> & { accessCodeVerifyToken?: unknown };
+    if (!raw.customerName || String(raw.customerName).trim() === "") {
+      res.status(400).json({ error: "customer_name_required" });
+      return;
+    }
+    const bodyPassengerId = String(raw.passengerId ?? "").trim();
+    if (bodyPassengerId && bodyPassengerId !== sessionPassengerId) {
+      res.status(403).json({
+        error: "passenger_id_session_mismatch",
+        message: "passengerId muss zur angemeldeten Kunden-Session passen.",
+      });
+      return;
+    }
+    raw.passengerId = sessionPassengerId;
+    const bookGate = await assertPassengerCanBook(sessionPassengerId);
     if (!bookGate.ok) {
       res.status(403).json({ error: bookGate.error, message: bookGate.message });
       return;
