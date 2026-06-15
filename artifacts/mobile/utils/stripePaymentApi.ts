@@ -11,8 +11,24 @@ export type CreatePaymentIntentInput = {
 };
 
 export type CreatePaymentIntentResult =
-  | { ok: true; paid: true; paymentIntentId?: string }
-  | { ok: true; paid: false; clientSecret: string; paymentIntentId?: string; requiresAction?: boolean }
+  | { ok: true; paid: true; paymentIntentId?: string; authorizationAmountEur?: number; estimatedFareEur?: number }
+  | {
+      ok: true;
+      paid: false;
+      authorized: true;
+      paymentIntentId?: string;
+      authorizationAmountEur?: number;
+      estimatedFareEur?: number;
+    }
+  | {
+      ok: true;
+      paid: false;
+      clientSecret: string;
+      paymentIntentId?: string;
+      requiresAction?: boolean;
+      authorizationAmountEur?: number;
+      estimatedFareEur?: number;
+    }
   | { ok: false; error: string; status?: number; detail?: string; rideStatus?: string };
 
 /** Stripe client_secret → PaymentIntent-ID (pi_…). */
@@ -100,8 +116,11 @@ export async function postCustomerCreatePaymentIntent(
     message?: string;
     rideStatus?: string;
     paid?: boolean;
+    authorized?: boolean;
     paymentIntentId?: string;
     requiresAction?: boolean;
+    authorizationAmountEur?: number;
+    estimatedFareEur?: number;
   } = {};
   try {
     parsed = raw ? (JSON.parse(raw) as typeof parsed) : {};
@@ -131,15 +150,38 @@ export async function postCustomerCreatePaymentIntent(
     };
   }
 
+  const authorizationAmountEur =
+    typeof parsed.authorizationAmountEur === "number" && Number.isFinite(parsed.authorizationAmountEur)
+      ? parsed.authorizationAmountEur
+      : undefined;
+  const estimatedFareEur =
+    typeof parsed.estimatedFareEur === "number" && Number.isFinite(parsed.estimatedFareEur)
+      ? parsed.estimatedFareEur
+      : undefined;
+
   if (parsed.paid === true) {
-    console.log(LOG_TAG, "create-intent: paid off-session", {
-      rideId: input.rideId,
-      paymentIntentId: parsed.paymentIntentId ?? null,
-    });
     return {
       ok: true,
       paid: true,
       ...(typeof parsed.paymentIntentId === "string" ? { paymentIntentId: parsed.paymentIntentId } : {}),
+      ...(authorizationAmountEur != null ? { authorizationAmountEur } : {}),
+      ...(estimatedFareEur != null ? { estimatedFareEur } : {}),
+    };
+  }
+
+  if (parsed.authorized === true) {
+    console.log(LOG_TAG, "create-intent: authorized off-session", {
+      rideId: input.rideId,
+      paymentIntentId: parsed.paymentIntentId ?? null,
+      authorizationAmountEur: authorizationAmountEur ?? null,
+    });
+    return {
+      ok: true,
+      paid: false,
+      authorized: true,
+      ...(typeof parsed.paymentIntentId === "string" ? { paymentIntentId: parsed.paymentIntentId } : {}),
+      ...(authorizationAmountEur != null ? { authorizationAmountEur } : {}),
+      ...(estimatedFareEur != null ? { estimatedFareEur } : {}),
     };
   }
 
@@ -166,6 +208,8 @@ export async function postCustomerCreatePaymentIntent(
     clientSecret,
     ...(paymentIntentId ? { paymentIntentId } : {}),
     ...(parsed.requiresAction === true ? { requiresAction: true } : {}),
+    ...(authorizationAmountEur != null ? { authorizationAmountEur } : {}),
+    ...(estimatedFareEur != null ? { estimatedFareEur } : {}),
   };
 }
 

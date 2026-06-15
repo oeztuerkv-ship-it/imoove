@@ -763,25 +763,29 @@ export default function RideScreen() {
               );
               return;
             }
-            if (!intent.paid) {
+            const authorizationAmount =
+              typeof intent.authorizationAmountEur === "number" && Number.isFinite(intent.authorizationAmountEur)
+                ? intent.authorizationAmountEur
+                : chargeAmount;
+            if ("clientSecret" in intent) {
               const paid =
                 pm === "apple_pay"
                   ? await presentStripeApplePayPayment(
                       { confirmPlatformPayPayment },
                       intent.clientSecret,
-                      chargeAmount,
+                      authorizationAmount,
                     )
                   : pm === "google_pay"
                     ? await presentStripeGooglePayPayment(
                         { confirmPlatformPayPayment },
                         intent.clientSecret,
-                        chargeAmount,
+                        authorizationAmount,
                       )
                     : await presentStripePaymentSheet(
                         { initPaymentSheet, presentPaymentSheet },
                         intent.clientSecret,
                         "ONRODA",
-                        chargeAmount,
+                        authorizationAmount,
                       );
               if (!paid.ok) {
                 await cancelCustomerRide(authToken, rideRequestId);
@@ -790,16 +794,16 @@ export default function RideScreen() {
                 }
                 return;
               }
-              const piId = intent.paymentIntentId?.trim();
-              if (piId) {
-                const confirmed = await confirmRideStripePayment({
-                  rideId: rideRequestId,
-                  paymentIntentId: piId,
-                  authToken,
-                });
-                if (!confirmed.ok) {
-                  console.warn("[StripePayment] confirm-ride failed", confirmed.error);
-                }
+            }
+            const piId = intent.paymentIntentId?.trim();
+            if (piId) {
+              const confirmed = await confirmRideStripePayment({
+                rideId: rideRequestId,
+                paymentIntentId: piId,
+                authToken,
+              });
+              if (!confirmed.ok) {
+                console.warn("[StripePayment] confirm-ride failed", confirmed.error);
               }
             }
             await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);

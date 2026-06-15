@@ -45,7 +45,9 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
   try {
     switch (event.type) {
       case "payment_intent.succeeded":
-      case "payment_intent.payment_failed": {
+      case "payment_intent.payment_failed":
+      case "payment_intent.amount_capturable_updated":
+      case "payment_intent.canceled": {
         const pi = event.data.object;
         const outcome = await applyStripePaymentIntentToRide(pi);
         if (outcome.applied) {

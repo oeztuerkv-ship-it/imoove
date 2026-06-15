@@ -35,6 +35,7 @@ import {
   canTransitionRideStatus,
   supplementalEventForTransition,
 } from "../lib/rideStatusMachine";
+import { logger } from "../lib/logger";
 import { logRideAntiFraudAttempt } from "../lib/rideAntiFraud";
 import { evaluateFinalFarePlausibility } from "../lib/driverFinalFarePlausibility";
 import { resolveReceiptDriverInfo, type ReceiptDriverInfo } from "../lib/receiptDriverInfo";
@@ -107,7 +108,11 @@ import {
   assertPassengerCanBook,
   evaluateCustomerCancellationSuspensionAfterCancel,
 } from "../lib/customerCancellationSuspensionPolicy";
-import { broadcastRideStatusChange } from "../wsRideSocketHub";
+import {
+  cancelRideStripePaymentAuthorization,
+  captureRideStripePaymentIntent,
+  shouldReleaseStripeAuthorizationOnRideStatus,
+} from "../lib/stripeRideAuthorization.js";
 import { signReceiptHtmlAccessJwt, verifyReceiptHtmlAccessJwt } from "../lib/receiptAccessJwt";
 import type { RideMutateActor } from "../lib/rideRouteAuth";
 import {
@@ -134,6 +139,7 @@ import {
   notifyPassengerRideInProgress,
   notifyPassengerReservationExpired,
 } from "../lib/passengerRideExpoPush";
+import { broadcastRideStatusChange } from "../wsRideSocketHub";
 import { resolveNoShowPolicy } from "../lib/noShowPolicy";
 import {
   computeWaitingChargeForRide,
@@ -2518,6 +2524,34 @@ export async function patchRideStatusRoute(
         Number(updated.finalFare ?? 0),
         pcComplete,
       );
+
+      const captureOutcome = await captureRideStripePaymentIntent(updated);
+      if (!captureOutcome.ok) {
+        logger.warn(
+          { rideId: id, error: captureOutcome.error },
+          "[Stripe] capture after ride completed failed",
+        );
+        await insertSupplementalRideEvent(id, {
+          eventType: "stripe_capture_failed",
+          fromStatus: cur.status,
+          toStatus: nextStatus,
+          actorType: mutActor.actorType,
+          actorId: mutActor.actorId,
+          payload: { error: captureOutcome.error },
+        });
+      } else if (!captureOutcome.skipped) {
+        await insertSupplementalRideEvent(id, {
+          eventType: "stripe_capture_succeeded",
+          fromStatus: cur.status,
+          toStatus: nextStatus,
+          actorType: mutActor.actorType,
+          actorId: mutActor.actorId,
+          payload: {
+            capturedAmountCents: captureOutcome.capturedAmountCents,
+            cappedToAuthorization: captureOutcome.cappedToAuthorization,
+          },
+        });
+      }
     }
     if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
       customerCancelReasons.delete(id);
@@ -2596,6 +2630,25 @@ export async function patchRideStatusRoute(
     if (nextStatus === "cancelled_by_system") {
       const pid = (updated.passengerId ?? "").trim();
       if (pid) void notifyPassengerRideCancelledBySystem(pid, updated.id);
+    }
+
+    if (shouldReleaseStripeAuthorizationOnRideStatus(nextStatus) && cur.status !== nextStatus) {
+      const releaseOutcome = await cancelRideStripePaymentAuthorization(updated);
+      if (!releaseOutcome.ok) {
+        logger.warn(
+          { rideId: id, error: releaseOutcome.error },
+          "[Stripe] release authorization on cancel failed",
+        );
+      } else if (releaseOutcome.canceled) {
+        await insertSupplementalRideEvent(id, {
+          eventType: "stripe_authorization_released",
+          fromStatus: cur.status,
+          toStatus: nextStatus,
+          actorType: mutActor.actorType,
+          actorId: mutActor.actorId,
+          payload: {},
+        });
+      }
     }
 
     if (cur.status !== nextStatus) {

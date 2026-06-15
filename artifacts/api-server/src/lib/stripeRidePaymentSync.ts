@@ -1,9 +1,10 @@
 import type Stripe from "stripe";
 import { findRide, updateRide } from "../db/ridesData";
+import { isStripePaymentIntentAuthorized, isStripePaymentIntentCaptured } from "./stripeRideAuthorization";
 import { normalizeRidePaymentStatus } from "./ridePaymentStatus";
 
 export type ApplyStripePaymentIntentResult =
-  | { applied: true; rideId: string; paymentStatus: "paid" | "failed" }
+  | { applied: true; rideId: string; paymentStatus: "authorized" | "paid" | "failed" }
   | { applied: false; rideId?: string; reason: string };
 
 /** Stripe PI → rides.payment_status (Webhook + confirm-ride). */
@@ -30,7 +31,21 @@ export async function applyStripePaymentIntentToRide(
     return { applied: false, rideId, reason: "passenger_metadata_mismatch" };
   }
 
-  if (paymentIntent.status === "succeeded") {
+  if (isStripePaymentIntentAuthorized(paymentIntent.status)) {
+    if (
+      normalizeRidePaymentStatus(ride.paymentStatus) === "authorized" &&
+      ride.stripePaymentIntentId === paymentIntent.id
+    ) {
+      return { applied: true, rideId, paymentStatus: "authorized" };
+    }
+    await updateRide(rideId, {
+      paymentStatus: "authorized",
+      stripePaymentIntentId: paymentIntent.id,
+    });
+    return { applied: true, rideId, paymentStatus: "authorized" };
+  }
+
+  if (isStripePaymentIntentCaptured(paymentIntent.status)) {
     if (normalizeRidePaymentStatus(ride.paymentStatus) === "paid" && ride.stripePaymentIntentId === paymentIntent.id) {
       return { applied: true, rideId, paymentStatus: "paid" };
     }
@@ -45,11 +60,11 @@ export async function applyStripePaymentIntentToRide(
     paymentIntent.status === "canceled" ||
     paymentIntent.status === "requires_payment_method"
   ) {
-    if (normalizeRidePaymentStatus(ride.paymentStatus) !== "paid") {
-      await updateRide(rideId, { paymentStatus: "failed" });
-      return { applied: true, rideId, paymentStatus: "failed" };
+    if (normalizeRidePaymentStatus(ride.paymentStatus) === "paid") {
+      return { applied: false, rideId, reason: "ride_already_paid" };
     }
-    return { applied: false, rideId, reason: "ride_already_paid" };
+    await updateRide(rideId, { paymentStatus: "failed" });
+    return { applied: true, rideId, paymentStatus: "failed" };
   }
 
   return { applied: false, rideId, reason: `unhandled_pi_status_${paymentIntent.status}` };

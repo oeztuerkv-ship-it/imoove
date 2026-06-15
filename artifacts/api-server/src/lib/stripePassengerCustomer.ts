@@ -82,11 +82,12 @@ export async function resolvePassengerSavedCardPaymentMethod(
 }
 
 export type ChargeSavedCardResult =
+  | { kind: "authorized"; paymentIntentId: string }
   | { kind: "succeeded"; paymentIntentId: string }
   | { kind: "requires_action"; clientSecret: string; paymentIntentId: string }
   | { kind: "failed"; error: string };
 
-/** Gespeicherte Karte off-session belasten (ggf. 3DS → requires_action + clientSecret). */
+/** Gespeicherte Karte off-session autorisieren (manual capture, ggf. 3DS). */
 export async function chargePassengerSavedCard(input: {
   stripe: Stripe;
   customerId: string;
@@ -103,9 +104,13 @@ export async function chargePassengerSavedCard(input: {
       payment_method: input.paymentMethodId,
       off_session: true,
       confirm: true,
+      capture_method: "manual",
       metadata: input.metadata,
       ...(input.connectParams ?? {}),
     });
+    if (intent.status === "requires_capture") {
+      return { kind: "authorized", paymentIntentId: intent.id };
+    }
     if (intent.status === "succeeded") {
       return { kind: "succeeded", paymentIntentId: intent.id };
     }

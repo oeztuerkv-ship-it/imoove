@@ -196,7 +196,7 @@ export interface RideRequest {
   driverTripStartedAt?: string | null;
   waitingMinutesBilled?: number | null;
   waitingChargeEur?: number | null;
-  paymentStatus?: "pending" | "paid" | "failed" | "refunded" | null;
+  paymentStatus?: "pending" | "authorized" | "paid" | "failed" | "refunded" | null;
   stripePaymentIntentId?: string | null;
   stripeRefundId?: string | null;
   refundedAt?: string | null;

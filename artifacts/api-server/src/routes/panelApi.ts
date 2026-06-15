@@ -12,6 +12,7 @@ import {
 } from "../domain/rideBillingProfile";
 import { isPostgresConfigured } from "../db/client";
 import { insertPanelAuditLog } from "../db/panelAuditData";
+import { cancelRideStripePaymentAuthorization, shouldReleaseStripeAuthorizationOnRideStatus } from "../lib/stripeRideAuthorization";
 import { findActivePanelUserById, findActivePanelUserProfileById } from "../db/panelAuthData";
 import {
   getPanelCompanyById,
@@ -1307,6 +1308,10 @@ router.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res,
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
       return;
+    }
+
+    if (shouldReleaseStripeAuthorizationOnRideStatus(nextStatus)) {
+      await cancelRideStripePaymentAuthorization(updated);
     }
 
     await insertPanelAuditLog({

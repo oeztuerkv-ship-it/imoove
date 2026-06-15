@@ -23,6 +23,7 @@ import {
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
+import { stripeAuthorizationAmountEurFromEstimate } from "../lib/stripeRideAuthorization.js";
 import { resolveStripeConnectPaymentParams } from "../lib/stripeConnect.js";
 import { getOrCreateStripeCustomerForPassenger, chargePassengerSavedCard, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
@@ -475,7 +476,16 @@ router.post(
       });
       return;
     }
-    const amountCents = Math.round(amount * 100);
+    const estimateEur = Number(ride.estimatedFare);
+    const estimateFromBody = Number.isFinite(amount) && amount > 0 ? amount : NaN;
+    const baseEstimate =
+      Number.isFinite(estimateEur) && estimateEur > 0 ? estimateEur : estimateFromBody;
+    if (!Number.isFinite(baseEstimate) || baseEstimate <= 0) {
+      res.status(400).json({ error: "invalid_amount" });
+      return;
+    }
+    const authorizationAmountEur = stripeAuthorizationAmountEurFromEstimate(baseEstimate);
+    const amountCents = Math.round(authorizationAmountEur * 100);
     if (amountCents < 50) {
       res.status(400).json({ error: "amount_below_minimum" });
       return;
@@ -484,6 +494,8 @@ router.post(
     const metadata: Record<string, string> = {
       ride_id: rideId,
       passenger_id: passengerId,
+      estimated_fare_eur: String(baseEstimate),
+      authorization_eur: String(authorizationAmountEur),
     };
     if (ride.companyId?.trim()) {
       metadata.company_id = ride.companyId.trim();
@@ -499,12 +511,18 @@ router.post(
         metadata,
         connectParams,
       });
-      if (charge.kind === "succeeded") {
+      if (charge.kind === "authorized" || charge.kind === "succeeded") {
         await updateRide(rideId, {
-          paymentStatus: "paid",
+          paymentStatus: charge.kind === "authorized" ? "authorized" : "paid",
           stripePaymentIntentId: charge.paymentIntentId,
         });
-        res.json({ paid: true, paymentIntentId: charge.paymentIntentId });
+        res.json({
+          paid: charge.kind === "succeeded",
+          authorized: charge.kind === "authorized",
+          paymentIntentId: charge.paymentIntentId,
+          authorizationAmountEur,
+          estimatedFareEur: baseEstimate,
+        });
         return;
       }
       if (charge.kind === "requires_action") {
@@ -527,6 +545,7 @@ router.post(
         currency: "eur",
         customer: customerId,
         automatic_payment_methods: { enabled: true },
+        capture_method: "manual",
         setup_future_usage: "off_session",
         metadata,
         ...(connectParams ?? {}),
@@ -538,7 +557,13 @@ router.post(
       res.status(500).json({ error: "stripe_client_secret_missing" });
       return;
     }
-    res.json({ paid: false, clientSecret, paymentIntentId: intent.id });
+    res.json({
+      paid: false,
+      clientSecret,
+      paymentIntentId: intent.id,
+      authorizationAmountEur,
+      estimatedFareEur: baseEstimate,
+    });
   } catch (e) {
     next(e);
   }
@@ -599,9 +624,9 @@ router.post("/customer/v1/payment/confirm-ride", requireCustomerSession, async (
         res.json({ ok: true, paymentStatus: "paid", idempotent: true });
         return;
       }
-      if (paymentIntent.status !== "succeeded") {
+      if (paymentIntent.status !== "requires_capture" && paymentIntent.status !== "succeeded") {
         res.status(409).json({
-          error: "payment_intent_not_succeeded",
+          error: "payment_intent_not_authorized",
           status: paymentIntent.status,
         });
         return;
