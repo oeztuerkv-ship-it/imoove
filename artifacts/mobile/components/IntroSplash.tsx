@@ -28,7 +28,7 @@ export function IntroSplash({ onFinish }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
   const finishedRef = useRef(false);
 
-  const logoWidth = Math.min(width * 0.78, 320);
+  const logoWidth = Math.min(width * 0.78, 320) * 2;
   const logoHeight = logoWidth * (682 / 1024);
 
   useEffect(() => {

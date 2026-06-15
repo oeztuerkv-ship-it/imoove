@@ -2597,7 +2597,7 @@ export default function HomeScreen() {
             <View style={[styles.onboardingBranding, { marginBottom: isSmallScreen ? 4 : 8, alignItems: "center", gap: 8 }]}>
               <Image
                 source={require("../assets/images/onroda-logo-transparent.png")}
-                style={{ width: isSmallScreen ? 180 : 220, height: isSmallScreen ? 80 : 100 }}
+                style={{ width: isSmallScreen ? 360 : 440, height: isSmallScreen ? 160 : 200 }}
                 resizeMode="contain"
               />
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>

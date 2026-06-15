@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: "flex-end",
   },
-  logo: { width: 124, height: 46, marginLeft: -2 },
+  logo: { width: 248, height: 92, marginLeft: -2 },
   headerCenterOverlay: {
     position: "absolute",
     left: PARTNER_HEADER_SIDE_W,
