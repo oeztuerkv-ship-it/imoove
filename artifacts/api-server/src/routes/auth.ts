@@ -100,7 +100,30 @@ function isAllowedPanelReturnUrl(urlStr: string): boolean {
   }
 }
 
+function isAllowedMobileOAuthReturnUrl(urlStr: string): boolean {
+  try {
+    const u = new URL(urlStr);
+    const proto = u.protocol.replace(/:$/, "").toLowerCase();
+    if (proto === "onroda" || proto === "exp") return true;
+    if (proto === "http" || proto === "https") {
+      const host = u.hostname.toLowerCase();
+      return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function sendGoogleOAuthStart(req: Request, res: Response, returnUrl: string): void {
+  if (!isAllowedMobileOAuthReturnUrl(returnUrl) && !isAllowedPanelReturnUrl(returnUrl)) {
+    res.status(400).json({
+      error: "invalid_return_url",
+      hint:
+        "Mobile returnUrl must use onroda:// or exp:// (login-success). Panel: https://panel.onroda.de or PANEL_ALLOWED_RETURN_ORIGINS.",
+    });
+    return;
+  }
   const cid = googleClientId();
   if (!cid) {
     res.status(500).json({
