@@ -90,6 +90,19 @@ export type RideTariffSnapshot = {
   [key: string]: unknown;
 };
 
+export type CustomerAssignedDriver = {
+  id: string;
+  displayName: string;
+  firstName: string;
+  licensePlate: string | null;
+  vehicleModel: string | null;
+  vehicleLabel: string | null;
+  rating: number | null;
+  photoUrl: string | null;
+  initials: string;
+  phone: string | null;
+};
+
 export interface RideRequest {
   id: string;
   createdAt: Date;
@@ -122,6 +135,8 @@ export interface RideRequest {
   paymentMethod: string;
   vehicle: string;
   customerName: string;
+  assignedDriver?: CustomerAssignedDriver | null;
+  driverPlate?: string | null;
   accessibilityOptions?: RideAccessibilityOptions | null;
   passengerId?: string;
   driverId?: string | null;
@@ -438,6 +453,53 @@ function normalizeRequest(r: any): RideRequest {
       ? (accessibilityRaw as RideAccessibilityOptions)
       : null;
 
+  const assignedRaw = r.assignedDriver ?? r.assigned_driver;
+  let assignedDriver: CustomerAssignedDriver | null = null;
+  if (assignedRaw && typeof assignedRaw === "object" && !Array.isArray(assignedRaw)) {
+    const ad = assignedRaw as Record<string, unknown>;
+    const id = String(ad.id ?? "").trim();
+    const displayName = String(ad.displayName ?? ad.display_name ?? "").trim();
+    if (id && displayName) {
+      assignedDriver = {
+        id,
+        displayName,
+        firstName: String(ad.firstName ?? ad.first_name ?? displayName.split(" ")[0] ?? "Fahrer"),
+        licensePlate:
+          typeof ad.licensePlate === "string"
+            ? ad.licensePlate
+            : typeof ad.license_plate === "string"
+              ? ad.license_plate
+              : null,
+        vehicleModel:
+          typeof ad.vehicleModel === "string"
+            ? ad.vehicleModel
+            : typeof ad.vehicle_model === "string"
+              ? ad.vehicle_model
+              : null,
+        vehicleLabel:
+          typeof ad.vehicleLabel === "string"
+            ? ad.vehicleLabel
+            : typeof ad.vehicle_label === "string"
+              ? ad.vehicle_label
+              : null,
+        rating: typeof ad.rating === "number" && Number.isFinite(ad.rating) ? ad.rating : null,
+        photoUrl:
+          typeof ad.photoUrl === "string"
+            ? ad.photoUrl
+            : typeof ad.photo_url === "string"
+              ? ad.photo_url
+              : null,
+        initials: String(ad.initials ?? displayName.slice(0, 2)).trim() || "FA",
+        phone:
+          typeof ad.phone === "string" && ad.phone.trim()
+            ? ad.phone.trim()
+            : null,
+      };
+    }
+  }
+
+  const driverPlateRaw = r.driverPlate ?? r.driver_plate ?? r.plate;
+
   return {
     ...r,
     id: String(r.id ?? r.ride_id ?? `REQ-${Date.now()}`),
@@ -483,6 +545,8 @@ function normalizeRequest(r: any): RideRequest {
     paymentMethod,
     vehicle,
     customerName: String(customerName),
+    assignedDriver,
+    driverPlate: typeof driverPlateRaw === "string" && driverPlateRaw.trim() ? driverPlateRaw.trim() : null,
     passengerId: r.passengerId ?? r.passenger_id,
     driverId: r.driverId ?? r.driver_id ?? null,
     cancelReason:

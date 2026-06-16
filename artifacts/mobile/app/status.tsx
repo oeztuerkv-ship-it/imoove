@@ -58,14 +58,6 @@ import {
 import { connectToRide, disconnectSocket, sendCustomerLocation, sendRideChat } from "@/utils/socket";
 import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
 
-const FALLBACK_DRIVER = {
-  name: "Vedat Öztürk",
-  firstName: "Vedat",
-  car: "VW Passat",
-  plate: "ES-GS 9087",
-  rating: 4.9,
-};
-
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Barzahlung",
   paypal: "PayPal",
@@ -238,7 +230,7 @@ export default function StatusScreen() {
     isConnected,
     customerRidesHydrated,
   } = useRideRequests();
-  const { isLoggedIn: isDriverLoggedIn, driver: driverProfile } = useDriver();
+  const { isLoggedIn: isDriverLoggedIn } = useDriver();
 
   useEffect(() => {
     if (!isDriverLoggedIn) return;
@@ -274,12 +266,6 @@ export default function StatusScreen() {
     if (!currentRideId) return null;
     return requests.find((r) => r.id === currentRideId && r.status === "completed") ?? null;
   }, [requests, currentRideId]);
-
-  const driverName = driverProfile?.name ?? FALLBACK_DRIVER.name;
-  const driverFirstName = driverName.split(" ")[0];
-  const driverCar = driverProfile?.car ?? FALLBACK_DRIVER.car;
-  const driverPlate = driverProfile?.plate ?? FALLBACK_DRIVER.plate;
-  const driverRating = driverProfile?.rating ?? FALLBACK_DRIVER.rating;
 
   const [isCompleted, setIsCompleted] = useState(false);
   const [eta, setEta] = useState(8);
@@ -370,6 +356,14 @@ export default function StatusScreen() {
     const sticky = stickyAcceptedRef.current;
     return sticky?.id === currentRideId ? sticky : null;
   }, [acceptedRequest, currentRideId, requests]);
+
+  const assignedDriver = effectiveAcceptedRequest?.assignedDriver ?? null;
+  const driverName = assignedDriver?.displayName ?? "Ihr Fahrer";
+  const driverFirstName = assignedDriver?.firstName ?? driverName.split(" ")[0] ?? "Fahrer";
+  const driverCar = assignedDriver?.vehicleLabel ?? assignedDriver?.vehicleModel ?? "";
+  const driverPlate = assignedDriver?.licensePlate ?? effectiveAcceptedRequest?.driverPlate ?? "";
+  const driverRating = assignedDriver?.rating ?? null;
+  const driverInitials = assignedDriver?.initials ?? driverFirstName.slice(0, 2).toUpperCase();
 
   const serverRideForUi = rideMatchingCurrentId ?? effectiveAcceptedRequest;
 
@@ -1529,10 +1523,22 @@ export default function StatusScreen() {
           <View style={styles.trackingDivider} />
 
           <View style={styles.trackingDriverInfo}>
+            <View style={styles.trackingDriverAvatar}>
+              <Text style={styles.trackingDriverAvatarText}>{driverInitials}</Text>
+            </View>
             <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.trackingDriverName} numberOfLines={1}>
+                {driverName}
+              </Text>
               <Text style={styles.trackingDriverStatus} numberOfLines={2}>
                 {driverStatusLabel}
               </Text>
+              {driverRating != null ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                  <StarRating stars={driverRating} size={14} />
+                  <Text style={styles.trackingDriverRatingText}>{driverRating.toFixed(1)}</Text>
+                </View>
+              ) : null}
               <Text style={styles.trackingPlateLine} numberOfLines={1}>
                 {driverPlate}
                 {driverCar ? ` · ${driverCar}` : ""}
@@ -1884,6 +1890,24 @@ const styles = StyleSheet.create({
     fontSize: rf(18),
     fontFamily: "Inter_700Bold",
     color: "#374151",
+  },
+  trackingDriverAvatar: {
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(22),
+    backgroundColor: "#111827",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  trackingDriverAvatarText: {
+    fontSize: rf(15),
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  trackingDriverRatingText: {
+    fontSize: rf(12),
+    fontFamily: "Inter_600SemiBold",
+    color: "#6B7280",
   },
   trackingDriverName: {
     fontSize: rf(16),
