@@ -55,6 +55,7 @@ import {
   type RideChatMessage,
   type RideChatSender,
 } from "@/utils/rideChat";
+import { estimatePickupEtaMinutes, formatPickupDistanceKm } from "@/utils/ridePickupEta";
 import { connectToRide, disconnectSocket, sendCustomerLocation, sendRideChat } from "@/utils/socket";
 import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
 
@@ -630,16 +631,31 @@ export default function StatusScreen() {
 
   useEffect(() => {
     if (prevPhaseRef.current !== rawPhase) {
-      if (rawPhase === "accepted" || rawPhase === "preparing") setEta(8);
-      else if (rawPhase === "driving") setEta(acceptedRequest?.durationMinutes ?? 20);
+      if (rawPhase === "driving") setEta(effectiveAcceptedRequest?.durationMinutes ?? 20);
       prevPhaseRef.current = rawPhase;
     }
-  }, [rawPhase, acceptedRequest]);
+  }, [rawPhase, effectiveAcceptedRequest?.durationMinutes]);
+
+  const pickupLat = effectiveAcceptedRequest?.fromLat;
+  const pickupLon = effectiveAcceptedRequest?.fromLon;
+  const computedPickupEta = useMemo(() => {
+    if (
+      driverMarker &&
+      pickupLat != null &&
+      pickupLon != null &&
+      Number.isFinite(pickupLat) &&
+      Number.isFinite(pickupLon)
+    ) {
+      return estimatePickupEtaMinutes(driverMarker.lat, driverMarker.lon, pickupLat, pickupLon);
+    }
+    return null;
+  }, [driverMarker, pickupLat, pickupLon]);
 
   useEffect(() => {
-    const timer = setInterval(() => setEta((e) => Math.max(1, e - 1)), 60000);
-    return () => clearInterval(timer);
-  }, []);
+    if (computedPickupEta != null && customerPhase !== "driving") {
+      setEta(computedPickupEta);
+    }
+  }, [computedPickupEta, customerPhase]);
 
   useEffect(() => {
     setIsCompleted(false);

@@ -71,6 +71,7 @@ import {
   notifyMarketOnlineDriversInstantRideOffer,
 } from "../lib/driverRideExpoPush";
 import { findFollowUpOfferForDriver } from "../db/fleetFollowUpOfferData";
+import { maybeNotifyPassengerPickupEtaFromDriverLocation } from "../lib/rideEtaPassengerPush";
 import {
   assertKkModuleAccessForFleetDriver,
   kkModuleDeniedJson,
@@ -2843,6 +2844,7 @@ router.post("/rides/:id/driver-location", async (req, res, next) => {
       updatedAt: new Date().toISOString(),
     };
     driverLocations.set(id, loc);
+    void maybeNotifyPassengerPickupEtaFromDriverLocation(ride, lat, lon).catch(() => undefined);
     res.json(loc);
   } catch (e) {
     next(e);

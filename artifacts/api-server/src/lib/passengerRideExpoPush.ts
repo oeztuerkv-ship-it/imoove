@@ -72,6 +72,25 @@ export async function notifyPassengerDriverArriving(passengerId: string, rideId:
     })),
   );
 }
+
+/** Live-ETA: „Dein Fahrer ist in ca. X Min entfernt“ (Schwellen-Push). */
+export async function notifyPassengerDriverEtaMinutes(
+  passengerId: string,
+  rideId: string,
+  etaMinutes: number,
+): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  const min = Math.max(1, Math.round(etaMinutes));
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrer unterwegs",
+      body: `Dein Fahrer ist in ca. ${min} Min entfernt.`,
+      data: { kind: "driver_eta", rideId, etaMinutes: min },
+    })),
+  );
+}
 /** Fahrt gestartet (`in_progress`) → Kunde informieren. */
 export async function notifyPassengerRideInProgress(passengerId: string, rideId: string): Promise<void> {
   const tokens = await listPassengerExpoPushTokens(passengerId);
