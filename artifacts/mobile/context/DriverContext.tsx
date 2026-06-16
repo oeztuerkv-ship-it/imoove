@@ -145,6 +145,10 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     isOwner,
     kkModuleAuthorized,
     dispatchPriority,
+    rating:
+      typeof d.ratingAverage === "number" && Number.isFinite(d.ratingAverage)
+        ? d.ratingAverage
+        : prev.rating,
   };
 }
 

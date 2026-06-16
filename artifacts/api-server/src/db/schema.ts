@@ -248,6 +248,8 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   dispatch_priority: text("dispatch_priority").notNull().default("C"),
   /** Optional: individueller Provisionssatz (Dezimal); NULL = Mandant. */
   commission_rate: doublePrecision("commission_rate"),
+  rating_sum: integer("rating_sum").notNull().default(0),
+  rating_count: integer("rating_count").notNull().default(0),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true }),
@@ -665,6 +667,7 @@ export const ridesTable = pgTable("rides", {
   stripe_refund_id: text("stripe_refund_id"),
   refunded_at: timestamp("refunded_at", { withTimezone: true }),
   cash_confirmed_at: timestamp("cash_confirmed_at", { withTimezone: true }),
+  passenger_rating: integer("passenger_rating"),
   /** Sofortfahrt: aktuelle Angebots-Stufe A→B→C. */
   dispatch_tier: text("dispatch_tier").notNull().default("A"),
   dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),

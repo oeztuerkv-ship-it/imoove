@@ -1330,6 +1330,20 @@ BEGIN
     errs := array_append(errs, 'fleet_drivers.commission_rate (Migration 108)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'rating_sum'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.rating_sum (Migration 109)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'passenger_rating'
+  ) THEN
+    errs := array_append(errs, 'rides.passenger_rating (Migration 109)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

@@ -274,6 +274,7 @@ export default function StatusScreen() {
   const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [customTipInput, setCustomTipInput] = useState("");
   const [userRating, setUserRating] = useState(5);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [driverMarker, setDriverMarker] = useState<{ lat: number; lon: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -367,6 +368,34 @@ export default function StatusScreen() {
   const driverRating = assignedDriver?.rating ?? null;
   const driverPhone = assignedDriver?.phone?.trim() ?? "";
   const driverInitials = assignedDriver?.initials ?? driverFirstName.slice(0, 2).toUpperCase();
+
+  const completedRideForRating = completedForCurrentRide ?? effectiveAcceptedRequest;
+
+  useEffect(() => {
+    const saved = completedRideForRating?.passengerRating;
+    if (typeof saved === "number" && saved >= 1 && saved <= 5) {
+      setUserRating(saved);
+    }
+  }, [completedRideForRating?.id, completedRideForRating?.passengerRating]);
+
+  const submitDriverRating = async (stars: number) => {
+    const rideId = completedForCurrentRide?.id ?? currentRideId;
+    if (!rideId || ratingSubmitting || completedRideForRating?.passengerRating != null) return;
+    setUserRating(stars);
+    setRatingSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/customer/v1/rides/${encodeURIComponent(rideId)}/driver-rating`, {
+        method: "POST",
+        headers: { ...(await customerSessionHeadersJson()), "Content-Type": "application/json" },
+        body: JSON.stringify({ stars }),
+      });
+      if (res.ok) void refreshRequests();
+    } catch {
+      /* ignore */
+    } finally {
+      setRatingSubmitting(false);
+    }
+  };
 
   const serverRideForUi = rideMatchingCurrentId ?? effectiveAcceptedRequest;
 
@@ -1167,10 +1196,14 @@ export default function StatusScreen() {
             <Text style={styles.ratingQuestion}>Wie war deine Fahrt mit {driverFirstName}?</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {[1, 2, 3, 4, 5].map((i) => (
-                <Pressable key={i} onPress={() => {
-                  setUserRating(i);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}>
+                <Pressable
+                  key={i}
+                  disabled={ratingSubmitting || completedRideForRating?.passengerRating != null}
+                  onPress={() => {
+                    void submitDriverRating(i);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                >
                   <MaterialCommunityIcons
                     name={i <= userRating ? "star" : "star-outline"}
                     size={36}

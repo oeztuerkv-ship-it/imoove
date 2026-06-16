@@ -1,10 +1,9 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
-import { getDb, isPostgresConfigured } from "../db/client";
 import { listAssignmentsForCompany } from "../db/fleetAssignmentsData";
 import { findFleetDriverInCompany } from "../db/fleetDriversData";
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
-import { ridesTable } from "../db/schema";
+import { averageFleetDriverRating } from "./fleetDriverRatings";
 
 export type CustomerAssignedDriverView = {
   id: string;
@@ -13,7 +12,7 @@ export type CustomerAssignedDriverView = {
   licensePlate: string | null;
   vehicleModel: string | null;
   vehicleLabel: string | null;
-  /** Plattform-Anzeige bis echtes Bewertungssystem — ab 1 abgeschlossener Fahrt. */
+  /** Plattform-Anzeige — Durchschnitt aus Kundenbewertungen. */
   rating: number | null;
   photoUrl: string | null;
   initials: string;
@@ -27,33 +26,6 @@ function driverInitials(firstName: string, lastName: string, displayName: string
   const parts = displayName.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase();
   return (parts[0]?.[0] ?? "?").toUpperCase();
-}
-
-async function countCompletedRidesByDriverIds(driverIds: string[]): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
-  if (!isPostgresConfigured() || driverIds.length === 0) return out;
-  const db = getDb();
-  if (!db) return out;
-  const rows = await db
-    .select({
-      driverId: ridesTable.driver_id,
-      cnt: sql<number>`count(*)::int`,
-    })
-    .from(ridesTable)
-    .where(and(inArray(ridesTable.driver_id, driverIds), eq(ridesTable.status, "completed")))
-    .groupBy(ridesTable.driver_id);
-  for (const row of rows) {
-    const id = String(row.driverId ?? "").trim();
-    if (id) out.set(id, Number(row.cnt) || 0);
-  }
-  return out;
-}
-
-function displayRatingForCompletedCount(completedCount: number): number | null {
-  if (completedCount <= 0) return null;
-  if (completedCount >= 50) return 4.9;
-  if (completedCount >= 10) return 4.8;
-  return 5.0;
 }
 
 /**
@@ -102,8 +74,6 @@ export async function buildAssignedDriverMapForCustomerRides(
     }),
   );
 
-  const completedByDriver = await countCompletedRidesByDriverIds(driverIds);
-
   for (const ride of rides) {
     const rideId = (ride.id ?? "").trim();
     const companyId = (ride.companyId ?? "").trim();
@@ -117,6 +87,8 @@ export async function buildAssignedDriverMapForCustomerRides(
     const lastName = String(driver.last_name ?? "").trim();
     const displayName = `${firstName} ${lastName}`.trim() || "Ihr Fahrer";
     const phone = String(driver.phone ?? "").trim() || null;
+    const ratingSum = Number((driver as { rating_sum?: number }).rating_sum ?? 0) || 0;
+    const ratingCount = Number((driver as { rating_count?: number }).rating_count ?? 0) || 0;
 
     const vehicleId = assignmentByCompany.get(companyId)?.get(driverId);
     const vehiclePack = vehicleByCompany.get(companyId);
@@ -126,8 +98,6 @@ export async function buildAssignedDriverMapForCustomerRides(
       vehicleId && vehiclePack ? vehiclePack.modelByVehicleId.get(vehicleId)?.trim() || null : null;
     const vehicleLabel = vehicleModel || null;
 
-    const completedCount = completedByDriver.get(driverId) ?? 0;
-
     out.set(rideId, {
       id: driverId,
       displayName,
@@ -135,7 +105,7 @@ export async function buildAssignedDriverMapForCustomerRides(
       licensePlate,
       vehicleModel,
       vehicleLabel,
-      rating: displayRatingForCompletedCount(completedCount),
+      rating: averageFleetDriverRating(ratingSum, ratingCount),
       photoUrl: null,
       initials: driverInitials(firstName, lastName, displayName),
       phone,

@@ -162,6 +162,8 @@ export interface FleetDriverListRow {
   dispatchPriority: "A" | "B" | "C";
   /** Optional: individueller Provisionssatz (0.08 = 8 %); NULL = Mandant. */
   commissionRate: number | null;
+  ratingSum: number;
+  ratingCount: number;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -233,6 +235,8 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
       Number.isFinite((r as { commission_rate?: number }).commission_rate)
         ? Math.min(1, Math.max(0, (r as { commission_rate: number }).commission_rate))
         : null,
+    ratingSum: Number((r as { rating_sum?: number }).rating_sum ?? 0) || 0,
+    ratingCount: Number((r as { rating_count?: number }).rating_count ?? 0) || 0,
   };
 }
 

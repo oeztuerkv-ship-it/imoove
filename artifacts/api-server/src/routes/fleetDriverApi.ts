@@ -28,6 +28,7 @@ import {
   recordDispatchOffersSentForDriver,
 } from "../db/rideDispatchOfferData";
 import { getFleetDriverRideEarnings } from "../lib/fleetDriverRideEarnings.js";
+import { averageFleetDriverRating } from "../lib/fleetDriverRatings.js";
 import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
 import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
@@ -138,6 +139,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       vehicleLegalType: rowFresh.vehicle_legal_type,
       vehicleClass: rowFresh.vehicle_class,
       dispatchPriority: listRow.dispatchPriority,
+      ratingAverage: averageFleetDriverRating(listRow.ratingSum, listRow.ratingCount),
     },
     assignedVehicle: assignedVehicleVisible
       ? {

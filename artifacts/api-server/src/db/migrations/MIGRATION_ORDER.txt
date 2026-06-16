@@ -110,3 +110,4 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 106_stripe_manual_capture_payment_status.sql
 107_fleet_drivers_market_location.sql
 108_fleet_drivers_commission_rate.sql
+109_fleet_driver_ratings.sql

@@ -160,6 +160,7 @@ export interface RideRequest {
   customerName: string;
   /** Kunden-Telefon bei Buchung; Pflicht wenn bookingRules.requirePhone. */
   customerPhone?: string | null;
+  passengerRating?: number | null;
   passengerId?: string;
   driverId?: string | null;
   rejectedBy: string[];

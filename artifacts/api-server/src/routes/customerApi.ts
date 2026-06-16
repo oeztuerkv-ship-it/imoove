@@ -27,7 +27,7 @@ import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { stripeCardVerificationAmountEur } from "../lib/stripeRideAuthorization.js";
 import { getOrCreateStripeCustomerForPassenger, chargePassengerSavedCard, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
-import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
+import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
 
 const router = Router();
 
@@ -197,6 +197,35 @@ router.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async
       return;
     }
     res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/customer/v1/rides/:id/driver-rating", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    const starsRaw = (req.body as { stars?: unknown })?.stars;
+    const stars = typeof starsRaw === "number" ? starsRaw : Number(starsRaw);
+    const result = await submitPassengerDriverRating({
+      rideId,
+      passengerId: customerPassengerId(sess),
+      stars,
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      rating: result.rating,
+      driverRatingAverage: result.driverRatingAverage,
+    });
   } catch (e) {
     next(e);
   }
