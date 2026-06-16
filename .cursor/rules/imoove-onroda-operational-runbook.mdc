@@ -35,4 +35,4 @@ Wenn etwas „nicht startet“ oder 401 zeigt: zuerst diese Checkliste, nicht am
 
 ## Bekannte nächste Baustelle (Stand Team)
 
-- **Google-Anmeldung Mobile:** ggf. **`JSON parse`**-Fehler im Flow — separat debuggen (Callback-URL, API-Antwort, leerer Body).
+- **Google-Anmeldung Mobile:** zentral über `utils/customerGoogleSignIn.ts`; bei Fehlern zuerst `EXPO_PUBLIC_API_URL` (= `https://api.onroda.de/api`), iOS-Scheme `onroda` in `app.json`, Server `OAUTH_PUBLIC_ORIGIN` + Google-Console-Redirect `…/api/auth/google/callback` prüfen.
