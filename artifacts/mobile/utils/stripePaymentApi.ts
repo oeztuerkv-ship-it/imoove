@@ -11,25 +11,22 @@ export type CreatePaymentIntentInput = {
 };
 
 export type CreatePaymentIntentResult =
-  | { ok: true; paid: true; paymentIntentId?: string; authorizationAmountEur?: number; estimatedFareEur?: number }
+  | { ok: true; cardOnFile: true; estimatedFareEur?: number }
   | {
       ok: true;
-      paid: false;
-      authorized: true;
-      paymentIntentId?: string;
-      authorizationAmountEur?: number;
-      estimatedFareEur?: number;
-    }
-  | {
-      ok: true;
-      paid: false;
-      clientSecret: string;
-      paymentIntentId?: string;
-      requiresAction?: boolean;
-      authorizationAmountEur?: number;
+      cardOnFile: false;
+      setupClientSecret: string;
+      setupIntentId?: string;
       estimatedFareEur?: number;
     }
   | { ok: false; error: string; status?: number; detail?: string; rideStatus?: string };
+
+/** Stripe client_secret → SetupIntent-ID (seti_…). */
+export function stripeSetupIntentIdFromClientSecret(clientSecret: string): string {
+  const secret = clientSecret.trim();
+  const idx = secret.indexOf("_secret_");
+  return idx > 0 ? secret.slice(0, idx) : "";
+}
 
 /** Stripe client_secret → PaymentIntent-ID (pi_…). */
 export function stripePaymentIntentIdFromClientSecret(clientSecret: string): string {
@@ -111,15 +108,13 @@ export async function postCustomerCreatePaymentIntent(
 
   const raw = await res.text();
   let parsed: {
+    setupClientSecret?: string;
     clientSecret?: string;
+    cardOnFile?: boolean;
     error?: string;
     message?: string;
     rideStatus?: string;
-    paid?: boolean;
-    authorized?: boolean;
-    paymentIntentId?: string;
-    requiresAction?: boolean;
-    authorizationAmountEur?: number;
+    setupIntentId?: string;
     estimatedFareEur?: number;
   } = {};
   try {
@@ -150,77 +145,60 @@ export async function postCustomerCreatePaymentIntent(
     };
   }
 
-  const authorizationAmountEur =
-    typeof parsed.authorizationAmountEur === "number" && Number.isFinite(parsed.authorizationAmountEur)
-      ? parsed.authorizationAmountEur
-      : undefined;
   const estimatedFareEur =
     typeof parsed.estimatedFareEur === "number" && Number.isFinite(parsed.estimatedFareEur)
       ? parsed.estimatedFareEur
       : undefined;
 
-  if (parsed.paid === true) {
+  if (parsed.cardOnFile === true) {
     return {
       ok: true,
-      paid: true,
-      ...(typeof parsed.paymentIntentId === "string" ? { paymentIntentId: parsed.paymentIntentId } : {}),
-      ...(authorizationAmountEur != null ? { authorizationAmountEur } : {}),
+      cardOnFile: true,
       ...(estimatedFareEur != null ? { estimatedFareEur } : {}),
     };
   }
 
-  if (parsed.authorized === true) {
-    console.log(LOG_TAG, "create-intent: authorized off-session", {
-      rideId: input.rideId,
-      paymentIntentId: parsed.paymentIntentId ?? null,
-      authorizationAmountEur: authorizationAmountEur ?? null,
-    });
-    return {
-      ok: true,
-      paid: false,
-      authorized: true,
-      ...(typeof parsed.paymentIntentId === "string" ? { paymentIntentId: parsed.paymentIntentId } : {}),
-      ...(authorizationAmountEur != null ? { authorizationAmountEur } : {}),
-      ...(estimatedFareEur != null ? { estimatedFareEur } : {}),
-    };
-  }
-
-  const clientSecret = typeof parsed.clientSecret === "string" ? parsed.clientSecret.trim() : "";
-  if (!clientSecret) {
-    console.error(LOG_TAG, "create-intent: missing clientSecret in 200 body", {
+  const setupClientSecret =
+    typeof parsed.setupClientSecret === "string"
+      ? parsed.setupClientSecret.trim()
+      : typeof parsed.clientSecret === "string"
+        ? parsed.clientSecret.trim()
+        : "";
+  if (!setupClientSecret) {
+    console.error(LOG_TAG, "create-intent: missing setupClientSecret in 200 body", {
       responseSnippet: raw.slice(0, 400),
     });
-    return { ok: false, error: "missing_client_secret", status: res.status, detail: raw.slice(0, 200) };
+    return { ok: false, error: "missing_setup_client_secret", status: res.status, detail: raw.slice(0, 200) };
   }
 
-  console.log(LOG_TAG, "create-intent: payment sheet", {
-    rideId: input.rideId,
-    requiresAction: parsed.requiresAction === true,
-    clientSecretPrefix: clientSecret.slice(0, 20),
-  });
-  const paymentIntentId =
-    typeof parsed.paymentIntentId === "string" && parsed.paymentIntentId.trim()
-      ? parsed.paymentIntentId.trim()
-      : stripePaymentIntentIdFromClientSecret(clientSecret);
+  const setupIntentId =
+    typeof parsed.setupIntentId === "string" && parsed.setupIntentId.trim()
+      ? parsed.setupIntentId.trim()
+      : stripeSetupIntentIdFromClientSecret(setupClientSecret);
+
   return {
     ok: true,
-    paid: false,
-    clientSecret,
-    ...(paymentIntentId ? { paymentIntentId } : {}),
-    ...(parsed.requiresAction === true ? { requiresAction: true } : {}),
-    ...(authorizationAmountEur != null ? { authorizationAmountEur } : {}),
+    cardOnFile: false,
+    setupClientSecret,
+    ...(setupIntentId ? { setupIntentId } : {}),
     ...(estimatedFareEur != null ? { estimatedFareEur } : {}),
   };
 }
 
 export async function confirmRideStripePayment(input: {
   rideId: string;
-  paymentIntentId: string;
+  paymentIntentId?: string;
+  setupIntentId?: string;
   authToken?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const token = await resolveCustomerBearerToken(input.authToken);
   const apiBase = getApiBaseUrl();
   if (!token || !apiBase) return { ok: false, error: "unauthorized" };
+  const paymentIntentId = input.paymentIntentId?.trim() ?? "";
+  const setupIntentId = input.setupIntentId?.trim() ?? "";
+  if (!paymentIntentId && !setupIntentId) {
+    return { ok: false, error: "payment_or_setup_intent_required" };
+  }
   const res = await fetch(`${apiBase}/customer/v1/payment/confirm-ride`, {
     method: "POST",
     headers: {
@@ -229,7 +207,8 @@ export async function confirmRideStripePayment(input: {
     },
     body: JSON.stringify({
       rideId: input.rideId,
-      paymentIntentId: input.paymentIntentId,
+      ...(paymentIntentId ? { paymentIntentId } : {}),
+      ...(setupIntentId ? { setupIntentId } : {}),
     }),
   });
   if (!res.ok) {

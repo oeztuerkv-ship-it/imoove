@@ -25,8 +25,7 @@ import {
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
-import { stripeCardVerificationAmountEur } from "../lib/stripeRideAuthorization.js";
-import { getOrCreateStripeCustomerForPassenger, chargePassengerSavedCard, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
+import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
 
 const router = Router();
@@ -461,18 +460,11 @@ router.post(
       res.status(400).json({ error: "invalid_amount" });
       return;
     }
-    const authorizationAmountEur = stripeCardVerificationAmountEur();
-    const amountCents = Math.round(authorizationAmountEur * 100);
-    if (amountCents < 50) {
-      res.status(400).json({ error: "amount_below_minimum" });
-      return;
-    }
     const metadata: Record<string, string> = {
       ride_id: rideId,
       passenger_id: passengerId,
       estimated_fare_eur: String(baseEstimate),
-      authorization_eur: String(authorizationAmountEur),
-      charge_kind: "card_verify",
+      charge_kind: "card_setup",
     };
     if (ride.companyId?.trim()) {
       metadata.company_id = ride.companyId.trim();
@@ -480,63 +472,31 @@ router.post(
     const { customerId, card } = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId, sess.email);
 
     if (card?.paymentMethodId) {
-      const charge = await chargePassengerSavedCard({
-        stripe,
-        customerId,
-        paymentMethodId: card.paymentMethodId,
-        amountCents,
-        metadata,
+      await updateRide(rideId, { paymentStatus: "pending", stripePaymentIntentId: null });
+      res.json({
+        cardOnFile: true,
+        estimatedFareEur: baseEstimate,
       });
-      if (charge.kind === "authorized" || charge.kind === "succeeded") {
-        await updateRide(rideId, {
-          paymentStatus: charge.kind === "authorized" ? "authorized" : "paid",
-          stripePaymentIntentId: charge.paymentIntentId,
-        });
-        res.json({
-          paid: charge.kind === "succeeded",
-          authorized: charge.kind === "authorized",
-          paymentIntentId: charge.paymentIntentId,
-          authorizationAmountEur,
-          estimatedFareEur: baseEstimate,
-        });
-        return;
-      }
-      if (charge.kind === "requires_action") {
-        res.json({
-          paid: false,
-          clientSecret: charge.clientSecret,
-          requiresAction: true,
-          paymentIntentId: charge.paymentIntentId,
-        });
-        return;
-      }
-      await updateRide(rideId, { paymentStatus: "failed" });
-      res.status(402).json({ error: charge.error });
       return;
     }
 
-    const intent = await stripe.paymentIntents.create(
+    const setupIntent = await stripe.setupIntents.create(
       {
-        amount: amountCents,
-        currency: "eur",
         customer: customerId,
         automatic_payment_methods: { enabled: true },
-        capture_method: "manual",
-        setup_future_usage: "off_session",
+        usage: "off_session",
         metadata,
       },
-      { idempotencyKey: `onroda-ride-pi-${rideId}` },
+      { idempotencyKey: `onroda-ride-si-${rideId}` },
     );
-    const clientSecret = intent.client_secret?.trim();
+    const clientSecret = setupIntent.client_secret?.trim();
     if (!clientSecret) {
       res.status(500).json({ error: "stripe_client_secret_missing" });
       return;
     }
     res.json({
-      paid: false,
-      clientSecret,
-      paymentIntentId: intent.id,
-      authorizationAmountEur,
+      setupClientSecret: clientSecret,
+      setupIntentId: setupIntent.id,
       estimatedFareEur: baseEstimate,
     });
   } catch (e) {
@@ -556,11 +516,12 @@ router.post("/customer/v1/payment/confirm-ride", requireCustomerSession, async (
       res.status(401).json({ error: "unauthorized" });
       return;
     }
-    const body = req.body as { rideId?: unknown; paymentIntentId?: unknown };
+    const body = req.body as { rideId?: unknown; paymentIntentId?: unknown; setupIntentId?: unknown };
     const rideId = String(body.rideId ?? "").trim();
+    const setupIntentId = String(body.setupIntentId ?? "").trim();
     const paymentIntentId = String(body.paymentIntentId ?? "").trim();
-    if (!rideId || !paymentIntentId) {
-      res.status(400).json({ error: "ride_id_and_payment_intent_required" });
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
       return;
     }
     const passengerId = customerPassengerId(sess);
@@ -574,6 +535,37 @@ router.post("/customer/v1/payment/confirm-ride", requireCustomerSession, async (
       return;
     }
 
+    if (setupIntentId) {
+      let setupIntent;
+      try {
+        setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+      } catch {
+        res.status(400).json({ error: "invalid_setup_intent" });
+        return;
+      }
+      if (setupIntent.status !== "succeeded") {
+        res.status(409).json({ error: "setup_intent_not_succeeded", status: setupIntent.status });
+        return;
+      }
+      const metaRideId = String(setupIntent.metadata?.ride_id ?? "").trim();
+      if (metaRideId && metaRideId !== rideId) {
+        res.status(409).json({ error: "setup_intent_ride_mismatch" });
+        return;
+      }
+      const metaPassenger = String(setupIntent.metadata?.passenger_id ?? "").trim();
+      if (metaPassenger && metaPassenger !== passengerId) {
+        res.status(403).json({ error: "setup_intent_passenger_mismatch" });
+        return;
+      }
+      await updateRide(rideId, { paymentStatus: "pending", stripePaymentIntentId: null });
+      res.json({ ok: true, paymentStatus: "pending" });
+      return;
+    }
+
+    if (!paymentIntentId) {
+      res.status(400).json({ error: "payment_intent_or_setup_intent_required" });
+      return;
+    }
     let paymentIntent;
     try {
       paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);

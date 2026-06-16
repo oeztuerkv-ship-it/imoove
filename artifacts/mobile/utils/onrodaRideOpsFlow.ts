@@ -25,7 +25,39 @@ export function isInsuranceOrKkRide(req: {
   return pm.includes("krankenkasse") || pm.includes("transportschein");
 }
 
-/** Kunde sieht Schätzpreis nur während echter Fahrt zum Ziel (`in_progress`). */
+export function isStripeWalletRidePayment(paymentMethod?: string | null): boolean {
+  const pm = (paymentMethod ?? "").toLowerCase();
+  return (
+    pm.includes("kredit") ||
+    pm.includes("card") ||
+    pm.includes("apple") ||
+    pm.includes("google pay") ||
+    pm.includes("google_pay")
+  );
+}
+
+/** Karte/Wallet: ausstehender Schätzbetrag während aktiver Fahrt (keine Abbuchung bis Fahrtende). */
+export function customerShowsPendingChargeEstimate(
+  status: string,
+  req: Pick<RideRequest, "rideKind" | "payerKind" | "paymentMethod">,
+): boolean {
+  if (isInsuranceOrKkRide(req)) return false;
+  if (!isStripeWalletRidePayment(req.paymentMethod)) return false;
+  if (
+    status === "completed" ||
+    status === "cancelled" ||
+    status === "cancelled_by_customer" ||
+    status === "cancelled_by_driver" ||
+    status === "cancelled_by_system" ||
+    status === "expired" ||
+    status === "rejected"
+  ) {
+    return false;
+  }
+  return isCustomerDriverAssignedStatus(status) || status === "in_progress" || status === "requested";
+}
+
+/** Kunde sieht Schätzpreis nur während echter Fahrt zum Ziel (`in_progress`) — Bar o. ä. */
 export function customerShowsTripEstimate(status: string, req: Pick<RideRequest, "rideKind" | "payerKind" | "paymentMethod">): boolean {
   if (status !== "in_progress") return false;
   return !isInsuranceOrKkRide(req);

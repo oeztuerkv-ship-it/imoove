@@ -45,6 +45,7 @@ import { formatEuro } from "@/utils/fareCalculator";
 import {
   type CustomerLiveRidePhase,
   customerLivePhaseFromRideStatus,
+  customerShowsPendingChargeEstimate,
   customerShowsTripEstimate,
   isCustomerDriverAssignedStatus,
 } from "@/utils/onrodaRideOpsFlow";
@@ -1492,7 +1493,11 @@ export default function StatusScreen() {
   const isArrived = customerPhase === "arrived";
   const showTripEstimate =
     effectiveAcceptedRequest != null &&
-    customerShowsTripEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest);
+    (customerShowsPendingChargeEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest) ||
+      customerShowsTripEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest));
+  const showPendingChargeEstimate =
+    effectiveAcceptedRequest != null &&
+    customerShowsPendingChargeEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest);
   const tripEstimateEur = effectiveAcceptedRequest?.estimatedFare ?? fareBreakdown?.total ?? 0;
   const readyForDispatch = effectiveAcceptedRequest?.status === "ready_for_dispatch";
   const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
@@ -1613,9 +1618,17 @@ export default function StatusScreen() {
               {showTripEstimate && tripEstimateEur > 0 ? (
                 <>
                   <Text style={styles.trackingEstimate} numberOfLines={1}>
-                    Schätzpreis ca. {formatEuro(tripEstimateEur)}
+                    {showPendingChargeEstimate
+                      ? `Ausstehender Betrag: ~${formatEuro(tripEstimateEur)}`
+                      : `Schätzpreis ca. ${formatEuro(tripEstimateEur)}`}
                   </Text>
-                  <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 2 }} />
+                  {showPendingChargeEstimate ? (
+                    <Text style={styles.trackingEstimateSub} numberOfLines={1}>
+                      Schätzpreis · Abbuchung nach Fahrtende
+                    </Text>
+                  ) : (
+                    <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 2 }} />
+                  )}
                 </>
               ) : null}
             </View>
@@ -2011,6 +2024,12 @@ const styles = StyleSheet.create({
     fontSize: rf(11),
     fontFamily: "Inter_600SemiBold",
     color: "#2563EB",
+  },
+  trackingEstimateSub: {
+    marginTop: rs(1),
+    fontSize: rf(10),
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
   },
   trackingProgressCard: {
     marginTop: rs(10),

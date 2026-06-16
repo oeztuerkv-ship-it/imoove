@@ -61,8 +61,8 @@ import {
   formatStripePaymentIntentAlertMessage,
   postCustomerCreatePaymentIntent,
 } from "@/utils/stripePaymentApi";
-import { presentStripePaymentSheet } from "@/utils/stripePaymentSheet";
-import { presentStripeApplePayPayment, presentStripeGooglePayPayment, platformPaySupportParams } from "@/utils/stripePlatformPay";
+import { presentStripeSetupSheet } from "@/utils/stripePaymentSheet";
+import { platformPaySupportParams } from "@/utils/stripePlatformPay";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Bar",
@@ -108,8 +108,12 @@ function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: bool
   return "Jetzt buchen";
 }
 
-/* Online-Zahlung mit vorher verknüpftem Wallet-Token (Karte: Stripe Sheet direkt beim Buchen). */
+/* Online-Zahlung: Karte per SetupIntent hinterlegen (0 €), Abbuchung erst nach Fahrtende. */
 const TOKEN_REQUIRED: PaymentMethod[] = ["paypal", "app"];
+
+function isStripeWalletPaymentMethod(pm: PaymentMethod | null | undefined): boolean {
+  return pm === "card" || pm === "apple_pay" || pm === "google_pay";
+}
 
 type RidePaymentOption = {
   id: PaymentMethod;
@@ -310,7 +314,7 @@ export default function RideScreen() {
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
-  const { isPlatformPaySupported, confirmPlatformPayPayment } = usePlatformPay();
+  const { isPlatformPaySupported } = usePlatformPay();
   const [applePaySupported, setApplePaySupported] = useState(false);
   const [googlePaySupported, setGooglePaySupported] = useState(false);
   const btnScale = useRef(new Animated.Value(1)).current;
@@ -413,9 +417,7 @@ export default function RideScreen() {
 
   const orderCtaLabel = React.useMemo(() => {
     if (preAuthLoading) {
-      return paymentMethod === "card" || paymentMethod === "apple_pay" || paymentMethod === "google_pay"
-        ? "Zahlung…"
-        : "Vorautorisierung…";
+      return isStripeWalletPaymentMethod(paymentMethod) ? "Karte sichern…" : "Vorautorisierung…";
     }
     if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") {
       return scheduledTime !== null ? "Trotzdem reservieren" : "Trotzdem buchen";
@@ -755,55 +757,36 @@ export default function RideScreen() {
                       : intent.error === "payment_not_allowed_for_status"
                         ? "Die Buchung ist für die Kartenzahlung nicht mehr gültig. Bitte erneut buchen."
                         : intent.error === "card_declined" || intent.status === 402
-                          ? "Die hinterlegte Karte wurde abgelehnt. Bitte in der Geldbörse eine neue Karte hinterlegen."
-                          : "Die Zahlung konnte nicht vorbereitet werden. Die Buchung wurde storniert.";
+                          ? "Die Karte wurde abgelehnt. Bitte in der Geldbörse eine neue Karte hinterlegen."
+                          : "Die Karte konnte nicht hinterlegt werden. Die Buchung wurde storniert.";
               Alert.alert(
                 "Zahlung fehlgeschlagen",
                 formatStripePaymentIntentAlertMessage(userMessage, intent),
               );
               return;
             }
-            const authorizationAmount =
-              typeof intent.authorizationAmountEur === "number" && Number.isFinite(intent.authorizationAmountEur)
-                ? intent.authorizationAmountEur
-                : chargeAmount;
-            if ("clientSecret" in intent) {
-              const paid =
-                pm === "apple_pay"
-                  ? await presentStripeApplePayPayment(
-                      { confirmPlatformPayPayment },
-                      intent.clientSecret,
-                      authorizationAmount,
-                    )
-                  : pm === "google_pay"
-                    ? await presentStripeGooglePayPayment(
-                        { confirmPlatformPayPayment },
-                        intent.clientSecret,
-                        authorizationAmount,
-                      )
-                    : await presentStripePaymentSheet(
-                        { initPaymentSheet, presentPaymentSheet },
-                        intent.clientSecret,
-                        "ONRODA",
-                        authorizationAmount,
-                      );
-              if (!paid.ok) {
+            if (!intent.cardOnFile) {
+              const setup = await presentStripeSetupSheet(
+                { initPaymentSheet, presentPaymentSheet },
+                intent.setupClientSecret,
+              );
+              if (!setup.ok) {
                 await cancelCustomerRide(authToken, rideRequestId);
-                if (paid.message !== "Zahlung abgebrochen.") {
-                  Alert.alert("Zahlung fehlgeschlagen", paid.message);
+                if (setup.message !== "Zahlung abgebrochen.") {
+                  Alert.alert("Karte nicht hinterlegt", setup.message);
                 }
                 return;
               }
-            }
-            const piId = intent.paymentIntentId?.trim();
-            if (piId) {
-              const confirmed = await confirmRideStripePayment({
-                rideId: rideRequestId,
-                paymentIntentId: piId,
-                authToken,
-              });
-              if (!confirmed.ok) {
-                console.warn("[StripePayment] confirm-ride failed", confirmed.error);
+              const setupIntentId = intent.setupIntentId?.trim();
+              if (setupIntentId) {
+                const confirmed = await confirmRideStripePayment({
+                  rideId: rideRequestId,
+                  setupIntentId,
+                  authToken,
+                });
+                if (!confirmed.ok) {
+                  console.warn("[StripePayment] confirm-ride setup failed", confirmed.error);
+                }
               }
             }
             await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);
@@ -1222,6 +1205,16 @@ export default function RideScreen() {
                 über Code
               </Text>
             </View>
+          ) : isStripeWalletPaymentMethod(paymentMethod) ? (
+            <View style={[styles.priceBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <Text style={[styles.bottomLabel, { color: colors.mutedForeground }]}>Ausstehender Betrag</Text>
+              <Text style={[styles.bottomPrice, { color: colors.foreground }]}>
+                ~{formatEuro(fareBreakdown.total)}
+              </Text>
+              <Text style={[styles.bottomHint, { color: colors.mutedForeground }]}>
+                Schätzpreis · Abbuchung erst nach Fahrtende
+              </Text>
+            </View>
           ) : (
             <View style={[styles.priceBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
               <Text style={[styles.bottomLabel, { color: colors.mutedForeground }]}>Schätzpreis</Text>
@@ -1567,6 +1560,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bottomLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
+  bottomHint: { fontSize: rf(10), fontFamily: "Inter_400Regular", marginTop: rs(2) },
   bottomPrice: { fontSize: rf(22), fontFamily: "Inter_700Bold" },
   orderBtn: { flex: 1.15, paddingVertical: rs(15), borderRadius: rs(14), alignItems: "center", justifyContent: "center", minHeight: rs(56) },
   orderBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingHorizontal: rs(14) },

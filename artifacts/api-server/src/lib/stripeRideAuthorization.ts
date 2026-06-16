@@ -10,7 +10,7 @@ import {
   resolvePassengerSavedCardPaymentMethod,
 } from "./stripePassengerCustomer";
 
-/** Einmalige Kartenprüfung beim Buchen (EUR) — kein Schätzpreis-Puffer. */
+/** @deprecated Nur Alt-Buchungen mit 1-€-Prüfung — neue Buchungen nutzen SetupIntent ohne Abbuchung. */
 export const STRIPE_CARD_VERIFY_AMOUNT_EUR = 1;
 
 /** Legacy: früher 30 % Puffer — nur noch für Alt-PIs mit hoher Autorisierung. */
@@ -108,7 +108,7 @@ async function captureLegacyBufferedAuthorization(
   }
 }
 
-/** Nach Fahrtende: 1 €-Prüfung freigeben und Endpreis off-session abbuchen. */
+/** Nach Fahrtende: Endpreis von hinterlegter Karte abbuchen (kein Buchungs-Hold bei neuem Flow). */
 export async function captureRideStripePaymentIntent(
   ride: RideRequest,
 ): Promise<CaptureRideStripePaymentResult> {
@@ -121,9 +121,6 @@ export async function captureRideStripePaymentIntent(
 
   const rideId = ride.id.trim();
   const piId = (ride.stripePaymentIntentId ?? "").trim();
-  if (!piId) {
-    return { ok: true, capturedAmountCents: 0, cappedToAuthorization: false, skipped: true };
-  }
 
   const paymentStatus = normalizeRidePaymentStatus(ride.paymentStatus);
   if (paymentStatus === "paid") {
@@ -140,6 +137,48 @@ export async function captureRideStripePaymentIntent(
 
   const finalCents = Math.round(finalFare * 100);
   if (finalCents < 50) return { ok: false, error: "capture_amount_below_minimum" };
+
+  const passengerId = (ride.passengerId ?? "").trim();
+
+  if (!piId) {
+    if (!passengerId) {
+      return { ok: false, error: "passenger_required_for_final_charge" };
+    }
+    const resolved = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId);
+    const paymentMethodId = resolved.card?.paymentMethodId ?? null;
+    const customerId = resolved.customerId;
+    if (!paymentMethodId || !customerId) {
+      return { ok: false, error: "payment_method_required_for_final_charge" };
+    }
+    const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, finalCents);
+    const metadata: Record<string, string> = {
+      ride_id: rideId,
+      charge_kind: "final_fare",
+      final_fare_eur: String(finalFare),
+    };
+    if (passengerId) metadata.passenger_id = passengerId;
+    if (ride.companyId?.trim()) metadata.company_id = ride.companyId.trim();
+
+    const charge = await chargePassengerRideFinalFare({
+      stripe,
+      customerId,
+      paymentMethodId,
+      amountCents: finalCents,
+      metadata,
+      connectParams,
+    });
+
+    if (charge.kind === "succeeded") {
+      await updateRide(rideId, { paymentStatus: "paid", stripePaymentIntentId: charge.paymentIntentId });
+      return { ok: true, capturedAmountCents: finalCents, cappedToAuthorization: false };
+    }
+    if (charge.kind === "requires_action") {
+      logger.warn({ rideId, paymentIntentId: charge.paymentIntentId }, "[Stripe] final charge requires action");
+      return { ok: false, error: "final_charge_requires_action" };
+    }
+    await updateRide(rideId, { paymentStatus: "failed", stripePaymentIntentId: charge.paymentIntentId });
+    return { ok: false, error: charge.error };
+  }
 
   let paymentIntent: Stripe.PaymentIntent;
   try {
@@ -167,7 +206,6 @@ export async function captureRideStripePaymentIntent(
 
   let paymentMethodId = paymentMethodIdFromIntent(paymentIntent);
   let customerId = customerIdFromIntent(paymentIntent);
-  const passengerId = (ride.passengerId ?? "").trim();
   if ((!paymentMethodId || !customerId) && passengerId) {
     const resolved = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId);
     customerId = customerId ?? resolved.customerId;
