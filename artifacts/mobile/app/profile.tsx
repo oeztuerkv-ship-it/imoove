@@ -55,12 +55,10 @@ import {
   isEmailStartAccountExistsResponse,
   mapEmailVerificationApiError,
 } from "@/utils/emailVerificationErrors";
-import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
-import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
+import { runCustomerGoogleSignIn } from "@/utils/customerGoogleSignIn";
 import { isGoogleOAuthProfile } from "@/utils/customerAuthProvider";
 import { navigateToCustomerStartScreen } from "@/utils/navigateToCustomerStart";
 import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
-import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
 import { rs, rf } from "@/utils/scale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -1005,55 +1003,12 @@ export default function ProfileScreen() {
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
 
-  /** Google über Backend; returnUrl = exakt makeRedirectUri (siehe Metro-Log beim Klick). */
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      if (!API_URL) {
-        throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
-      }
-      const redirectUri = getGoogleOAuthRedirectUri();
-      console.log("REDIRECT:", redirectUri);
-      const startUrl = `${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(redirectUri)}`;
-      const startRes = await fetch(startUrl);
-      if (startRes.status === 404) {
-        throw new Error(
-          `Server antwortet 404 auf „${startUrl}“. Läuft die API unter dieser Adresse (inkl. /api)?`,
-        );
-      }
-      if (!startRes.ok) {
-        const errBody = await startRes.text();
-        let msg = `OAuth-Start fehlgeschlagen (${startRes.status}).`;
-        try {
-          const j = JSON.parse(errBody) as { error?: string };
-          if (j.error) {
-            msg =
-              j.error === "Google Client ID not configured"
-                ? "Google ist auf dem Server nicht konfiguriert (GOOGLE_CLIENT_ID / Secret)."
-                : j.error;
-          }
-        } catch {
-          if (errBody.trim()) msg = errBody.slice(0, 200);
-        }
-        throw new Error(msg);
-      }
-      const { authUrl } = (await startRes.json()) as { authUrl: string; state: string };
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-      if (result.type !== "success") return;
-      if (!result.url) throw new Error("Keine Rückkehr-URL vom Browser erhalten.");
-      const { error: errorParam, token: sessionToken } = readOAuthReturnParams(result.url);
-      if (errorParam) throw new Error(`Google-Fehler: ${errorParam}`);
-      if (!sessionToken?.trim()) throw new Error("Kein Session-Token empfangen.");
-      const p = parseJwtPayloadUnsafe(sessionToken);
-      if (!p?.sub) throw new Error("Ungültiges Session-Token.");
-      loginWithGoogle({
-        name: String(p.name ?? ""),
-        email: String(p.email ?? ""),
-        photoUri: typeof p.picture === "string" ? p.picture : null,
-        googleId: String(p.sub),
-        sessionToken,
-        authProvider: "google",
-      });
+      const session = await runCustomerGoogleSignIn(API_URL);
+      if (!session) return;
+      loginWithGoogle(session);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
