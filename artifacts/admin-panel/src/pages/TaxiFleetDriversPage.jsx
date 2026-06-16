@@ -43,6 +43,8 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
   const [noteIn, setNoteIn] = useState("");
   const [susReasonIn, setSusReasonIn] = useState("");
   const [actBusy, setActBusy] = useState("");
+  const [commissionPct, setCommissionPct] = useState("");
+  const [commissionUseCompany, setCommissionUseCompany] = useState(true);
 
   const loadCompanies = useCallback(() => {
     setCLoading(true);
@@ -126,6 +128,14 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
         setDetail(dj.driver || null);
         setNoteIn(dj.driver?.adminInternalNote || "");
         setSusReasonIn(dj.driver?.suspensionReason || "");
+        const cr = dj.driver?.commissionRate;
+        if (cr == null || cr === "") {
+          setCommissionUseCompany(true);
+          setCommissionPct("");
+        } else {
+          setCommissionUseCompany(false);
+          setCommissionPct(String(Math.round(Number(cr) * 1000) / 10));
+        }
         setAudit(Array.isArray(aj.entries) ? aj.entries : []);
         setDetailLoading(false);
       })
@@ -144,6 +154,33 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
       setAudit([]);
     }
   }, [sel, companyId]);
+
+  async function saveCommissionRate() {
+    if (!companyId || !sel?.id) return;
+    setActBusy("commission");
+    try {
+      const res = await fetch(
+        `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(sel.id)}/commission-rate`,
+        {
+          method: "PATCH",
+          headers: adminApiHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(
+            commissionUseCompany
+              ? { useCompanyDefault: true }
+              : { commissionRatePercent: Number(commissionPct.replace(",", ".")) },
+          ),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        window.alert(data?.error || data?.hint || `HTTP ${res.status}`);
+        return;
+      }
+      setDetail(data.driver || detail);
+    } finally {
+      setActBusy("");
+    }
+  }
 
   async function postAction(path, body) {
     if (!companyId || !sel) return;
@@ -395,6 +432,42 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                 </div>
                 <div>
                   <strong>Interne Notiz (Plattform)</strong> {detail.adminInternalNote || "—"}
+                </div>
+                <div style={{ marginTop: 12, maxWidth: 420 }}>
+                  <strong>ONRODA Provision (individuell)</strong>
+                  <p className="admin-table-sub" style={{ margin: "4px 0 8px" }}>
+                    Leer = Mandanten-Satz aus der Mandantenzentrale. Gilt bei Fahrtabschluss für diesen Fahrer.
+                  </p>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={commissionUseCompany}
+                      onChange={(e) => setCommissionUseCompany(e.target.checked)}
+                    />
+                    <span>Mandanten-Provision verwenden</span>
+                  </label>
+                  {!commissionUseCompany ? (
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        className="admin-input"
+                        style={{ width: 88 }}
+                        inputMode="decimal"
+                        value={commissionPct}
+                        onChange={(e) => setCommissionPct(e.target.value)}
+                        placeholder="8"
+                      />
+                      <span>%</span>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn--primary"
+                    style={{ marginTop: 8 }}
+                    disabled={actBusy === "commission"}
+                    onClick={() => void saveCommissionRate()}
+                  >
+                    Provision speichern
+                  </button>
                 </div>
               </div>
               <div>

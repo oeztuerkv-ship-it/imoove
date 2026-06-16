@@ -160,6 +160,8 @@ export interface FleetDriverListRow {
   isOwner: boolean;
   /** Premium-Dispatch A/B/C (Admin). */
   dispatchPriority: "A" | "B" | "C";
+  /** Optional: individueller Provisionssatz (0.08 = 8 %); NULL = Mandant. */
+  commissionRate: number | null;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -226,6 +228,11 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     permissionKkModule: Boolean(r.permission_kk_module),
     isOwner: Boolean(r.is_owner),
     dispatchPriority: normalizeDispatchPriority((r as { dispatch_priority?: string }).dispatch_priority),
+    commissionRate:
+      typeof (r as { commission_rate?: number | null }).commission_rate === "number" &&
+      Number.isFinite((r as { commission_rate?: number }).commission_rate)
+        ? Math.min(1, Math.max(0, (r as { commission_rate: number }).commission_rate))
+        : null,
   };
 }
 
@@ -1068,6 +1075,27 @@ export async function setFleetDriverDispatchPriorityForAdmin(
   const u = await db
     .update(fleetDriversTable)
     .set({ dispatch_priority: p, updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+export async function setFleetDriverCommissionRateForAdmin(
+  companyId: string,
+  driverId: string,
+  commissionRate: number | null,
+): Promise<{ ok: true } | { ok: false; error: "not_found" | "invalid_rate" }> {
+  if (
+    commissionRate != null &&
+    (typeof commissionRate !== "number" || !Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 1)
+  ) {
+    return { ok: false, error: "invalid_rate" };
+  }
+  const db = getDb();
+  if (!db) return { ok: false, error: "not_found" };
+  const u = await db
+    .update(fleetDriversTable)
+    .set({ commission_rate: commissionRate, updated_at: new Date() })
     .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
     .returning({ id: fleetDriversTable.id });
   return u[0] ? { ok: true } : { ok: false, error: "not_found" };

@@ -246,6 +246,8 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   is_owner: boolean("is_owner").notNull().default(false),
   /** Premium-Dispatch: A (zuerst), B, C — nur Admin. */
   dispatch_priority: text("dispatch_priority").notNull().default("C"),
+  /** Optional: individueller Provisionssatz (Dezimal); NULL = Mandant. */
+  commission_rate: doublePrecision("commission_rate"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true }),

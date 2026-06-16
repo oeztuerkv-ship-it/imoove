@@ -247,6 +247,7 @@ import {
   setFleetDriverReadinessOverrideSystem,
   setFleetDriverMedicalTransport,
   setFleetDriverDispatchPriorityForAdmin,
+  setFleetDriverCommissionRateForAdmin,
   type FleetDriverApprovalStatus,
 } from "../db/fleetDriversData";
 import { normalizeDispatchPriority } from "../lib/dispatchPriorityTier";
@@ -2121,6 +2122,50 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/dispatch-prior
       subjectType: "fleet_driver",
       subjectId: driverId,
       meta: { dispatchPriority: priority, adminUserId: adminId },
+    });
+    const driver = await getAdminTaxiFleetDriverDetail(companyId, driverId);
+    res.json({ ok: true, driver });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/commission-rate", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const body = (req.body ?? {}) as { commissionRatePercent?: unknown; useCompanyDefault?: unknown };
+    const useCompanyDefault = body.useCompanyDefault === true;
+    let commissionRate: number | null = null;
+    if (!useCompanyDefault) {
+      const raw = body.commissionRatePercent;
+      const pct = typeof raw === "number" ? raw : Number(String(raw ?? "").replace(",", "."));
+      if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+        res.status(400).json({ error: "invalid_commission_rate", hint: "0–100 % oder useCompanyDefault" });
+        return;
+      }
+      commissionRate = Math.round(pct * 10) / 1000;
+    }
+    const patched = await setFleetDriverCommissionRateForAdmin(companyId, driverId, commissionRate);
+    if (!patched.ok) {
+      res.status(patched.error === "invalid_rate" ? 400 : 404).json({ error: patched.error });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.commission_rate",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { commissionRate, useCompanyDefault, adminUserId: adminId },
     });
     const driver = await getAdminTaxiFleetDriverDetail(companyId, driverId);
     res.json({ ok: true, driver });

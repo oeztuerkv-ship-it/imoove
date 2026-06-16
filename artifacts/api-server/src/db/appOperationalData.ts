@@ -8,6 +8,10 @@ import {
 } from "../lib/operationalTariffEngine";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { findCompanyById } from "./adminData";
+import {
+  applyFleetDriverCommissionOverride,
+  getFleetDriverCommissionRateOverride,
+} from "../lib/fleetDriverCommission";
 import { financePricingContextFromCompanyRow } from "../lib/adminCompanyProvision";
 import { getDb, isPostgresConfigured } from "./client";
 import { isCustomerMedicalTransportScanAvailable } from "../lib/medical/medicalTransportAuthorization";
@@ -639,6 +643,7 @@ export function resolveFinancePricingContextFromOperational(
 type RideFinanceContextInput = {
   rideKind: string;
   companyId?: string | null;
+  driverId?: string | null;
   fromFull?: string | null;
   fromLat?: number | null;
   fromLon?: number | null;
@@ -658,10 +663,14 @@ export async function resolveFinancePricingContextForRide(
   if (!companyId) return opCtx;
   const company = await findCompanyById(companyId);
   if (!company) return opCtx;
-  return financePricingContextFromCompanyRow(company, {
+  const companyCtx = financePricingContextFromCompanyRow(company, {
     minCommissionEur: opCtx.minCommissionEur ?? null,
     vatRate: opCtx.vatRate,
   });
+  const driverId = typeof ride.driverId === "string" ? ride.driverId.trim() : "";
+  if (!driverId) return companyCtx;
+  const driverRate = await getFleetDriverCommissionRateOverride(driverId, companyId);
+  return applyFleetDriverCommissionOverride(companyCtx, driverRate);
 }
 
 // --- Admin mutations ---

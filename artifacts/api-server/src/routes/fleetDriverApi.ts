@@ -34,7 +34,6 @@ import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
 import { hashPassword, verifyPassword } from "../lib/password";
-import { getAdminCompanyCommissionRate } from "../db/adminData";
 import {
   getOperationalConfigPayload,
   listServiceRegionsForApi,
@@ -90,14 +89,17 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
         ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" as const }
         : buildFleetDriverMeClientHints(readinessR, listRow);
   const isMarketOnline = Boolean(row.is_market_online);
-  const commissionRate = await getAdminCompanyCommissionRate(a.companyId);
   const opPayload = await getOperationalConfigPayload();
   const regions = await listServiceRegionsForApi();
   const pricingCtx = await resolveFinancePricingContextForRide(
-    { rideKind: "standard", companyId: a.companyId },
+    { rideKind: "standard", companyId: a.companyId, driverId: a.fleetDriverId },
     opPayload,
     regions,
   );
+  const effectiveCommissionRate =
+    pricingCtx.commissionType === "percentage" || pricingCtx.commissionType === "hybrid"
+      ? pricingCtx.commissionValue
+      : 0;
   const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
     a.companyId,
     a.fleetDriverId,
@@ -115,8 +117,8 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
     medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
     companyCommission: {
-      rate: commissionRate,
-      ratePercent: Math.round(commissionRate * 1000) / 10,
+      rate: effectiveCommissionRate,
+      ratePercent: Math.round(effectiveCommissionRate * 1000) / 10,
       minCommissionEur: pricingCtx.minCommissionEur ?? null,
     },
     notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
@@ -168,7 +170,7 @@ router.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, a
     const opPayload = await getOperationalConfigPayload();
     const regions = await listServiceRegionsForApi();
     const pc = await resolveFinancePricingContextForRide(
-      { rideKind: "standard", companyId: a.companyId },
+      { rideKind: "standard", companyId: a.companyId, driverId: a.fleetDriverId },
       opPayload,
       regions,
     );
