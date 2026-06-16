@@ -5,25 +5,39 @@ import { logger } from "./logger";
 import { normalizeRidePaymentStatus } from "./ridePaymentStatus";
 import { getStripeClient } from "./stripeClient";
 import { resolveStripeConnectPaymentParams } from "./stripeConnect";
+import {
+  chargePassengerRideFinalFare,
+  resolvePassengerSavedCardPaymentMethod,
+} from "./stripePassengerCustomer";
 
+/** Einmalige Kartenprüfung beim Buchen (EUR) — kein Schätzpreis-Puffer. */
+export const STRIPE_CARD_VERIFY_AMOUNT_EUR = 1;
+
+/** Legacy: früher 30 % Puffer — nur noch für Alt-PIs mit hoher Autorisierung. */
 export const STRIPE_AUTHORIZATION_BUFFER_RATIO = 0.3;
+
+const LEGACY_VERIFY_MAX_CENTS = 150;
 
 function roundMoneyEur(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-/** Schätzpreis + 30 % Puffer, mindestens Schätzpreis (EUR). */
+/** Betrag für Kartenprüfung beim Buchen (1 €). */
+export function stripeCardVerificationAmountEur(): number {
+  return STRIPE_CARD_VERIFY_AMOUNT_EUR;
+}
+
+export function stripeCardVerificationAmountCents(): number {
+  return Math.round(STRIPE_CARD_VERIFY_AMOUNT_EUR * 100);
+}
+
+/** @deprecated Nur Alt-PIs — neue Buchungen nutzen {@link stripeCardVerificationAmountEur}. */
 export function stripeAuthorizationAmountEurFromEstimate(estimateEur: number): number {
   const estimate = roundMoneyEur(Math.max(0, estimateEur));
   if (estimate <= 0) return 0;
   const withBuffer = roundMoneyEur(estimate * (1 + STRIPE_AUTHORIZATION_BUFFER_RATIO));
   return Math.max(estimate, withBuffer);
-}
-
-export function stripeAuthorizationAmountCentsFromEstimate(estimateEur: number): number {
-  const eur = stripeAuthorizationAmountEurFromEstimate(estimateEur);
-  return Math.round(eur * 100);
 }
 
 export function isStripeWalletPaymentMethod(paymentMethod: string | null | undefined): boolean {
@@ -39,11 +53,62 @@ export function isStripePaymentIntentCaptured(status: Stripe.PaymentIntent.Statu
   return status === "succeeded";
 }
 
+function paymentMethodIdFromIntent(paymentIntent: Stripe.PaymentIntent): string | null {
+  const pm = paymentIntent.payment_method;
+  if (typeof pm === "string" && pm.trim()) return pm.trim();
+  if (pm && typeof pm === "object" && typeof pm.id === "string" && pm.id.trim()) return pm.id.trim();
+  return null;
+}
+
+function customerIdFromIntent(paymentIntent: Stripe.PaymentIntent): string | null {
+  const customer = paymentIntent.customer;
+  if (typeof customer === "string" && customer.trim()) return customer.trim();
+  if (customer && typeof customer === "object" && typeof customer.id === "string" && customer.id.trim()) {
+    return customer.id.trim();
+  }
+  return null;
+}
+
 export type CaptureRideStripePaymentResult =
   | { ok: true; capturedAmountCents: number; cappedToAuthorization: boolean; skipped?: boolean }
   | { ok: false; error: string };
 
-/** Nach Fahrtende: autorisierten Betrag mit Taxameter-Endpreis belasten. */
+async function captureLegacyBufferedAuthorization(
+  ride: RideRequest,
+  paymentIntent: Stripe.PaymentIntent,
+  piId: string,
+  finalCents: number,
+): Promise<CaptureRideStripePaymentResult> {
+  const authorizedCents = paymentIntent.amount;
+  const captureCents = Math.min(finalCents, authorizedCents);
+  const cappedToAuthorization = finalCents > authorizedCents;
+  if (cappedToAuthorization) {
+    logger.warn(
+      { rideId: ride.id, finalCents, authorizedCents, paymentIntentId: piId },
+      "[Stripe] legacy capture capped at authorized amount",
+    );
+  }
+  const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, captureCents);
+  const stripe = getStripeClient();
+  if (!stripe) return { ok: false, error: "stripe_not_configured" };
+  try {
+    const captured = await stripe.paymentIntents.capture(piId, {
+      amount_to_capture: captureCents,
+      ...(connectParams ? { application_fee_amount: connectParams.application_fee_amount } : {}),
+    });
+    if (!isStripePaymentIntentCaptured(captured.status)) {
+      return { ok: false, error: `capture_status_${captured.status}` };
+    }
+    await updateRide(ride.id.trim(), { paymentStatus: "paid", stripePaymentIntentId: captured.id });
+    return { ok: true, capturedAmountCents: captureCents, cappedToAuthorization };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ err, rideId: ride.id, paymentIntentId: piId }, "[Stripe] legacy capture failed");
+    return { ok: false, error: message || "stripe_capture_failed" };
+  }
+}
+
+/** Nach Fahrtende: 1 €-Prüfung freigeben und Endpreis off-session abbuchen. */
 export async function captureRideStripePaymentIntent(
   ride: RideRequest,
 ): Promise<CaptureRideStripePaymentResult> {
@@ -73,6 +138,9 @@ export async function captureRideStripePaymentIntent(
     return { ok: false, error: "final_fare_required_for_capture" };
   }
 
+  const finalCents = Math.round(finalFare * 100);
+  if (finalCents < 50) return { ok: false, error: "capture_amount_below_minimum" };
+
   let paymentIntent: Stripe.PaymentIntent;
   try {
     paymentIntent = await stripe.paymentIntents.retrieve(piId);
@@ -82,43 +150,71 @@ export async function captureRideStripePaymentIntent(
 
   if (isStripePaymentIntentCaptured(paymentIntent.status)) {
     await updateRide(rideId, { paymentStatus: "paid", stripePaymentIntentId: paymentIntent.id });
-    return { ok: true, capturedAmountCents: paymentIntent.amount_received ?? paymentIntent.amount, cappedToAuthorization: false };
+    return {
+      ok: true,
+      capturedAmountCents: paymentIntent.amount_received ?? paymentIntent.amount,
+      cappedToAuthorization: false,
+    };
   }
 
   if (!isStripePaymentIntentAuthorized(paymentIntent.status)) {
     return { ok: false, error: `payment_intent_status_${paymentIntent.status}` };
   }
 
-  const finalCents = Math.round(finalFare * 100);
-  if (finalCents < 50) return { ok: false, error: "capture_amount_below_minimum" };
-
-  const authorizedCents = paymentIntent.amount;
-  const captureCents = Math.min(finalCents, authorizedCents);
-  const cappedToAuthorization = finalCents > authorizedCents;
-  if (cappedToAuthorization) {
-    logger.warn(
-      { rideId, finalCents, authorizedCents, paymentIntentId: piId },
-      "[Stripe] capture capped at authorized amount",
-    );
+  if (paymentIntent.amount > LEGACY_VERIFY_MAX_CENTS) {
+    return captureLegacyBufferedAuthorization(ride, paymentIntent, piId, finalCents);
   }
 
-  const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, captureCents);
+  let paymentMethodId = paymentMethodIdFromIntent(paymentIntent);
+  let customerId = customerIdFromIntent(paymentIntent);
+  const passengerId = (ride.passengerId ?? "").trim();
+  if ((!paymentMethodId || !customerId) && passengerId) {
+    const resolved = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId);
+    customerId = customerId ?? resolved.customerId;
+    paymentMethodId = paymentMethodId ?? resolved.card?.paymentMethodId ?? null;
+  }
+  if (!paymentMethodId || !customerId) {
+    return { ok: false, error: "payment_method_required_for_final_charge" };
+  }
 
   try {
-    const captured = await stripe.paymentIntents.capture(piId, {
-      amount_to_capture: captureCents,
-      ...(connectParams ? { application_fee_amount: connectParams.application_fee_amount } : {}),
-    });
-    if (!isStripePaymentIntentCaptured(captured.status)) {
-      return { ok: false, error: `capture_status_${captured.status}` };
+    if (paymentIntent.status !== "canceled") {
+      await stripe.paymentIntents.cancel(piId);
     }
-    await updateRide(rideId, { paymentStatus: "paid", stripePaymentIntentId: captured.id });
-    return { ok: true, capturedAmountCents: captureCents, cappedToAuthorization };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error({ err, rideId, paymentIntentId: piId }, "[Stripe] capture failed");
-    return { ok: false, error: message || "stripe_capture_failed" };
+    logger.warn({ err, rideId, paymentIntentId: piId }, "[Stripe] cancel verify hold failed");
+    return { ok: false, error: message || "stripe_cancel_verify_failed" };
   }
+
+  const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, finalCents);
+  const metadata: Record<string, string> = {
+    ride_id: rideId,
+    charge_kind: "final_fare",
+    final_fare_eur: String(finalFare),
+  };
+  if (passengerId) metadata.passenger_id = passengerId;
+  if (ride.companyId?.trim()) metadata.company_id = ride.companyId.trim();
+
+  const charge = await chargePassengerRideFinalFare({
+    stripe,
+    customerId,
+    paymentMethodId,
+    amountCents: finalCents,
+    metadata,
+    connectParams,
+  });
+
+  if (charge.kind === "succeeded") {
+    await updateRide(rideId, { paymentStatus: "paid", stripePaymentIntentId: charge.paymentIntentId });
+    return { ok: true, capturedAmountCents: finalCents, cappedToAuthorization: false };
+  }
+  if (charge.kind === "requires_action") {
+    logger.warn({ rideId, paymentIntentId: charge.paymentIntentId }, "[Stripe] final charge requires action");
+    return { ok: false, error: "final_charge_requires_action" };
+  }
+  await updateRide(rideId, { paymentStatus: "failed", stripePaymentIntentId: charge.paymentIntentId });
+  return { ok: false, error: charge.error };
 }
 
 export type CancelRideStripePaymentResult =
@@ -138,7 +234,7 @@ export function shouldReleaseStripeAuthorizationOnRideStatus(status: RideRequest
   return RELEASE_AUTH_STATUSES.has(status);
 }
 
-/** Storno/Ablauf: offene Autorisierung freigeben (kein Capture). */
+/** Storno/Ablauf: offene 1 €-Prüfung freigeben (kein Endpreis-Capture). */
 export async function cancelRideStripePaymentAuthorization(
   ride: RideRequest,
 ): Promise<CancelRideStripePaymentResult> {
@@ -186,7 +282,6 @@ export async function cancelRideStripePaymentAuthorization(
   }
 }
 
-/** Capture/Cancel-Helfer mit frischem Ride-Stand aus der DB. */
 export async function captureRideStripePaymentById(rideId: string): Promise<CaptureRideStripePaymentResult> {
   const ride = await findRide(rideId.trim());
   if (!ride) return { ok: false, error: "ride_not_found" };

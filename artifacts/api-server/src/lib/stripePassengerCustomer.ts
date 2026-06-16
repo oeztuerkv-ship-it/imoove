@@ -133,3 +133,46 @@ export async function chargePassengerSavedCard(input: {
     throw err;
   }
 }
+
+/** Endpreis nach Fahrtende off-session abbuchen (automatischer Capture). */
+export async function chargePassengerRideFinalFare(input: {
+  stripe: Stripe;
+  customerId: string;
+  paymentMethodId: string;
+  amountCents: number;
+  metadata: Record<string, string>;
+  connectParams?: StripeConnectPaymentParams | null;
+}): Promise<ChargeSavedCardResult> {
+  try {
+    const intent = await input.stripe.paymentIntents.create({
+      amount: input.amountCents,
+      currency: "eur",
+      customer: input.customerId,
+      payment_method: input.paymentMethodId,
+      off_session: true,
+      confirm: true,
+      metadata: input.metadata,
+      ...(input.connectParams ?? {}),
+    });
+    if (intent.status === "succeeded") {
+      return { kind: "succeeded", paymentIntentId: intent.id };
+    }
+    const clientSecret = intent.client_secret?.trim();
+    if (intent.status === "requires_action" && clientSecret) {
+      return { kind: "requires_action", clientSecret, paymentIntentId: intent.id };
+    }
+    return { kind: "failed", error: "payment_not_completed" };
+  } catch (err) {
+    if (err instanceof Stripe.errors.StripeCardError) {
+      const pi = err.payment_intent;
+      if (pi && typeof pi === "object" && pi.status === "requires_action") {
+        const clientSecret = pi.client_secret?.trim();
+        if (clientSecret) {
+          return { kind: "requires_action", clientSecret, paymentIntentId: pi.id };
+        }
+      }
+      return { kind: "failed", error: err.code ?? "card_declined" };
+    }
+    throw err;
+  }
+}

@@ -23,8 +23,7 @@ import {
 } from "../middleware/requireCustomerSession";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
-import { stripeAuthorizationAmountEurFromEstimate } from "../lib/stripeRideAuthorization.js";
-import { resolveStripeConnectPaymentParams } from "../lib/stripeConnect.js";
+import { stripeCardVerificationAmountEur } from "../lib/stripeRideAuthorization.js";
 import { getOrCreateStripeCustomerForPassenger, chargePassengerSavedCard, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine";
 
@@ -484,18 +483,18 @@ router.post(
       res.status(400).json({ error: "invalid_amount" });
       return;
     }
-    const authorizationAmountEur = stripeAuthorizationAmountEurFromEstimate(baseEstimate);
+    const authorizationAmountEur = stripeCardVerificationAmountEur();
     const amountCents = Math.round(authorizationAmountEur * 100);
     if (amountCents < 50) {
       res.status(400).json({ error: "amount_below_minimum" });
       return;
     }
-    const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, amountCents);
     const metadata: Record<string, string> = {
       ride_id: rideId,
       passenger_id: passengerId,
       estimated_fare_eur: String(baseEstimate),
       authorization_eur: String(authorizationAmountEur),
+      charge_kind: "card_verify",
     };
     if (ride.companyId?.trim()) {
       metadata.company_id = ride.companyId.trim();
@@ -509,7 +508,6 @@ router.post(
         paymentMethodId: card.paymentMethodId,
         amountCents,
         metadata,
-        connectParams,
       });
       if (charge.kind === "authorized" || charge.kind === "succeeded") {
         await updateRide(rideId, {
@@ -548,7 +546,6 @@ router.post(
         capture_method: "manual",
         setup_future_usage: "off_session",
         metadata,
-        ...(connectParams ?? {}),
       },
       { idempotencyKey: `onroda-ride-pi-${rideId}` },
     );
