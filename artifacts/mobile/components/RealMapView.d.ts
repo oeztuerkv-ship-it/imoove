@@ -13,6 +13,7 @@ interface RealMapViewProps {
   edgePaddingBottom?: number;
   /** Echte GPS-Position – für Zoom/Fit statt nur Abhol-Adresse (blauer Punkt sichtbar). */
   userLocation?: { lat: number; lon: number } | null;
+  followLiveDriver?: boolean;
   driverMarker?: { lat: number; lon: number; heading?: number } | null;
   customerLiveMarker?: { lat: number; lon: number } | null;
   [key: string]: unknown;

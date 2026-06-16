@@ -55,6 +55,7 @@ interface RealMapViewProps {
   centerKey?: number;
   driverMarker?: { lat: number; lon: number } | null;
   customerLiveMarker?: { lat: number; lon: number } | null;
+  followLiveDriver?: boolean;
   edgePaddingTop?: number;
   edgePaddingBottom?: number;
   userLocation?: { lat: number; lon: number } | null;
@@ -68,6 +69,7 @@ export function RealMapView({
   centerKey,
   driverMarker,
   customerLiveMarker,
+  followLiveDriver = false,
   edgePaddingTop = 200,
   edgePaddingBottom = 280,
   userLocation,
@@ -166,6 +168,17 @@ export function RealMapView({
     if (!mapReadyRef.current) return;
     fitMap();
   }, [fitMap, centerKey]);
+
+  useEffect(() => {
+    if (!mapReadyRef.current || !followLiveDriver || !driverMarker || !mapRef.current) return;
+    mapRef.current.animateCamera(
+      {
+        center: { latitude: driverMarker.lat, longitude: driverMarker.lon },
+        zoom: 15,
+      },
+      { duration: 800 },
+    );
+  }, [followLiveDriver, driverMarker?.lat, driverMarker?.lon]);
 
   const routeCoords =
     polyline?.map(([lat, lon]) => ({ latitude: lat, longitude: lon })) ?? [];

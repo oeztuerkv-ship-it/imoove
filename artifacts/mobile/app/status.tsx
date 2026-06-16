@@ -1530,6 +1530,7 @@ export default function StatusScreen() {
         polyline={route?.polyline}
         style={styles.map}
         driverMarker={driverMarker}
+        followLiveDriver={Boolean(driverMarker)}
       />
 
       <View style={[styles.mapOverlayTop, { top: topPad + rs(6) }]}>
