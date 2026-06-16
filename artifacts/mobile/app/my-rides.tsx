@@ -27,6 +27,7 @@ import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
+import { CUSTOMER_TAXAMETER_LABEL } from "@/utils/customerFareDisplay";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   CUSTOMER_RIDE_STATUS_CANCELLED_BY_SYSTEM,
@@ -1042,17 +1043,12 @@ export default function MyRidesScreen() {
                         onPress: () => choosePaymentMethod(req),
                       },
                       {
-                        value:
-                          Number.isFinite(req.estimatedFare) && req.estimatedFare > 0
-                            ? formatEuro(req.estimatedFare)
-                            : "",
+                        value: CUSTOMER_TAXAMETER_LABEL,
                         valueColor: "#2563EB",
                       },
                     ]}
                   />
-                  {Number.isFinite(req.estimatedFare) && req.estimatedFare > 0 ? (
-                    <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />
-                  ) : null}
+                  <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />
                   <View style={styles.actionRow}>
                     <Pressable
                       style={[

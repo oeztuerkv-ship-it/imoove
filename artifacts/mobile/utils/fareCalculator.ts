@@ -8,6 +8,8 @@ export interface FareBreakdown {
   distanceKm: number;
   /** Standard-Taxameter-Schätzung vs. Onroda-Fixpreisformel */
   fareKind?: FareKind;
+  /** Nur XL/Rollstuhl — Anzeige „+ X € Aufschlag“ (nicht verbindlicher Gesamtpreis). */
+  vehicleSurchargeEur?: number | null;
 }
 
 /** Werte aus `GET /api/app/config` → `tariffs` (Backend-Steuerung). */

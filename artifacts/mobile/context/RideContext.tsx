@@ -10,6 +10,7 @@ import React, {
 
 import { useUser } from "@/context/UserContext";
 import { fetchFareEstimate } from "@/utils/fareEstimateApi";
+import { vehicleSurchargeFromEstimates } from "@/utils/customerFareDisplay";
 import { type FareBreakdown } from "@/utils/fareCalculator";
 import { type GeoLocation, type RouteResult, getRoute, getRouteThrough } from "@/utils/routing";
 
@@ -340,8 +341,24 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
       });
       if (!est) {
         setFareBreakdown(null);
-        setRouteError("Preis konnte nicht berechnet werden. Bitte Verbindung prüfen.");
+        setRouteError("Tarif konnte nicht geladen werden. Bitte Verbindung prüfen.");
         return;
+      }
+      let vehicleSurchargeEur: number | null = null;
+      if (selectedVehicle === "xl" || selectedVehicle === "wheelchair") {
+        const std = await fetchFareEstimate("standard", {
+          distanceKm: result.distanceKm,
+          tripMinutes: result.durationMinutes,
+          fromFull: String(origin.displayName ?? ""),
+          fromLat: origin.lat,
+          fromLon: origin.lon,
+          toFull: destination?.displayName,
+        });
+        vehicleSurchargeEur = vehicleSurchargeFromEstimates(
+          selectedVehicle,
+          est,
+          std?.total ?? null,
+        );
       }
       const base = Number(est.profile?.baseFareEur ?? est.breakdown?.baseFare ?? 0);
       setFareBreakdown({
@@ -351,6 +368,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
         total: est.total,
         distanceKm: Math.round(result.distanceKm * 100) / 100,
         fareKind: "taxameter",
+        vehicleSurchargeEur,
       });
     } catch {
       setRouteError("Route konnte nicht berechnet werden.");

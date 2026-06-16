@@ -2,7 +2,7 @@ import type { PayerKind, RideRequest } from "@/context/RideRequestContext";
 
 /**
  * Betriebslogik Fahrt (Cloud-Flowchart): Status → Kunden-UI-Phase.
- * Schätzpreis nur bei `in_progress` und ohne Krankenkassen-Fahrt.
+ * Taxameter-Anzeige während aktiver Fahrt (keine Euro-Schätzung für Kunden).
  */
 export type CustomerLiveRidePhase =
   | "searching"
@@ -36,7 +36,7 @@ export function isStripeWalletRidePayment(paymentMethod?: string | null): boolea
   );
 }
 
-/** Karte/Wallet: ausstehender Schätzbetrag während aktiver Fahrt (keine Abbuchung bis Fahrtende). */
+/** Karte/Wallet: Taxameter-Hinweis während aktiver Fahrt (Abbuchung erst nach Fahrtende). */
 export function customerShowsPendingChargeEstimate(
   status: string,
   req: Pick<RideRequest, "rideKind" | "payerKind" | "paymentMethod">,
@@ -57,7 +57,7 @@ export function customerShowsPendingChargeEstimate(
   return isCustomerDriverAssignedStatus(status) || status === "in_progress" || status === "requested";
 }
 
-/** Kunde sieht Schätzpreis nur während echter Fahrt zum Ziel (`in_progress`) — Bar o. ä. */
+/** Kunde sieht Taxameter-Hinweis nur während echter Fahrt zum Ziel (`in_progress`) — Bar o. ä. */
 export function customerShowsTripEstimate(status: string, req: Pick<RideRequest, "rideKind" | "payerKind" | "paymentMethod">): boolean {
   if (status !== "in_progress") return false;
   return !isInsuranceOrKkRide(req);

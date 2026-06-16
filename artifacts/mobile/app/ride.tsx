@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import {
   calculateCopayment,
   effectivePricingModeForCustomerRide,
@@ -892,8 +893,7 @@ export default function RideScreen() {
     <View style={styles.taxameterNoticeBox}>
       <Feather name="info" size={14} color="#374151" style={{ marginTop: 1 }} />
       <Text style={styles.taxameterNoticeText}>
-        <Text style={styles.taxameterNoticeLead}>Schätzpreis – </Text>
-        <Text style={styles.taxameterNoticeStrong}>maßgeblich ist der Taxameterpreis.</Text>
+        <Text style={styles.taxameterNoticeStrong}>Abrechnung nach Taxameter am Fahrtende.</Text>
       </Text>
     </View>
   );
@@ -1188,7 +1188,7 @@ export default function RideScreen() {
         )}
       </ScrollView>
 
-      <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 16 }]}>
+      <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 10 }]}>
         {!brokerInScroll ? renderBrokerNotice() : null}
         <View style={styles.bottomContent}>
           {paymentMethod === "voucher" ? (
@@ -1206,21 +1206,23 @@ export default function RideScreen() {
               </Text>
             </View>
           ) : isStripeWalletPaymentMethod(paymentMethod) ? (
-            <View style={[styles.priceBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Text style={[styles.bottomLabel, { color: colors.mutedForeground }]}>Ausstehender Betrag</Text>
-              <Text style={[styles.bottomPrice, { color: colors.foreground }]}>
-                ~{formatEuro(fareBreakdown.total)}
-              </Text>
-              <Text style={[styles.bottomHint, { color: colors.mutedForeground }]}>
-                Schätzpreis · Abbuchung erst nach Fahrtende
-              </Text>
+            <View style={[styles.priceBox, styles.priceBoxCompact, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <CustomerFarePriceBlock
+                vehicle={selectedVehicle}
+                surchargeEur={fareBreakdown.vehicleSurchargeEur}
+                walletHint
+                primaryStyle={[styles.bottomPriceCompact, { color: colors.foreground }]}
+                secondaryStyle={[styles.bottomHintCompact, { color: colors.mutedForeground }]}
+              />
             </View>
           ) : (
-            <View style={[styles.priceBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Text style={[styles.bottomLabel, { color: colors.mutedForeground }]}>Schätzpreis</Text>
-              <Text style={[styles.bottomPrice, { color: colors.foreground }]}>
-                {formatEuro(fareBreakdown.total)}
-              </Text>
+            <View style={[styles.priceBox, styles.priceBoxCompact, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <CustomerFarePriceBlock
+                vehicle={selectedVehicle}
+                surchargeEur={fareBreakdown.vehicleSurchargeEur}
+                primaryStyle={[styles.bottomPriceCompact, { color: colors.foreground }]}
+                secondaryStyle={[styles.bottomHintCompact, { color: "#2563EB" }]}
+              />
             </View>
           )}
           <Animated.View style={{ transform: [{ scale: btnScale }], flex: 1 }}>
@@ -1537,8 +1539,8 @@ const styles = StyleSheet.create({
   selfPaySwitchBtnText: { color: "#0F172A", fontFamily: "Inter_700Bold", fontSize: rf(13) },
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(14), paddingHorizontal: rs(18),
-    gap: rs(12),
+    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(10), paddingHorizontal: rs(16),
+    gap: rs(8),
   },
   brokerNoticeBox: {
     flexDirection: "row",
@@ -1549,7 +1551,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   brokerNoticeText: { flex: 1, fontSize: rf(11), fontFamily: "Inter_400Regular", lineHeight: rf(16) },
-  bottomContent: { flexDirection: "row", alignItems: "stretch", gap: rs(12) },
+  bottomContent: { flexDirection: "row", alignItems: "stretch", gap: rs(8) },
   priceBox: {
     borderWidth: 1.5,
     borderRadius: rs(12),
@@ -1559,12 +1561,21 @@ const styles = StyleSheet.create({
     minHeight: rs(56),
     justifyContent: "center",
   },
+  priceBoxCompact: {
+    flex: 0.85,
+    minHeight: rs(44),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(5),
+    borderRadius: rs(10),
+  },
   bottomLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
   bottomHint: { fontSize: rf(10), fontFamily: "Inter_400Regular", marginTop: rs(2) },
+  bottomHintCompact: { fontSize: rf(9), fontFamily: "Inter_400Regular", lineHeight: rf(12) },
   bottomPrice: { fontSize: rf(22), fontFamily: "Inter_700Bold" },
-  orderBtn: { flex: 1.15, paddingVertical: rs(15), borderRadius: rs(14), alignItems: "center", justifyContent: "center", minHeight: rs(56) },
-  orderBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingHorizontal: rs(14) },
-  orderBtnText: { fontSize: rf(17), fontFamily: "Inter_700Bold", textAlign: "center" },
+  bottomPriceCompact: { fontSize: rf(15), fontFamily: "Inter_700Bold", lineHeight: rf(18) },
+  orderBtn: { flex: 1, paddingVertical: rs(10), borderRadius: rs(12), alignItems: "center", justifyContent: "center", minHeight: rs(44) },
+  orderBtnInner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%", paddingHorizontal: rs(10) },
+  orderBtnText: { fontSize: rf(15), fontFamily: "Inter_700Bold", textAlign: "center" },
   noTokenOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: rs(24) },
   noTokenCard: { width: "100%", borderRadius: rs(20), borderWidth: 1, padding: rs(24), alignItems: "center", gap: rs(12) },
   noTokenIcon: { width: rs(60), height: rs(60), borderRadius: rs(18), justifyContent: "center", alignItems: "center", marginBottom: rs(4) },

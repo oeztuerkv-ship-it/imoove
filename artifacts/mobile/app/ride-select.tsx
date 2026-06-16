@@ -7,11 +7,12 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
+import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { VEHICLES, useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
-import { fetchFareEstimatesByVehicle } from "@/utils/fareEstimateApi";
-import { formatEuro } from "@/utils/fareCalculator";
+import { vehicleIdFromRideLabel, vehicleSurchargeFromEstimates } from "@/utils/customerFareDisplay";
+import { fetchFareEstimate, type FareEstimateApiResult } from "@/utils/fareEstimateApi";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -62,7 +63,8 @@ export default function RideSelectScreen() {
   }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
 
   const mapRef = useRef<MapView>(null);
-  const [vehiclePrices, setVehiclePrices] = useState<Map<string, string>>(new Map());
+  const [vehicleEstimates, setVehicleEstimates] = useState<Map<string, FareEstimateApiResult>>(new Map());
+  const [standardTotal, setStandardTotal] = useState<number | null>(null);
   const [fareEstimateError, setFareEstimateError] = useState<string | null>(null);
   const {
     origin,
@@ -86,37 +88,38 @@ export default function RideSelectScreen() {
   useEffect(() => {
     const km = route?.distanceKm ?? 0;
     if (!km || isLoadingRoute) {
-      setVehiclePrices(new Map());
+      setVehicleEstimates(new Map());
+      setStandardTotal(null);
       setFareEstimateError(null);
       return;
     }
     let cancelled = false;
     void (async () => {
       setFareEstimateError(null);
-      const estimates = await fetchFareEstimatesByVehicle(
-        VEHICLES.map((v) => v.id),
-        {
-          distanceKm: km,
-          tripMinutes: route?.durationMinutes ?? 0,
-          fromFull: origin.displayName ?? "",
-          fromLat: origin.lat,
-          fromLon: origin.lon,
-          toFull: destination?.displayName,
-        },
+      const byVehicle = new Map<string, FareEstimateApiResult>();
+      let anyOk = false;
+      const routeInput = {
+        distanceKm: km,
+        tripMinutes: route?.durationMinutes ?? 0,
+        fromFull: origin.displayName ?? "",
+        fromLat: origin.lat,
+        fromLon: origin.lon,
+        toFull: destination?.displayName,
+      };
+      await Promise.all(
+        VEHICLES.map(async (v) => {
+          const est = await fetchFareEstimate(v.id, routeInput);
+          if (est) {
+            byVehicle.set(v.id, est);
+            anyOk = true;
+          }
+        }),
       );
       if (cancelled) return;
-      const priced = new Map<string, string>();
-      let anyOk = false;
-      for (const v of VEHICLES) {
-        const total = estimates.get(v.id);
-        if (total != null && Number.isFinite(total)) {
-          priced.set(v.id, formatEuro(total));
-          anyOk = true;
-        }
-      }
-      setVehiclePrices(priced);
+      setStandardTotal(byVehicle.get("standard")?.total ?? null);
+      setVehicleEstimates(byVehicle);
       if (!anyOk) {
-        setFareEstimateError("Preis konnte nicht berechnet werden. Bitte Verbindung prüfen.");
+        setFareEstimateError("Tarif konnte nicht geladen werden. Bitte Verbindung prüfen.");
       }
     })();
     return () => {
@@ -214,7 +217,8 @@ export default function RideSelectScreen() {
         <View style={[styles.vehiclesCard, { borderColor: colors.border, backgroundColor: "#FFFFFF" }]}>
           {VEHICLES.map((v) => {
             const active = selectedVehicle === v.id;
-            const price = vehiclePrices.get(v.id);
+            const estimate = vehicleEstimates.get(v.id);
+            const surcharge = vehicleSurchargeFromEstimates(v.id, estimate ?? null, standardTotal);
             return (
               <Pressable
                 key={v.id}
@@ -237,9 +241,12 @@ export default function RideSelectScreen() {
                     {v.id === "standard" ? "Standard Taxi" : v.name}
                   </Text>
                 </View>
-                <Text style={[styles.vehiclePrice, { color: colors.foreground }]}>
-                  {price ?? "—"}
-                </Text>
+                <CustomerFarePriceBlock
+                  vehicle={v.id}
+                  surchargeEur={surcharge}
+                  primaryStyle={[styles.vehiclePrice, { color: colors.foreground }]}
+                  secondaryStyle={styles.vehicleSurcharge}
+                />
               </Pressable>
             );
           })}
@@ -248,14 +255,14 @@ export default function RideSelectScreen() {
         {isLoadingRoute ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={ONRODA_MARK_RED} />
-            <Text style={{ color: colors.mutedForeground }}>Preis wird berechnet…</Text>
+            <Text style={{ color: colors.mutedForeground }}>Tarif wird geladen…</Text>
           </View>
         ) : routeError ? (
           <Text style={{ color: colors.destructive }}>{routeError}</Text>
         ) : fareEstimateError ? (
           <Text style={{ color: colors.destructive }}>{fareEstimateError}</Text>
         ) : null}
-        {!isLoadingRoute && !routeError && !fareEstimateError && vehiclePrices.size > 0 ? (
+        {!isLoadingRoute && !routeError && !fareEstimateError && vehicleEstimates.size > 0 ? (
           <CustomerFareEstimateLegalHint align="left" />
         ) : null}
       </ScrollView>
@@ -309,6 +316,7 @@ const styles = StyleSheet.create({
   vehicleLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   vehiclePrice: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  vehicleSurcharge: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB" },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 12 },
   confirmBtn: {

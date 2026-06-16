@@ -25,6 +25,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
+import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { RealMapView } from "@/components/RealMapView";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
@@ -42,6 +43,7 @@ import {
   isCustomerOpenDispatchStatus,
 } from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
+import { vehicleIdFromRideLabel } from "@/utils/customerFareDisplay";
 import {
   type CustomerLiveRidePhase,
   customerLivePhaseFromRideStatus,
@@ -217,6 +219,7 @@ export default function StatusScreen() {
     fareBreakdown,
     route,
     paymentMethod,
+    selectedVehicle,
     completeRide,
     cancelRide,
     setOrigin,
@@ -1057,21 +1060,10 @@ export default function StatusScreen() {
               <View style={styles.receiptDivider} />
               <View style={styles.receiptRows}>
                 {driverFinalFare != null ? (
-                  <>
-                    <View style={styles.receiptRow}>
-                      <Text style={styles.receiptLabel}>Vom Fahrer bestätigt:</Text>
-                      <Text style={[styles.receiptValue, { color: "#22C55E" }]}>{formatEuro(driverFinalFare)}</Text>
-                    </View>
-                    {driverFinalFare >= 0.005 &&
-                    Math.abs(estimatedFare - driverFinalFare) > 0.005 ? (
-                      <View style={styles.receiptRow}>
-                        <Text style={[styles.receiptLabel, { color: "#9CA3AF", fontSize: 11 }]}>Schätzpreis war:</Text>
-                        <Text style={[styles.receiptValue, { color: "#9CA3AF", fontSize: 11 }]}>
-                          {formatEuro(estimatedFare)}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </>
+                  <View style={styles.receiptRow}>
+                    <Text style={styles.receiptLabel}>Vom Fahrer bestätigt:</Text>
+                    <Text style={[styles.receiptValue, { color: "#22C55E" }]}>{formatEuro(driverFinalFare)}</Text>
+                  </View>
                 ) : (
                   <View style={styles.receiptRow}>
                     <Text style={styles.receiptLabel}>Gesamtpreis:</Text>
@@ -1341,9 +1333,14 @@ export default function StatusScreen() {
 
             {fareBreakdown && (
               <View style={styles.searchPriceRow}>
-                <Text style={styles.searchPriceLabel}>Geschätzter Preis</Text>
+                <Text style={styles.searchPriceLabel}>Preis</Text>
                 <View style={styles.searchPricePill}>
-                  <Text style={styles.searchPriceValue}>{formatEuro(fareBreakdown.total)}</Text>
+                  <CustomerFarePriceBlock
+                    vehicle={selectedVehicle}
+                    surchargeEur={fareBreakdown.vehicleSurchargeEur}
+                    primaryStyle={styles.searchPriceValue}
+                    secondaryStyle={styles.searchPriceSurcharge}
+                  />
                 </View>
               </View>
             )}
@@ -1455,9 +1452,14 @@ export default function StatusScreen() {
 
             {fareBreakdown && (
               <View style={styles.searchPriceRow}>
-                <Text style={styles.searchPriceLabel}>Geschätzter Preis</Text>
+                <Text style={styles.searchPriceLabel}>Preis</Text>
                 <View style={styles.searchPricePill}>
-                  <Text style={styles.searchPriceValue}>{formatEuro(fareBreakdown.total)}</Text>
+                  <CustomerFarePriceBlock
+                    vehicle={selectedVehicle}
+                    surchargeEur={fareBreakdown.vehicleSurchargeEur}
+                    primaryStyle={styles.searchPriceValue}
+                    secondaryStyle={styles.searchPriceSurcharge}
+                  />
                 </View>
               </View>
             )}
@@ -1498,7 +1500,8 @@ export default function StatusScreen() {
   const showPendingChargeEstimate =
     effectiveAcceptedRequest != null &&
     customerShowsPendingChargeEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest);
-  const tripEstimateEur = effectiveAcceptedRequest?.estimatedFare ?? fareBreakdown?.total ?? 0;
+  const liveVehicle = selectedVehicle ?? vehicleIdFromRideLabel(effectiveAcceptedRequest?.vehicle);
+  const liveSurchargeEur = fareBreakdown?.vehicleSurchargeEur ?? null;
   const readyForDispatch = effectiveAcceptedRequest?.status === "ready_for_dispatch";
   const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
   const destLines = splitDestinationLines(displayDestination?.displayName);
@@ -1615,20 +1618,19 @@ export default function StatusScreen() {
                 {driverPlate}
                 {driverCar ? ` · ${driverCar}` : ""}
               </Text>
-              {showTripEstimate && tripEstimateEur > 0 ? (
+              {showTripEstimate ? (
                 <>
-                  <Text style={styles.trackingEstimate} numberOfLines={1}>
-                    {showPendingChargeEstimate
-                      ? `Ausstehender Betrag: ~${formatEuro(tripEstimateEur)}`
-                      : `Schätzpreis ca. ${formatEuro(tripEstimateEur)}`}
-                  </Text>
-                  {showPendingChargeEstimate ? (
-                    <Text style={styles.trackingEstimateSub} numberOfLines={1}>
-                      Schätzpreis · Abbuchung nach Fahrtende
-                    </Text>
-                  ) : (
+                  <CustomerFarePriceBlock
+                    vehicle={liveVehicle}
+                    surchargeEur={liveSurchargeEur}
+                    walletHint={showPendingChargeEstimate}
+                    primaryStyle={styles.trackingEstimate}
+                    secondaryStyle={styles.trackingEstimateSub}
+                    style={{ marginTop: 4 }}
+                  />
+                  {!showPendingChargeEstimate ? (
                     <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 2 }} />
-                  )}
+                  ) : null}
                 </>
               ) : null}
             </View>
@@ -2282,6 +2284,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#111111",
     letterSpacing: -0.3,
+  },
+  searchPriceSurcharge: {
+    fontSize: rf(12),
+    fontFamily: "Inter_600SemiBold",
+    color: "#2563EB",
+    marginTop: 2,
   },
   searchPayerBox: {
     marginTop: rs(12),

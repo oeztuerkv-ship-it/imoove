@@ -29,8 +29,8 @@ import {
 } from "@/context/RideContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
+import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { useColors } from "@/hooks/useColors";
-import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 
 const GROUP_RADIUS = 10;
@@ -1193,16 +1193,22 @@ export default function ReserveRideScreen() {
               )}
               <View style={[styles.infoSeparator, { backgroundColor: colors.border }]} />
               <View style={styles.infoRow}>
-                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Schätzpreis</Text>
-                <Text style={[styles.priceEmphasis, { color: colors.primary }]}>
-                  {isLoadingRoute
-                    ? "…"
-                    : routeError
-                      ? "—"
-                      : fareBreakdown != null
-                        ? `${formatEuro(fareBreakdown.total)} ca.`
-                        : "—"}
-                </Text>
+                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Preis</Text>
+                <View style={{ alignItems: "flex-end", flex: 1 }}>
+                  {isLoadingRoute ? (
+                    <Text style={[styles.priceEmphasis, { color: colors.primary }]}>…</Text>
+                  ) : routeError || fareBreakdown == null ? (
+                    <Text style={[styles.priceEmphasis, { color: colors.primary }]}>—</Text>
+                  ) : (
+                    <CustomerFarePriceBlock
+                      vehicle={selectedVehicle}
+                      surchargeEur={fareBreakdown.vehicleSurchargeEur}
+                      align="center"
+                      primaryStyle={[styles.priceEmphasis, { color: colors.primary }]}
+                      secondaryStyle={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB" }}
+                    />
+                  )}
+                </View>
               </View>
               {fareBreakdown != null && !isLoadingRoute && !routeError ? (
                 <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />

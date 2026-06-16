@@ -81,7 +81,7 @@ import {
   socialLoginButtonStyle,
 } from "@/src/screens/LoginScreen";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
-import { formatEuro } from "@/utils/fareCalculator";
+import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
@@ -2104,10 +2104,13 @@ export default function HomeScreen() {
                   </View>
                   <View style={[styles.routeStripDivider, styles.routeStripDividerShort, { backgroundColor: colors.border }]} />
                   <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                    <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Schätzpreis</Text>
-                    <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" }}>
-                      {fareBreakdown ? formatEuro(fareBreakdown.total) : "—"}
-                    </Text>
+                    <CustomerFarePriceBlock
+                      vehicle={selectedVehicle}
+                      surchargeEur={fareBreakdown?.vehicleSurchargeEur}
+                      align="center"
+                      primaryStyle={{ fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" }}
+                      secondaryStyle={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB", textAlign: "center" }}
+                    />
                   </View>
                 </View>
               ) : null}

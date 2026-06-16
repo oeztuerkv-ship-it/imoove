@@ -13,8 +13,12 @@ import {
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
 import { VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import { fetchFareEstimate } from "@/utils/fareEstimateApi";
-import { formatEuro } from "@/utils/fareCalculator";
+import {
+  CUSTOMER_TAXAMETER_LABEL,
+  customerVehicleSurchargeLabel,
+  vehicleSurchargeFromEstimates,
+} from "@/utils/customerFareDisplay";
+import { fetchFareEstimate, type FareEstimateApiResult } from "@/utils/fareEstimateApi";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -35,11 +39,13 @@ function VehicleCard({
   isSelected,
   onSelect,
   priceLabel,
+  surchargeLabel,
 }: {
   vehicle: VehicleOption;
   isSelected: boolean;
   onSelect: () => void;
   priceLabel: string | null;
+  surchargeLabel: string | null;
 }) {
   const colors = useColors();
   const scale = React.useRef(new Animated.Value(1)).current;
@@ -81,14 +87,26 @@ function VehicleCard({
           {vehicle.name}
         </Text>
         {priceLabel ? (
-          <Text
-            style={[
-              styles.cardPrice,
-              { color: isSelected ? active : colors.primary },
-            ]}
-          >
-            {priceLabel}
-          </Text>
+          <>
+            <Text
+              style={[
+                styles.cardPrice,
+                { color: isSelected ? active : colors.primary },
+              ]}
+            >
+              {priceLabel}
+            </Text>
+            {surchargeLabel ? (
+              <Text
+                style={[
+                  styles.cardSurcharge,
+                  { color: isSelected ? active : "#2563EB" },
+                ]}
+              >
+                {surchargeLabel}
+              </Text>
+            ) : null}
+          </>
         ) : (
           <Text
             style={[
@@ -116,30 +134,35 @@ export function VehicleSelector({
   fromLon,
   toFull,
 }: VehicleSelectorProps) {
-  const [priceByVehicle, setPriceByVehicle] = useState<Record<string, string | null>>({});
+  const [estimateByVehicle, setEstimateByVehicle] = useState<Record<string, FareEstimateApiResult | null>>({});
+  const [standardTotal, setStandardTotal] = useState<number | null>(null);
 
   useEffect(() => {
     if (!distanceKm || distanceKm <= 0 || !fromFull.trim()) {
-      setPriceByVehicle({});
+      setEstimateByVehicle({});
+      setStandardTotal(null);
       return;
     }
     let cancelled = false;
     void (async () => {
-      const next: Record<string, string | null> = {};
+      const next: Record<string, FareEstimateApiResult | null> = {};
+      const routeInput = {
+        distanceKm,
+        tripMinutes,
+        fromFull,
+        fromLat,
+        fromLon,
+        toFull,
+      };
       await Promise.all(
         VEHICLES.map(async (v) => {
-          const est = await fetchFareEstimate(v.id, {
-            distanceKm,
-            tripMinutes,
-            fromFull,
-            fromLat,
-            fromLon,
-            toFull,
-          });
-          next[v.id] = est ? formatEuro(est.total) : null;
+          next[v.id] = await fetchFareEstimate(v.id, routeInput);
         }),
       );
-      if (!cancelled) setPriceByVehicle(next);
+      if (!cancelled) {
+        setEstimateByVehicle(next);
+        setStandardTotal(next.standard?.total ?? null);
+      }
     })();
     return () => {
       cancelled = true;
@@ -148,15 +171,20 @@ export function VehicleSelector({
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {VEHICLES.map((v) => (
+      {VEHICLES.map((v) => {
+        const est = estimateByVehicle[v.id];
+        const surcharge = vehicleSurchargeFromEstimates(v.id, est, standardTotal);
+        return (
         <VehicleCard
           key={v.id}
           vehicle={v}
           isSelected={selected === v.id}
           onSelect={() => onSelect(v.id)}
-          priceLabel={priceByVehicle[v.id] ?? null}
+          priceLabel={est ? CUSTOMER_TAXAMETER_LABEL : null}
+          surchargeLabel={customerVehicleSurchargeLabel({ vehicle: v.id, surchargeEur: surcharge })}
         />
-      ))}
+        );
+      })}
     </ScrollView>
   );
 }
@@ -184,6 +212,11 @@ const styles = StyleSheet.create({
   cardPrice: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
+  },
+  cardSurcharge: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
   },
   cardDesc: {
     fontSize: 11,
