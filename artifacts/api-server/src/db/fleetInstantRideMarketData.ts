@@ -8,6 +8,7 @@ import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medic
 import { fleetDriversTable } from "./schema";
 import { ensureRideDispatchTierCurrent } from "./rideDispatchTierData";
 import { normalizeDispatchPriority } from "../lib/dispatchPriorityTier";
+import { getDispatchRadiusKmFromConfig, isWithinDispatchRadiusKm } from "../lib/dispatchRadius";
 
 export type MarketOnlineDriverRef = { fleetDriverId: string; companyId: string };
 
@@ -31,6 +32,9 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
   ride = syncedRide;
 
   const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
+  const radiusKm = await getDispatchRadiusKmFromConfig();
+  const pickupLat = ride.fromLat;
+  const pickupLon = ride.fromLon;
 
   const db = getDb();
   if (!db || !isPostgresConfigured()) return [];
@@ -53,6 +57,8 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     .select({
       id: fleetDriversTable.id,
       companyId: fleetDriversTable.company_id,
+      lastMarketLat: fleetDriversTable.last_market_lat,
+      lastMarketLon: fleetDriversTable.last_market_lon,
     })
     .from(fleetDriversTable)
     .where(and(...conditions));
@@ -63,6 +69,12 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     const companyId = String(row.companyId ?? "").trim();
     if (!fleetDriverId || !companyId) continue;
     if (rejected.has(fleetDriverId)) continue;
+
+    if (
+      !isWithinDispatchRadiusKm(row.lastMarketLat, row.lastMarketLon, pickupLat, pickupLon, radiusKm)
+    ) {
+      continue;
+    }
 
     const readiness = await getFleetDriverReadinessById(fleetDriverId, companyId);
     if ("error" in readiness || !readiness.ready) continue;

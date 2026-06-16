@@ -849,6 +849,54 @@ export async function touchFleetDriverHeartbeat(id: string): Promise<void> {
     .where(eq(fleetDriversTable.id, id));
 }
 
+/** GPS am Auftragsmarkt (Ping / market-rides) — für Dispatch-Radius. */
+export async function updateFleetDriverMarketLocation(
+  fleetDriverId: string,
+  companyId: string,
+  lat: number,
+  lon: number,
+): Promise<void> {
+  if (!isPostgresConfigured()) return;
+  const db = getDb();
+  if (!db) return;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
+  await db
+    .update(fleetDriversTable)
+    .set({
+      last_market_lat: lat,
+      last_market_lon: lon,
+      last_heartbeat_at: new Date(),
+      updated_at: new Date(),
+    })
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)));
+}
+
+export async function getFleetDriverMarketLocation(
+  fleetDriverId: string,
+  companyId: string,
+): Promise<{ lat: number; lon: number } | null> {
+  if (!isPostgresConfigured()) return null;
+  const db = getDb();
+  if (!db) return null;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return null;
+  const rows = await db
+    .select({
+      lat: fleetDriversTable.last_market_lat,
+      lon: fleetDriversTable.last_market_lon,
+    })
+    .from(fleetDriversTable)
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)))
+    .limit(1);
+  const lat = rows[0]?.lat;
+  const lon = rows[0]?.lon;
+  if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon };
+}
+
 /** Auftragsmarkt ONLINE/OFFLINE (Fleet-App), mandantengebunden. */
 export async function getFleetDriverMarketOnline(
   fleetDriverId: string,

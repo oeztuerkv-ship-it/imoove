@@ -603,10 +603,29 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!driver?.authToken) return;
     const t = setInterval(() => {
-      fetch(`${API_BASE}/fleet-driver/v1/ping`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${driver.authToken}` },
-      }).catch(() => {});
+      void (async () => {
+        const body: { lat?: number; lon?: number } = {};
+        if (driver.isAvailable) {
+          try {
+            const { getLastKnownPositionAsync } = await import("expo-location");
+            const pos = await getLastKnownPositionAsync();
+            if (pos?.coords && Number.isFinite(pos.coords.latitude) && Number.isFinite(pos.coords.longitude)) {
+              body.lat = pos.coords.latitude;
+              body.lon = pos.coords.longitude;
+            }
+          } catch {
+            /* GPS optional */
+          }
+        }
+        await fetch(`${API_BASE}/fleet-driver/v1/ping`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${driver.authToken}`,
+            ...(Object.keys(body).length ? { "Content-Type": "application/json" } : {}),
+          },
+          ...(Object.keys(body).length ? { body: JSON.stringify(body) } : {}),
+        }).catch(() => {});
+      })();
       if (driver.id && driver.companyId) {
         void syncDriverExpoPushTokenIfStale({
           authToken: driver.authToken,
@@ -616,7 +635,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }
     }, DRIVER_HEARTBEAT_MS);
     return () => clearInterval(t);
-  }, [driver?.authToken]);
+  }, [driver?.authToken, driver?.isAvailable, driver?.id, driver?.companyId]);
 
   return (
     <DriverContext.Provider

@@ -1,5 +1,5 @@
 import type { RideRequest } from "../domain/rideRequest";
-import { getFleetDriverMarketOnline, getFleetDriverDispatchPriority } from "./fleetDriversData";
+import { getFleetDriverMarketOnline, getFleetDriverDispatchPriority, getFleetDriverMarketLocation } from "./fleetDriversData";
 import { getFleetDriverReadinessById } from "./fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "./fleetMatchingData";
 import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
@@ -11,6 +11,7 @@ import {
   isOpenInstantRideForDispatch,
   normalizeDispatchPriority,
 } from "../lib/dispatchPriorityTier";
+import { getDispatchRadiusKmFromConfig, isWithinDispatchRadiusKm } from "../lib/dispatchRadius";
 
 const TERMINAL_MARKET_STATUSES = new Set([
   "completed",
@@ -117,10 +118,16 @@ export async function listMarketRidesForFleetDriver(
 
   const syncedRows = await syncDispatchTiersForRides(marketRowsRaw);
   const driverPriority = await getFleetDriverDispatchPriority(fleetDriverId, companyId);
+  const radiusKm = await getDispatchRadiusKmFromConfig();
+  const driverLoc = await getFleetDriverMarketLocation(fleetDriverId, companyId);
   const marketRows = syncedRows.filter((ride) => {
     if (isOpenInstantRideForDispatch(ride)) {
       const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
       if (!driverMatchesDispatchTier(driverPriority, rideTier)) return false;
+      if (!driverLoc) return false;
+      if (!isWithinDispatchRadiusKm(driverLoc.lat, driverLoc.lon, ride.fromLat, ride.fromLon, radiusKm)) {
+        return false;
+      }
     }
     return true;
   });

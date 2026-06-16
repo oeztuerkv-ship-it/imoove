@@ -326,6 +326,8 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   last_login_at TIMESTAMPTZ,
   last_heartbeat_at TIMESTAMPTZ,
   is_market_online BOOLEAN NOT NULL DEFAULT FALSE,
+  last_market_lat DOUBLE PRECISION,
+  last_market_lon DOUBLE PRECISION,
   medical_transport_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   medical_transport_inherit_from_company BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -1239,6 +1241,10 @@ ALTER TABLE fleet_drivers
 
 ALTER TABLE fleet_drivers
   ADD COLUMN IF NOT EXISTS medical_transport_inherit_from_company BOOLEAN NOT NULL DEFAULT true;
+
+ALTER TABLE fleet_drivers
+  ADD COLUMN IF NOT EXISTS last_market_lat DOUBLE PRECISION NULL,
+  ADD COLUMN IF NOT EXISTS last_market_lon DOUBLE PRECISION NULL;
 
 ALTER TABLE admin_companies
   ADD COLUMN IF NOT EXISTS company_code TEXT NOT NULL DEFAULT '',

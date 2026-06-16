@@ -231,6 +231,9 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
   /** Fleet-App: neue Markt-Sofortaufträge annehmen (false = offline am Markt). */
   is_market_online: boolean("is_market_online").notNull().default(false),
+  /** Letzte Position am Markt (Dispatch-Radius). */
+  last_market_lat: doublePrecision("last_market_lat"),
+  last_market_lon: doublePrecision("last_market_lon"),
   /** ONRODA-Admin: Fahrer-Override für Krankenfahrten (wirksam wenn inherit=false). */
   medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
   /** true = medical_transport_enabled vom Unternehmen erben. */

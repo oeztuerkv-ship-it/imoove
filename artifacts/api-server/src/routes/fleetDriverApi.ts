@@ -7,6 +7,7 @@ import {
   setFleetDriverMarketOnline,
   syncFleetDriverDispatchPriorityFromAdminEmail,
   touchFleetDriverHeartbeat,
+  updateFleetDriverMarketLocation,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import { listAssignmentsForCompany, setDriverVehicleAssignment } from "../db/fleetAssignmentsData";
@@ -279,6 +280,15 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
 
+    const latRaw = typeof req.query.lat === "string" ? Number(req.query.lat) : NaN;
+    const lonRaw = typeof req.query.lon === "string" ? Number(req.query.lon) : NaN;
+    const hasPos = Number.isFinite(latRaw) && Number.isFinite(lonRaw);
+    if (hasPos) {
+      await updateFleetDriverMarketLocation(a.fleetDriverId, a.companyId, latRaw, lonRaw);
+    } else {
+      await touchFleetDriverHeartbeat(a.fleetDriverId);
+    }
+
     const pool = await listMarketRidesForFleetDriver(a.fleetDriverId, a.companyId);
     if (!pool.ok) {
       res.status(401).json({ error: "not_found" });
@@ -295,9 +305,6 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       return;
     }
 
-    const latRaw = typeof req.query.lat === "string" ? Number(req.query.lat) : NaN;
-    const lonRaw = typeof req.query.lon === "string" ? Number(req.query.lon) : NaN;
-    const hasPos = Number.isFinite(latRaw) && Number.isFinite(lonRaw);
     let marketRows = pool.rides;
     if (hasPos) {
       const { haversineDistanceKm } = await import("../lib/serviceRegionMatch.js");
@@ -623,7 +630,14 @@ router.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) =>
     res.status(401).json({ error: "unauthorized" });
     return;
   }
-  await touchFleetDriverHeartbeat(a.fleetDriverId);
+  const body = (req.body ?? {}) as { lat?: unknown; lon?: unknown };
+  const lat = typeof body.lat === "number" ? body.lat : Number(body.lat);
+  const lon = typeof body.lon === "number" ? body.lon : Number(body.lon);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    await updateFleetDriverMarketLocation(a.fleetDriverId, a.companyId, lat, lon);
+  } else {
+    await touchFleetDriverHeartbeat(a.fleetDriverId);
+  }
   const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
   res.json({ ok: true, marketOnline });
 });
