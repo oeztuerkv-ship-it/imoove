@@ -81,7 +81,7 @@ export default function BookingCenterScreen() {
       title: "Reservierung",
       subtitle: "Fahrt für später planen – Datum & Uhrzeit wählen.",
       icon: "calendar",
-      onPress: () => router.push("/new-booking"),
+      onPress: () => router.replace("/new-booking"),
     },
     {
       key: "medical",
@@ -102,7 +102,7 @@ export default function BookingCenterScreen() {
       title: "QR-Code / Code einlösen",
       subtitle: "Genehmigung/Buchung aufrufen und später automatisch prüfen.",
       icon: "maximize",
-      onPress: () => router.push("/booking-qr"),
+      onPress: () => router.replace("/booking-qr"),
     },
   ];
 

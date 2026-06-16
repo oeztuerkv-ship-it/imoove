@@ -6,6 +6,7 @@ import {
   getCurrentPositionSafe,
   requestForegroundPermissionsSafe,
 } from "@/utils/safeExpoLocation";
+import { useIsFocused } from "@react-navigation/native";
 import {
   Redirect,
   router,
@@ -189,7 +190,7 @@ export default function HomeScreen() {
   const obTitleSize = isSmallScreen ? 24 : 30;
   const obBlockPad = isSmallScreen ? 14 : 20;
 
-  const [isHomeFocused, setIsHomeFocused] = useState(true);
+  const isHomeFocused = useIsFocused();
   /** Verhindert zweites useFocusEffect (Strict Mode / Re-Focus), das sonst frisch gesetztes Ziel wieder löscht. */
   const homePendingDestinationGuardUntilRef = useRef(0);
   const { loading: driverLoading, isLoggedIn: isDriverLoggedIn, driver: driverProfile } = useDriver();
@@ -240,7 +241,7 @@ export default function HomeScreen() {
     }
     setScheduledTime(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/new-booking" as Href);
+    router.replace("/new-booking" as Href);
   }, [customerAppBlocked, blockedCustomerAlert, setScheduledTime]);
 
   const goMedicalBooking = useCallback(() => {
@@ -1448,10 +1449,8 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setIsHomeFocused(true);
-
       if (Date.now() < homePendingDestinationGuardUntilRef.current) {
-        return () => setIsHomeFocused(false);
+        return undefined;
       }
 
       setIsSearchActive(false);
@@ -1472,7 +1471,7 @@ export default function HomeScreen() {
         router.push("/ride-select" as Href);
       }
 
-      return () => setIsHomeFocused(false);
+      return undefined;
     }, [resetRide, consumePendingDestination, setDestination, setViaStops]),
   );
 

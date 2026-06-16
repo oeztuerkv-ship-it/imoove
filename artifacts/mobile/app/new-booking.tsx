@@ -32,6 +32,7 @@ import {
   accountSheetToolbarAction,
 } from "@/constants/accountSheetTypography";
 import { CUSTOMER_BROKER_NOTICE_DE } from "@/constants/customerBrokerNoticeDe";
+import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import {
@@ -1730,7 +1731,7 @@ export default function NewBookingScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
-          !isInstant && { paddingBottom: rs(24) + insets.bottom + rs(88) },
+          { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) },
         ]}
         bottomOffset={insets.bottom + rs(8)}
       >
@@ -1770,6 +1771,7 @@ export default function NewBookingScreen() {
         }}
         colors={colors}
       />
+      <BottomTabBar active="buchen" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }
