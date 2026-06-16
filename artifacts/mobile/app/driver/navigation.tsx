@@ -8,6 +8,7 @@ import {
   Alert,
   AppState,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   PanResponder,
   Platform,
@@ -190,8 +191,13 @@ export default function DriverNavigationScreen() {
     arrived?: string;
   }>();
 
-  const { driverCancelRequest } = useRideRequests();
+  const { driverCancelRequest, requests } = useRideRequests();
   const { driver, refreshEinsatzbereit } = useDriver();
+  const activeRide = useMemo(
+    () => requests.find((r) => r.id === (params.rideId ?? "").trim()) ?? null,
+    [requests, params.rideId],
+  );
+  const customerPhone = (activeRide?.customerPhone ?? "").trim();
   const stackCollapsedForRideRef = useRef<string | null>(null);
 
   const phase = params.phase ?? "pickup";
@@ -1200,17 +1206,33 @@ export default function DriverNavigationScreen() {
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
         {isPickupPhase ? (
-          <Pressable
-            style={styles.navChatBtn}
-            accessibilityLabel="Chat"
-            onPress={() => {
-              setChatUnread(false);
-              setChatOpen(true);
-            }}
-          >
-            <Text style={styles.navChatBtnLabel}>Chat</Text>
-            {chatUnread ? <View style={styles.navChatBadge} /> : null}
-          </Pressable>
+          <>
+            {customerPhone ? (
+              <Pressable
+                style={styles.navChatBtn}
+                accessibilityLabel="Kunde anrufen"
+                onPress={() => {
+                  const tel = customerPhone.replace(/[^\d+]/g, "");
+                  if (tel) void Linking.openURL(`tel:${tel}`);
+                  else Alert.alert("Anruf nicht möglich", "Keine gültige Telefonnummer.");
+                }}
+              >
+                <Feather name="phone" size={16} color="#1B6B3A" />
+                <Text style={styles.navChatBtnLabel}>Anruf</Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              style={styles.navChatBtn}
+              accessibilityLabel="Chat"
+              onPress={() => {
+                setChatUnread(false);
+                setChatOpen(true);
+              }}
+            >
+              <Text style={styles.navChatBtnLabel}>Chat</Text>
+              {chatUnread ? <View style={styles.navChatBadge} /> : null}
+            </Pressable>
+          </>
         ) : null}
       </View>
 

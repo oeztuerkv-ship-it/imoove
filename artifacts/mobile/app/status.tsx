@@ -12,6 +12,7 @@ import {
   BackHandler,
   Easing,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -364,6 +365,7 @@ export default function StatusScreen() {
   const driverCar = assignedDriver?.vehicleLabel ?? assignedDriver?.vehicleModel ?? "";
   const driverPlate = assignedDriver?.licensePlate ?? effectiveAcceptedRequest?.driverPlate ?? "";
   const driverRating = assignedDriver?.rating ?? null;
+  const driverPhone = assignedDriver?.phone?.trim() ?? "";
   const driverInitials = assignedDriver?.initials ?? driverFirstName.slice(0, 2).toUpperCase();
 
   const serverRideForUi = rideMatchingCurrentId ?? effectiveAcceptedRequest;
@@ -656,6 +658,15 @@ export default function StatusScreen() {
       setEta(computedPickupEta);
     }
   }, [computedPickupEta, customerPhase]);
+
+  const handleCallDriver = () => {
+    const tel = driverPhone.replace(/[^\d+]/g, "");
+    if (!tel) {
+      Alert.alert("Anruf nicht möglich", "Für diese Fahrt ist keine Fahrer-Telefonnummer hinterlegt.");
+      return;
+    }
+    void Linking.openURL(`tel:${tel}`);
+  };
 
   useEffect(() => {
     setIsCompleted(false);
@@ -1468,9 +1479,15 @@ export default function StatusScreen() {
             : "Fahrer gefunden";
   const distanceKm = route?.distanceKm;
   const etaDistanceText =
-    distanceKm != null && Number.isFinite(Number(distanceKm))
-      ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km entfernt`
-      : null;
+    driverMarker &&
+    pickupLat != null &&
+    pickupLon != null &&
+    Number.isFinite(pickupLat) &&
+    Number.isFinite(pickupLon)
+      ? formatPickupDistanceKm(driverMarker.lat, driverMarker.lon, pickupLat, pickupLon)
+      : distanceKm != null && Number.isFinite(Number(distanceKm))
+        ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km entfernt`
+        : null;
 
   return (
     <View style={styles.container}>
@@ -1591,6 +1608,19 @@ export default function StatusScreen() {
         ) : null}
 
         <View style={styles.trackingActionRow}>
+          {driverPhone ? (
+            <Pressable
+              style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
+              accessibilityLabel="Anrufen"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleCallDriver();
+              }}
+            >
+              <Feather name="phone" size={rf(20)} color="#111827" />
+              <Text style={styles.trackingChatActionText}>Anrufen</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
             accessibilityLabel="Chat"

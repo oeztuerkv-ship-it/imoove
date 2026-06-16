@@ -135,6 +135,7 @@ export interface RideRequest {
   paymentMethod: string;
   vehicle: string;
   customerName: string;
+  customerPhone?: string | null;
   assignedDriver?: CustomerAssignedDriver | null;
   driverPlate?: string | null;
   accessibilityOptions?: RideAccessibilityOptions | null;
@@ -498,6 +499,7 @@ function normalizeRequest(r: any): RideRequest {
     }
   }
 
+  const customerPhoneRaw = r.customerPhone ?? r.customer_phone;
   const driverPlateRaw = r.driverPlate ?? r.driver_plate ?? r.plate;
 
   return {
@@ -545,6 +547,8 @@ function normalizeRequest(r: any): RideRequest {
     paymentMethod,
     vehicle,
     customerName: String(customerName),
+    customerPhone:
+      typeof customerPhoneRaw === "string" && customerPhoneRaw.trim() ? customerPhoneRaw.trim() : null,
     assignedDriver,
     driverPlate: typeof driverPlateRaw === "string" && driverPlateRaw.trim() ? driverPlateRaw.trim() : null,
     passengerId: r.passengerId ?? r.passenger_id,
