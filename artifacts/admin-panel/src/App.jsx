@@ -61,6 +61,7 @@ import PartnerMessagesPage from "./pages/PartnerMessagesPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 import DriversOverviewPage from "./pages/DriversOverviewPage.jsx";
+import DriversRevenuePage from "./pages/DriversRevenuePage.jsx";
 import Fail2BanPage from "./pages/Fail2BanPage.jsx";
 
 function isAdminPasswordResetPath() {
@@ -275,9 +276,8 @@ const PAGE_META = {
     bullets: ["Filter in der Fahrtenliste nach Fahrer-ID nutzen"],
   },
   "drivers-revenue": {
-    title: "Umsatz je Fahrer",
-    subtitle: "Abrechnungsrelevante Kennzahlen pro Fahrer.",
-    placeholder: true,
+    title: "Tagesabrechnung Fahrer",
+    subtitle: "Brutto, ONRODA-Provision und Fahrer-Auszahlung pro Tag.",
   },
   "users-admin": {
     title: "Admin-Zugänge",
@@ -833,6 +833,8 @@ export default function App() {
         );
       case "drivers-overview":
         return <DriversOverviewPage userRole={userRole} />;
+      case "drivers-revenue":
+        return <DriversRevenuePage />;
       case "taxi-fleet-vehicles":
         return (
           <TaxiFleetVehiclesPage

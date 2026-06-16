@@ -8,8 +8,10 @@ import {
   invoicesTable,
   paymentsTable,
   rideFinancialsTable,
+  ridesTable,
   settlementsTable,
 } from "./schema";
+import { findFleetDriverInCompany } from "./fleetDriversData.js";
 import { enrichInvoiceAdminRow } from "./adminInvoiceFinanceData.js";
 import { parseInvoiceNumber } from "../lib/invoiceNumbering.js";
 import {
@@ -679,4 +681,100 @@ export async function getFinanceEligibilitySummaryForRide(rideId: string): Promi
     settlementEligible: settlement.eligible,
     settlementBlockers: settlement.blockers,
   };
+}
+
+export type AdminDailyDriverSettlementRow = {
+  driverId: string;
+  companyId: string;
+  driverName: string;
+  companyName: string;
+  rideCount: number;
+  grossAmount: number;
+  commissionAmount: number;
+  driverPayoutAmount: number;
+};
+
+export type AdminDailyDriverSettlementReport = {
+  date: string;
+  totals: {
+    rideCount: number;
+    grossAmount: number;
+    commissionAmount: number;
+    driverPayoutAmount: number;
+  };
+  drivers: AdminDailyDriverSettlementRow[];
+};
+
+export async function getAdminDailyDriverSettlement(args: {
+  dateFrom: Date;
+  dateTo: Date;
+  dateLabel: string;
+}): Promise<AdminDailyDriverSettlementReport> {
+  const empty: AdminDailyDriverSettlementReport = {
+    date: args.dateLabel,
+    totals: { rideCount: 0, grossAmount: 0, commissionAmount: 0, driverPayoutAmount: 0 },
+    drivers: [],
+  };
+  if (!isPostgresConfigured()) return empty;
+  const db = getDb();
+  if (!db) return empty;
+
+  const rows = await db
+    .select({
+      driverId: ridesTable.driver_id,
+      companyId: ridesTable.company_id,
+      rideCount: sql<number>`count(*)::int`,
+      grossAmount: sql<number>`coalesce(sum(${rideFinancialsTable.gross_amount}), 0)`,
+      commissionAmount: sql<number>`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`,
+      driverPayoutAmount: sql<number>`coalesce(sum(${rideFinancialsTable.operator_payout_amount}), 0)`,
+    })
+    .from(rideFinancialsTable)
+    .innerJoin(ridesTable, eq(ridesTable.id, rideFinancialsTable.ride_id))
+    .where(
+      and(
+        eq(ridesTable.status, "completed"),
+        gte(rideFinancialsTable.calculated_at, args.dateFrom),
+        lte(rideFinancialsTable.calculated_at, args.dateTo),
+        isNotNull(ridesTable.driver_id),
+      ),
+    )
+    .groupBy(ridesTable.driver_id, ridesTable.company_id)
+    .orderBy(sql`coalesce(sum(${rideFinancialsTable.gross_amount}), 0) desc`);
+
+  const companyNames = await companyNameMap();
+  const drivers: AdminDailyDriverSettlementRow[] = [];
+
+  for (const row of rows) {
+    const driverId = String(row.driverId ?? "").trim();
+    const companyId = String(row.companyId ?? "").trim();
+    if (!driverId || !companyId) continue;
+
+    const driverRow = await findFleetDriverInCompany(driverId, companyId);
+    const firstName = String(driverRow?.first_name ?? "").trim();
+    const lastName = String(driverRow?.last_name ?? "").trim();
+    const driverName = `${firstName} ${lastName}`.trim() || driverId;
+
+    drivers.push({
+      driverId,
+      companyId,
+      driverName,
+      companyName: companyNames.get(companyId) ?? companyId,
+      rideCount: Number(row.rideCount) || 0,
+      grossAmount: n(row.grossAmount),
+      commissionAmount: n(row.commissionAmount),
+      driverPayoutAmount: n(row.driverPayoutAmount),
+    });
+  }
+
+  const totals = drivers.reduce(
+    (acc, d) => ({
+      rideCount: acc.rideCount + d.rideCount,
+      grossAmount: acc.grossAmount + d.grossAmount,
+      commissionAmount: acc.commissionAmount + d.commissionAmount,
+      driverPayoutAmount: acc.driverPayoutAmount + d.driverPayoutAmount,
+    }),
+    { rideCount: 0, grossAmount: 0, commissionAmount: 0, driverPayoutAmount: 0 },
+  );
+
+  return { date: args.dateLabel, totals, drivers };
 }

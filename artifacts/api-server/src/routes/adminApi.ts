@@ -38,6 +38,7 @@ import {
   findInvoiceByPaymentReference,
   findSettlementAdmin,
   getAdminFinanceSummary,
+  getAdminDailyDriverSettlement,
   getFinanceEligibilitySummaryForRide,
   getRideFinancialDetailAdmin,
   listFinancialAuditAdmin,
@@ -1021,6 +1022,31 @@ adminJson.get("/finance/summary", async (req, res, next) => {
       dateTo: dateTo?.toISOString() ?? null,
       summary,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/daily-driver-settlement", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const dateRaw = String(q.date ?? "").trim();
+    const dateFrom = parseIsoDateParam(dateRaw || new Date().toISOString().slice(0, 10), false);
+    const dateTo = parseIsoDateParam(dateRaw || new Date().toISOString().slice(0, 10), true);
+    if (!dateFrom || !dateTo) {
+      res.status(400).json({ error: "invalid_date" });
+      return;
+    }
+    const report = await getAdminDailyDriverSettlement({
+      dateFrom,
+      dateTo,
+      dateLabel: dateRaw || dateFrom.toISOString().slice(0, 10),
+    });
+    res.json({ ok: true, ...report });
   } catch (e) {
     next(e);
   }
