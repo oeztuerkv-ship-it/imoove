@@ -5074,7 +5074,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       accessKind?: string;
       attachment?: { fileName?: string; mimeType?: string; contentBase64?: string };
     };
-    const username = typeof body.username === "string" ? body.username.trim() : "";
+    let username = typeof body.username === "string" ? body.username.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const rawPassword = typeof body.password === "string" ? body.password : "";
     const generatedPassword = rawPassword ? "" : generateTemporaryPassword();
@@ -5083,8 +5083,15 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
     const sendWelcomeEmail = body.sendWelcomeEmail === true;
     const accessKind =
       typeof body.accessKind === "string" ? body.accessKind.trim().slice(0, 160) : "";
+    if (!username && email) {
+      username = await allocateUniquePanelUsername(email);
+    }
     if (!username || !password || password.length < 10) {
       res.status(400).json({ error: "username_password_required", hint: "password min length 10" });
+      return;
+    }
+    if (!email && sendWelcomeEmail) {
+      res.status(400).json({ error: "email_required_for_welcome_mail" });
       return;
     }
     if (!isPanelRoleString(roleRaw)) {

@@ -3,6 +3,7 @@ import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import CompanyMandateEditBlocks from "../components/CompanyMandateEditBlocks.jsx";
 import CompanyDocumentInventoryBlock from "../components/CompanyDocumentInventoryBlock.jsx";
 import CompanyTaxiOnboardingSections from "../components/CompanyTaxiOnboardingSections.jsx";
+import QuickCreatePanelUserModal from "../components/QuickCreatePanelUserModal.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders, adminFetch } from "../lib/adminApiHeaders.js";
 
@@ -163,6 +164,7 @@ export default function CompanyMandateDetailPage({
   const [loading, setLoading] = useState(true);
   const [taxiFleetBusy, setTaxiFleetBusy] = useState("");
   const [complianceWaiveBusy, setComplianceWaiveBusy] = useState(false);
+  const [showQuickPanelUser, setShowQuickPanelUser] = useState(false);
 
   const loadMandate = useCallback(() => {
     if (!companyId) {
@@ -513,6 +515,14 @@ export default function CompanyMandateDetailPage({
                     Partner-Zugang
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  className="admin-btn admin-btn--primary"
+                  onClick={() => setShowQuickPanelUser(true)}
+                  title="E-Mail + Passwort — Benutzername wird automatisch vergeben"
+                >
+                  Zugang schnell
+                </button>
                 {typeof onRequestFullWorkspace === "function" ? (
                   <button
                     type="button"
@@ -1281,6 +1291,13 @@ export default function CompanyMandateDetailPage({
             </p>
           </section>
         </>
+      ) : null}
+      {showQuickPanelUser && companyId ? (
+        <QuickCreatePanelUserModal
+          companyId={companyId}
+          companyName={c?.name ?? companyId}
+          onClose={() => setShowQuickPanelUser(false)}
+        />
       ) : null}
     </div>
   );
