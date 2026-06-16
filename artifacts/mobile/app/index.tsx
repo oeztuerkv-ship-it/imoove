@@ -1460,7 +1460,7 @@ export default function HomeScreen() {
     if (bookingMode === "immediate") {
       setScheduledTime(null);
     }
-    router.push("/ride" as Href);
+    router.replace("/ride" as Href);
   }, [selectedVehicle, isLoadingRoute, fareBreakdown, bookingMode, setScheduledTime]);
 
   /* ── GPS ── */

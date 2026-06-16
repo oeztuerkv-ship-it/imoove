@@ -2355,7 +2355,7 @@ export default function ProfileScreen() {
         </View>
 
       </ScrollView>
-      {profile.isLoggedIn ? <BottomTabBar active="account" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} /> : null}
+      <BottomTabBar active="account" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }

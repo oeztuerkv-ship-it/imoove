@@ -11,16 +11,23 @@ const TAB_HREF: Record<BottomTab, Href> = {
 };
 
 /**
- * Haupt-Tab wechseln und Buchungs-Modals/Stack bereinigen (z. B. booking-center → booking-medical).
- * `dismissTo` entfernt überlagerte Screens; Fallback `replace`.
+ * Haupt-Tab wechseln und überlagerte Buchungs-Screens schließen.
+ * Modals/Stack: zuerst dismissAll, dann dismissTo; Fallback replace.
  */
 export function navigateToCustomerMainTab(tab: BottomTab): void {
   const href = TAB_HREF[tab];
   try {
+    if (typeof router.canDismiss === "function" && router.canDismiss()) {
+      router.dismissAll();
+    }
+  } catch {
+    /* Navigator noch nicht bereit */
+  }
+  try {
     router.dismissTo(href);
     return;
   } catch {
-    /* Navigator noch nicht bereit oder Route nicht im Stack */
+    /* Route nicht im Stack */
   }
   try {
     router.replace(href);

@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
-import { router, useLocalSearchParams, usePathname, useSegments } from "expo-router";
+import { router, useLocalSearchParams, usePathname, useSegments, type Href } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
@@ -275,7 +275,7 @@ export default function RideSelectScreen() {
             if (selectedVehicle === "wheelchair") {
               setWheelchairSelectCompleted(true);
             }
-            router.push("/ride");
+            router.replace("/ride" as Href);
           }}
         >
           <Text style={styles.confirmBtnText}>Abholung bestätigen</Text>

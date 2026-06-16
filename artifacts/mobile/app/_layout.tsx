@@ -81,12 +81,14 @@ function RootLayoutNav() {
         name="new-booking"
         options={{
           headerShown: false,
-          presentation: "fullScreenModal",
-          gestureEnabled: false,
-          animation: "none",
+          gestureEnabled: true,
+          animation: "slide_from_right",
         }}
       />
-      <Stack.Screen name="booking-center" options={{ headerShown: false, gestureEnabled: false, presentation: "fullScreenModal" }} />
+      <Stack.Screen
+        name="booking-center"
+        options={{ headerShown: false, gestureEnabled: true, animation: "slide_from_right" }}
+      />
       <Stack.Screen name="booking-medical" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
       <Stack.Screen name="camera-test" options={{ headerShown: true, title: "Kamera-Test" }} />
