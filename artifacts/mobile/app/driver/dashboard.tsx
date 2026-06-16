@@ -2,7 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { useKeepAwake } from "expo-keep-awake";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { type Href, router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -3856,6 +3856,31 @@ export default function DriverDashboard() {
                       }}
                     >
                       Angenommene{scheduledAssignedRequests.length > 0 ? ` (${scheduledAssignedRequests.length})` : ""}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => router.push("/driver/create-reservation" as Href)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "transparent",
+                      borderRadius: 9,
+                      flexDirection: "row",
+                      gap: 4,
+                    }}
+                  >
+                    <Feather name="calendar" size={13} color="#8E8E93" />
+                    <Text
+                      style={{
+                        fontFamily: "Inter_500Medium",
+                        color: "#8E8E93",
+                        fontSize: 14,
+                      }}
+                    >
+                      Reserv.
                     </Text>
                   </Pressable>
 

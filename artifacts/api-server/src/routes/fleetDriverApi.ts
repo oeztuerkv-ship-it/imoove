@@ -28,6 +28,7 @@ import {
   recordDispatchOffersSentForDriver,
 } from "../db/rideDispatchOfferData";
 import { getFleetDriverRideEarnings } from "../lib/fleetDriverRideEarnings.js";
+import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
 import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
@@ -619,6 +620,62 @@ router.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (r
     }
     await upsertFleetDriverExpoPushToken(a.fleetDriverId, a.companyId, expoPushToken);
     res.json({ ok: true, fleetDriverId: a.fleetDriverId, companyId: a.companyId });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/fleet-driver/v1/reservations", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
+    const from = typeof body.from === "string" ? body.from.trim() : "";
+    const fromFull = typeof body.fromFull === "string" ? body.fromFull.trim() : from;
+    const to = typeof body.to === "string" ? body.to.trim() : "";
+    const toFull = typeof body.toFull === "string" ? body.toFull.trim() : to;
+    const scheduledAt = typeof body.scheduledAt === "string" ? body.scheduledAt.trim() : "";
+    const customerPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : "";
+    const paymentMethod = typeof body.paymentMethod === "string" ? body.paymentMethod.trim() : "cash";
+    const num = (k: string) => {
+      const v = body[k];
+      return typeof v === "number" && Number.isFinite(v) ? v : NaN;
+    };
+    const result = await createFleetDriverReservation({
+      fleetDriverId: a.fleetDriverId,
+      companyId: a.companyId,
+      customerName,
+      customerPhone: customerPhone || undefined,
+      from,
+      fromFull,
+      to,
+      toFull,
+      scheduledAt,
+      fromLat: num("fromLat"),
+      fromLon: num("fromLon"),
+      toLat: num("toLat"),
+      toLon: num("toLon"),
+      distanceKm: num("distanceKm"),
+      durationMinutes: num("durationMinutes"),
+      estimatedFare: num("estimatedFare"),
+      paymentMethod,
+      vehicle: typeof body.vehicle === "string" ? body.vehicle.trim() : undefined,
+    });
+    if (!result.ok) {
+      const status =
+        result.error === "scheduled_at_too_soon" || result.error === "required_fields_missing"
+          ? 400
+          : result.error === "driver_not_ready" || result.error === "vehicle_not_assigned"
+            ? 403
+            : 400;
+      res.status(status).json({ error: result.error });
+      return;
+    }
+    res.status(201).json({ ok: true, ride: stripPartnerOnlyRideFields(result.ride) });
   } catch (e) {
     next(e);
   }
