@@ -1,10 +1,22 @@
 # ONRODA Pilot — Live-Abnahmeprotokoll
 
-**Datum:** _______________  
-**Tester:** _______________  
-**Deploy-Stand:** `git rev-parse HEAD` = _______________  
-**Mobile Build:** iOS buildNumber **25** (Commit `a9a98a66` oder neuer)  
+**Datum:** 2026-06-17  
+**Tester:** Vedo + eingeladene Pilot-Tester  
+**Deploy-Stand:** `146d0c00` (`origin/main`, nach `./scripts/deploy-onroda-production.sh`)  
+**Mobile Build:** iOS **buildNumber 25** (`artifacts/mobile/app.json`)  
 **API:** https://api.onroda.de/api/healthz → ok
+
+### Enthaltene Commits (Stand Deploy)
+
+| Commit | Inhalt |
+|--------|--------|
+| `a9a98a66` | Apple Pay SetupIntent-Fix |
+| `5cbcc080` | Tab-Navigation Mobile (Fahrer) |
+| `67e4ac27` | Quittung Option B: Mandant + MwSt auf Kundenquittung (TEST-056) |
+| `760a2540` | Quick-Onboarding Mandant + Partner-Login |
+| `146d0c00` | Unternehmensart änderbar, Archivieren, Admin-only Stammdaten (Konzession/Steuer/Bank) |
+
+**Verifikation Server:** `cd /root/imoove && git rev-parse HEAD` → `146d0c00…`
 
 ---
 
@@ -22,7 +34,7 @@
 
 ### Deploy & Build (Pflicht vor Start)
 
-- [ ] Lokal: `main` enthält mindestens `a9a98a66` (Apple Pay) und `5cbcc080` (Tab-Navigation)
+- [x] Lokal: `main` enthält `146d0c00` (Governance) inkl. `67e4ac27` (Quittung), `760a2540` (Quick-Onboarding), `a9a98a66` (Apple Pay), `5cbcc080` (Navigation)
 - [ ] Server: `cd /root/imoove && ./scripts/deploy-onroda-production.sh` erfolgreich
 - [ ] API: `curl -sS https://api.onroda.de/api/healthz` → HTTP 200, `ok`
 - [ ] Mobile: iOS `buildNumber` **25** auf beiden Testgeräten
@@ -54,9 +66,15 @@ Siehe auch `docs/onroda-pilot-abnahme-checkliste.md` (30-Minuten-Flow Bar + Kart
 
 Ordner z. B. `pilot-live-YYYY-MM-DD/` mit Unterordnern `kunde/`, `fahrer/`, `admin/`, `stripe/`.
 
-### Offene Produktentscheidung
+### Offene Produktentscheidung / QA-Matrix (nicht Pilot-blockierend)
 
-**TEST-056 (Quittung MwSt):** Option B bestätigt als Zielbild — **noch nicht live**. Bis Umsetzung: Quittung zeigt nur ONRODA + Brutto (kein MwSt-Ausweis).
+| ID | Thema | Pilot | Aufwand (grobe Schätzung, falls vor breitem Start) |
+|----|-------|-------|------------------------------------------------------|
+| **TEST-056** | Quittung MwSt | **Option B live** (`67e4ac27`) — Mandant + MwSt auf Quittung | — |
+| **TEST-053** | Quittung per E-Mail | Nicht nötig für Pilot | **Mittel** (~2–4 Tage): HTML-Quittung + SMTP existieren; fehlt Trigger/Button „Per E-Mail senden“, Kunden-E-Mail aus Profil |
+| **TEST-106** | Push an alle Kunden | Nicht nötig für Pilot | **Klein–mittel** (~1–2 Tage MVP): Fahrer-Broadcast-Vorlage + `passenger_expo_push_tokens`; Admin-UI analog Fahrer-Nachrichten |
+| **TEST-134** | Provisionsreport | Nicht nötig für Pilot | **Mittel** (~3–5 Tage): Rohdaten/CSV (`billing/rides.csv`, Provision in `ride_financials`); fehlt gebündelter Perioden-Report/PDF für Buchhaltung |
+| **TEST-135** | Steuerreport | Nicht nötig für Pilot | **Mittel–hoch** (~1–2 Wochen): MwSt-Aggregation pro Mandant/Zeitraum, rechtssichere Ausweisung — abhängig von Steuerberater-Vorgaben |
 
 ---
 
@@ -218,8 +236,8 @@ Ordner z. B. `pilot-live-YYYY-MM-DD/` mit Unterordnern `kunde/`, `fahrer/`, `a
 | Kriterium | Status |
 |-----------|--------|
 | Alle 7 LIVE-Tests BESTANDEN | ☐ Ja ☐ Nein |
-| Deploy + Mobile Build aktuell | ☐ Ja ☐ Nein |
-| TEST-056 entschieden (A oder B) | ☐ Ja ☐ Nein |
+| Deploy + Mobile Build aktuell (`146d0c00`, Build 25) | ☐ Ja ☐ Nein |
+| TEST-056 Option B live (Quittung Mandant+MwSt) | ☐ Ja ☐ Nein |
 
 **Pilotfreigabe:** ☐ GO ☐ NO-GO  
 **Unterschrift / Datum:** _______________
