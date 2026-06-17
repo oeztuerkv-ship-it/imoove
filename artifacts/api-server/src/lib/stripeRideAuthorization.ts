@@ -4,6 +4,8 @@ import { findRide, updateRide } from "../db/ridesData";
 import { logger } from "./logger";
 import { normalizeRidePaymentStatus } from "./ridePaymentStatus";
 import { getStripeClient } from "./stripeClient";
+import { markRidePaymentCaptureFailed, markRidePaymentCaptureSucceeded } from "./ridePaymentCaptureState";
+import { isStripeWalletPaymentMethod } from "./ridePaymentMethod";
 import { resolveStripeConnectPaymentParams } from "./stripeConnect";
 import {
   chargePassengerRideFinalFare,
@@ -40,10 +42,7 @@ export function stripeAuthorizationAmountEurFromEstimate(estimateEur: number): n
   return Math.max(estimate, withBuffer);
 }
 
-export function isStripeWalletPaymentMethod(paymentMethod: string | null | undefined): boolean {
-  const pm = (paymentMethod ?? "").trim().toLowerCase();
-  return pm === "card" || pm.includes("apple") || pm.includes("google");
-}
+export { isStripeWalletPaymentMethod } from "./ridePaymentMethod";
 
 export function isStripePaymentIntentAuthorized(status: Stripe.PaymentIntent.Status): boolean {
   return status === "requires_capture";
@@ -97,15 +96,30 @@ async function captureLegacyBufferedAuthorization(
       ...(connectParams ? { application_fee_amount: connectParams.application_fee_amount } : {}),
     });
     if (!isStripePaymentIntentCaptured(captured.status)) {
-      return { ok: false, error: `capture_status_${captured.status}` };
+      const err = `capture_status_${captured.status}`;
+      await markRidePaymentCaptureFailed(ride, err, piId);
+      return { ok: false, error: err };
     }
-    await updateRide(ride.id.trim(), { paymentStatus: "paid", stripePaymentIntentId: captured.id });
+    await markRidePaymentCaptureSucceeded(ride.id.trim(), captured.id);
     return { ok: true, capturedAmountCents: captureCents, cappedToAuthorization };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error({ err, rideId: ride.id, paymentIntentId: piId }, "[Stripe] legacy capture failed");
-    return { ok: false, error: message || "stripe_capture_failed" };
+    const errText = message || "stripe_capture_failed";
+    await markRidePaymentCaptureFailed(ride, errText, piId);
+    return { ok: false, error: errText };
   }
+}
+
+async function failCompletedRideCapture(
+  ride: RideRequest,
+  error: string,
+  stripePaymentIntentId?: string | null,
+): Promise<CaptureRideStripePaymentResult> {
+  if (ride.status === "completed") {
+    await markRidePaymentCaptureFailed(ride, error, stripePaymentIntentId);
+  }
+  return { ok: false, error };
 }
 
 /** Nach Fahrtende: Endpreis von hinterlegter Karte abbuchen (kein Buchungs-Hold bei neuem Flow). */
@@ -120,35 +134,40 @@ export async function captureRideStripePaymentIntent(
   if (!stripe) return { ok: false, error: "stripe_not_configured" };
 
   const rideId = ride.id.trim();
-  const piId = (ride.stripePaymentIntentId ?? "").trim();
+  let piId = (ride.stripePaymentIntentId ?? "").trim();
 
   const paymentStatus = normalizeRidePaymentStatus(ride.paymentStatus);
   if (paymentStatus === "paid") {
     return { ok: true, capturedAmountCents: 0, cappedToAuthorization: false };
   }
-  if (paymentStatus !== "authorized" && paymentStatus !== "pending") {
+
+  const isPaymentRetry = paymentStatus === "failed" && ride.status === "completed";
+  if (!isPaymentRetry && paymentStatus !== "authorized" && paymentStatus !== "pending") {
     return { ok: false, error: `ride_payment_status_${paymentStatus}` };
+  }
+  if (isPaymentRetry) {
+    piId = "";
   }
 
   const finalFare = Number(ride.finalFare);
   if (!Number.isFinite(finalFare) || finalFare <= 0) {
-    return { ok: false, error: "final_fare_required_for_capture" };
+    return failCompletedRideCapture(ride, "final_fare_required_for_capture", ride.stripePaymentIntentId);
   }
 
   const finalCents = Math.round(finalFare * 100);
-  if (finalCents < 50) return { ok: false, error: "capture_amount_below_minimum" };
+  if (finalCents < 50) return failCompletedRideCapture(ride, "capture_amount_below_minimum", ride.stripePaymentIntentId);
 
   const passengerId = (ride.passengerId ?? "").trim();
 
   if (!piId) {
     if (!passengerId) {
-      return { ok: false, error: "passenger_required_for_final_charge" };
+      return failCompletedRideCapture(ride, "passenger_required_for_final_charge");
     }
     const resolved = await resolvePassengerSavedCardPaymentMethod(stripe, passengerId);
     const paymentMethodId = resolved.card?.paymentMethodId ?? null;
     const customerId = resolved.customerId;
     if (!paymentMethodId || !customerId) {
-      return { ok: false, error: "payment_method_required_for_final_charge" };
+      return failCompletedRideCapture(ride, "payment_method_required_for_final_charge");
     }
     const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, finalCents);
     const metadata: Record<string, string> = {
@@ -169,14 +188,15 @@ export async function captureRideStripePaymentIntent(
     });
 
     if (charge.kind === "succeeded") {
-      await updateRide(rideId, { paymentStatus: "paid", stripePaymentIntentId: charge.paymentIntentId });
+      await markRidePaymentCaptureSucceeded(rideId, charge.paymentIntentId);
       return { ok: true, capturedAmountCents: finalCents, cappedToAuthorization: false };
     }
     if (charge.kind === "requires_action") {
       logger.warn({ rideId, paymentIntentId: charge.paymentIntentId }, "[Stripe] final charge requires action");
+      await markRidePaymentCaptureFailed(ride, "final_charge_requires_action", charge.paymentIntentId);
       return { ok: false, error: "final_charge_requires_action" };
     }
-    await updateRide(rideId, { paymentStatus: "failed", stripePaymentIntentId: charge.paymentIntentId });
+    await markRidePaymentCaptureFailed(ride, charge.error, charge.paymentIntentId);
     return { ok: false, error: charge.error };
   }
 
@@ -184,11 +204,11 @@ export async function captureRideStripePaymentIntent(
   try {
     paymentIntent = await stripe.paymentIntents.retrieve(piId);
   } catch {
-    return { ok: false, error: "invalid_payment_intent" };
+    return failCompletedRideCapture(ride, "invalid_payment_intent", piId);
   }
 
   if (isStripePaymentIntentCaptured(paymentIntent.status)) {
-    await updateRide(rideId, { paymentStatus: "paid", stripePaymentIntentId: paymentIntent.id });
+    await markRidePaymentCaptureSucceeded(rideId, paymentIntent.id);
     return {
       ok: true,
       capturedAmountCents: paymentIntent.amount_received ?? paymentIntent.amount,
@@ -197,7 +217,7 @@ export async function captureRideStripePaymentIntent(
   }
 
   if (!isStripePaymentIntentAuthorized(paymentIntent.status)) {
-    return { ok: false, error: `payment_intent_status_${paymentIntent.status}` };
+    return failCompletedRideCapture(ride, `payment_intent_status_${paymentIntent.status}`, piId);
   }
 
   if (paymentIntent.amount > LEGACY_VERIFY_MAX_CENTS) {
@@ -212,7 +232,7 @@ export async function captureRideStripePaymentIntent(
     paymentMethodId = paymentMethodId ?? resolved.card?.paymentMethodId ?? null;
   }
   if (!paymentMethodId || !customerId) {
-    return { ok: false, error: "payment_method_required_for_final_charge" };
+    return failCompletedRideCapture(ride, "payment_method_required_for_final_charge", piId);
   }
 
   try {
@@ -222,7 +242,7 @@ export async function captureRideStripePaymentIntent(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.warn({ err, rideId, paymentIntentId: piId }, "[Stripe] cancel verify hold failed");
-    return { ok: false, error: message || "stripe_cancel_verify_failed" };
+    return failCompletedRideCapture(ride, message || "stripe_cancel_verify_failed", piId);
   }
 
   const connectParams = await resolveStripeConnectPaymentParams(ride.companyId, finalCents);
@@ -244,14 +264,15 @@ export async function captureRideStripePaymentIntent(
   });
 
   if (charge.kind === "succeeded") {
-    await updateRide(rideId, { paymentStatus: "paid", stripePaymentIntentId: charge.paymentIntentId });
+    await markRidePaymentCaptureSucceeded(rideId, charge.paymentIntentId);
     return { ok: true, capturedAmountCents: finalCents, cappedToAuthorization: false };
   }
   if (charge.kind === "requires_action") {
     logger.warn({ rideId, paymentIntentId: charge.paymentIntentId }, "[Stripe] final charge requires action");
+    await markRidePaymentCaptureFailed(ride, "final_charge_requires_action", charge.paymentIntentId);
     return { ok: false, error: "final_charge_requires_action" };
   }
-  await updateRide(rideId, { paymentStatus: "failed", stripePaymentIntentId: charge.paymentIntentId });
+  await markRidePaymentCaptureFailed(ride, charge.error, charge.paymentIntentId);
   return { ok: false, error: charge.error };
 }
 

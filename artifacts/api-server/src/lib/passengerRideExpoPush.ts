@@ -1,6 +1,8 @@
 import { listPassengerExpoPushTokens } from "../db/passengerExpoPushData";
 import { CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE } from "./customerCancellationSuspensionPolicy";
+import { CUSTOMER_PAYMENT_SUSPENSION_MESSAGE_DE } from "./ridePaymentRecoveryPolicy";
 import { sendCustomerCancellationSuspensionEmail } from "./customerSuspensionMail";
+import { sendCustomerPaymentBlockedEmail, sendCustomerPaymentFailedEmail } from "./customerPaymentFailedMail";
 import { sendExpoPushMessages } from "./expoPushGateway";
 
 /** Nur echte Vorbestellungen — kein „Reservierung abgelaufen“ bei Cron-Ablauf alter Sofort-Suche. */
@@ -145,7 +147,41 @@ export async function notifyPassengerReservationExpired(passengerId: string, rid
   );
 }
 
-/** Zu viele Kunden-Stornos in 24h → Buchungssperre. */
+/** Kartenabbuchung nach Fahrtende fehlgeschlagen → Zahlungsmethode aktualisieren. */
+export async function notifyPassengerPaymentFailed(passengerId: string, rideId: string): Promise<void> {
+  const pax = passengerId.trim();
+  if (!pax) return;
+  const tokens = await listPassengerExpoPushTokens(pax);
+  if (tokens.length > 0) {
+    await sendExpoPushMessages(
+      tokens.map((to) => ({
+        to,
+        title: "Zahlung fehlgeschlagen",
+        body: "Bitte aktualisieren Sie Ihre Zahlungsmethode in der Geldbörse.",
+        data: { kind: "payment_failed", rideId },
+      })),
+    );
+  }
+}
+
+/** Offene Zahlung nach mehreren Versuchen → Buchungssperre. */
+export async function notifyPassengerPaymentBlocked(passengerId: string, rideId: string): Promise<void> {
+  const pax = passengerId.trim();
+  if (!pax) return;
+  const tokens = await listPassengerExpoPushTokens(pax);
+  if (tokens.length > 0) {
+    await sendExpoPushMessages(
+      tokens.map((to) => ({
+        to,
+        title: "Offene Zahlung",
+        body: CUSTOMER_PAYMENT_SUSPENSION_MESSAGE_DE,
+        data: { kind: "payment_blocked", rideId },
+      })),
+    );
+  }
+  void sendCustomerPaymentBlockedEmail(pax, rideId);
+}
+
 export async function notifyPassengerCancellationSuspended(passengerId: string): Promise<void> {
   const pax = passengerId.trim();
   if (!pax) return;

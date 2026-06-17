@@ -202,8 +202,10 @@ import {
   adminPreviousDayBounds,
   adminReleaseRide,
   countRidesAdmin,
+  countAdminFailedPaymentRides,
   findRideAdminById,
   insertSupplementalRideEvent,
+  listAdminFailedPaymentRidesPage,
   listAdminPartnerDayStats,
   listAdminRidesAgendaForDay,
   listAdminRideEventsByRideId,
@@ -275,6 +277,7 @@ import {
   sendPartnerRegistrationRejectionEmail,
 } from "../lib/partnerApprovalMail";
 import { logger } from "../lib/logger";
+import { passengerEmailForAdmin } from "../lib/ridePaymentRecovery";
 import adminInsuranceRouter from "./adminInsuranceApi";
 import adminKrankenInvoiceRouter from "./adminKrankenInvoiceRoutes";
 import adminAppNewsRouter from "./adminAppNewsRouter";
@@ -1102,6 +1105,44 @@ adminJson.get("/finance/ride-financials/:rideId", async (req, res, next) => {
       auditEntries: detail.audit_entries,
       eligibility,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Abgeschlossene Fahrten mit fehlgeschlagener Kartenabbuchung (Operator-Nachverfolgung). */
+adminJson.get("/payments/failed-rides", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, rows] = await Promise.all([
+      countAdminFailedPaymentRides(),
+      listAdminFailedPaymentRidesPage(pageSize, offset),
+    ]);
+    const items = await Promise.all(
+      rows.map(async (ride) => ({
+        id: ride.id,
+        passengerId: ride.passengerId ?? null,
+        passengerEmail: await passengerEmailForAdmin(ride),
+        companyId: ride.companyId ?? null,
+        companyName: ride.companyName ?? null,
+        status: ride.status,
+        paymentStatus: ride.paymentStatus ?? null,
+        paymentMethod: ride.paymentMethod ?? null,
+        finalFare: ride.finalFare ?? null,
+        estimatedFare: ride.estimatedFare ?? null,
+        createdAt: ride.createdAt ?? null,
+        paymentCaptureAttemptCount: ride.paymentCaptureAttemptCount ?? 0,
+        paymentCaptureLastAttemptAt: ride.paymentCaptureLastAttemptAt ?? null,
+        paymentCaptureNextRetryAt: ride.paymentCaptureNextRetryAt ?? null,
+        paymentCaptureLastError: ride.paymentCaptureLastError ?? null,
+        stripePaymentIntentId: ride.stripePaymentIntentId ?? null,
+      })),
+    );
+    res.json({ ok: true, total, page, pageSize, items });
   } catch (e) {
     next(e);
   }

@@ -3,7 +3,12 @@ import {
   findActiveCustomerCancellationSuspension,
   upsertCustomerCancellationSuspension,
 } from "../db/customerCancellationSuspensionData";
+import { findActiveCustomerPaymentSuspension } from "../db/customerPaymentSuspensionData";
 import { notifyPassengerCancellationSuspended } from "./passengerRideExpoPush";
+import {
+  CUSTOMER_PAYMENT_SUSPENSION_ERROR,
+  CUSTOMER_PAYMENT_SUSPENSION_MESSAGE_DE,
+} from "./ridePaymentRecoveryPolicy";
 
 export const CUSTOMER_CANCELLATION_SUSPENSION_ERROR = "customer_cancellation_suspended";
 export const CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE =
@@ -22,13 +27,26 @@ export async function assertPassengerCanBook(passengerId: string): Promise<Passe
   if (!pax) {
     return { ok: false, error: "unauthorized", message: "Bitte anmelden, um eine Fahrt zu buchen." };
   }
-  const active = await findActiveCustomerCancellationSuspension(pax);
-  if (!active) return { ok: true };
-  return {
-    ok: false,
-    error: CUSTOMER_CANCELLATION_SUSPENSION_ERROR,
-    message: CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE,
-  };
+
+  const paymentSuspension = await findActiveCustomerPaymentSuspension(pax);
+  if (paymentSuspension) {
+    return {
+      ok: false,
+      error: CUSTOMER_PAYMENT_SUSPENSION_ERROR,
+      message: CUSTOMER_PAYMENT_SUSPENSION_MESSAGE_DE,
+    };
+  }
+
+  const cancellationSuspension = await findActiveCustomerCancellationSuspension(pax);
+  if (cancellationSuspension) {
+    return {
+      ok: false,
+      error: CUSTOMER_CANCELLATION_SUSPENSION_ERROR,
+      message: CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE,
+    };
+  }
+
+  return { ok: true };
 }
 
 /** Nach Kunden-Storno: bei ≥4 Stornos in 24h → 24h Sperre + Benachrichtigung (einmal pro Sperre). */

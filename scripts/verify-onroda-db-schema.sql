@@ -1365,6 +1365,27 @@ BEGIN
     errs := array_append(errs, 'passenger_profiles.rating_sum (Migration 110)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'payment_capture_attempt_count'
+  ) THEN
+    errs := array_append(errs, 'rides.payment_capture_attempt_count (Migration 111)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'payment_capture_next_retry_at'
+  ) THEN
+    errs := array_append(errs, 'rides.payment_capture_next_retry_at (Migration 111)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'customer_payment_suspension'
+  ) THEN
+    errs := array_append(errs, 'table customer_payment_suspension (Migration 111)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

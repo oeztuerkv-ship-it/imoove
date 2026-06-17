@@ -668,6 +668,11 @@ export const ridesTable = pgTable("rides", {
   waiting_charge_eur: doublePrecision("waiting_charge_eur"),
   payment_status: text("payment_status").notNull().default("pending"),
   stripe_payment_intent_id: text("stripe_payment_intent_id"),
+  payment_capture_attempt_count: integer("payment_capture_attempt_count").notNull().default(0),
+  payment_capture_last_attempt_at: timestamp("payment_capture_last_attempt_at", { withTimezone: true }),
+  payment_capture_next_retry_at: timestamp("payment_capture_next_retry_at", { withTimezone: true }),
+  payment_capture_last_error: text("payment_capture_last_error"),
+  payment_failed_notified_at: timestamp("payment_failed_notified_at", { withTimezone: true }),
   stripe_refund_id: text("stripe_refund_id"),
   refunded_at: timestamp("refunded_at", { withTimezone: true }),
   cash_confirmed_at: timestamp("cash_confirmed_at", { withTimezone: true }),
@@ -677,6 +682,18 @@ export const ridesTable = pgTable("rides", {
   /** Sofortfahrt: aktuelle Angebots-Stufe A→B→C. */
   dispatch_tier: text("dispatch_tier").notNull().default("A"),
   dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),
+});
+
+/** Offene fehlgeschlagene Kartenzahlung — Buchungssperre bis Begleichung. */
+export const customerPaymentSuspensionTable = pgTable("customer_payment_suspension", {
+  passenger_id: text("passenger_id").primaryKey(),
+  outstanding_ride_id: text("outstanding_ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+  suspended_at: timestamp("suspended_at", { withTimezone: true }).notNull().defaultNow(),
+  reason: text("reason").notNull().default("unpaid_ride"),
+  lifted_at: timestamp("lifted_at", { withTimezone: true }),
+  lifted_by_admin: text("lifted_by_admin"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Letzte Fahrer-GPS pro Fahrt (Geofence, Live-Tracking, Recovery). */

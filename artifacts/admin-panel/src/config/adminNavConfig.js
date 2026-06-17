@@ -158,7 +158,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     items: [
       { pageKey: "billing-credits", label: "Gutschriften", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "billing-invoices", label: "Rechnungen", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
-      { pageKey: "billing-open", label: "Offene Zahlungen", icon: "wallet", roles: ["admin", "service", "taxi", "insurance"] },
+      { pageKey: "billing-open", label: "Fehlgeschlagene Zahlungen", icon: "wallet", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "billing-cycles", label: "Wochen- / Monatsabrechnung", icon: "chart", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "billing-hotel", label: "Übersicht Buchungen (Hotel)", icon: "building", roles: ["admin", "service", "hotel"] },
     ],
@@ -436,7 +436,7 @@ const ADMIN_TOP_NAV = [
       { type: TOP_NAV_DIVIDER },
       { pageKey: "billing-credits", label: "Gutschriften" },
       { pageKey: "billing-invoices", label: "Rechnungen" },
-      { pageKey: "billing-open", label: "Offene Zahlungen" },
+      { pageKey: "billing-open", label: "Fehlgeschlagene Zahlungen" },
       { pageKey: "billing-cycles", label: "Wochen- / Monatsabrechnung" },
       { pageKey: "billing-hotel", label: "Buchungen (Hotel)" },
       { type: TOP_NAV_DIVIDER },

@@ -26,6 +26,7 @@ import {
 import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
+import { retryPassengerFailedRidePayment } from "../lib/ridePaymentRecovery";
 import { respondCustomerPaymentRouteError } from "../lib/stripeHttpError.js";
 import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine.js";
@@ -674,6 +675,41 @@ router.post("/customer/v1/payment/setup-intent", requireCustomerSession, async (
     res.json({ clientSecret });
   } catch (e) {
     if (respondCustomerPaymentRouteError(res, e, "payment/setup-intent")) return;
+    next(e);
+  }
+});
+
+/** Offene fehlgeschlagene Fahrtzahlung erneut einziehen (nach Karten-Update). */
+router.post("/customer/v1/payment/retry-ride/:rideId", requireCustomerSession, async (req, res, next) => {
+  try {
+    const stripe = getStripeClient();
+    if (!stripe) {
+      res.status(503).json({ error: "stripe_not_configured" });
+      return;
+    }
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const outcome = await retryPassengerFailedRidePayment(rideId, passengerId);
+    if (!outcome.ok) {
+      const status =
+        outcome.error === "not_found" ? 404
+        : outcome.error === "ride_not_completed" || outcome.error === "payment_not_failed" ? 409
+        : 402;
+      res.status(status).json({ ok: false, error: outcome.error });
+      return;
+    }
+    res.json({ ok: true, paymentStatus: "paid" });
+  } catch (e) {
+    if (respondCustomerPaymentRouteError(res, e, "payment/retry-ride")) return;
     next(e);
   }
 });

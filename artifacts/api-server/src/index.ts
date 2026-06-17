@@ -137,6 +137,10 @@ httpServer.listen(port, () => {
         logger.warn({ count: lateFlagged.length, rideIds: lateFlagged }, "[Cron] driver_late flagged");
       }
 
+      // Job 9: Fehlgeschlagene Kartenabbuchungen — automatische Retries
+      const { runFailedPaymentRecoveryCron } = await import("./jobs/failedPaymentRecovery.js");
+      await runFailedPaymentRecoveryCron(now);
+
     } catch (err) {
       logger.error({ err }, "[Cron] reservationLifecycle failed");
     }

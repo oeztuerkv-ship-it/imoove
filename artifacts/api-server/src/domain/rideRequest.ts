@@ -201,6 +201,11 @@ export interface RideRequest {
   waitingChargeEur?: number | null;
   paymentStatus?: "pending" | "authorized" | "paid" | "failed" | "refunded" | null;
   stripePaymentIntentId?: string | null;
+  paymentCaptureAttemptCount?: number | null;
+  paymentCaptureLastAttemptAt?: string | null;
+  paymentCaptureNextRetryAt?: string | null;
+  paymentCaptureLastError?: string | null;
+  paymentFailedNotifiedAt?: string | null;
   stripeRefundId?: string | null;
   refundedAt?: string | null;
   cashConfirmedAt?: string | null;

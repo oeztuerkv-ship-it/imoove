@@ -193,6 +193,17 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     waitingChargeEur: r.waiting_charge_eur ?? null,
     paymentStatus: (r.payment_status as RideRequest["paymentStatus"]) ?? "pending",
     stripePaymentIntentId: r.stripe_payment_intent_id ?? null,
+    paymentCaptureAttemptCount: r.payment_capture_attempt_count ?? 0,
+    paymentCaptureLastAttemptAt: r.payment_capture_last_attempt_at
+      ? r.payment_capture_last_attempt_at.toISOString()
+      : null,
+    paymentCaptureNextRetryAt: r.payment_capture_next_retry_at
+      ? r.payment_capture_next_retry_at.toISOString()
+      : null,
+    paymentCaptureLastError: r.payment_capture_last_error ?? null,
+    paymentFailedNotifiedAt: r.payment_failed_notified_at
+      ? r.payment_failed_notified_at.toISOString()
+      : null,
     stripeRefundId: r.stripe_refund_id ?? null,
     refundedAt: r.refunded_at ? r.refunded_at.toISOString() : null,
     cashConfirmedAt: r.cash_confirmed_at ? r.cash_confirmed_at.toISOString() : null,
@@ -275,6 +286,15 @@ function rideToUpdate(r: RideRequest) {
     waiting_charge_eur: r.waitingChargeEur ?? null,
     payment_status: r.paymentStatus ?? "pending",
     stripe_payment_intent_id: r.stripePaymentIntentId ?? null,
+    payment_capture_attempt_count: r.paymentCaptureAttemptCount ?? 0,
+    payment_capture_last_attempt_at: r.paymentCaptureLastAttemptAt
+      ? new Date(r.paymentCaptureLastAttemptAt)
+      : null,
+    payment_capture_next_retry_at: r.paymentCaptureNextRetryAt
+      ? new Date(r.paymentCaptureNextRetryAt)
+      : null,
+    payment_capture_last_error: r.paymentCaptureLastError ?? null,
+    payment_failed_notified_at: r.paymentFailedNotifiedAt ? new Date(r.paymentFailedNotifiedAt) : null,
     stripe_refund_id: r.stripeRefundId ?? null,
     refunded_at: r.refundedAt ? new Date(r.refundedAt) : null,
     cash_confirmed_at: r.cashConfirmedAt ? new Date(r.cashConfirmedAt) : null,
@@ -336,6 +356,15 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     waiting_charge_eur: r.waitingChargeEur ?? null,
     payment_status: r.paymentStatus ?? "pending",
     stripe_payment_intent_id: r.stripePaymentIntentId ?? null,
+    payment_capture_attempt_count: r.paymentCaptureAttemptCount ?? 0,
+    payment_capture_last_attempt_at: r.paymentCaptureLastAttemptAt
+      ? new Date(r.paymentCaptureLastAttemptAt)
+      : null,
+    payment_capture_next_retry_at: r.paymentCaptureNextRetryAt
+      ? new Date(r.paymentCaptureNextRetryAt)
+      : null,
+    payment_capture_last_error: r.paymentCaptureLastError ?? null,
+    payment_failed_notified_at: r.paymentFailedNotifiedAt ? new Date(r.paymentFailedNotifiedAt) : null,
     stripe_refund_id: r.stripeRefundId ?? null,
     refunded_at: r.refundedAt ? new Date(r.refundedAt) : null,
     cash_confirmed_at: r.cashConfirmedAt ? new Date(r.cashConfirmedAt) : null,
@@ -1677,4 +1706,85 @@ export async function listRidesForDriver(driverId: string): Promise<RideRequest[
     .orderBy(desc(ridesTable.created_at))
     .limit(200);
   return rows.map(rowToRide);
+}
+
+/** Cron: abgeschlossene Fahrten mit fehlgeschlagener Abbuchung und fälligem Retry. */
+export async function listRidesDueForPaymentCaptureRetry(now: Date = new Date()): Promise<RideRequest[]> {
+  const db = getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(ridesTable)
+    .where(
+      and(
+        eq(ridesTable.status, "completed"),
+        eq(ridesTable.payment_status, "failed"),
+        isNotNull(ridesTable.payment_capture_next_retry_at),
+        lte(ridesTable.payment_capture_next_retry_at, now),
+      ),
+    )
+    .orderBy(asc(ridesTable.payment_capture_next_retry_at))
+    .limit(50);
+  return rows.map(rowToRide);
+}
+
+export type AdminFailedPaymentRideRow = AdminRideRow & {
+  paymentCaptureAttemptCount: number;
+  paymentCaptureLastAttemptAt: string | null;
+  paymentCaptureNextRetryAt: string | null;
+  paymentCaptureLastError: string | null;
+};
+
+export async function countAdminFailedPaymentRides(): Promise<number> {
+  const db = getDb();
+  if (!db) {
+    return memoryRides.filter((r) => r.status === "completed" && r.paymentStatus === "failed").length;
+  }
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(and(eq(ridesTable.status, "completed"), eq(ridesTable.payment_status, "failed")));
+  return Number(row?.n ?? 0);
+}
+
+export async function listAdminFailedPaymentRidesPage(
+  limit: number,
+  offset: number,
+): Promise<AdminFailedPaymentRideRow[]> {
+  const db = getDb();
+  if (!db) {
+    return memoryRides
+      .filter((r) => r.status === "completed" && r.paymentStatus === "failed")
+      .slice(offset, offset + limit)
+      .map((r) => ({
+        ...r,
+        companyName: null,
+        paymentCaptureAttemptCount: r.paymentCaptureAttemptCount ?? 0,
+        paymentCaptureLastAttemptAt: r.paymentCaptureLastAttemptAt ?? null,
+        paymentCaptureNextRetryAt: r.paymentCaptureNextRetryAt ?? null,
+        paymentCaptureLastError: r.paymentCaptureLastError ?? null,
+      }));
+  }
+  const rows = await db
+    .select({
+      ride: ridesTable,
+      companyName: adminCompaniesTable.name,
+    })
+    .from(ridesTable)
+    .leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id))
+    .where(and(eq(ridesTable.status, "completed"), eq(ridesTable.payment_status, "failed")))
+    .orderBy(desc(ridesTable.payment_capture_last_attempt_at), desc(ridesTable.created_at))
+    .limit(limit)
+    .offset(offset);
+  return rows.map(({ ride, companyName }) => {
+    const r = rowToRide(ride);
+    return {
+      ...r,
+      companyName: companyName ?? null,
+      paymentCaptureAttemptCount: r.paymentCaptureAttemptCount ?? 0,
+      paymentCaptureLastAttemptAt: r.paymentCaptureLastAttemptAt ?? null,
+      paymentCaptureNextRetryAt: r.paymentCaptureNextRetryAt ?? null,
+      paymentCaptureLastError: r.paymentCaptureLastError ?? null,
+    };
+  });
 }

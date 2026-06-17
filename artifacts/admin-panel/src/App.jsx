@@ -28,6 +28,7 @@ import AdminPasswordResetPage from "./pages/AdminPasswordResetPage.jsx";
 import AdminPlaceholderPage from "./pages/AdminPlaceholderPage.jsx";
 import FinanceDashboardPage from "./pages/FinanceDashboardPage.jsx";
 import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
+import FailedPaymentsPage from "./pages/FailedPaymentsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceKrankenInvoicesPage from "./pages/FinanceKrankenInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
@@ -113,9 +114,8 @@ const PAGE_META = {
     placeholder: true,
   },
   "billing-open": {
-    title: "Offene Zahlungen",
-    subtitle: "Forderungsliste und Mahnstatus.",
-    placeholder: true,
+    title: "Fehlgeschlagene Zahlungen",
+    subtitle: "Abgeschlossene Fahrten mit fehlgeschlagener Kartenabbuchung — Retries, Sperren, manuelle Nachverfolgung",
   },
   "billing-cycles": {
     title: "Wochen- / Monatsabrechnung",
@@ -927,6 +927,15 @@ export default function App() {
         return <FinanceDashboardPage />;
       case "finance-ride-financials":
         return <FinanceRideFinancialsPage />;
+      case "billing-open":
+        return (
+          <FailedPaymentsPage
+            onOpenRide={(id) => {
+              setRideRecordId(id);
+              setActive("ride-detail");
+            }}
+          />
+        );
       case "finance-invoices":
         return <FinanceInvoicesPage />;
       case "finance-kranken-invoices":
