@@ -139,6 +139,7 @@ import {
   notifyPassengerRideCompleted,
   notifyPassengerRideInProgress,
   notifyPassengerReservationExpired,
+  shouldNotifyPassengerReservationExpired,
 } from "../lib/passengerRideExpoPush";
 import { broadcastRideStatusChange } from "../wsRideSocketHub";
 import { resolveNoShowPolicy } from "../lib/noShowPolicy";
@@ -2523,7 +2524,9 @@ export async function patchRideStatusRoute(
     }
     if (nextStatus === "expired" && cur.status !== "expired") {
       const pid = (updated.passengerId ?? "").trim();
-      if (pid) void notifyPassengerReservationExpired(pid, updated.id);
+      if (pid && shouldNotifyPassengerReservationExpired(cur.status)) {
+        void notifyPassengerReservationExpired(pid, updated.id);
+      }
     }
     if (nextStatus === "cancelled_by_system") {
       const pid = (updated.passengerId ?? "").trim();

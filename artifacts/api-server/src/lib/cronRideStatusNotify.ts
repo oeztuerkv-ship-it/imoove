@@ -2,6 +2,7 @@ import {
   notifyPassengerReservationActivated,
   notifyPassengerReservationExpired,
   notifyPassengerRideCancelledBySystem,
+  shouldNotifyPassengerReservationExpired,
 } from "./passengerRideExpoPush";
 import { broadcastRideStatusChange } from "../wsRideSocketHub";
 
@@ -22,7 +23,7 @@ export function notifyCronRideStatusChange(input: {
   const pid = typeof input.passengerId === "string" ? input.passengerId.trim() : "";
   if (!pid) return;
 
-  if (toStatus === "expired") {
+  if (toStatus === "expired" && shouldNotifyPassengerReservationExpired(fromStatus)) {
     void notifyPassengerReservationExpired(pid, rideId);
     return;
   }

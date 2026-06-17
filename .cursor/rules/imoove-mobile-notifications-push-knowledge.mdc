@@ -55,7 +55,8 @@ Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in 
 | Fahrer-Storno | `POST …/driver-cancel` → `searching_driver` | **Kein** erneuter Markt-Push (nur Client-Diff-Bug) |
 | Fahrer angenommen / wartet / unterwegs | `notifyPassengerDriverAccepted` / `…Arriving` / `…Waiting` | Kunde (`passengerRideExpoPush.ts`) |
 | Fahrt läuft / beendet | `notifyPassengerRideInProgress` / `notifyPassengerRideCompleted` | Kunde (Quittung → `/status`) |
-| Reservierung abgelaufen (Cron) | `notifyPassengerReservationExpired` | Kunde |
+| Reservierung abgelaufen (Cron, nur `scheduled` / `scheduled_assigned` / `ready_for_dispatch`) | `notifyPassengerReservationExpired` | Kunde |
+| Alter Sofort-Such-Hänger → `expired` (Cron Job 7) | **kein** Reservierungs-Push | — |
 
 Push-Marker / Cron: `ridePushNotificationMarkers.ts`, `index.ts` Jobs.
 

@@ -887,7 +887,17 @@ export default function StatusScreen() {
     if (cancelFlowStartedRef.current) return;
     const ride = requests.find((r) => r.id === id);
     if (!ride) return;
+
+    const wasSessionBooking =
+      lastAddedRequestId === id || myActiveRequests.some((r) => r.id === id);
+
     handledReservationUnfulfilledRef.current = id;
+
+    if (!wasSessionBooking) {
+      router.replace("/");
+      return;
+    }
+
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const isExpired = ride.status === "expired";
     finishCancelLocally();
@@ -899,7 +909,7 @@ export default function StatusScreen() {
       [{ text: "OK" }],
       { cancelable: false },
     );
-  }, [customerPhase, currentRideId, requests]);
+  }, [customerPhase, currentRideId, requests, lastAddedRequestId, myActiveRequests]);
 
   useEffect(() => {
     if (handledRideCancelledRef.current && handledRideCancelledRef.current !== currentRideId) {

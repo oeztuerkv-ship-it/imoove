@@ -3,6 +3,18 @@ import { CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE } from "./customerCancellat
 import { sendCustomerCancellationSuspensionEmail } from "./customerSuspensionMail";
 import { sendExpoPushMessages } from "./expoPushGateway";
 
+/** Nur echte Vorbestellungen — kein „Reservierung abgelaufen“ bei Cron-Ablauf alter Sofort-Suche. */
+export const RESERVATION_EXPIRED_NOTIFY_FROM_STATUSES = new Set([
+  "scheduled",
+  "scheduled_assigned",
+  "ready_for_dispatch",
+]);
+
+export function shouldNotifyPassengerReservationExpired(fromStatus: string | null | undefined): boolean {
+  const s = typeof fromStatus === "string" ? fromStatus.trim() : "";
+  return RESERVATION_EXPIRED_NOTIFY_FROM_STATUSES.has(s);
+}
+
 /** Reservierung: Fahrer zugewiesen (scheduled → scheduled_assigned) → Kunde informieren. */
 export async function notifyPassengerReservationConfirmed(passengerId: string, rideId: string): Promise<void> {
   const tokens = await listPassengerExpoPushTokens(passengerId);

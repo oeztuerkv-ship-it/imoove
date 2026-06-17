@@ -1,6 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
 import { isDriverPushKind } from "@/utils/notificationAudience";
+
+const HANDLED_PUSH_RESPONSE_IDS_KEY = "@onroda/handledPushResponseIds";
+const MAX_HANDLED_PUSH_IDS = 50;
 
 const CUSTOMER_RIDE_PUSH_KINDS = new Set([
   "reservation_confirmed",
@@ -14,6 +18,9 @@ const CUSTOMER_RIDE_PUSH_KINDS = new Set([
   "ride_cancelled_by_system",
 ]);
 
+/** Abgelaufene / beendete Buchungen — nicht auf Live-Status mit alter rideId. */
+const CUSTOMER_TERMINAL_PUSH_KINDS = new Set(["reservation_expired", "ride_cancelled_by_system"]);
+
 function rideIdFromPushData(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const rideId = (data as { rideId?: unknown }).rideId;
@@ -26,6 +33,23 @@ function kindFromPushData(data: unknown): string | null {
   return typeof kind === "string" ? kind : null;
 }
 
+async function shouldHandlePushResponse(
+  response: { notification: { request: { identifier: string } } },
+): Promise<boolean> {
+  const id = response.notification.request.identifier?.trim();
+  if (!id) return true;
+  try {
+    const raw = await AsyncStorage.getItem(HANDLED_PUSH_RESPONSE_IDS_KEY);
+    const handled: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+    if (handled.includes(id)) return false;
+    const next = [id, ...handled].slice(0, MAX_HANDLED_PUSH_IDS);
+    await AsyncStorage.setItem(HANDLED_PUSH_RESPONSE_IDS_KEY, JSON.stringify(next));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 function navigateForPush(kind: string | null, rideId: string | null): void {
   if (!kind) return;
   if (isDriverPushKind(kind)) {
@@ -33,6 +57,10 @@ function navigateForPush(kind: string | null, rideId: string | null): void {
     return;
   }
   if (!CUSTOMER_RIDE_PUSH_KINDS.has(kind)) return;
+  if (CUSTOMER_TERMINAL_PUSH_KINDS.has(kind)) {
+    router.replace("/");
+    return;
+  }
   if (rideId) {
     router.push({ pathname: "/status", params: { rideId } });
     return;
@@ -45,13 +73,16 @@ export function setupExpoPushResponseRouting(): () => void {
   let sub: { remove: () => void } | null = null;
   void import("expo-notifications").then(async (Notifications) => {
     const last = await Notifications.getLastNotificationResponseAsync();
-    if (last) {
+    if (last && (await shouldHandlePushResponse(last))) {
       const data = last.notification.request.content.data;
       navigateForPush(kindFromPushData(data), rideIdFromPushData(data));
     }
     sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      navigateForPush(kindFromPushData(data), rideIdFromPushData(data));
+      void shouldHandlePushResponse(response).then((ok) => {
+        if (!ok) return;
+        const data = response.notification.request.content.data;
+        navigateForPush(kindFromPushData(data), rideIdFromPushData(data));
+      });
     });
   });
   return () => sub?.remove();
