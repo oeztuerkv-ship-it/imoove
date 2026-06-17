@@ -96,7 +96,6 @@ export type PanelCompanyProfilePatch = Partial<{
   country: string;
   legalForm: string;
   ownerName: string;
-  bankIban: string;
 }>;
 
 const MAX = {
@@ -128,10 +127,7 @@ function partnerBasicsPanelCompleteFromRow(r: typeof adminCompaniesTable.$inferS
     !isDbEmpty(r.city) &&
     !isDbEmpty(r.country) &&
     !isDbEmpty(r.legal_form) &&
-    !isDbEmpty(r.owner_name) &&
-    !isDbEmpty(r.concession_number) &&
-    !isDbEmpty(r.tax_id) &&
-    !isDbEmpty(r.bank_iban)
+    !isDbEmpty(r.owner_name)
   );
 }
 
@@ -341,10 +337,6 @@ export async function patchPanelCompanyProfile(
   if (patch.ownerName !== undefined && isDbEmpty(r0.owner_name)) {
     const v = clip(patch.ownerName, MAX.short);
     if (v) set.owner_name = v;
-  }
-  if (patch.bankIban !== undefined && isDbEmpty(r0.bank_iban)) {
-    const v = clip(patch.bankIban, MAX.short);
-    if (v) set.bank_iban = v;
   }
 
   if (Object.keys(set).length === 0) {

@@ -927,7 +927,6 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const country = str("country");
     const legalForm = str("legalForm");
     const ownerName = str("ownerName");
-    const bankIban = str("bankIban");
     if (dispoPhone !== undefined) patch.dispoPhone = dispoPhone;
     if (supportEmail !== undefined) patch.supportEmail = supportEmail;
     if (logoUrl !== undefined) patch.logoUrl = logoUrl;
@@ -943,7 +942,6 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     if (country !== undefined) patch.country = country;
     if (legalForm !== undefined) patch.legalForm = legalForm;
     if (ownerName !== undefined) patch.ownerName = ownerName;
-    if (bankIban !== undefined) patch.bankIban = bankIban;
 
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
     if (!result.ok) {

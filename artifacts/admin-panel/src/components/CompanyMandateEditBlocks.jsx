@@ -11,6 +11,16 @@ import {
 
 const FP_BLOCK = "admin_platform_block_reason";
 
+const ADMIN_COMPANY_KIND_OPTIONS = [
+  { value: "taxi", label: "Taxi" },
+  { value: "hotel", label: "Hotel" },
+  { value: "corporate", label: "Corporate / Unternehmen" },
+  { value: "voucher_client", label: "Gutschein" },
+  { value: "insurer", label: "Versicherung / Krankenkasse" },
+  { value: "medical", label: "Krankenfahrt" },
+  { value: "general", label: "Sonstige" },
+];
+
 function ampelMeta(status) {
   if (status === "approved") return { emoji: "🟢", label: "Freigegeben", cls: "admin-onb-ampel--ok" };
   if (status === "pending") return { emoji: "🟡", label: "Ausstehend", cls: "admin-onb-ampel--pending" };
@@ -125,6 +135,7 @@ export default function CompanyMandateEditBlocks({
     const fp = asObj(c.fare_permissions);
     setStammdaten({
       name: c.name ?? "",
+      company_kind: c.company_kind ?? "general",
       legal_form: c.legal_form ?? "",
       owner_name: c.owner_name ?? "",
       tax_id: c.tax_id ?? "",
@@ -286,6 +297,19 @@ export default function CompanyMandateEditBlocks({
               value={stammdaten.name}
               onChange={(e) => setStammdaten((s) => ({ ...s, name: e.target.value }))}
             />
+          </Field>
+          <Field label="Unternehmensart" error={fe("company_kind")}>
+            <select
+              className="admin-m-inp"
+              value={stammdaten.company_kind}
+              onChange={(e) => setStammdaten((s) => ({ ...s, company_kind: e.target.value }))}
+            >
+              {ADMIN_COMPANY_KIND_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Rechtsform" error={fe("legal_form")}>
             <input
@@ -588,6 +612,30 @@ export default function CompanyMandateEditBlocks({
               onChange={(e) => setStatus((s) => ({ ...s, block_platform_reason: e.target.value }))}
             />
           </Field>
+        </div>
+        <div className="admin-action-row" style={{ marginTop: 8, marginBottom: 4 }}>
+          {!fullyInactive ? (
+            <button
+              type="button"
+              className="admin-btn-secondary admin-btn-primary--sm"
+              disabled={statusBusy}
+              onClick={() => {
+                if (!window.confirm("Mandant archivieren? Partner-Login und Vertrag werden deaktiviert.")) return;
+                void quickDeactivate();
+              }}
+            >
+              Archivieren
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="admin-btn-primary admin-btn-primary--sm"
+              disabled={statusBusy}
+              onClick={() => void quickActivate()}
+            >
+              Reaktivieren
+            </button>
+          )}
         </div>
         <AdminOnboardingBlockFooter
           type="button"

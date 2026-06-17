@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import CompanyWorkspaceForm from "../components/CompanyWorkspaceForm.jsx";
 import CompanyMandateDetailPage from "./CompanyMandateDetailPage.jsx";
 import { API_BASE } from "../lib/apiBase.js";
-import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import { adminApiHeaders, adminFetch } from "../lib/adminApiHeaders.js";
 import { matchesCompanyKindListTab } from "../utils/panelModulesByCompanyKind.js";
 
 const KIND_COLORS = {
@@ -41,6 +41,7 @@ const COMPL_ORDER = { pending: 0, in_review: 1, non_compliant: 2, compliant: 3 }
 const INITIAL_EXTRA = {
   active: false,
   blocked: false,
+  archived: false,
   contractOn: false,
   contractOff: false,
   verifOpen: false,
@@ -123,6 +124,7 @@ function companyMatchesSearch(item, q) {
 
 function applyExtraFilters(item, f) {
   if (f.active && !item.is_active) return false;
+  if (f.archived && item.is_active !== false) return false;
   if (f.blocked && !item.is_blocked) return false;
   if (f.contractOn && item.contract_status !== "active") return false;
   if (f.contractOff && item.contract_status === "active") return false;
@@ -189,6 +191,7 @@ const KIND_TABS = [
 
 const EXTRA_CHIPS = [
   { k: "active", label: "Aktiv" },
+  { k: "archived", label: "Archiviert" },
   { k: "blocked", label: "Gesperrt" },
   { k: "contractOn", label: "Vertrag aktiv" },
   { k: "contractOff", label: "Vertrag inaktiv" },
@@ -245,6 +248,7 @@ export default function CompaniesPage({
   const [createOnboarding, setCreateOnboarding] = useState(null);
   const [createOwnerWarning, setCreateOwnerWarning] = useState("");
   const [showCreateCompany, setShowCreateCompany] = useState(false);
+  const [archiveBusyId, setArchiveBusyId] = useState(null);
 
   const canCreateCompany = userRole === "admin" || userRole === "service";
 
@@ -276,6 +280,58 @@ export default function CompaniesPage({
       })
       .catch(() => setLoading(false));
   }, []);
+
+  const patchCompanyStatus = useCallback(async (companyId, body) => {
+    const res = await adminFetch(
+      `${API_BASE}/admin/companies/${encodeURIComponent(companyId)}/sections/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || j.message || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }, []);
+
+  const archiveCompany = async (e, item) => {
+    e.stopPropagation();
+    if (!window.confirm(`Mandant „${item.name || item.id}" archivieren? Partner-Zugang wird deaktiviert.`)) return;
+    setArchiveBusyId(item.id);
+    try {
+      await patchCompanyStatus(item.id, {
+        is_active: false,
+        panel_access_enabled: false,
+        contract_status: "inactive",
+      });
+      loadData();
+    } catch (err) {
+      window.alert(err?.message || "Archivieren fehlgeschlagen.");
+    } finally {
+      setArchiveBusyId(null);
+    }
+  };
+
+  const reactivateCompany = async (e, item) => {
+    e.stopPropagation();
+    if (!window.confirm(`Mandant „${item.name || item.id}" reaktivieren?`)) return;
+    setArchiveBusyId(item.id);
+    try {
+      await patchCompanyStatus(item.id, {
+        is_active: true,
+        panel_access_enabled: true,
+        contract_status: "active",
+      });
+      loadData();
+    } catch (err) {
+      window.alert(err?.message || "Reaktivieren fehlgeschlagen.");
+    } finally {
+      setArchiveBusyId(null);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -925,7 +981,7 @@ export default function CompaniesPage({
                         {item.is_blocked ? (
                           <span className="admin-status-pill admin-status-pill--bad">Gesperrt</span>
                         ) : !item.is_active ? (
-                          <span className="admin-table-sub">inaktiv</span>
+                          <span className="admin-status-pill admin-status-pill--pending">Archiviert</span>
                         ) : null}
                       </div>
                     </td>
@@ -980,6 +1036,27 @@ export default function CompaniesPage({
                             Zugang
                           </button>
                         ) : null}
+                        {!item.is_active ? (
+                          <button
+                            type="button"
+                            className="admin-btn-action admin-btn-action--table"
+                            title="Mandant reaktivieren"
+                            disabled={archiveBusyId === item.id}
+                            onClick={(e) => reactivateCompany(e, item)}
+                          >
+                            {archiveBusyId === item.id ? "…" : "Reaktivieren"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="admin-btn-action admin-btn-action--table"
+                            title="Mandant archivieren (Partner-Zugang aus)"
+                            disabled={archiveBusyId === item.id}
+                            onClick={(e) => archiveCompany(e, item)}
+                          >
+                            {archiveBusyId === item.id ? "…" : "Archivieren"}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="admin-btn-action admin-btn-action--table"

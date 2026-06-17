@@ -55,9 +55,6 @@ const MAX = { short: 120, line: 500, name: 200, url: 2048 };
 
 const PATCHABLE = new Set([
   ...BASICS_LOCK_KEYS,
-  "concessionNumber",
-  "taxId",
-  "bankIban",
   "supportEmail",
   "dispoPhone",
   "logoUrl",
@@ -67,8 +64,8 @@ const PATCHABLE = new Set([
 /** Immer im Bearbeiten-Modus änderbar (kein Zusatzlabel in der Ansicht). */
 const OPERATIVE_ALWAYS_EDIT_KEYS = new Set(["supportEmail", "dispoPhone", "logoUrl", "openingHours"]);
 
-/** Erstbefüllung wenn leer; nach Wert-Setzung nur noch per Anfrage (Server: nur `isDbEmpty`). */
-const EXTRA_FIRST_FILL_KEYS = new Set(["concessionNumber", "taxId", "bankIban"]);
+/** Nur Admin-Panel — Partner sieht nur Anzeige. */
+const ADMIN_ONLY_DISPLAY_KEYS = new Set(["concessionNumber", "taxId", "bankIban", "vatId", "bankBic"]);
 
 function displayValue(v) {
   if (v == null) return "";
@@ -95,15 +92,6 @@ function basicsGaps(company) {
   if (isEmptyField(company.legalForm)) keys.push("legalForm");
   if (isEmptyField(company.ownerName)) keys.push("ownerName");
   return keys;
-}
-
-function extraFillGaps(company) {
-  if (!company) return [];
-  const g = [];
-  if (isEmptyField(company.concessionNumber)) g.push("concessionNumber");
-  if (isEmptyField(company.taxId)) g.push("taxId");
-  if (isEmptyField(company.bankIban)) g.push("bankIban");
-  return g;
 }
 
 function clip(s, max) {
@@ -135,9 +123,6 @@ function emptyEditForm() {
     country: "",
     legalForm: "",
     ownerName: "",
-    concessionNumber: "",
-    taxId: "",
-    bankIban: "",
     supportEmail: "",
     dispoPhone: "",
     logoUrl: "",
@@ -173,13 +158,6 @@ function buildPatch(company, form, profileLocked) {
     }
   }
 
-  for (const k of ["concessionNumber", "taxId", "bankIban"]) {
-    if (!isEmptyField(company?.[k])) continue;
-    if (strEq(form[k], company?.[k])) continue;
-    if (isEmptyField(form[k])) continue;
-    patch[k] = clip(form[k], MAX.short);
-  }
-
   return patch;
 }
 
@@ -194,8 +172,10 @@ function fieldReadOnlyBadge(fieldKey, company) {
   if (!PATCHABLE.has(fieldKey)) {
     return {
       className: "partner-pill partner-pill--soft partner-pill--sentence",
-      text: "Nur Anzeige",
-      title: "Keine Selbständerung in dieser Maske.",
+      text: ADMIN_ONLY_DISPLAY_KEYS.has(fieldKey) ? "Nur Anzeige (Onroda)" : "Nur Anzeige",
+      title: ADMIN_ONLY_DISPLAY_KEYS.has(fieldKey)
+        ? "Pflege nur durch die Plattform (Admin). Änderung per Support-Anfrage."
+        : "Keine Selbständerung in dieser Maske.",
     };
   }
 
@@ -204,15 +184,6 @@ function fieldReadOnlyBadge(fieldKey, company) {
   }
 
   const profileLocked = Boolean(company.profileLocked);
-
-  if (EXTRA_FIRST_FILL_KEYS.has(fieldKey)) {
-    if (isEmptyField(company[fieldKey])) return null;
-    return {
-      className: "partner-pill partner-pill--request partner-pill--sentence",
-      text: "Änderung nur über Anfrage möglich",
-      title: "Wert ist gesetzt. Anpassung nur über den Änderungsprozess bei Onroda.",
-    };
-  }
 
   if (BASICS_LOCK_KEYS.has(fieldKey)) {
     if (profileLocked) {
@@ -385,7 +356,6 @@ export default function TaxiStammdatenPage({
   };
   const profileLocked = Boolean(c?.profileLocked);
   const gaps = useMemo(() => (c ? basicsGaps(c) : []), [c]);
-  const extraGaps = useMemo(() => (c ? extraFillGaps(c) : []), [c]);
 
   const startEdit = () => {
     if (!c || !canPatch) return;
@@ -622,7 +592,7 @@ export default function TaxiStammdatenPage({
                   </SettingsDisplayRow>
                 </div>
                 <p className="partner-muted partner-settings-footnote">
-                  Rechnungsadresse und Kostenstelle (Anzeige): bei Bedarf über Support ändern.
+                  Bankverbindung und Rechnungsadresse werden von Onroda gepflegt — keine Selbständerung im Partner-Panel.
                 </p>
                 <div className="partner-kv-block partner-settings-more">
                   <FieldRow label="Rechnungsname" value={c.billingName} company={c} fieldKey="billingName" />
@@ -640,7 +610,7 @@ export default function TaxiStammdatenPage({
               <div className="partner-card partner-card--section partner-settings-panel" role="tabpanel">
                 <p className="partner-muted partner-settings-tax-hint">Gültige Steuer-Identifikationsinformationen</p>
                 <div className="partner-kv-block">
-                  <FieldRow label="USt-IdNr." value={c.vatId} company={c} fieldKey="vatId" hint="Änderung nur über Onroda / Plattform." />
+                  <FieldRow label="USt-IdNr." value={c.vatId} company={c} fieldKey="vatId" />
                   <FieldRow label="Steuernummer" value={c.taxId} company={c} fieldKey="taxId" />
                   <FieldRow label="Land" value={c.country} company={c} fieldKey="country" />
                   <FieldRow label="Konzessionsnummer" value={c.concessionNumber} company={c} fieldKey="concessionNumber" />
@@ -795,45 +765,10 @@ export default function TaxiStammdatenPage({
             </div>
           </div>
 
-          <div className="partner-card partner-card--section" style={{ marginTop: 16 }}>
-            <h3 className="partner-card__title">Konzession, Steuernummer, IBAN (Erstbefüllung)</h3>
-            <p className="partner-form-mono">
-              Solange ein Feld noch leer ist, können Sie es hier setzen (auch bei gesperrten Basisdaten). Nach dem Speichern
-              eines Werts: <strong>Änderung nur über Anfrage bei Onroda</strong>.
-            </p>
-            <div className="partner-form-grid">
-              {["concessionNumber", "taxId", "bankIban"].map((k) => {
-                const inG = extraGaps.includes(k);
-                const label =
-                  k === "concessionNumber" ? "Konzession" : k === "taxId" ? "Steuernummer" : "IBAN (Eindeutigkeit / Erstbelegung)";
-                return (
-                  <LabeledInput
-                    key={k}
-                    label={label}
-                    value={form[k]}
-                    onChange={setF(k)}
-                    disabled={!inG}
-                    maxLength={MAX.short}
-                  />
-                );
-              })}
-            </div>
-            {!extraGaps.length ? (
-              <p className="partner-form-mono">Alle drei Felder sind befüllt — weitere Anpassungen nur über Anfrage bei Onroda.</p>
-            ) : null}
-            {!extraGaps.length ? (
-              <div className="partner-action-row" style={{ marginTop: 12 }}>
-                {typeof onOpenStammSupportRequest === "function" ? (
-                  <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={openStammSupport}>
-                    Änderung im Panel
-                  </button>
-                ) : null}
-                <a className="partner-btn-secondary partner-btn-primary--sm" href={mailtoStammChangeRequest(c)}>
-                  E-Mail
-                </a>
-              </div>
-            ) : null}
-          </div>
+          <p className="partner-form-mono" style={{ marginTop: 16 }}>
+            Konzession, Steuernummer, USt-ID und Bankverbindung werden ausschließlich von Onroda (Admin) gepflegt. Bei
+            Bedarf nutzen Sie die Anfrage-Buttons oben.
+          </p>
               </div>
             </div>
             {sidebar}

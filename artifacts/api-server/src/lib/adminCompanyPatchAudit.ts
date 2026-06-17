@@ -15,6 +15,7 @@ export type AdminCompanyPatchSection =
 const SECTION_KEYS: Record<AdminCompanyPatchSection, (keyof CompanyRow | "billing_account_email")[]> = {
   stammdaten: [
     "name",
+    "company_kind",
     "legal_form",
     "owner_name",
     "tax_id",

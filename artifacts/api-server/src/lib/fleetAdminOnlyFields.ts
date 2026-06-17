@@ -11,7 +11,17 @@ export const PARTNER_FLEET_VEHICLE_PATCH_ADMIN_FIELDS = [
   "isActive",
 ] as const;
 
-export const PARTNER_COMPANY_PATCH_ADMIN_FIELDS = ["concessionNumber", "taxId"] as const;
+export const PARTNER_COMPANY_PATCH_ADMIN_FIELDS = [
+  "concessionNumber",
+  "taxId",
+  "vatId",
+  "bankIban",
+  "bankBic",
+  "companyKind",
+  "commissionRate",
+  "commissionType",
+  "partnerIkNumber",
+] as const;
 
 export function rejectPartnerAdminOnlyBodyFields(
   res: Response,
