@@ -28,6 +28,7 @@ import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js"
 import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { respondCustomerPaymentRouteError } from "../lib/stripeHttpError.js";
 import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
+import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine.js";
 
 const router = Router();
 

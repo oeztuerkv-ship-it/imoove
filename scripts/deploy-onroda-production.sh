@@ -370,8 +370,14 @@ do_health_checks() {
     local ok=0
     while [[ "$attempt" -le "$retries" ]]; do
       log "Health-Check (${attempt}/${retries}): GET $url"
-      if curl -sfS --max-time "$timeout" "$url" >/dev/null; then
-        ok=1
+      local health_body=""
+      health_body="$(curl -sfS --max-time "$timeout" "$url" 2>/dev/null)" && ok=1 || ok=0
+      if [[ "$ok" -eq 1 ]]; then
+        if command -v jq >/dev/null 2>&1; then
+          local api_sha=""
+          api_sha="$(printf '%s' "$health_body" | jq -r '.gitShaShort // .gitSha // empty' 2>/dev/null || true)"
+          [[ -n "$api_sha" ]] && log "Health-Check API-Stand: gitShaShort=${api_sha}"
+        fi
         break
       fi
       if [[ "$attempt" -lt "$retries" ]]; then
