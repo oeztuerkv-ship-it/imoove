@@ -55,7 +55,7 @@ import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePu
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, computeRideBookingPricing } from "../lib/rideBookingPricing";
-import { effectiveTaxiGrossEur } from "../lib/financeCalculationService";
+import { buildCustomerReceiptHtmlForRide } from "../lib/customerReceipt";
 import { anyActiveRegionRequiresClientCoordinates } from "../lib/serviceRegionMatch";
 import { verifyAccessCode } from "../db/accessCodesData";
 import {
@@ -1271,120 +1271,6 @@ router.post("/rides/:rideId/support", requireCustomerSession, async (req, res, n
   }
 });
 
-function formatEuroHtml(amount: number): string {
-  const safe = Number.isFinite(amount) ? amount : 0;
-  return safe.toFixed(2).replace(".", ",") + " €";
-}
-
-function escapeHtml(s: string): string {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function buildReceiptHtmlFromRide(
-  r: RideRequest,
-  driverInfo: ReceiptDriverInfo = { driverName: null, driverPlate: null },
-): string {
-  const date = new Date(r.createdAt);
-  const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-  // Quittung: bei completed immer finalFare — kein Schätzwert
-  const amount = r.status === "completed" && r.finalFare != null && Number.isFinite(Number(r.finalFare))
-    ? Number(r.finalFare)
-    : effectiveTaxiGrossEur(r);
-  const estimate =
-    r.status === "completed" && r.estimatedFare != null && Number.isFinite(Number(r.estimatedFare))
-      ? Number(r.estimatedFare)
-      : null;
-  const showEstimateNote =
-    estimate != null && Math.abs(amount - estimate) > 0.05 && amount > 0;
-  const rideNr = String(r.id).slice(0, 8).toUpperCase();
-  const paymentLabel = (() => {
-    if (r.cashConfirmedAt) return "Bar (vom Fahrer bestätigt)";
-    if (r.paymentStatus === "refunded") return "Erstattet";
-    if (r.paymentStatus === "paid" && String(r.paymentMethod ?? "").toLowerCase().includes("apple")) return "Apple Pay";
-    const pm = String(r.paymentMethod ?? "").trim().toLowerCase();
-    if (pm === "cash" || pm === "bar") return "Bar";
-    if (pm === "card" || pm === "karte") return "Karte";
-    if (pm === "apple_pay") return "Apple Pay";
-    if (pm === "google_pay") return "Google Pay";
-    if (pm === "transportschein" || pm === "medical") return "Krankenkasse / Transportschein";
-    return r.paymentMethod ?? "—";
-  })();
-  return `<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Quittung #${escapeHtml(rideNr)}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #111; padding: 32px 16px; }
-    .receipt { max-width: 520px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 2px 20px rgba(0,0,0,0.10); overflow: hidden; }
-    .header { background: #DC2626; color: #fff; padding: 26px 26px 18px; text-align: center; }
-    .logo { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; margin-bottom: 4px; }
-    .receipt-title { font-size: 12px; font-weight: 600; opacity: 0.9; letter-spacing: 1px; text-transform: uppercase; }
-    .receipt-id { font-size: 12px; opacity: 0.75; margin-top: 6px; }
-    .body { padding: 22px 26px; }
-    .row { display:flex; justify-content:space-between; gap:12px; margin-bottom: 10px; }
-    .k { color:#6b7280; font-size: 12px; font-weight: 600; }
-    .v { color:#111827; font-size: 12px; font-weight: 600; text-align:right; }
-    .route { margin-top: 14px; background:#f9fafb; border:1px solid #eef2f7; border-radius: 12px; padding: 14px; }
-    .route h3 { font-size: 12px; color:#6b7280; letter-spacing:0.08em; text-transform:uppercase; margin-bottom: 10px; }
-    .route .pt { font-size: 13px; font-weight: 600; margin-bottom: 8px; color:#111827; }
-    .muted { color:#6b7280; font-size: 12px; font-weight: 500; }
-    .total { margin-top: 14px; background:#DC2626; color:#fff; border-radius: 12px; padding: 14px 16px; display:flex; justify-content:space-between; align-items:center; }
-    .total .lbl { font-size: 13px; font-weight: 700; opacity:0.9; }
-    .total .amt { font-size: 22px; font-weight: 900; }
-    .footer { text-align:center; padding: 16px 26px; background:#fafafa; border-top:1px solid #f0f0f0; font-size: 11px; color:#9ca3af; line-height: 1.6; }
-    @media print { body { background:#fff; padding:0; } .receipt { box-shadow:none; border-radius:0; } }
-  </style>
-</head>
-<body>
-  <div class="receipt">
-    <div class="header">
-      <div class="logo">ONRODA</div>
-      <div class="receipt-title">Fahrtquittung</div>
-      <div class="receipt-id">Nr. ${escapeHtml(rideNr)}</div>
-    </div>
-    <div class="body">
-      <div class="row"><div><div class="k">Datum</div><div class="v">${escapeHtml(dateStr)}</div></div><div><div class="k">Uhrzeit</div><div class="v">${escapeHtml(timeStr)} Uhr</div></div></div>
-      <div class="route">
-        <h3>Route</h3>
-        <div class="muted">Abfahrt</div>
-        <div class="pt">${escapeHtml(r.from ?? "—")}</div>
-        <div class="muted">Ziel</div>
-        <div class="pt">${escapeHtml(r.to ?? "—")}</div>
-      </div>
-      <div style="margin-top: 14px;">
-        <div class="row"><div class="k">${r.actualDistanceKm != null ? "Gefahrene Strecke" : "Geplante Strecke"}</div><div class="v">${escapeHtml(String((r.actualDistanceKm ?? r.distanceKm ?? 0).toFixed(1)))} km</div></div>
-        ${r.actualDurationMinutes != null ? `<div class="row"><div class="k">Fahrtdauer</div><div class="v">${escapeHtml(String(r.actualDurationMinutes))} Min</div></div>` : ""}
-        ${showEstimateNote ? `<div class="row"><div class="k">Geschätzter Preis (Buchung)</div><div class="v">${formatEuroHtml(estimate!)}</div></div>` : ""}
-        ${driverInfo.driverName ? `<div class="row"><div class="k">Fahrer*in</div><div class="v">${escapeHtml(driverInfo.driverName)}</div></div>` : ""}
-        ${driverInfo.driverPlate ? `<div class="row"><div class="k">Kennzeichen</div><div class="v">${escapeHtml(driverInfo.driverPlate)}</div></div>` : ""}
-        <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(paymentLabel)}</div></div>
-        <div class="row"><div class="k">Produkt</div><div class="v">${escapeHtml(r.vehicle ?? "—")}</div></div>
-      </div>
-      <div class="total"><div class="lbl">Gesamtbetrag (Taxameter)</div><div class="amt">${formatEuroHtml(amount)}</div></div>
-      ${r.status === "completed" ? `<p class="muted" style="margin-top:12px;font-size:11px;line-height:1.5;">Maßgeblich ist der im Fahrzeug angezeigte Taxameter-Endpreis. App-Schätzungen dienen nur der Orientierung.</p>` : ""}
-    </div>
-    <div class="footer">
-      ONRODA · Deutschland<br/>
-      Vielen Dank für Ihre Fahrt!<br/>
-      Diese Quittung dient als Beleg.
-    </div>
-  </div>
-  <script>
-    window.addEventListener('load', function() { setTimeout(function() { try { window.print(); } catch(e) {} }, 250); });
-  <\/script>
-</body>
-</html>`;
-}
-
 router.get("/rides/:rideId/receipt", async (req, res, next) => {
   try {
     const rideId = String(req.params.rideId ?? "").trim();
@@ -1402,7 +1288,7 @@ router.get("/rides/:rideId/receipt", async (req, res, next) => {
     }
     const driverInfo = await resolveReceiptDriverInfo(ride.driverId);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(buildReceiptHtmlFromRide(ride, driverInfo));
+    res.send(await buildCustomerReceiptHtmlForRide(ride, driverInfo));
   } catch (e) {
     next(e);
   }

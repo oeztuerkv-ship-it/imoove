@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
-import { useRide, VEHICLES } from "@/context/RideContext";
+import { useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -44,25 +44,6 @@ const SUPPORT_CATEGORIES: { id: SupportCategory; label: string; icon: keyof type
   { id: "special_request", label: "Sonderwunsch", icon: "tune" },
   { id: "other", label: "Sonstiges", icon: "help-circle" },
 ];
-
-function buildReceiptFromHistory(ride: ReturnType<typeof useRide>["history"][number]) {
-  const date = new Date(ride.createdAt);
-  const vehicle = VEHICLES.find((v) => v.id === ride.vehicleType);
-  return {
-    rideId: ride.id.slice(0, 8).toUpperCase(),
-    date: date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }),
-    time: date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
-    origin: ride.origin ?? "—",
-    destination: ride.destination ?? "—",
-    distanceKm: ride.actualDistanceKm ?? ride.distanceKm ?? 0,
-    durationMinutes:
-      ride.actualDurationMinutes ??
-      Math.max(1, Math.round((ride.actualDistanceKm ?? ride.distanceKm ?? 0) * 3)),
-    vehicle: vehicle?.name ?? "Standard",
-    paymentMethod: ride.paymentMethod ?? "cash",
-    totalFare: ride.totalFare ?? 0,
-  };
-}
 
 export default function RideDetailScreen() {
   const colors = useColors();
@@ -221,7 +202,7 @@ export default function RideDetailScreen() {
       Alert.alert("Nicht verfügbar", "Eine Quittung gibt es erst nach Abschluss der Fahrt.");
       return;
     }
-    await downloadReceipt(buildReceiptFromHistory(enrichedHistRide));
+    await downloadReceipt(rideId, sessionToken);
   }
 
   async function openServerReceipt() {

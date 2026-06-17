@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRide, type PaymentMethod, type RideHistoryEntry, type VehicleType, VEHICLES } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
+import { useUser } from "@/context/UserContext";
 import { accountSheetPrimaryLabel, accountSheetSecondaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
@@ -715,6 +716,8 @@ export default function MyRidesScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const { history } = useRide();
+  const { profile } = useUser();
+  const sessionToken = profile.sessionToken?.trim() ?? "";
   const {
     myCancelledRequests,
     cancelRequest,
@@ -806,22 +809,7 @@ export default function MyRidesScreen() {
   const totalSpent = completed.reduce((s, r) => s + r.totalFare, 0);
 
   const handleDownloadReceipt = (ride: typeof completed[0]) => {
-    const date = new Date(ride.createdAt);
-    const vehicle = VEHICLES.find((v) => v.id === ride.vehicleType);
-    downloadReceipt({
-      rideId:          ride.id.slice(0, 8).toUpperCase(),
-      date:            date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }),
-      time:            date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
-      origin:          ride.origin ?? "Esslingen am Neckar",
-      destination:     ride.destination,
-      distanceKm:      ride.actualDistanceKm ?? ride.distanceKm,
-      durationMinutes:
-        ride.actualDurationMinutes ??
-        Math.max(1, Math.round((ride.actualDistanceKm ?? ride.distanceKm) * 3)),
-      vehicle:         vehicle?.name ?? "Standard",
-      paymentMethod:   PAYMENT_LABELS[ride.paymentMethod ?? "cash"],
-      totalFare:       ride.totalFare,
-    });
+    void downloadReceipt(ride.id, sessionToken);
   };
 
   const handleRepeatRide = () => {
