@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
-import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY } from "@/constants/stripe";
+import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_SETUP_EXPLAINER_DE } from "@/constants/stripe";
 import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
@@ -382,6 +382,9 @@ export default function WalletScreen() {
               onPress={() => Alert.alert(t("wallet.transport"), t("wallet.transportAlertMessage"))}
             />
           </Card>
+          <Text style={[styles.stripeSetupHint, { color: colors.mutedForeground }]}>
+            {STRIPE_SETUP_EXPLAINER_DE}
+          </Text>
         </View>
 
 
@@ -438,6 +441,12 @@ const styles = StyleSheet.create({
 
   scroll: { paddingHorizontal: rs(8), paddingTop: rs(24), gap: rs(10) },
   section: { gap: rs(10), marginBottom: rs(20) },
+  stripeSetupHint: {
+    fontSize: rf(12),
+    lineHeight: rf(17),
+    fontFamily: "Inter_500Medium",
+    paddingHorizontal: rs(4),
+  },
   card: { borderRadius: rs(16), borderWidth: 1, overflow: "hidden" },
 
   payRow: {

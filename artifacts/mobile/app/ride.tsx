@@ -54,7 +54,7 @@ import {
   postCustomerMedicalTransportScan,
   type MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
-import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY } from "@/constants/stripe";
+import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_SETUP_EXPLAINER_DE } from "@/constants/stripe";
 import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
 import { cancelCustomerRide } from "@/utils/customerRidesApi";
 import {
@@ -63,6 +63,10 @@ import {
   postCustomerCreatePaymentIntent,
 } from "@/utils/stripePaymentApi";
 import { presentStripeSetupSheet } from "@/utils/stripePaymentSheet";
+import {
+  presentStripeApplePaySetup,
+  presentStripeGooglePaySetup,
+} from "@/utils/stripePlatformPay";
 import { platformPaySupportParams } from "@/utils/stripePlatformPay";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -315,7 +319,7 @@ export default function RideScreen() {
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
-  const { isPlatformPaySupported } = usePlatformPay();
+  const { isPlatformPaySupported, confirmPlatformPaySetupIntent } = usePlatformPay();
   const [applePaySupported, setApplePaySupported] = useState(false);
   const [googlePaySupported, setGooglePaySupported] = useState(false);
   const btnScale = useRef(new Animated.Value(1)).current;
@@ -767,12 +771,26 @@ export default function RideScreen() {
               return;
             }
             if (!intent.cardOnFile) {
-              const setup = await presentStripeSetupSheet(
-                { initPaymentSheet, presentPaymentSheet },
-                intent.setupClientSecret,
-                "ONRODA",
-                0,
-              );
+              let setup: { ok: true } | { ok: false; message: string };
+              if (pm === "apple_pay") {
+                setup = await presentStripeApplePaySetup(
+                  { confirmPlatformPaySetupIntent },
+                  intent.setupClientSecret,
+                  chargeAmount,
+                );
+              } else if (pm === "google_pay") {
+                setup = await presentStripeGooglePaySetup(
+                  { confirmPlatformPaySetupIntent },
+                  intent.setupClientSecret,
+                  chargeAmount,
+                );
+              } else {
+                setup = await presentStripeSetupSheet(
+                  { initPaymentSheet, presentPaymentSheet },
+                  intent.setupClientSecret,
+                  "ONRODA",
+                );
+              }
               if (!setup.ok) {
                 await cancelCustomerRide(authToken, rideRequestId);
                 if (setup.message !== "Zahlung abgebrochen.") {
@@ -1063,6 +1081,11 @@ export default function RideScreen() {
               );
             })}
           </View>
+          {paymentMethod === "card" || paymentMethod === "apple_pay" || paymentMethod === "google_pay" ? (
+            <Text style={[styles.stripeSetupHint, { color: colors.mutedForeground }]}>
+              {STRIPE_SETUP_EXPLAINER_DE}
+            </Text>
+          ) : null}
         </View>
 
         {paymentMethod === "access_code" ? (
@@ -1494,6 +1517,12 @@ const styles = StyleSheet.create({
   },
   paymentList: { gap: rs(8), marginTop: rs(4) },
   paymentListAfterPlatform: { marginTop: rs(14), paddingTop: rs(14), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E5E7EB" },
+  stripeSetupHint: {
+    marginTop: rs(12),
+    fontSize: rf(12),
+    lineHeight: rf(17),
+    fontFamily: "Inter_500Medium",
+  },
   paymentBtn: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,7 +1,7 @@
 import { StripeProvider } from "@stripe/stripe-react-native";
 import React from "react";
 
-import { STRIPE_PUBLISHABLE_KEY } from "@/constants/stripe";
+import { STRIPE_PUBLISHABLE_KEY, STRIPE_URL_SCHEME } from "@/constants/stripe";
 
 type Props = {
   children: React.ReactNode;
@@ -13,7 +13,11 @@ export function StripeRootProvider({ children }: Props) {
     return <>{children}</>;
   }
   return (
-    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY} merchantIdentifier="merchant.com.vedat.mobile">
+    <StripeProvider
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      merchantIdentifier="merchant.com.vedat.mobile"
+      urlScheme={STRIPE_URL_SCHEME}
+    >
       <>{children}</>
     </StripeProvider>
   );
