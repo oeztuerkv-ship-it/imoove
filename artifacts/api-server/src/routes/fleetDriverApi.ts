@@ -28,6 +28,7 @@ import {
   recordDispatchOffersSentForDriver,
 } from "../db/rideDispatchOfferData";
 import { getFleetDriverRideEarnings } from "../lib/fleetDriverRideEarnings.js";
+import { submitDriverPassengerRating } from "../lib/fleetDriverRatings.js";
 import { averageFleetDriverRating } from "../lib/fleetDriverRatings.js";
 import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
 import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
@@ -543,6 +544,36 @@ router.get("/fleet-driver/v1/rides/:rideId/earnings", requireFleetDriverAuth, as
       return;
     }
     res.json({ ok: true, ...result.earnings });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/fleet-driver/v1/rides/:rideId/passenger-rating", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    const starsRaw = (req.body as { stars?: unknown })?.stars;
+    const stars = typeof starsRaw === "number" ? starsRaw : Number(starsRaw);
+    const result = await submitDriverPassengerRating({
+      rideId,
+      fleetDriverId: a.fleetDriverId,
+      companyId: a.companyId,
+      stars,
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      rating: result.rating,
+      passengerRatingAverage: result.passengerRatingAverage,
+    });
   } catch (e) {
     next(e);
   }

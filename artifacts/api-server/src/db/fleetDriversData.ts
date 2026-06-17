@@ -2,10 +2,12 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { findCompanyById } from "./adminData";
 import { getDb, isPostgresConfigured } from "./client";
+import { isGpsOutlierJump } from "../lib/gpsOutlierFilter";
 import { findActivePanelUserByEmailNormalized } from "./panelAuthData";
 import { adminCompaniesTable, adminAuthUsersTable, fleetDriversTable } from "./schema";
 import {
   emailQualifiesForAutoDispatchPriorityA,
+  nextDispatchTier,
   normalizeDispatchPriority,
   type DispatchPriority,
 } from "../lib/dispatchPriorityTier";
@@ -873,6 +875,13 @@ export async function updateFleetDriverMarketLocation(
   const id = fleetDriverId.trim();
   const co = companyId.trim();
   if (!id || !co || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+  const prev = await getFleetDriverMarketLocation(fleetDriverId, companyId);
+  if (prev && isGpsOutlierJump(prev.lat, prev.lon, lat, lon)) {
+    await touchFleetDriverHeartbeat(fleetDriverId);
+    return;
+  }
+
   await db
     .update(fleetDriversTable)
     .set({
@@ -1066,6 +1075,72 @@ export async function getFleetDriverDispatchPriority(
   const row = await findFleetDriverInCompany(fleetDriverId, companyId);
   if (!row) return "C";
   return normalizeDispatchPriority((row as { dispatch_priority?: string }).dispatch_priority);
+}
+
+/** Aufeinanderfolgende Markt-Ablehnungen → automatische Prioritäts-Senkung. */
+export const DISPATCH_REJECT_STREAK_DOWNGRADE_THRESHOLD = 20;
+
+export async function resetFleetDriverDispatchRejectStreak(
+  fleetDriverId: string,
+  companyId: string,
+): Promise<void> {
+  if (!isPostgresConfigured()) return;
+  const db = getDb();
+  if (!db) return;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return;
+  await db
+    .update(fleetDriversTable)
+    .set({ dispatch_reject_streak: 0, updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)));
+}
+
+/** Nach Markt-Ablehnung: Streak +1; bei 20× → A→B→C, Streak zurücksetzen. */
+export async function recordFleetDriverOfferRejectStreak(
+  fleetDriverId: string,
+  companyId: string,
+): Promise<{ streak: number; downgraded: boolean; priority: DispatchPriority }> {
+  const fallback = { streak: 0, downgraded: false, priority: "C" as DispatchPriority };
+  if (!isPostgresConfigured()) return fallback;
+  const db = getDb();
+  if (!db) return fallback;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return fallback;
+
+  const rows = await db
+    .select({
+      streak: fleetDriversTable.dispatch_reject_streak,
+      priority: fleetDriversTable.dispatch_priority,
+    })
+    .from(fleetDriversTable)
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return fallback;
+
+  const curPriority = normalizeDispatchPriority(row.priority);
+  const nextStreak = (Number(row.streak) || 0) + 1;
+
+  if (nextStreak < DISPATCH_REJECT_STREAK_DOWNGRADE_THRESHOLD) {
+    await db
+      .update(fleetDriversTable)
+      .set({ dispatch_reject_streak: nextStreak, updated_at: new Date() })
+      .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)));
+    return { streak: nextStreak, downgraded: false, priority: curPriority };
+  }
+
+  const downgradedPriority = nextDispatchTier(curPriority) ?? curPriority;
+  await db
+    .update(fleetDriversTable)
+    .set({
+      dispatch_reject_streak: 0,
+      dispatch_priority: downgradedPriority,
+      updated_at: new Date(),
+    })
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)));
+  return { streak: nextStreak, downgraded: downgradedPriority !== curPriority, priority: downgradedPriority };
 }
 
 export async function setFleetDriverDispatchPriorityForAdmin(

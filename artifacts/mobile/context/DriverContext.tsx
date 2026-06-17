@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { AppState } from "react-native";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { stopDriverBackgroundLocation } from "@/utils/driverBackgroundLocation";
+import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import {
   syncDriverExpoPushTokenIfStale,
   syncDriverExpoPushTokenWithRetry,
@@ -614,8 +615,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
             const { getLastKnownPositionAsync } = await import("expo-location");
             const pos = await getLastKnownPositionAsync();
             if (pos?.coords && Number.isFinite(pos.coords.latitude) && Number.isFinite(pos.coords.longitude)) {
-              body.lat = pos.coords.latitude;
-              body.lon = pos.coords.longitude;
+              const fix = acceptDriverGpsFix(pos.coords.latitude, pos.coords.longitude);
+              if (fix) {
+                body.lat = fix.lat;
+                body.lon = fix.lon;
+              }
             }
           } catch {
             /* GPS optional */

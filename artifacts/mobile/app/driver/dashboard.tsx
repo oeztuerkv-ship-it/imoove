@@ -51,6 +51,7 @@ import {
   stopDriverBackgroundLocation,
   isDriverBackgroundLocationRunning,
 } from "@/utils/driverBackgroundLocation";
+import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import {
   buildDriverNavigationHref,
   replaceDriverStackExclusive,
@@ -2005,19 +2006,22 @@ function ActiveRideScreen({
         { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
         (loc) => {
           const { latitude, longitude } = loc.coords;
-          setDriverCoords({ lat: latitude, lon: longitude });
-          if (phase === "pickup" && req.fromLat != null && req.fromLon != null) {
-            setDistanceToCustomer(haversineDistance(latitude, longitude, req.fromLat, req.fromLon));
+          const fix = acceptDriverGpsFix(latitude, longitude);
+          if (fix) {
+            setDriverCoords({ lat: fix.lat, lon: fix.lon });
+            if (phase === "pickup" && req.fromLat != null && req.fromLon != null) {
+              setDistanceToCustomer(haversineDistance(fix.lat, fix.lon, req.fromLat, req.fromLon));
+            }
+            socketSendDriver(fix.lat, fix.lon);
+            fetch(`${API_BASE}/rides/${req.id}/driver-location`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${fleetAuthToken}`,
+              },
+              body: JSON.stringify({ lat: fix.lat, lon: fix.lon }),
+            }).catch(() => {});
           }
-          socketSendDriver(latitude, longitude);
-          fetch(`${API_BASE}/rides/${req.id}/driver-location`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${fleetAuthToken}`,
-            },
-            body: JSON.stringify({ lat: latitude, lon: longitude }),
-          }).catch(() => {});
         },
       );
     })().catch(() => {});

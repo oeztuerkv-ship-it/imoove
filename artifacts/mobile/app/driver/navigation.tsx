@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
+import { DriverPassengerRatingModal } from "@/components/DriverPassengerRatingModal";
 import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -56,6 +57,7 @@ import {
   stopDriverBackgroundLocation,
   isDriverBackgroundLocationRunning,
 } from "@/utils/driverBackgroundLocation";
+import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import {
   logDriverNavigationMapEvent,
@@ -273,6 +275,8 @@ export default function DriverNavigationScreen() {
   const [showCashConfirmModal, setShowCashConfirmModal] = useState(false);
   const [cashConfirmBusy, setCashConfirmBusy] = useState(false);
   const [showEarningsModal, setShowEarningsModal] = useState(false);
+  const [showPassengerRatingModal, setShowPassengerRatingModal] = useState(false);
+  const [passengerRatingSubmitting, setPassengerRatingSubmitting] = useState(false);
   const [rideEarnings, setRideEarnings] = useState<DriverRideEarnings | null>(null);
   const [fareInput, setFareInput] = useState(
     formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
@@ -837,21 +841,58 @@ export default function DriverNavigationScreen() {
     } as import("expo-router").Href);
   }, [driverLat, driverLon, params.rideId]);
 
+  const showPassengerRatingPrompt = useCallback(() => {
+    setShowPassengerRatingModal(true);
+  }, []);
+
+  const finishRideFlowToDashboard = useCallback(() => {
+    setShowPassengerRatingModal(false);
+    goToDashboardAfterRide();
+  }, [goToDashboardAfterRide]);
+
+  const submitPassengerRating = useCallback(
+    async (stars: number) => {
+      const rideId = params.rideId?.trim();
+      const token = driver?.authToken;
+      if (!rideId || !token) {
+        finishRideFlowToDashboard();
+        return;
+      }
+      setPassengerRatingSubmitting(true);
+      try {
+        await fetch(`${API_BASE}/fleet-driver/v1/rides/${encodeURIComponent(rideId)}/passenger-rating`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ stars }),
+        });
+      } catch {
+        /* optional */
+      } finally {
+        setPassengerRatingSubmitting(false);
+        finishRideFlowToDashboard();
+      }
+    },
+    [driver?.authToken, finishRideFlowToDashboard, params.rideId],
+  );
+
   const showEarningsThenDashboard = useCallback(async () => {
     const rideId = params.rideId?.trim();
     const token = driver?.authToken;
     if (!rideId || !token) {
-      goToDashboardAfterRide();
+      showPassengerRatingPrompt();
       return;
     }
     const earnings = await fetchFleetDriverRideEarnings(rideId, token);
     if (!earnings) {
-      goToDashboardAfterRide();
+      showPassengerRatingPrompt();
       return;
     }
     setRideEarnings(earnings);
     setShowEarningsModal(true);
-  }, [driver?.authToken, goToDashboardAfterRide, params.rideId]);
+  }, [driver?.authToken, params.rideId, showPassengerRatingPrompt]);
 
   const completeRideWithFare = async (fare: number, plausibilityAck = false) => {
     setCompletingRide(true);
@@ -941,11 +982,13 @@ export default function DriverNavigationScreen() {
           if (params.rideId) {
             void (async () => {
               try {
+                const fix = acceptDriverGpsFix(latitude, longitude);
+                if (!fix) return;
                 const headers = await fleetAuthHeadersJson();
                 await fetch(`${API_BASE}/rides/${params.rideId}/driver-location`, {
                   method: "POST",
                   headers,
-                  body: JSON.stringify({ lat: latitude, lon: longitude }),
+                  body: JSON.stringify({ lat: fix.lat, lon: fix.lon }),
                 });
               } catch {
                 /* ignore */
@@ -1469,8 +1512,16 @@ export default function DriverNavigationScreen() {
         onClose={() => {
           setShowEarningsModal(false);
           setRideEarnings(null);
-          goToDashboardAfterRide();
+          showPassengerRatingPrompt();
         }}
+      />
+
+      <DriverPassengerRatingModal
+        visible={showPassengerRatingModal}
+        customerName={params.customerName}
+        submitting={passengerRatingSubmitting}
+        onSubmit={(stars) => void submitPassengerRating(stars)}
+        onSkip={finishRideFlowToDashboard}
       />
 
       <Modal

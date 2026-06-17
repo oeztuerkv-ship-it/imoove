@@ -152,6 +152,7 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     customerName: r.customer_name,
     customerPhone: r.customer_phone ?? null,
     passengerRating: r.passenger_rating ?? null,
+    driverPassengerRating: r.driver_passenger_rating ?? null,
     passengerId: r.passenger_id ?? undefined,
     driverId: r.driver_id,
     from: r.from_label,

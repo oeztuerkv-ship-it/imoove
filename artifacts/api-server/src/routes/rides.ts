@@ -63,7 +63,7 @@ import {
   isRideCompatibleWithCapability,
 } from "../db/fleetMatchingData";
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
-import { findFleetDriverAuthRow, getFleetDriverMarketOnline } from "../db/fleetDriversData";
+import { findFleetDriverAuthRow, getFleetDriverMarketOnline, recordFleetDriverOfferRejectStreak, resetFleetDriverDispatchRejectStreak } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
@@ -2425,6 +2425,17 @@ export async function patchRideStatusRoute(
         void markDispatchOfferAccepted(bodyDriverIdTrim, id);
       }
     }
+    const driverAcceptedOpenRide =
+      bodyDriverIdTrim &&
+      !(cur.driverId ?? "").trim() &&
+      updated &&
+      (updated.status === "accepted" || updated.status === "scheduled_assigned");
+    if (driverAcceptedOpenRide) {
+      const resetCo = (companyIdOnAccept ?? updated.companyId ?? "").trim();
+      if (resetCo) {
+        void resetFleetDriverDispatchRejectStreak(bodyDriverIdTrim, resetCo).catch(() => undefined);
+      }
+    }
     if (cancelReasonClean) {
       const isCancel = [
         "cancelled",
@@ -2977,6 +2988,24 @@ router.post("/rides/:id/reject", requireFleetDriverAuth, async (req, res, next) 
         actorId: driverId,
         payload: { driverId },
       });
+      const authCompany = (req as FleetDriverAuthRequest).fleetDriverAuth?.companyId?.trim() ?? "";
+      if (authCompany) {
+        const streakResult = await recordFleetDriverOfferRejectStreak(driverId, authCompany);
+        if (streakResult.downgraded) {
+          await insertSupplementalRideEvent(id, {
+            eventType: "driver_dispatch_priority_downgraded",
+            fromStatus: cur.status,
+            toStatus: cur.status,
+            actorType: "system",
+            actorId: driverId,
+            payload: {
+              driverId,
+              streak: streakResult.streak,
+              newPriority: streakResult.priority,
+            },
+          });
+        }
+      }
     }
     res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
+import { isGpsOutlierJump } from "../lib/gpsOutlierFilter";
 import { rideDriverLocationsTable } from "./schema";
 
 export type RideDriverLocationSnapshot = {
@@ -21,6 +22,12 @@ export async function upsertRideDriverLocation(
   const rid = rideId.trim();
   const did = fleetDriverId.trim();
   if (!rid || !did || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+  const prev = await getRideDriverLocation(rideId);
+  if (prev && isGpsOutlierJump(prev.lat, prev.lon, lat, lon)) {
+    return prev;
+  }
+
   const now = new Date();
   await db
     .insert(rideDriverLocationsTable)

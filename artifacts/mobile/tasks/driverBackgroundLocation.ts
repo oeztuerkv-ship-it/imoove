@@ -7,6 +7,7 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 
 export const DRIVER_BG_LOCATION_TASK = "ONRODA_DRIVER_RIDE_LOCATION";
@@ -46,6 +47,8 @@ TaskManager.defineTask(DRIVER_BG_LOCATION_TASK, async ({ data, error }) => {
   for (const loc of locations) {
     const { latitude, longitude } = loc.coords;
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
-    await postDriverLocation(rideId, latitude, longitude);
+    const fix = acceptDriverGpsFix(latitude, longitude);
+    if (!fix) continue;
+    await postDriverLocation(rideId, fix.lat, fix.lon);
   }
 });

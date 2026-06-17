@@ -246,6 +246,8 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   is_owner: boolean("is_owner").notNull().default(false),
   /** Premium-Dispatch: A (zuerst), B, C — nur Admin. */
   dispatch_priority: text("dispatch_priority").notNull().default("C"),
+  /** Aufeinanderfolgende Markt-Ablehnungen (20 → Priorität sinkt). */
+  dispatch_reject_streak: integer("dispatch_reject_streak").notNull().default(0),
   /** Optional: individueller Provisionssatz (Dezimal); NULL = Mandant. */
   commission_rate: doublePrecision("commission_rate"),
   rating_sum: integer("rating_sum").notNull().default(0),
@@ -430,6 +432,8 @@ export const passengerProfilesTable = pgTable("passenger_profiles", {
   first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
   last_seen_at: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  rating_sum: integer("rating_sum").notNull().default(0),
+  rating_count: integer("rating_count").notNull().default(0),
 });
 
 /** Kunden-Storno-Sperre (passenger_id = JWT sub / customer_accounts.id / OAuth sub). */
@@ -668,6 +672,8 @@ export const ridesTable = pgTable("rides", {
   refunded_at: timestamp("refunded_at", { withTimezone: true }),
   cash_confirmed_at: timestamp("cash_confirmed_at", { withTimezone: true }),
   passenger_rating: integer("passenger_rating"),
+  /** Fahrer bewertet Kunde (1–5), einmalig nach Fahrtende. */
+  driver_passenger_rating: integer("driver_passenger_rating"),
   /** Sofortfahrt: aktuelle Angebots-Stufe A→B→C. */
   dispatch_tier: text("dispatch_tier").notNull().default("A"),
   dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),
