@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
-      "buildNumber": "25",
+      "buildNumber": "26",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
         "NSCameraUsageDescription": "ONRODA nutzt die Kamera zum Scannen von Transportscheinen und Fahrt-QR-Codes.",

@@ -21,7 +21,8 @@ import {
   Animated,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
+import { NATIVE_MAP_PROVIDER, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
@@ -1166,8 +1167,8 @@ export default function DriverNavigationScreen() {
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
-        provider={PROVIDER_GOOGLE}
-        customMapStyle={NIGHT_MAP_STYLE}
+        provider={NATIVE_MAP_PROVIDER}
+        {...(usesGoogleMapTiles() ? { customMapStyle: NIGHT_MAP_STYLE } : { mapType: "mutedStandard" })}
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass={false}
@@ -1734,7 +1735,7 @@ export default function DriverNavigationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#242f3e" },
+  container: { flex: 1, backgroundColor: Platform.OS === "ios" ? "#E5E7EB" : "#242f3e" },
 
   /* Top card */
   topWrapper: { position: "absolute", top: 0, left: 0, right: 0 },
