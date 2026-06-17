@@ -26,6 +26,7 @@ import {
 import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
+import { respondCustomerPaymentRouteError } from "../lib/stripeHttpError.js";
 import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
 
 const router = Router();
@@ -500,6 +501,7 @@ router.post(
       estimatedFareEur: baseEstimate,
     });
   } catch (e) {
+    if (respondCustomerPaymentRouteError(res, e, "payment/create-intent")) return;
     next(e);
   }
 });
@@ -604,6 +606,7 @@ router.post("/customer/v1/payment/confirm-ride", requireCustomerSession, async (
 
     res.json({ ok: true, paymentStatus: sync.paymentStatus });
   } catch (e) {
+    if (respondCustomerPaymentRouteError(res, e, "payment/confirm-ride")) return;
     next(e);
   }
 });
@@ -633,6 +636,7 @@ router.get("/customer/v1/payment/saved-card", requireCustomerSession, async (req
       last4: card.last4,
     });
   } catch (e) {
+    if (respondCustomerPaymentRouteError(res, e, "payment/saved-card")) return;
     next(e);
   }
 });
@@ -668,6 +672,7 @@ router.post("/customer/v1/payment/setup-intent", requireCustomerSession, async (
     }
     res.json({ clientSecret });
   } catch (e) {
+    if (respondCustomerPaymentRouteError(res, e, "payment/setup-intent")) return;
     next(e);
   }
 });

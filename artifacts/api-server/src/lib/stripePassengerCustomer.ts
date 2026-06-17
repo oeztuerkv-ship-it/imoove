@@ -1,11 +1,45 @@
 import Stripe from "stripe";
 import type { StripeConnectPaymentParams } from "./stripeConnect";
+import { logger } from "./logger";
 
 export type SavedStripeCard = {
   paymentMethodId: string;
   brand: string | null;
   last4: string | null;
 };
+
+async function findStripeCustomerIdForPassenger(
+  stripe: Stripe,
+  passengerId: string,
+  email?: string | null,
+): Promise<string | null> {
+  const pid = passengerId.trim();
+  const escaped = pid.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  try {
+    const search = await stripe.customers.search({
+      query: `metadata['passenger_id']:'${escaped}'`,
+      limit: 1,
+    });
+    const fromSearch = search.data[0]?.id?.trim();
+    if (fromSearch) return fromSearch;
+  } catch (err) {
+    logger.warn(
+      { err, passengerId: pid },
+      "[Stripe] customers.search failed — fallback to list by email",
+    );
+  }
+
+  const mail = typeof email === "string" ? email.trim() : "";
+  if (!mail) return null;
+
+  const listed = await stripe.customers.list({ email: mail, limit: 10 });
+  for (const customer of listed.data) {
+    if (customer.deleted) continue;
+    const metaPid = String(customer.metadata?.passenger_id ?? "").trim();
+    if (metaPid === pid) return customer.id;
+  }
+  return null;
+}
 
 /** Stripe Customer pro Passenger (metadata `passenger_id`) für SetupIntent / gespeicherte Karten. */
 export async function getOrCreateStripeCustomerForPassenger(
@@ -17,13 +51,9 @@ export async function getOrCreateStripeCustomerForPassenger(
   if (!pid) {
     throw new Error("passenger_id_required");
   }
-  const escaped = pid.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-  const search = await stripe.customers.search({
-    query: `metadata['passenger_id']:'${escaped}'`,
-    limit: 1,
-  });
-  const existing = search.data[0];
-  if (existing?.id) return existing.id;
+
+  const existingId = await findStripeCustomerIdForPassenger(stripe, pid, email);
+  if (existingId) return existingId;
 
   const mail = typeof email === "string" ? email.trim() : "";
   const created = await stripe.customers.create({

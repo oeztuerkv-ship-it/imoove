@@ -20,6 +20,14 @@ type SetupSheetFns = {
   initPaymentSheet: (params: {
     setupIntentClientSecret: string;
     merchantDisplayName: string;
+    applePay?: {
+      merchantCountryCode: string;
+      cartItems?: Array<{
+        paymentType: "Immediate";
+        label: string;
+        amount: string;
+      }>;
+    };
   }) => Promise<InitPaymentSheetResult>;
   presentPaymentSheet: () => Promise<PresentPaymentSheetResult>;
 };
@@ -73,14 +81,29 @@ export async function presentStripeSetupSheet(
   fns: SetupSheetFns,
   clientSecret: string,
   merchantDisplayName = "ONRODA",
+  amountEur?: number,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const secret = clientSecret.trim();
   if (!secret) {
     return { ok: false, message: "Zahlungsdaten fehlen." };
   }
+  const setupAmount =
+    typeof amountEur === "number" && Number.isFinite(amountEur) && amountEur >= 0
+      ? amountEur.toFixed(2)
+      : "0.00";
   const init = await fns.initPaymentSheet({
     setupIntentClientSecret: secret,
     merchantDisplayName,
+    applePay: {
+      merchantCountryCode: "DE",
+      cartItems: [
+        {
+          paymentType: "Immediate" as const,
+          label: "ONRODA — Karte hinterlegen",
+          amount: setupAmount,
+        },
+      ],
+    },
   });
   if (init.error) {
     return { ok: false, message: init.error.message };

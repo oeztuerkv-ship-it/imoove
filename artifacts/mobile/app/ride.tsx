@@ -770,6 +770,8 @@ export default function RideScreen() {
               const setup = await presentStripeSetupSheet(
                 { initPaymentSheet, presentPaymentSheet },
                 intent.setupClientSecret,
+                "ONRODA",
+                0,
               );
               if (!setup.ok) {
                 await cancelCustomerRide(authToken, rideRequestId);
