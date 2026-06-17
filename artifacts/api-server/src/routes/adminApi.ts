@@ -3582,6 +3582,142 @@ adminJson.post("/companies", async (req, res, next) => {
   }
 });
 
+const QUICK_ONBOARD_COMPANY_KINDS = new Set([
+  "taxi",
+  "hotel",
+  "corporate",
+  "voucher_client",
+  "insurer",
+  "travel_agency",
+]);
+
+function normalizeQuickOnboardCompanyKind(raw: string): string {
+  const k = raw.trim();
+  if (k === "travel_agency") return "corporate";
+  return k;
+}
+
+adminJson.post("/companies/quick-onboard", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const body = req.body as {
+      name?: unknown;
+      company_kind?: unknown;
+      email?: unknown;
+      password?: unknown;
+    };
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const kindRaw = typeof body.company_kind === "string" ? body.company_kind.trim() : "";
+    const companyKind = QUICK_ONBOARD_COMPANY_KINDS.has(kindRaw) ? normalizeQuickOnboardCompanyKind(kindRaw) : "";
+    const rawPassword = typeof body.password === "string" ? body.password : "";
+    const generatedPassword = rawPassword.trim() ? "" : generateTemporaryPassword();
+    const password = rawPassword.trim() || generatedPassword;
+
+    if (!name) {
+      res.status(400).json({ error: "name_required" });
+      return;
+    }
+    if (!email || !email.includes("@")) {
+      res.status(400).json({ error: "email_required", hint: "Gültige E-Mail für den Partner-Login." });
+      return;
+    }
+    if (!companyKind) {
+      res.status(400).json({ error: "company_kind_invalid" });
+      return;
+    }
+    if (!password || password.length < 10) {
+      res.status(400).json({
+        error: "password_invalid",
+        hint: "Passwort mindestens 10 Zeichen — oder leer lassen für Auto-Generierung.",
+      });
+      return;
+    }
+
+    const companyResult = await insertAdminCompany({
+      name,
+      company_kind: companyKind,
+      email,
+      panel_access_enabled: true,
+      contract_status: "active",
+    });
+    if ("error" in companyResult) {
+      const e = companyResult.error;
+      if (e === "db_insert_admin_company_failed" && "hint" in companyResult && companyResult.hint) {
+        res.status(503).json({ error: e, hint: companyResult.hint });
+        return;
+      }
+      if (e.startsWith("db_schema_")) {
+        res.status(503).json({
+          error: e,
+          hint:
+            e === "db_schema_partner_panel_profile_locked"
+              ? "Migration 031 (partner_panel_profile_locked) einspielen."
+              : "Migration 032 (company_kind medical) einspielen.",
+        });
+        return;
+      }
+      res.status(400).json({ error: e });
+      return;
+    }
+
+    let ownerWarning: string | undefined;
+    let onboarding:
+      | { username: string; email: string; initialPassword?: string; mustChangePassword: true; panelLoginUrl: string }
+      | undefined;
+
+    try {
+      const username = await allocateUniquePanelUsername(email);
+      const pwHash = await hashPassword(password);
+      const createdUser = await insertPanelUser({
+        companyId: companyResult.id,
+        username,
+        email,
+        role: "owner",
+        passwordHash: pwHash,
+        mustChangePassword: true,
+      });
+      if (!createdUser) {
+        ownerWarning =
+          "Mandant angelegt, Owner-Zugang konnte nicht erstellt werden (Benutzername/E-Mail-Konflikt). Bitte unter Partner-Zugang manuell anlegen.";
+      } else {
+        await insertPanelAuditLog({
+          id: randomUUID(),
+          companyId: companyResult.id,
+          actorPanelUserId: null,
+          action: "admin.panel_user.created",
+          subjectType: "panel_user",
+          subjectId: createdUser.id,
+          meta: { username, role: "owner", source: "platform_admin_quick_onboard" },
+        });
+        const panelBase = (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
+        onboarding = {
+          username,
+          email,
+          ...(generatedPassword ? { initialPassword: generatedPassword } : {}),
+          mustChangePassword: true,
+          panelLoginUrl: panelBase,
+        };
+      }
+    } catch (err) {
+      ownerWarning = err instanceof Error ? err.message : "owner_provisioning_failed";
+      logger.warn({ err, companyId: companyResult.id }, "quick onboard owner provisioning failed");
+    }
+
+    res.status(201).json({
+      ok: true,
+      item: companyResult,
+      onboarding,
+      ...(ownerWarning ? { ownerProvisioningWarning: ownerWarning } : {}),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 adminJson.patch("/companies/:companyId", async (req, res, next) => {
   try {
     const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);

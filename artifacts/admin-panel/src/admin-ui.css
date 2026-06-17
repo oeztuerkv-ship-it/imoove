@@ -3584,6 +3584,32 @@ ul.admin-mandate-doclist {
   font-size: 0.92rem;
 }
 
+.admin-companies__create-ok {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.admin-companies__create-hint {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.admin-companies__create-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .admin-companies__req {
   color: #b91c1c;
   font-weight: 800;

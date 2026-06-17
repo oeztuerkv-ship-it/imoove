@@ -198,31 +198,21 @@ const EXTRA_CHIPS = [
   { k: "complOk", label: "Compliance erfüllt" },
 ];
 
-const CREATE_KIND_OPTIONS = [
-  { value: "general", label: "Sonstige" },
+const QUICK_CREATE_KIND_OPTIONS = [
   { value: "taxi", label: "Taxi" },
   { value: "hotel", label: "Hotel" },
-  { value: "insurer", label: "Krankenkasse" },
-  { value: "medical", label: "Krankenfahrt (medical)" },
-  { value: "corporate", label: "Unternehmen (corporate)" },
-  { value: "voucher_client", label: "Gutschein-Partner" },
+  { value: "travel_agency", label: "Reisebüro" },
+  { value: "voucher_client", label: "Gutscheinfirma" },
+  { value: "corporate", label: "Corporate" },
+  { value: "insurer", label: "Versicherung" },
 ];
 
 const EMPTY_CREATE_FORM = {
   name: "",
-  company_kind: "general",
-  contact_name: "",
+  company_kind: "taxi",
   email: "",
-  phone: "",
-  address_line1: "",
-  address_line2: "",
-  postal_code: "",
-  city: "",
-  country: "DE",
-  legal_form: "",
-  vat_id: "",
-  support_email: "",
-  dispo_phone: "",
+  password: "",
+  autoGeneratePassword: true,
 };
 
 export default function CompaniesPage({
@@ -252,6 +242,8 @@ export default function CompaniesPage({
   const [createForm, setCreateForm] = useState(() => ({ ...EMPTY_CREATE_FORM }));
   const [createBusy, setCreateBusy] = useState(false);
   const [createErr, setCreateErr] = useState("");
+  const [createOnboarding, setCreateOnboarding] = useState(null);
+  const [createOwnerWarning, setCreateOwnerWarning] = useState("");
   const [showCreateCompany, setShowCreateCompany] = useState(false);
 
   const canCreateCompany = userRole === "admin" || userRole === "service";
@@ -404,34 +396,39 @@ export default function CompaniesPage({
   };
 
   const onCreateField = (k) => (e) => {
-    setCreateForm((prev) => ({ ...prev, [k]: e.target.value }));
+    const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    setCreateForm((prev) => ({ ...prev, [k]: value }));
   };
 
   const onCreateCompany = () => {
     const name = String(createForm.name ?? "").trim();
+    const email = String(createForm.email ?? "").trim();
     if (!name) {
-      setCreateErr("Firmenname ist Pflicht.");
+      setCreateErr("Unternehmensname ist Pflicht.");
       return;
     }
+    if (!email || !email.includes("@")) {
+      setCreateErr("Gültige E-Mail für den Partner-Login ist Pflicht.");
+      return;
+    }
+    if (!createForm.autoGeneratePassword) {
+      const pw = String(createForm.password ?? "");
+      if (pw.length < 10) {
+        setCreateErr("Passwort mindestens 10 Zeichen — oder Auto-Generierung aktivieren.");
+        return;
+      }
+    }
     setCreateErr("");
+    setCreateOwnerWarning("");
+    setCreateOnboarding(null);
     setCreateBusy(true);
     const body = {
       name,
-      company_kind: createForm.company_kind || "general",
-      contact_name: String(createForm.contact_name ?? "").trim(),
-      email: String(createForm.email ?? "").trim(),
-      phone: String(createForm.phone ?? "").trim(),
-      address_line1: String(createForm.address_line1 ?? "").trim(),
-      address_line2: String(createForm.address_line2 ?? "").trim(),
-      postal_code: String(createForm.postal_code ?? "").trim(),
-      city: String(createForm.city ?? "").trim(),
-      country: String(createForm.country ?? "").trim(),
-      legal_form: String(createForm.legal_form ?? "").trim(),
-      vat_id: String(createForm.vat_id ?? "").trim(),
-      support_email: String(createForm.support_email ?? "").trim(),
-      dispo_phone: String(createForm.dispo_phone ?? "").trim(),
+      company_kind: createForm.company_kind || "taxi",
+      email,
+      ...(createForm.autoGeneratePassword ? {} : { password: String(createForm.password ?? "") }),
     };
-    fetch(`${API_BASE}/admin/companies`, {
+    fetch(`${API_BASE}/admin/companies/quick-onboard`, {
       method: "POST",
       headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -452,7 +449,15 @@ export default function CompaniesPage({
             return;
           }
           if (code === "name_required") {
-            setCreateErr("Firmenname ist Pflicht.");
+            setCreateErr("Unternehmensname ist Pflicht.");
+            return;
+          }
+          if (code === "email_required") {
+            setCreateErr("Gültige E-Mail ist Pflicht.");
+            return;
+          }
+          if (code === "password_invalid") {
+            setCreateErr(hint || "Passwort ungültig (min. 10 Zeichen).");
             return;
           }
           setCreateErr(
@@ -466,6 +471,8 @@ export default function CompaniesPage({
         setCreateForm({ ...EMPTY_CREATE_FORM });
         setShowCreateCompany(false);
         setCreateErr("");
+        setCreateOnboarding(json?.onboarding ?? null);
+        setCreateOwnerWarning(typeof json?.ownerProvisioningWarning === "string" ? json.ownerProvisioningWarning : "");
         loadData();
         if (newId) onOpenMandateDetail?.(newId);
       })
@@ -538,7 +545,8 @@ export default function CompaniesPage({
               Neues Unternehmen
             </h2>
             <p className="admin-companies__create-lead">
-              Mandant in der Plattform anlegen — ID wird vergeben; Rechnungsdaten und Freigaben können Sie danach in der Mandantenzentrale ergänzen.
+              Schnell-Onboarding: Mandant + Partner-Login in einem Schritt. Steuernummer, Konzession, Bankdaten und
+              Provision können Sie danach in der Mandantenzentrale oder vom Partner im Profil ergänzen.
             </p>
           </div>
           {createErr ? (
@@ -549,7 +557,7 @@ export default function CompaniesPage({
           <div className="admin-companies__create-grid">
             <div className="admin-companies__create-field admin-companies__create-field--span2">
               <label className="admin-c-search__lbl" htmlFor="admin-create-name">
-                Firmenname <span className="admin-companies__req">*</span>
+                Unternehmensname <span className="admin-companies__req">*</span>
               </label>
               <input
                 id="admin-create-name"
@@ -562,7 +570,7 @@ export default function CompaniesPage({
             </div>
             <div className="admin-companies__create-field">
               <label className="admin-c-search__lbl" htmlFor="admin-create-kind">
-                Unternehmensart
+                Unternehmensart <span className="admin-companies__req">*</span>
               </label>
               <select
                 id="admin-create-kind"
@@ -570,7 +578,7 @@ export default function CompaniesPage({
                 value={createForm.company_kind}
                 onChange={onCreateField("company_kind")}
               >
-                {CREATE_KIND_OPTIONS.map((o) => (
+                {QUICK_CREATE_KIND_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -578,32 +586,8 @@ export default function CompaniesPage({
               </select>
             </div>
             <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-legal">
-                Rechtsform
-              </label>
-              <input
-                id="admin-create-legal"
-                className="admin-c-search__inp"
-                value={createForm.legal_form}
-                onChange={onCreateField("legal_form")}
-                placeholder="z. B. GmbH"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-contact">
-                Ansprechpartner
-              </label>
-              <input
-                id="admin-create-contact"
-                className="admin-c-search__inp"
-                value={createForm.contact_name}
-                onChange={onCreateField("contact_name")}
-                placeholder="Name"
-              />
-            </div>
-            <div className="admin-companies__create-field">
               <label className="admin-c-search__lbl" htmlFor="admin-create-email">
-                E-Mail
+                E-Mail (Login) <span className="admin-companies__req">*</span>
               </label>
               <input
                 id="admin-create-email"
@@ -612,124 +596,41 @@ export default function CompaniesPage({
                 autoComplete="email"
                 value={createForm.email}
                 onChange={onCreateField("email")}
-                placeholder="kontakt@…"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-phone">
-                Telefon
-              </label>
-              <input
-                id="admin-create-phone"
-                className="admin-c-search__inp"
-                type="tel"
-                value={createForm.phone}
-                onChange={onCreateField("phone")}
-                placeholder="+49 …"
+                placeholder="partner@…"
               />
             </div>
             <div className="admin-companies__create-field admin-companies__create-field--span2">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-addr1">
-                Straße / Hausnummer
+              <label className="admin-c-search__lbl" htmlFor="admin-create-password">
+                Startpasswort
               </label>
               <input
-                id="admin-create-addr1"
+                id="admin-create-password"
                 className="admin-c-search__inp"
-                value={createForm.address_line1}
-                onChange={onCreateField("address_line1")}
-                placeholder="Musterstraße 1"
+                type="password"
+                autoComplete="new-password"
+                value={createForm.password}
+                onChange={onCreateField("password")}
+                disabled={createForm.autoGeneratePassword}
+                placeholder={createForm.autoGeneratePassword ? "Wird automatisch generiert" : "Mind. 10 Zeichen"}
               />
             </div>
             <div className="admin-companies__create-field admin-companies__create-field--span2">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-addr2">
-                Adresszusatz
+              <label className="admin-c-search__lbl admin-companies__create-check">
+                <input
+                  type="checkbox"
+                  checked={createForm.autoGeneratePassword}
+                  onChange={onCreateField("autoGeneratePassword")}
+                />
+                Passwort automatisch generieren (empfohlen)
               </label>
-              <input
-                id="admin-create-addr2"
-                className="admin-c-search__inp"
-                value={createForm.address_line2}
-                onChange={onCreateField("address_line2")}
-                placeholder="optional"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-plz">
-                PLZ
-              </label>
-              <input
-                id="admin-create-plz"
-                className="admin-c-search__inp"
-                value={createForm.postal_code}
-                onChange={onCreateField("postal_code")}
-                placeholder="12345"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-city">
-                Ort
-              </label>
-              <input
-                id="admin-create-city"
-                className="admin-c-search__inp"
-                value={createForm.city}
-                onChange={onCreateField("city")}
-                placeholder="Berlin"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-country">
-                Land (ISO)
-              </label>
-              <input
-                id="admin-create-country"
-                className="admin-c-search__inp"
-                value={createForm.country}
-                onChange={onCreateField("country")}
-                placeholder="DE"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-vat">
-                USt-IdNr.
-              </label>
-              <input
-                id="admin-create-vat"
-                className="admin-c-search__inp"
-                value={createForm.vat_id}
-                onChange={onCreateField("vat_id")}
-                placeholder="optional"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-support">
-                Support-E-Mail
-              </label>
-              <input
-                id="admin-create-support"
-                className="admin-c-search__inp"
-                type="email"
-                value={createForm.support_email}
-                onChange={onCreateField("support_email")}
-                placeholder="optional"
-              />
-            </div>
-            <div className="admin-companies__create-field">
-              <label className="admin-c-search__lbl" htmlFor="admin-create-dispo">
-                Dispositions-Telefon
-              </label>
-              <input
-                id="admin-create-dispo"
-                className="admin-c-search__inp"
-                type="tel"
-                value={createForm.dispo_phone}
-                onChange={onCreateField("dispo_phone")}
-                placeholder="optional"
-              />
+              <p className="admin-companies__create-hint">
+                Beim ersten Login im Partner-Panel muss das Passwort geändert werden.
+              </p>
             </div>
           </div>
           <div className="admin-companies__create-actions">
             <button type="button" className="admin-btn-primary" disabled={createBusy} onClick={() => void onCreateCompany()}>
-              {createBusy ? "Wird angelegt …" : "Unternehmen anlegen"}
+              {createBusy ? "Wird angelegt …" : "Mandant anlegen & Zugang erstellen"}
             </button>
             <button
               type="button"
@@ -744,6 +645,28 @@ export default function CompaniesPage({
             </button>
           </div>
         </section>
+      ) : null}
+
+      {createOnboarding?.username ? (
+        <div className="admin-companies__create-ok" role="status">
+          Partner-Zugang erstellt: <strong>{createOnboarding.username}</strong>
+          {createOnboarding.initialPassword ? (
+            <>
+              {" "}
+              / Startpasswort: <strong>{createOnboarding.initialPassword}</strong>
+            </>
+          ) : null}
+          . Login:{" "}
+          <a href={createOnboarding.panelLoginUrl || "https://panel.onroda.de"} target="_blank" rel="noreferrer">
+            {createOnboarding.panelLoginUrl || "panel.onroda.de"}
+          </a>
+          . Beim ersten Login ist Passwortwechsel Pflicht.
+        </div>
+      ) : null}
+      {createOwnerWarning ? (
+        <div className="admin-companies__create-err" role="alert">
+          {createOwnerWarning}
+        </div>
       ) : null}
 
       <div className="admin-filter-card">

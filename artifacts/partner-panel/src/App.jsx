@@ -49,7 +49,7 @@ export default function App() {
     return <TaxiEntrepreneurShell user={user} company={company} onLogout={logout} />;
   }
 
-  if (kind === "hotel" || kind === "agency" || kind === "travel") {
+  if (kind === "hotel" || kind === "agency" || kind === "travel" || kind === "corporate" || kind === "voucher_client") {
     return <AgenturMasterPanel company={company} onLogout={logout} />;
   }
 
