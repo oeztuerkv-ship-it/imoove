@@ -110,8 +110,6 @@ export default function RideDetailScreen() {
   const [category, setCategory] = useState<SupportCategory>("other");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [previewLines, setPreviewLines] = useState<string[] | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
 
   const apiBase = getApiBaseUrl();
   const { profile } = useUser();
@@ -159,34 +157,6 @@ export default function RideDetailScreen() {
     void loadMedicalQr();
   }, [loadMedicalQr]);
 
-  const loadSupportPreview = useCallback(async () => {
-    if (!apiBase || !rideId || !sessionToken) {
-      setPreviewLines(null);
-      return;
-    }
-    setPreviewLoading(true);
-    try {
-      const res = await fetch(
-        `${apiBase}/rides/${encodeURIComponent(rideId)}/support/preview`,
-        { headers: { Authorization: `Bearer ${sessionToken}` } },
-      );
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; summary?: { lines?: string[] } };
-      if (res.ok && data?.ok && Array.isArray(data?.summary?.lines)) {
-        setPreviewLines(data.summary.lines);
-      } else {
-        setPreviewLines(null);
-      }
-    } catch {
-      setPreviewLines(null);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, [apiBase, rideId, sessionToken]);
-
-  useEffect(() => {
-    void loadSupportPreview();
-  }, [loadSupportPreview]);
-
   const title = enrichedHistRide
     ? enrichedHistRide.status === "completed"
       ? "Fahrt (Abgeschlossen)"
@@ -203,21 +173,6 @@ export default function RideDetailScreen() {
       return;
     }
     await downloadReceipt(rideId, sessionToken);
-  }
-
-  async function openServerReceipt() {
-    if (!apiBase) {
-      Alert.alert("API nicht konfiguriert", "Bitte EXPO_PUBLIC_API_URL setzen.");
-      return;
-    }
-    if (!rideId) return;
-    const url = `${apiBase}/rides/${encodeURIComponent(rideId)}/receipt`;
-    try {
-      const WebBrowser = await import("expo-web-browser");
-      await WebBrowser.openBrowserAsync(url);
-    } catch {
-      Alert.alert("Nicht verfügbar", "Browser konnte nicht geöffnet werden.");
-    }
   }
 
   async function submitSupport() {
@@ -262,7 +217,6 @@ export default function RideDetailScreen() {
         return;
       }
       setMessage("");
-      void loadSupportPreview();
       Alert.alert("Gesendet", `Danke! Referenz: ${data.ticketId ?? "—"}`);
     } catch {
       Alert.alert("Netzwerkfehler", "Bitte später erneut versuchen.");
@@ -336,13 +290,6 @@ export default function RideDetailScreen() {
             <Text style={styles.primaryBtnText}>Quittung / Beleg</Text>
             <Feather name="download" size={14} color="#fff" />
           </Pressable>
-          <Pressable style={[styles.secondaryLinkBtn, { borderColor: colors.border }]} onPress={() => void openServerReceipt()}>
-            <Feather name="external-link" size={14} color={colors.mutedForeground} />
-            <Text style={[styles.secondaryLinkText, { color: colors.mutedForeground }]}>Beleg im Browser öffnen (API)</Text>
-          </Pressable>
-          <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            Hinweis: Bei iOS/Android öffnet sich der Druckdialog (Speichern als PDF möglich).
-          </Text>
         </View>
 
         {isMedicalRide ? (
@@ -388,34 +335,11 @@ export default function RideDetailScreen() {
         ) : null}
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Hilfe zu dieser Fahrt</Text>
-          <Text style={[styles.hint, { color: colors.mutedForeground, marginBottom: 10 }]}>
-            Es wird ein Support-Ticket mit fahrtbezogenem Kontext (Stand jetzt) angelegt — kein reines Kontaktformular.
-          </Text>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Hilfe</Text>
           {sessionToken ? null : (
             <Text style={[styles.hint, { color: "#B45309", marginBottom: 8 }]}>
               Bitte anmelden, um Hilfe anzufragen.
             </Text>
-          )}
-
-          {sessionToken && (
-            <View
-              style={[
-                styles.previewBox,
-                { backgroundColor: colors.background, borderColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.k, { color: colors.mutedForeground, marginBottom: 6 }]}>Vorschau (Server)</Text>
-              {previewLoading ? (
-                <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Lade Kurzübersicht …</Text>
-              ) : previewLines && previewLines.length > 0 ? (
-                previewLines.map((line, i) => (
-                  <Text key={i} style={{ color: colors.foreground, fontSize: 12, marginBottom: 4 }}>{line}</Text>
-                ))
-              ) : (
-                <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Kurzübersicht derzeit nicht verfügbar.</Text>
-              )}
-            </View>
           )}
 
           <View style={styles.categoryWrap}>
@@ -539,17 +463,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryBtnText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  secondaryLinkBtn: {
-    marginTop: 10,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  secondaryLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 });
 
