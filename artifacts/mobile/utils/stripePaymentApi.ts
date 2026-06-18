@@ -326,3 +326,53 @@ export async function postCustomerCreateSetupIntent(
 
   return { ok: true, clientSecret };
 }
+
+export type RetryFailedRidePaymentResult =
+  | { ok: true }
+  | { ok: false; error: string; status?: number };
+
+/** Offene fehlgeschlagene Fahrtzahlung erneut einziehen (nach Karten-Update). */
+export async function postCustomerRetryFailedRidePayment(input: {
+  rideId: string;
+  authToken?: string | null;
+}): Promise<RetryFailedRidePaymentResult> {
+  const token = await resolveCustomerBearerToken(input.authToken);
+  const apiBase = getApiBaseUrl();
+  const rideId = input.rideId.trim();
+  if (!token || !apiBase || !rideId) {
+    return { ok: false, error: "unauthorized" };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase}/customer/v1/payment/retry-ride/${encodeURIComponent(rideId)}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
+
+  const raw = await res.text();
+  let parsed: { error?: string; ok?: boolean } = {};
+  try {
+    parsed = raw ? (JSON.parse(raw) as typeof parsed) : {};
+  } catch {
+    parsed = {};
+  }
+
+  if (!res.ok || parsed.ok === false) {
+    return {
+      ok: false,
+      error: typeof parsed.error === "string" ? parsed.error : `http_${res.status}`,
+      status: res.status,
+    };
+  }
+
+  return { ok: true };
+}

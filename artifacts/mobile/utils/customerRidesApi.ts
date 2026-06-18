@@ -4,8 +4,37 @@ import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
 export type CustomerRideListItem = {
   id?: string;
   status?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
   estimatedFare?: number;
+  finalFare?: number | null;
+  createdAt?: string;
 };
+
+export type CustomerOutstandingPayment = {
+  rideId: string;
+  finalFare: number | null;
+  estimatedFare: number | null;
+};
+
+export function listCustomerOutstandingFailedPayments(
+  rides: CustomerRideListItem[],
+): CustomerOutstandingPayment[] {
+  return rides
+    .filter((r) => {
+      const id = typeof r.id === "string" ? r.id.trim() : "";
+      const status = typeof r.status === "string" ? r.status.trim() : "";
+      const paymentStatus = typeof r.paymentStatus === "string" ? r.paymentStatus.trim() : "";
+      return id.length > 0 && status === "completed" && paymentStatus === "failed";
+    })
+    .map((r) => ({
+      rideId: String(r.id).trim(),
+      finalFare: typeof r.finalFare === "number" && Number.isFinite(r.finalFare) ? r.finalFare : null,
+      estimatedFare:
+        typeof r.estimatedFare === "number" && Number.isFinite(r.estimatedFare) ? r.estimatedFare : null,
+    }))
+    .sort((a, b) => (a.rideId < b.rideId ? 1 : -1));
+}
 
 export async function fetchCustomerRides(
   authToken?: string | null,

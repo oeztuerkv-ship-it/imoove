@@ -26,13 +26,44 @@ import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
 import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
-import { fetchCustomerSavedCard, postCustomerCreateSetupIntent } from "@/utils/stripePaymentApi";
+import {
+  fetchCustomerRides,
+  listCustomerOutstandingFailedPayments,
+  type CustomerOutstandingPayment,
+} from "@/utils/customerRidesApi";
+import {
+  fetchCustomerSavedCard,
+  postCustomerCreateSetupIntent,
+  postCustomerRetryFailedRidePayment,
+} from "@/utils/stripePaymentApi";
 import { presentStripeSetupSheet } from "@/utils/stripePaymentSheet";
 import { rs, rf } from "@/utils/scale";
 
 function formatSavedCardSublabel(brand: string | null, last4: string | null): string {
   const label = brand?.trim() ? brand.trim().toUpperCase() : "Karte";
   return last4?.trim() ? `${label} •••• ${last4.trim()} · Stripe` : `${label} · Stripe`;
+}
+
+function formatEuroAmount(amount: number | null): string {
+  if (amount == null || !Number.isFinite(amount) || amount <= 0) return "—";
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(amount);
+}
+
+function retryPaymentErrorMessage(error: string): string {
+  switch (error) {
+    case "payment_method_required_for_final_charge":
+      return "Bitte zuerst eine gültige Karte hinterlegen oder aktualisieren.";
+    case "stripe_not_configured":
+      return "Kartenzahlung ist derzeit nicht verfügbar.";
+    case "capture_skipped":
+      return "Diese Fahrt kann nicht per Karte abgerechnet werden.";
+    case "not_found":
+      return "Fahrt nicht gefunden.";
+    case "payment_not_failed":
+      return "Für diese Fahrt liegt keine offene Zahlung vor.";
+    default:
+      return "Die Zahlung konnte nicht eingezogen werden. Bitte Karte prüfen und erneut versuchen.";
+  }
 }
 
 const isWeb = Platform.OS === "web";
@@ -249,6 +280,18 @@ export default function WalletScreen() {
   const [cardLinked, setCardLinked] = useState(false);
   const [cardSublabel, setCardSublabel] = useState("Karte hinterlegen · Stripe");
   const [cardLinkBusy, setCardLinkBusy] = useState(false);
+  const [outstandingPayments, setOutstandingPayments] = useState<CustomerOutstandingPayment[]>([]);
+  const [retryBusyRideId, setRetryBusyRideId] = useState<string | null>(null);
+
+  const refreshOutstandingPayments = useCallback(async () => {
+    const authToken = await resolveCustomerBearerToken(profile.sessionToken);
+    if (!authToken) {
+      setOutstandingPayments([]);
+      return;
+    }
+    const rides = await fetchCustomerRides(authToken);
+    setOutstandingPayments(listCustomerOutstandingFailedPayments(rides));
+  }, [profile.sessionToken]);
 
   const refreshSavedCard = useCallback(async () => {
     const authToken = await resolveCustomerBearerToken(profile.sessionToken);
@@ -272,7 +315,8 @@ export default function WalletScreen() {
   useFocusEffect(
     useCallback(() => {
       void refreshSavedCard();
-    }, [refreshSavedCard]),
+      void refreshOutstandingPayments();
+    }, [refreshSavedCard, refreshOutstandingPayments]),
   );
 
   const handleLinkCard = useCallback(async () => {
@@ -311,11 +355,58 @@ export default function WalletScreen() {
       }
       await AsyncStorage.setItem(STRIPE_CARD_TOKEN_KEY, "stripe_linked").catch(() => undefined);
       await refreshSavedCard();
+      await refreshOutstandingPayments();
       Alert.alert(t("alerts.saved"), "Kreditkarte wurde hinterlegt. Buchungen mit Karte werden automatisch belastet.");
     } finally {
       setCardLinkBusy(false);
     }
-  }, [cardLinkBusy, initPaymentSheet, presentPaymentSheet, profile.sessionToken, refreshSavedCard, t]);
+  }, [
+    cardLinkBusy,
+    initPaymentSheet,
+    presentPaymentSheet,
+    profile.sessionToken,
+    refreshOutstandingPayments,
+    refreshSavedCard,
+    t,
+  ]);
+
+  const handleRetryPayment = useCallback(
+    async (rideId: string) => {
+      if (retryBusyRideId) return;
+      const authToken = await resolveCustomerBearerToken(profile.sessionToken);
+      if (!authToken) {
+        Alert.alert("Offene Zahlung", "Bitte anmelden, um die Zahlung zu begleichen.");
+        return;
+      }
+      setRetryBusyRideId(rideId);
+      try {
+        const outcome = await postCustomerRetryFailedRidePayment({ rideId, authToken });
+        if (outcome.ok) {
+          await refreshOutstandingPayments();
+          Alert.alert("Zahlung erfolgreich", "Die offene Fahrt wurde bezahlt. Sie können wieder normal buchen.");
+          return;
+        }
+        Alert.alert("Zahlung fehlgeschlagen", retryPaymentErrorMessage(outcome.error), [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Karte aktualisieren",
+            onPress: () => {
+              void handleLinkCard();
+            },
+          },
+          {
+            text: "Erneut versuchen",
+            onPress: () => {
+              void handleRetryPayment(rideId);
+            },
+          },
+        ]);
+      } finally {
+        setRetryBusyRideId(null);
+      }
+    },
+    [handleLinkCard, profile.sessionToken, refreshOutstandingPayments, retryBusyRideId],
+  );
 
 
 
@@ -334,6 +425,60 @@ export default function WalletScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) }]}
         showsVerticalScrollIndicator={false}
       >
+        {outstandingPayments.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeadingPill label="Offene Zahlung" />
+            {outstandingPayments.map((item) => {
+              const amount = item.finalFare ?? item.estimatedFare;
+              const busy = retryBusyRideId === item.rideId;
+              return (
+                <Card key={item.rideId}>
+                  <View style={styles.outstandingBox}>
+                    <View style={[styles.infoIcon, { backgroundColor: "#DC2626" }]}>
+                      <Feather name="alert-circle" size={16} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Text style={[styles.infoTitle, { color: colors.foreground }]}>
+                        Zahlung fehlgeschlagen
+                      </Text>
+                      <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                        Für eine abgeschlossene Fahrt ({formatEuroAmount(amount)}) konnte die Karte nicht belastet
+                        werden. Bitte Zahlungsmethode prüfen und die Zahlung erneut auslösen — sonst sind neue
+                        Buchungen vorübergehend nicht möglich.
+                      </Text>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.retryBtn,
+                          { opacity: pressed || busy ? 0.85 : 1 },
+                        ]}
+                        disabled={busy}
+                        onPress={() => {
+                          void handleRetryPayment(item.rideId);
+                        }}
+                      >
+                        <Feather name="refresh-cw" size={15} color="#fff" />
+                        <Text style={styles.retryBtnText}>
+                          {busy ? "Wird eingezogen…" : "Zahlung erneut versuchen"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        hitSlop={8}
+                        onPress={() => {
+                          void handleLinkCard();
+                        }}
+                      >
+                        <Text style={[styles.outstandingLink, { color: colors.primary }]}>
+                          Karte aktualisieren
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </Card>
+              );
+            })}
+          </View>
+        ) : null}
+
         {/* ── Zahlungsmethoden ── */}
         <View style={styles.section}>
           <SectionHeadingPill label={t("wallet.paymentMethods")} />
@@ -466,6 +611,27 @@ const styles = StyleSheet.create({
   infoIcon: { width: rs(28), height: rs(28), borderRadius: rs(7), justifyContent: "center", alignItems: "center" },
   infoTitle: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   infoText: { fontSize: rf(13), fontFamily: "Inter_400Regular", lineHeight: rf(19) },
+  outstandingBox: {
+    flexDirection: "row",
+    gap: rs(10),
+    paddingVertical: rs(12),
+    paddingHorizontal: rs(8),
+    alignItems: "flex-start",
+  },
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+    alignSelf: "flex-start",
+    backgroundColor: "#DC2626",
+    borderRadius: rs(12),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(14),
+    marginTop: rs(4),
+  },
+  retryBtnText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold", color: "#fff" },
+  outstandingLink: { fontSize: rf(13), fontFamily: "Inter_600SemiBold", marginTop: rs(2) },
 
   /* Modal */
   modalRoot: { flex: 1 },
