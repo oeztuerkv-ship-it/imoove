@@ -95,12 +95,10 @@
     }
 
     .hp-header-tools {
-      display: flex;
+      display: none;
       align-items: center;
       gap: 10px;
       justify-content: flex-end;
-      position: relative;
-      z-index: 20;
     }
 
     .hp-topbar-btn--mobile {
@@ -4151,12 +4149,7 @@
         grid-row: 1;
       }
 
-      .hp-header-actions .hp-topbar-btn {
-        display: none;
-      }
-
-      .hp-topbar-btn--mobile {
-        display: inline-flex;
+      .hp-topbar-btn--header {
         padding-inline: 0.75rem;
         font-size: 0.8rem;
       }
@@ -4189,10 +4182,6 @@
         justify-content: flex-start;
         padding-top: 8px;
         border-top: 1px solid #ececec;
-      }
-
-      .hp-header-tools .hp-topbar-btn {
-        display: inline-flex;
       }
 
       .hp-split-bleed {
