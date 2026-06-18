@@ -379,6 +379,9 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [loginRevealed, setLoginRevealed] = useState(false);
+  const spacePressCountRef = useRef(0);
+  const spaceResetTimerRef = useRef(0);
   const [ridesInitialDetailId, setRidesInitialDetailId] = useState(null);
   /** Volle Fahrtakte-Seite (Ziel: ride_events + Audit). */
   const [rideRecordId, setRideRecordId] = useState(null);
@@ -456,7 +459,13 @@ export default function App() {
   const onLogout = useCallback(() => {
     setAdminSessionToken("");
     setAuthUser(null);
+    setLoginRevealed(false);
     adminInitialRouteAppliedRef.current = false;
+    spacePressCountRef.current = 0;
+    if (spaceResetTimerRef.current) {
+      window.clearTimeout(spaceResetTimerRef.current);
+      spaceResetTimerRef.current = 0;
+    }
     setActive("dashboard");
     setMandateDetailCompanyId(null);
     setCompaniesExpandWorkspaceCompanyId(null);
@@ -643,6 +652,42 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (authBooting) return undefined;
+    if (authUser) return undefined;
+    if (isAdminPasswordResetPath()) return undefined;
+    const onKeyDown = (event) => {
+      if (event.code !== "Space") return;
+      if (event.repeat) return;
+      const next = spacePressCountRef.current + 1;
+      if (next >= 2) {
+        setLoginRevealed(true);
+        spacePressCountRef.current = 0;
+        if (spaceResetTimerRef.current) {
+          window.clearTimeout(spaceResetTimerRef.current);
+          spaceResetTimerRef.current = 0;
+        }
+        return;
+      }
+      spacePressCountRef.current = next;
+      if (spaceResetTimerRef.current) {
+        window.clearTimeout(spaceResetTimerRef.current);
+      }
+      spaceResetTimerRef.current = window.setTimeout(() => {
+        spacePressCountRef.current = 0;
+        spaceResetTimerRef.current = 0;
+      }, 10_000);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (spaceResetTimerRef.current) {
+        window.clearTimeout(spaceResetTimerRef.current);
+        spaceResetTimerRef.current = 0;
+      }
+    };
+  }, [authBooting, authUser]);
 
   async function onLogin(e) {
     e.preventDefault();
@@ -930,6 +975,7 @@ export default function App() {
     }
     if (
       typeof window !== "undefined" &&
+      !loginRevealed &&
       !shouldShowAdminLoginUnauthenticated(window.location.hash)
     ) {
       return <div className="admin-gate-blank" aria-hidden="true" />;
