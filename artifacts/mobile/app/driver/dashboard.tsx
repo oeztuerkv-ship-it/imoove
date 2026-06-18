@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
+import { nativeMapViewProps } from "@/utils/nativeMapProvider";
 import { useTranslation } from "@/context/LanguageContext";
 import { type DriverProfile, useDriver } from "@/context/DriverContext";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
@@ -1004,7 +1005,7 @@ function TabUebersicht({
       {/* Full-screen live map */}
       <MapView
         style={StyleSheet.absoluteFillObject}
-        provider={"google" as any}
+        {...nativeMapViewProps()}
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass={false}

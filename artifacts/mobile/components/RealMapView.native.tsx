@@ -4,7 +4,7 @@ import MapView, { Marker, Polyline } from "react-native-maps";
 
 import { useColors } from "@/hooks/useColors";
 import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
-import { NATIVE_MAP_PROVIDER } from "@/utils/nativeMapProvider";
+import { nativeMapViewProps } from "@/utils/nativeMapProvider";
 import { type GeoLocation } from "@/utils/routing";
 
 const DEFAULT_REGION = {
@@ -199,7 +199,7 @@ export function RealMapView({
       ref={mapRef}
       style={[StyleSheet.absoluteFill, style]}
       initialRegion={DEFAULT_REGION}
-      provider={NATIVE_MAP_PROVIDER}
+      {...nativeMapViewProps()}
       showsUserLocation
       showsMyLocationButton={false}
       showsCompass={false}

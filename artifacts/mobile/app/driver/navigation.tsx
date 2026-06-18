@@ -22,7 +22,8 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import MapView, { Marker, Polyline } from "react-native-maps";
-import { NATIVE_MAP_PROVIDER, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
+import { nativeMapViewProps } from "@/utils/nativeMapProvider";
+import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
@@ -1010,6 +1011,7 @@ export default function DriverNavigationScreen() {
 
   const handleMapReady = useCallback(() => {
     mapReady.current = true;
+    logMapsRuntimeDiagnosticsOnce("DriverNavigation.onMapReady");
     logDriverNavigationMapEvent("map_ready", {
       polylinePoints: polyline.length,
       steps: steps.length,
@@ -1167,11 +1169,11 @@ export default function DriverNavigationScreen() {
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
-        provider={NATIVE_MAP_PROVIDER}
-        {...(usesGoogleMapTiles() ? { customMapStyle: NIGHT_MAP_STYLE } : { mapType: "mutedStandard" })}
+        {...nativeMapViewProps({ androidCustomMapStyle: NIGHT_MAP_STYLE })}
         showsUserLocation
         showsMyLocationButton={false}
         showsCompass={false}
+        toolbarEnabled={false}
         rotateEnabled
         pitchEnabled
         onMapReady={handleMapReady}

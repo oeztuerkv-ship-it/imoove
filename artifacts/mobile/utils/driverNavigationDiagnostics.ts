@@ -1,6 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-import { PROVIDER_GOOGLE } from "react-native-maps";
+import { nativeMapProviderLabel, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
 
 const LOG_TAG = "[DriverNav]";
 
@@ -56,7 +56,8 @@ export function describeDriverNavigationRuntime(): Record<string, string | boole
         : Constants.expoConfig?.android?.package ?? "",
     isExpoGo: ownership === "expo",
     isDevClient: executionEnv === "storeClient" ? false : executionEnv !== "bare",
-    mapProvider: PROVIDER_GOOGLE,
+    mapProvider: nativeMapProviderLabel(),
+    usesGoogleMapTiles: usesGoogleMapTiles(),
   };
 }
 
@@ -94,9 +95,13 @@ export function logDriverNavigationOpen(input: DriverNavigationOpenLogInput): vo
     },
     map: {
       method: "react-native-maps",
-      provider: "PROVIDER_GOOGLE",
-      requiresNativeBuild:
-        "Expo Go liefert auf iOS oft keine Google-Kacheln — Development Build / EAS nötig",
+      provider: nativeMapProviderLabel(),
+      iosNote: usesGoogleMapTiles()
+        ? undefined
+        : "iOS nutzt Apple Maps (kein PROVIDER_GOOGLE) — wie RealMapView/Kundenkarte",
+      androidNote: usesGoogleMapTiles()
+        ? "Android: Google Maps + NIGHT_MAP_STYLE in Fahrer-Navi"
+        : undefined,
     },
     ...input.extra,
   });
