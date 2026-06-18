@@ -1,9 +1,12 @@
 import { Feather } from "@expo/vector-icons";
+import RNDateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -18,11 +21,88 @@ import { useDriver } from "@/context/DriverContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
+const RESERVATION_LEAD_MS = 60 * 60 * 1000;
 
-function toIsoFromLocalDatetime(local: string): string | null {
-  const t = new Date(local);
-  if (!Number.isFinite(t.getTime())) return null;
-  return t.toISOString();
+function pad(n: number) {
+  return n.toString().padStart(2, "0");
+}
+
+function formatDateTime(d: Date) {
+  const datePart = d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+  return `${datePart}, ${pad(d.getHours())}:${pad(d.getMinutes())} Uhr`;
+}
+
+function defaultScheduledAt(): Date {
+  const d = new Date(Date.now() + RESERVATION_LEAD_MS);
+  d.setSeconds(0, 0);
+  const roundedMinutes = Math.ceil(d.getMinutes() / 15) * 15;
+  if (roundedMinutes >= 60) {
+    d.setHours(d.getHours() + 1);
+    d.setMinutes(0);
+  } else {
+    d.setMinutes(roundedMinutes);
+  }
+  return d;
+}
+
+function ReservationDateTimePicker({
+  visible,
+  value,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  value: Date;
+  onClose: () => void;
+  onConfirm: (date: Date) => void;
+}) {
+  const minDate = useMemo(() => new Date(Date.now() + RESERVATION_LEAD_MS), [visible]);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    if (visible) setDraft(value);
+  }, [visible, value]);
+
+  const onChange = (_event: DateTimePickerEvent, next?: Date) => {
+    if (next) setDraft(next);
+  };
+
+  const confirm = () => {
+    onConfirm(draft);
+    Haptics.selectionAsync();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.dtModalOverlay} onPress={onClose}>
+        <Pressable style={styles.dtModalOverlayInner} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={styles.dtModalCard} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.dtSheetHeader}>
+              <Pressable onPress={onClose} hitSlop={10}>
+                <Text style={styles.dtSheetActionMuted}>Abbrechen</Text>
+              </Pressable>
+              <Text style={styles.dtSheetTitle}>Abholtermin</Text>
+              <Pressable onPress={confirm} hitSlop={10}>
+                <Text style={styles.dtSheetAction}>Fertig</Text>
+              </Pressable>
+            </View>
+            <RNDateTimePicker
+              value={draft}
+              mode="datetime"
+              display="spinner"
+              is24Hour
+              locale="de-DE"
+              minimumDate={minDate}
+              onChange={onChange}
+              style={styles.dtSpinner}
+              textColor="#111827"
+            />
+            <Text style={styles.dtPickerHint}>Mindestens 60 Minuten im Voraus</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
 export default function DriverCreateReservationScreen() {
@@ -32,7 +112,8 @@ export default function DriverCreateReservationScreen() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [fromFull, setFromFull] = useState("");
   const [toFull, setToFull] = useState("");
-  const [scheduledLocal, setScheduledLocal] = useState("");
+  const [scheduledAt, setScheduledAt] = useState<Date>(() => defaultScheduledAt());
+  const [showDtPicker, setShowDtPicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
 
@@ -44,15 +125,15 @@ export default function DriverCreateReservationScreen() {
     const name = customerName.trim();
     const from = fromFull.trim();
     const to = toFull.trim();
-    if (!name || !from || !to || !scheduledLocal.trim()) {
-      Alert.alert("Pflichtfelder", "Kundenname, Abholort, Ziel und Termin sind erforderlich.");
+    if (!name || !from || !to) {
+      Alert.alert("Pflichtfelder", "Kundenname, Abholort und Ziel sind erforderlich.");
       return;
     }
-    const scheduledAt = toIsoFromLocalDatetime(scheduledLocal.trim());
-    if (!scheduledAt) {
-      Alert.alert("Termin", "Bitte gültiges Datum und Uhrzeit eingeben (z. B. 2026-06-20T14:30).");
+    if (scheduledAt.getTime() < Date.now() + RESERVATION_LEAD_MS) {
+      Alert.alert("Termin", "Reservierung mindestens 60 Minuten im Voraus.");
       return;
     }
+    const scheduledAtIso = scheduledAt.toISOString();
     setBusy(true);
     try {
       const res = await fetch(`${API_BASE}/fleet-driver/v1/reservations`, {
@@ -68,7 +149,7 @@ export default function DriverCreateReservationScreen() {
           fromFull: from,
           to: to.split(",")[0]?.trim() || to,
           toFull: to,
-          scheduledAt,
+          scheduledAt: scheduledAtIso,
           paymentMethod,
         }),
       });
@@ -121,14 +202,20 @@ export default function DriverCreateReservationScreen() {
         <TextInput style={styles.input} value={fromFull} onChangeText={setFromFull} />
         <Text style={styles.label}>Ziel *</Text>
         <TextInput style={styles.input} value={toFull} onChangeText={setToFull} />
-        <Text style={styles.label}>Termin (ISO lokal) *</Text>
-        <TextInput
-          style={styles.input}
-          value={scheduledLocal}
-          onChangeText={setScheduledLocal}
-          placeholder="2026-06-20T14:30"
-          autoCapitalize="none"
-        />
+        <Text style={styles.label}>Abholtermin *</Text>
+        <Pressable
+          style={styles.dtField}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setShowDtPicker(true);
+          }}
+        >
+          <View style={styles.dtFieldIcon}>
+            <Feather name="calendar" size={18} color="#DC2626" />
+          </View>
+          <Text style={styles.dtFieldText}>{formatDateTime(scheduledAt)}</Text>
+          <Feather name="chevron-right" size={18} color="#9CA3AF" />
+        </Pressable>
         <Text style={styles.label}>Zahlungsart</Text>
         <View style={styles.payRow}>
           {(["cash", "card", "rechnung"] as const).map((pm) => (
@@ -147,6 +234,15 @@ export default function DriverCreateReservationScreen() {
           <Text style={styles.submitText}>{busy ? "Speichern …" : "Reservierung speichern"}</Text>
         </Pressable>
       </ScrollView>
+      <ReservationDateTimePicker
+        visible={showDtPicker}
+        value={scheduledAt}
+        onClose={() => setShowDtPicker(false)}
+        onConfirm={(d) => {
+          setScheduledAt(d);
+          setShowDtPicker(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -174,6 +270,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
+  dtField: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  dtFieldIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dtFieldText: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#111827" },
   payRow: { flexDirection: "row", gap: 8, marginTop: 4, marginBottom: 12 },
   payChip: {
     paddingHorizontal: 14,
@@ -194,4 +310,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   submitText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 },
+  dtModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(17, 24, 39, 0.45)",
+    justifyContent: "flex-end",
+  },
+  dtModalOverlayInner: { flex: 1, justifyContent: "flex-end" },
+  dtModalCard: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 24,
+  },
+  dtSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  dtSheetTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#111827" },
+  dtSheetAction: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#DC2626" },
+  dtSheetActionMuted: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
+  dtSpinner: { height: 216, alignSelf: "center" },
+  dtPickerHint: {
+    textAlign: "center",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    marginTop: 4,
+    paddingHorizontal: 16,
+  },
 });
