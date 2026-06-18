@@ -1869,6 +1869,7 @@ function ActiveRideScreen({
   const colors = useColors();
   const { startDriving, arriveAtCustomer, markDriverArriving, refreshRequests } = useRideRequests();
   const [phase, setPhase] = useState<ActivePhase>(req.status === "in_progress" ? "driving" : "pickup");
+  const [startTripBusy, setStartTripBusy] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const mayBillPositive = driverMayBillPositiveFare(req.status);
   const [finalPriceInput, setFinalPriceInput] = useState(
@@ -1999,6 +2000,27 @@ function ActiveRideScreen({
   // Open in-app navigation screen manually
   // Phase "pickup": Fahrerstandort → Abholort des Kunden
   // Phase "driving": Abholort → Zieladresse
+  const handleStartTrip = useCallback(async () => {
+    if (req.toLat == null || req.toLon == null || startTripBusy) return;
+    setStartTripBusy(true);
+    try {
+      if (req.status !== "in_progress") {
+        await startDriving(req.id, driverCoords ?? undefined);
+      }
+      replaceDriverStackExclusive(
+        buildDriverNavigationHref({ ...req, status: "in_progress" }, driverId, driverCoords),
+      );
+    } catch (e) {
+      const err = e as Error & { userMessage?: string };
+      Alert.alert(
+        "Fahrtbeginn fehlgeschlagen",
+        err.userMessage ?? err.message ?? "Status konnte nicht gesetzt werden.",
+      );
+    } finally {
+      setStartTripBusy(false);
+    }
+  }, [req, driverCoords, driverId, startDriving, startTripBusy]);
+
   const openNavigation = useCallback(() => {
     if (phase === "pickup") {
       if (driverCoords == null || req.fromLat == null || req.fromLon == null) {
@@ -2421,16 +2443,15 @@ function ActiveRideScreen({
             {/* Fahrt beginnen — startet + wechselt Navi auf Zieladresse */}
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
               <Pressable
-                style={activeStyles.startDrivingBtn}
-                onPress={() => {
-                  if (req.toLat != null && req.toLon != null) {
-                    replaceDriverStackExclusive(
-                      buildDriverNavigationHref(req, driverId, driverCoords),
-                    );
-                  }
-                }}
+                style={[activeStyles.startDrivingBtn, startTripBusy && { opacity: 0.7 }]}
+                onPress={() => void handleStartTrip()}
+                disabled={startTripBusy}
               >
-                <MaterialCommunityIcons name="car-arrow-right" size={22} color="#fff" />
+                {startTripBusy ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <MaterialCommunityIcons name="car-arrow-right" size={22} color="#fff" />
+                )}
                 <Text style={activeStyles.startDrivingBtnText}>Fahrt beginnen</Text>
               </Pressable>
             </Animated.View>

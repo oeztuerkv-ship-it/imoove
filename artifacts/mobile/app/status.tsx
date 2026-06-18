@@ -180,10 +180,10 @@ function splitDestinationLines(displayName: string | undefined): { title: string
   return { title: raw, sub: "" };
 }
 
-/** Genau ein aktiver Schritt (0 = unterwegs, 1 = Ankunft, 2 = Ziel). */
+/** Genau ein aktiver Schritt (0 = unterwegs, 1 = Ankunft, 2 = Fahrt/Ziel). */
 function trackingProgressActiveStep(status: RideRequest["status"] | undefined): 0 | 1 | 2 {
-  if (status === "completed") return 2;
-  if (status === "driver_waiting" || status === "in_progress") return 1;
+  if (status === "completed" || status === "in_progress") return 2;
+  if (status === "driver_waiting") return 1;
   return 0;
 }
 
@@ -683,6 +683,9 @@ export default function StatusScreen() {
 
   const pickupLat = effectiveAcceptedRequest?.fromLat;
   const pickupLon = effectiveAcceptedRequest?.fromLon;
+  const destLat = effectiveAcceptedRequest?.toLat;
+  const destLon = effectiveAcceptedRequest?.toLon;
+
   const computedPickupEta = useMemo(() => {
     if (
       driverMarker &&
@@ -696,11 +699,30 @@ export default function StatusScreen() {
     return null;
   }, [driverMarker, pickupLat, pickupLon]);
 
+  const computedDestEta = useMemo(() => {
+    if (
+      driverMarker &&
+      destLat != null &&
+      destLon != null &&
+      Number.isFinite(destLat) &&
+      Number.isFinite(destLon)
+    ) {
+      return estimatePickupEtaMinutes(driverMarker.lat, driverMarker.lon, destLat, destLon);
+    }
+    return null;
+  }, [driverMarker, destLat, destLon]);
+
   useEffect(() => {
     if (computedPickupEta != null && customerPhase !== "driving") {
       setEta(computedPickupEta);
     }
   }, [computedPickupEta, customerPhase]);
+
+  useEffect(() => {
+    if (computedDestEta != null && customerPhase === "driving") {
+      setEta(computedDestEta);
+    }
+  }, [computedDestEta, customerPhase]);
 
   const handleCallDriver = () => {
     const tel = driverPhone.replace(/[^\d+]/g, "");
@@ -1539,8 +1561,10 @@ export default function StatusScreen() {
   const destLines = splitDestinationLines(destLabel);
   const rideStatus = effectiveAcceptedRequest?.status;
   const progressActive = trackingProgressActiveStep(rideStatus);
+  const progressThirdLabel =
+    rideStatus === "completed" ? "Ziel erreicht" : rideStatus === "in_progress" ? "Fahrt läuft" : "Ziel erreicht";
   const driverStatusLabel = isDriving
-    ? `${driverFirstName} ist unterwegs`
+    ? `${driverFirstName} fährt zum Ziel`
     : isArrived
       ? "Fahrer wartet auf Sie"
       : readyForDispatch
@@ -1551,12 +1575,21 @@ export default function StatusScreen() {
             ? `${driverFirstName} ist unterwegs`
             : "Fahrer gefunden";
   const distanceKm = route?.distanceKm;
-  const etaDistanceText =
-    driverMarker &&
-    pickupLat != null &&
-    pickupLon != null &&
-    Number.isFinite(pickupLat) &&
-    Number.isFinite(pickupLon)
+  const etaDistanceText = isDriving
+    ? driverMarker &&
+      destLat != null &&
+      destLon != null &&
+      Number.isFinite(destLat) &&
+      Number.isFinite(destLon)
+      ? formatPickupDistanceKm(driverMarker.lat, driverMarker.lon, destLat, destLon)
+      : distanceKm != null && Number.isFinite(Number(distanceKm))
+        ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km zum Ziel`
+        : null
+    : driverMarker &&
+        pickupLat != null &&
+        pickupLon != null &&
+        Number.isFinite(pickupLat) &&
+        Number.isFinite(pickupLon)
       ? formatPickupDistanceKm(driverMarker.lat, driverMarker.lon, pickupLat, pickupLon)
       : distanceKm != null && Number.isFinite(Number(distanceKm))
         ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km entfernt`
@@ -1604,6 +1637,14 @@ export default function StatusScreen() {
             <Text style={styles.arrivedBannerSub}>Bitte zum Fahrzeug kommen</Text>
           </View>
         </Animated.View>
+      ) : isDriving ? (
+        <View style={[styles.drivingBanner, { top: topPad + rs(118) }]}>
+          <MaterialCommunityIcons name="navigation" size={rf(18)} color="#fff" />
+          <View>
+            <Text style={styles.arrivedBannerTitle}>Fahrt gestartet</Text>
+            <Text style={styles.arrivedBannerSub}>Unterwegs zu Ihrem Ziel</Text>
+          </View>
+        </View>
       ) : null}
 
       <View style={[styles.trackingBottomSheet, { paddingBottom: bottomPad + rs(6) }]}>
@@ -1615,7 +1656,7 @@ export default function StatusScreen() {
               <MaterialCommunityIcons name="map-marker-check" size={rf(28)} color="#22C55E" />
             ) : (
               <>
-                <Text style={styles.trackingEtaLabel}>Ankunft in</Text>
+                <Text style={styles.trackingEtaLabel}>{isDriving ? "Ziel in" : "Ankunft in"}</Text>
                 <Text style={styles.trackingEtaNumber}>{eta}</Text>
                 <Text style={styles.trackingEtaMin}>min</Text>
               </>
@@ -1664,7 +1705,7 @@ export default function StatusScreen() {
           <Text style={styles.trackingProgressDash}>---</Text>
           <TrackingProgressStep icon="map-pin" label="Ankunft" active={progressActive === 1} />
           <Text style={styles.trackingProgressDash}>---</Text>
-          <TrackingProgressStep icon="flag" label="Ziel erreicht" active={progressActive === 2} />
+          <TrackingProgressStep icon="flag" label={progressThirdLabel} active={progressActive === 2} />
         </View>
 
         {effectiveAcceptedRequest ? (
@@ -2172,6 +2213,19 @@ const styles = StyleSheet.create({
   },
   arrivedBannerSub: {
     fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#BBF7D0", marginTop: 2,
+  },
+  drivingBanner: {
+    position: "absolute",
+    left: rs(16), right: rs(16),
+    backgroundColor: "#2563EB",
+    borderRadius: rs(16),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(12),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(14),
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 10, elevation: 10,
   },
 
   logoRow: { flexDirection: "row", alignItems: "center", gap: rs(8), marginBottom: rs(10) },
