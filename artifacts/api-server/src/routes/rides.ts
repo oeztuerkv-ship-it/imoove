@@ -56,6 +56,7 @@ import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, computeRideBookingPricing } from "../lib/rideBookingPricing";
 import { buildCustomerReceiptHtmlForRide } from "../lib/customerReceipt";
+import { buildCustomerReceiptPdfForRide } from "../lib/customerReceiptPdf";
 import { anyActiveRegionRequiresClientCoordinates } from "../lib/serviceRegionMatch";
 import { verifyAccessCode } from "../db/accessCodesData";
 import {
@@ -1290,6 +1291,32 @@ router.get("/rides/:rideId/receipt", async (req, res, next) => {
     const driverInfo = await resolveReceiptDriverInfo(ride.driverId);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(await buildCustomerReceiptHtmlForRide(ride, driverInfo));
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/rides/:rideId/receipt.pdf", async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await tryAuthorizeReceiptRide(req, rideId);
+    if (!ride) {
+      res.status(401).json({
+        error: "receipt_unauthorized",
+        message: "Quittung nur mit Kunden-Session (Authorization: Bearer) oder gültigem rt-Token.",
+      });
+      return;
+    }
+    const driverInfo = await resolveReceiptDriverInfo(ride.driverId);
+    const pdf = await buildCustomerReceiptPdfForRide(ride, driverInfo);
+    const rideNr = String(ride.id).slice(0, 8).toUpperCase();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="quittung-${rideNr}.pdf"`);
+    res.send(pdf);
   } catch (e) {
     next(e);
   }
