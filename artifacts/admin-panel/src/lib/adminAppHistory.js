@@ -175,7 +175,17 @@ export function adminAppHistoryHref(hash) {
   return `${window.location.pathname}${window.location.search}${hash}`;
 }
 
-/** Deep-Link (Mandantenzentrale, Fahrtakte, …) — Login direkt anzeigen, nicht weiße Leerseite. */
+/** Team-Login-URL (#/login) — nicht von der Leerseite verlinkt. */
+export function isAdminLoginHash(hash) {
+  const raw = String(hash || "")
+    .replace(/^#/, "")
+    .replace(/^\//, "")
+    .trim();
+  const page = raw.split(/[/?]/)[0].toLowerCase();
+  return page === "login";
+}
+
+/** Deep-Link (Mandantenzentrale, Fahrtakte, …) — Login direkt anzeigen, nicht Leerseite. */
 export function isAdminDeepLinkHash(hash) {
   const route = parseAdminAppHash(hash, "admin");
   if (route.mandateId) return true;
@@ -183,4 +193,9 @@ export function isAdminDeepLinkHash(hash) {
   if (route.page === "users-panel" && route.panelCompanyId) return true;
   if (route.taxiFleetCompanyId) return true;
   return false;
+}
+
+/** Login-Formular für Gäste nur bei bekanntem Pfad oder Deep-Link — sonst leere Schutzseite. */
+export function shouldShowAdminLoginUnauthenticated(hash) {
+  return isAdminLoginHash(hash) || isAdminDeepLinkHash(hash);
 }

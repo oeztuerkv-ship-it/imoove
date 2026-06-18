@@ -11,8 +11,8 @@ import {
   adminAppHistoryHref,
   applyAdminAppRoute,
   buildAdminAppHash,
-  isAdminDeepLinkHash,
   parseAdminAppHash,
+  shouldShowAdminLoginUnauthenticated,
 } from "./lib/adminAppHistory.js";
 
 import DashboardPage from "./pages/DashboardPage";
@@ -379,9 +379,6 @@ export default function App() {
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [loginRevealed, setLoginRevealed] = useState(false);
-  const spacePressCountRef = useRef(0);
-  const spaceResetTimerRef = useRef(0);
   const [ridesInitialDetailId, setRidesInitialDetailId] = useState(null);
   /** Volle Fahrtakte-Seite (Ziel: ride_events + Audit). */
   const [rideRecordId, setRideRecordId] = useState(null);
@@ -459,13 +456,7 @@ export default function App() {
   const onLogout = useCallback(() => {
     setAdminSessionToken("");
     setAuthUser(null);
-    setLoginRevealed(false);
     adminInitialRouteAppliedRef.current = false;
-    spacePressCountRef.current = 0;
-    if (spaceResetTimerRef.current) {
-      window.clearTimeout(spaceResetTimerRef.current);
-      spaceResetTimerRef.current = 0;
-    }
     setActive("dashboard");
     setMandateDetailCompanyId(null);
     setCompaniesExpandWorkspaceCompanyId(null);
@@ -652,41 +643,6 @@ export default function App() {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (authBooting) return undefined;
-    if (authUser) return undefined;
-    if (isAdminPasswordResetPath()) return undefined;
-    const onKeyDown = (event) => {
-      if (event.code !== "Space") return;
-      const next = spacePressCountRef.current + 1;
-      if (next >= 2) {
-        setLoginRevealed(true);
-        spacePressCountRef.current = 0;
-        if (spaceResetTimerRef.current) {
-          window.clearTimeout(spaceResetTimerRef.current);
-          spaceResetTimerRef.current = 0;
-        }
-        return;
-      }
-      spacePressCountRef.current = next;
-      if (spaceResetTimerRef.current) {
-        window.clearTimeout(spaceResetTimerRef.current);
-      }
-      spaceResetTimerRef.current = window.setTimeout(() => {
-        spacePressCountRef.current = 0;
-        spaceResetTimerRef.current = 0;
-      }, 10_000);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      if (spaceResetTimerRef.current) {
-        window.clearTimeout(spaceResetTimerRef.current);
-        spaceResetTimerRef.current = 0;
-      }
-    };
-  }, [authBooting, authUser]);
 
   async function onLogin(e) {
     e.preventDefault();
@@ -965,37 +921,18 @@ export default function App() {
     }
   }
 
-  if (authBooting) {
-    return <div className="admin-info-banner">Admin-Sitzung wird geladen …</div>;
-  }
-
-  if (!authUser) {
+  if (authBooting || !authUser) {
+    if (authBooting) {
+      return <div className="admin-gate-blank" aria-hidden="true" />;
+    }
     if (isAdminPasswordResetPath()) {
       return <AdminPasswordResetPage />;
     }
-    if (!loginRevealed) {
-      const deep = isAdminDeepLinkHash(window.location.hash);
-      return (
-        <div className="admin-page" style={{ maxWidth: 520, margin: "48px auto", padding: "0 20px" }}>
-          <div className="admin-panel-card">
-            <div className="admin-panel-card__title">Plattform-Admin</div>
-            <p className="admin-table-sub" style={{ marginTop: 8, lineHeight: 1.5 }}>
-              {deep
-                ? "Dieser Link (z. B. Mandantenzentrale) erfordert eine Anmeldung."
-                : "Anmeldung ist ausgeblendet."}{" "}
-              Zweimal <strong>Leertaste</strong> drücken oder unten auf „Anmelden“.
-            </p>
-            <button
-              type="button"
-              className="admin-btn-primary"
-              style={{ marginTop: 16 }}
-              onClick={() => setLoginRevealed(true)}
-            >
-              Anmelden
-            </button>
-          </div>
-        </div>
-      );
+    if (
+      typeof window !== "undefined" &&
+      !shouldShowAdminLoginUnauthenticated(window.location.hash)
+    ) {
+      return <div className="admin-gate-blank" aria-hidden="true" />;
     }
     return (
       <div className="admin-page" style={{ maxWidth: 460, margin: "40px auto" }}>

@@ -13,3 +13,9 @@
   width: 100%;
   background: var(--onroda-bg-app);
 }
+
+.admin-gate-blank {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--onroda-bg-app);
+}
