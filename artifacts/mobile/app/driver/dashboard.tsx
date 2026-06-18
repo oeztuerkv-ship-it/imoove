@@ -40,7 +40,6 @@ import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, vali
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
-import { releaseDispatchOffer } from "@/utils/releaseDispatchOffer";
 import {
   getCurrentPositionSafe,
   requestForegroundPermissionsSafe,
@@ -335,15 +334,11 @@ function InstantCard({
   req,
   onAccept,
   onReject,
-  onRelease,
-  showRelease = false,
   driverPos,
 }: {
   req: RideRequest;
   onAccept: () => void;
   onReject: () => void;
-  onRelease?: () => void;
-  showRelease?: boolean;
   driverPos?: { lat: number; lon: number } | null;
 }) {
   const { t } = useTranslation();
@@ -408,14 +403,6 @@ function InstantCard({
     clearInstantOfferDeadline(req.id);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onAccept();
-  };
-
-  const handleRelease = () => {
-    if (offerHandledRef.current || !onRelease) return;
-    offerHandledRef.current = true;
-    clearInstantOfferDeadline(req.id);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    onRelease();
   };
 
   return (
@@ -646,28 +633,6 @@ function InstantCard({
           </View>
           <Text style={{ marginTop: 6, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748B" }}>{t("driver.offer.reject")}</Text>
         </Pressable>
-
-        {showRelease && onRelease ? (
-          <Pressable onPress={handleRelease} style={{ alignItems: "center", width: 72 }}>
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                borderWidth: 2,
-                borderColor: "#BFDBFE",
-                backgroundColor: "#EFF6FF",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Feather name="share" size={22} color="#2563EB" />
-            </View>
-            <Text style={{ marginTop: 6, fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#2563EB", textAlign: "center" }}>
-              {t("driver.offer.release")}
-            </Text>
-          </Pressable>
-        ) : null}
 
         <Pressable onPress={handleAccept} style={{ alignItems: "center", flex: 1, maxWidth: 160 }}>
           <View
@@ -907,8 +872,6 @@ function TabUebersicht({
   pendingRequests,
   onAccept,
   onReject,
-  onRelease,
-  showRelease = false,
   driverPos,
   isAvailable,
   marketLoading,
@@ -918,8 +881,6 @@ function TabUebersicht({
   pendingRequests: RideRequest[];
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
-  onRelease?: (id: string) => void;
-  showRelease?: boolean;
   driverPos?: { lat: number; lon: number } | null;
   isAvailable: boolean;
   marketLoading?: boolean;
@@ -991,10 +952,8 @@ function TabUebersicht({
         </Text>
         {firstReq && isAvailable && (
           <InstantCard req={firstReq} driverPos={driverPos}
-            showRelease={showRelease}
             onAccept={() => onAccept(firstReq.id)}
-            onReject={() => onReject(firstReq.id)}
-            onRelease={onRelease ? () => onRelease(firstReq.id) : undefined} />
+            onReject={() => onReject(firstReq.id)} />
         )}
       </View>
     );
@@ -1044,10 +1003,8 @@ function TabUebersicht({
           <InstantCard
             req={firstReq}
             driverPos={driverPos}
-            showRelease={showRelease}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)}
-            onRelease={onRelease ? () => onRelease(firstReq.id) : undefined}
           />
           {instantReqs.length > 1 && (
             <Text style={styles.mapMoreReqs}>+{instantReqs.length - 1} weitere Anfrage{instantReqs.length > 2 ? "n" : ""}</Text>
@@ -3342,32 +3299,6 @@ export default function DriverDashboard() {
       Alert.alert("Ablehnen fehlgeschlagen", "Bitte erneut versuchen oder Liste aktualisieren.");
     }
   };
-  const handleRelease = async (id: string) => {
-    clearInstantOfferDeadline(id);
-    suppressedMarketOfferIdsRef.current.add(id);
-    prevPendingIds.current.add(id);
-    stopRideSound().catch(() => {});
-    if (bannerTimer.current) clearTimeout(bannerTimer.current);
-    setBannerRide((cur) => (cur?.id === id ? null : cur));
-    bannerAnim.setValue(-140);
-    if (!driver?.authToken) return;
-    try {
-      const result = await releaseDispatchOffer({ authToken: driver.authToken, rideId: id });
-      if (!result.ok) {
-        Alert.alert(
-          "Freigabe nicht möglich",
-          result.error === "driver_not_priority_a" || result.error === "release_only_tier_a"
-            ? "Nur Premium-Fahrer Stufe A können diese Fahrt an Stufe B freigeben."
-            : "Bitte erneut versuchen oder Liste aktualisieren.",
-        );
-        return;
-      }
-      await refreshRequests?.();
-    } catch {
-      Alert.alert("Freigabe fehlgeschlagen", "Bitte erneut versuchen.");
-    }
-  };
-  const showReleaseDispatch = driver?.dispatchPriority === "A";
   const handleComplete = async (id: string, finalFare: number) => {
     try {
       await completeRequest(id, finalFare);
@@ -3801,8 +3732,6 @@ export default function DriverDashboard() {
                 pendingRequests={pendingRequests}
                 onAccept={handleAccept}
                 onReject={handleReject}
-                onRelease={handleRelease}
-                showRelease={showReleaseDispatch}
                 driverPos={driverPos}
                 isAvailable={driver.einsatzbereit && driver.isAvailable}
                 marketLoading={marketRefreshing}
@@ -3937,10 +3866,8 @@ export default function DriverDashboard() {
                           key={req.id}
                           req={req}
                           driverPos={driverPos}
-                          showRelease={showReleaseDispatch}
                           onAccept={() => handleAccept(req.id)}
                           onReject={() => handleReject(req.id)}
-                          onRelease={() => handleRelease(req.id)}
                         />
                       ))}
                       {[...scheduledOpenRequests]
