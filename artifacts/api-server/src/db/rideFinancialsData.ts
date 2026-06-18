@@ -160,6 +160,7 @@ function toPublicSnapshot(row: RideFinancialRow) {
     commissionValue: row.commission_value,
     commissionAmount: row.commission_amount,
     operatorPayoutAmount: row.operator_payout_amount,
+    tipAmount: row.tip_amount ?? 0,
     billingStatus: row.billing_status as RideFinancialBillingStatus,
     settlementStatus: row.settlement_status as RideFinancialSettlementStatus,
     calculationVersion: row.calculation_version,
@@ -690,4 +691,16 @@ export function getSettlementEligibility(input: {
     }
   }
   return { eligible: blockers.length === 0, blockers };
+}
+
+/** Trinkgeld nach Fahrtende — ohne Provision, nur Snapshot-Spalte. */
+export async function patchRideFinancialTipAmount(rideId: string, tipAmount: number): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  const safe = Number.isFinite(tipAmount) ? Math.max(0, tipAmount) : 0;
+  const now = new Date();
+  await db
+    .update(rideFinancialsTable)
+    .set({ tip_amount: safe, updated_at: now })
+    .where(eq(rideFinancialsTable.ride_id, rideId.trim()));
 }

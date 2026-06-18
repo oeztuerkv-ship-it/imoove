@@ -691,6 +691,7 @@ export type AdminDailyDriverSettlementRow = {
   rideCount: number;
   grossAmount: number;
   commissionAmount: number;
+  tipAmount: number;
   driverPayoutAmount: number;
 };
 
@@ -700,6 +701,7 @@ export type AdminDailyDriverSettlementReport = {
     rideCount: number;
     grossAmount: number;
     commissionAmount: number;
+    tipAmount: number;
     driverPayoutAmount: number;
   };
   drivers: AdminDailyDriverSettlementRow[];
@@ -712,7 +714,7 @@ export async function getAdminDailyDriverSettlement(args: {
 }): Promise<AdminDailyDriverSettlementReport> {
   const empty: AdminDailyDriverSettlementReport = {
     date: args.dateLabel,
-    totals: { rideCount: 0, grossAmount: 0, commissionAmount: 0, driverPayoutAmount: 0 },
+    totals: { rideCount: 0, grossAmount: 0, commissionAmount: 0, tipAmount: 0, driverPayoutAmount: 0 },
     drivers: [],
   };
   if (!isPostgresConfigured()) return empty;
@@ -726,6 +728,7 @@ export async function getAdminDailyDriverSettlement(args: {
       rideCount: sql<number>`count(*)::int`,
       grossAmount: sql<number>`coalesce(sum(${rideFinancialsTable.gross_amount}), 0)`,
       commissionAmount: sql<number>`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`,
+      tipAmount: sql<number>`coalesce(sum(${rideFinancialsTable.tip_amount}), 0)`,
       driverPayoutAmount: sql<number>`coalesce(sum(${rideFinancialsTable.operator_payout_amount}), 0)`,
     })
     .from(rideFinancialsTable)
@@ -762,6 +765,7 @@ export async function getAdminDailyDriverSettlement(args: {
       rideCount: Number(row.rideCount) || 0,
       grossAmount: n(row.grossAmount),
       commissionAmount: n(row.commissionAmount),
+      tipAmount: n(row.tipAmount),
       driverPayoutAmount: n(row.driverPayoutAmount),
     });
   }
@@ -771,9 +775,10 @@ export async function getAdminDailyDriverSettlement(args: {
       rideCount: acc.rideCount + d.rideCount,
       grossAmount: acc.grossAmount + d.grossAmount,
       commissionAmount: acc.commissionAmount + d.commissionAmount,
+      tipAmount: acc.tipAmount + d.tipAmount,
       driverPayoutAmount: acc.driverPayoutAmount + d.driverPayoutAmount,
     }),
-    { rideCount: 0, grossAmount: 0, commissionAmount: 0, driverPayoutAmount: 0 },
+    { rideCount: 0, grossAmount: 0, commissionAmount: 0, tipAmount: 0, driverPayoutAmount: 0 },
   );
 
   return { date: args.dateLabel, totals, drivers };

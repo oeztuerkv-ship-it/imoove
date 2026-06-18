@@ -58,7 +58,7 @@ import {
   replaceDriverStackExclusive,
 } from "@/utils/driverNavigationRoute";
 import {
-  defaultFinalFareForDriverCompletion,
+  defaultDriverFareInputForCompletion,
   driverMayBillPositiveFare,
   formatDriverFareInputDe,
   validateDriverFinalFareInput,
@@ -1915,7 +1915,7 @@ function ActiveRideScreen({
   const [showPriceModal, setShowPriceModal] = useState(false);
   const mayBillPositive = driverMayBillPositiveFare(req.status);
   const [finalPriceInput, setFinalPriceInput] = useState(
-    formatDriverFareInputDe(defaultFinalFareForDriverCompletion(req.status, req.estimatedFare)),
+    defaultDriverFareInputForCompletion(req.status),
   );
   const [completingRide, setCompletingRide] = useState(false);
 
@@ -1925,10 +1925,8 @@ function ActiveRideScreen({
 
   useEffect(() => {
     if (!showPriceModal) return;
-    setFinalPriceInput(
-      formatDriverFareInputDe(defaultFinalFareForDriverCompletion(req.status, req.estimatedFare)),
-    );
-  }, [showPriceModal, req.status, req.estimatedFare]);
+    setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
+  }, [showPriceModal, req.status]);
 
   useEffect(() => {
     void startDriverBackgroundLocation(req.id);
@@ -2092,12 +2090,10 @@ function ActiveRideScreen({
   const handleFinishTap = () => {
     if (isKK && req.status === "in_progress") {
       const parsed = parseEuroDriverInput(driverEigenanteil);
-      const euro = parsed ?? req.estimatedFare;
-      setFinalPriceInput(euro.toFixed(2).replace(".", ","));
+      const euro = parsed ?? 0;
+      setFinalPriceInput(euro > 0 ? euro.toFixed(2).replace(".", ",") : "");
     } else {
-      const def =
-        req.status === "in_progress" ? req.estimatedFare : 0;
-      setFinalPriceInput(def.toFixed(2).replace(".", ","));
+      setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
     }
     setShowPriceModal(true);
   };
@@ -2105,7 +2101,11 @@ function ActiveRideScreen({
   const handleConfirmFare = async () => {
     if (completingRide) return;
     const parsed = parseFloat(finalPriceInput.replace(",", "."));
-    const fare = isNaN(parsed) ? (req.status === "in_progress" ? req.estimatedFare : 0) : parsed;
+    if (mayBillPositive && (!Number.isFinite(parsed) || parsed <= 0)) {
+      Alert.alert("Taxameter-Endpreis", "Bitte den Endpreis vom Taxameter eingeben.");
+      return;
+    }
+    const fare = Number.isFinite(parsed) ? parsed : 0;
     const validation = validateDriverFinalFareInput(req.status, fare);
     if (!validation.ok) {
       Alert.alert(validation.title, validation.message);

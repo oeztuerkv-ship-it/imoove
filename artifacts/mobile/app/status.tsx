@@ -24,8 +24,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
-import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { RealMapView } from "@/components/RealMapView";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
@@ -43,12 +41,10 @@ import {
   isCustomerOpenDispatchStatus,
 } from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
-import { vehicleIdFromRideLabel } from "@/utils/customerFareDisplay";
+import { postCustomerRideTip } from "@/utils/stripePaymentApi";
 import {
   type CustomerLiveRidePhase,
   customerLivePhaseFromRideStatus,
-  customerShowsPendingChargeEstimate,
-  customerShowsTripEstimate,
   isCustomerDriverAssignedStatus,
 } from "@/utils/onrodaRideOpsFlow";
 import { rs, rf } from "@/utils/scale";
@@ -163,10 +159,12 @@ function geoFromRideRequest(
 ): GeoLocation | null {
   const name = (shortLabel || fullLabel || "").trim();
   if (!name) return null;
+  if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (Math.abs(lat) < 1e-5 && Math.abs(lon) < 1e-5) return null;
   return {
     displayName: shortLabel.trim() || name,
-    lat: lat != null && Number.isFinite(lat) ? lat : 0,
-    lon: lon != null && Number.isFinite(lon) ? lon : 0,
+    lat,
+    lon,
   };
 }
 
@@ -199,8 +197,13 @@ function TrackingProgressStep({
   active: boolean;
 }) {
   return (
-    <View style={active ? styles.trackingProgressItemActive : styles.trackingProgressItem}>
-      <Feather name={icon} size={rf(17)} color={active ? "#2563EB" : "#6B7280"} />
+    <View
+      style={active ? styles.trackingProgressItemActive : styles.trackingProgressItem}
+      pointerEvents="none"
+      accessibilityRole="text"
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Feather name={icon} size={rf(15)} color={active ? "#2563EB" : "#9CA3AF"} />
       <Text style={active ? styles.trackingProgressActiveText : styles.trackingProgressText}>{label}</Text>
     </View>
   );
@@ -216,10 +219,8 @@ export default function StatusScreen() {
   const {
     destination,
     origin,
-    fareBreakdown,
     route,
     paymentMethod,
-    selectedVehicle,
     completeRide,
     cancelRide,
     setOrigin,
@@ -277,6 +278,7 @@ export default function StatusScreen() {
   const [eta, setEta] = useState(8);
   const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [customTipInput, setCustomTipInput] = useState("");
+  const [tipSubmitting, setTipSubmitting] = useState(false);
   const [userRating, setUserRating] = useState(5);
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -1017,23 +1019,45 @@ export default function StatusScreen() {
     router.replace("/");
   };
 
-  // Preisanzeige immer aus Ride-Daten (Server) ableiten, nicht aus lokalem Buchungs-State.
-  const estimatedFare =
-    completedForCurrentRide?.estimatedFare ??
-    acceptedRequest?.estimatedFare ??
-    rideMatchingCurrentId?.estimatedFare ??
-    fareBreakdown?.total ??
-    0;
   const rawFinalFare = completedForCurrentRide?.finalFare;
   const driverFinalFare =
     rawFinalFare != null && Number.isFinite(Number(rawFinalFare)) ? Number(rawFinalFare) : null;
-  // Bei completed: nur Fahrer-Endpreis ist gültig — kein Schätzpreis als Fallback
-  const totalFare = driverFinalFare ?? (completedForCurrentRide ? 0 : estimatedFare);
+  const totalFare = driverFinalFare ?? 0;
+  const paidTipAmount =
+    completedForCurrentRide?.tipAmount != null && Number.isFinite(Number(completedForCurrentRide.tipAmount))
+      ? Number(completedForCurrentRide.tipAmount)
+      : 0;
   const tipAmount =
-    selectedTip === -1 ? (parseFloat(customTipInput.replace(",", ".")) || 0)
-    : selectedTip !== null ? TIP_OPTIONS[selectedTip].amt
-    : 0;
+    paidTipAmount > 0
+      ? paidTipAmount
+      : selectedTip === -1
+        ? parseFloat(customTipInput.replace(",", ".")) || 0
+        : selectedTip !== null
+          ? TIP_OPTIONS[selectedTip].amt
+          : 0;
   const grandTotal = totalFare + tipAmount;
+  const tipAlreadyPaid = paidTipAmount > 0.005;
+
+  const handleSubmitTip = async () => {
+    const ride = completedForCurrentRide;
+    if (!ride || tipSubmitting || tipAlreadyPaid || tipAmount < 0.5) return;
+    setTipSubmitting(true);
+    try {
+      const result = await postCustomerRideTip({ rideId: ride.id, amountEur: tipAmount });
+      if (!result.ok) {
+        const msg =
+          result.error === "payment_method_required"
+            ? "Für Trinkgeld per App ist eine hinterlegte Karte nötig. Sie können Trinkgeld auch bar im Fahrzeug geben."
+            : "Trinkgeld konnte nicht verbucht werden. Bitte erneut versuchen.";
+        Alert.alert("Trinkgeld", msg);
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshRequests();
+    } finally {
+      setTipSubmitting(false);
+    }
+  };
 
   const pendingBillingRequest = useMemo(
     () => myActiveRequests.find((r) => r.id === lastAddedRequestId) ?? null,
@@ -1069,17 +1093,26 @@ export default function StatusScreen() {
               <Text style={styles.receiptTitle}>QUITTUNG</Text>
               <View style={styles.receiptDivider} />
               <View style={styles.receiptRows}>
-                {driverFinalFare != null ? (
+                <View style={styles.receiptRow}>
+                  <Text style={styles.receiptLabel}>Fahrtpreis (Taxameter):</Text>
+                  <Text style={[styles.receiptValue, driverFinalFare != null ? { color: "#22C55E" } : null]}>
+                    {driverFinalFare != null ? formatEuro(driverFinalFare) : "—"}
+                  </Text>
+                </View>
+                {tipAlreadyPaid ? (
                   <View style={styles.receiptRow}>
-                    <Text style={styles.receiptLabel}>Vom Fahrer bestätigt:</Text>
-                    <Text style={[styles.receiptValue, { color: "#22C55E" }]}>{formatEuro(driverFinalFare)}</Text>
+                    <Text style={styles.receiptLabel}>Trinkgeld:</Text>
+                    <Text style={[styles.receiptValue, { color: "#2563EB" }]}>{formatEuro(paidTipAmount)}</Text>
                   </View>
-                ) : (
+                ) : null}
+                {tipAlreadyPaid ? (
                   <View style={styles.receiptRow}>
-                    <Text style={styles.receiptLabel}>Gesamtpreis:</Text>
-                    <Text style={styles.receiptValue}>{formatEuro(totalFare)}</Text>
+                    <Text style={[styles.receiptLabel, { fontFamily: "Inter_600SemiBold" }]}>Gesamt:</Text>
+                    <Text style={[styles.receiptValue, { color: "#111827", fontFamily: "Inter_700Bold" }]}>
+                      {formatEuro(grandTotal)}
+                    </Text>
                   </View>
-                )}
+                ) : null}
                 <View style={styles.receiptRow}>
                   <Text style={styles.receiptLabel}>
                     {completedForCurrentRide?.actualDistanceKm != null ? "Gefahrene Strecke:" : driverFinalFare != null ? "Geplante Strecke:" : "Distanz:"}
@@ -1141,49 +1174,64 @@ export default function StatusScreen() {
                 })()}
               </View>
               <View style={styles.receiptDivider} />
-              <Text style={[styles.receiptLabel, { marginBottom: 8 }]}>Trinkgeld für {driverFirstName}:</Text>
-              <View style={styles.tipRow}>
-                {TIP_OPTIONS.map((opt, i) => {
-                  const isSelected = selectedTip === i;
-                  return (
+              {tipAlreadyPaid ? (
+                <Text style={[styles.receiptLabel, { marginBottom: 8, color: "#16A34A" }]}>
+                  Trinkgeld verbucht — vielen Dank!
+                </Text>
+              ) : (
+                <>
+                  <Text style={[styles.receiptLabel, { marginBottom: 8 }]}>Trinkgeld für {driverFirstName}:</Text>
+                  <View style={styles.tipRow}>
+                    {TIP_OPTIONS.map((opt, i) => {
+                      const isSelected = selectedTip === i;
+                      return (
+                        <Pressable
+                          key={i}
+                          style={[styles.tipBtn, isSelected && styles.tipBtnSelected]}
+                          onPress={() => {
+                            setSelectedTip(isSelected ? null : i);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          }}
+                        >
+                          <Text style={[styles.tipBtnLabel, isSelected && styles.tipBtnLabelSelected]}>{opt.label}</Text>
+                        </Pressable>
+                      );
+                    })}
                     <Pressable
-                      key={i}
-                      style={[styles.tipBtn, isSelected && styles.tipBtnSelected]}
+                      style={[styles.tipBtn, selectedTip === -1 && styles.tipBtnSelected]}
                       onPress={() => {
-                        setSelectedTip(isSelected ? null : i);
+                        setSelectedTip(selectedTip === -1 ? null : -1);
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
                     >
-                      <Text style={[styles.tipBtnLabel, isSelected && styles.tipBtnLabelSelected]}>{opt.label}</Text>
+                      <Text style={[styles.tipBtnLabel, selectedTip === -1 && styles.tipBtnLabelSelected]}>Eigener</Text>
                     </Pressable>
-                  );
-                })}
-                <Pressable
-                  style={[styles.tipBtn, selectedTip === -1 && styles.tipBtnSelected]}
-                  onPress={() => {
-                    setSelectedTip(selectedTip === -1 ? null : -1);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                >
-                  <Text style={[styles.tipBtnLabel, selectedTip === -1 && styles.tipBtnLabelSelected]}>Eigener</Text>
-                </Pressable>
-              </View>
-              {selectedTip === -1 && (
-                <TextInput
-                  style={styles.customTipInput}
-                  placeholder="Betrag in €"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="decimal-pad"
-                  value={customTipInput}
-                  onChangeText={setCustomTipInput}
-                  returnKeyType="done"
-                />
-              )}
-              {(selectedTip !== null && tipAmount > 0) && (
-                <View style={[styles.receiptRow, { marginTop: 8 }]}>
-                  <Text style={[styles.receiptLabel, { fontFamily: "Inter_600SemiBold" }]}>Gesamt inkl. Trinkgeld:</Text>
-                  <Text style={[styles.receiptValue, { color: "#DC2626" }]}>{formatEuro(grandTotal)}</Text>
-                </View>
+                  </View>
+                  {selectedTip === -1 ? (
+                    <TextInput
+                      style={styles.customTipInput}
+                      placeholder="Betrag in €"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="decimal-pad"
+                      value={customTipInput}
+                      onChangeText={setCustomTipInput}
+                      returnKeyType="done"
+                    />
+                  ) : null}
+                  {tipAmount >= 0.5 ? (
+                    <Pressable
+                      style={[styles.tipSubmitBtn, tipSubmitting && { opacity: 0.7 }]}
+                      disabled={tipSubmitting}
+                      onPress={() => void handleSubmitTip()}
+                    >
+                      {tipSubmitting ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.tipSubmitBtnText}>Trinkgeld geben ({formatEuro(tipAmount)})</Text>
+                      )}
+                    </Pressable>
+                  ) : null}
+                </>
               )}
               <View style={styles.receiptDivider} />
               <Pressable style={styles.fertigBtn} onPress={handleFertig}>
@@ -1341,21 +1389,6 @@ export default function StatusScreen() {
               </View>
             )}
 
-            {fareBreakdown && (
-              <View style={styles.searchPriceRow}>
-                <Text style={styles.searchPriceLabel}>Preis</Text>
-                <View style={styles.searchPricePill}>
-                  <CustomerFarePriceBlock
-                    vehicle={selectedVehicle}
-                    surchargeEur={fareBreakdown.vehicleSurchargeEur}
-                    primaryStyle={styles.searchPriceValue}
-                    secondaryStyle={styles.searchPriceSurcharge}
-                  />
-                </View>
-              </View>
-            )}
-            {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 4 }} /> : null}
-
             {pendingBillingRequest ? (
               <View style={styles.searchPayerBox}>
                 <Text style={styles.searchPayerTitle}>
@@ -1460,21 +1493,6 @@ export default function StatusScreen() {
               </View>
             )}
 
-            {fareBreakdown && (
-              <View style={styles.searchPriceRow}>
-                <Text style={styles.searchPriceLabel}>Preis</Text>
-                <View style={styles.searchPricePill}>
-                  <CustomerFarePriceBlock
-                    vehicle={selectedVehicle}
-                    surchargeEur={fareBreakdown.vehicleSurchargeEur}
-                    primaryStyle={styles.searchPriceValue}
-                    secondaryStyle={styles.searchPriceSurcharge}
-                  />
-                </View>
-              </View>
-            )}
-            {fareBreakdown ? <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 4 }} /> : null}
-
             {pendingBillingRequest ? (
               <View style={styles.searchPayerBox}>
                 <Text style={styles.searchPayerTitle}>
@@ -1503,18 +1521,14 @@ export default function StatusScreen() {
   const isDriving = customerPhase === "driving";
   const isPreparing = customerPhase === "preparing";
   const isArrived = customerPhase === "arrived";
-  const showTripEstimate =
-    effectiveAcceptedRequest != null &&
-    (customerShowsPendingChargeEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest) ||
-      customerShowsTripEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest));
-  const showPendingChargeEstimate =
-    effectiveAcceptedRequest != null &&
-    customerShowsPendingChargeEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest);
-  const liveVehicle = selectedVehicle ?? vehicleIdFromRideLabel(effectiveAcceptedRequest?.vehicle);
-  const liveSurchargeEur = fareBreakdown?.vehicleSurchargeEur ?? null;
   const readyForDispatch = effectiveAcceptedRequest?.status === "ready_for_dispatch";
   const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
-  const destLines = splitDestinationLines(displayDestination?.displayName);
+  const destLabel =
+    displayDestination?.displayName ??
+    serverRideForUi?.toFull ??
+    serverRideForUi?.to ??
+    "Ziel";
+  const destLines = splitDestinationLines(destLabel);
   const rideStatus = effectiveAcceptedRequest?.status;
   const progressActive = trackingProgressActiveStep(rideStatus);
   const driverStatusLabel = isDriving
@@ -1584,7 +1598,7 @@ export default function StatusScreen() {
         </Animated.View>
       ) : null}
 
-      <View style={[styles.trackingBottomSheet, { paddingBottom: bottomPad + rs(10) }]}>
+      <View style={[styles.trackingBottomSheet, { paddingBottom: bottomPad + rs(6) }]}>
         <View style={styles.sheetHandle} />
 
         <View style={styles.trackingDriverRow}>
@@ -1628,26 +1642,11 @@ export default function StatusScreen() {
                 {driverPlate}
                 {driverCar ? ` · ${driverCar}` : ""}
               </Text>
-              {showTripEstimate ? (
-                <>
-                  <CustomerFarePriceBlock
-                    vehicle={liveVehicle}
-                    surchargeEur={liveSurchargeEur}
-                    walletHint={showPendingChargeEstimate}
-                    primaryStyle={styles.trackingEstimate}
-                    secondaryStyle={styles.trackingEstimateSub}
-                    style={{ marginTop: 4 }}
-                  />
-                  {!showPendingChargeEstimate ? (
-                    <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 2 }} />
-                  ) : null}
-                </>
-              ) : null}
             </View>
           </View>
         </View>
 
-        <View style={styles.trackingProgressCard}>
+        <View style={styles.trackingProgressCard} pointerEvents="none" accessibilityRole="summary">
           <TrackingProgressStep
             icon="truck"
             label="Fahrer unterwegs"
@@ -1919,15 +1918,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingTop: rs(8),
-    paddingHorizontal: rs(16),
-    borderTopLeftRadius: rs(22),
-    borderTopRightRadius: rs(22),
+    paddingTop: rs(6),
+    paddingHorizontal: rs(14),
+    borderTopLeftRadius: rs(20),
+    borderTopRightRadius: rs(20),
     backgroundColor: "#FFFFFF",
     shadowColor: "#000",
     shadowOpacity: 0.1,
-    shadowRadius: rs(20),
-    shadowOffset: { width: 0, height: -rs(6) },
+    shadowRadius: rs(16),
+    shadowOffset: { width: 0, height: -rs(4) },
     elevation: 10,
     zIndex: 30,
   },
@@ -2044,25 +2043,22 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   trackingProgressCard: {
-    marginTop: rs(10),
-    borderRadius: rs(14),
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: rs(8),
-    paddingHorizontal: rs(6),
+    marginTop: rs(6),
+    paddingVertical: rs(4),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   trackingProgressItemActive: {
     alignItems: "center",
-    gap: rs(4),
+    gap: rs(2),
     flex: 1,
   },
   trackingProgressItem: {
     alignItems: "center",
-    gap: rs(4),
+    gap: rs(2),
     flex: 1,
+    opacity: 0.72,
   },
   trackingProgressActiveText: {
     fontSize: rf(11),
@@ -2458,6 +2454,16 @@ const styles = StyleSheet.create({
   tipBtnLabel: { fontSize: rf(14), fontFamily: "Inter_700Bold", color: "#374151" },
   tipBtnLabelSelected: { color: "#DC2626" },
   tipBtnAmount: { fontSize: rf(11), fontFamily: "Inter_400Regular", color: "#6B7280" },
+  tipSubmitBtn: {
+    marginTop: rs(10),
+    backgroundColor: "#2563EB",
+    borderRadius: rs(12),
+    paddingVertical: rs(12),
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: rs(44),
+  },
+  tipSubmitBtnText: { color: "#fff", fontSize: rf(15), fontFamily: "Inter_700Bold" },
   customTipInput: {
     marginTop: rs(10),
     borderWidth: 1.5,

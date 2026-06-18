@@ -95,6 +95,22 @@ export async function resolveStripeConnectPaymentParams(
   };
 }
 
+/** Trinkgeld: 100 % an Connect-Konto des Mandanten — keine Plattform-Provision. */
+export async function resolveStripeConnectTipPaymentParams(
+  companyId: string | null | undefined,
+  amountCents: number,
+): Promise<StripeConnectPaymentParams | null> {
+  const cid = String(companyId ?? "").trim();
+  if (!cid || amountCents < 50) return null;
+  const row = await getCompanyStripeConnectRow(cid);
+  if (!row || !isCompanyStripeConnectReady(row)) return null;
+  const accountId = row.stripeConnectAccountId!.trim();
+  return {
+    application_fee_amount: 0,
+    transfer_data: { destination: accountId },
+  };
+}
+
 export function panelStripeConnectStatusFromRow(row: CompanyStripeConnectRow | null): PanelStripeConnectPublicStatus {
   const stripeConfigured = getStripeClient() != null;
   if (!row) {

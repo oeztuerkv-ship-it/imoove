@@ -676,6 +676,9 @@ export const ridesTable = pgTable("rides", {
   stripe_refund_id: text("stripe_refund_id"),
   refunded_at: timestamp("refunded_at", { withTimezone: true }),
   cash_confirmed_at: timestamp("cash_confirmed_at", { withTimezone: true }),
+  tip_amount: doublePrecision("tip_amount"),
+  tip_paid_at: timestamp("tip_paid_at", { withTimezone: true }),
+  stripe_tip_payment_intent_id: text("stripe_tip_payment_intent_id"),
   passenger_rating: integer("passenger_rating"),
   /** Fahrer bewertet Kunde (1–5), einmalig nach Fahrtende. */
   driver_passenger_rating: integer("driver_passenger_rating"),
@@ -862,6 +865,7 @@ export const rideFinancialsTable = pgTable("ride_financials", {
   commission_value: doublePrecision("commission_value").notNull().default(0),
   commission_amount: doublePrecision("commission_amount").notNull().default(0),
   operator_payout_amount: doublePrecision("operator_payout_amount").notNull().default(0),
+  tip_amount: doublePrecision("tip_amount").notNull().default(0),
   billing_status: text("billing_status").notNull().default("unbilled"),
   settlement_status: text("settlement_status").notNull().default("open"),
   calculated_at: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),

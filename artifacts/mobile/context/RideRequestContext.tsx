@@ -130,6 +130,8 @@ export interface RideRequest {
   tariffSnapshot?: RideTariffSnapshot | null;
   pricingMode?: "taxi_tariff" | null;
   finalFare?: number | null;
+  tipAmount?: number | null;
+  tipPaidAt?: string | null;
   actualDistanceKm?: number | null;
   actualDurationMinutes?: number | null;
   paymentMethod: string;
@@ -544,6 +546,17 @@ function normalizeRequest(r: any): RideRequest {
         ? "taxi_tariff"
         : null,
     finalFare: parseFinalFareFromApi(r as Record<string, unknown>),
+    tipAmount: (() => {
+      const raw = (r as Record<string, unknown>).tipAmount ?? (r as Record<string, unknown>).tip_amount;
+      const n = Number(raw);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
+    tipPaidAt:
+      typeof (r as Record<string, unknown>).tipPaidAt === "string"
+        ? String((r as Record<string, unknown>).tipPaidAt)
+        : typeof (r as Record<string, unknown>).tip_paid_at === "string"
+          ? String((r as Record<string, unknown>).tip_paid_at)
+          : null,
     actualDistanceKm: r.actualDistanceKm ?? r.actual_distance_km ?? null,
     actualDurationMinutes: r.actualDurationMinutes ?? r.actual_duration_minutes ?? null,
     paymentMethod,

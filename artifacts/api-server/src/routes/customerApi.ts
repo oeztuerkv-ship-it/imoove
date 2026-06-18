@@ -27,6 +27,7 @@ import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { retryPassengerFailedRidePayment } from "../lib/ridePaymentRecovery";
+import { submitPassengerRideTip } from "../lib/rideTipPayment";
 import { respondCustomerPaymentRouteError } from "../lib/stripeHttpError.js";
 import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine.js";
@@ -710,6 +711,38 @@ router.post("/customer/v1/payment/retry-ride/:rideId", requireCustomerSession, a
     res.json({ ok: true, paymentStatus: "paid" });
   } catch (e) {
     if (respondCustomerPaymentRouteError(res, e, "payment/retry-ride")) return;
+    next(e);
+  }
+});
+
+router.post("/customer/v1/rides/:rideId/tip", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerAuthRequest).customerSession;
+    const passengerId = customerPassengerId(sess);
+    if (!passengerId) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    const body = (req.body ?? {}) as { amountEur?: unknown };
+    const amountEur = Number(body.amountEur);
+    if (!rideId || !Number.isFinite(amountEur)) {
+      res.status(400).json({ error: "invalid_tip_amount" });
+      return;
+    }
+    const outcome = await submitPassengerRideTip({ rideId, passengerId, amountEur });
+    if (!outcome.ok) {
+      res.status(outcome.status).json({ error: outcome.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      tipAmount: outcome.tipAmount,
+      chargedViaStripe: outcome.chargedViaStripe,
+      idempotent: outcome.idempotent === true,
+    });
+  } catch (e) {
+    if (respondCustomerPaymentRouteError(res, e, "rides/tip")) return;
     next(e);
   }
 });

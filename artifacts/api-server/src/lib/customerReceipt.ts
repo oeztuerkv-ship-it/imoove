@@ -224,12 +224,8 @@ export function buildCustomerReceiptHtml(ctx: CustomerReceiptContext): string {
   const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
   const amount = tax.gross;
-  const estimate =
-    r.status === "completed" && r.estimatedFare != null && Number.isFinite(Number(r.estimatedFare))
-      ? Number(r.estimatedFare)
-      : null;
-  const showEstimateNote =
-    estimate != null && Math.abs(amount - estimate) > 0.05 && amount > 0;
+  const tipAmount =
+    r.tipAmount != null && Number.isFinite(Number(r.tipAmount)) ? Math.max(0, Number(r.tipAmount)) : 0;
   const rideNr = String(r.id).slice(0, 8).toUpperCase();
   const paymentLabel = paymentLabelForRide(r);
 
@@ -256,6 +252,13 @@ export function buildCustomerReceiptHtml(ctx: CustomerReceiptContext): string {
         <div class="row tax-gross"><div class="k">Brutto (Taxameter)</div><div class="v">${formatEuroHtml(tax.gross)}</div></div>
         ${tax.fallbackNote ? `<p class="tax-note">${escapeHtml(tax.fallbackNote)}</p>` : ""}
       </div>`
+      : "";
+
+  const tipRowsHtml =
+    tipAmount > 0.005
+      ? `
+      <div class="row"><div class="k">Trinkgeld</div><div class="v">${formatEuroHtml(tipAmount)}</div></div>
+      <div class="row tax-gross"><div class="k">Gesamt (Fahrt + Trinkgeld)</div><div class="v">${formatEuroHtml(amount + tipAmount)}</div></div>`
       : "";
 
   const footerBelegLine = showSteuerlicherBeleg
@@ -312,6 +315,7 @@ export function buildCustomerReceiptHtml(ctx: CustomerReceiptContext): string {
     <div class="body">
       <div class="row"><div><div class="k">Datum</div><div class="v">${escapeHtml(dateStr)}</div></div><div><div class="k">Uhrzeit</div><div class="v">${escapeHtml(timeStr)} Uhr</div></div></div>
       ${taxRowsHtml}
+      ${tipRowsHtml}
       <div class="route">
         <h3>Route</h3>
         <div class="muted">Abfahrt</div>
@@ -322,7 +326,6 @@ export function buildCustomerReceiptHtml(ctx: CustomerReceiptContext): string {
       <div style="margin-top: 14px;">
         <div class="row"><div class="k">${r.actualDistanceKm != null ? "Gefahrene Strecke" : "Geplante Strecke"}</div><div class="v">${escapeHtml(String((r.actualDistanceKm ?? r.distanceKm ?? 0).toFixed(1)))} km</div></div>
         ${r.actualDurationMinutes != null ? `<div class="row"><div class="k">Fahrtdauer</div><div class="v">${escapeHtml(String(r.actualDurationMinutes))} Min</div></div>` : ""}
-        ${showEstimateNote ? `<div class="row"><div class="k">Geschätzter Preis (Buchung)</div><div class="v">${formatEuroHtml(estimate!)}</div></div>` : ""}
         ${driverInfo.driverName ? `<div class="row"><div class="k">Fahrer*in</div><div class="v">${escapeHtml(driverInfo.driverName)}</div></div>` : ""}
         ${driverInfo.driverPlate ? `<div class="row"><div class="k">Kennzeichen</div><div class="v">${escapeHtml(driverInfo.driverPlate)}</div></div>` : ""}
         <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(paymentLabel)}</div></div>

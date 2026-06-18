@@ -78,6 +78,10 @@ export default function DriversRevenuePage() {
             <div className="admin-mandate-kpi__val">{money(totals.commissionAmount)}</div>
           </div>
           <div className="admin-mandate-kpi">
+            <div className="admin-mandate-kpi__lbl">Trinkgeld (gesamt)</div>
+            <div className="admin-mandate-kpi__val">{money(totals.tipAmount)}</div>
+          </div>
+          <div className="admin-mandate-kpi">
             <div className="admin-mandate-kpi__lbl">Auszahlung Fahrer</div>
             <div className="admin-mandate-kpi__val">{money(totals.driverPayoutAmount)}</div>
           </div>
@@ -98,6 +102,7 @@ export default function DriversRevenuePage() {
                 <th>Fahrten</th>
                 <th>Brutto</th>
                 <th>Provision ONRODA</th>
+                <th>Trinkgeld</th>
                 <th>Auszahlung Fahrer</th>
               </tr>
             </thead>
@@ -112,6 +117,7 @@ export default function DriversRevenuePage() {
                   <td>{row.rideCount}</td>
                   <td>{money(row.grossAmount)}</td>
                   <td>{money(row.commissionAmount)}</td>
+                  <td>{money(row.tipAmount)}</td>
                   <td>{money(row.driverPayoutAmount)}</td>
                 </tr>
               ))}

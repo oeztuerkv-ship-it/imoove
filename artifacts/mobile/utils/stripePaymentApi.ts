@@ -376,3 +376,58 @@ export async function postCustomerRetryFailedRidePayment(input: {
 
   return { ok: true };
 }
+
+export type SubmitRideTipResult =
+  | { ok: true; tipAmount: number; chargedViaStripe?: boolean }
+  | { ok: false; error: string; status?: number };
+
+export async function postCustomerRideTip(input: {
+  rideId: string;
+  amountEur: number;
+  authToken?: string | null;
+}): Promise<SubmitRideTipResult> {
+  const token = await resolveCustomerBearerToken(input.authToken);
+  const apiBase = getApiBaseUrl();
+  const rideId = input.rideId.trim();
+  if (!token || !apiBase || !rideId) {
+    return { ok: false, error: "unauthorized" };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase}/customer/v1/rides/${encodeURIComponent(rideId)}/tip`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ amountEur: input.amountEur }),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
+
+  const raw = await res.text();
+  let parsed: { error?: string; ok?: boolean; tipAmount?: number; chargedViaStripe?: boolean } = {};
+  try {
+    parsed = raw ? (JSON.parse(raw) as typeof parsed) : {};
+  } catch {
+    parsed = {};
+  }
+
+  if (!res.ok || parsed.ok === false) {
+    return {
+      ok: false,
+      error: typeof parsed.error === "string" ? parsed.error : `http_${res.status}`,
+      status: res.status,
+    };
+  }
+
+  const tipAmount = Number(parsed.tipAmount);
+  return {
+    ok: true,
+    tipAmount: Number.isFinite(tipAmount) ? tipAmount : input.amountEur,
+    chargedViaStripe: parsed.chargedViaStripe === true,
+  };
+}

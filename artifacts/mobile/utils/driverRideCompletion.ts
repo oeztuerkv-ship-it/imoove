@@ -15,9 +15,15 @@ export function driverMayBillPositiveFare(status: string): boolean {
   return isDriverTripInProgressStatus(status);
 }
 
-export function defaultFinalFareForDriverCompletion(status: string, estimatedFare: number): number {
+export function defaultFinalFareForDriverCompletion(status: string, _estimatedFare: number): number {
   if (!driverMayBillPositiveFare(status)) return 0;
-  return Number.isFinite(estimatedFare) ? estimatedFare : 0;
+  return 0;
+}
+
+/** Leeres Eingabefeld — Fahrer trägt Taxameter-Preis selbst ein (kein Schätzwert). */
+export function defaultDriverFareInputForCompletion(status: string): string {
+  if (!driverMayBillPositiveFare(status)) return formatDriverFareInputDe(0);
+  return "";
 }
 
 export function formatDriverFareInputDe(amount: number): string {

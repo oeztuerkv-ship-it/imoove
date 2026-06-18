@@ -68,6 +68,7 @@ import {
 } from "@/utils/driverNavigationDiagnostics";
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 import {
+  defaultDriverFareInputForCompletion,
   defaultFinalFareForDriverCompletion,
   driverMayBillPositiveFare,
   formatDriverFareInputDe,
@@ -281,7 +282,7 @@ export default function DriverNavigationScreen() {
   const [passengerRatingSubmitting, setPassengerRatingSubmitting] = useState(false);
   const [rideEarnings, setRideEarnings] = useState<DriverRideEarnings | null>(null);
   const [fareInput, setFareInput] = useState(
-    formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
+    defaultDriverFareInputForCompletion(rideFleetStatus),
   );
   const [waitingChargeEur, setWaitingChargeEur] = useState(0);
   const [waitingMinutes, setWaitingMinutes] = useState(0);
@@ -826,7 +827,7 @@ export default function DriverNavigationScreen() {
   const handleFahrtBeenden = () => {
     trySpeak("Fahrt wird beendet.", soundRef.current);
     setFareInput(
-      formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
+      defaultDriverFareInputForCompletion(rideFleetStatus),
     );
     setShowFareModal(true);
   };
@@ -923,8 +924,11 @@ export default function DriverNavigationScreen() {
   const handleConfirmFare = async () => {
     if (completingRide) return;
     const parsed = parseFloat(fareInput.replace(",", "."));
-    const fallback = defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare);
-    const fare = isNaN(parsed) ? fallback : parsed;
+    if (driverMayBillPositiveFare(rideFleetStatus) && (!Number.isFinite(parsed) || parsed <= 0)) {
+      Alert.alert("Taxameter-Endpreis", "Bitte den Endpreis vom Taxameter eingeben.");
+      return;
+    }
+    const fare = Number.isFinite(parsed) ? parsed : 0;
     const validation = validateDriverFinalFareInput(rideFleetStatus, fare);
     if (!validation.ok) {
       Alert.alert(validation.title, validation.message);

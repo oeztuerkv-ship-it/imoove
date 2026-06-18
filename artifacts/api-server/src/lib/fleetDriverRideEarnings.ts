@@ -6,6 +6,7 @@ export type FleetDriverRideEarnings = {
   rideId: string;
   gross: number;
   commission: number;
+  tip: number;
   net: number;
   commissionRate: number;
 };
@@ -33,7 +34,8 @@ export async function getFleetDriverRideEarnings(input: {
   if (ride.status !== "completed") {
     return { ok: false, error: "ride_not_completed", status: 409 };
   }
-  const gross = roundMoney(Math.max(0, Number(ride.finalFare ?? ride.estimatedFare ?? 0)));
+  const gross = roundMoney(Math.max(0, Number(ride.finalFare ?? 0)));
+  const tip = roundMoney(Math.max(0, Number(ride.tipAmount ?? 0)));
   const opPayload = await getOperationalConfigPayload();
   const regions = await listServiceRegionsForApi();
   const pc = await resolveFinancePricingContextForRide(
@@ -49,13 +51,15 @@ export async function getFleetDriverRideEarnings(input: {
     regions,
   );
   const settlement = previewDriverSettlementFromGross(gross, pc);
+  const netWithTip = roundMoney(settlement.driverPayoutAmount + tip);
   return {
     ok: true,
     earnings: {
       rideId: ride.id,
       gross,
       commission: settlement.commissionAmount,
-      net: settlement.driverPayoutAmount,
+      tip,
+      net: netWithTip,
       commissionRate: settlement.commissionRate,
     },
   };

@@ -17,36 +17,39 @@ const DEFAULT_REGION = {
 /** Wenn GPS und Abhol-Adresse weiter auseinander liegen, in den Zoom einbeziehen (Punkt sichtbar). */
 const GPS_EXTRA_FIT_THRESHOLD = 0.0015;
 
-/**
- * Route (Ziel gesetzt): leichte Verschiebung nach manuellem Pan-Gefühl.
- * Start ohne Ziel: siehe HOME_* – eigene Werte, damit der blaue Punkt zwischen Chip und Sheet sitzt.
- */
 const MAP_CENTER_SHIFT_LAT = -0.00026;
 const MAP_CENTER_SHIFT_LON = 0.00044;
 
-/** Nur Start-Ansicht: horizontaler Feintuning-Offset (Longitude). */
 const HOME_MAP_SHIFT_LAT = -0.0003;
 const HOME_MAP_SHIFT_LON = 0.00078;
-/**
- * Kamera etwas nördlicher als der Standort → wirkt wie „Karte runterziehen“:
- * mehr Welt oberhalb des blauen Punkts, Punkt sitzt tiefer zwischen Chip und Sheet.
- */
 const HOME_MAP_PULL_DOWN_LAT = 0.00095;
-/** Google Maps: niedrigeres zoom = weiter raus (Vogelperspektive). ~14 = Stadtteil, ~13 = weiter. */
 const HOME_CAMERA_ZOOM = 12.9;
 
-/** fitToCoordinates: asymmetrisches Padding, moderat (nicht zu extrem nach unten). */
 const FIT_PADDING_EXTRA_LEFT = 42;
 const FIT_PADDING_TOP_TRIM = 14;
 const FIT_PADDING_EXTRA_BOTTOM = 24;
-/** Zusätzlicher Rand beim Routen-Fit → etwas weiter herausgezoomt. */
 const ROUTE_FIT_EXTRA_INSET = 48;
-/** Route zusätzlich nach oben „Luft“ → Karte wirkt nach unten versetzt / mehr Übersicht. */
 const ROUTE_FIT_EXTRA_TOP = 36;
 
-/** Fallback einzelner Punkt (ohne Home-Logik): Region-Zoom. */
 const SINGLE_POINT_LAT_DELTA = 0.1;
 const SINGLE_POINT_LON_DELTA = 0.11;
+
+const LIVE_TRACKING_CAMERA_ZOOM = 15;
+
+function isValidMapCoord(lat: number, lon: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lon) <= 180 &&
+    !(Math.abs(lat) < 1e-5 && Math.abs(lon) < 1e-5)
+  );
+}
+
+function toMapPoint(geo: GeoLocation | null | undefined): { latitude: number; longitude: number } | null {
+  if (!geo || !isValidMapCoord(geo.lat, geo.lon)) return null;
+  return { latitude: geo.lat, longitude: geo.lon };
+}
 
 interface RealMapViewProps {
   origin?: GeoLocation | null;
@@ -82,12 +85,37 @@ export function RealMapView({
   const fitMap = useCallback(() => {
     if (!mapRef.current) return;
 
-    const originPoint =
-      origin != null ? { latitude: origin.lat, longitude: origin.lon } : null;
-    const destPoint =
-      destination != null ? { latitude: destination.lat, longitude: destination.lon } : null;
+    const originPoint = toMapPoint(origin);
+    const destPoint = toMapPoint(destination);
     const gpsPoint =
-      userLocation != null ? { latitude: userLocation.lat, longitude: userLocation.lon } : null;
+      userLocation != null && isValidMapCoord(userLocation.lat, userLocation.lon)
+        ? { latitude: userLocation.lat, longitude: userLocation.lon }
+        : null;
+    const driverPoint =
+      driverMarker != null && isValidMapCoord(driverMarker.lat, driverMarker.lon)
+        ? { latitude: driverMarker.lat, longitude: driverMarker.lon }
+        : null;
+
+    if (followLiveDriver && driverPoint) {
+      const liveCoords = [driverPoint];
+      if (originPoint) liveCoords.push(originPoint);
+      if (destPoint) liveCoords.push(destPoint);
+      const livePadding = {
+        top: Math.max(56, edgePaddingTop - 48),
+        right: 44,
+        bottom: Math.max(140, edgePaddingBottom - 80),
+        left: 44,
+      };
+      if (liveCoords.length === 1) {
+        mapRef.current.animateCamera(
+          { center: driverPoint, pitch: 0, heading: 0, zoom: LIVE_TRACKING_CAMERA_ZOOM },
+          { duration: 600 },
+        );
+      } else {
+        mapRef.current.fitToCoordinates(liveCoords, { edgePadding: livePadding, animated: true });
+      }
+      return;
+    }
 
     const padding = {
       top:
@@ -112,7 +140,7 @@ export function RealMapView({
       return;
     }
 
-    const center = gpsPoint ?? originPoint;
+    const center = gpsPoint ?? originPoint ?? destPoint ?? driverPoint;
     if (center) {
       const home = destPoint == null;
       const latShift = home
@@ -153,6 +181,9 @@ export function RealMapView({
     edgePaddingBottom,
     userLocation?.lat,
     userLocation?.lon,
+    followLiveDriver,
+    driverMarker?.lat,
+    driverMarker?.lon,
   ]);
 
   const handleMapReady = useCallback(() => {
@@ -170,20 +201,10 @@ export function RealMapView({
     fitMap();
   }, [fitMap, centerKey]);
 
-  useEffect(() => {
-    if (!mapReadyRef.current || !followLiveDriver || !driverMarker || !mapRef.current) return;
-    mapRef.current.animateCamera(
-      {
-        center: { latitude: driverMarker.lat, longitude: driverMarker.lon },
-        zoom: 15,
-      },
-      { duration: 800 },
-    );
-  }, [followLiveDriver, driverMarker?.lat, driverMarker?.lon]);
-
   const routeCoords =
     polyline?.map(([lat, lon]) => ({ latitude: lat, longitude: lon })) ?? [];
 
+  const destPoint = toMapPoint(destination);
   const isHomeMap = destination == null;
   const homeMapPadding = isHomeMap
     ? {
@@ -207,21 +228,21 @@ export function RealMapView({
       mapPadding={homeMapPadding}
       onMapReady={handleMapReady}
     >
-      {destination && (
+      {destPoint && destination && (
         <Marker
-          coordinate={{ latitude: destination.lat, longitude: destination.lon }}
+          coordinate={destPoint}
           title={destination.displayName.split(",")[0]}
           pinColor="#EF4444"
         />
       )}
-      {driverMarker && (
+      {driverMarker && isValidMapCoord(driverMarker.lat, driverMarker.lon) && (
         <Marker
           coordinate={{ latitude: driverMarker.lat, longitude: driverMarker.lon }}
           title="Ihr Fahrer"
           pinColor="#2563EB"
         />
       )}
-      {customerLiveMarker && (
+      {customerLiveMarker && isValidMapCoord(customerLiveMarker.lat, customerLiveMarker.lon) && (
         <Marker
           coordinate={{ latitude: customerLiveMarker.lat, longitude: customerLiveMarker.lon }}
           title="Kunde"
