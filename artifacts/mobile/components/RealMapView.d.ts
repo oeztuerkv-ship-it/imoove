@@ -11,6 +11,8 @@ interface RealMapViewProps {
   /** Abstand nach oben (Safe Area + Origin-Chip / FAB), damit die Karte darunter sichtbar bleibt. */
   edgePaddingTop?: number;
   edgePaddingBottom?: number;
+  /** Eingebettete Streckenvorschau – kompakter Zoom, kein GPS-Punkt. */
+  compactFit?: boolean;
   /** Echte GPS-Position – für Zoom/Fit statt nur Abhol-Adresse (blauer Punkt sichtbar). */
   userLocation?: { lat: number; lon: number } | null;
   followLiveDriver?: boolean;

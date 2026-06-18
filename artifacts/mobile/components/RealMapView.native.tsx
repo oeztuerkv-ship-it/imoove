@@ -62,6 +62,8 @@ interface RealMapViewProps {
   followLiveDriver?: boolean;
   edgePaddingTop?: number;
   edgePaddingBottom?: number;
+  /** Eingebettete Vorschau (z. B. ride-select): weniger Zoom-Padding, kein User-Location-Punkt. */
+  compactFit?: boolean;
   userLocation?: { lat: number; lon: number } | null;
 }
 
@@ -76,6 +78,7 @@ export function RealMapView({
   followLiveDriver = false,
   edgePaddingTop = 200,
   edgePaddingBottom = 280,
+  compactFit = false,
   userLocation,
 }: RealMapViewProps) {
   const colors = useColors();
@@ -117,15 +120,22 @@ export function RealMapView({
       return;
     }
 
-    const padding = {
-      top:
-        Math.max(52, edgePaddingTop - FIT_PADDING_TOP_TRIM) +
-        ROUTE_FIT_EXTRA_INSET +
-        ROUTE_FIT_EXTRA_TOP,
-      right: 56 + ROUTE_FIT_EXTRA_INSET,
-      bottom: edgePaddingBottom + FIT_PADDING_EXTRA_BOTTOM + ROUTE_FIT_EXTRA_INSET,
-      left: 64 + FIT_PADDING_EXTRA_LEFT + ROUTE_FIT_EXTRA_INSET,
-    };
+    const padding = compactFit
+      ? {
+          top: Math.max(12, edgePaddingTop),
+          right: 20,
+          bottom: Math.max(12, edgePaddingBottom),
+          left: 20,
+        }
+      : {
+          top:
+            Math.max(52, edgePaddingTop - FIT_PADDING_TOP_TRIM) +
+            ROUTE_FIT_EXTRA_INSET +
+            ROUTE_FIT_EXTRA_TOP,
+          right: 56 + ROUTE_FIT_EXTRA_INSET,
+          bottom: edgePaddingBottom + FIT_PADDING_EXTRA_BOTTOM + ROUTE_FIT_EXTRA_INSET,
+          left: 64 + FIT_PADDING_EXTRA_LEFT + ROUTE_FIT_EXTRA_INSET,
+        };
 
     if (originPoint && destPoint) {
       const coords: { latitude: number; longitude: number }[] = [originPoint, destPoint];
@@ -184,6 +194,7 @@ export function RealMapView({
     followLiveDriver,
     driverMarker?.lat,
     driverMarker?.lon,
+    compactFit,
   ]);
 
   const handleMapReady = useCallback(() => {
@@ -221,7 +232,7 @@ export function RealMapView({
       style={[StyleSheet.absoluteFill, style]}
       initialRegion={DEFAULT_REGION}
       {...nativeMapViewProps()}
-      showsUserLocation
+      showsUserLocation={!compactFit}
       showsMyLocationButton={false}
       showsCompass={false}
       toolbarEnabled={false}

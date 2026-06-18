@@ -1,13 +1,13 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { router, useLocalSearchParams, usePathname, useSegments, type Href } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
+import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { VEHICLES, useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
@@ -62,7 +62,6 @@ export default function RideSelectScreen() {
     );
   }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
 
-  const mapRef = useRef<MapView>(null);
   const [vehicleEstimates, setVehicleEstimates] = useState<Map<string, FareEstimateApiResult>>(new Map());
   const [standardTotal, setStandardTotal] = useState<number | null>(null);
   const [fareEstimateError, setFareEstimateError] = useState<string | null>(null);
@@ -171,39 +170,16 @@ export default function RideSelectScreen() {
                 <Text style={styles.routeMapFallbackText}>Start → Ziel</Text>
               </View>
             ) : (
-              <MapView
-                ref={mapRef}
+              <RealMapView
+                origin={origin}
+                destination={destination}
+                polyline={route?.polyline}
                 style={StyleSheet.absoluteFill}
-                provider={PROVIDER_GOOGLE}
-                onMapReady={() => {
-                  mapRef.current?.fitToCoordinates(
-                    [
-                      { latitude: origin.lat, longitude: origin.lon },
-                      { latitude: destination.lat, longitude: destination.lon },
-                    ],
-                    {
-                      edgePadding: { top: 36, right: 36, bottom: 36, left: 36 },
-                      animated: true,
-                    },
-                  );
-                }}
-                initialRegion={{
-                  latitude: origin.lat,
-                  longitude: origin.lon,
-                  latitudeDelta: 0.06,
-                  longitudeDelta: 0.06,
-                }}
-              >
-                <Marker coordinate={{ latitude: origin.lat, longitude: origin.lon }} pinColor="#22C55E" />
-                <Marker coordinate={{ latitude: destination.lat, longitude: destination.lon }} pinColor="#DC2626" />
-                {(route?.polyline ?? []).length > 1 ? (
-                  <Polyline
-                    coordinates={(route?.polyline ?? []).map(([lat, lon]) => ({ latitude: lat, longitude: lon }))}
-                    strokeColor={ONRODA_MARK_RED}
-                    strokeWidth={4}
-                  />
-                ) : null}
-              </MapView>
+                compactFit
+                edgePaddingTop={16}
+                edgePaddingBottom={16}
+                centerKey={(route?.polyline?.length ?? 0) + (route?.distanceKm ?? 0)}
+              />
             )}
           </View>
           <Text style={[styles.routeLine, { color: colors.foreground }]} numberOfLines={1}>
