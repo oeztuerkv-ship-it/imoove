@@ -95,10 +95,12 @@
     }
 
     .hp-header-tools {
-      display: none;
+      display: flex;
       align-items: center;
       gap: 10px;
       justify-content: flex-end;
+      position: relative;
+      z-index: 20;
     }
 
     .hp-topbar-btn--mobile {
@@ -136,6 +138,9 @@
       justify-content: flex-start;
       gap: 1.15rem;
       flex-wrap: wrap;
+      min-width: 0;
+      position: relative;
+      z-index: 1;
     }
 
     .hp-nav-link {
@@ -252,6 +257,9 @@
       gap: 12px;
       flex-wrap: wrap;
       justify-content: flex-end;
+      position: relative;
+      z-index: 15;
+      min-width: 0;
     }
 
     .hp-header-legal {
@@ -273,8 +281,11 @@
       text-decoration: none;
       font-size: 0.82rem;
       font-weight: 600;
-      padding: 4px 2px;
+      padding: 6px 4px;
       transition: color 0.15s ease;
+      position: relative;
+      z-index: 21;
+      cursor: pointer;
     }
 
     .hp-header-instagram:hover,
@@ -290,25 +301,32 @@
 
     .hp-header-instagram svg {
       flex-shrink: 0;
+      pointer-events: none;
     }
 
-    .hp-header-instagram--tools {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px;
-      color: #555;
+    .hp-instagram-icon {
+      display: block;
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      border-radius: 7px;
+      flex-shrink: 0;
+      pointer-events: none;
     }
 
-    @media (min-width: 900px) {
-      .hp-header-instagram--tools {
-        display: none;
-      }
+    .hp-instagram-icon--header {
+      width: 26px;
+      height: 26px;
     }
 
-    @media (max-width: 899px) {
-      .hp-header-actions > .hp-header-instagram {
-        display: none;
-      }
+    .hp-instagram-icon--footer {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+    }
+
+    .hp-header-instagram__label {
+      pointer-events: none;
     }
 
     .hp-nav-toggle {
@@ -2929,15 +2947,42 @@
     .hp-app-download__grid {
       display: grid;
       grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr);
-      gap: clamp(2rem, 4vw, 3.5rem);
-      align-items: center;
+      grid-template-areas:
+        "copy device"
+        "cta device";
+      gap: clamp(1.25rem, 3vw, 2.5rem) clamp(2rem, 4vw, 3.5rem);
+      align-items: start;
       min-width: 0;
     }
 
     .hp-app-download__copy {
+      grid-area: copy;
       display: flex;
       flex-direction: column;
       justify-content: center;
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+    }
+
+    .hp-app-download__device {
+      grid-area: device;
+      align-self: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .hp-app-download__cta {
+      grid-area: cta;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-width: 0;
     }
 
     .hp-app-download__badge {
@@ -3122,16 +3167,6 @@
       opacity: 0.55;
     }
 
-    .hp-app-download__device {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-width: 0;
-      max-width: 100%;
-      overflow: visible;
-    }
-
     .hp-app-download__stage {
       position: relative;
       display: flex;
@@ -3207,6 +3242,7 @@
     html.hp-js .hp-app-download:not(.is-visible) .hp-reveal:not(.hp-reveal--phone):not(.hp-reveal--phone-2) {
       opacity: 0;
       transform: translateY(22px);
+      pointer-events: none;
     }
 
     html.hp-js .hp-app-download:not(.is-visible) .hp-reveal--phone,
@@ -3214,6 +3250,7 @@
       opacity: 0;
       transform: translate(36px, 48px) scale(0.9);
       transition: none;
+      pointer-events: none;
     }
 
     .hp-app-download.is-visible .hp-reveal:not(.hp-reveal--phone):not(.hp-reveal--phone-2) {
@@ -3694,6 +3731,16 @@
       font-weight: 600;
       text-decoration: none;
       transition: color 0.15s ease;
+      position: relative;
+      z-index: 6;
+      cursor: pointer;
+    }
+
+    .hp-instagram-link svg,
+    .hp-footer-instagram svg,
+    .hp-instagram-link .hp-instagram-icon,
+    .hp-footer-instagram .hp-instagram-icon {
+      pointer-events: none;
     }
 
     .hp-instagram-link:hover,
@@ -3941,6 +3988,11 @@
 
       .hp-app-download__grid {
         grid-template-columns: 1fr;
+        grid-template-areas:
+          "copy"
+          "device"
+          "cta";
+        gap: 1.25rem;
       }
 
       .hp-app-download__lead {
@@ -3949,22 +4001,45 @@
 
       .hp-app-download__device {
         padding-inline: 0;
+        align-self: stretch;
+        overflow: hidden;
       }
 
       .hp-app-download__stage {
-        width: min(100%, 420px);
+        width: min(100%, 340px);
+        margin-inline: auto;
+        overflow: hidden;
       }
 
       .hp-app-download__phones {
-        height: clamp(300px, 68vw, 360px);
+        height: clamp(220px, 58vw, 280px);
+        max-width: 320px;
+        margin-inline: auto;
       }
 
       .hp-app-download__phone--taxi {
-        width: min(220px, 58%);
+        width: min(178px, 52%);
       }
 
       .hp-app-download__phone--medical {
-        width: min(200px, 54%);
+        width: min(162px, 48%);
+      }
+
+      .hp-app-download__cta {
+        margin-top: 0.25rem;
+        padding-top: 0.25rem;
+      }
+
+      .hp-store-links {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .hp-store-badge--apple img,
+      .hp-store-badge--google img {
+        width: min(168px, 72vw);
+        height: auto;
       }
 
       .hp-app-download__trust-card {
@@ -4171,7 +4246,12 @@
       }
 
       .hp-header-instagram {
-        padding: 6px;
+        padding: 4px;
+      }
+
+      .hp-instagram-icon--header {
+        width: 30px;
+        height: 30px;
       }
 
       .hp-grid-2,
