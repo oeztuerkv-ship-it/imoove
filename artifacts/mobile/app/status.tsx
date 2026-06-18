@@ -191,11 +191,15 @@ function TrackingProgressStep({
   icon,
   label,
   active,
+  iconSet = "feather",
 }: {
-  icon: React.ComponentProps<typeof Feather>["name"];
+  icon: React.ComponentProps<typeof Feather>["name"] | React.ComponentProps<typeof MaterialCommunityIcons>["name"];
   label: string;
   active: boolean;
+  iconSet?: "feather" | "mci";
 }) {
+  const color = active ? "#2563EB" : "#9CA3AF";
+  const size = rf(15);
   return (
     <View
       style={active ? styles.trackingProgressItemActive : styles.trackingProgressItem}
@@ -203,7 +207,11 @@ function TrackingProgressStep({
       accessibilityRole="text"
       importantForAccessibility="no-hide-descendants"
     >
-      <Feather name={icon} size={rf(15)} color={active ? "#2563EB" : "#9CA3AF"} />
+      {iconSet === "mci" ? (
+        <MaterialCommunityIcons name={icon as React.ComponentProps<typeof MaterialCommunityIcons>["name"]} size={size} color={color} />
+      ) : (
+        <Feather name={icon as React.ComponentProps<typeof Feather>["name"]} size={size} color={color} />
+      )}
       <Text style={active ? styles.trackingProgressActiveText : styles.trackingProgressText}>{label}</Text>
     </View>
   );
@@ -1648,7 +1656,8 @@ export default function StatusScreen() {
 
         <View style={styles.trackingProgressCard} pointerEvents="none" accessibilityRole="summary">
           <TrackingProgressStep
-            icon="truck"
+            icon="taxi"
+            iconSet="mci"
             label="Fahrer unterwegs"
             active={progressActive === 0}
           />
