@@ -2199,11 +2199,19 @@ function ActiveRideScreen({
           </View>
         ) : null}
           {!isKK ? (
-            <View style={activeStyles.fareBox}>
-              <Text style={activeStyles.fareLabel}>ca. Preis (brutto)</Text>
-              <Text style={activeStyles.fareValue}>{formatEuro(req.estimatedFare)}</Text>
-              <Text style={activeStyles.fareBruttoHint}>inkl. MwSt.</Text>
-            </View>
+            mayBillPositive ? (
+              <View style={activeStyles.fareBox}>
+                <Text style={activeStyles.fareLabel}>ca. Preis (brutto)</Text>
+                <Text style={activeStyles.fareValue}>{formatEuro(req.estimatedFare)}</Text>
+                <Text style={activeStyles.fareBruttoHint}>inkl. MwSt. · Taxameter am Ende</Text>
+              </View>
+            ) : (
+              <View style={[activeStyles.fareBox, { alignItems: "flex-start" }]}>
+                <Text style={activeStyles.fareLabel}>Abrechnung</Text>
+                <Text style={[activeStyles.fareValue, { fontSize: 14 }]}>Nach Taxameter</Text>
+                <Text style={activeStyles.fareBruttoHint}>Schätzpreis erst nach Fahrtbeginn</Text>
+              </View>
+            )
           ) : (
             <View style={[activeStyles.fareBox, { alignItems: "flex-start" }]}>
               <Text style={activeStyles.fareLabel}>Krankenkasse</Text>
