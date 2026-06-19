@@ -7,6 +7,23 @@ const STORAGE_LAST_SYNC_AT = "onroda_driver_expo_push_sync_at_v1";
 const STORAGE_LAST_TOKEN = "onroda_driver_expo_push_token_v1";
 const RESYNC_INTERVAL_MS = 10 * 60 * 1000;
 
+export type DriverPushReadyState = "ok" | "denied" | "missing";
+
+/** Für Status-Chips: Permission + erfolgreicher Token-Sync. */
+export async function isDriverPushReady(): Promise<DriverPushReadyState> {
+  if (Platform.OS === "web") return "missing";
+  try {
+    await ensureExpoNotificationsHandler();
+    const Notifications = await import("expo-notifications");
+    const perm = await Notifications.getPermissionsAsync();
+    if (perm.status !== "granted") return "denied";
+    const token = (await AsyncStorage.getItem(STORAGE_LAST_TOKEN))?.trim();
+    return token ? "ok" : "missing";
+  } catch {
+    return "missing";
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

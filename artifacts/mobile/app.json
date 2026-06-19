@@ -102,7 +102,8 @@
           "locationAlwaysAndWhenInUsePermission": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",
           "locationWhenInUsePermission": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
           "isIosBackgroundLocationEnabled": true,
-          "isAndroidBackgroundLocationEnabled": true
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ],

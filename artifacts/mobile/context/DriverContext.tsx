@@ -2,7 +2,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { stopDriverBackgroundLocation } from "@/utils/driverBackgroundLocation";
+import {
+  isDriverPresenceOnlineModeRunning,
+  stopDriverPresenceEntirely,
+} from "@/utils/driverBackgroundLocation";
 import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import {
   syncDriverExpoPushTokenIfStale,
@@ -10,7 +13,8 @@ import {
 } from "@/utils/syncDriverExpoPushToken";
 
 const STORAGE_KEY = "@Onroda_driver_session";
-const DRIVER_HEARTBEAT_MS = 45_000;
+/** Aligns with ONLINE headless Markt-Ping (2 min); Push-Token-Resync bleibt aktiv. */
+const DRIVER_HEARTBEAT_MS = 120_000;
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
 
 async function syncFleetMarketAvailability(authToken: string, available: boolean): Promise<void> {
@@ -499,7 +503,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await stopDriverBackgroundLocation();
+    await stopDriverPresenceEntirely();
     try {
       if (driver?.authToken) {
         await fetch(`${API_BASE}/fleet-auth/logout`, {
@@ -610,7 +614,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     const t = setInterval(() => {
       void (async () => {
         const body: { lat?: number; lon?: number } = {};
-        if (driver.isAvailable) {
+        const androidOnlineFgs = await isDriverPresenceOnlineModeRunning();
+        if (driver.isAvailable && !androidOnlineFgs) {
           try {
             const { getLastKnownPositionAsync } = await import("expo-location");
             const pos = await getLastKnownPositionAsync();

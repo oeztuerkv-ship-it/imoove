@@ -55,9 +55,7 @@ import {
   sendRideChat,
 } from "@/utils/socket";
 import {
-  startDriverBackgroundLocation,
-  stopDriverBackgroundLocation,
-  isDriverBackgroundLocationRunning,
+  syncDriverPresenceState,
 } from "@/utils/driverBackgroundLocation";
 import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
@@ -198,6 +196,16 @@ export default function DriverNavigationScreen() {
 
   const { driverCancelRequest, requests } = useRideRequests();
   const { driver, refreshEinsatzbereit } = useDriver();
+  const driverMarketOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
+  const syncNavPresence = useCallback(
+    async (activeRideId?: string | null) => {
+      await syncDriverPresenceState({
+        isMarketOnline: driverMarketOnline,
+        activeRideId: activeRideId ?? params.rideId?.trim() ?? null,
+      });
+    },
+    [driverMarketOnline, params.rideId],
+  );
   const activeRide = useMemo(
     () => requests.find((r) => r.id === (params.rideId ?? "").trim()) ?? null,
     [requests, params.rideId],
@@ -514,7 +522,7 @@ export default function DriverNavigationScreen() {
         Alert.alert("No-Show", driverRideStatusUserMessage(code, body) ?? code);
         return;
       }
-      await stopDriverBackgroundLocation();
+      await syncNavPresence(null);
       disconnectSocket();
       trySpeak("Kunde nicht erschienen. Fahrt als No-Show abgeschlossen.", soundRef.current);
       replaceDriverStackExclusive({ pathname: "/driver/dashboard" } as Href);
@@ -724,7 +732,7 @@ export default function DriverNavigationScreen() {
         }
         if (payload.status !== "cancelled_by_customer") return;
         cancelHandledRef.current = true;
-        void stopDriverBackgroundLocation();
+        void syncNavPresence(null);
         Alert.alert(
           "Kunde hat storniert",
           payload.cancelReason ? `Grund: ${payload.cancelReason}` : "Die Fahrt wurde vom Kunden storniert.",
@@ -786,26 +794,19 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId) return;
-    void startDriverBackgroundLocation(rideId);
-  }, [params.rideId]);
+    void syncNavPresence(rideId);
+  }, [params.rideId, syncNavPresence]);
 
-  // GPS-Recovery: wenn App aus Hintergrund kommt, prüfen ob GPS noch läuft
   useEffect(() => {
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId) return;
     const sub = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        void (async () => {
-          const running = await isDriverBackgroundLocationRunning();
-          if (!running) {
-            console.log("[driverNav] GPS not running after resume — restarting");
-            await startDriverBackgroundLocation(rideId);
-          }
-        })();
+        void syncNavPresence(rideId);
       }
     });
     return () => sub.remove();
-  }, [params.rideId]);
+  }, [params.rideId, syncNavPresence]);
 
   const fareSettlementPreview = useMemo(() => {
     if (!driverMayBillPositiveFare(rideFleetStatus)) return null;
@@ -903,7 +904,7 @@ export default function DriverNavigationScreen() {
       const navDistanceKm = initialDistM > 0 ? Math.round(initialDistM / 100) / 10 : undefined;
       const navDurationMin = initialEtaMin > 0 ? Math.round(initialEtaMin) : undefined;
       await patchStatus("completed", fare, navDistanceKm, navDurationMin, plausibilityAck);
-      await stopDriverBackgroundLocation();
+      await syncNavPresence(null);
       setShowFareModal(false);
       disconnectSocket();
       trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);

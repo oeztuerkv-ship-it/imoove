@@ -26,6 +26,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DriverPresenceStatusBar } from "@/components/DriverPresenceStatusBar";
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
@@ -47,10 +48,9 @@ import {
 } from "@/utils/safeExpoLocation";
 import {
   ensureDriverBackgroundLocationPermissions,
-  startDriverBackgroundLocation,
-  stopDriverBackgroundLocation,
-  isDriverBackgroundLocationRunning,
+  syncDriverPresenceState,
 } from "@/utils/driverBackgroundLocation";
+import { maybeShowDriverBatteryOptimizationHint } from "@/utils/driverBatteryOptimizationHint";
 import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import {
   buildDriverNavigationHref,
@@ -1886,10 +1886,6 @@ function ActiveRideScreen({
     setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
   }, [showPriceModal, req.status]);
 
-  useEffect(() => {
-    void startDriverBackgroundLocation(req.id);
-  }, [req.id]);
-
   const isKK = isKrankenkasseRide(req.paymentMethod);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
@@ -2112,7 +2108,6 @@ function ActiveRideScreen({
     try {
       setShowPriceModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await stopDriverBackgroundLocation();
       await onComplete(fare);
     } finally {
       setCompletingRide(false);
@@ -3141,36 +3136,40 @@ export default function DriverDashboard() {
   const bgLocationPromptedRef = useRef(false);
 
   useEffect(() => {
+    if (!driver?.authToken) return;
+    void syncDriverPresenceState({
+      isMarketOnline: driverMarketOnline,
+      activeRideId: activeDriverRequest?.id ?? null,
+    }).then((result) => {
+      if (
+        Platform.OS === "android" &&
+        driverMarketOnline &&
+        !activeDriverRequest?.id &&
+        !result.onlineServiceStarted
+      ) {
+        void maybeShowDriverBatteryOptimizationHint({ reason: "fgs_failed" });
+      }
+    });
+  }, [driver?.authToken, driverMarketOnline, activeDriverRequest?.id]);
+
+  useEffect(() => {
     if (!driver?.authToken || !driverMarketOnline || bgLocationPromptedRef.current) return;
     bgLocationPromptedRef.current = true;
     void ensureDriverBackgroundLocationPermissions({ interactive: true }).catch(() => {});
   }, [driver?.authToken, driverMarketOnline]);
 
   useEffect(() => {
-    if (!activeDriverRequest?.id) {
-      void stopDriverBackgroundLocation();
-      return;
-    }
-    void startDriverBackgroundLocation(activeDriverRequest.id);
-  }, [activeDriverRequest?.id]);
-
-  // GPS-Recovery: wenn App aus Hintergrund kommt
-  useEffect(() => {
-    const rideId = activeDriverRequest?.id;
-    if (!rideId) return;
+    if (!driver?.authToken) return;
     const sub = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        void (async () => {
-          const running = await isDriverBackgroundLocationRunning();
-          if (!running) {
-            console.log("[driverDash] GPS not running after resume — restarting");
-            await startDriverBackgroundLocation(rideId);
-          }
-        })();
+        void syncDriverPresenceState({
+          isMarketOnline: driverMarketOnline,
+          activeRideId: activeDriverRequest?.id ?? null,
+        });
       }
     });
     return () => sub.remove();
-  }, [activeDriverRequest?.id]);
+  }, [driver?.authToken, driverMarketOnline, activeDriverRequest?.id]);
 
   useEffect(() => {
     if (!activeDriverRequest) return;
@@ -3188,7 +3187,6 @@ export default function DriverDashboard() {
     if (!myCancelled) return;
     if (cancelNoticeShownRef.current.has(myCancelled.id)) return;
     cancelNoticeShownRef.current.add(myCancelled.id);
-    void stopDriverBackgroundLocation();
     Alert.alert(
       "Kunde hat storniert",
       myCancelled.cancelReason
@@ -3332,7 +3330,6 @@ export default function DriverDashboard() {
     try {
       await completeRequest(id, finalFare);
     } finally {
-      await stopDriverBackgroundLocation();
       disconnectSocket();
       await refreshRequests();
       setActiveTab("fahrten");
@@ -3348,7 +3345,6 @@ export default function DriverDashboard() {
     setBannerRide(null);
     try {
       await driverCancelRequest(id, driverId);
-      await stopDriverBackgroundLocation();
       if (req?.scheduledAt) {
         const pickupMs = new Date(req.scheduledAt).getTime();
         const diffMin = (pickupMs - Date.now()) / 60000;
@@ -3394,7 +3390,6 @@ export default function DriverDashboard() {
               stopRideSound().catch(() => {});
               setBannerRide(null);
               await driverCancelRequest(req.id, driverId);
-              await stopDriverBackgroundLocation();
               if (nearPickup) {
                 await blockDriver48h();
               }
@@ -3661,6 +3656,9 @@ export default function DriverDashboard() {
                   try {
                     await refreshDriverMarketHard();
                     await setAvailable(true);
+                    if (Platform.OS === "android") {
+                      void maybeShowDriverBatteryOptimizationHint({ reason: "first_online" });
+                    }
                     await refreshDriverMarketHard();
                     setMarketPanelKey((k) => k + 1);
                   } finally {
@@ -3740,6 +3738,11 @@ export default function DriverDashboard() {
 
       {/* Content */}
       <View style={{ flex: 1, paddingTop: topPad + 75 }}>
+        <DriverPresenceStatusBar
+          isMarketOnline={driverMarketOnline}
+          hasActiveRide={Boolean(activeDriverRequest)}
+          onPressBatteryHint={() => void maybeShowDriverBatteryOptimizationHint({ force: true })}
+        />
         {adminMessage && !activeDriverRequest ? (
           <DriverAdminMessageBanner message={adminMessage} onDismiss={() => void dismissAdminMessage()} />
         ) : null}
