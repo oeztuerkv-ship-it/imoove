@@ -12,6 +12,7 @@ export function setNotificationAudience(opts: {
 
 const DRIVER_PUSH_KINDS = new Set([
   "instant_ride_offer",
+  "follow_up_offer",
   "reservation_activate_reminder",
   "reservation_missed_activation",
 ]);

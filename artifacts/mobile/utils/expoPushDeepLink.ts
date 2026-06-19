@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
 import { isDriverPushKind } from "@/utils/notificationAudience";
+import { requestDriverPushMarketRefresh } from "@/utils/driverPushMarketRefresh";
 
 const HANDLED_PUSH_RESPONSE_IDS_KEY = "@onroda/handledPushResponseIds";
 const MAX_HANDLED_PUSH_IDS = 50;
@@ -53,6 +54,7 @@ async function shouldHandlePushResponse(
 function navigateForPush(kind: string | null, rideId: string | null): void {
   if (!kind) return;
   if (isDriverPushKind(kind)) {
+    requestDriverPushMarketRefresh();
     router.push("/driver/dashboard");
     return;
   }

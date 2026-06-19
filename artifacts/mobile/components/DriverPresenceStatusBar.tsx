@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { getDriverPresenceSnapshot } from "@/utils/driverBackgroundLocation";
 import { isDriverPushReady } from "@/utils/syncDriverExpoPushToken";
@@ -32,11 +32,14 @@ export function DriverPresenceStatusBar(props: {
   isMarketOnline: boolean;
   hasActiveRide: boolean;
   onPressBatteryHint?: () => void;
+  onPressIosPushHint?: () => void;
 }) {
   const [chips, setChips] = useState<ChipModel[]>([]);
+  const [pushReady, setPushReady] = useState<"ok" | "denied" | "missing">("missing");
 
   const refresh = useCallback(async () => {
     const push = await isDriverPushReady();
+    setPushReady(push);
     const fg = await getForegroundPermissionsSafe();
     const bg = await getBackgroundPermissionsSafe();
     const presence = await getDriverPresenceSnapshot();
@@ -87,25 +90,54 @@ export function DriverPresenceStatusBar(props: {
     props.isMarketOnline &&
     chips.some((c) => c.key === "service" && c.state !== "ok");
 
+  const showIosPushAction =
+    Platform.OS === "ios" &&
+    props.isMarketOnline &&
+    pushReady !== "ok" &&
+    props.onPressIosPushHint;
+
+  const showIosOnlineNote =
+    Platform.OS === "ios" && props.isMarketOnline && !props.hasActiveRide;
+
   return (
-    <View style={styles.wrap}>
-      {chips.map((chip) => (
-        <View key={chip.key} style={[styles.chip, { borderColor: chipColor(chip.state) }]}>
-          <Text style={styles.chipText}>
-            {chip.label} {chipGlyph(chip.state)}
-          </Text>
-        </View>
-      ))}
-      {showBatteryAction && props.onPressBatteryHint ? (
-        <Pressable onPress={props.onPressBatteryHint} style={styles.hintBtn}>
-          <Text style={styles.hintText}>Akku-Hinweis</Text>
-        </Pressable>
+    <View style={styles.container}>
+      <View style={styles.wrap}>
+        {chips.map((chip) => (
+          <View key={chip.key} style={[styles.chip, { borderColor: chipColor(chip.state) }]}>
+            <Text style={styles.chipText}>
+              {chip.label} {chipGlyph(chip.state)}
+            </Text>
+          </View>
+        ))}
+        {showBatteryAction && props.onPressBatteryHint ? (
+          <Pressable onPress={props.onPressBatteryHint} style={styles.hintBtn}>
+            <Text style={styles.hintText}>Akku-Hinweis</Text>
+          </Pressable>
+        ) : null}
+        {showIosPushAction ? (
+          <Pressable onPress={props.onPressIosPushHint} style={styles.hintBtn}>
+            <Text style={styles.hintText}>Push aktivieren</Text>
+          </Pressable>
+        ) : null}
+        {pushReady !== "ok" && Platform.OS === "ios" ? (
+          <Pressable onPress={() => void Linking.openSettings()} style={styles.hintBtn}>
+            <Text style={styles.hintText}>Einstellungen</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {showIosOnlineNote ? (
+        <Text style={styles.iosNote}>
+          iOS: Nach Schließen der App Push antippen oder ONRODA öffnen — Aufträge erscheinen im Dashboard.
+        </Text>
       ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    paddingBottom: 4,
+  },
   wrap: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -135,5 +167,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: "#B45309",
     textDecorationLine: "underline",
+  },
+  iosNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    lineHeight: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
   },
 });

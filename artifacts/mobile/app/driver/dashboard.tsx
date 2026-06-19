@@ -51,6 +51,7 @@ import {
   syncDriverPresenceState,
 } from "@/utils/driverBackgroundLocation";
 import { maybeShowDriverBatteryOptimizationHint } from "@/utils/driverBatteryOptimizationHint";
+import { maybeShowDriverIosOnlinePushHint } from "@/utils/driverIosPushUx";
 import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import {
   buildDriverNavigationHref,
@@ -3658,6 +3659,8 @@ export default function DriverDashboard() {
                     await setAvailable(true);
                     if (Platform.OS === "android") {
                       void maybeShowDriverBatteryOptimizationHint({ reason: "first_online" });
+                    } else if (Platform.OS === "ios") {
+                      void maybeShowDriverIosOnlinePushHint();
                     }
                     await refreshDriverMarketHard();
                     setMarketPanelKey((k) => k + 1);
@@ -3742,6 +3745,7 @@ export default function DriverDashboard() {
           isMarketOnline={driverMarketOnline}
           hasActiveRide={Boolean(activeDriverRequest)}
           onPressBatteryHint={() => void maybeShowDriverBatteryOptimizationHint({ force: true })}
+          onPressIosPushHint={() => void maybeShowDriverIosOnlinePushHint()}
         />
         {adminMessage && !activeDriverRequest ? (
           <DriverAdminMessageBanner message={adminMessage} onDismiss={() => void dismissAdminMessage()} />

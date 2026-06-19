@@ -27,7 +27,8 @@ import {
 } from "@/utils/driverInstantMarketOffers";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { enqueueOfflineStatusPatch, flushOfflineStatusQueue } from "@/utils/offlineStatusQueue";
-import { setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
+import { isDriverPushKind, setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
+import { requestDriverPushMarketRefresh, setDriverPushMarketRefreshHandler } from "@/utils/driverPushMarketRefresh";
 import { sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
 
@@ -1010,15 +1011,23 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   }, [isDriverSurface, fleetAuthToken, fetchDriverMarket]);
 
   useEffect(() => {
+    setDriverPushMarketRefreshHandler(() => {
+      if (!fleetAuthToken) return;
+      void fetchDriverMarket({ hardReset: false });
+    });
+    return () => setDriverPushMarketRefreshHandler(null);
+  }, [fleetAuthToken, fetchDriverMarket]);
+
+  useEffect(() => {
     let sub: { remove: () => void } | null = null;
     void import("expo-notifications").then((Notifications) => {
       sub = Notifications.addNotificationReceivedListener((notification) => {
         const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
-        if (isDriverSurface && fleetAuthToken && kind === "instant_ride_offer") {
+        if (fleetAuthToken && isDriverPushKind(kind)) {
           void fetchDriverMarket({ hardReset: false });
           return;
         }
-        if (!isDriverSurface && typeof kind === "string" && kind !== "instant_ride_offer") {
+        if (!isDriverSurface && typeof kind === "string" && !isDriverPushKind(kind)) {
           void fetchAll();
         }
       });
@@ -1049,10 +1058,14 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") void fetchAll();
+      if (state !== "active") return;
+      void fetchAll();
+      if (fleetAuthToken) {
+        void fetchDriverMarket({ hardReset: false });
+      }
     });
     return () => sub.remove();
-  }, [fetchAll]);
+  }, [fetchAll, fetchDriverMarket, fleetAuthToken]);
 
   const patchStatus = useCallback(
     async (id: string, status: RequestStatus, finalFare?: number, driverId?: string, cancelReason?: string, driverCoords?: { lat: number; lon: number }) => {
