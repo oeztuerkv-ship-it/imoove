@@ -69,7 +69,7 @@ Details: Konstante `ROLE_MATRIX` in `panelPermissions.ts`.
 
 - **Pfad:** `GET` Upgrade auf `/ws` (gleicher Host wie API, z. B. `wss://api.onroda.de/ws`).
 - **Join:** Erste Nachricht muss `{ type: "join", rideId, token }` sein (alternativ `auth` statt `token`). **Ohne gültiges JWT kein Room-Join** — Fehlercodes `join_token_required`, `join_auth_invalid`, `join_forbidden`, `join_ride_id_required`, `join_ride_not_found`.
-- **Akzeptierte Token:** Fleet-Fahrer-JWT (`kind: fleet_driver`), Kunden-Session-JWT (`googleId` = `rides.passenger_id`), Partner-Panel-JWT (`company_id` muss zur Fahrt passen).
+- **Akzeptierte Token:** Fleet-Fahrer-JWT (`kind: fleet_driver`, inkl. `access_status === active` wie HTTP), Kunden-Session-JWT (`googleId` = `rides.passenger_id`), Partner-Panel-JWT (`company_id` muss zur Fahrt passen).
 - **Zuordnung:** `wsJoinPrincipalMatchesRide` in `src/lib/wsRideJoinAuth.ts` — Kunde nur eigene Fahrt, Fahrer nur zugewiesene Fahrt desselben Mandanten, Partner nur Fahrten des Mandanten.
 - **Nach Join:** Location/Chat nur mit gebundener `rideId`; fremde `rideId` → `ride_id_mismatch`; ohne Join → `join_required`.
 - **Idle:** Verbindung ohne Join innerhalb von 15 s → `join_timeout` + Close.

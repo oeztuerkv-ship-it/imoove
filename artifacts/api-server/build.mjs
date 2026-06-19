@@ -53,6 +53,7 @@ async function buildAll() {
     entryPoints: [
       path.resolve(artifactDir, "src/index.ts"),
       path.resolve(artifactDir, "src/scripts/emailVerificationSelftest.ts"),
+      path.resolve(artifactDir, "src/scripts/wsRideJoinAuthSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/invoicePdfSample.ts"),
       path.resolve(artifactDir, "src/scripts/invoicePdfStressTest.ts"),
     ],

@@ -36,6 +36,17 @@ httpServer.listen(port, () => {
   });
 
   // ── Hintergrund-Jobs: Reservierungs-Lifecycle alle 2 Minuten ──
+  // Job 1: scheduled → cancelled_by_system (10 min vor Abholung, kein Fahrer)
+  // Job 2: Push-Erinnerung scheduled_assigned (~45 min vor Abholung)
+  // Job 3a: scheduled_assigned → expired (Abholzeit + 45 min Puffer)
+  // Job 3b: scheduled → expired (Abholzeit vorbei)
+  // Job 3c: ready_for_dispatch → expired (Abholzeit + 45 min Puffer)
+  // Job 4: scheduled | scheduled_assigned → ready_for_dispatch (30-Min-Fenster)
+  // Job 5: (entfernt) — früher scheduled_assigned → scheduled; ersetzt durch 3a/3c → expired + Fahrer-Sperre
+  // Job 6: accepted → searching_driver | scheduled (Ghost, idle GPS)
+  // Job 7: searching_driver | ready_for_dispatch | in_progress → expired (created_at > 8h)
+  // Job 8: driver_late Meta-Flag (accepted, driver_arriving, scheduled_assigned)
+  // Job 9: Payment capture retry
   setInterval(async () => {
     try {
       const { getDb, isPostgresConfigured } = await import("./db/client.js");
@@ -60,7 +71,10 @@ httpServer.listen(port, () => {
           access_code_id: ridesTable.access_code_id,
         });
       if (noDriverCancelled.length > 0) {
-        logger.info({ count: noDriverCancelled.length }, "[Cron] Kein Fahrer → cancelled_by_system");
+        logger.info(
+          { count: noDriverCancelled.length, rideIds: noDriverCancelled.map((r) => r.id), fromStatus: "scheduled", toStatus: "cancelled_by_system" },
+          "[Cron Job 1] scheduled → cancelled_by_system",
+        );
         const { releaseAccessCodesForRideRows } = await import("./db/accessCodesData.js");
         await releaseAccessCodesForRideRows(noDriverCancelled);
         const { notifyCronRideStatusChange } = await import("./lib/cronRideStatusNotify.js");
@@ -76,7 +90,8 @@ httpServer.listen(port, () => {
 
       // Job 2: ca. 45 Min. vor Abholung → Fahrer erinnern (Aktivierung)
       const { claimRidesForDriverActivationReminderPush } = await import("./db/ridePushNotificationMarkers.js");
-      const { notifyDriverReservationActivationReminder } = await import("./lib/driverRideExpoPush.js");
+      const { notifyDriverReservationActivationReminder, notifyDriverMissedActivationReservation } =
+        await import("./lib/driverRideExpoPush.js");
       const reminderRows = await claimRidesForDriverActivationReminderPush(now);
       for (const row of reminderRows) {
         const did = typeof row.driver_id === "string" ? row.driver_id.trim() : "";
@@ -84,37 +99,55 @@ httpServer.listen(port, () => {
         if (did && cid) void notifyDriverReservationActivationReminder(did, cid, row.id);
       }
 
-      // Job 3: Vergangene Reservierungen → expired (vor Freigabe bei verpasster Aktivierung)
-      const { releaseMissedActivationReservations, expirePastAssignedReservations, expirePastScheduledReservations, promoteReservationsToReadyForDispatch } =
+      const applyMissedActivationSanctions = async (
+        rows: Array<{ id: string; driver_id: string | null; company_id: string | null }>,
+      ) => {
+        for (const row of rows) {
+          const did = typeof row.driver_id === "string" ? row.driver_id.trim() : "";
+          const cid = typeof row.company_id === "string" ? row.company_id.trim() : "";
+          if (!did || !cid) continue;
+          await setReservationSuspension(did, cid, new Date(nowMs + 24 * 60 * 60 * 1000));
+          logger.warn({ driverId: did, rideId: row.id }, "[Cron] Aktivierung verpasst → 24h Sperre (expired)");
+          void notifyDriverMissedActivationReservation(did, cid, row.id);
+        }
+      };
+
+      // Job 3: Vergangene Reservierungen → expired
+      const { expirePastAssignedReservations, expirePastScheduledReservations, promoteReservationsToReadyForDispatch, expireReadyForDispatchWithoutTripStart } =
         await import("./jobs/reservationLifecycle.js");
       const expiredAssigned = await expirePastAssignedReservations(now);
       if (expiredAssigned.length > 0) {
-        logger.info({ count: expiredAssigned.length }, "[Cron] scheduled_assigned → expired");
+        logger.info(
+          { count: expiredAssigned.length, rideIds: expiredAssigned.map((r) => r.id), fromStatus: "scheduled_assigned", toStatus: "expired" },
+          "[Cron Job 3a] scheduled_assigned → expired (Abholzeit + Puffer ohne Start)",
+        );
+        await applyMissedActivationSanctions(expiredAssigned);
       }
 
       const expiredScheduled = await expirePastScheduledReservations(now);
       if (expiredScheduled.length > 0) {
-        logger.info({ count: expiredScheduled.length }, "[Cron] scheduled → expired");
+        logger.info(
+          { count: expiredScheduled.length, rideIds: expiredScheduled.map((r) => r.id), fromStatus: "scheduled", toStatus: "expired" },
+          "[Cron Job 3b] scheduled → expired",
+        );
+      }
+
+      const expiredReadyDispatch = await expireReadyForDispatchWithoutTripStart(now);
+      if (expiredReadyDispatch.length > 0) {
+        logger.info(
+          { count: expiredReadyDispatch.length, rideIds: expiredReadyDispatch.map((r) => r.id), fromStatus: "ready_for_dispatch", toStatus: "expired" },
+          "[Cron Job 3c] ready_for_dispatch → expired (Abholzeit + Puffer ohne Aktivierung)",
+        );
+        await applyMissedActivationSanctions(expiredReadyDispatch);
       }
 
       // Job 4: 30-Min-Fenster vor Abholung → ready_for_dispatch
       const promoted = await promoteReservationsToReadyForDispatch(now);
       if (promoted.length > 0) {
-        logger.info({ count: promoted.length, rideIds: promoted.map((r) => r.id) }, "[Cron] Reservierung → ready_for_dispatch");
-      }
-
-      // Job 5: Fahrer hat 45 min nach Abholzeit noch nicht aktiviert → 24h Sperre + Fahrt freigeben
-      const activationDeadline = new Date(nowMs - 45 * 60 * 1000);
-      const missedActivation = await releaseMissedActivationReservations(activationDeadline);
-      const { notifyDriverMissedActivationReservation } = await import("./lib/driverRideExpoPush.js");
-      for (const ride of missedActivation) {
-        const did = typeof ride.driver_id === "string" ? ride.driver_id.trim() : "";
-        const cid = typeof ride.company_id === "string" ? ride.company_id.trim() : "";
-        if (did && cid) {
-          await setReservationSuspension(did, cid, new Date(nowMs + 24 * 60 * 60 * 1000));
-          logger.warn({ driverId: did, rideId: ride.id }, "[Cron] Aktivierung verpasst → 24h Sperre");
-          void notifyDriverMissedActivationReservation(did, cid, ride.id);
-        }
+        logger.info(
+          { count: promoted.length, rideIds: promoted.map((r) => r.id), fromStatuses: promoted.map((r) => r.previous_status), toStatus: "ready_for_dispatch" },
+          "[Cron Job 4] Reservierung → ready_for_dispatch",
+        );
       }
 
       // Job 6: accepted ohne GPS-Fortschritt → zurück in Pool (Ghost-Ride Recovery)
@@ -124,10 +157,13 @@ httpServer.listen(port, () => {
         logger.info({ count: ghostRecovered.length, rideIds: ghostRecovered }, "[Cron] Ghost-Rides recovered");
       }
 
-      // Job 7: >8h in searching_driver / ready_for_dispatch / in_progress → expired (Test-Hänger)
+      // Job 7: >8h in searching_driver / ready_for_dispatch / in_progress (created_at) → expired
       const staleExpired = await expireStaleOpenRides(nowMs);
       if (staleExpired.length > 0) {
-        logger.info({ count: staleExpired.length, rideIds: staleExpired }, "[Cron] Stale open rides → expired");
+        logger.info(
+          { count: staleExpired.length, rideIds: staleExpired, fromStatuses: ["searching_driver", "ready_for_dispatch", "in_progress"], toStatus: "expired" },
+          "[Cron Job 7] Stale open rides → expired (created_at-Schwelle)",
+        );
       }
 
       // Job 8: Fahrer 5+ Min nach Abholzeit noch nicht vor Ort

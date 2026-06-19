@@ -6,6 +6,9 @@ import { notifyCronRideStatusChange } from "../lib/cronRideStatusNotify";
 
 export const DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
 
+/** Abholzeit + Puffer ohne Fahrtbeginn → `expired` (`scheduled_assigned`, `ready_for_dispatch`). */
+export const DEFAULT_RESERVATION_NO_START_EXPIRE_BUFFER_MINUTES = 45;
+
 export type ExpiredScheduledRow = {
   id: string;
   passenger_id: string | null;
@@ -57,15 +60,21 @@ export type ExpiredAssignedRow = {
   id: string;
   passenger_id: string | null;
   access_code_id: string | null;
+  driver_id: string | null;
+  company_id: string | null;
 };
 
-/** Aktiver Cron: `scheduled_assigned` mit Abholzeit in der Vergangenheit → `expired`. */
+/** Aktiver Cron: `scheduled_assigned` mit Abholzeit + Puffer in der Vergangenheit → `expired`. */
 export async function expirePastAssignedReservations(
   now: Date = new Date(),
+  bufferMinutes: number = DEFAULT_RESERVATION_NO_START_EXPIRE_BUFFER_MINUTES,
 ): Promise<ExpiredAssignedRow[]> {
   if (!isPostgresConfigured()) return [];
   const db = getDb();
   if (!db) return [];
+
+  const bufferMs = Math.max(0, bufferMinutes) * 60 * 1000;
+  const expireBefore = new Date(now.getTime() - bufferMs);
 
   const rows = await db
     .update(ridesTable)
@@ -74,13 +83,15 @@ export async function expirePastAssignedReservations(
       and(
         eq(ridesTable.status, "scheduled_assigned"),
         isNotNull(ridesTable.scheduled_at),
-        lt(ridesTable.scheduled_at, now),
+        lt(ridesTable.scheduled_at, expireBefore),
       ),
     )
     .returning({
       id: ridesTable.id,
       passenger_id: ridesTable.passenger_id,
       access_code_id: ridesTable.access_code_id,
+      driver_id: ridesTable.driver_id,
+      company_id: ridesTable.company_id,
     });
 
   await releaseAccessCodesForRideRows(rows);
@@ -97,6 +108,61 @@ export async function expirePastAssignedReservations(
   return rows;
 }
 
+export type ExpiredReadyDispatchRow = {
+  id: string;
+  passenger_id: string | null;
+  access_code_id: string | null;
+  driver_id: string | null;
+  company_id: string | null;
+};
+
+/**
+ * Aktiver Cron: `ready_for_dispatch` nach Abholzeit + Puffer ohne Fahrtstart → `expired`.
+ * Schließt die Lücke nach Job 4 (Promotion), wenn der Fahrer nie aktiviert hat.
+ */
+export async function expireReadyForDispatchWithoutTripStart(
+  now: Date = new Date(),
+  bufferMinutes: number = DEFAULT_RESERVATION_NO_START_EXPIRE_BUFFER_MINUTES,
+): Promise<ExpiredReadyDispatchRow[]> {
+  if (!isPostgresConfigured()) return [];
+  const db = getDb();
+  if (!db) return [];
+
+  const bufferMs = Math.max(0, bufferMinutes) * 60 * 1000;
+  const expireBefore = new Date(now.getTime() - bufferMs);
+
+  const rows = await db
+    .update(ridesTable)
+    .set({ status: "expired" })
+    .where(
+      and(
+        eq(ridesTable.status, "ready_for_dispatch"),
+        isNotNull(ridesTable.scheduled_at),
+        lt(ridesTable.scheduled_at, expireBefore),
+      ),
+    )
+    .returning({
+      id: ridesTable.id,
+      passenger_id: ridesTable.passenger_id,
+      access_code_id: ridesTable.access_code_id,
+      driver_id: ridesTable.driver_id,
+      company_id: ridesTable.company_id,
+    });
+
+  await releaseAccessCodesForRideRows(rows);
+
+  for (const row of rows) {
+    notifyCronRideStatusChange({
+      rideId: row.id,
+      fromStatus: "ready_for_dispatch",
+      toStatus: "expired",
+      passengerId: row.passenger_id,
+    });
+  }
+
+  return rows;
+}
+
 export type ReactivatedScheduledRow = {
   id: string;
   passenger_id: string | null;
@@ -104,7 +170,7 @@ export type ReactivatedScheduledRow = {
   company_id: string | null;
 };
 
-/** Fahrer hat Aktivierung verpasst → zurück in Pool (`scheduled`, `driver_id` null). */
+/** @deprecated Job 3a/3c ersetzen diesen Pfad — nur noch für Tests/Migration behalten. */
 export async function releaseMissedActivationReservations(
   activationDeadline: Date,
 ): Promise<ReactivatedScheduledRow[]> {

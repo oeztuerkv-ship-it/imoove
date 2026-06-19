@@ -29,6 +29,7 @@ export async function resolveWsJoinPrincipal(rawToken: unknown): Promise<WsJoinP
       !row ||
       row.company_id !== claims.companyId ||
       !row.is_active ||
+      row.access_status !== "active" ||
       row.session_version !== claims.sessionVersion
     ) {
       return { kind: "invalid" };
