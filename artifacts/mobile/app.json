@@ -76,10 +76,12 @@
       ],
       "expo-router",
       "expo-font",
-      "expo-notifications",
-      {
-        "icon": "./assets/images/notification-icon.png"
-      },
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png"
+        }
+      ],
       "expo-web-browser",
       "expo-apple-authentication",
       "expo-asset",
