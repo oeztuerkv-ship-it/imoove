@@ -17,7 +17,10 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.onroda.de"
+        "EXPO_PUBLIC_API_URL": "https://api.onroda.de",
+        "EXPO_PUBLIC_GOOGLE_PLACES_KEY": "AIzaSyB-38lSMwwhRll_HMbgabScZzOBwsPJwB8",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyC6-pFE0kCcB-57r2ALZ81SAXys8_PpeoQ",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51Teq5sQ4wsI43nvfurqBVIAKcJkBda1gI0qLDspRASXSWtmnLv0B0Ician0fsJNizdZqiOXLB3jvVR1RJ3tvm4iq00LKghQwuD"
       },
       "android": {
         "buildType": "apk"
