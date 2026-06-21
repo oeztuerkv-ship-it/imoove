@@ -4,6 +4,7 @@ import { moneyDe } from "../dashboard/dashboardHelpers.js";
 import {
   apiPeriodForUi,
   billingMonthForSettlementPeriod,
+  buildSettlementExportQueryParams,
   formatShortDt,
   paymentMethodDe,
   paymentStatusDe,
@@ -89,6 +90,8 @@ export function SettlementKpiPeriodPanel({
   const [drillLoading, setDrillLoading] = useState(false);
   const [drillErr, setDrillErr] = useState("");
   const [drillRides, setDrillRides] = useState([]);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfErr, setPdfErr] = useState("");
 
   const selectedYear = selectedYearProp ?? metrics?.selectedYear ?? new Date().getFullYear();
   const availableYears = Array.isArray(metrics?.availableYears) ? metrics.availableYears : [selectedYear];
@@ -145,6 +148,37 @@ export function SettlementKpiPeriodPanel({
     if (drillOpen) void loadDrillDown();
   }, [drillOpen, loadDrillDown]);
 
+  const downloadPdf = useCallback(async () => {
+    if (!token) return;
+    setPdfLoading(true);
+    setPdfErr("");
+    try {
+      const p = buildSettlementExportQueryParams(periodKey, weekMode, selectedYear);
+      const res = await fetch(`${API_BASE}/panel/v1/overview/export-pdf?${p.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setPdfErr(typeof data?.error === "string" ? data.error : "PDF konnte nicht erstellt werden.");
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = /filename="([^"]+)"/.exec(cd);
+      const filename = match?.[1] ?? "Onroda-Abrechnung.pdf";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setPdfErr("PDF konnte nicht heruntergeladen werden.");
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [token, periodKey, weekMode, selectedYear]);
+
   if (metrics?.presentation !== "taxi_betrieb") return null;
   if (!periodData) return null;
 
@@ -159,7 +193,16 @@ export function SettlementKpiPeriodPanel({
         <p className="panel-kpi-tier-label" style={{ margin: 0 }}>
           Ihre Abrechnung
         </p>
-        <div className="panel-settlement-period-tabs" role="tablist" aria-label="Abrechnungszeitraum">
+        <div className="panel-settlement-panel__head-actions">
+          <button
+            type="button"
+            className="panel-settlement-export-pdf"
+            disabled={pdfLoading || !token}
+            onClick={() => void downloadPdf()}
+          >
+            {pdfLoading ? "PDF …" : "PDF für Steuerberater"}
+          </button>
+          <div className="panel-settlement-period-tabs" role="tablist" aria-label="Abrechnungszeitraum">
           {SETTLEMENT_PERIOD_OPTIONS.map((opt) => {
             const active = opt.key === periodKey;
             return (
@@ -179,7 +222,10 @@ export function SettlementKpiPeriodPanel({
             );
           })}
         </div>
+        </div>
       </div>
+
+      {pdfErr ? <p className="panel-page__warn">{pdfErr}</p> : null}
 
       {periodKey === "week" ? (
         <div className="panel-settlement-week-mode" role="group" aria-label="Wochenmodus">

@@ -120,6 +120,15 @@ export function apiPeriodForUi(periodKey, weekMode) {
   return periodKey;
 }
 
+/** URLSearchParams für settlement-rides / export-pdf. */
+export function buildSettlementExportQueryParams(periodKey, weekMode, selectedYear) {
+  const p = new URLSearchParams();
+  p.set("period", apiPeriodForUi(periodKey, weekMode));
+  if (periodKey === "week") p.set("weekMode", weekMode);
+  if (periodKey === "year") p.set("year", String(selectedYear));
+  return p;
+}
+
 /** Abgerechneter Endpreis oder Taxameter-Schätzung klar labeln. */
 export function settlementAmountCell(ride) {
   if (ride?.hasFinancials && ride.grossAmount != null) {

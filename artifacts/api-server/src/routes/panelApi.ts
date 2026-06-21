@@ -65,10 +65,16 @@ import {
   updateRide,
 } from "../db/ridesData";
 import {
+  getPanelSettlementOverviewExportSnapshot,
   listPanelSettlementRides,
   normalizePanelSettlementYear,
-  type PanelSettlementPeriodKey,
+  parsePanelSettlementPeriodQuery,
+  settlementExportPdfFilename,
 } from "../db/panelOverviewSettlementData";
+import {
+  buildPanelSettlementOverviewPdf,
+  companyAddressLinesForSettlementPdf,
+} from "../lib/panelSettlementOverviewPdf";
 import { driverLocations } from "./rides";
 import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
@@ -909,14 +915,6 @@ router.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next
   }
 });
 
-const PANEL_SETTLEMENT_PERIOD_KEYS = new Set<PanelSettlementPeriodKey>([
-  "today",
-  "week",
-  "weekCalendar",
-  "month",
-  "year",
-]);
-
 router.get("/panel/v1/overview/settlement-rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
@@ -925,22 +923,58 @@ router.get("/panel/v1/overview/settlement-rides", requirePanelAuth, async (req, 
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 
     const q = normalizeQueryRecord(req.query as Record<string, unknown>);
-    const periodRaw = typeof q.period === "string" ? q.period.trim() : "today";
-    const period = PANEL_SETTLEMENT_PERIOD_KEYS.has(periodRaw as PanelSettlementPeriodKey)
-      ? (periodRaw as PanelSettlementPeriodKey)
-      : "today";
-    const weekModeRaw = typeof q.weekMode === "string" ? q.weekMode.trim() : "rolling";
-    const weekMode = weekModeRaw === "calendar" ? "calendar" : "rolling";
-    const year = normalizePanelSettlementYear(q.year);
+    const periodQuery = parsePanelSettlementPeriodQuery(q);
     const limitRaw = typeof q.limit === "string" ? Number.parseInt(q.limit, 10) : 200;
     const limit = Number.isFinite(limitRaw) ? limitRaw : 200;
 
-    const result = await listPanelSettlementRides(
-      ctx.claims.companyId,
-      { period, weekMode, year },
-      limit,
-    );
+    const result = await listPanelSettlementRides(ctx.claims.companyId, periodQuery, limit);
     res.json({ ok: true, ...result });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/overview/export-pdf", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "overview")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+
+    const company = await getPanelCompanyById(ctx.claims.companyId);
+    const companyKind: PanelCompanyKind = company?.companyKind ?? ctx.profile.companyKind;
+    if (companyKind !== "taxi") {
+      res.status(403).json({ error: "taxi_only" });
+      return;
+    }
+
+    const q = normalizeQueryRecord(req.query as Record<string, unknown>);
+    const periodQuery = parsePanelSettlementPeriodQuery(q);
+    const snapshot = await getPanelSettlementOverviewExportSnapshot(ctx.claims.companyId, periodQuery);
+    if (!snapshot) {
+      res.status(503).json({ error: "export_unavailable" });
+      return;
+    }
+
+    const addr = company
+      ? companyAddressLinesForSettlementPdf(company)
+      : { displayName: ctx.profile.companyName ?? "Unternehmen", addressLines: [] as string[] };
+
+    const pdf = await buildPanelSettlementOverviewPdf({
+      company: {
+        name: addr.displayName,
+        addressLines: addr.addressLines,
+        vatId: company?.vatId?.trim() ? company.vatId.trim() : null,
+        taxId: company?.taxId?.trim() ? company.taxId.trim() : null,
+      },
+      snapshot,
+      generatedAt: new Date(),
+    });
+
+    const filename = settlementExportPdfFilename(addr.displayName, periodQuery);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(pdf);
   } catch (e) {
     next(e);
   }

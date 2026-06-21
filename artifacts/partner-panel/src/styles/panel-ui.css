@@ -830,10 +830,39 @@
 .panel-settlement-panel__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 6px;
+}
+
+.panel-settlement-panel__head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.panel-settlement-export-pdf {
+  border: 1px solid #0d9488;
+  background: #fff;
+  color: #0f766e;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.panel-settlement-export-pdf:hover:not(:disabled) {
+  background: #ecfdf5;
+}
+
+.panel-settlement-export-pdf:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .panel-settlement-panel__scope {
