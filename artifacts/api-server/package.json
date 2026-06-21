@@ -13,6 +13,7 @@
     "test:email-verification-unit": "pnpm run build && node ./dist/scripts/emailVerificationSelftest.mjs",
     "test:email-verification-http": "node ./scripts/test-email-verification-http.mjs",
     "test:ws-ride-join-auth": "pnpm run build && node --enable-source-maps ./dist/scripts/wsRideJoinAuthSelftest.mjs",
+    "retry-ride-payment-capture": "pnpm run build && node --enable-source-maps ./dist/scripts/retryRidePaymentCapture.mjs",
     "test:invoice-pdf-sample": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfSample.mjs",
     "test:invoice-pdf-stress": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfStressTest.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"

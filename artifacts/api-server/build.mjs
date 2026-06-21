@@ -56,6 +56,7 @@ async function buildAll() {
       path.resolve(artifactDir, "src/scripts/wsRideJoinAuthSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/invoicePdfSample.ts"),
       path.resolve(artifactDir, "src/scripts/invoicePdfStressTest.ts"),
+      path.resolve(artifactDir, "src/scripts/retryRidePaymentCapture.ts"),
     ],
     platform: "node",
     bundle: true,

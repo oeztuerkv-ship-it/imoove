@@ -277,7 +277,7 @@ import {
   sendPartnerRegistrationRejectionEmail,
 } from "../lib/partnerApprovalMail";
 import { logger } from "../lib/logger";
-import { passengerEmailForAdmin } from "../lib/ridePaymentRecovery";
+import { passengerEmailForAdmin, retryOperatorRidePaymentCapture } from "../lib/ridePaymentRecovery";
 import adminInsuranceRouter from "./adminInsuranceApi";
 import adminKrankenInvoiceRouter from "./adminKrankenInvoiceRoutes";
 import adminAppNewsRouter from "./adminAppNewsRouter";
@@ -1143,6 +1143,52 @@ adminJson.get("/payments/failed-rides", async (req, res, next) => {
       })),
     );
     res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Einmaliger Operator-Retry: Stripe-Capture für abgeschlossene Fahrt (pending/failed/authorized). */
+adminJson.post("/payments/rides/:rideId/capture-retry", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const outcome = await retryOperatorRidePaymentCapture(rideId, {
+      actorId: req.adminAuth?.username ?? null,
+    });
+    if (!outcome.ok) {
+      const status =
+        outcome.error === "not_found"
+          ? 404
+          : outcome.error === "ride_not_completed" ||
+              outcome.error === "payment_refunded" ||
+              outcome.error.startsWith("payment_status_") ||
+              outcome.error === "payment_method_not_stripe_wallet" ||
+              outcome.error === "capture_skipped"
+            ? 400
+            : 502;
+      res.status(status).json({ ok: false, ...outcome });
+      return;
+    }
+    const updated = await findRideAdminById(rideId);
+    res.json({
+      ok: true,
+      rideId: outcome.rideId,
+      alreadyPaid: outcome.alreadyPaid === true,
+      capturedAmountCents: outcome.capturedAmountCents,
+      cappedToAuthorization: outcome.cappedToAuthorization,
+      paymentStatus: updated?.paymentStatus ?? null,
+      stripePaymentIntentId: updated?.stripePaymentIntentId ?? null,
+      paymentCaptureAttemptCount: updated?.paymentCaptureAttemptCount ?? 0,
+      paymentCaptureLastError: updated?.paymentCaptureLastError ?? null,
+    });
   } catch (e) {
     next(e);
   }
