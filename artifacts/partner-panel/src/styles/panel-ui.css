@@ -822,6 +822,59 @@
   max-width: 68rem;
 }
 
+.panel-settlement-panel {
+  margin-bottom: 8px;
+  max-width: 68rem;
+}
+
+.panel-settlement-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.panel-settlement-panel__scope {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  color: #78716c;
+}
+
+.panel-settlement-period-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-settlement-period-tab {
+  border: 1px solid #d6d3d1;
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #57534e;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.panel-settlement-period-tab:hover {
+  border-color: #0d9488;
+  color: #0f766e;
+}
+
+.panel-settlement-period-tab--active {
+  background: #0d9488;
+  border-color: #0d9488;
+  color: #fff;
+}
+
+.panel-settlement-period-tab--active:hover {
+  color: #fff;
+}
+
 .panel-settlement-line {
   margin: 0;
   font-size: 0.82rem;

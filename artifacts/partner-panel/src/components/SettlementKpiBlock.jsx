@@ -1,4 +1,14 @@
+import { useMemo, useState } from "react";
 import { moneyDe } from "../dashboard/dashboardHelpers.js";
+
+/** @typedef {"today" | "week" | "month" | "year"} SettlementPeriodKey */
+
+export const SETTLEMENT_PERIOD_OPTIONS = [
+  { key: "today", label: "Tag", periodLabel: "Heute", scopeHint: "Kalendertag (Europe/Berlin)" },
+  { key: "week", label: "Woche", periodLabel: "7 Tage", scopeHint: "Rollierend 7×24 Stunden" },
+  { key: "month", label: "Monat", periodLabel: "Monat", scopeHint: "Kalendermonat (Europe/Berlin)" },
+  { key: "year", label: "Jahr", periodLabel: "Jahr", scopeHint: "Kalenderjahr (Europe/Berlin)" },
+];
 
 /**
  * @param {{ grossAmount?: unknown; commissionAmount?: unknown; operatorPayoutAmount?: unknown } | null | undefined} settlement
@@ -13,60 +23,81 @@ export function readSettlementWindow(settlement) {
 }
 
 /**
- * @param {{ gross: number; commission: number; payout: number }} s
- * @param {(n: number) => string} [formatMoney]
+ * @param {Record<string, unknown> | null | undefined} metrics
+ * @param {SettlementPeriodKey} periodKey
  */
-export function settlementLineText(s, formatMoney = moneyDe) {
-  return `${formatMoney(s.gross)} · Provision ${formatMoney(s.commission)} · Ihr Anteil ${formatMoney(s.payout)}`;
+export function readSettlementPeriod(metrics, periodKey) {
+  const period = metrics?.[periodKey];
+  if (!period || typeof period !== "object") return null;
+  const settlement = readSettlementWindow(period.settlement);
+  if (!settlement) return null;
+  const completedRides = Number(period.completedRides);
+  return {
+    settlement,
+    completedRides: Number.isFinite(completedRides) ? completedRides : 0,
+  };
 }
 
 /**
  * @param {{
  *   metrics: Record<string, unknown> | null | undefined;
  *   formatMoney?: (n: number) => string;
- *   hero?: boolean;
- *   periodKey?: "today" | "week" | "month";
- *   periodLabel?: string;
- *   layout?: "cards" | "line";
- *   Card?: (props: { value: string; label: string; hero?: boolean }) => import("react").ReactNode;
+ *   Card: (props: { value: string; label: string; hero?: boolean }) => import("react").ReactNode;
+ *   initialPeriod?: SettlementPeriodKey;
  * }} props
  */
-export function SettlementKpiBlock({
+export function SettlementKpiPeriodPanel({
   metrics,
   formatMoney = moneyDe,
-  hero = false,
-  periodKey = "today",
-  periodLabel = "Heute",
-  layout = "cards",
   Card,
+  initialPeriod = "today",
 }) {
-  if (metrics?.presentation !== "taxi_betrieb") return null;
-  const period = metrics?.[periodKey];
-  const settlement = readSettlementWindow(
-    period && typeof period === "object" ? period.settlement : null,
+  const [periodKey, setPeriodKey] = useState(initialPeriod);
+
+  const activeOption = useMemo(
+    () => SETTLEMENT_PERIOD_OPTIONS.find((o) => o.key === periodKey) ?? SETTLEMENT_PERIOD_OPTIONS[0],
+    [periodKey],
   );
-  if (!settlement) return null;
 
-  if (layout === "line") {
-    return (
-      <p className="panel-settlement-line" title={`Abrechnung ${periodLabel} (Finanz-Snapshot)`}>
-        <span className="panel-settlement-line__label">{periodLabel}:</span>{" "}
-        {settlementLineText(settlement, formatMoney)}
-      </p>
-    );
-  }
+  if (metrics?.presentation !== "taxi_betrieb") return null;
 
-  if (!Card) return null;
+  const periodData = readSettlementPeriod(metrics, periodKey);
+  if (!periodData) return null;
+
+  const { settlement, completedRides } = periodData;
 
   return (
-    <>
-      <p className="panel-kpi-tier-label">Ihre Abrechnung · {periodLabel}</p>
-      <div className={`panel-kpi-grid ${hero ? "panel-kpi-grid--tier1" : "panel-kpi-grid--tier2"}`}>
-        <Card hero={hero} value={formatMoney(settlement.gross)} label="Brutto" />
-        <Card hero={hero} value={formatMoney(settlement.commission)} label="ONRODA-Provision" />
-        <Card hero={hero} value={formatMoney(settlement.payout)} label="Ihr Anteil" />
+    <section className="panel-settlement-panel" aria-label="Ihre Abrechnung">
+      <div className="panel-settlement-panel__head">
+        <p className="panel-kpi-tier-label" style={{ margin: 0 }}>
+          Ihre Abrechnung
+        </p>
+        <div className="panel-settlement-period-tabs" role="tablist" aria-label="Abrechnungszeitraum">
+          {SETTLEMENT_PERIOD_OPTIONS.map((opt) => {
+            const active = opt.key === periodKey;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={`panel-settlement-period-tab${active ? " panel-settlement-period-tab--active" : ""}`}
+                onClick={() => setPeriodKey(opt.key)}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </>
+      <p className="panel-settlement-panel__scope">{activeOption.scopeHint}</p>
+      <div className="panel-kpi-grid panel-kpi-grid--tier1">
+        <Card hero value={formatMoney(settlement.gross)} label="Brutto" />
+        <Card hero value={formatMoney(settlement.commission)} label="ONRODA-Provision" />
+        <Card hero value={formatMoney(settlement.payout)} label="Ihr Anteil" />
+        <Card hero value={String(completedRides)} label={`Abgeschlossen · ${activeOption.periodLabel}`} />
+      </div>
+    </section>
   );
 }
 
@@ -74,30 +105,65 @@ export function SettlementKpiBlock({
  * @param {{
  *   metrics: Record<string, unknown> | null | undefined;
  *   formatMoney?: (n: number) => string;
+ *   initialPeriod?: SettlementPeriodKey;
  * }} props
  */
-export function DashboardSettlementCards({ metrics, formatMoney = moneyDe }) {
+export function DashboardSettlementPeriodPanel({ metrics, formatMoney = moneyDe, initialPeriod = "today" }) {
+  const [periodKey, setPeriodKey] = useState(initialPeriod);
+
+  const activeOption = useMemo(
+    () => SETTLEMENT_PERIOD_OPTIONS.find((o) => o.key === periodKey) ?? SETTLEMENT_PERIOD_OPTIONS[0],
+    [periodKey],
+  );
+
   if (metrics?.presentation !== "taxi_betrieb") return null;
-  const settlement = readSettlementWindow(metrics?.today?.settlement);
-  if (!settlement) return null;
+
+  const periodData = readSettlementPeriod(metrics, periodKey);
+  if (!periodData) return null;
+
+  const { settlement, completedRides } = periodData;
 
   return (
-    <>
-      <div className="partner-dashboard-kpi-card">
-        <p className="partner-dashboard-kpi-card__title">Brutto heute</p>
-        <p className="partner-dashboard-kpi-card__value">{formatMoney(settlement.gross)}</p>
-        <p className="partner-dashboard-kpi-card__hint">Finanz-Snapshot abgeschlossene Fahrten</p>
+    <div className="partner-settlement-panel partner-dashboard-kpi-card" style={{ gridColumn: "1 / -1" }}>
+      <div className="panel-settlement-panel__head">
+        <p className="partner-dashboard-kpi-card__title" style={{ margin: 0 }}>
+          Ihre Abrechnung
+        </p>
+        <div className="panel-settlement-period-tabs" role="tablist" aria-label="Abrechnungszeitraum">
+          {SETTLEMENT_PERIOD_OPTIONS.map((opt) => {
+            const active = opt.key === periodKey;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={`panel-settlement-period-tab${active ? " panel-settlement-period-tab--active" : ""}`}
+                onClick={() => setPeriodKey(opt.key)}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <div className="partner-dashboard-kpi-card">
-        <p className="partner-dashboard-kpi-card__title">ONRODA-Provision</p>
-        <p className="partner-dashboard-kpi-card__value">{formatMoney(settlement.commission)}</p>
-        <p className="partner-dashboard-kpi-card__hint">Heute (Kalendertag Berlin)</p>
+      <p className="partner-dashboard-kpi-card__hint" style={{ margin: "8px 0 12px" }}>
+        {activeOption.scopeHint} · {completedRides} abgeschlossen
+      </p>
+      <div className="partner-settlement-metrics-row">
+        <div>
+          <p className="partner-settlement-metrics-row__lbl">Brutto</p>
+          <p className="partner-settlement-metrics-row__val">{formatMoney(settlement.gross)}</p>
+        </div>
+        <div>
+          <p className="partner-settlement-metrics-row__lbl">ONRODA-Provision</p>
+          <p className="partner-settlement-metrics-row__val">{formatMoney(settlement.commission)}</p>
+        </div>
+        <div>
+          <p className="partner-settlement-metrics-row__lbl">Ihr Anteil</p>
+          <p className="partner-settlement-metrics-row__val">{formatMoney(settlement.payout)}</p>
+        </div>
       </div>
-      <div className="partner-dashboard-kpi-card">
-        <p className="partner-dashboard-kpi-card__title">Ihr Anteil</p>
-        <p className="partner-dashboard-kpi-card__value">{formatMoney(settlement.payout)}</p>
-        <p className="partner-dashboard-kpi-card__hint">Netto-Auszahlung heute</p>
-      </div>
-    </>
+    </div>
   );
 }

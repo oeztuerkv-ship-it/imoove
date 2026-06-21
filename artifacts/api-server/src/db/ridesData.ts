@@ -1147,14 +1147,17 @@ export type PanelCompanyOverviewMetrics = {
    * `leistungspartner`: Hotel / Krankenkasse / Corporate / Gutschein — Fahrtwerte als Leistungs-/Kostenvolumen, nicht als Taxi-Umsatz.
    */
   presentation: "taxi_betrieb" | "leistungspartner";
-  /** Kalendertag / Monat: Mitternacht Europe/Berlin. Woche: rollierend 7×24h ab jetzt (DB-Zeit). */
+  /** Kalendertag / Monat / Jahr: Mitternacht Europe/Berlin. Woche: rollierend 7×24h ab jetzt (DB-Zeit). */
   zone: "Europe/Berlin";
   weekScope: "rolling_7d";
+  yearScope: "calendar_year";
   today: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
   week: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
   /** Rollierend 30×24h ab jetzt (wie `week`, nur längeres Fenster). */
   rolling30: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
   month: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
+  /** Kalenderjahr Europe/Berlin, nach `created_at`. */
+  year: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
   openRides: number;
   /** Kalendermonat Europe/Berlin, nach `created_at`. */
   monthDecided: {
@@ -1200,6 +1203,8 @@ export async function getPanelCompanyOverviewMetrics(
     const thirtyStart = now - 30 * 24 * 3600 * 1000;
     const monthStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), 1);
     const monthEnd = Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1);
+    const yearStart = Date.UTC(u.getUTCFullYear(), 0, 1);
+    const yearEnd = Date.UTC(u.getUTCFullYear() + 1, 0, 1);
     const tomorrowStart = dayEnd;
     const tomorrowEnd = tomorrowStart + 24 * 3600 * 1000;
     const inCreated = (r: RideRequest, a: number, b: number) => {
@@ -1212,6 +1217,7 @@ export async function getPanelCompanyOverviewMetrics(
     const weekRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= weekStart);
     const thirtyRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= thirtyStart);
     const monthRides = completedIn(monthStart, monthEnd);
+    const yearRides = completedIn(yearStart, yearEnd);
     const openRides = list.filter((r) => !PANEL_OVERVIEW_TERMINAL_STATUSES.includes(r.status)).length;
 
     const monthList = list.filter((r) => inCreated(r, monthStart, monthEnd));
@@ -1245,6 +1251,7 @@ export async function getPanelCompanyOverviewMetrics(
       presentation,
       zone: "Europe/Berlin",
       weekScope: "rolling_7d",
+      yearScope: "calendar_year",
       today: {
         completedRides: todayRides.length,
         revenue: todayRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
@@ -1265,6 +1272,11 @@ export async function getPanelCompanyOverviewMetrics(
         revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
         settlement: { ...EMPTY_PANEL_SETTLEMENT },
       },
+      year: {
+        completedRides: yearRides.length,
+        revenue: yearRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+        settlement: { ...EMPTY_PANEL_SETTLEMENT },
+      },
       openRides,
       monthDecided: { completedRides: compM, cancelledRides: cancM, cancelRate },
       scheduled: { todayCount: scheduledTodayCount, tomorrowCount: scheduledTomorrowCount },
@@ -1282,6 +1294,8 @@ export async function getPanelCompanyOverviewMetrics(
   const berlinTomorrowEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '2 day') AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinYearStart = sql`(date_trunc('year', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinYearEnd = sql`((date_trunc('year', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 year') AT TIME ZONE 'Europe/Berlin')`;
   const weekRollingStart = sql`(now() - interval '7 days')`;
   const thirtyRollingStart = sql`(now() - interval '30 days')`;
 
@@ -1321,6 +1335,16 @@ export async function getPanelCompanyOverviewMetrics(
     .from(ridesTable)
     .where(
       and(baseCompleted, gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd)),
+    );
+
+  const [yearRow] = await db
+    .select({
+      completedRides: sql<number>`count(*)::int`,
+      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    })
+    .from(ridesTable)
+    .where(
+      and(baseCompleted, gte(ridesTable.created_at, berlinYearStart), lt(ridesTable.created_at, berlinYearEnd)),
     );
 
   const [openRow] = await db
@@ -1384,7 +1408,8 @@ export async function getPanelCompanyOverviewMetrics(
   const avgDistanceKm =
     completedMonthN > 0 ? Number(qualRow?.avgKm ?? 0) : null;
 
-  const [todaySettlement, weekSettlement, thirtySettlement, monthSettlement] = await Promise.all([
+  const [todaySettlement, weekSettlement, thirtySettlement, monthSettlement, yearSettlement] =
+    await Promise.all([
     queryPanelFinancialSettlement(
       db,
       companyId,
@@ -1397,6 +1422,11 @@ export async function getPanelCompanyOverviewMetrics(
       companyId,
       and(gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd)),
     ),
+    queryPanelFinancialSettlement(
+      db,
+      companyId,
+      and(gte(ridesTable.created_at, berlinYearStart), lt(ridesTable.created_at, berlinYearEnd)),
+    ),
   ]);
 
   return {
@@ -1404,6 +1434,7 @@ export async function getPanelCompanyOverviewMetrics(
     presentation,
     zone: "Europe/Berlin",
     weekScope: "rolling_7d",
+    yearScope: "calendar_year",
     today: {
       completedRides: Number(todayRow?.completedRides ?? 0),
       revenue: Number(todayRow?.revenue ?? 0),
@@ -1423,6 +1454,11 @@ export async function getPanelCompanyOverviewMetrics(
       completedRides: Number(monthRow?.completedRides ?? 0),
       revenue: Number(monthRow?.revenue ?? 0),
       settlement: monthSettlement,
+    },
+    year: {
+      completedRides: Number(yearRow?.completedRides ?? 0),
+      revenue: Number(yearRow?.revenue ?? 0),
+      settlement: yearSettlement,
     },
     openRides: Number(openRow?.openRides ?? 0),
     monthDecided: {

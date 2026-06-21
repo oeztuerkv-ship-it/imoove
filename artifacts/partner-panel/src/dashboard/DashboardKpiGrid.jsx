@@ -1,5 +1,5 @@
 import { moneyDe } from "./dashboardHelpers.js";
-import { DashboardSettlementCards } from "../components/SettlementKpiBlock.jsx";
+import { DashboardSettlementPeriodPanel } from "../components/SettlementKpiBlock.jsx";
 
 /** @param {{ metrics: object | null; metricsError: string | null; fleetDash: object | null; fleetDashError: string | null; medicalOpen: number; ridesLoaded: boolean; onNavigateMedical?: () => void; featureKkModule?: boolean }} props */
 export default function DashboardKpiGrid({
@@ -79,7 +79,7 @@ export default function DashboardKpiGrid({
           {c.action ?? null}
         </div>
       ))}
-      {showTaxiSettlement ? <DashboardSettlementCards metrics={metrics} /> : null}
+      {showTaxiSettlement ? <DashboardSettlementPeriodPanel metrics={metrics} /> : null}
     </div>
   );
 }

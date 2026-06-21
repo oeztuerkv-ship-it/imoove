@@ -822,6 +822,38 @@
   color: #71717a;
 }
 
+.partner-settlement-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .partner-settlement-metrics-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-settlement-metrics-row__lbl {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #78716c;
+}
+
+.partner-settlement-metrics-row__val {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.partner-settlement-panel .panel-settlement-panel__head {
+  margin-bottom: 0;
+}
+
 .partner-dashboard-today-cols {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
