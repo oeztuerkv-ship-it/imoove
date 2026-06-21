@@ -4,6 +4,10 @@ import { listFleetDriverExpoPushTokens } from "../db/fleetDriverExpoPushData";
 import { isFarFutureReservation } from "./dispatchStatus";
 import { sendExpoPushMessages, type ExpoPushMessage } from "./expoPushGateway";
 
+/** Muss zu gebündeltem Sound in Mobile `app.json` → expo-notifications `sounds` passen. */
+export const DRIVER_RIDE_OFFER_PUSH_SOUND = "ride_alert";
+export const DRIVER_RIDE_OFFER_CHANNEL_ID = "ride-offers-v2";
+
 const INSTANT_OFFER_STATUSES = new Set<RideRequest["status"]>([
   "pending",
   "requested",
@@ -48,9 +52,9 @@ export async function notifyMarketOnlineDriversInstantRideOffer(ride: RideReques
         to,
         title: "Neue Fahrt",
         body,
-        sound: "default",
+        sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
         priority: "high",
-        channelId: "ride-offers",
+        channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
         data: { kind: "instant_ride_offer", rideId: ride.id },
       });
     }
@@ -75,9 +79,9 @@ export async function notifyDriverFollowUpOffer(
       to,
       title: "Nächste Fahrt in der Nähe",
       body: `${distLabel} entfernt · ${fromLabel}`,
-      sound: "default",
+      sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
       priority: "high",
-      channelId: "ride-offers",
+      channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
       data: { kind: "follow_up_offer", rideId: ride.id, distanceKm },
     })),
   );

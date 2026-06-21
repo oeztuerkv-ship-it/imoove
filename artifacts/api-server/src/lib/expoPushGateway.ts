@@ -7,7 +7,8 @@ export type ExpoPushMessage = {
   title: string;
   body: string;
   data?: Record<string, unknown>;
-  sound?: "default" | null;
+  /** iOS/Android: basename des gebündelten Custom-Sounds (z. B. `ride_alert`) oder `default`. */
+  sound?: string | null;
   priority?: "default" | "normal" | "high";
   channelId?: string;
 };

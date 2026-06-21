@@ -1,5 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+import {
+  DRIVER_RIDE_OFFER_CHANNEL_ID,
+  DRIVER_RIDE_OFFER_PUSH_SOUND,
+} from "@/constants/driverPushNotifications";
 import { getApiBaseUrl } from "./apiBase";
 import { ensureExpoNotificationsHandler } from "./ensureExpoNotificationsHandler";
 
@@ -106,12 +110,13 @@ export async function syncDriverExpoPushToken(opts: {
     }
 
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("ride-offers", {
+      await Notifications.setNotificationChannelAsync(DRIVER_RIDE_OFFER_CHANNEL_ID, {
         name: "Neue Fahrten",
         importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 300, 200, 300],
-        sound: "default",
+        vibrationPattern: [0, 700, 300, 700, 2000],
+        sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
         enableVibrate: true,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
       await Notifications.setNotificationChannelAsync("ride-updates", {
         name: "Fahrten-Updates",

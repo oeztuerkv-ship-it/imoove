@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
-      "buildNumber": "30",
+      "buildNumber": "31",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
         "NSCameraUsageDescription": "ONRODA nutzt die Kamera zum Scannen von Transportscheinen und Fahrt-QR-Codes.",
@@ -50,7 +50,7 @@
     },
     "android": {
       "package": "com.vedat.Onroda",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
@@ -79,9 +79,11 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png"
+          "icon": "./assets/images/notification-icon.png",
+          "sounds": ["./assets/ride_alert.caf"]
         }
       ],
+      "./plugins/withAndroidRideAlertPushSound.js",
       "expo-web-browser",
       "expo-apple-authentication",
       "expo-asset",
