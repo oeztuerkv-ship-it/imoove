@@ -4,7 +4,7 @@ import { hasPanelModule } from "../lib/panelNavigation.js";
 import { SettlementKpiPeriodPanel } from "./SettlementKpiBlock.jsx";
 import DashboardQuickActions from "../dashboard/DashboardQuickActions.jsx";
 import DashboardTodaySection from "../dashboard/DashboardTodaySection.jsx";
-import { medicalOpenOperationsCount } from "../dashboard/dashboardHelpers.js";
+import { medicalOpenOperationsCount, isPlannedScheduledRideStatus } from "../dashboard/dashboardHelpers.js";
 import {
   fareCellLabeled,
   formatEur,
@@ -126,7 +126,12 @@ export default function TaxiDashboardCockpit({
     const open = list.filter((r) => isOpenRide(r.status)).slice(0, 12);
     const today0 = startOfLocalDay(new Date());
     const planned = list
-      .filter((r) => r.scheduledAt && isLocalCalendarDay(r.scheduledAt, today0))
+      .filter(
+        (r) =>
+          r.scheduledAt &&
+          isPlannedScheduledRideStatus(r.status) &&
+          isLocalCalendarDay(r.scheduledAt, today0),
+      )
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
       .slice(0, 12);
     return { last, open, planned };

@@ -1104,6 +1104,13 @@ const PANEL_OVERVIEW_CANCELLED_STATUSES: RideRequest["status"][] = [
   "cancelled_by_system",
 ];
 
+/** Reservierung noch aktiv — KPI „Geplant heute/morgen“ (scheduled_at-Fenster). */
+const PANEL_SCHEDULED_PLANNED_STATUSES: RideRequest["status"][] = [
+  "scheduled",
+  "scheduled_assigned",
+  "ready_for_dispatch",
+];
+
 function panelOverviewRideRevenue(r: RideRequest): number {
   const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
   return Number.isFinite(a) ? a : 0;
@@ -1161,7 +1168,7 @@ export type PanelCompanyOverviewMetrics = {
     /** Anteil Stornos unter (abgeschlossen + storniert), null wenn kein Entscheidungsfall. */
     cancelRate: number | null;
   };
-  /** Fahrten mit gesetztem `scheduled_at` im Berlin-Kalenderfenster (alle Status). */
+  /** Fahrten mit gesetztem `scheduled_at` im Berlin-Kalenderfenster (nur aktive Reservierung). */
   scheduled: { todayCount: number; tomorrowCount: number };
   /** Nur abgeschlossene Fahrten im Berlin-Monat. */
   monthCompletedQuality: {
@@ -1247,6 +1254,7 @@ export async function getPanelCompanyOverviewMetrics(
 
     const schedIn = (a: number, b: number) =>
       list.filter((r) => {
+        if (!PANEL_SCHEDULED_PLANNED_STATUSES.includes(r.status)) return false;
         if (!r.scheduledAt) return false;
         const t = new Date(r.scheduledAt).getTime();
         return t >= a && t < b;
@@ -1369,6 +1377,7 @@ export async function getPanelCompanyOverviewMetrics(
         and(
           companyIdMatchCondition(companyId),
           isNotNull(ridesTable.scheduled_at),
+          inArray(ridesTable.status, PANEL_SCHEDULED_PLANNED_STATUSES),
           gte(ridesTable.scheduled_at, berlinTodayStart),
           lt(ridesTable.scheduled_at, berlinTodayEnd),
         ),
@@ -1381,6 +1390,7 @@ export async function getPanelCompanyOverviewMetrics(
         and(
           companyIdMatchCondition(companyId),
           isNotNull(ridesTable.scheduled_at),
+          inArray(ridesTable.status, PANEL_SCHEDULED_PLANNED_STATUSES),
           gte(ridesTable.scheduled_at, berlinTomorrowStart),
           lt(ridesTable.scheduled_at, berlinTomorrowEnd),
         ),

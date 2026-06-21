@@ -35,13 +35,20 @@ export function isoToBerlinYmd(iso) {
   }).format(d);
 }
 
+/** Reservierung noch aktiv (Geplant-KPI / Heute-Liste). */
+export function isPlannedScheduledRideStatus(status) {
+  const s = String(status ?? "").trim();
+  return s === "scheduled" || s === "scheduled_assigned" || s === "ready_for_dispatch";
+}
+
 /**
- * Fahrten mit geplantem Termin heute (Europe/Berlin).
+ * Fahrten mit geplantem Termin heute (Europe/Berlin), nur aktive Reservierung.
  * @param {Record<string, unknown>[]} rides
  */
 export function ridesScheduledTodayBerlin(rides) {
   const today = berlinTodayYmd();
   return rides.filter((r) => {
+    if (!isPlannedScheduledRideStatus(r.status)) return false;
     const ymd = isoToBerlinYmd(typeof r.scheduledAt === "string" ? r.scheduledAt : null);
     return ymd === today;
   });
