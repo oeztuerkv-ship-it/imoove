@@ -1,6 +1,23 @@
 import PDFDocument from "pdfkit";
 
 import type { PanelSettlementOverviewExportSnapshot } from "../db/panelOverviewSettlementData";
+import { ONRODA_INVOICE_BRAND, ONRODA_INVOICE_SELLER } from "./invoice/invoiceBrand";
+import {
+  createPdfContext,
+  INVOICE_LAYOUT,
+  INVOICE_MARGINS,
+  type InvoicePdfContext,
+} from "./invoice/invoiceLayout";
+import {
+  drawInvoiceFooterOnCurrentPage,
+  drawInvoiceTableHeader,
+  drawInvoiceTableRow,
+  drawInvoiceTotalsCard,
+  drawOnrodaLogoBlock,
+  drawPartyColumns,
+  type InvoiceTableColumn,
+  type InvoiceTableRow,
+} from "./invoice/invoicePdfComponents";
 
 export type PanelSettlementOverviewPdfCompany = {
   name: string;
@@ -26,65 +43,94 @@ function fmtPct(rate: number | null): string {
   return Number.isInteger(pct) ? `${pct} %` : `${pct.toFixed(1).replace(".", ",")} %`;
 }
 
-function drawRow(
-  doc: InstanceType<typeof PDFDocument>,
-  label: string,
-  value: string,
-  y: number,
-  width: number,
-  opts?: { boldValue?: boolean; labelWidth?: number },
-): number {
-  const labelW = opts?.labelWidth ?? width * 0.52;
-  doc.font("Helvetica").fontSize(10).fillColor("#6b7280").text(label, 50, y, { width: labelW });
-  doc
-    .font(opts?.boldValue === false ? "Helvetica" : "Helvetica-Bold")
-    .fontSize(10)
-    .fillColor("#111827")
-    .text(value, 50 + labelW, y, { width: width - labelW, align: "right" });
-  return y + 18;
+function hexColor(doc: PDFDocument, hex: string) {
+  doc.fillColor(hex);
 }
 
-function drawSectionTitle(doc: InstanceType<typeof PDFDocument>, title: string, y: number): number {
-  doc.font("Helvetica-Bold").fontSize(10).fillColor("#374151").text(title.toUpperCase(), 50, y);
-  return y + 18;
+function drawSettlementPageHeader(ctx: InvoicePdfContext, periodTitle: string): number {
+  const { doc } = ctx;
+  const top = INVOICE_MARGINS.top;
+  const left = ctx.contentLeft;
+  const right = ctx.contentRight;
+
+  const logoBottom = drawOnrodaLogoBlock(doc, left, top, 1);
+
+  const titleX = right - 180;
+  doc.font("Helvetica-Bold").fontSize(14);
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.text("ABRECHNUNG", titleX, top, { width: 180, align: "right" });
+  doc.font("Helvetica").fontSize(10);
+  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+  doc.text("Ihre Abrechnungsübersicht", titleX, top + 20, { width: 180, align: "right" });
+  doc.font("Helvetica-Bold").fontSize(11);
+  hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+  doc.text(periodTitle, titleX, top + 36, { width: 180, align: "right" });
+
+  const lineY = Math.max(logoBottom + 6, top + INVOICE_LAYOUT.headerHeight - 8);
+  doc.moveTo(left, lineY).lineTo(right, lineY).lineWidth(0.75).strokeColor(ONRODA_INVOICE_BRAND.accent).stroke();
+
+  return lineY + INVOICE_LAYOUT.sectionGap;
 }
 
-function drawTable(
-  doc: InstanceType<typeof PDFDocument>,
-  headers: string[],
-  rows: string[][],
-  colWidths: number[],
-  startY: number,
-  tableWidth: number,
+function drawSettlementMetaBar(
+  ctx: InvoicePdfContext,
+  items: Array<{ label: string; value: string }>,
 ): number {
-  const rowH = 22;
-  const headerH = 24;
-  let y = startY;
+  const { doc } = ctx;
+  const y = ctx.y;
+  const h = INVOICE_LAYOUT.metaBarHeight;
+  doc.roundedRect(ctx.contentLeft, y, ctx.contentWidth, h, 6).fill(ONRODA_INVOICE_BRAND.surface);
 
-  doc.roundedRect(50, y, tableWidth, headerH, 4).fill("#f3f4f6");
-  let x = 50;
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#374151");
-  for (let i = 0; i < headers.length; i += 1) {
-    doc.text(headers[i] ?? "", x + 8, y + 7, { width: (colWidths[i] ?? 0) - 16 });
-    x += colWidths[i] ?? 0;
+  const colW = ctx.contentWidth / items.length;
+  items.forEach((item, i) => {
+    const x = ctx.contentLeft + 14 + i * colW;
+    doc.font("Helvetica").fontSize(8);
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    doc.text(item.label.toUpperCase(), x, y + 10, { width: colW - 20 });
+    doc.font("Helvetica-Bold").fontSize(10);
+    hexColor(doc, ONRODA_INVOICE_BRAND.text);
+    doc.text(item.value, x, y + 22, { width: colW - 20 });
+  });
+
+  return y + h + INVOICE_LAYOUT.sectionGap;
+}
+
+function companyRecipientLines(company: PanelSettlementOverviewPdfCompany): string[] {
+  const lines = [...company.addressLines];
+  if (company.vatId?.trim()) lines.push(`USt-IdNr.: ${company.vatId.trim()}`);
+  if (company.taxId?.trim()) lines.push(`Steuernummer: ${company.taxId.trim()}`);
+  if (lines.length === 0 && !company.vatId && !company.taxId) {
+    lines.push("Adresse und Steuerdaten noch nicht im Mandantenstamm hinterlegt.");
   }
-  y += headerH;
+  return lines;
+}
 
-  doc.font("Helvetica").fontSize(9).fillColor("#111827");
-  for (let r = 0; r < rows.length; r += 1) {
-    const bg = r % 2 === 0 ? "#ffffff" : "#fafafa";
-    doc.rect(50, y, tableWidth, rowH).fill(bg);
-    x = 50;
-    for (let c = 0; c < rows[r]!.length; c += 1) {
-      doc.fillColor("#111827").text(rows[r]![c] ?? "—", x + 8, y + 6, { width: (colWidths[c] ?? 0) - 16 });
-      x += colWidths[c] ?? 0;
-    }
-    doc.moveTo(50, y + rowH).lineTo(50 + tableWidth, y + rowH).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
-    y += rowH;
-  }
+function paymentTableColumns(contentWidth: number): InvoiceTableColumn[] {
+  const countW = 64;
+  const amountW = 96;
+  const typeW = contentWidth - countW - amountW;
+  return [
+    { key: "type", title: "Zahlungsart", width: typeW, align: "left" },
+    { key: "amount", title: "Betrag", width: amountW, align: "right" },
+    { key: "count", title: "Anzahl", width: countW, align: "right" },
+  ];
+}
 
-  doc.rect(50, startY, tableWidth, y - startY).strokeColor("#e5e7eb").lineWidth(0.75).stroke();
-  return y + 10;
+function drawInfoBox(ctx: InvoicePdfContext, title: string, body: string): number {
+  const { doc } = ctx;
+  const y = ctx.y;
+  const pad = 14;
+  doc.font("Helvetica").fontSize(9);
+  const bodyH = doc.heightOfString(body, { width: ctx.contentWidth - pad * 2 });
+  const boxH = 28 + bodyH;
+  doc.roundedRect(ctx.contentLeft, y, ctx.contentWidth, boxH, 8).fillAndStroke(ONRODA_INVOICE_BRAND.surface, ONRODA_INVOICE_BRAND.border);
+  doc.font("Helvetica-Bold").fontSize(10);
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.text(title, ctx.contentLeft + pad, y + pad, { width: ctx.contentWidth - pad * 2 });
+  doc.font("Helvetica").fontSize(9);
+  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+  doc.text(body, ctx.contentLeft + pad, y + pad + 16, { width: ctx.contentWidth - pad * 2 });
+  return y + boxH + INVOICE_LAYOUT.sectionGap;
 }
 
 export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPdfInput): Promise<Buffer> {
@@ -96,8 +142,6 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
     doc.on("error", reject);
 
     const { company, snapshot, generatedAt } = input;
-    const pageWidth = 595.28;
-    const contentWidth = pageWidth - 100;
     const { settlement, paymentStats: ps, completedRides, commissionRate } = snapshot;
     const generatedLabel = generatedAt.toLocaleString("de-DE", {
       timeZone: "Europe/Berlin",
@@ -108,134 +152,102 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
       minute: "2-digit",
     });
 
-    doc.rect(0, 0, pageWidth, 72).fill("#111827");
-    doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(11).text("ABRECHNUNGSÜBERSICHT", 50, 26, {
-      align: "center",
-      width: contentWidth,
-    });
-    doc.font("Helvetica").fontSize(10).fillColor("#d1d5db").text("Ihre Abrechnung · ONRODA Partner-Panel", 50, 46, {
-      align: "center",
-      width: contentWidth,
-    });
+    let ctx = createPdfContext(doc, 0);
+    ctx.y = drawSettlementPageHeader(ctx, snapshot.periodTitle);
 
-    let y = 92;
-    y = drawSectionTitle(doc, "Mandant", y);
-    doc.fillColor("#111827").font("Helvetica-Bold").fontSize(14).text(company.name || "Unternehmen", 50, y, {
-      width: contentWidth,
-    });
-    y += 20;
-    doc.font("Helvetica").fontSize(10).fillColor("#374151");
-    if (company.addressLines.length > 0) {
-      for (const line of company.addressLines) {
-        doc.text(line, 50, y, { width: contentWidth });
-        y += 14;
-      }
-    } else {
-      doc.fillColor("#b45309").text("Adresse noch nicht im Mandantenstamm hinterlegt.", 50, y, { width: contentWidth });
-      y += 16;
-    }
-    if (company.vatId) {
-      doc.fillColor("#374151").text(`USt-IdNr.: ${company.vatId}`, 50, y);
-      y += 14;
-    } else if (company.taxId) {
-      doc.fillColor("#374151").text(`Steuernummer: ${company.taxId}`, 50, y);
-      y += 14;
-    }
+    ctx.y = drawSettlementMetaBar(ctx, [
+      { label: "Zeitraum", value: snapshot.periodDescription },
+      { label: "Erstellt am", value: `${generatedLabel}` },
+      { label: "Abgeschlossene Fahrten", value: String(completedRides) },
+    ]);
 
-    y += 8;
-    doc.moveTo(50, y).lineTo(pageWidth - 50, y).strokeColor("#e5e7eb").stroke();
-    y += 14;
+    ctx.y = drawPartyColumns(
+      ctx,
+      {
+        title: "Plattform",
+        name: ONRODA_INVOICE_BRAND.productName,
+        lines: [`${ONRODA_INVOICE_SELLER.tradingName}`, ONRODA_INVOICE_BRAND.website],
+      },
+      {
+        title: "Abrechnung für",
+        name: company.name || "Unternehmen",
+        lines: companyRecipientLines(company),
+      },
+    );
 
-    y = drawSectionTitle(doc, "Zeitraum", y);
-    y = drawRow(doc, "Art", snapshot.periodTitle, y, contentWidth);
-    y = drawRow(doc, "Beschreibung", snapshot.periodDescription, y, contentWidth, { boldValue: false });
-    y = drawRow(doc, "Erstellt am", `${generatedLabel} (Europe/Berlin)`, y, contentWidth, { boldValue: false });
+    doc.font("Helvetica-Bold").fontSize(10);
+    hexColor(doc, ONRODA_INVOICE_BRAND.text);
+    doc.text("ABRECHNUNGSSUMMEN", ctx.contentLeft, ctx.y);
+    ctx.y += 18;
 
-    y += 6;
-    doc.roundedRect(50, y, contentWidth, 108, 8).fillAndStroke("#f0fdf4", "#bbf7d0");
-    y += 14;
-    doc.font("Helvetica-Bold").fontSize(10).fillColor("#065f46").text("Abrechnung (ride_financials)", 62, y);
-    y += 20;
-    y = drawRow(doc, "Brutto (abgerechnet)", fmtEuro(settlement.grossAmount), y, contentWidth - 24);
     const commissionLabel =
       commissionRate != null
         ? `ONRODA-Provision (${fmtPct(commissionRate)})`
         : "ONRODA-Provision";
-    y = drawRow(doc, commissionLabel, fmtEuro(settlement.commissionAmount), y, contentWidth - 24);
-    y = drawRow(doc, "Ihr Anteil", fmtEuro(settlement.operatorPayoutAmount), y, contentWidth - 24);
-    y = drawRow(doc, "Abgeschlossene Fahrten", String(completedRides), y, contentWidth - 24);
-    y += 18;
 
-    y = drawSectionTitle(doc, "Zahlungsarten (abgerechnet)", y);
-    y = drawTable(
-      doc,
-      ["Zahlungsart", "Betrag", "Anzahl"],
-      [
-        ["Karte", fmtEuro(ps.cardGrossAmount), String(ps.cardRideCount)],
-        ["Bar", fmtEuro(ps.cashGrossAmount), String(ps.cashRideCount)],
-      ],
-      [contentWidth * 0.34, contentWidth * 0.33, contentWidth * 0.33],
-      y,
-      contentWidth,
-    );
+    ctx.y = drawInvoiceTotalsCard(ctx, {
+      netLabel: "Brutto (abgerechnet)",
+      net: fmtEuro(settlement.grossAmount),
+      vatLabel: commissionLabel,
+      vat: fmtEuro(settlement.commissionAmount),
+      grossLabel: "Ihr Anteil",
+      gross: fmtEuro(settlement.operatorPayoutAmount),
+    });
 
-    y = drawSectionTitle(doc, "Trinkgeld (informativ)", y);
-    y = drawRow(
-      doc,
-      "Trinkgeld gesamt",
-      `${fmtEuro(ps.tipTotal)} · 100 % Fahrer`,
-      y,
-      contentWidth,
-      { boldValue: false },
+    doc.font("Helvetica-Bold").fontSize(10);
+    hexColor(doc, ONRODA_INVOICE_BRAND.text);
+    doc.text("ZAHLUNGSARTEN (ABGERECHNET)", ctx.contentLeft, ctx.y);
+    ctx.y += 12;
+
+    const columns = paymentTableColumns(ctx.contentWidth);
+    ctx.y = drawInvoiceTableHeader(ctx, columns);
+    const paymentRows: InvoiceTableRow[] = [
+      {
+        cells: { type: "Karte", amount: fmtEuro(ps.cardGrossAmount), count: String(ps.cardRideCount) },
+      },
+      {
+        cells: { type: "Bar", amount: fmtEuro(ps.cashGrossAmount), count: String(ps.cashRideCount) },
+      },
+    ];
+    for (const row of paymentRows) {
+      ctx.y = drawInvoiceTableRow(ctx, columns, row);
+    }
+    ctx.y += INVOICE_LAYOUT.sectionGap;
+
+    ctx.y = drawInfoBox(
+      ctx,
+      "Trinkgeld (informativ)",
+      `Trinkgeld gesamt: ${fmtEuro(ps.tipTotal)} · 100 % an Fahrerinnen und Fahrer. Trinkgeld ist nicht Teil der ONRODA-Abrechnung.`,
     );
-    doc.font("Helvetica").fontSize(9).fillColor("#6b7280").text(
-      "Trinkgeld ist nicht Teil der ONRODA-Abrechnung und geht vollständig an die Fahrerinnen und Fahrer.",
-      50,
-      y + 2,
-      { width: contentWidth },
-    );
-    y += 28;
 
     if (ps.pendingPaymentCount > 0 || ps.failedPaymentCount > 0) {
-      y = drawSectionTitle(doc, "Kartenzahlungen — Hinweise", y);
-      if (ps.pendingPaymentCount > 0) {
-        y = drawRow(doc, "Offen / reserviert", String(ps.pendingPaymentCount), y, contentWidth);
-      }
-      if (ps.failedPaymentCount > 0) {
-        y = drawRow(doc, "Fehlgeschlagen", String(ps.failedPaymentCount), y, contentWidth);
-      }
-      y += 4;
+      const hints: string[] = [];
+      if (ps.pendingPaymentCount > 0) hints.push(`Offen / reserviert: ${ps.pendingPaymentCount}`);
+      if (ps.failedPaymentCount > 0) hints.push(`Fehlgeschlagen: ${ps.failedPaymentCount}`);
+      ctx.y = drawInfoBox(ctx, "Kartenzahlungen — Hinweise", hints.join(" · "));
     }
 
-    y += 8;
-    doc.font("Helvetica").fontSize(9).fillColor("#6b7280").text(
-      "Grundlage: abgeschlossene Fahrten mit Finanz-Snapshot (ride_financials). Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.",
-      50,
-      y,
-      { width: contentWidth },
+    ctx.y += 4;
+    doc.font("Helvetica").fontSize(9);
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    doc.text(
+      "Grundlage: abgeschlossene Fahrten mit Finanz-Snapshot zum Abrechnungszeitpunkt. Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.",
+      ctx.contentLeft,
+      ctx.y,
+      { width: ctx.contentWidth },
     );
-    y += 36;
+    ctx.y += 28;
 
-    y = Math.max(y + 12, 720);
-    doc.moveTo(50, y).lineTo(pageWidth - 50, y).strokeColor("#f0f0f0").stroke();
-    y += 12;
-    doc.font("Helvetica-Bold").fontSize(9).fillColor("#6b7280").text("Vermittelt über ONRODA", 50, y, {
-      align: "center",
-      width: contentWidth,
-    });
-    y += 14;
-    doc.font("Helvetica").fontSize(9).fillColor("#9ca3af").text("onroda.de · Deutschland", 50, y, {
-      align: "center",
-      width: contentWidth,
-    });
-    y += 14;
+    doc.font("Helvetica").fontSize(9);
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
     doc.text(
       "Diese Übersicht dient der Information für Ihren Steuerberater und ersetzt keine steuerliche Beratung.",
-      50,
-      y,
-      { align: "center", width: contentWidth },
+      ctx.contentLeft,
+      ctx.y,
+      { width: ctx.contentWidth, align: "center" },
     );
 
+    drawInvoiceFooterOnCurrentPage(ctx, 1, 1);
     doc.end();
   });
 }

@@ -67,7 +67,7 @@ function drawOnrodaWordmark(doc: PDFDocument, x: number, y: number, scale = 1) {
 }
 
 /** App-Logo (PNG/JPEG) + Unterzeile; Fallback auf Text-Wordmark. Gibt Y unter dem Block zurück. */
-function drawOnrodaLogoBlock(doc: PDFDocument, x: number, y: number, scale = 1): number {
+export function drawOnrodaLogoBlock(doc: PDFDocument, x: number, y: number, scale = 1): number {
   const logoMaxW = 128 * scale;
   const logoMaxH = 42 * scale;
   const buf = getOnrodaInvoiceLogoBuffer();
