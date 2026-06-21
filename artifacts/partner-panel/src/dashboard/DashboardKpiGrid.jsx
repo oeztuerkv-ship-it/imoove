@@ -1,4 +1,5 @@
 import { moneyDe } from "./dashboardHelpers.js";
+import { DashboardSettlementCards } from "../components/SettlementKpiBlock.jsx";
 
 /** @param {{ metrics: object | null; metricsError: string | null; fleetDash: object | null; fleetDashError: string | null; medicalOpen: number; ridesLoaded: boolean; onNavigateMedical?: () => void; featureKkModule?: boolean }} props */
 export default function DashboardKpiGrid({
@@ -12,7 +13,7 @@ export default function DashboardKpiGrid({
   featureKkModule = false,
 }) {
   const openRides = metricsError ? null : metrics?.openRides ?? 0;
-  const revenueToday = metricsError ? null : metrics?.today?.revenue;
+  const showTaxiSettlement = !metricsError && metrics?.presentation === "taxi_betrieb";
   const driversOnline = fleetDashError ? null : fleetDash?.driversOnline ?? null;
   const vehiclesActive = fleetDashError ? null : fleetDash?.vehiclesActive ?? null;
 
@@ -35,12 +36,16 @@ export default function DashboardKpiGrid({
       value: metricsError ? "—" : String(openRides ?? 0),
       hint: metricsError || "Noch nicht abgeschlossen",
     },
-    {
-      key: "rev",
-      title: "Umsatz heute",
-      value: metricsError ? "—" : moneyDe(revenueToday),
-      hint: metricsError || "Abgeschlossene Fahrten (Kalendertag)",
-    },
+    ...(!showTaxiSettlement
+      ? [
+          {
+            key: "rev",
+            title: "Umsatz heute",
+            value: metricsError ? "—" : moneyDe(metrics?.today?.revenue),
+            hint: metricsError || "Abgeschlossene Fahrten (Kalendertag)",
+          },
+        ]
+      : []),
     ...(featureKkModule
       ? [
           {
@@ -74,6 +79,7 @@ export default function DashboardKpiGrid({
           {c.action ?? null}
         </div>
       ))}
+      {showTaxiSettlement ? <DashboardSettlementCards metrics={metrics} /> : null}
     </div>
   );
 }

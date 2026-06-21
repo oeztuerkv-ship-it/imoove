@@ -814,6 +814,26 @@
   max-width: 68rem;
 }
 
+.panel-settlement-period-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+  max-width: 68rem;
+}
+
+.panel-settlement-line {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #57534e;
+}
+
+.panel-settlement-line__label {
+  font-weight: 700;
+  color: #44403c;
+}
+
 .panel-dash-fleet-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

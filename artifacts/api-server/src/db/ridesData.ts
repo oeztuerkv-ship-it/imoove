@@ -46,7 +46,7 @@ import { isFarFutureReservation } from "../lib/dispatchStatus";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
 import * as schemaNs from "./schema";
-import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
+import { adminCompaniesTable, rideEventsTable, rideFinancialsTable, ridesTable } from "./schema";
 import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
@@ -1103,6 +1103,43 @@ function panelOverviewPresentation(kind: PanelCompanyKind): "taxi_betrieb" | "le
   return kind === "taxi" ? "taxi_betrieb" : "leistungspartner";
 }
 
+export type PanelFinancialSettlementWindow = {
+  grossAmount: number;
+  commissionAmount: number;
+  operatorPayoutAmount: number;
+};
+
+const EMPTY_PANEL_SETTLEMENT: PanelFinancialSettlementWindow = {
+  grossAmount: 0,
+  commissionAmount: 0,
+  operatorPayoutAmount: 0,
+};
+
+async function queryPanelFinancialSettlement(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  companyId: string,
+  createdAtFilter?: SQL,
+): Promise<PanelFinancialSettlementWindow> {
+  const conditions: SQL[] = [eq(ridesTable.status, "completed"), companyIdMatchCondition(companyId)];
+  if (createdAtFilter) conditions.push(createdAtFilter);
+
+  const [row] = await db
+    .select({
+      grossAmount: sql<string>`coalesce(sum(${rideFinancialsTable.gross_amount}), 0)`,
+      commissionAmount: sql<string>`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`,
+      operatorPayoutAmount: sql<string>`coalesce(sum(${rideFinancialsTable.operator_payout_amount}), 0)`,
+    })
+    .from(rideFinancialsTable)
+    .innerJoin(ridesTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
+    .where(and(...conditions));
+
+  return {
+    grossAmount: Number(row?.grossAmount ?? 0),
+    commissionAmount: Number(row?.commissionAmount ?? 0),
+    operatorPayoutAmount: Number(row?.operatorPayoutAmount ?? 0),
+  };
+}
+
 export type PanelCompanyOverviewMetrics = {
   companyKind: PanelCompanyKind;
   /**
@@ -1113,11 +1150,11 @@ export type PanelCompanyOverviewMetrics = {
   /** Kalendertag / Monat: Mitternacht Europe/Berlin. Woche: rollierend 7×24h ab jetzt (DB-Zeit). */
   zone: "Europe/Berlin";
   weekScope: "rolling_7d";
-  today: { completedRides: number; revenue: number };
-  week: { completedRides: number; revenue: number };
+  today: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
+  week: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
   /** Rollierend 30×24h ab jetzt (wie `week`, nur längeres Fenster). */
-  rolling30: { completedRides: number; revenue: number };
-  month: { completedRides: number; revenue: number };
+  rolling30: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
+  month: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
   openRides: number;
   /** Kalendermonat Europe/Berlin, nach `created_at`. */
   monthDecided: {
@@ -1211,18 +1248,22 @@ export async function getPanelCompanyOverviewMetrics(
       today: {
         completedRides: todayRides.length,
         revenue: todayRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+        settlement: { ...EMPTY_PANEL_SETTLEMENT },
       },
       week: {
         completedRides: weekRides.length,
         revenue: weekRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+        settlement: { ...EMPTY_PANEL_SETTLEMENT },
       },
       rolling30: {
         completedRides: thirtyRides.length,
         revenue: thirtyRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+        settlement: { ...EMPTY_PANEL_SETTLEMENT },
       },
       month: {
         completedRides: monthRides.length,
         revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+        settlement: { ...EMPTY_PANEL_SETTLEMENT },
       },
       openRides,
       monthDecided: { completedRides: compM, cancelledRides: cancM, cancelRate },
@@ -1343,6 +1384,21 @@ export async function getPanelCompanyOverviewMetrics(
   const avgDistanceKm =
     completedMonthN > 0 ? Number(qualRow?.avgKm ?? 0) : null;
 
+  const [todaySettlement, weekSettlement, thirtySettlement, monthSettlement] = await Promise.all([
+    queryPanelFinancialSettlement(
+      db,
+      companyId,
+      and(gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd)),
+    ),
+    queryPanelFinancialSettlement(db, companyId, gte(ridesTable.created_at, weekRollingStart)),
+    queryPanelFinancialSettlement(db, companyId, gte(ridesTable.created_at, thirtyRollingStart)),
+    queryPanelFinancialSettlement(
+      db,
+      companyId,
+      and(gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd)),
+    ),
+  ]);
+
   return {
     companyKind,
     presentation,
@@ -1351,18 +1407,22 @@ export async function getPanelCompanyOverviewMetrics(
     today: {
       completedRides: Number(todayRow?.completedRides ?? 0),
       revenue: Number(todayRow?.revenue ?? 0),
+      settlement: todaySettlement,
     },
     week: {
       completedRides: Number(weekRow?.completedRides ?? 0),
       revenue: Number(weekRow?.revenue ?? 0),
+      settlement: weekSettlement,
     },
     rolling30: {
       completedRides: Number(thirtyRow?.completedRides ?? 0),
       revenue: Number(thirtyRow?.revenue ?? 0),
+      settlement: thirtySettlement,
     },
     month: {
       completedRides: Number(monthRow?.completedRides ?? 0),
       revenue: Number(monthRow?.revenue ?? 0),
+      settlement: monthSettlement,
     },
     openRides: Number(openRow?.openRides ?? 0),
     monthDecided: {

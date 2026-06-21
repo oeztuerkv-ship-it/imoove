@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
+import { SettlementKpiBlock } from "../components/SettlementKpiBlock.jsx";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -234,16 +235,48 @@ export default function OverviewPage() {
 
       {rideMetrics ? (
         <>
-          <div className="panel-kpi-grid panel-kpi-grid--tier1">
-            <KpiCard
-              hero
-              value={formatEur(rideMetrics.today.revenue)}
-              label={`${moneyWord} heute`}
-            />
-            <KpiCard hero value={String(rideMetrics.today.completedRides)} label="Abgeschlossen heute" />
-            <KpiCard hero value={formatEur(rideMetrics.week.revenue)} label={`${moneyWord} 7 Tage`} />
-            <KpiCard hero value={formatEur(rideMetrics.month.revenue)} label={`${moneyWord} Monat`} />
-          </div>
+          {rideMetrics.presentation === "taxi_betrieb" ? (
+            <>
+              <SettlementKpiBlock
+                metrics={rideMetrics}
+                formatMoney={(n) => formatEur(n)}
+                hero
+                periodKey="today"
+                periodLabel="Heute"
+                Card={KpiCard}
+              />
+              <div className="panel-kpi-grid panel-kpi-grid--tier2">
+                <KpiCard hero value={String(rideMetrics.today.completedRides)} label="Abgeschlossen heute" />
+              </div>
+              <div className="panel-settlement-period-lines">
+                <SettlementKpiBlock
+                  metrics={rideMetrics}
+                  formatMoney={(n) => formatEur(n)}
+                  layout="line"
+                  periodKey="week"
+                  periodLabel="7 Tage"
+                />
+                <SettlementKpiBlock
+                  metrics={rideMetrics}
+                  formatMoney={(n) => formatEur(n)}
+                  layout="line"
+                  periodKey="month"
+                  periodLabel="Monat"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="panel-kpi-grid panel-kpi-grid--tier1">
+              <KpiCard
+                hero
+                value={formatEur(rideMetrics.today.revenue)}
+                label={`${moneyWord} heute`}
+              />
+              <KpiCard hero value={String(rideMetrics.today.completedRides)} label="Abgeschlossen heute" />
+              <KpiCard hero value={formatEur(rideMetrics.week.revenue)} label={`${moneyWord} 7 Tage`} />
+              <KpiCard hero value={formatEur(rideMetrics.month.revenue)} label={`${moneyWord} Monat`} />
+            </div>
+          )}
 
           <p className="panel-kpi-tier-label">Status &amp; Planung</p>
           <div className="panel-kpi-grid panel-kpi-grid--tier2">
@@ -273,7 +306,7 @@ export default function OverviewPage() {
 
           <p className="panel-dash-footnote">
             {rideMetrics.presentation === "taxi_betrieb"
-              ? `${moneyWord}: abgeschlossene Fahrten · ${rideMetrics.zone} · Woche rollierend 7 Tage.`
+              ? `Abrechnung aus Finanz-Snapshot (ride_financials) · ${rideMetrics.zone} · Woche rollierend 7 Tage.`
               : `${moneyWord}: gebuchtes Fahrtvolumen (Leistungsnachweis) · ${rideMetrics.zone}.`}
           </p>
 
