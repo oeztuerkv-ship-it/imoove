@@ -46,8 +46,18 @@ import { isFarFutureReservation } from "../lib/dispatchStatus";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
 import * as schemaNs from "./schema";
-import { adminCompaniesTable, rideEventsTable, rideFinancialsTable, ridesTable } from "./schema";
+import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
 import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
+import {
+  getPanelCompanyCommissionRate,
+  normalizePanelSettlementYear,
+  panelSettlementAvailableYears,
+  queryPanelCompletedPeriodStats,
+  queryPanelFinancialSettlement,
+  queryPanelPaymentStatsForPeriod,
+  type PanelFinancialSettlementWindow,
+  type PanelPaymentPeriodStats,
+} from "./panelOverviewSettlementData";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
@@ -1103,11 +1113,7 @@ function panelOverviewPresentation(kind: PanelCompanyKind): "taxi_betrieb" | "le
   return kind === "taxi" ? "taxi_betrieb" : "leistungspartner";
 }
 
-export type PanelFinancialSettlementWindow = {
-  grossAmount: number;
-  commissionAmount: number;
-  operatorPayoutAmount: number;
-};
+export type { PanelFinancialSettlementWindow } from "./panelOverviewSettlementData";
 
 const EMPTY_PANEL_SETTLEMENT: PanelFinancialSettlementWindow = {
   grossAmount: 0,
@@ -1115,30 +1121,14 @@ const EMPTY_PANEL_SETTLEMENT: PanelFinancialSettlementWindow = {
   operatorPayoutAmount: 0,
 };
 
-async function queryPanelFinancialSettlement(
-  db: NonNullable<ReturnType<typeof getDb>>,
-  companyId: string,
-  createdAtFilter?: SQL,
-): Promise<PanelFinancialSettlementWindow> {
-  const conditions: SQL[] = [eq(ridesTable.status, "completed"), companyIdMatchCondition(companyId)];
-  if (createdAtFilter) conditions.push(createdAtFilter);
-
-  const [row] = await db
-    .select({
-      grossAmount: sql<string>`coalesce(sum(${rideFinancialsTable.gross_amount}), 0)`,
-      commissionAmount: sql<string>`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`,
-      operatorPayoutAmount: sql<string>`coalesce(sum(${rideFinancialsTable.operator_payout_amount}), 0)`,
-    })
-    .from(rideFinancialsTable)
-    .innerJoin(ridesTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
-    .where(and(...conditions));
-
-  return {
-    grossAmount: Number(row?.grossAmount ?? 0),
-    commissionAmount: Number(row?.commissionAmount ?? 0),
-    operatorPayoutAmount: Number(row?.operatorPayoutAmount ?? 0),
-  };
-}
+export type PanelMetricsPeriodSlice = {
+  completedRides: number;
+  /** Summe final_fare/estimated_fare — nur als Schätz-/Taxameter-Referenz, nicht Abrechnung. */
+  revenue: number;
+  settlement: PanelFinancialSettlementWindow;
+  paymentStats: PanelPaymentPeriodStats;
+  avgCompletedFare: number | null;
+};
 
 export type PanelCompanyOverviewMetrics = {
   companyKind: PanelCompanyKind;
@@ -1147,17 +1137,22 @@ export type PanelCompanyOverviewMetrics = {
    * `leistungspartner`: Hotel / Krankenkasse / Corporate / Gutschein — Fahrtwerte als Leistungs-/Kostenvolumen, nicht als Taxi-Umsatz.
    */
   presentation: "taxi_betrieb" | "leistungspartner";
-  /** Kalendertag / Monat / Jahr: Mitternacht Europe/Berlin. Woche: rollierend 7×24h ab jetzt (DB-Zeit). */
+  /** Kalendertag / Monat / Jahr: Mitternacht Europe/Berlin. Woche: rollierend 7×24h oder Kalenderwoche (Mo–So). */
   zone: "Europe/Berlin";
-  weekScope: "rolling_7d";
+  weekScope: "rolling_7d" | "calendar_iso_week";
   yearScope: "calendar_year";
-  today: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
-  week: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
+  /** Aktueller Mandanten-Provisionssatz (Dezimal, z. B. 0.08 = 8 %). Nur taxi_betrieb. */
+  commissionRate: number | null;
+  selectedYear: number;
+  availableYears: number[];
+  today: PanelMetricsPeriodSlice;
+  week: PanelMetricsPeriodSlice;
+  weekCalendar: PanelMetricsPeriodSlice;
   /** Rollierend 30×24h ab jetzt (wie `week`, nur längeres Fenster). */
-  rolling30: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
-  month: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
+  rolling30: PanelMetricsPeriodSlice;
+  month: PanelMetricsPeriodSlice;
   /** Kalenderjahr Europe/Berlin, nach `created_at`. */
-  year: { completedRides: number; revenue: number; settlement: PanelFinancialSettlementWindow };
+  year: PanelMetricsPeriodSlice;
   openRides: number;
   /** Kalendermonat Europe/Berlin, nach `created_at`. */
   monthDecided: {
@@ -1186,10 +1181,34 @@ function monthWindowBerlin(companyId: string): SQL {
   ) as SQL;
 }
 
+function emptyPaymentStats(): PanelPaymentPeriodStats {
+  return {
+    tipTotal: 0,
+    cardRideCount: 0,
+    cashRideCount: 0,
+    cardGrossAmount: 0,
+    cashGrossAmount: 0,
+    failedPaymentCount: 0,
+    pendingPaymentCount: 0,
+  };
+}
+
+function memoryPeriodSlice(rides: RideRequest[]): PanelMetricsPeriodSlice {
+  const revenue = rides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0);
+  return {
+    completedRides: rides.length,
+    revenue,
+    settlement: { ...EMPTY_PANEL_SETTLEMENT },
+    paymentStats: emptyPaymentStats(),
+    avgCompletedFare: rides.length > 0 ? revenue / rides.length : null,
+  };
+}
+
 /** Partner-Übersicht: nur Mandantenfahrten, kein globaler Admin-Scope. `companyKind` steuert KPI-Bedeutung (Taxi vs. Leistungspartner). */
 export async function getPanelCompanyOverviewMetrics(
   companyId: string,
   companyKind: PanelCompanyKind,
+  options?: { settlementYear?: number },
 ): Promise<PanelCompanyOverviewMetrics> {
   const presentation = panelOverviewPresentation(companyKind);
   const db = getDb();
@@ -1246,37 +1265,24 @@ export async function getPanelCompanyOverviewMetrics(
     }
     const completedWithAccessCode = completedMonth.filter((r) => Boolean(r.accessCodeId)).length;
 
+    const selectedYear = normalizePanelSettlementYear(options?.settlementYear);
+    const weekCalendarRides = weekRides;
+
     return {
       companyKind,
       presentation,
       zone: "Europe/Berlin",
       weekScope: "rolling_7d",
       yearScope: "calendar_year",
-      today: {
-        completedRides: todayRides.length,
-        revenue: todayRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
-        settlement: { ...EMPTY_PANEL_SETTLEMENT },
-      },
-      week: {
-        completedRides: weekRides.length,
-        revenue: weekRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
-        settlement: { ...EMPTY_PANEL_SETTLEMENT },
-      },
-      rolling30: {
-        completedRides: thirtyRides.length,
-        revenue: thirtyRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
-        settlement: { ...EMPTY_PANEL_SETTLEMENT },
-      },
-      month: {
-        completedRides: monthRides.length,
-        revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
-        settlement: { ...EMPTY_PANEL_SETTLEMENT },
-      },
-      year: {
-        completedRides: yearRides.length,
-        revenue: yearRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
-        settlement: { ...EMPTY_PANEL_SETTLEMENT },
-      },
+      commissionRate: presentation === "taxi_betrieb" ? 0.1 : null,
+      selectedYear,
+      availableYears: panelSettlementAvailableYears(),
+      today: memoryPeriodSlice(todayRides),
+      week: memoryPeriodSlice(weekRides),
+      weekCalendar: memoryPeriodSlice(weekCalendarRides),
+      rolling30: memoryPeriodSlice(thirtyRides),
+      month: memoryPeriodSlice(monthRides),
+      year: memoryPeriodSlice(yearRides),
       openRides,
       monthDecided: { completedRides: compM, cancelledRides: cancM, cancelRate },
       scheduled: { todayCount: scheduledTodayCount, tomorrowCount: scheduledTomorrowCount },
@@ -1288,146 +1294,116 @@ export async function getPanelCompanyOverviewMetrics(
     };
   }
 
+  const selectedYear = normalizePanelSettlementYear(options?.settlementYear);
+  const availableYears = panelSettlementAvailableYears();
+  const commissionRate =
+    presentation === "taxi_betrieb" ? await getPanelCompanyCommissionRate(companyId) : null;
+
+  async function buildPeriodSlice(createdAtFilter?: SQL): Promise<PanelMetricsPeriodSlice> {
+    const [stats, settlement, paymentStats] = await Promise.all([
+      queryPanelCompletedPeriodStats(db, companyId, createdAtFilter),
+      queryPanelFinancialSettlement(db, companyId, createdAtFilter),
+      queryPanelPaymentStatsForPeriod(db, companyId, createdAtFilter),
+    ]);
+    return {
+      completedRides: stats.completedRides,
+      revenue: stats.revenue,
+      settlement,
+      paymentStats,
+      avgCompletedFare: stats.avgCompletedFare,
+    };
+  }
+
   const berlinTodayStart = sql`((now() AT TIME ZONE 'Europe/Berlin')::date) AT TIME ZONE 'Europe/Berlin'`;
   const berlinTodayEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '1 day') AT TIME ZONE 'Europe/Berlin')`;
   const berlinTomorrowStart = berlinTodayEnd;
   const berlinTomorrowEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '2 day') AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
-  const berlinYearStart = sql`(date_trunc('year', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
-  const berlinYearEnd = sql`((date_trunc('year', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 year') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinYearStart = sql`(make_timestamptz(${selectedYear}, 1, 1, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinYearEnd = sql`(make_timestamptz(${selectedYear + 1}, 1, 1, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinWeekStart = sql`(date_trunc('week', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinWeekEnd = sql`((date_trunc('week', (now() AT TIME ZONE 'Europe/Berlin')) + interval '7 days') AT TIME ZONE 'Europe/Berlin')`;
   const weekRollingStart = sql`(now() - interval '7 days')`;
   const thirtyRollingStart = sql`(now() - interval '30 days')`;
 
-  const baseCompleted = and(companyIdMatchCondition(companyId), eq(ridesTable.status, "completed"));
-
-  const [todayRow] = await db
-    .select({
-      completedRides: sql<number>`count(*)::int`,
-      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-    })
-    .from(ridesTable)
-    .where(
-      and(baseCompleted, gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd)),
-    );
-
-  const [weekRow] = await db
-    .select({
-      completedRides: sql<number>`count(*)::int`,
-      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-    })
-    .from(ridesTable)
-    .where(and(baseCompleted, gte(ridesTable.created_at, weekRollingStart)));
-
-  const [thirtyRow] = await db
-    .select({
-      completedRides: sql<number>`count(*)::int`,
-      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-    })
-    .from(ridesTable)
-    .where(and(baseCompleted, gte(ridesTable.created_at, thirtyRollingStart)));
-
-  const [monthRow] = await db
-    .select({
-      completedRides: sql<number>`count(*)::int`,
-      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-    })
-    .from(ridesTable)
-    .where(
-      and(baseCompleted, gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd)),
-    );
-
-  const [yearRow] = await db
-    .select({
-      completedRides: sql<number>`count(*)::int`,
-      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-    })
-    .from(ridesTable)
-    .where(
-      and(baseCompleted, gte(ridesTable.created_at, berlinYearStart), lt(ridesTable.created_at, berlinYearEnd)),
-    );
-
-  const [openRow] = await db
-    .select({ openRides: sql<number>`count(*)::int` })
-    .from(ridesTable)
-    .where(and(companyIdMatchCondition(companyId), notInArray(ridesTable.status, PANEL_OVERVIEW_TERMINAL_STATUSES)));
-
-  const mw = monthWindowBerlin(companyId);
-
-  const [compDec] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(ridesTable)
-    .where(and(mw, eq(ridesTable.status, "completed")));
-
-  const [cancDec] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(ridesTable)
-    .where(and(mw, inArray(ridesTable.status, PANEL_OVERVIEW_CANCELLED_STATUSES)));
+  const [
+    today,
+    week,
+    weekCalendar,
+    rolling30,
+    month,
+    year,
+    openRow,
+    compDec,
+    cancDec,
+    stToday,
+    stTomorrow,
+    qualRow,
+  ] = await Promise.all([
+    buildPeriodSlice(and(gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd))),
+    buildPeriodSlice(gte(ridesTable.created_at, weekRollingStart)),
+    buildPeriodSlice(and(gte(ridesTable.created_at, berlinWeekStart), lt(ridesTable.created_at, berlinWeekEnd))),
+    buildPeriodSlice(gte(ridesTable.created_at, thirtyRollingStart)),
+    buildPeriodSlice(and(gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd))),
+    buildPeriodSlice(and(gte(ridesTable.created_at, berlinYearStart), lt(ridesTable.created_at, berlinYearEnd))),
+    db
+      .select({ openRides: sql<number>`count(*)::int` })
+      .from(ridesTable)
+      .where(and(companyIdMatchCondition(companyId), notInArray(ridesTable.status, PANEL_OVERVIEW_TERMINAL_STATUSES)))
+      .then(([row]) => row),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(ridesTable)
+      .where(and(monthWindowBerlin(companyId), eq(ridesTable.status, "completed")))
+      .then(([row]) => row),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(ridesTable)
+      .where(and(monthWindowBerlin(companyId), inArray(ridesTable.status, PANEL_OVERVIEW_CANCELLED_STATUSES)))
+      .then(([row]) => row),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(ridesTable)
+      .where(
+        and(
+          companyIdMatchCondition(companyId),
+          isNotNull(ridesTable.scheduled_at),
+          gte(ridesTable.scheduled_at, berlinTodayStart),
+          lt(ridesTable.scheduled_at, berlinTodayEnd),
+        ),
+      )
+      .then(([row]) => row),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(ridesTable)
+      .where(
+        and(
+          companyIdMatchCondition(companyId),
+          isNotNull(ridesTable.scheduled_at),
+          gte(ridesTable.scheduled_at, berlinTomorrowStart),
+          lt(ridesTable.scheduled_at, berlinTomorrowEnd),
+        ),
+      )
+      .then(([row]) => row),
+    db
+      .select({
+        avgFare: sql<string>`coalesce(avg(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+        avgKm: sql<string>`coalesce(avg(${ridesTable.distance_km}), 0)`,
+        withCode: sql<number>`count(*) FILTER (WHERE ${ridesTable.access_code_id} IS NOT NULL)::int`,
+      })
+      .from(ridesTable)
+      .where(and(monthWindowBerlin(companyId), eq(ridesTable.status, "completed")))
+      .then(([row]) => row),
+  ]);
 
   const compN = Number(compDec?.n ?? 0);
   const cancN = Number(cancDec?.n ?? 0);
   const decDenom = compN + cancN;
   const cancelRate = decDenom > 0 ? cancN / decDenom : null;
-
-  const [stToday] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(ridesTable)
-    .where(
-      and(
-        companyIdMatchCondition(companyId),
-        isNotNull(ridesTable.scheduled_at),
-        gte(ridesTable.scheduled_at, berlinTodayStart),
-        lt(ridesTable.scheduled_at, berlinTodayEnd),
-      ),
-    );
-
-  const [stTomorrow] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(ridesTable)
-    .where(
-      and(
-        companyIdMatchCondition(companyId),
-        isNotNull(ridesTable.scheduled_at),
-        gte(ridesTable.scheduled_at, berlinTomorrowStart),
-        lt(ridesTable.scheduled_at, berlinTomorrowEnd),
-      ),
-    );
-
-  const [qualRow] = await db
-    .select({
-      avgFare: sql<string>`coalesce(avg(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-      avgKm: sql<string>`coalesce(avg(${ridesTable.distance_km}), 0)`,
-      withCode: sql<number>`count(*) FILTER (WHERE ${ridesTable.access_code_id} IS NOT NULL)::int`,
-    })
-    .from(ridesTable)
-    .where(and(mw, eq(ridesTable.status, "completed")));
-
-  const completedMonthN = Number(monthRow?.completedRides ?? 0);
-  const avgFare =
-    completedMonthN > 0 ? Number(qualRow?.avgFare ?? 0) : null;
-  const avgDistanceKm =
-    completedMonthN > 0 ? Number(qualRow?.avgKm ?? 0) : null;
-
-  const [todaySettlement, weekSettlement, thirtySettlement, monthSettlement, yearSettlement] =
-    await Promise.all([
-    queryPanelFinancialSettlement(
-      db,
-      companyId,
-      and(gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd)),
-    ),
-    queryPanelFinancialSettlement(db, companyId, gte(ridesTable.created_at, weekRollingStart)),
-    queryPanelFinancialSettlement(db, companyId, gte(ridesTable.created_at, thirtyRollingStart)),
-    queryPanelFinancialSettlement(
-      db,
-      companyId,
-      and(gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd)),
-    ),
-    queryPanelFinancialSettlement(
-      db,
-      companyId,
-      and(gte(ridesTable.created_at, berlinYearStart), lt(ridesTable.created_at, berlinYearEnd)),
-    ),
-  ]);
+  const completedMonthN = month.completedRides;
+  const avgFare = completedMonthN > 0 ? Number(qualRow?.avgFare ?? 0) : null;
+  const avgDistanceKm = completedMonthN > 0 ? Number(qualRow?.avgKm ?? 0) : null;
 
   return {
     companyKind,
@@ -1435,31 +1411,15 @@ export async function getPanelCompanyOverviewMetrics(
     zone: "Europe/Berlin",
     weekScope: "rolling_7d",
     yearScope: "calendar_year",
-    today: {
-      completedRides: Number(todayRow?.completedRides ?? 0),
-      revenue: Number(todayRow?.revenue ?? 0),
-      settlement: todaySettlement,
-    },
-    week: {
-      completedRides: Number(weekRow?.completedRides ?? 0),
-      revenue: Number(weekRow?.revenue ?? 0),
-      settlement: weekSettlement,
-    },
-    rolling30: {
-      completedRides: Number(thirtyRow?.completedRides ?? 0),
-      revenue: Number(thirtyRow?.revenue ?? 0),
-      settlement: thirtySettlement,
-    },
-    month: {
-      completedRides: Number(monthRow?.completedRides ?? 0),
-      revenue: Number(monthRow?.revenue ?? 0),
-      settlement: monthSettlement,
-    },
-    year: {
-      completedRides: Number(yearRow?.completedRides ?? 0),
-      revenue: Number(yearRow?.revenue ?? 0),
-      settlement: yearSettlement,
-    },
+    commissionRate,
+    selectedYear,
+    availableYears,
+    today,
+    week,
+    weekCalendar,
+    rolling30,
+    month,
+    year,
     openRides: Number(openRow?.openRides ?? 0),
     monthDecided: {
       completedRides: compN,

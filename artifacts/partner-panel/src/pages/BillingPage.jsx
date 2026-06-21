@@ -13,7 +13,7 @@ function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
 }
 
-export default function BillingPage() {
+export default function BillingPage({ billingIntent = null, onConsumeBillingIntent }) {
   const { token, user } = usePanelAuth();
   const canRead = hasPerm(user?.permissions, "rides.read");
   const showCodes = hasPanelModule(user?.panelModules, "access_codes");
@@ -95,6 +95,29 @@ export default function BillingPage() {
   useEffect(() => {
     if (tab === "medical") setTab("overview");
   }, [tab]);
+
+  useEffect(() => {
+    if (!billingIntent?.month || typeof billingIntent.month !== "string") return;
+    setMonth(billingIntent.month);
+    setTab("export");
+    if (typeof onConsumeBillingIntent === "function") onConsumeBillingIntent();
+  }, [billingIntent, onConsumeBillingIntent]);
+
+  useEffect(() => {
+    try {
+      const u = new URL(window.location.href);
+      const bm = u.searchParams.get("billingMonth");
+      if (bm && /^\d{4}-\d{2}$/.test(bm)) {
+        setMonth(bm);
+        setTab("export");
+        u.searchParams.delete("billingMonth");
+        const next = `${u.pathname}${u.search}${u.hash}`;
+        window.history.replaceState({}, "", next);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     try {

@@ -64,6 +64,11 @@ import {
   type CompanyRideListFilters,
   updateRide,
 } from "../db/ridesData";
+import {
+  listPanelSettlementRides,
+  normalizePanelSettlementYear,
+  type PanelSettlementPeriodKey,
+} from "../db/panelOverviewSettlementData";
 import { driverLocations } from "./rides";
 import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
@@ -893,8 +898,49 @@ router.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
     const company = await getPanelCompanyById(ctx.claims.companyId);
     const companyKind: PanelCompanyKind = company?.companyKind ?? ctx.profile.companyKind;
-    const metrics = await getPanelCompanyOverviewMetrics(ctx.claims.companyId, companyKind);
+    const q = normalizeQueryRecord(req.query as Record<string, unknown>);
+    const settlementYear = normalizePanelSettlementYear(q.year);
+    const metrics = await getPanelCompanyOverviewMetrics(ctx.claims.companyId, companyKind, {
+      settlementYear,
+    });
     res.json({ ok: true, metrics });
+  } catch (e) {
+    next(e);
+  }
+});
+
+const PANEL_SETTLEMENT_PERIOD_KEYS = new Set<PanelSettlementPeriodKey>([
+  "today",
+  "week",
+  "weekCalendar",
+  "month",
+  "year",
+]);
+
+router.get("/panel/v1/overview/settlement-rides", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "overview")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+
+    const q = normalizeQueryRecord(req.query as Record<string, unknown>);
+    const periodRaw = typeof q.period === "string" ? q.period.trim() : "today";
+    const period = PANEL_SETTLEMENT_PERIOD_KEYS.has(periodRaw as PanelSettlementPeriodKey)
+      ? (periodRaw as PanelSettlementPeriodKey)
+      : "today";
+    const weekModeRaw = typeof q.weekMode === "string" ? q.weekMode.trim() : "rolling";
+    const weekMode = weekModeRaw === "calendar" ? "calendar" : "rolling";
+    const year = normalizePanelSettlementYear(q.year);
+    const limitRaw = typeof q.limit === "string" ? Number.parseInt(q.limit, 10) : 200;
+    const limit = Number.isFinite(limitRaw) ? limitRaw : 200;
+
+    const result = await listPanelSettlementRides(
+      ctx.claims.companyId,
+      { period, weekMode, year },
+      limit,
+    );
+    res.json({ ok: true, ...result });
   } catch (e) {
     next(e);
   }

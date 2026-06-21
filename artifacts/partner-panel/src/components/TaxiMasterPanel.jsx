@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
-import DashboardOverviewPage from "../dashboard/DashboardOverviewPage.jsx";
-import { medicalOpenOperationsCount } from "../dashboard/dashboardHelpers.js";
+import TaxiDashboardCockpit from "./TaxiDashboardCockpit.jsx";
 import { getPartnerJwt } from "../lib/partnerSessionStorage.js";
 
 function getPanelHeaders() {
@@ -32,11 +31,12 @@ async function loadPanelResource(url, label, getBody) {
 }
 
 /**
- * Taxi-Dashboard — Datenladung hier, Darstellung modular.
- * @param {{ company?: object; user: object; onNavigateModule?: (key: string, opts?: { settingsTab?: string }) => void; onQuickCreate?: (id: string) => void }} props
+ * Taxi-Dashboard — Datenladung hier, Darstellung über einheitliches Cockpit.
+ * @param {{ company?: object; user: object; onNavigateModule?: (key: string, opts?: { settingsTab?: string; billingMonth?: string }) => void; onQuickCreate?: (id: string) => void }} props
  */
 export default function TaxiMasterPanel({ company, user, onNavigateModule, onQuickCreate }) {
   const [loadComplete, setLoadComplete] = useState(false);
+  const [metricsYear, setMetricsYear] = useState(() => new Date().getFullYear());
 
   const [companyData, setCompanyData] = useState(null);
   const [companyError, setCompanyError] = useState(null);
@@ -51,6 +51,14 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
   const [rides, setRides] = useState([]);
   const [ridesError, setRidesError] = useState(null);
   const [ridesLoaded, setRidesLoaded] = useState(false);
+
+  const loadMetrics = useCallback(async (year) => {
+    return loadPanelResource(
+      `${API_BASE}/panel/v1/overview/metrics?year=${encodeURIComponent(String(year))}`,
+      "Kennzahlen",
+      (d) => d.metrics ?? null,
+    );
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +80,7 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
 
       const [cRes, mRes, dRes, vRes, fdRes, rRes] = await Promise.all([
         loadPanelResource(`${API_BASE}/panel/v1/company`, "Firmendaten", (d) => d.company ?? null),
-        loadPanelResource(`${API_BASE}/panel/v1/overview/metrics`, "Kennzahlen", (d) => d.metrics ?? null),
+        loadMetrics(metricsYear),
         loadPanelResource(`${API_BASE}/panel/v1/fleet/drivers`, "Fahrerliste", (d) => (Array.isArray(d.drivers) ? d.drivers : [])),
         loadPanelResource(`${API_BASE}/panel/v1/fleet/vehicles`, "Fahrzeugliste", (d) => (Array.isArray(d.vehicles) ? d.vehicles : [])),
         loadPanelResource(`${API_BASE}/panel/v1/fleet/dashboard`, "Fleet-Dashboard", (d) => ({
@@ -113,12 +121,9 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadMetrics, metricsYear]);
 
   const displayCompanyName = companyData?.name || company?.name || "Taxi-Unternehmer";
-  const currentCompany = companyData || {};
-
-  const medicalOpenCount = useMemo(() => medicalOpenOperationsCount(rides), [rides]);
 
   const goModule = useCallback(
     (key, opts) => {
@@ -134,14 +139,25 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
     [onQuickCreate],
   );
 
+  const onMetricsYearChange = useCallback((year) => {
+    setMetricsYear(year);
+  }, []);
+
+  const onNavigateFinanzen = useCallback(
+    (opts) => {
+      goModule("finanzen", { billingMonth: opts?.billingMonth });
+    },
+    [goModule],
+  );
+
   return (
-    <DashboardOverviewPage
+    <TaxiDashboardCockpit
+      variant="fleet"
       user={user}
+      company={companyData || company}
       displayCompanyName={displayCompanyName}
-      companyData={companyData}
-      companyError={companyError}
       metrics={metrics}
-      metricsError={metricsError}
+      metricsError={metricsError || companyError}
       fleetDash={fleetDash}
       fleetDashError={fleetDashError}
       rides={rides}
@@ -149,9 +165,16 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
       ridesLoaded={ridesLoaded}
       drivers={drivers}
       vehicles={vehicles}
-      medicalOpenCount={medicalOpenCount}
       loadComplete={loadComplete}
-      onNavigateModule={goModule}
+      metricsYear={metricsYear}
+      onMetricsYearChange={onMetricsYearChange}
+      onNavigateModule={(key, opts) => {
+        if (key === "finanzen" && opts?.billingMonth) {
+          onNavigateFinanzen(opts);
+          return;
+        }
+        goModule(key, opts);
+      }}
       onQuickCreate={quick}
     />
   );

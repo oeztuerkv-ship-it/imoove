@@ -76,8 +76,11 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
   const [activeTaxiModule, setActiveTaxiModule] = useState("dashboard");
   const [supportPrefill, setSupportPrefill] = useState(null);
   const [settingsTabIntent, setSettingsTabIntent] = useState(null);
+  const [billingIntent, setBillingIntent] = useState(null);
   /** Tab + optional Fokus auf Anlege-Bereich (Plus-Menü). */
   const [fleetIntent, setFleetIntent] = useState(null);
+
+  const consumeBillingIntent = useCallback(() => setBillingIntent(null), []);
 
   const consumeFleetIntent = useCallback(() => setFleetIntent(null), []);
 
@@ -114,6 +117,9 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
   const navigateTaxiModule = useCallback(
     (key, opts) => {
       if (opts && typeof opts.settingsTab === "string") setSettingsTabIntent(opts.settingsTab);
+      if (opts && typeof opts.billingMonth === "string") {
+        setBillingIntent({ month: opts.billingMonth });
+      }
       setActiveTaxiModule(key);
       pushPartnerPanelModuleHistory(key, { paramName: "taxiModule", omitWhen: "dashboard" });
     },
@@ -247,7 +253,9 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
         {activeTaxiModule === "flotte" && (
           <FleetPage fleetIntent={fleetIntent} onFleetIntentConsumed={consumeFleetIntent} />
         )}
-        {activeTaxiModule === "finanzen" && <BillingPage />}
+        {activeTaxiModule === "finanzen" && (
+          <BillingPage billingIntent={billingIntent} onConsumeBillingIntent={consumeBillingIntent} />
+        )}
         {activeTaxiModule === "tarif_info" && <TaxiTarifeInfoPage />}
         {activeTaxiModule === "krankenfahrten" && <TaxiKrankenfahrtenPage />}
         {activeTaxiModule === "dokumente" && <TaxiDocumentsPage onOpenDocumentSupportRequest={openSupportDraft} />}
