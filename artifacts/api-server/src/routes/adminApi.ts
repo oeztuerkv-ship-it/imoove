@@ -5663,6 +5663,65 @@ adminJson.get("/rides", async (req, res, next) => {
  * Fahrtakte: Ride + `ride_events` (chronologisch) + `panel_audit_log` (Mandant, `subject_id` = ride id) + Verknüpfungen.
  * Read-only; keine Fachlogik-Änderung.
  */
+adminJson.get("/rides/:id/gps-track", async (req, res, next) => {
+  try {
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const row = await findRideAdminById(id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    if (!adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, row)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const { listRideLocationHistory } = await import("../db/rideLocationHistoryData.js");
+    const { computeRideGpsTrackMetrics } = await import("../lib/rideGpsTrackMetrics.js");
+    const { getRideCompletedAtByRideId } = await import("../lib/rideActualDuration.js");
+    const historyPoints = await listRideLocationHistory(id);
+    const completedAt = await getRideCompletedAtByRideId(id);
+    const tripStartedAt = row.driverTripStartedAt ? new Date(row.driverTripStartedAt) : null;
+    const metrics =
+      completedAt != null
+        ? computeRideGpsTrackMetrics(
+            historyPoints.map((p) => ({ lat: p.lat, lon: p.lon, recordedAt: p.recordedAt })),
+            tripStartedAt,
+            completedAt,
+          )
+        : null;
+    res.json({
+      ok: true,
+      rideId: id,
+      pointCount: historyPoints.length,
+      points: historyPoints.map((p) => ({
+        lat: p.lat,
+        lon: p.lon,
+        recordedAt: p.recordedAt.toISOString(),
+      })),
+      computedMetrics: metrics,
+      stored: {
+        actualDistanceKm: row.actualDistanceKm ?? null,
+        actualDurationMinutes: row.actualDurationMinutes ?? null,
+        driverTripStartedAt: row.driverTripStartedAt ?? null,
+        completedAt: completedAt ? completedAt.toISOString() : null,
+      },
+      fromLat: row.fromLat ?? null,
+      fromLon: row.fromLon ?? null,
+      toLat: row.toLat ?? null,
+      toLon: row.toLon ?? null,
+      fromFull: row.fromFull ?? row.from ?? null,
+      toFull: row.toFull ?? row.to ?? null,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 adminJson.get("/rides/:id/record", async (req, res, next) => {
   try {
     const id = String(req.params.id ?? "").trim();

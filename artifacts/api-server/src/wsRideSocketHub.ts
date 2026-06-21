@@ -1,5 +1,5 @@
 import WebSocket, { WebSocketServer } from "ws";
-import { upsertRideDriverLocation } from "./db/rideDriverLocationData";
+import { persistDriverLocationPing } from "./db/rideDriverLocationData";
 import { findRide } from "./db/ridesData";
 import { logger } from "./lib/logger";
 import { resolveWsJoinPrincipal, wsJoinPrincipalMatchesRide } from "./lib/wsRideJoinAuth";
@@ -175,7 +175,16 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
           const updatedAt = new Date().toISOString();
           driverLocations.set(boundRideId, { lat: msg.lat, lon: msg.lon, updatedAt });
           if (meta.fleetDriverId) {
-            void upsertRideDriverLocation(boundRideId, meta.fleetDriverId, msg.lat, msg.lon);
+            void findRide(boundRideId).then((ride) => {
+              if (!ride) return;
+              void persistDriverLocationPing({
+                rideId: boundRideId,
+                fleetDriverId: meta.fleetDriverId!,
+                lat: msg.lat,
+                lon: msg.lon,
+                rideStatus: ride.status,
+              });
+            });
           }
           rooms.get(boundRideId)?.forEach((client) => {
             if (client !== socket && client.readyState === WebSocket.OPEN) {

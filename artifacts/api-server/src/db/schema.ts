@@ -1,8 +1,10 @@
 import {
+  bigint,
   boolean,
   customType,
   date,
   doublePrecision,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -700,6 +702,25 @@ export const customerPaymentSuspensionTable = pgTable("customer_payment_suspensi
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** GPS-Ping-Historie pro Fahrt (Haversine-Abrechnung, Admin-Nachverfolgung). */
+export const rideLocationHistoryTable = pgTable(
+  "ride_location_history",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    ride_id: text("ride_id")
+      .notNull()
+      .references(() => ridesTable.id, { onDelete: "cascade" }),
+    fleet_driver_id: text("fleet_driver_id").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    lon: doublePrecision("lon").notNull(),
+    recorded_at: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    rideRecordedIdx: index("ride_location_history_ride_recorded_idx").on(t.ride_id, t.recorded_at),
+    recordedAtIdx: index("ride_location_history_recorded_at_idx").on(t.recorded_at),
+  }),
+);
 
 /** Letzte Fahrer-GPS pro Fahrt (Geofence, Live-Tracking, Recovery). */
 export const rideDriverLocationsTable = pgTable("ride_driver_locations", {

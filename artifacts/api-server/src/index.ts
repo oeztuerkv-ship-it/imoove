@@ -29,6 +29,8 @@ const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 registerRideWebSockets(wss);
 
+let lastRideLocationHistoryPurgeMs = 0;
+
 httpServer.listen(port, () => {
   logger.info({ port }, "Server listening");
   void seedAdminDefaultsIfEmpty().catch((err) => {
@@ -176,6 +178,13 @@ httpServer.listen(port, () => {
       // Job 9: Fehlgeschlagene Kartenabbuchungen — automatische Retries
       const { runFailedPaymentRecoveryCron } = await import("./jobs/failedPaymentRecovery.js");
       await runFailedPaymentRecoveryCron(now);
+
+      // Job 10: GPS-Ping-Historie >90 Tage löschen (täglich)
+      if (nowMs - lastRideLocationHistoryPurgeMs >= 24 * 60 * 60 * 1000) {
+        lastRideLocationHistoryPurgeMs = nowMs;
+        const { purgeStaleRideLocationHistory } = await import("./jobs/rideLocationHistoryRetention.js");
+        await purgeStaleRideLocationHistory(now);
+      }
 
     } catch (err) {
       logger.error({ err }, "[Cron] reservationLifecycle failed");

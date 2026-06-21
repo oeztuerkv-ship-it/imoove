@@ -901,9 +901,7 @@ export default function DriverNavigationScreen() {
   const completeRideWithFare = async (fare: number, plausibilityAck = false) => {
     setCompletingRide(true);
     try {
-      const navDistanceKm = initialDistM > 0 ? Math.round(initialDistM / 100) / 10 : undefined;
-      const navDurationMin = initialEtaMin > 0 ? Math.round(initialEtaMin) : undefined;
-      await patchStatus("completed", fare, navDistanceKm, navDurationMin, plausibilityAck);
+      await patchStatus("completed", fare, undefined, undefined, plausibilityAck);
       await syncNavPresence(null);
       setShowFareModal(false);
       disconnectSocket();

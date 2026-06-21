@@ -44,7 +44,7 @@ import { markDispatchOfferAccepted } from "../db/rideDispatchOfferData";
 import {
   getRideDriverLocation,
   hydrateRideDriverLocationCache,
-  upsertRideDriverLocation,
+  persistDriverLocationPing,
 } from "../db/rideDriverLocationData";
 import {
   DEFAULT_AUTHORIZATION_SOURCE,
@@ -2259,6 +2259,30 @@ export async function patchRideStatusRoute(
       };
     }
 
+    let gpsActualPatch: Partial<Pick<RideRequest, "actualDistanceKm" | "actualDurationMinutes">> = {};
+    if (nextStatus === "completed") {
+      const completedAt = new Date();
+      const tripStartedAtSource =
+        cur.driverTripStartedAt ??
+        (tripStartWaitingPatch.driverTripStartedAt as string | undefined) ??
+        null;
+      const tripStartedAt = tripStartedAtSource ? new Date(tripStartedAtSource) : null;
+      const { listRideLocationHistory } = await import("../db/rideLocationHistoryData.js");
+      const { computeRideGpsTrackMetrics } = await import("../lib/rideGpsTrackMetrics.js");
+      const historyPoints = await listRideLocationHistory(id);
+      const metrics = computeRideGpsTrackMetrics(
+        historyPoints.map((p) => ({ lat: p.lat, lon: p.lon, recordedAt: p.recordedAt })),
+        tripStartedAt,
+        completedAt,
+      );
+      if (metrics) {
+        gpsActualPatch = {
+          actualDistanceKm: metrics.distanceKm,
+          actualDurationMinutes: metrics.durationMinutes,
+        };
+      }
+    }
+
     let finalFarePlausibilityAudit:
       | { flagged: boolean; estimatedFareEur: number; finalFareEur: number; acknowledged: boolean }
       | null = null;
@@ -2320,8 +2344,17 @@ export async function patchRideStatusRoute(
         {
           status: nextStatus,
           ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
-          ...(parsedActualDistanceKm !== undefined ? { actualDistanceKm: parsedActualDistanceKm } : {}),
-          ...(parsedActualDurationMinutes !== undefined ? { actualDurationMinutes: parsedActualDurationMinutes } : {}),
+          ...(nextStatus === "completed" && gpsActualPatch.actualDistanceKm != null
+            ? {
+                actualDistanceKm: gpsActualPatch.actualDistanceKm,
+                actualDurationMinutes: gpsActualPatch.actualDurationMinutes,
+              }
+            : {
+                ...(parsedActualDistanceKm !== undefined ? { actualDistanceKm: parsedActualDistanceKm } : {}),
+                ...(parsedActualDurationMinutes !== undefined
+                  ? { actualDurationMinutes: parsedActualDurationMinutes }
+                  : {}),
+              }),
           ...(driverId != null ? { driverId } : {}),
           ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
           ...(nextStatus === "driver_waiting" && cur.status !== "driver_waiting"
@@ -2787,7 +2820,13 @@ router.post("/rides/:id/driver-location", async (req, res, next) => {
       res.status(400).json({ error: "lat and lon required" });
       return;
     }
-    const persisted = await upsertRideDriverLocation(id, fleet.fleetDriverId, lat, lon);
+    const persisted = await persistDriverLocationPing({
+      rideId: id,
+      fleetDriverId: fleet.fleetDriverId,
+      lat,
+      lon,
+      rideStatus: ride.status,
+    });
     const loc: DriverLocation = persisted ?? {
       lat,
       lon,

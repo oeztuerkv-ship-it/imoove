@@ -1414,6 +1414,27 @@ BEGIN
     errs := array_append(errs, 'rides.payout_amount (Migration 113)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ride_location_history'
+  ) THEN
+    errs := array_append(errs, 'table ride_location_history (Migration 114)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'ride_location_history_ride_recorded_idx'
+  ) THEN
+    errs := array_append(errs, 'index ride_location_history_ride_recorded_idx (Migration 114)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'ride_location_history_recorded_at_idx'
+  ) THEN
+    errs := array_append(errs, 'index ride_location_history_recorded_at_idx (Migration 114)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

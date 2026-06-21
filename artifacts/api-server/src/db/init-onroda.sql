@@ -1076,6 +1076,21 @@ CREATE TABLE IF NOT EXISTS ride_driver_locations (
 CREATE INDEX IF NOT EXISTS ride_driver_locations_updated_at_idx
   ON ride_driver_locations (updated_at DESC);
 
+CREATE TABLE IF NOT EXISTS ride_location_history (
+  id BIGSERIAL PRIMARY KEY,
+  ride_id TEXT NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
+  fleet_driver_id TEXT NOT NULL,
+  lat DOUBLE PRECISION NOT NULL,
+  lon DOUBLE PRECISION NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ride_location_history_ride_recorded_idx
+  ON ride_location_history (ride_id, recorded_at ASC);
+
+CREATE INDEX IF NOT EXISTS ride_location_history_recorded_at_idx
+  ON ride_location_history (recorded_at ASC);
+
 CREATE TABLE IF NOT EXISTS ride_driver_dispatch_offers (
   id TEXT PRIMARY KEY,
   ride_id TEXT NOT NULL REFERENCES rides(id) ON DELETE CASCADE,

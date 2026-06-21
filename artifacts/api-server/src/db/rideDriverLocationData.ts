@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
 import { isGpsOutlierJump } from "../lib/gpsOutlierFilter";
+import {
+  appendRideLocationHistory,
+  RIDE_GPS_HISTORY_STATUSES,
+} from "./rideLocationHistoryData";
 import { rideDriverLocationsTable } from "./schema";
 
 export type RideDriverLocationSnapshot = {
@@ -45,6 +49,33 @@ export async function upsertRideDriverLocation(
   return { lat, lon, updatedAt: now.toISOString(), fleetDriverId: did };
 }
 
+/** Letzte Position + optional Ping-Historie während aktiver Fahrt. */
+export async function persistDriverLocationPing(input: {
+  rideId: string;
+  fleetDriverId: string;
+  lat: number;
+  lon: number;
+  rideStatus: string;
+}): Promise<RideDriverLocationSnapshot | null> {
+  const status = input.rideStatus.trim();
+  const snapshot = await upsertRideDriverLocation(
+    input.rideId,
+    input.fleetDriverId,
+    input.lat,
+    input.lon,
+  );
+  if (snapshot && RIDE_GPS_HISTORY_STATUSES.has(status)) {
+    await appendRideLocationHistory(
+      input.rideId,
+      input.fleetDriverId,
+      snapshot.lat,
+      snapshot.lon,
+      new Date(snapshot.updatedAt),
+    );
+  }
+  return snapshot;
+}
+
 export async function getRideDriverLocation(rideId: string): Promise<RideDriverLocationSnapshot | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();
@@ -79,7 +110,6 @@ export async function hydrateRideDriverLocationCache(
   rideId: string,
   cache: Map<string, RideDriverLocationSnapshot>,
 ): Promise<void> {
-  if (cache.has(rideId)) return;
-  const dbLoc = await getRideDriverLocation(rideId);
-  if (dbLoc) cache.set(rideId, dbLoc);
+  const snap = await getRideDriverLocation(rideId);
+  if (snap) cache.set(rideId, { lat: snap.lat, lon: snap.lon, updatedAt: snap.updatedAt });
 }

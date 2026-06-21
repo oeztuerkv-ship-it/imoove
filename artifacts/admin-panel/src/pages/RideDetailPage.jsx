@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import RideGpsTrackMap from "../components/RideGpsTrackMap.jsx";
 
 const RIDES_LIST_URL = `${API_BASE}/admin/rides`;
 
@@ -253,6 +254,9 @@ export default function RideDetailPage({ rideId, onBack }) {
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
   const [signaturePreviewUrl, setSignaturePreviewUrl] = useState("");
+  const [gpsTrack, setGpsTrack] = useState(null);
+  const [gpsTrackErr, setGpsTrackErr] = useState("");
+  const [gpsTrackLoading, setGpsTrackLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!rideId?.trim()) {
@@ -282,6 +286,31 @@ export default function RideDetailPage({ rideId, onBack }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadGpsTrack = useCallback(async () => {
+    if (!rideId?.trim()) return;
+    setGpsTrackLoading(true);
+    setGpsTrackErr("");
+    try {
+      const res = await fetch(`${RIDES_LIST_URL}/${encodeURIComponent(rideId.trim())}/gps-track`, {
+        headers: adminApiHeaders(),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.ok) {
+        throw new Error(j?.error || `HTTP ${res.status}`);
+      }
+      setGpsTrack(j);
+    } catch (e) {
+      setGpsTrack(null);
+      setGpsTrackErr(e instanceof Error ? e.message : "GPS-Track konnte nicht geladen werden.");
+    } finally {
+      setGpsTrackLoading(false);
+    }
+  }, [rideId]);
+
+  useEffect(() => {
+    void loadGpsTrack();
+  }, [loadGpsTrack]);
 
   useEffect(() => {
     let revoked = false;
@@ -411,6 +440,68 @@ export default function RideDetailPage({ rideId, onBack }) {
                     {partnerDriverNote}
                   </span>
                 </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="admin-panel-card admin-m-card admin-m-card--unified">
+            <div className="admin-m-card__h">
+              <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                GPS-Route (Nachverfolgung)
+              </span>
+              <button type="button" className="admin-c-btn-sec" onClick={() => void loadGpsTrack()}>
+                Aktualisieren
+              </button>
+            </div>
+            <div style={{ padding: "0 16px 16px" }}>
+              {gpsTrackLoading && !gpsTrack ? <p className="admin-table-sub">Lade GPS-Pings …</p> : null}
+              {gpsTrackErr ? <div className="admin-error-banner">{gpsTrackErr}</div> : null}
+              {gpsTrack ? (
+                <>
+                  <div className="admin-ride-rec-kv" style={{ marginBottom: 12 }}>
+                    <div>
+                      <span className="admin-ride-rec-kv__k">Gespeicherte Distanz</span>
+                      <span className="admin-ride-rec-kv__v">
+                        {gpsTrack.stored?.actualDistanceKm != null
+                          ? `${Number(gpsTrack.stored.actualDistanceKm).toFixed(1).replace(".", ",")} km`
+                          : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="admin-ride-rec-kv__k">Gespeicherte Dauer</span>
+                      <span className="admin-ride-rec-kv__v">
+                        {gpsTrack.stored?.actualDurationMinutes != null
+                          ? `${gpsTrack.stored.actualDurationMinutes} Min.`
+                          : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="admin-ride-rec-kv__k">Fahrtbeginn (GPS-Fenster)</span>
+                      <span className="admin-ride-rec-kv__v">
+                        {gpsTrack.stored?.driverTripStartedAt
+                          ? formatDt(gpsTrack.stored.driverTripStartedAt)
+                          : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="admin-ride-rec-kv__k">Abschluss</span>
+                      <span className="admin-ride-rec-kv__v">
+                        {gpsTrack.stored?.completedAt ? formatDt(gpsTrack.stored.completedAt) : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="admin-ride-rec-kv__k">Ping-Anzahl</span>
+                      <span className="admin-ride-rec-kv__v">{gpsTrack.pointCount ?? 0}</span>
+                    </div>
+                  </div>
+                  <RideGpsTrackMap
+                    points={gpsTrack.points ?? []}
+                    fromLat={gpsTrack.fromLat}
+                    fromLon={gpsTrack.fromLon}
+                    toLat={gpsTrack.toLat}
+                    toLon={gpsTrack.toLon}
+                  />
+                </>
               ) : null}
             </div>
           </section>
