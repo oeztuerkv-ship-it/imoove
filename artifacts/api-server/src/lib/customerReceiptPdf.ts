@@ -6,6 +6,9 @@ import {
 } from "./customerReceipt.js";
 import type { ReceiptDriverInfo } from "./receiptDriverInfo.js";
 import type { RideRequest } from "../domain/rideRequest.js";
+import { ONRODA_INVOICE_BRAND } from "./invoice/invoiceBrand.js";
+import { drawOnrodaLogoBlock } from "./invoice/invoicePdfComponents.js";
+import { INVOICE_LAYOUT, INVOICE_MARGINS } from "./invoice/invoiceLayout.js";
 
 function fmtEuro(amount: number): string {
   const safe = Number.isFinite(amount) ? amount : 0;
@@ -62,17 +65,22 @@ export function buildCustomerReceiptPdf(ctx: CustomerReceiptContext): Promise<Bu
     const paymentLabel = paymentLabelForRide(ctx);
     const distanceKm = (r.actualDistanceKm ?? r.distanceKm ?? 0).toFixed(1);
 
-    doc.rect(0, 0, pageWidth, 72).fill("#111827");
-    doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(11).text("FAHRTQUITTUNG", 50, 28, {
-      align: "center",
-      width: contentWidth,
-    });
-    doc.font("Helvetica").fontSize(10).fillColor("#d1d5db").text(`Nr. ${rideNr}`, 50, 46, {
-      align: "center",
-      width: contentWidth,
-    });
+    const left = INVOICE_MARGINS.left;
+    const right = pageWidth - INVOICE_MARGINS.right;
+    const top = INVOICE_MARGINS.top;
 
-    let y = 92;
+    const logoBottom = drawOnrodaLogoBlock(doc, left, top, 1);
+
+    const titleX = right - 160;
+    doc.font("Helvetica-Bold").fontSize(14).fillColor(ONRODA_INVOICE_BRAND.text);
+    doc.text("FAHRTQUITTUNG", titleX, top, { width: 160, align: "right" });
+    doc.font("Helvetica").fontSize(10).fillColor(ONRODA_INVOICE_BRAND.muted);
+    doc.text(`Nr. ${rideNr}`, titleX, top + 20, { width: 160, align: "right" });
+
+    const lineY = Math.max(logoBottom + 6, top + INVOICE_LAYOUT.headerHeight - 8);
+    doc.moveTo(left, lineY).lineTo(right, lineY).lineWidth(0.75).strokeColor(ONRODA_INVOICE_BRAND.accent).stroke();
+
+    let y = lineY + INVOICE_LAYOUT.sectionGap;
     doc.fillColor("#6b7280").font("Helvetica-Bold").fontSize(9).text("LEISTUNGSERBRINGER", 50, y);
     y += 16;
     doc.fillColor("#111827").font("Helvetica-Bold").fontSize(14).text(issuer.name || "Leistungserbringer nicht hinterlegt", 50, y, {
