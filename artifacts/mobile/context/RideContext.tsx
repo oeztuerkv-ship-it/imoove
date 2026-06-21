@@ -408,24 +408,14 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
     (opts?: CompleteRideOptions) => {
       const parsedFinal =
         opts?.finalFare != null && Number.isFinite(Number(opts.finalFare)) ? Number(opts.finalFare) : null;
-      const serverEstimate =
-        opts?.estimatedFare != null && Number.isFinite(Number(opts.estimatedFare))
-          ? Number(opts.estimatedFare)
-          : null;
-      const localEstimate = fareBreakdown?.total ?? null;
-      const estimateForHint = serverEstimate ?? localEstimate;
-      const billed = parsedFinal ?? localEstimate;
-      if (destination && route && fareBreakdown && billed != null && Number.isFinite(Number(billed))) {
+      if (destination && route && fareBreakdown) {
         const entry: RideHistoryEntry = {
           id: opts?.serverRideId ?? Date.now().toString() + Math.random().toString(36).substring(2, 9),
           destination: destination.displayName,
           origin: origin.displayName,
           distanceKm: route.distanceKm,
-          totalFare: billed,
-          estimatedFare:
-            parsedFinal != null && estimateForHint != null && Math.abs(estimateForHint - parsedFinal) > 0.005
-              ? estimateForHint
-              : undefined,
+          totalFare: parsedFinal ?? 0,
+          estimatedFare: undefined,
           vehicleType: selectedVehicle!,
           paymentMethod: paymentMethod ?? "cash",
           scheduledTime: scheduledTime?.toISOString() ?? null,

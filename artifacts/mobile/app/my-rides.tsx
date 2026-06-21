@@ -451,7 +451,6 @@ function paymentMethodDisplay(pm: string | undefined): string {
 function serverCompletedToHistoryEntry(r: RideRequest): RideHistoryEntry {
   const finalN =
     r.finalFare != null && Number.isFinite(Number(r.finalFare)) ? Number(r.finalFare) : null;
-  const est = Number(r.estimatedFare ?? 0);
   const created =
     r.createdAt instanceof Date ? r.createdAt.toISOString() : new Date(r.createdAt as string).toISOString();
   const sched =
@@ -465,9 +464,8 @@ function serverCompletedToHistoryEntry(r: RideRequest): RideHistoryEntry {
     distanceKm: r.distanceKm,
     actualDistanceKm: r.actualDistanceKm ?? null,
     actualDurationMinutes: r.actualDurationMinutes ?? null,
-    totalFare: finalN ?? est,
-    estimatedFare:
-      finalN != null && est > 0 && Math.abs(est - finalN) > 0.005 ? est : undefined,
+    totalFare: finalN ?? 0,
+    estimatedFare: undefined,
     vehicleType: guessVehicleTypeFromRide(r.vehicle),
     paymentMethod: guessPaymentMethodFromRide(r.paymentMethod),
     scheduledTime: sched,
@@ -756,15 +754,13 @@ export default function MyRidesScreen() {
     for (const r of serverCompleted) {
       const finalN =
         r.finalFare != null && Number.isFinite(Number(r.finalFare)) ? Number(r.finalFare) : null;
-      const est = Number(r.estimatedFare ?? 0);
       const prev = byId.get(r.id);
       if (prev) {
         if (finalN != null) {
           byId.set(r.id, {
             ...prev,
             totalFare: finalN,
-            estimatedFare:
-              est > 0 && Math.abs(est - finalN) > 0.005 ? est : prev.estimatedFare,
+            estimatedFare: undefined,
           });
         }
       } else {
@@ -1154,11 +1150,7 @@ export default function MyRidesScreen() {
                       { value: PAYMENT_LABELS[ride.paymentMethod] },
                       {
                         value:
-                          ride.estimatedFare != null && Math.abs(ride.estimatedFare - ride.totalFare) > 0.005
-                            ? `Endpreis ${formatEuro(ride.totalFare)}`
-                            : Math.abs(ride.totalFare) < 0.005
-                              ? "0,00 €"
-                              : formatEuro(ride.totalFare),
+                          Math.abs(ride.totalFare) >= 0.005 ? formatEuro(ride.totalFare) : "—",
                       },
                     ]}
                   />

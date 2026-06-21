@@ -1,6 +1,8 @@
 import { PlatformPay } from "@stripe/stripe-react-native";
 import { Platform } from "react-native";
 
+import { APPLE_PAY_SETUP_MERCHANT_LABEL_DE } from "@/constants/stripe";
+
 const MERCHANT_COUNTRY_CODE = "DE";
 const CURRENCY_CODE = "EUR";
 const MERCHANT_NAME = "ONRODA";
@@ -20,31 +22,14 @@ export type PlatformPaySetupConfirmFns = {
 };
 
 /** SetupIntent hat keine Währung — Payment Sheet zeigt sonst USD. Native Wallet mit EUR. */
-export function buildSetupApplePayConfirmParams(estimatedFareEur?: number): PlatformPay.ConfirmParams {
+export function buildSetupApplePayConfirmParams(_estimatedFareEur?: number): PlatformPay.ConfirmParams {
   const cartItems: PlatformPay.CartSummaryItem[] = [
     {
-      label: "Karte zur Zahlung hinterlegen",
-      amount: "0.00",
-      paymentType: PlatformPay.PaymentType.Immediate,
-    },
-    {
-      label: "Abbuchung erfolgt nach Fahrtende",
+      label: APPLE_PAY_SETUP_MERCHANT_LABEL_DE,
       amount: "0.00",
       paymentType: PlatformPay.PaymentType.Immediate,
     },
   ];
-  if (typeof estimatedFareEur === "number" && Number.isFinite(estimatedFareEur) && estimatedFareEur > 0) {
-    cartItems.push({
-      label: `Voraussichtlich ca. ${estimatedFareEur.toFixed(2)} € nach der Fahrt`,
-      amount: "0.00",
-      paymentType: PlatformPay.PaymentType.Immediate,
-    });
-  }
-  cartItems.push({
-    label: MERCHANT_NAME,
-    amount: "0.00",
-    paymentType: PlatformPay.PaymentType.Immediate,
-  });
   return {
     applePay: {
       merchantCountryCode: MERCHANT_COUNTRY_CODE,

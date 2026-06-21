@@ -54,7 +54,7 @@ import {
   postCustomerMedicalTransportScan,
   type MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
-import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_SETUP_EXPLAINER_DE } from "@/constants/stripe";
+import { STRIPE_CARD_TOKEN_KEY, STRIPE_PUBLISHABLE_KEY, CUSTOMER_WALLET_BOOKING_INFO_DE, STRIPE_SETUP_EXPLAINER_DE } from "@/constants/stripe";
 import { resolveCustomerBearerToken } from "@/utils/customerSessionToken";
 import { cancelCustomerRide } from "@/utils/customerRidesApi";
 import {
@@ -919,6 +919,13 @@ export default function RideScreen() {
     </View>
   );
 
+  const renderWalletBookingInfoBox = () => (
+    <View style={[styles.taxameterNoticeBox, styles.walletBookingInfoBox]}>
+      <Feather name="info" size={14} color="#1D4ED8" style={{ marginTop: 1 }} />
+      <Text style={styles.walletBookingInfoText}>{CUSTOMER_WALLET_BOOKING_INFO_DE}</Text>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -1083,9 +1090,12 @@ export default function RideScreen() {
             })}
           </View>
           {paymentMethod === "card" || paymentMethod === "apple_pay" || paymentMethod === "google_pay" ? (
-            <Text style={[styles.stripeSetupHint, { color: colors.mutedForeground }]}>
-              {STRIPE_SETUP_EXPLAINER_DE}
-            </Text>
+            <>
+              {renderWalletBookingInfoBox()}
+              <Text style={[styles.stripeSetupHint, { color: colors.mutedForeground }]}>
+                {STRIPE_SETUP_EXPLAINER_DE}
+              </Text>
+            </>
           ) : null}
         </View>
 
@@ -1448,6 +1458,18 @@ const styles = StyleSheet.create({
   taxameterNoticeText: { flex: 1, fontSize: rf(12), lineHeight: rf(17) },
   taxameterNoticeLead: { fontFamily: "Inter_500Medium", color: "#4B5563" },
   taxameterNoticeStrong: { fontFamily: "Inter_700Bold", color: "#111827" },
+  walletBookingInfoBox: {
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  walletBookingInfoText: {
+    flex: 1,
+    fontSize: rf(12),
+    lineHeight: rf(17),
+    fontFamily: "Inter_500Medium",
+    color: "#1E3A8A",
+  },
   tripSummaryCard: { flexDirection: "row", borderRadius: rs(18), borderWidth: 1, paddingVertical: rs(14), paddingHorizontal: rs(8), gap: rs(4) },
   tripSummaryItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(5), minWidth: 0 },
   tripSummaryIcon: { width: rs(34), height: rs(34), borderRadius: rs(17), alignItems: "center", justifyContent: "center" },

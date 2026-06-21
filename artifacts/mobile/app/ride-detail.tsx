@@ -19,7 +19,6 @@ import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
-import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { formatEuro } from "@/utils/fareCalculator";
 import { downloadReceipt } from "@/utils/receipt";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -58,22 +57,39 @@ export default function RideDetailScreen() {
 
   const histRide = useMemo(() => history.find((r) => r.id === rideId) ?? null, [history, rideId]);
 
-  /** Gleiche Logik wie „Meine Fahrten“: Endpreis aus API-Poll anreichern. */
+  /** Gleiche Logik wie „Meine Fahrten“: Server-Poll (Endpreis, GPS-Metriken) anreichern. */
   const enrichedHistRide = useMemo(() => {
     if (!histRide || histRide.status !== "completed") return histRide;
     const srv = requests.find((r) => r.id === histRide.id && r.status === "completed");
     if (!srv) return histRide;
     const finalN =
       srv.finalFare != null && Number.isFinite(Number(srv.finalFare)) ? Number(srv.finalFare) : null;
-    if (finalN == null) return histRide;
-    const est = Number(srv.estimatedFare ?? 0);
     return {
       ...histRide,
-      totalFare: finalN,
-      estimatedFare:
-        est > 0 && Math.abs(est - finalN) > 0.005 ? est : histRide.estimatedFare,
+      ...(finalN != null ? { totalFare: finalN } : {}),
+      distanceKm: srv.distanceKm ?? histRide.distanceKm,
+      actualDistanceKm: srv.actualDistanceKm ?? histRide.actualDistanceKm ?? null,
+      actualDurationMinutes: srv.actualDurationMinutes ?? histRide.actualDurationMinutes ?? null,
+      estimatedFare: undefined,
     };
   }, [histRide, requests]);
+
+  const completedSrv = useMemo(
+    () => requests.find((r) => r.id === rideId && r.status === "completed") ?? null,
+    [requests, rideId],
+  );
+
+  const completedTripMetrics = useMemo(() => {
+    const ride = enrichedHistRide ?? histRide;
+    if (ride?.status !== "completed" && !completedSrv) return null;
+    const actualKm =
+      ride?.actualDistanceKm ?? completedSrv?.actualDistanceKm ?? null;
+    const actualMin =
+      ride?.actualDurationMinutes ?? completedSrv?.actualDurationMinutes ?? null;
+    const plannedKm = ride?.distanceKm ?? completedSrv?.distanceKm ?? 0;
+    const plannedMin = completedSrv?.durationMinutes ?? 0;
+    return { actualKm, actualMin, plannedKm, plannedMin };
+  }, [enrichedHistRide, histRide, completedSrv]);
   const activeRide = useMemo(() => myActiveRequests.find((r) => r.id === rideId) ?? null, [myActiveRequests, rideId]);
   const cancelledRide = useMemo(() => myCancelledRequests.find((r) => r.id === rideId) ?? null, [myCancelledRequests, rideId]);
 
@@ -261,28 +277,40 @@ export default function RideDetailScreen() {
           </View>
 
           {enrichedHistRide?.status === "completed" ? (
-            <View>
+            <View style={styles.row}>
+              <Text style={[styles.k, { color: colors.mutedForeground }]}>Fahrtpreis (Taxameter)</Text>
+              <Text style={[styles.v, { color: colors.foreground }]}>
+                {Math.abs(enrichedHistRide.totalFare) >= 0.005 ? formatEuro(enrichedHistRide.totalFare) : "—"}
+              </Text>
+            </View>
+          ) : null}
+
+          {completedTripMetrics ? (
+            <>
               <View style={styles.row}>
                 <Text style={[styles.k, { color: colors.mutedForeground }]}>
-                  {enrichedHistRide.estimatedFare != null &&
-                  Math.abs(enrichedHistRide.estimatedFare - enrichedHistRide.totalFare) > 0.005
-                    ? "Endpreis"
-                    : "Betrag"}
+                  {completedTripMetrics.actualKm != null ? "Gefahrene Strecke" : "Geplante Strecke"}
                 </Text>
-                <Text style={[styles.v, { color: colors.foreground }]}>{formatEuro(enrichedHistRide.totalFare)}</Text>
+                <Text style={[styles.v, { color: colors.foreground }]}>
+                  {(completedTripMetrics.actualKm ?? completedTripMetrics.plannedKm).toFixed(1)} km
+                </Text>
               </View>
-              {enrichedHistRide.estimatedFare != null &&
-              Math.abs(enrichedHistRide.estimatedFare - enrichedHistRide.totalFare) > 0.005 ? (
+              {completedTripMetrics.actualMin != null ? (
                 <View style={styles.row}>
-                  <Text style={[styles.k, { color: colors.mutedForeground }]}>Schätzung</Text>
-                  <Text style={[styles.v, { color: colors.mutedForeground }]}>{formatEuro(enrichedHistRide.estimatedFare)}</Text>
+                  <Text style={[styles.k, { color: colors.mutedForeground }]}>Fahrtdauer</Text>
+                  <Text style={[styles.v, { color: colors.foreground }]}>
+                    {completedTripMetrics.actualMin} Min.
+                  </Text>
+                </View>
+              ) : completedTripMetrics.plannedMin > 0 ? (
+                <View style={styles.row}>
+                  <Text style={[styles.k, { color: colors.mutedForeground }]}>Geschätzte Dauer</Text>
+                  <Text style={[styles.v, { color: colors.foreground }]}>
+                    ~{completedTripMetrics.plannedMin} Min.
+                  </Text>
                 </View>
               ) : null}
-              {enrichedHistRide.estimatedFare != null &&
-              Math.abs(enrichedHistRide.estimatedFare - enrichedHistRide.totalFare) > 0.005 ? (
-                <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 4 }} />
-              ) : null}
-            </View>
+            </>
           ) : null}
 
           <Pressable style={styles.primaryBtn} onPress={() => void onDownloadReceipt()}>

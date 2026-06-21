@@ -2,7 +2,6 @@ import type { CompanyRow } from "../routes/adminApi.types";
 import type { RideRequest } from "../domain/rideRequest";
 import { findCompanyById } from "../db/adminData";
 import { getRideFinancialSnapshotByRideId } from "../db/rideFinancialsData";
-import { effectiveTaxiGrossEur } from "./financeCalculationService";
 import type { ReceiptDriverInfo } from "./receiptDriverInfo";
 
 const DEFAULT_VAT_RATE = 0.19;
@@ -173,6 +172,14 @@ export function receiptShowsSteuerlicherBeleg(issuer: ReceiptIssuerBlock, tax: R
   return issuer.complete && tax.complete && tax.gross > 0;
 }
 
+/** Kunden-Quittung: nur Taxameter-`finalFare` — kein Buchungs-Schätzpreis. */
+export function customerReceiptGrossEur(ride: RideRequest): number {
+  if (ride.status !== "completed") return 0;
+  const finalFare = ride.finalFare;
+  if (finalFare == null || !Number.isFinite(Number(finalFare))) return 0;
+  return roundMoney(Math.max(0, Number(finalFare)));
+}
+
 export async function resolveCustomerReceiptContext(
   ride: RideRequest,
   driverInfo: ReceiptDriverInfo = { driverName: null, driverPlate: null },
@@ -331,7 +338,6 @@ export function buildCustomerReceiptHtml(ctx: CustomerReceiptContext): string {
         <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(paymentLabel)}</div></div>
         <div class="row"><div class="k">Produkt</div><div class="v">${escapeHtml(r.vehicle ?? "—")}</div></div>
       </div>
-      ${r.status === "completed" ? `<p class="muted" style="margin-top:12px;font-size:11px;line-height:1.5;">Maßgeblich ist der im Fahrzeug angezeigte Taxameter-Endpreis. App-Schätzungen dienen nur der Orientierung.</p>` : ""}
     </div>
     <div class="footer">
       <span class="footer-broker">Vermittelt über ONRODA</span><br/>

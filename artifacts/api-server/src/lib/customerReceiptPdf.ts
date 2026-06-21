@@ -155,17 +155,6 @@ export function buildCustomerReceiptPdf(ctx: CustomerReceiptContext): Promise<Bu
     y = drawRow(doc, "Zahlungsart", paymentLabel, y, contentWidth);
     y = drawRow(doc, "Produkt", r.vehicle ?? "—", y, contentWidth);
 
-    if (r.status === "completed") {
-      y += 6;
-      doc.font("Helvetica").fontSize(9).fillColor("#6b7280").text(
-        "Maßgeblich ist der im Fahrzeug angezeigte Taxameter-Endpreis. App-Schätzungen dienen nur der Orientierung.",
-        50,
-        y,
-        { width: contentWidth },
-      );
-      y += 28;
-    }
-
     y = Math.max(y + 12, 720);
     doc.moveTo(50, y).lineTo(pageWidth - 50, y).strokeColor("#f0f0f0").stroke();
     y += 12;
