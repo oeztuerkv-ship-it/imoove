@@ -50,6 +50,7 @@ const TRANSITIONS: Partial<Record<RideRequest["status"], RideRequest["status"][]
   ],
   scheduled_assigned: [
     "ready_for_dispatch",
+    "searching_driver",
     "driver_arriving",
     "driver_waiting",
     "passenger_onboard",

@@ -9,6 +9,7 @@ import { sendExpoPushMessages } from "./expoPushGateway";
 export const RESERVATION_EXPIRED_NOTIFY_FROM_STATUSES = new Set([
   "scheduled",
   "scheduled_assigned",
+  "searching_driver",
   "ready_for_dispatch",
 ]);
 

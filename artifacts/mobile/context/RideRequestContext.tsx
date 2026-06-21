@@ -1364,7 +1364,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     (id: string, driverId?: string) => patchStatus(id, "accepted", undefined, driverId),
     [patchStatus],
   );
-  const activateForDispatch = useCallback((id: string) => patchStatus(id, "ready_for_dispatch"), [patchStatus]);
+  const activateForDispatch = useCallback((id: string) => patchStatus(id, "searching_driver"), [patchStatus]);
   const markDriverArriving = useCallback((id: string) => patchStatus(id, "driver_arriving"), [patchStatus]);
   const rejectRequest = useCallback((id: string) => patchStatus(id, "rejected"), [patchStatus]);
 

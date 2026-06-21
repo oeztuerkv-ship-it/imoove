@@ -1,5 +1,4 @@
 import {
-  notifyPassengerReservationActivated,
   notifyPassengerReservationExpired,
   notifyPassengerRideCancelledBySystem,
   shouldNotifyPassengerReservationExpired,
@@ -30,8 +29,5 @@ export function notifyCronRideStatusChange(input: {
   if (toStatus === "cancelled_by_system") {
     void notifyPassengerRideCancelledBySystem(pid, rideId);
     return;
-  }
-  if (toStatus === "ready_for_dispatch" && fromStatus === "scheduled_assigned") {
-    void notifyPassengerReservationActivated(pid, rideId);
   }
 }

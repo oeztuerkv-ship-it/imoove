@@ -66,6 +66,7 @@ import {
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow, getFleetDriverMarketOnline, recordFleetDriverOfferRejectStreak, resetFleetDriverDispatchRejectStreak } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
+import { DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES } from "../jobs/reservationLifecycle";
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
   notifyDriverFollowUpOffer,
@@ -133,7 +134,6 @@ import {
   notifyPassengerDriverAccepted,
   notifyPassengerDriverArriving,
   notifyPassengerDriverWaiting,
-  notifyPassengerReservationActivated,
   notifyPassengerReservationConfirmed,
   notifyPassengerRideCancelledBySystem,
   notifyPassengerNoShow,
@@ -2097,6 +2097,56 @@ export async function patchRideStatusRoute(
       return;
     }
 
+    const isReservationPremiumActivation =
+      (nextStatus === "searching_driver" ||
+        (nextStatus === "ready_for_dispatch" && cur.status === "scheduled_assigned")) &&
+      (cur.status === "scheduled_assigned" || cur.status === "scheduled") &&
+      cur.scheduledAt != null;
+
+    if (isReservationPremiumActivation) {
+      if (actor && actor.kind !== "admin") {
+        const pickupMs = new Date(cur.scheduledAt).getTime();
+        if (!Number.isFinite(pickupMs)) {
+          res.status(409).json({ error: "reservation_activation_invalid_schedule" });
+          return;
+        }
+        const minsUntil = (pickupMs - Date.now()) / 60000;
+        if (minsUntil < 0 || minsUntil > DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES) {
+          res.status(409).json({
+            error: "reservation_activation_window",
+            message: `Aktivierung nur zwischen 0 und ${DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES} Minuten vor Abholzeit möglich.`,
+            minutesUntilPickupApprox: Math.round(minsUntil),
+          });
+          return;
+        }
+      }
+
+      const { activateReservationsForPremiumDispatch } = await import("../jobs/reservationLifecycle.js");
+      const activated = await activateReservationsForPremiumDispatch([id], new Date());
+      if (activated.length === 0) {
+        res.status(409).json({ error: "reservation_activation_failed" });
+        return;
+      }
+      const activatedRide = await findRide(id);
+      if (!activatedRide) {
+        res.status(500).json({ error: "update_failed" });
+        return;
+      }
+      await insertSupplementalRideEvent(id, {
+        eventType: "reservation_dispatch_activated",
+        fromStatus: cur.status,
+        toStatus: "searching_driver",
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId,
+        payload: { source: "manual_or_api" },
+      });
+      res.json({
+        ...stripPartnerOnlyRideFields(activatedRide),
+        cancelReason: customerCancelReasons.get(id) ?? null,
+      });
+      return;
+    }
+
     let companyIdOnAccept: string | undefined;
     if (nextStatus === "accepted" && bodyDriverIdTrim) {
       const driverAuth = await findFleetDriverAuthRow(driverId);
@@ -2544,10 +2594,6 @@ export async function patchRideStatusRoute(
         const marked = await tryMarkCustomerReservationAssignedPushSent(id);
         if (marked) void notifyPassengerReservationConfirmed(pid, id);
       }
-    }
-    if (nextStatus === "ready_for_dispatch" && cur.status === "scheduled_assigned") {
-      const pid = (updated.passengerId ?? "").trim();
-      if (pid) void notifyPassengerReservationActivated(pid, updated.id);
     }
     if (nextStatus === "accepted" && cur.status !== "accepted") {
       const pid = (updated.passengerId ?? "").trim();

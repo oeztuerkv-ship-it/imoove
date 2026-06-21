@@ -1,12 +1,17 @@
-import { and, eq, gt, inArray, isNotNull, lt, lte } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, lt, lte, or } from "drizzle-orm";
 import { releaseAccessCodesForRideRows } from "../db/accessCodesData";
 import { getDb, isPostgresConfigured } from "../db/client";
+import { findRide } from "../db/ridesData";
 import { ridesTable } from "../db/schema";
 import { notifyCronRideStatusChange } from "../lib/cronRideStatusNotify";
+import { notifyMarketOnlineDriversInstantRideOffer } from "../lib/driverRideExpoPush";
 
 export const DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
 
-/** Abholzeit + Puffer ohne Fahrtbeginn → `expired` (`scheduled_assigned`, `ready_for_dispatch`). */
+/** Manuelles „Aktivieren“ in der Fahrer-App: 0–45 Minuten vor Abholzeit. */
+export const DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES = 45;
+
+/** Abholzeit + Puffer ohne Fahrtbeginn → `expired` (aktivierte Reservierung ohne Annahme/Fahrtstart). */
 export const DEFAULT_RESERVATION_NO_START_EXPIRE_BUFFER_MINUTES = 45;
 
 export type ExpiredScheduledRow = {
@@ -117,8 +122,8 @@ export type ExpiredReadyDispatchRow = {
 };
 
 /**
- * Aktiver Cron: `ready_for_dispatch` nach Abholzeit + Puffer ohne Fahrtstart → `expired`.
- * Schließt die Lücke nach Job 4 (Promotion), wenn der Fahrer nie aktiviert hat.
+ * Aktiver Cron: aktivierte Reservierung (`searching_driver` / Legacy `ready_for_dispatch`) nach
+ * Abholzeit + Puffer ohne Fahrtstart → `expired`.
  */
 export async function expireReadyForDispatchWithoutTripStart(
   now: Date = new Date(),
@@ -131,16 +136,34 @@ export async function expireReadyForDispatchWithoutTripStart(
   const bufferMs = Math.max(0, bufferMinutes) * 60 * 1000;
   const expireBefore = new Date(now.getTime() - bufferMs);
 
-  const rows = await db
-    .update(ridesTable)
-    .set({ status: "expired" })
+  const candidates = await db
+    .select({
+      id: ridesTable.id,
+      status: ridesTable.status,
+      passenger_id: ridesTable.passenger_id,
+      access_code_id: ridesTable.access_code_id,
+      driver_id: ridesTable.driver_id,
+      company_id: ridesTable.company_id,
+    })
+    .from(ridesTable)
     .where(
       and(
-        eq(ridesTable.status, "ready_for_dispatch"),
+        or(
+          eq(ridesTable.status, "searching_driver"),
+          eq(ridesTable.status, "ready_for_dispatch"),
+        ),
         isNotNull(ridesTable.scheduled_at),
         lt(ridesTable.scheduled_at, expireBefore),
       ),
-    )
+    );
+
+  const ids = candidates.map((r) => r.id).filter((id) => id.length > 0);
+  if (ids.length === 0) return [];
+
+  const rows = await db
+    .update(ridesTable)
+    .set({ status: "expired" })
+    .where(inArray(ridesTable.id, ids))
     .returning({
       id: ridesTable.id,
       passenger_id: ridesTable.passenger_id,
@@ -151,10 +174,11 @@ export async function expireReadyForDispatchWithoutTripStart(
 
   await releaseAccessCodesForRideRows(rows);
 
+  const fromStatusById = new Map(candidates.map((r) => [r.id, r.status]));
   for (const row of rows) {
     notifyCronRideStatusChange({
       rideId: row.id,
-      fromStatus: "ready_for_dispatch",
+      fromStatus: fromStatusById.get(row.id) ?? "searching_driver",
       toStatus: "expired",
       passengerId: row.passenger_id,
     });
@@ -226,20 +250,22 @@ export type PromotedReservationRow = {
   previous_status: "scheduled" | "scheduled_assigned";
 };
 
+const RESERVATION_PRE_DISPATCH_STATUSES = ["scheduled", "scheduled_assigned"] as const;
+
 /**
- * Aktiver Cron: Reservierung im 30-Min-Fenster vor Abholung → `ready_for_dispatch`.
- * Ersetzt die frühere passive Promotion in `listRides` / `findRide`.
+ * Reservierung → `searching_driver` mit Premium-Dispatch Stufe A (Tier-Ring wie Sofortfahrt).
+ * Gemeinsame Logik für Cron Job 4 und manuellen Fahrer-Button „Aktivieren“.
  */
-export async function promoteReservationsToReadyForDispatch(
+export async function activateReservationsForPremiumDispatch(
+  rideIds: string[],
   now: Date = new Date(),
 ): Promise<PromotedReservationRow[]> {
   if (!isPostgresConfigured()) return [];
   const db = getDb();
   if (!db) return [];
 
-  const threshold = new Date(
-    now.getTime() + DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1000,
-  );
+  const ids = [...new Set(rideIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return [];
 
   const candidates = await db
     .select({
@@ -251,20 +277,27 @@ export async function promoteReservationsToReadyForDispatch(
     .from(ridesTable)
     .where(
       and(
-        inArray(ridesTable.status, ["scheduled", "scheduled_assigned"]),
+        inArray(ridesTable.id, ids),
+        inArray(ridesTable.status, [...RESERVATION_PRE_DISPATCH_STATUSES]),
         isNotNull(ridesTable.scheduled_at),
-        lte(ridesTable.scheduled_at, threshold),
         gt(ridesTable.scheduled_at, now),
       ),
     );
 
-  const ids = candidates.map((r) => r.id).filter((id) => id.length > 0);
-  if (ids.length === 0) return [];
+  const eligibleIds = candidates.map((r) => r.id).filter((id) => id.length > 0);
+  if (eligibleIds.length === 0) return [];
 
   await db
     .update(ridesTable)
-    .set({ status: "ready_for_dispatch" })
-    .where(inArray(ridesTable.id, ids));
+    .set({
+      status: "searching_driver",
+      dispatch_tier: "A",
+      dispatch_tier_started_at: now,
+      driver_id: null,
+      company_id: null,
+      push_driver_activation_reminder_at: null,
+    })
+    .where(inArray(ridesTable.id, eligibleIds));
 
   const promoted: PromotedReservationRow[] = [];
   for (const row of candidates) {
@@ -279,10 +312,45 @@ export async function promoteReservationsToReadyForDispatch(
     notifyCronRideStatusChange({
       rideId: row.id,
       fromStatus: prev,
-      toStatus: "ready_for_dispatch",
+      toStatus: "searching_driver",
       passengerId: row.passenger_id,
     });
+    const activated = await findRide(row.id);
+    if (activated) void notifyMarketOnlineDriversInstantRideOffer(activated);
   }
 
   return promoted;
+}
+
+/**
+ * Aktiver Cron: Reservierung im 30-Min-Fenster vor Abholung → Premium-Dispatch (Job 4).
+ * Ersetzt die frühere passive Promotion in `listRides` / `findRide`.
+ */
+export async function promoteReservationsToReadyForDispatch(
+  now: Date = new Date(),
+): Promise<PromotedReservationRow[]> {
+  if (!isPostgresConfigured()) return [];
+  const db = getDb();
+  if (!db) return [];
+
+  const threshold = new Date(
+    now.getTime() + DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1000,
+  );
+
+  const candidates = await db
+    .select({ id: ridesTable.id })
+    .from(ridesTable)
+    .where(
+      and(
+        inArray(ridesTable.status, [...RESERVATION_PRE_DISPATCH_STATUSES]),
+        isNotNull(ridesTable.scheduled_at),
+        lte(ridesTable.scheduled_at, threshold),
+        gt(ridesTable.scheduled_at, now),
+      ),
+    );
+
+  const ids = candidates.map((r) => r.id).filter((id) => id.length > 0);
+  if (ids.length === 0) return [];
+
+  return activateReservationsForPremiumDispatch(ids, now);
 }

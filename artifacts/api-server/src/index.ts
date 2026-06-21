@@ -42,8 +42,8 @@ httpServer.listen(port, () => {
   // Job 2: Push-Erinnerung scheduled_assigned (~45 min vor Abholung)
   // Job 3a: scheduled_assigned → expired (Abholzeit + 45 min Puffer)
   // Job 3b: scheduled → expired (Abholzeit vorbei)
-  // Job 3c: ready_for_dispatch → expired (Abholzeit + 45 min Puffer)
-  // Job 4: scheduled | scheduled_assigned → ready_for_dispatch (30-Min-Fenster)
+  // Job 3c: searching_driver | ready_for_dispatch → expired (Abholzeit + 45 min Puffer)
+  // Job 4: scheduled | scheduled_assigned → searching_driver + Dispatch-Tier A (30-Min-Fenster)
   // Job 5: (entfernt) — früher scheduled_assigned → scheduled; ersetzt durch 3a/3c → expired + Fahrer-Sperre
   // Job 6: accepted → searching_driver | scheduled (Ghost, idle GPS)
   // Job 7: searching_driver | ready_for_dispatch | in_progress → expired (created_at > 8h)
@@ -137,18 +137,18 @@ httpServer.listen(port, () => {
       const expiredReadyDispatch = await expireReadyForDispatchWithoutTripStart(now);
       if (expiredReadyDispatch.length > 0) {
         logger.info(
-          { count: expiredReadyDispatch.length, rideIds: expiredReadyDispatch.map((r) => r.id), fromStatus: "ready_for_dispatch", toStatus: "expired" },
-          "[Cron Job 3c] ready_for_dispatch → expired (Abholzeit + Puffer ohne Aktivierung)",
+          { count: expiredReadyDispatch.length, rideIds: expiredReadyDispatch.map((r) => r.id), fromStatuses: ["searching_driver", "ready_for_dispatch"], toStatus: "expired" },
+          "[Cron Job 3c] Aktivierte Reservierung → expired (Abholzeit + Puffer ohne Annahme/Fahrtstart)",
         );
         await applyMissedActivationSanctions(expiredReadyDispatch);
       }
 
-      // Job 4: 30-Min-Fenster vor Abholung → ready_for_dispatch
+      // Job 4: 30-Min-Fenster vor Abholung → searching_driver + Premium-Dispatch Tier A
       const promoted = await promoteReservationsToReadyForDispatch(now);
       if (promoted.length > 0) {
         logger.info(
-          { count: promoted.length, rideIds: promoted.map((r) => r.id), fromStatuses: promoted.map((r) => r.previous_status), toStatus: "ready_for_dispatch" },
-          "[Cron Job 4] Reservierung → ready_for_dispatch",
+          { count: promoted.length, rideIds: promoted.map((r) => r.id), fromStatuses: promoted.map((r) => r.previous_status), toStatus: "searching_driver" },
+          "[Cron Job 4] Reservierung → searching_driver (Premium-Dispatch Tier A)",
         );
       }
 
