@@ -6,10 +6,14 @@ COMMENT ON COLUMN rides.provision_amount IS 'ONRODA-Provision in EUR (Snapshot b
 COMMENT ON COLUMN rides.payout_amount IS 'Fahrer-Anteil am Fahrtpreis in EUR (final_fare − provision_amount, ohne Trinkgeld).';
 
 -- Rückwirkend: abgeschlossene Fahrten mit Endpreis, noch ohne Snapshot.
+-- ROUND(..., n) erfordert numeric in PostgreSQL (nicht double precision).
 UPDATE rides
 SET
-  provision_amount = ROUND(final_fare * 0.08::double precision, 2),
-  payout_amount = ROUND(final_fare - ROUND(final_fare * 0.08::double precision, 2), 2)
+  provision_amount = ROUND((final_fare * 0.08)::numeric, 2)::double precision,
+  payout_amount = ROUND(
+    (final_fare - ROUND((final_fare * 0.08)::numeric, 2))::numeric,
+    2
+  )::double precision
 WHERE status = 'completed'
   AND final_fare IS NOT NULL
   AND final_fare > 0
