@@ -188,7 +188,7 @@ export async function resolveCustomerReceiptContext(
   const company = companyId ? await findCompanyById(companyId) : null;
   const issuer = buildReceiptIssuerFromCompany(company);
 
-  const gross = effectiveTaxiGrossEur(ride);
+  const gross = customerReceiptGrossEur(ride);
   const financialRow = await getRideFinancialSnapshotByRideId(ride.id);
   const tax = buildReceiptTaxBlock(
     gross,
