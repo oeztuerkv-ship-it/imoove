@@ -3,6 +3,7 @@ import {
   computeDriverRidePayoutSnap,
   ONRODA_DRIVER_PROVISION_RATE,
 } from "./driverRidePayoutSnap";
+import { getRideCompletedAtByRideId } from "./rideActualDuration";
 
 export type FleetDriverRideEarnings = {
   rideId: string;
@@ -13,6 +14,14 @@ export type FleetDriverRideEarnings = {
   commissionRate: number;
   /** Fahrer-Anteil am Fahrtpreis ohne Trinkgeld (= rides.payout_amount). */
   payoutAmount: number;
+  /** Snapshot beim Abschluss (rides.actual_distance_km). */
+  actualDistanceKm: number | null;
+  /** Snapshot beim Abschluss (rides.actual_duration_minutes). */
+  actualDurationMinutes: number | null;
+  fromFull: string;
+  toFull: string;
+  vehicle: string;
+  completedAt: string | null;
 };
 
 function roundMoney(value: number): number {
@@ -71,6 +80,16 @@ export async function getFleetDriverRideEarnings(input: {
   }
 
   const netWithTip = roundMoney(payoutAmount + tip);
+  const completedAt = await getRideCompletedAtByRideId(ride.id);
+  const actualDistanceKm =
+    ride.actualDistanceKm != null && Number.isFinite(Number(ride.actualDistanceKm))
+      ? roundMoney(Number(ride.actualDistanceKm))
+      : null;
+  const actualDurationMinutes =
+    ride.actualDurationMinutes != null && Number.isInteger(ride.actualDurationMinutes) && ride.actualDurationMinutes > 0
+      ? ride.actualDurationMinutes
+      : null;
+
   return {
     ok: true,
     earnings: {
@@ -81,6 +100,12 @@ export async function getFleetDriverRideEarnings(input: {
       net: netWithTip,
       commissionRate,
       payoutAmount,
+      actualDistanceKm,
+      actualDurationMinutes,
+      fromFull: ride.fromFull || ride.from || "",
+      toFull: ride.toFull || ride.to || "",
+      vehicle: ride.vehicle || "standard",
+      completedAt: completedAt ? completedAt.toISOString() : null,
     },
   };
 }

@@ -42,6 +42,29 @@ export function computeActualRideDurationMinutes(events: StatusEvent[]): number 
   return Math.max(1, Math.round(ms / 60_000));
 }
 
+export async function getRideCompletedAtByRideId(rideId: string): Promise<Date | null> {
+  const rid = rideId.trim();
+  if (!rid || !isPostgresConfigured()) return null;
+  const db = getDb();
+  if (!db) return null;
+
+  const rows = await db
+    .select({ createdAt: rideEventsTable.created_at })
+    .from(rideEventsTable)
+    .where(
+      and(
+        eq(rideEventsTable.ride_id, rid),
+        eq(rideEventsTable.event_type, "ride_status_changed"),
+        eq(rideEventsTable.to_status, "completed"),
+      ),
+    )
+    .orderBy(asc(rideEventsTable.created_at))
+    .limit(1);
+
+  const at = rows[0]?.createdAt;
+  return at instanceof Date ? at : at ? new Date(at) : null;
+}
+
 export async function listActualDurationMinutesByRideIds(
   rideIds: string[],
 ): Promise<Map<string, number>> {

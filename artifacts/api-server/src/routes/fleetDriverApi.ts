@@ -904,7 +904,11 @@ router.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (re
     const durationByRideId = await listActualDurationMinutesByRideIds(rides.map((r) => r.id));
     const withDuration = rides.map((r) => ({
       ...r,
-      actualDurationMinutes: durationByRideId.get(r.id) ?? null,
+      actualDurationMinutes:
+        r.actualDurationMinutes != null && r.actualDurationMinutes > 0
+          ? r.actualDurationMinutes
+          : durationByRideId.get(r.id) ?? null,
+      actualDistanceKm: r.actualDistanceKm ?? null,
     }));
     res.json({ rides: withDuration });
   } catch (err) {

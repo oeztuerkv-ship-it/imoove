@@ -3216,7 +3216,7 @@ export default function DriverDashboard() {
             time: fmt(d).time,
             from: r.from ?? r.fromFull ?? "Start",
             to: r.to ?? r.toFull ?? "Ziel",
-            km: r.distanceKm ?? 0,
+            km: r.actualDistanceKm ?? r.distanceKm ?? 0,
             duration:
               typeof r.actualDurationMinutes === "number" && r.actualDurationMinutes > 0
                 ? r.actualDurationMinutes
