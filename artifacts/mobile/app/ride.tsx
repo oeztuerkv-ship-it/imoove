@@ -702,7 +702,8 @@ export default function RideScreen() {
             distanceKm: route?.distanceKm ?? 0,
             durationMinutes: route?.durationMinutes ?? 0,
             estimatedFare: chargeAmount,
-            paymentMethod: paymentLabel,
+            paymentMethod:
+              pm === "voucher" || pm === "access_code" ? paymentLabel : pm,
             vehicle: vehicleLabel,
             ...(pricingMode ? { pricingMode } : {}),
             customerName: profile.name
