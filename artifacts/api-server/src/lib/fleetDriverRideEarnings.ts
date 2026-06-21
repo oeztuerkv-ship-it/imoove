@@ -1,6 +1,8 @@
-import { getOperationalConfigPayload, listServiceRegionsForApi, resolveFinancePricingContextForRide } from "../db/appOperationalData";
 import { findRide } from "../db/ridesData";
-import { previewDriverSettlementFromGross } from "./financeCalculationService";
+import {
+  computeDriverRidePayoutSnap,
+  ONRODA_DRIVER_PROVISION_RATE,
+} from "./driverRidePayoutSnap";
 
 export type FleetDriverRideEarnings = {
   rideId: string;
@@ -9,6 +11,8 @@ export type FleetDriverRideEarnings = {
   tip: number;
   net: number;
   commissionRate: number;
+  /** Fahrer-Anteil am Fahrtpreis ohne Trinkgeld (= rides.payout_amount). */
+  payoutAmount: number;
 };
 
 function roundMoney(value: number): number {
@@ -24,6 +28,7 @@ export async function getFleetDriverRideEarnings(input: {
   | { ok: true; earnings: FleetDriverRideEarnings }
   | { ok: false; error: string; status: number }
 > {
+  void input.companyId;
   const ride = await findRide(input.rideId);
   if (!ride) {
     return { ok: false, error: "not_found", status: 404 };
@@ -34,33 +39,48 @@ export async function getFleetDriverRideEarnings(input: {
   if (ride.status !== "completed") {
     return { ok: false, error: "ride_not_completed", status: 409 };
   }
+
   const gross = roundMoney(Math.max(0, Number(ride.finalFare ?? 0)));
   const tip = roundMoney(Math.max(0, Number(ride.tipAmount ?? 0)));
-  const opPayload = await getOperationalConfigPayload();
-  const regions = await listServiceRegionsForApi();
-  const pc = await resolveFinancePricingContextForRide(
-    {
-      rideKind: ride.rideKind,
-      companyId: input.companyId,
-      driverId: input.fleetDriverId,
-      fromFull: ride.fromFull,
-      fromLat: ride.fromLat,
-      fromLon: ride.fromLon,
-    },
-    opPayload,
-    regions,
-  );
-  const settlement = previewDriverSettlementFromGross(gross, pc);
-  const netWithTip = roundMoney(settlement.driverPayoutAmount + tip);
+
+  const storedProvision =
+    ride.provisionAmount != null && Number.isFinite(Number(ride.provisionAmount))
+      ? roundMoney(Number(ride.provisionAmount))
+      : null;
+  const storedPayout =
+    ride.payoutAmount != null && Number.isFinite(Number(ride.payoutAmount))
+      ? roundMoney(Number(ride.payoutAmount))
+      : null;
+
+  let commission: number;
+  let payoutAmount: number;
+  let commissionRate: number;
+
+  if (storedProvision != null && storedPayout != null) {
+    commission = storedProvision;
+    payoutAmount = storedPayout;
+    commissionRate = gross > 0 ? roundMoney(commission / gross) : ONRODA_DRIVER_PROVISION_RATE;
+  } else {
+    const snap = computeDriverRidePayoutSnap(gross);
+    if (!snap) {
+      return { ok: false, error: "final_fare_required", status: 409 };
+    }
+    commission = snap.provisionAmount;
+    payoutAmount = snap.payoutAmount;
+    commissionRate = snap.provisionRate;
+  }
+
+  const netWithTip = roundMoney(payoutAmount + tip);
   return {
     ok: true,
     earnings: {
       rideId: ride.id,
       gross,
-      commission: settlement.commissionAmount,
+      commission,
       tip,
       net: netWithTip,
-      commissionRate: settlement.commissionRate,
+      commissionRate,
+      payoutAmount,
     },
   };
 }

@@ -93,7 +93,7 @@ import {
   resolveFinancePricingContextForRide,
   resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
-import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
+import { computeDriverRidePayoutSnap } from "../lib/driverRidePayoutSnap";
 import { decodeValidatedMedicalTransportImage } from "../lib/medicalTransportImage";
 import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
 import { evaluateMedicalUploadBillingLock } from "../lib/medicalUploadBillingLock";
@@ -2415,7 +2415,13 @@ export async function patchRideStatusRoute(
       }
     }
 
-    let driverSettlement: ReturnType<typeof previewDriverSettlementFromGross> | null = null;
+    let driverSettlement: {
+      grossAmount: number;
+      commissionRate: number;
+      commissionRatePercent: number;
+      commissionAmount: number;
+      driverPayoutAmount: number;
+    } | null = null;
     if (finalFarePlausibilityAudit) {
       await insertSupplementalRideEvent(id, {
         eventType: "final_fare_plausibility",
@@ -2446,10 +2452,27 @@ export async function patchRideStatusRoute(
         res.status(500).json({ error: finance.error });
         return;
       }
-      driverSettlement = previewDriverSettlementFromGross(
-        Number(updated.finalFare ?? 0),
-        pcComplete,
-      );
+
+      const finalFareEur = Number(updated.finalFare ?? 0);
+      const payoutSnap = computeDriverRidePayoutSnap(finalFareEur);
+      if (payoutSnap) {
+        const withPayout = await updateRide(
+          id,
+          {
+            provisionAmount: payoutSnap.provisionAmount,
+            payoutAmount: payoutSnap.payoutAmount,
+          },
+          { mutationActor: mutActor },
+        );
+        if (withPayout) updated = withPayout;
+        driverSettlement = {
+          grossAmount: Math.round((Math.max(0, finalFareEur) + Number.EPSILON) * 100) / 100,
+          commissionRate: payoutSnap.provisionRate,
+          commissionRatePercent: Math.round(payoutSnap.provisionRate * 1000) / 10,
+          commissionAmount: payoutSnap.provisionAmount,
+          driverPayoutAmount: payoutSnap.payoutAmount,
+        };
+      }
 
       const captureOutcome = await captureRideStripePaymentIntent(updated);
       if (!captureOutcome.ok) {

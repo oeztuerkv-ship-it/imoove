@@ -207,6 +207,12 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     stripeRefundId: r.stripe_refund_id ?? null,
     refundedAt: r.refunded_at ? r.refunded_at.toISOString() : null,
     cashConfirmedAt: r.cash_confirmed_at ? r.cash_confirmed_at.toISOString() : null,
+    provisionAmount:
+      r.provision_amount != null && Number.isFinite(Number(r.provision_amount))
+        ? Number(r.provision_amount)
+        : null,
+    payoutAmount:
+      r.payout_amount != null && Number.isFinite(Number(r.payout_amount)) ? Number(r.payout_amount) : null,
     tipAmount: r.tip_amount != null && Number.isFinite(Number(r.tip_amount)) ? Number(r.tip_amount) : null,
     tipPaidAt: r.tip_paid_at ? r.tip_paid_at.toISOString() : null,
     stripeTipPaymentIntentId: r.stripe_tip_payment_intent_id ?? null,
@@ -301,6 +307,8 @@ function rideToUpdate(r: RideRequest) {
     stripe_refund_id: r.stripeRefundId ?? null,
     refunded_at: r.refundedAt ? new Date(r.refundedAt) : null,
     cash_confirmed_at: r.cashConfirmedAt ? new Date(r.cashConfirmedAt) : null,
+    provision_amount: r.provisionAmount ?? null,
+    payout_amount: r.payoutAmount ?? null,
     tip_amount: r.tipAmount ?? null,
     tip_paid_at: r.tipPaidAt ? new Date(r.tipPaidAt) : null,
     stripe_tip_payment_intent_id: r.stripeTipPaymentIntentId ?? null,
@@ -374,6 +382,8 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     stripe_refund_id: r.stripeRefundId ?? null,
     refunded_at: r.refundedAt ? new Date(r.refundedAt) : null,
     cash_confirmed_at: r.cashConfirmedAt ? new Date(r.cashConfirmedAt) : null,
+    provision_amount: r.provisionAmount ?? null,
+    payout_amount: r.payoutAmount ?? null,
     tip_amount: r.tipAmount ?? null,
     tip_paid_at: r.tipPaidAt ? new Date(r.tipPaidAt) : null,
     stripe_tip_payment_intent_id: r.stripeTipPaymentIntentId ?? null,

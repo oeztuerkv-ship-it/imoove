@@ -676,6 +676,8 @@ export const ridesTable = pgTable("rides", {
   stripe_refund_id: text("stripe_refund_id"),
   refunded_at: timestamp("refunded_at", { withTimezone: true }),
   cash_confirmed_at: timestamp("cash_confirmed_at", { withTimezone: true }),
+  provision_amount: doublePrecision("provision_amount"),
+  payout_amount: doublePrecision("payout_amount"),
   tip_amount: doublePrecision("tip_amount"),
   tip_paid_at: timestamp("tip_paid_at", { withTimezone: true }),
   stripe_tip_payment_intent_id: text("stripe_tip_payment_intent_id"),

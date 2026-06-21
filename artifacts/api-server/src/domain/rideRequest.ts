@@ -209,6 +209,10 @@ export interface RideRequest {
   stripeRefundId?: string | null;
   refundedAt?: string | null;
   cashConfirmedAt?: string | null;
+  /** ONRODA-Provision in EUR (Snapshot bei Fahrtende). */
+  provisionAmount?: number | null;
+  /** Fahrer-Anteil am Fahrtpreis in EUR ohne Trinkgeld (Snapshot bei Fahrtende). */
+  payoutAmount?: number | null;
   /** Trinkgeld in EUR — 100 % an Fahrer, keine ONRODA-Provision. */
   tipAmount?: number | null;
   tipPaidAt?: string | null;

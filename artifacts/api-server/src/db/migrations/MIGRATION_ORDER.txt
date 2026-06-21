@@ -113,3 +113,5 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 109_fleet_driver_ratings.sql
 110_dispatch_reject_streak_and_passenger_ratings.sql
 111_ride_payment_recovery.sql
+112_ride_tip_amount.sql
+113_rides_driver_payout_snap.sql
