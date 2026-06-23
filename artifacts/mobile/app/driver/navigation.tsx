@@ -1649,9 +1649,6 @@ export default function DriverNavigationScreen() {
         pointerEvents="box-none"
         style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}
       >
-        <View style={styles.topBrandBadge}>
-          <Text style={styles.topBrandBadgeText}>OR</Text>
-        </View>
         <View style={styles.topNavCluster}>
           <View style={styles.topCard}>
             <View style={styles.topMain}>
@@ -1831,15 +1828,18 @@ export default function DriverNavigationScreen() {
             )}
             {driverMayBillPositiveFare(rideFleetStatus) ? (
               <View style={styles.fareBox}>
-                <TextInput
-                  style={styles.fareInput}
-                  value={fareInput}
-                  onChangeText={setFareInput}
-                  keyboardType="numeric"
-                  selectTextOnFocus
-                  placeholder="0,00"
-                  placeholderTextColor="#9CA3AF"
-                />
+                <View style={styles.fareInputRow}>
+                  <TextInput
+                    style={styles.fareInput}
+                    value={fareInput}
+                    onChangeText={setFareInput}
+                    keyboardType="decimal-pad"
+                    selectTextOnFocus
+                    placeholder="0,00"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <Text style={styles.fareInputSuffix}>€</Text>
+                </View>
               </View>
             ) : null}
             {driverMayBillPositiveFare(rideFleetStatus) &&
@@ -2193,22 +2193,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   topCard: { backgroundColor: "#1B6B3A", paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14 },
-  topBrandBadge: {
-    position: "absolute",
-    top: 10,
-    left: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#DC2626",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 2,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  topBrandBadgeText: { color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" },
-  topMain: { flexDirection: "row", alignItems: "center", gap: 14, paddingLeft: 34 },
+  topMain: { flexDirection: "row", alignItems: "center", gap: 14 },
   topText: { flex: 1 },
   topLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.78)" },
   topStreet: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 27 },
@@ -2521,8 +2506,28 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "#E5E7EB",
     paddingHorizontal: 16, paddingVertical: 4,
   },
+  fareInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+  },
+  fareInput: {
+    flexShrink: 1,
+    minWidth: 72,
+    fontSize: 34,
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+    textAlign: "right",
+    paddingVertical: 0,
+  },
+  fareInputSuffix: {
+    fontSize: 34,
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
   fareBoxLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: 8 },
-  fareInput: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#111827", paddingVertical: 8 },
   fareHint: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#9CA3AF", textAlign: "center" },
   settlementBox: {
     backgroundColor: "#F8FAFC",

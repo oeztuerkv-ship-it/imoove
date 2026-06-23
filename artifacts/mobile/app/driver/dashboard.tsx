@@ -2643,7 +2643,6 @@ function ActiveRideScreen({
 
             {/* Input */}
             <View style={activeStyles.priceInputWrapper}>
-              <Text style={activeStyles.priceInputCurrency}>€</Text>
               <TextInput
                 style={activeStyles.priceInput}
                 value={finalPriceInput}
@@ -2651,7 +2650,10 @@ function ActiveRideScreen({
                 keyboardType="decimal-pad"
                 selectTextOnFocus
                 autoFocus
+                placeholder="0,00"
+                placeholderTextColor="#9CA3AF"
               />
+              <Text style={activeStyles.priceInputCurrency}>€</Text>
             </View>
             {!mayBillPositive ? (
               <Text style={activeStyles.priceInputHint}>Bei Abbruch ohne Fahrt: 0,00</Text>
@@ -4974,13 +4976,21 @@ const activeStyles = StyleSheet.create({
   priceEstLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#9CA3AF" },
   priceEstValue: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#9CA3AF" },
   priceInputWrapper: {
-    flexDirection: "row", alignItems: "center",
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
     borderWidth: 2, borderColor: "#22C55E", borderRadius: 16,
-    paddingHorizontal: 14, paddingVertical: 10, gap: 8,
+    paddingHorizontal: 14, paddingVertical: 10, gap: 6,
     backgroundColor: "#F0FDF4",
   },
-  priceInputCurrency: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#15803D" },
-  priceInput: { flex: 1, fontSize: 36, fontFamily: "Inter_700Bold", color: "#111" },
+  priceInputCurrency: { fontSize: 36, fontFamily: "Inter_700Bold", color: "#111827" },
+  priceInput: {
+    flexShrink: 1,
+    minWidth: 72,
+    fontSize: 36,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+    textAlign: "right",
+    paddingVertical: 0,
+  },
   priceInputHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9CA3AF", textAlign: "center", marginTop: -8 },
   priceModalBtns: { flexDirection: "row", gap: 12 },
   priceCancelBtn: { flex: 1, paddingVertical: 10, borderRadius: 14, alignItems: "center", borderWidth: 1.5, borderColor: "#E5E7EB" },
