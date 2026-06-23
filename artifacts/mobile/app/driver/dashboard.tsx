@@ -26,7 +26,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DriverPresenceStatusBar } from "@/components/DriverPresenceStatusBar";
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
@@ -2466,30 +2465,49 @@ function ActiveRideScreen({
               <MaterialCommunityIcons name="navigation" size={20} color="#fff" />
               <Text style={activeStyles.navBtnText}>Navigation zum Ziel</Text>
             </Pressable>
-            <Pressable style={activeStyles.completeBtn} onPress={handleFinishTap}>
-              <Feather name="flag" size={20} color="#fff" />
-              <Text style={activeStyles.completeBtnText}>Zielort erreicht — Fahrt beenden</Text>
-            </Pressable>
+            <View style={activeStyles.endActionRow}>
+              <Pressable style={[activeStyles.completeBtn, { flex: 1 }]} onPress={handleFinishTap}>
+                <Feather name="flag" size={20} color="#fff" />
+                <Text style={activeStyles.completeBtnText}>Fahrt beenden</Text>
+              </Pressable>
+              <Pressable
+                style={activeStyles.stornoBtnSide}
+                onPress={() => {
+                  Alert.alert(
+                    "Auftrag abbrechen?",
+                    "Möchtest du diesen Auftrag wirklich stornieren?",
+                    [
+                      { text: "Nein, weiter", style: "cancel" },
+                      { text: "Ja, stornieren", style: "destructive", onPress: onCancel },
+                    ]
+                  );
+                }}
+              >
+                <Feather name="x" size={20} color="#fff" />
+                <Text style={activeStyles.stornoBtnSideText}>Storno</Text>
+              </Pressable>
+            </View>
           </>
         )}
 
-        {/* Storno */}
-        <Pressable
-          style={activeStyles.stornoBtn}
-          onPress={() => {
-            Alert.alert(
-              "Auftrag abbrechen?",
-              "Möchtest du diesen Auftrag wirklich stornieren?",
-              [
-                { text: "Nein, weiter", style: "cancel" },
-                { text: "Ja, stornieren", style: "destructive", onPress: onCancel },
-              ]
-            );
-          }}
-        >
-          <Feather name="x-circle" size={15} color="#DC2626" />
-          <Text style={activeStyles.stornoBtnText}>Fahrt stornieren</Text>
-        </Pressable>
+        {phase === "pickup" ? (
+          <Pressable
+            style={activeStyles.stornoBtn}
+            onPress={() => {
+              Alert.alert(
+                "Auftrag abbrechen?",
+                "Möchtest du diesen Auftrag wirklich stornieren?",
+                [
+                  { text: "Nein, weiter", style: "cancel" },
+                  { text: "Ja, stornieren", style: "destructive", onPress: onCancel },
+                ]
+              );
+            }}
+          >
+            <Feather name="x-circle" size={15} color="#DC2626" />
+            <Text style={activeStyles.stornoBtnText}>Fahrt stornieren</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* ─── Final price modal ─── */}
@@ -3741,12 +3759,6 @@ export default function DriverDashboard() {
 
       {/* Content */}
       <View style={{ flex: 1, paddingTop: topPad + 75 }}>
-        <DriverPresenceStatusBar
-          isMarketOnline={driverMarketOnline}
-          hasActiveRide={Boolean(activeDriverRequest)}
-          onPressBatteryHint={() => void maybeShowDriverBatteryOptimizationHint({ force: true })}
-          onPressIosPushHint={() => void maybeShowDriverIosOnlinePushHint()}
-        />
         {adminMessage && !activeDriverRequest ? (
           <DriverAdminMessageBanner message={adminMessage} onDismiss={() => void dismissAdminMessage()} />
         ) : null}
@@ -4665,6 +4677,18 @@ const activeStyles = StyleSheet.create({
 
   stornoBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12 },
   stornoBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#DC2626" },
+  endActionRow: { flexDirection: "row", alignItems: "stretch", gap: 10 },
+  stornoBtnSide: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#DC2626",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    minWidth: 96,
+  },
+  stornoBtnSideText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
 
   pickupBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#22C55E", borderRadius: 16, paddingVertical: 16 },
   pickupBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
@@ -4674,7 +4698,7 @@ const activeStyles = StyleSheet.create({
   binDaBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   startDrivingBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#16A34A", borderRadius: 16, paddingVertical: 16 },
   startDrivingBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
-  completeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#DC2626", borderRadius: 16, paddingVertical: 16 },
+  completeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#22C55E", borderRadius: 16, paddingVertical: 16 },
   completeBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
 
   /* Price modal */

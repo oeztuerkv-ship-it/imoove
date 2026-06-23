@@ -8,7 +8,6 @@ import {
   Alert,
   AppState,
   KeyboardAvoidingView,
-  Linking,
   Modal,
   PanResponder,
   Platform,
@@ -210,7 +209,6 @@ export default function DriverNavigationScreen() {
     () => requests.find((r) => r.id === (params.rideId ?? "").trim()) ?? null,
     [requests, params.rideId],
   );
-  const customerPhone = (activeRide?.customerPhone ?? "").trim();
   const stackCollapsedForRideRef = useRef<string | null>(null);
 
   const phase = params.phase ?? "pickup";
@@ -1054,10 +1052,6 @@ export default function DriverNavigationScreen() {
     inputRange: [0, 1],
     outputRange: [0, 118],
   });
-  const driveCancelHeight = driveSheetAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 52],
-  });
 
   const rideDetailsBlock = (
     <View style={styles.etaRow}>
@@ -1157,12 +1151,24 @@ export default function DriverNavigationScreen() {
       );
     }
   } else {
-    // Driving phase: "Fahrt beenden"
     actionBtn = (
-      <Pressable style={[styles.actionBtn, styles.actionBtnRed]} onPress={handleFahrtBeenden}>
-        <Feather name="flag" size={20} color="#fff" />
-        <Text style={styles.actionBtnText}>Fahrt beenden</Text>
-      </Pressable>
+      <View style={styles.actionRow}>
+        <Pressable
+          style={[styles.actionBtn, styles.actionBtnGreen, styles.actionBtnFlex]}
+          onPress={handleFahrtBeenden}
+        >
+          <Feather name="flag" size={20} color="#fff" />
+          <Text style={styles.actionBtnText}>Fahrt beenden</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setShowCancelReasonModal(true)}
+          style={({ pressed }) => [styles.actionCancelSide, pressed && { opacity: 0.9 }]}
+          accessibilityLabel="Fahrt stornieren"
+        >
+          <Feather name="x" size={22} color="#fff" />
+          <Text style={styles.actionCancelSideText}>Storno</Text>
+        </Pressable>
+      </View>
     );
   }
 
@@ -1254,35 +1260,18 @@ export default function DriverNavigationScreen() {
         >
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
-        {isPickupPhase ? (
-          <>
-            {customerPhone ? (
-              <Pressable
-                style={styles.navChatBtn}
-                accessibilityLabel="Kunde anrufen"
-                onPress={() => {
-                  const tel = customerPhone.replace(/[^\d+]/g, "");
-                  if (tel) void Linking.openURL(`tel:${tel}`);
-                  else Alert.alert("Anruf nicht möglich", "Keine gültige Telefonnummer.");
-                }}
-              >
-                <Feather name="phone" size={16} color="#1B6B3A" />
-                <Text style={styles.navChatBtnLabel}>Anruf</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              style={styles.navChatBtn}
-              accessibilityLabel="Chat"
-              onPress={() => {
-                setChatUnread(false);
-                setChatOpen(true);
-              }}
-            >
-              <Text style={styles.navChatBtnLabel}>Chat</Text>
-              {chatUnread ? <View style={styles.navChatBadge} /> : null}
-            </Pressable>
-          </>
-        ) : null}
+        <Pressable
+          style={styles.navChatBtn}
+          accessibilityLabel="Chat"
+          onPress={() => {
+            setChatUnread(false);
+            setChatOpen(true);
+          }}
+        >
+          <Feather name="message-circle" size={16} color="#1B6B3A" />
+          <Text style={styles.navChatBtnLabel}>Chat</Text>
+          {chatUnread ? <View style={styles.navChatBadge} /> : null}
+        </Pressable>
       </View>
 
       {isDrivingPhase ? (
@@ -1319,17 +1308,6 @@ export default function DriverNavigationScreen() {
           <View style={styles.driveEndActionWrap}>
             <View style={styles.actionBtnWrapper}>{actionBtn}</View>
           </View>
-
-          <Animated.View style={{ maxHeight: driveCancelHeight, opacity: driveSheetAnim, overflow: "hidden" }}>
-            <View style={styles.driveCancelDivider} />
-            <Pressable
-              onPress={() => setShowCancelReasonModal(true)}
-              style={({ pressed }) => [styles.driveCancelBtn, pressed && { backgroundColor: "#FEF2F2" }]}
-            >
-              <Feather name="x-circle" size={18} color="#DC2626" />
-              <Text style={styles.driveCancelBtnText}>Fahrt stornieren</Text>
-            </Pressable>
-          </Animated.View>
         </Animated.View>
       ) : (
         <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
@@ -1870,24 +1848,6 @@ const styles = StyleSheet.create({
   sheetPeekText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#475569" },
   driveDetailsWrap: { paddingTop: 4, paddingBottom: 8 },
   driveEndActionWrap: { marginTop: 2, marginBottom: 4 },
-  driveCancelDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#E5E7EB",
-    marginTop: 10,
-    marginBottom: 10,
-  },
-  driveCancelBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "#FECACA",
-    backgroundColor: "#FFFBFB",
-  },
-  driveCancelBtnText: { color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 14 },
   etaRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   etaBlock: { minWidth: 90 },
   etaMin: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#15803D", lineHeight: 34 },
@@ -1897,6 +1857,19 @@ const styles = StyleSheet.create({
   etaDest: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748B", marginTop: 3 },
   etaPickupDist: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#15803D", marginTop: 4 },
   actionBtnWrapper: { width: "100%" },
+  actionRow: { flexDirection: "row", alignItems: "stretch", gap: 10 },
+  actionBtnFlex: { flex: 1 },
+  actionCancelSide: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: "#DC2626",
+    minWidth: 96,
+  },
+  actionCancelSideText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
 
   /* Action buttons */
   actionBtn: {
