@@ -1292,6 +1292,7 @@ router.get("/rides/:rideId/receipt", async (req, res, next) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(await buildCustomerReceiptHtmlForRide(ride, driverInfo));
   } catch (e) {
+    logger.error({ err: e, rideId: req.params.rideId }, "[receipt] html generation failed");
     next(e);
   }
 });
@@ -1318,6 +1319,7 @@ router.get("/rides/:rideId/receipt.pdf", async (req, res, next) => {
     res.setHeader("Content-Disposition", `attachment; filename="quittung-${rideNr}.pdf"`);
     res.send(pdf);
   } catch (e) {
+    logger.error({ err: e, rideId: req.params.rideId }, "[receipt] pdf generation failed");
     next(e);
   }
 });

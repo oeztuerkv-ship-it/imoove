@@ -62,6 +62,14 @@ function formatVatRatePercent(vatRate: number): string {
   return Number.isInteger(pct) ? String(pct) : pct.toFixed(1).replace(".", ",");
 }
 
+/** PG/Drizzle kann Zahlen als String liefern — `.toFixed` nur auf finite numbers. */
+export function receiptDistanceKmLabel(ride: Pick<RideRequest, "actualDistanceKm" | "distanceKm">): string {
+  const raw = ride.actualDistanceKm ?? ride.distanceKm ?? 0;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return "0,0";
+  return n.toFixed(1).replace(".", ",");
+}
+
 export function buildReceiptIssuerFromCompany(company: CompanyRow | null): ReceiptIssuerBlock {
   if (!company) {
     return {
@@ -185,11 +193,23 @@ export async function resolveCustomerReceiptContext(
   driverInfo: ReceiptDriverInfo = { driverName: null, driverPlate: null },
 ): Promise<CustomerReceiptContext> {
   const companyId = trimOrNull(ride.companyId ?? null);
-  const company = companyId ? await findCompanyById(companyId) : null;
+  let company: CompanyRow | null = null;
+  if (companyId) {
+    try {
+      company = await findCompanyById(companyId);
+    } catch {
+      company = null;
+    }
+  }
   const issuer = buildReceiptIssuerFromCompany(company);
 
   const gross = customerReceiptGrossEur(ride);
-  const financialRow = await getRideFinancialSnapshotByRideId(ride.id);
+  let financialRow: Awaited<ReturnType<typeof getRideFinancialSnapshotByRideId>> = null;
+  try {
+    financialRow = await getRideFinancialSnapshotByRideId(ride.id);
+  } catch {
+    financialRow = null;
+  }
   const tax = buildReceiptTaxBlock(
     gross,
     financialRow
@@ -331,7 +351,7 @@ export function buildCustomerReceiptHtml(ctx: CustomerReceiptContext): string {
         <div class="pt">${escapeHtml(r.to ?? "—")}</div>
       </div>
       <div style="margin-top: 14px;">
-        <div class="row"><div class="k">${r.actualDistanceKm != null ? "Gefahrene Strecke" : "Geplante Strecke"}</div><div class="v">${escapeHtml(String((r.actualDistanceKm ?? r.distanceKm ?? 0).toFixed(1)))} km</div></div>
+        <div class="row"><div class="k">${r.actualDistanceKm != null ? "Gefahrene Strecke" : "Geplante Strecke"}</div><div class="v">${escapeHtml(receiptDistanceKmLabel(r))} km</div></div>
         ${r.actualDurationMinutes != null ? `<div class="row"><div class="k">Fahrtdauer</div><div class="v">${escapeHtml(String(r.actualDurationMinutes))} Min</div></div>` : ""}
         ${driverInfo.driverName ? `<div class="row"><div class="k">Fahrer*in</div><div class="v">${escapeHtml(driverInfo.driverName)}</div></div>` : ""}
         ${driverInfo.driverPlate ? `<div class="row"><div class="k">Kennzeichen</div><div class="v">${escapeHtml(driverInfo.driverPlate)}</div></div>` : ""}

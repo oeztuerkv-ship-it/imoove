@@ -16,6 +16,7 @@
     "retry-ride-payment-capture": "pnpm run build && node --enable-source-maps ./dist/scripts/retryRidePaymentCapture.mjs",
     "test:invoice-pdf-sample": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfSample.mjs",
     "test:invoice-pdf-stress": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfStressTest.mjs",
+    "test:customer-receipt": "pnpm run build && node --enable-source-maps ./dist/scripts/customerReceiptSelftest.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

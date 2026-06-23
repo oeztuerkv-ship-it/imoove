@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 
 import {
   resolveCustomerReceiptContext,
+  receiptDistanceKmLabel,
   type CustomerReceiptContext,
 } from "./customerReceipt.js";
 import type { ReceiptDriverInfo } from "./receiptDriverInfo.js";
@@ -63,7 +64,7 @@ export function buildCustomerReceiptPdf(ctx: CustomerReceiptContext): Promise<Bu
     const tipAmount =
       r.tipAmount != null && Number.isFinite(Number(r.tipAmount)) ? Math.max(0, Number(r.tipAmount)) : 0;
     const paymentLabel = paymentLabelForRide(ctx);
-    const distanceKm = (r.actualDistanceKm ?? r.distanceKm ?? 0).toFixed(1);
+    const distanceKm = receiptDistanceKmLabel(r);
 
     const left = INVOICE_MARGINS.left;
     const right = pageWidth - INVOICE_MARGINS.right;

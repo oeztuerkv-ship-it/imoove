@@ -73,12 +73,16 @@ export function drawOnrodaLogoBlock(doc: PDFDocument, x: number, y: number, scal
   const buf = getOnrodaInvoiceLogoBuffer();
 
   if (buf) {
-    doc.image(buf, x, y, { fit: [logoMaxW, logoMaxH], align: "left", valign: "top" });
-    const subtitleY = y + logoMaxH + 4;
-    doc.font("Helvetica");
-    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-    doc.fontSize(9 * scale).text(`Plattform · ${ONRODA_INVOICE_SELLER.tradingName}`, x, subtitleY);
-    return subtitleY + 12;
+    try {
+      doc.image(buf, x, y, { fit: [logoMaxW, logoMaxH], align: "left", valign: "top" });
+      const subtitleY = y + logoMaxH + 4;
+      doc.font("Helvetica");
+      hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+      doc.fontSize(9 * scale).text(`Plattform · ${ONRODA_INVOICE_SELLER.tradingName}`, x, subtitleY);
+      return subtitleY + 12;
+    } catch {
+      /* defektes Logo-Asset → Text-Wordmark */
+    }
   }
 
   return drawOnrodaWordmark(doc, x, y, scale);
