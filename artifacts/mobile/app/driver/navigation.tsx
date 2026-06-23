@@ -21,18 +21,20 @@ import {
   type TextStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import MapView, { Marker, Polyline } from "react-native-maps";
-import { nativeMapViewProps } from "@/utils/nativeMapProvider";
+import MapView, { Marker } from "react-native-maps";
+import { nativeMapViewProps, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
 import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
+import { NavRouteGlowPolyline } from "@/components/NavRouteGlowPolyline";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { DriverPassengerRatingModal } from "@/components/DriverPassengerRatingModal";
 import { useDriver } from "@/context/DriverContext";
 import { useRideRequests, type RequestStatus } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
+  getCurrentPositionSafe,
   requestForegroundPermissionsSafe,
   watchPositionSafe,
 } from "@/utils/safeExpoLocation";
@@ -83,6 +85,7 @@ import { formatEuro } from "@/utils/fareCalculator";
 import {
   driverRidePaymentLooksLikeCash,
   postDriverCashConfirmed,
+  warnCashPaymentIfNeeded,
 } from "@/utils/driverCashPaymentApi";
 import {
   fetchFleetDriverRideEarnings,
@@ -96,7 +99,7 @@ const PICKUP_AUX_ICON_RED = "#FF3B30";
 const PICKUP_AUX_BORDER_LIGHT_RED = "#FECACA";
 const PICKUP_AUX_PRESSED_BG = "#FFF1F2";
 const DRIVE_SHEET_GRAB_H = 32;
-const DRIVE_SHEET_DETAILS_H = 136;
+const DRIVE_SHEET_DETAILS_H = 144;
 const DRIVE_SHEET_ACTIONS_H = 56;
 const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_ACTIONS_H + 12;
 const DRIVE_SHEET_EXPANDED_H = DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_H + 8;
@@ -202,6 +205,74 @@ function fmtDist(m: number): string {
   return `${(m / 1000).toFixed(1)} km`;
 }
 
+function passengerFirstNameOnly(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return parts[0] ?? fullName.trim();
+}
+
+const NAV_CAMERA_ZOOM = 18;
+const NAV_CAMERA_PITCH = 58;
+/** Unteres Padding → Puck sitzt im unteren Drittel, Kamera bleibt auf Fahrerposition. */
+const NAV_MAP_PADDING = { top: 140, right: 56, bottom: 200, left: 24 };
+
+function isValidMapCoord(lat: number, lon: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lon) <= 180 &&
+    !(lat === 0 && lon === 0)
+  );
+}
+
+function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+function isUsableDeviceHeading(heading?: number | null): heading is number {
+  return heading != null && Number.isFinite(heading) && heading >= 0 && heading <= 360;
+}
+
+function resolveNavHeading(
+  lat: number,
+  lon: number,
+  opts: {
+    deviceHeading?: number | null;
+    steps?: RouteStep[];
+    stepIdx?: number;
+    target?: { lat: number; lon: number };
+  },
+): number {
+  if (isUsableDeviceHeading(opts.deviceHeading)) return opts.deviceHeading;
+  const step = opts.steps?.[opts.stepIdx ?? 0];
+  if (step && isValidMapCoord(step.lat, step.lon)) {
+    return bearingDeg(lat, lon, step.lat, step.lon);
+  }
+  if (opts.target && isValidMapCoord(opts.target.lat, opts.target.lon)) {
+    return bearingDeg(lat, lon, opts.target.lat, opts.target.lon);
+  }
+  return 0;
+}
+
+/** Apple Maps nutzt altitude (m), Google Maps zoom — zoom allein auf iOS wirkt nicht. */
+function zoomLevelToAltitudeMeters(zoom: number, latitude: number): number {
+  return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
+}
+
+function buildNavCamera(lat: number, lon: number, heading: number) {
+  const center = { latitude: lat, longitude: lon };
+  const base = { center, heading, pitch: NAV_CAMERA_PITCH };
+  if (usesGoogleMapTiles()) {
+    return { ...base, zoom: NAV_CAMERA_ZOOM };
+  }
+  return { ...base, altitude: zoomLevelToAltitudeMeters(NAV_CAMERA_ZOOM, lat) };
+}
+
 function fmtArrival(remainingMin: number): string {
   const d = new Date(Date.now() + remainingMin * 60000);
   return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -288,6 +359,24 @@ export default function DriverNavigationScreen() {
   const destName   = params.destName ?? params.toName ?? "Ziel";
   const estimatedFare = parseFloat(params.estimatedFare ?? "0");
 
+  const navigationTarget = useMemo(() => {
+    if (isPickupPhase) {
+      if (isValidMapCoord(pickupLat, pickupLon)) return { lat: pickupLat, lon: pickupLon };
+      if (isValidMapCoord(toLat, toLon)) return { lat: toLat, lon: toLon };
+      return { lat: fromLat, lon: fromLon };
+    }
+    if (isValidMapCoord(destLat, destLon)) return { lat: destLat, lon: destLon };
+    if (isValidMapCoord(toLat, toLon)) return { lat: toLat, lon: toLon };
+    return { lat: fromLat, lon: fromLon };
+  }, [isPickupPhase, pickupLat, pickupLon, destLat, destLon, toLat, toLon, fromLat, fromLon]);
+
+  const initialNavCamera = useMemo(() => {
+    const lat = isValidMapCoord(fromLat, fromLon) ? fromLat : 48.7394;
+    const lon = isValidMapCoord(fromLat, fromLon) ? fromLon : 9.3114;
+    const heading = resolveNavHeading(lat, lon, { target: navigationTarget });
+    return buildNavCamera(lat, lon, heading);
+  }, [fromLat, fromLon, navigationTarget.lat, navigationTarget.lon]);
+
   useEffect(() => {
     if (Platform.OS === "web") return;
     logDriverNavigationOpen({
@@ -315,6 +404,12 @@ export default function DriverNavigationScreen() {
 
   const mapRef  = useRef<MapView>(null);
   const mapReady = useRef(false);
+  const navCameraInitializedRef = useRef(false);
+  const pendingNavCameraRef = useRef<{ lat: number; lon: number; heading?: number } | null>(null);
+  /** Auto-follow (GPS camera). Off after user pans/zooms; re-enabled via recenter button. */
+  const navFollowEnabledRef = useRef(true);
+  /** Ignore region-change events briefly after animateCamera / fitToCoordinates. */
+  const programmaticCameraUntilRef = useRef(0);
   const driverArrivingSentRef = useRef(false);
 
   const [polyline, setPolyline] = useState<{ latitude: number; longitude: number }[]>([]);
@@ -330,7 +425,21 @@ export default function DriverNavigationScreen() {
   const [driverLat, setDriverLat] = useState(fromLat || 48.7394);
   const [driverLon, setDriverLon] = useState(fromLon || 9.3114);
 
-  // pickup-phase sequential state: false = show "Angekommen", true = show "Fahrt beginnen"
+  /** Stable refs for GPS/camera callbacks — avoid effect re-runs on every position tick. */
+  const driverLatRef = useRef(driverLat);
+  const driverLonRef = useRef(driverLon);
+  const stepsRef = useRef(steps);
+  const stepIdxRef = useRef(stepIdx);
+  const navTargetRef = useRef(navigationTarget);
+  const initialRouteMetricsRef = useRef({ distM: initialDistM, etaMin: initialEtaMin });
+  driverLatRef.current = driverLat;
+  driverLonRef.current = driverLon;
+  stepsRef.current = steps;
+  stepIdxRef.current = stepIdx;
+  navTargetRef.current = navigationTarget;
+  initialRouteMetricsRef.current = { distM: initialDistM, etaMin: initialEtaMin };
+
+  // pickup-phase sequential state
   const [hasArrived, setHasArrived] = useState(params.arrived === "1");
 
   // Ton Ein/Aus
@@ -436,27 +545,110 @@ export default function DriverNavigationScreen() {
     return () => loop.stop();
   }, []);
 
+  const markProgrammaticCamera = useCallback((durationMs: number) => {
+    programmaticCameraUntilRef.current = Date.now() + durationMs + 450;
+  }, []);
+
   const fitRoute = useCallback((coords: { latitude: number; longitude: number }[]) => {
     if (coords.length < 2 || !mapReady.current) return;
+    navFollowEnabledRef.current = false;
+    markProgrammaticCamera(900);
     mapRef.current?.fitToCoordinates(coords, {
       edgePadding: { top: 180, right: 40, bottom: 220, left: 40 },
       animated: true,
     });
+  }, [markProgrammaticCamera]);
+
+  const focusNavigationCamera = useCallback(
+    (opts?: { lat?: number; lon?: number; heading?: number; animated?: boolean; force?: boolean }) => {
+      if (opts?.force) {
+        navFollowEnabledRef.current = true;
+      } else if (!navFollowEnabledRef.current) {
+        return;
+      }
+
+      const lat = opts?.lat ?? driverLatRef.current;
+      const lon = opts?.lon ?? driverLonRef.current;
+      if (!isValidMapCoord(lat, lon)) return;
+
+      const heading = resolveNavHeading(lat, lon, {
+        deviceHeading: opts?.heading,
+        steps: stepsRef.current,
+        stepIdx: stepIdxRef.current,
+        target: navTargetRef.current,
+      });
+
+      if (!mapReady.current || !mapRef.current) {
+        pendingNavCameraRef.current = { lat, lon, heading };
+        return;
+      }
+
+      const duration = opts?.animated === false ? 0 : navCameraInitializedRef.current ? 400 : 0;
+      markProgrammaticCamera(duration);
+      mapRef.current.animateCamera(buildNavCamera(lat, lon, heading), { duration });
+      navCameraInitializedRef.current = true;
+      pendingNavCameraRef.current = null;
+    },
+    [markProgrammaticCamera],
+  );
+
+  const handleRecenterNav = useCallback(() => {
+    void (async () => {
+      let lat = driverLatRef.current;
+      let lon = driverLonRef.current;
+      let heading: number | undefined;
+      const fresh = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      if (fresh && isValidMapCoord(fresh.coords.latitude, fresh.coords.longitude)) {
+        lat = fresh.coords.latitude;
+        lon = fresh.coords.longitude;
+        if (isUsableDeviceHeading(fresh.coords.heading)) heading = fresh.coords.heading;
+        setDriverLat(lat);
+        setDriverLon(lon);
+      }
+      focusNavigationCamera({ lat, lon, heading, animated: true, force: true });
+    })();
+  }, [focusNavigationCamera]);
+
+  const handleMapUserInteraction = useCallback(() => {
+    navFollowEnabledRef.current = false;
   }, []);
 
-  // Load route
+  const handleRegionChange = useCallback(() => {
+    if (Date.now() < programmaticCameraUntilRef.current) return;
+    navFollowEnabledRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    navCameraInitializedRef.current = false;
+    navFollowEnabledRef.current = true;
+    setStepIdx(0);
+    prevStepIdx.current = -1;
+  }, [params.rideId, phase]);
+
+  useEffect(() => {
+    if (!mapReady.current) return;
+    focusNavigationCamera({ animated: true, force: true });
+  }, [phase, navigationTarget.lat, navigationTarget.lon, focusNavigationCamera]);
+
+  // Load route once per ride/phase — never on every GPS tick.
   useEffect(() => {
     if (Platform.OS === "web") return;
-    const fLat = fromLat || driverLat;
-    const fLon = fromLon || driverLon;
-    const tLat = toLat || pickupLat;
-    const tLon = toLon || pickupLon;
-    if (!fLat || !fLon || !tLat || !tLon) return;
 
+    let fLat = isPickupPhase ? fromLat : pickupLat || fromLat;
+    let fLon = isPickupPhase ? fromLon : pickupLon || fromLon;
+    if (!isValidMapCoord(fLat, fLon)) {
+      fLat = driverLatRef.current;
+      fLon = driverLonRef.current;
+    }
+    const tLat = navigationTarget.lat;
+    const tLon = navigationTarget.lon;
+    if (!isValidMapCoord(fLat, fLon) || !isValidMapCoord(tLat, tLon)) return;
+
+    const destLabel = isPickupPhase ? pickupName : destName;
     const osrmPath = `${fLon},${fLat};${tLon},${tLat}`;
     getRouteWithSteps(
       { lat: fLat, lon: fLon, displayName: params.fromName ?? "Start" },
-      { lat: tLat, lon: tLon, displayName: params.toName ?? "Ziel" }
+      { lat: tLat, lon: tLon, displayName: destLabel },
     )
       .then((result) => {
         const coords = (result.polyline ?? []).map(([lat, lon]) => ({ latitude: lat, longitude: lon }));
@@ -477,14 +669,24 @@ export default function DriverNavigationScreen() {
         }
         setPolyline(coords);
         setSteps(result.steps);
-        const distM  = (result.distanceKm ?? 0) * 1000;
+        setStepIdx(0);
+        prevStepIdx.current = -1;
+        const distM = (result.distanceKm ?? 0) * 1000;
         const etaMin = result.durationMinutes ?? 0;
         setInitialDistM(distM);
         setInitialEtaMin(etaMin);
-        setRemainingDistM(distM);
-        setRemainingMin(etaMin);
-        // No auto-speak on load — only speak on explicit button presses
-        if (mapReady.current && coords.length > 1) setTimeout(() => fitRoute(coords), 400);
+        const lat = isValidMapCoord(driverLatRef.current, driverLonRef.current)
+          ? driverLatRef.current
+          : fLat;
+        const lon = isValidMapCoord(driverLatRef.current, driverLonRef.current)
+          ? driverLonRef.current
+          : fLon;
+        const remDist = haversine(lat, lon, tLat, tLon);
+        setRemainingDistM(remDist);
+        setRemainingMin(
+          distM > 0 ? Math.max(1, Math.round(etaMin * Math.min(remDist / distM, 1))) : etaMin,
+        );
+        focusNavigationCamera({ lat, lon, animated: false, force: true });
       })
       .catch((e) => {
         logDriverNavigationRouteResult({
@@ -493,7 +695,21 @@ export default function DriverNavigationScreen() {
           error: e instanceof Error ? e.message : String(e),
         });
       });
-  }, [fromLat, fromLon, toLat, toLon, pickupLat, pickupLon]);
+  }, [
+    params.rideId,
+    phase,
+    isPickupPhase,
+    fromLat,
+    fromLon,
+    pickupLat,
+    pickupLon,
+    navigationTarget.lat,
+    navigationTarget.lon,
+    pickupName,
+    destName,
+    params.fromName,
+    focusNavigationCamera,
+  ]);
 
   // Speak on step change — skip "Fahrt beginnen" (depart) instructions
   useEffect(() => {
@@ -980,11 +1196,11 @@ export default function DriverNavigationScreen() {
   }, [showFareModal, refreshEinsatzbereit]);
 
   const handleFahrtBeenden = () => {
-    trySpeak("Fahrt wird beendet.", soundRef.current);
-    setFareInput(
-      defaultDriverFareInputForCompletion(rideFleetStatus),
-    );
-    setShowFareModal(true);
+    warnCashPaymentIfNeeded(params.paymentMethod, () => {
+      trySpeak("Fahrt wird beendet.", soundRef.current);
+      setFareInput(defaultDriverFareInputForCompletion(rideFleetStatus));
+      setShowFareModal(true);
+    });
   };
 
   const goToDashboardAfterRide = useCallback(() => {
@@ -1101,13 +1317,28 @@ export default function DriverNavigationScreen() {
     await completeRideWithFare(fare, false);
   };
 
-  // GPS tracking
+  // GPS tracking — subscription stable per ride; reads latest state via refs.
   useEffect(() => {
     if (Platform.OS === "web") return;
     let sub: Location.LocationSubscription | null = null;
     void (async () => {
       const fg = await requestForegroundPermissionsSafe();
       if (!fg || fg.status !== "granted") return;
+      const boot = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      if (boot) {
+        const { latitude, longitude } = boot.coords;
+        setDriverLat(latitude);
+        setDriverLon(longitude);
+        if (mapReady.current) {
+          focusNavigationCamera({
+            lat: latitude,
+            lon: longitude,
+            heading: boot.coords.heading ?? undefined,
+            animated: false,
+            force: true,
+          });
+        }
+      }
       sub = await watchPositionSafe(
         { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
         (loc) => {
@@ -1115,25 +1346,30 @@ export default function DriverNavigationScreen() {
           setDriverLat(latitude);
           setDriverLon(longitude);
 
-          const endLat = toLat || pickupLat || fromLat;
-          const endLon = toLon || pickupLon || fromLon;
-          const remDist = haversine(latitude, longitude, endLat, endLon);
+          const target = navTargetRef.current;
+          const remDist = haversine(latitude, longitude, target.lat, target.lon);
           setRemainingDistM(remDist);
-          if (initialDistM > 0) {
-            const frac = Math.min(remDist / initialDistM, 1);
-            setRemainingMin(Math.max(1, Math.round(initialEtaMin * frac)));
+          const { distM, etaMin } = initialRouteMetricsRef.current;
+          if (distM > 0) {
+            const frac = Math.min(remDist / distM, 1);
+            setRemainingMin(Math.max(1, Math.round(etaMin * frac)));
           }
 
-          // Advance step
-          if (steps.length > 0) {
-            let minD = Infinity, closest = stepIdx;
-            steps.forEach((s, i) => {
-              if (i < stepIdx) return;
+          const routeSteps = stepsRef.current;
+          const curStepIdx = stepIdxRef.current;
+          if (routeSteps.length > 0) {
+            let minD = Infinity;
+            let closest = curStepIdx;
+            routeSteps.forEach((s, i) => {
+              if (i < curStepIdx) return;
               const d = haversine(latitude, longitude, s.lat, s.lon);
-              if (d < minD) { minD = d; closest = i; }
+              if (d < minD) {
+                minD = d;
+                closest = i;
+              }
             });
-            if (minD < 30 && closest < steps.length - 1) {
-              setStepIdx(Math.min(closest + 1, steps.length - 1));
+            if (minD < 30 && closest < routeSteps.length - 1) {
+              setStepIdx(Math.min(closest + 1, routeSteps.length - 1));
             }
           }
 
@@ -1155,16 +1391,21 @@ export default function DriverNavigationScreen() {
             })();
           }
 
-          mapRef.current?.animateCamera({
-            center: { latitude, longitude },
-            heading: loc.coords.heading ?? 0,
-            zoom: 17, pitch: 45,
+          if (!navFollowEnabledRef.current) return;
+
+          focusNavigationCamera({
+            lat: latitude,
+            lon: longitude,
+            heading: loc.coords.heading ?? undefined,
+            animated: navCameraInitializedRef.current,
           });
-        }
+        },
       );
     })();
-    return () => { sub?.remove(); };
-  }, [steps, stepIdx, params.rideId, initialDistM, initialEtaMin, toLat, toLon, pickupLat, pickupLon, fromLat, fromLon]);
+    return () => {
+      sub?.remove();
+    };
+  }, [params.rideId, focusNavigationCamera]);
 
   const handleMapReady = useCallback(() => {
     mapReady.current = true;
@@ -1173,13 +1414,25 @@ export default function DriverNavigationScreen() {
       polylinePoints: polyline.length,
       steps: steps.length,
     });
-    const fLat = fromLat || driverLat;
-    const fLon = fromLon || driverLon;
-    setTimeout(() => {
-      mapRef.current?.animateCamera({ center: { latitude: fLat, longitude: fLon }, zoom: 14, pitch: 0 });
-    }, 200);
-    if (polyline.length > 1) setTimeout(() => fitRoute(polyline), 600);
-  }, [fromLat, fromLon, driverLat, driverLon, polyline, fitRoute, steps.length]);
+    const pending = pendingNavCameraRef.current;
+    if (pending) {
+      focusNavigationCamera({
+        lat: pending.lat,
+        lon: pending.lon,
+        heading: pending.heading,
+        animated: false,
+        force: true,
+      });
+      return;
+    }
+    const lat = isValidMapCoord(driverLatRef.current, driverLonRef.current)
+      ? driverLatRef.current
+      : fromLat || driverLatRef.current;
+    const lon = isValidMapCoord(driverLatRef.current, driverLonRef.current)
+      ? driverLonRef.current
+      : fromLon || driverLonRef.current;
+    focusNavigationCamera({ lat, lon, animated: false, force: true });
+  }, [fromLat, fromLon, focusNavigationCamera, polyline.length, steps.length]);
 
   if (Platform.OS === "web") return <WebFallback />;
 
@@ -1213,46 +1466,74 @@ export default function DriverNavigationScreen() {
   });
 
   const paymentUi = resolveNavPaymentUi(params.paymentMethod ?? "");
+  const isCashPayment = driverRidePaymentLooksLikeCash(params.paymentMethod);
+  const payIconName = isCashPayment
+    ? ("currency-eur" as const)
+    : paymentUi.icon;
+  const payDisplayLabel = isCashPayment ? "BAR" : null;
+  const payAccentColor = isCashPayment ? "#34C759" : paymentUi.iconColor;
+  const payIconSize = isCashPayment ? 20 : 18;
+
+  const rideCustomerLabel = params.customerName?.trim()
+    ? passengerFirstNameOnly(params.customerName)
+    : isPickupPhase
+      ? pickupName
+      : destName;
 
   const rideDetailsBlock = (
-    <View style={styles.rideInfoFrameOuter}>
-      <View style={styles.rideInfoFrameInner}>
-        <View style={styles.rideInfoTopRow}>
-          <View style={styles.rideInfoEtaFrame}>
-            <View style={styles.rideInfoEtaFrameInner}>
-              <Text style={[styles.rideInfoEtaValue, navAppleFont("semibold")]}>
-                {remainingMin > 0 ? remainingMin : "—"}
-              </Text>
-              <Text style={[styles.rideInfoEtaUnit, navAppleFont("medium")]}>min</Text>
-            </View>
-          </View>
-          <View style={styles.rideInfoDivider} />
-          <View style={styles.rideInfoBody}>
-            {params.customerName ? (
-              <Text style={[styles.rideInfoName, navAppleFont("semibold")]} numberOfLines={1}>
-                {params.customerName}
+    <View style={styles.rideInfoCard}>
+      <View style={styles.rideInfoNameRow}>
+        <Feather name="user" size={17} color="#111827" />
+        <Text style={[styles.rideInfoName, navAppleFont("semibold")]} numberOfLines={1}>
+          {rideCustomerLabel}
+        </Text>
+      </View>
+
+      <View style={styles.rideInfoStatsBlock}>
+        <View style={styles.rideInfoMetric}>
+          <Feather name="navigation" size={15} color="#8E8E93" />
+          <Text style={[styles.rideInfoMetricLabel, navAppleFont("medium")]}>Entfernung</Text>
+          <Text style={[styles.rideInfoMetricValue, navAppleFont("semibold")]} numberOfLines={1}>
+            {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
+          </Text>
+        </View>
+        <View style={styles.rideInfoMetricSep} />
+        <View style={styles.rideInfoMetric}>
+          <Feather name="clock" size={15} color="#8E8E93" />
+          <Text style={[styles.rideInfoMetricLabel, navAppleFont("medium")]}>Ankunft</Text>
+          <Text style={[styles.rideInfoMetricValue, navAppleFont("semibold")]} numberOfLines={1}>
+            {remainingMin > 0 ? fmtArrival(remainingMin) : "—"}
+          </Text>
+        </View>
+        <View style={styles.rideInfoMetricSep} />
+        <View style={styles.rideInfoMetric}>
+          <Feather name="watch" size={15} color="#8E8E93" />
+          <Text style={[styles.rideInfoMetricLabel, navAppleFont("medium")]}>Fahrzeit</Text>
+          <Text style={[styles.rideInfoMetricValue, navAppleFont("semibold")]} numberOfLines={1}>
+            {remainingMin > 0 ? `${remainingMin} min` : "—"}
+          </Text>
+        </View>
+        <View style={styles.rideInfoMetricSep} />
+        <View style={styles.rideInfoMetricPay}>
+          <View
+            style={[
+              styles.rideInfoPayInBlock,
+              isCashPayment && styles.rideInfoPayInBlockCash,
+              {
+                backgroundColor: isCashPayment ? "#E8F8EC" : paymentUi.chipBg,
+                borderColor: isCashPayment ? "#111827" : `${paymentUi.iconColor}55`,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons name={payIconName} size={payIconSize} color={payAccentColor} />
+            {payDisplayLabel ? (
+              <Text
+                style={[styles.rideInfoPayPillTextCash, navAppleFont("semibold"), { color: payAccentColor }]}
+                numberOfLines={1}
+              >
+                {payDisplayLabel}
               </Text>
             ) : null}
-            <Text style={[styles.rideInfoMeta, navAppleFont("semibold")]} numberOfLines={1}>
-              {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
-              {remainingMin > 0 ? ` · ${fmtArrival(remainingMin)}` : ""}
-            </Text>
-          </View>
-          <View style={styles.rideInfoPaymentCol}>
-            <View
-              style={[
-                styles.rideInfoPaymentChip,
-                { backgroundColor: paymentUi.chipBg, borderColor: `${paymentUi.iconColor}33` },
-              ]}
-            >
-              <MaterialCommunityIcons name={paymentUi.icon} size={26} color={paymentUi.iconColor} />
-              <Text
-                style={[styles.rideInfoPaymentText, navAppleFont("semibold"), { color: paymentUi.iconColor }]}
-                numberOfLines={2}
-              >
-                {paymentUi.label}
-              </Text>
-            </View>
           </View>
         </View>
       </View>
@@ -1328,37 +1609,46 @@ export default function DriverNavigationScreen() {
         ref={mapRef}
         style={StyleSheet.absoluteFillObject}
         {...nativeMapViewProps({ androidCustomMapStyle: NIGHT_MAP_STYLE })}
-        showsUserLocation
+        showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}
+        scrollEnabled
+        zoomEnabled
+        zoomTapEnabled
         rotateEnabled
         pitchEnabled
+        followsUserLocation={false}
+        mapPadding={NAV_MAP_PADDING}
         onMapReady={handleMapReady}
-        initialRegion={{
-          latitude: fromLat || 48.7394,
-          longitude: fromLon || 9.3114,
-          latitudeDelta: 0.04,
-          longitudeDelta: 0.04,
-        }}
+        onPanDrag={handleMapUserInteraction}
+        onRegionChange={handleRegionChange}
+        initialCamera={initialNavCamera}
       >
-        <Marker
-          coordinate={{ latitude: toLat || pickupLat || fromLat, longitude: toLon || pickupLon || fromLon }}
-          pinColor={isPickupPhase ? "#22C55E" : "#DC2626"}
-        />
-        {polyline.length > 1 && (
-          <Polyline
-            coordinates={polyline}
-            strokeColor="#4285F4"
-            strokeWidth={9}
-            lineCap="round"
-            lineJoin="round"
+        {isValidMapCoord(driverLat, driverLon) ? (
+          <Marker coordinate={{ latitude: driverLat, longitude: driverLon }} anchor={{ x: 0.5, y: 0.5 }}>
+            <View style={styles.navPuckWrap}>
+              <View style={styles.navPuck}>
+                <MaterialCommunityIcons name="navigation" size={20} color="#FFFFFF" />
+              </View>
+            </View>
+          </Marker>
+        ) : null}
+        {isValidMapCoord(navigationTarget.lat, navigationTarget.lon) ? (
+          <Marker
+            coordinate={{ latitude: navigationTarget.lat, longitude: navigationTarget.lon }}
+            pinColor={isPickupPhase ? "#22C55E" : "#DC2626"}
+            title={isPickupPhase ? pickupName : destName}
           />
-        )}
+        ) : null}
+        {polyline.length > 1 ? <NavRouteGlowPolyline coordinates={polyline} /> : null}
       </MapView>
 
       {/* Top instruction card — Google Maps green */}
-      <View style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}>
+      <View
+        pointerEvents="box-none"
+        style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}
+      >
         <View style={styles.topBrandBadge}>
           <Text style={styles.topBrandBadgeText}>OR</Text>
         </View>
@@ -1390,7 +1680,8 @@ export default function DriverNavigationScreen() {
       <View style={{ position: "absolute", right: 12, bottom: floatingControlsBottom, gap: 10 }}>
         <Pressable
           style={styles.compassBtn}
-          onPress={() => mapRef.current?.animateCamera({ center: { latitude: driverLat, longitude: driverLon }, zoom: 17 })}
+          accessibilityLabel="Navigation folgen"
+          onPress={() => handleRecenterNav()}
         >
           <Feather name="navigation" size={18} color="#1B6B3A" />
         </Pressable>
@@ -1875,6 +2166,22 @@ export default function DriverNavigationScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Platform.OS === "ios" ? "#E5E7EB" : "#242f3e" },
+  navPuckWrap: { alignItems: "center", justifyContent: "center" },
+  navPuck: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#2563EB",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
+  },
 
   /* Top card */
   topWrapper: { position: "absolute", top: 0, left: 0, right: 0 },
@@ -2047,90 +2354,95 @@ const styles = StyleSheet.create({
   sheetChevronBtn: { paddingVertical: 4, paddingHorizontal: 4 },
   driveDetailsWrap: { paddingTop: 2, paddingBottom: 10 },
   driveEndActionWrap: { marginTop: 2, marginBottom: 4 },
-  rideInfoFrameOuter: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#C6C6C8",
+  rideInfoCard: {
+    borderRadius: 14,
     backgroundColor: "#FFFFFF",
-    padding: 4,
+    borderWidth: 1.5,
+    borderColor: "#111827",
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 10,
+    gap: 0,
   },
-  rideInfoFrameInner: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E5EA",
-    backgroundColor: "#FAFAFC",
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-  },
-  rideInfoTopRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  rideInfoEtaFrame: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#D1D1D6",
-    backgroundColor: "#FFFFFF",
-    padding: 3,
-    alignSelf: "flex-start",
-  },
-  rideInfoEtaFrameInner: {
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: "#EBEBF0",
-    backgroundColor: "#F2F2F7",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  rideInfoNameRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 2,
+    paddingBottom: 8,
+  },
+  rideInfoName: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 19,
+    color: "#111827",
+    letterSpacing: Platform.OS === "ios" ? -0.4 : -0.25,
+  },
+  rideInfoStatsBlock: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderRadius: 10,
+    backgroundColor: "#FAFAFA",
+    borderWidth: 1,
+    borderColor: "#111827",
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+  },
+  rideInfoPayInBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    minWidth: 44,
+    maxWidth: "100%",
+  },
+  rideInfoPayInBlockCash: {
+    borderRadius: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    gap: 6,
     minWidth: 58,
   },
-  rideInfoDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: "stretch",
-    backgroundColor: "#D1D1D6",
-    marginVertical: 4,
-  },
-  rideInfoEtaValue: {
-    fontSize: 32,
-    color: "#1C1C1E",
-    letterSpacing: Platform.OS === "ios" ? -0.6 : -0.35,
-    lineHeight: 36,
-  },
-  rideInfoEtaUnit: {
-    fontSize: 13,
-    color: "#8E8E93",
-    marginTop: -1,
-    letterSpacing: Platform.OS === "ios" ? -0.08 : 0,
-  },
-  rideInfoBody: { flex: 1, minWidth: 0, gap: 4, justifyContent: "center" },
-  rideInfoName: {
-    fontSize: 19,
-    color: "#1C1C1E",
-    letterSpacing: Platform.OS === "ios" ? -0.45 : -0.35,
-  },
-  rideInfoMeta: {
+  rideInfoPayPillTextCash: {
     fontSize: 16,
-    color: "#3A3A3C",
-    letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
+    letterSpacing: Platform.OS === "ios" ? 0.4 : 0.6,
   },
-  rideInfoPaymentCol: {
-    justifyContent: "center",
-    alignItems: "flex-end",
-    maxWidth: 124,
-    paddingLeft: 2,
+  rideInfoMetric: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 4,
+    paddingHorizontal: 2,
+    minWidth: 0,
   },
-  rideInfoPaymentChip: {
-    flexDirection: "column",
+  rideInfoMetricPay: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    minWidth: 84,
+    paddingHorizontal: 2,
+    minWidth: 0,
   },
-  rideInfoPaymentText: {
+  rideInfoMetricSep: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    backgroundColor: "#D4D4D8",
+    marginVertical: 2,
+  },
+  rideInfoMetricLabel: {
     fontSize: 14,
+    color: "#8E8E93",
+    letterSpacing: Platform.OS === "ios" ? 0.1 : 0.2,
+    textTransform: "uppercase",
+  },
+  rideInfoMetricValue: {
+    fontSize: 16,
+    color: "#1C1C1E",
+    letterSpacing: Platform.OS === "ios" ? -0.25 : 0,
     textAlign: "center",
-    letterSpacing: Platform.OS === "ios" ? -0.1 : 0,
   },
   actionBtnWrapper: { width: "100%" },
   actionRow: { flexDirection: "row", alignItems: "stretch", gap: 10 },
