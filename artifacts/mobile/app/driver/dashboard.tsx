@@ -4549,13 +4549,13 @@ const styles = StyleSheet.create({
 
   /* Übersicht map tab */
   mapStatusChip: {
-    position: "absolute", top: 16, alignSelf: "center",
-    flexDirection: "row", alignItems: "center", gap: 7,
-    backgroundColor: "rgba(0,0,0,0.75)", borderRadius: 16,
-    paddingHorizontal: 14, paddingVertical: 7,
+    position: "absolute", top: 8, alignSelf: "center",
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "rgba(0,0,0,0.75)", borderRadius: 18,
+    paddingHorizontal: 16, paddingVertical: 9,
   },
-  mapStatusDot: { width: 9, height: 9, borderRadius: 5 },
-  mapStatusText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  mapStatusDot: { width: 10, height: 10, borderRadius: 5 },
+  mapStatusText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
   mapReqOverlay: {
     position: "absolute", bottom: 12, left: 12, right: 12,
   },
