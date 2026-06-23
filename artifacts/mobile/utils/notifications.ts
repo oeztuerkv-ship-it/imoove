@@ -14,8 +14,9 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   try {
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
+      staysActiveInBackground: true,
       shouldDuckAndroid: false,
+      interruptionModeIOS: 1, // DoNotMix — Alarm durch andere Audio-Quellen nicht leise machen
     });
   } catch (_) {}
   return true;

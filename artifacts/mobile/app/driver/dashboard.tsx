@@ -66,6 +66,7 @@ import {
   formatDriverFareInputDe,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
+import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
 import { requestNotificationPermissions, stopRideSound } from "@/utils/notifications";
 import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
 import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
@@ -2646,6 +2647,7 @@ export default function DriverDashboard() {
     completeRequest,
     refreshRequests,
     refreshDriverMarketHard,
+    refreshDriverMarket,
     clearDriverMarketRequests,
     markDriverArriving,
     activateForDispatch,
@@ -2806,19 +2808,24 @@ export default function DriverDashboard() {
       sub = Notifications.addNotificationReceivedListener((notification) => {
         const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
         if (kind === "instant_ride_offer" || kind === "follow_up_offer") {
-          void refreshDriverMarketHard(
-            driverPos ? { lat: driverPos.lat, lon: driverPos.lon } : undefined,
-          );
+          const rideId =
+            typeof (notification.request.content.data as { rideId?: unknown })?.rideId === "string"
+              ? (notification.request.content.data as { rideId: string }).rideId.trim()
+              : "";
+          if (rideId) {
+            void ringForDriverInstantOffer({ rideId });
+          }
+          void refreshDriverMarket(driverPos ? { lat: driverPos.lat, lon: driverPos.lon } : undefined);
           if (kind === "follow_up_offer") void loadFollowUpSuggestion();
-        } else {
-          void refreshInboxState();
+          return;
         }
+        void refreshInboxState();
       });
     });
     return () => {
       sub?.remove();
     };
-  }, [refreshInboxState, refreshDriverMarketHard, driverPos, loadFollowUpSuggestion]);
+  }, [refreshInboxState, refreshDriverMarket, driverPos, loadFollowUpSuggestion]);
 
   const dismissAdminMessage = useCallback(async () => {
     if (!adminMessage) return;

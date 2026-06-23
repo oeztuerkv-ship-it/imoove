@@ -32,7 +32,8 @@ import { enqueueOfflineStatusPatch, flushOfflineStatusQueue } from "@/utils/offl
 import { isDriverPushKind, setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
 import { requestDriverPushMarketRefresh, setDriverPushMarketRefreshHandler } from "@/utils/driverPushMarketRefresh";
 import { getDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
-import { sendNewRideNotification, stopRideSound } from "@/utils/notifications";
+import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
+import { stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
 
 export type RequestStatus =
@@ -221,6 +222,8 @@ interface RideRequestContextValue {
   refreshRequests: () => Promise<void>;
   /** Fahrer-Markt: State leeren, dann frisch vom Server (nach ONLINE / Storno). */
   refreshDriverMarketHard: (opts?: { lat?: number; lon?: number }) => Promise<boolean>;
+  /** Fahrer-Markt ohne Hard-Reset (z. B. nach Push — Alarm nicht unterbrechen). */
+  refreshDriverMarket: (opts?: { lat?: number; lon?: number }) => Promise<boolean>;
   /** Sofort-Markt in der UI leeren (z. B. vor OFFLINE — kein Aufblitzen). */
   clearDriverMarketRequests: () => void;
   /** Kein erneutes Klingeln/Banner für diese Auftrags-ID (Abbruch, Ablehnung, Storno). */
@@ -263,6 +266,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   completeRequest: async () => {},
   refreshRequests: async () => {},
   refreshDriverMarketHard: async () => false,
+  refreshDriverMarket: async () => false,
   clearDriverMarketRequests: () => {},
   suppressDriverInstantOffer: () => {},
 });
@@ -910,6 +914,11 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     [fetchDriverMarket],
   );
 
+  const refreshDriverMarket = useCallback(
+    (opts?: { lat?: number; lon?: number }) => fetchDriverMarket({ hardReset: false, ...opts }),
+    [fetchDriverMarket],
+  );
+
   const clearDriverMarketRequests = useCallback(() => {
     setDriverMarketRequests([]);
     setDriverMarketScheduledPool([]);
@@ -1040,8 +1049,18 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     let sub: { remove: () => void } | null = null;
     void import("expo-notifications").then((Notifications) => {
       sub = Notifications.addNotificationReceivedListener((notification) => {
-        const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
+        const data = notification.request.content.data as { kind?: unknown; rideId?: unknown } | undefined;
+        const kind = data?.kind;
         if (fleetAuthToken && isDriverPushKind(kind)) {
+          if (
+            (kind === "instant_ride_offer" || kind === "follow_up_offer") &&
+            typeof data?.rideId === "string" &&
+            data.rideId.trim()
+          ) {
+            void ringForDriverInstantOffer({
+              rideId: data.rideId.trim(),
+            });
+          }
           void fetchDriverMarket({ hardReset: false });
           return;
         }
@@ -1613,7 +1632,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     }
 
     if (pool.length === 0) {
-      void stopRideSound();
+      if (driverMarketHydrated) void stopRideSound();
       driverMarketOnlinePrevRef.current = driverOnline;
       return;
     }
@@ -1642,7 +1661,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const schedMs = req.scheduledAt ? new Date(req.scheduledAt as Date).getTime() : 0;
       const isFarScheduled = Number.isFinite(schedMs) && schedMs > Date.now() + 60 * 60 * 1000;
       if (!isFarScheduled && shouldPresentDriverRideOfferNotification()) {
-        void sendNewRideNotification({
+        void ringForDriverInstantOffer({
+          rideId: req.id,
           customerName: req.customerName || "Kunde",
           fromAddress: req.fromFull || req.from || "—",
           distanceKm: null,
@@ -1657,6 +1677,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     fleetAuthToken,
     driverMarketOnline,
     isDriverSurface,
+    driverMarketHydrated,
   ]);
   const acceptedRequest =
     requests.find((r) =>
@@ -1765,6 +1786,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         updateRequestDriverNote,
         refreshRequests: fetchAll,
         refreshDriverMarketHard,
+        refreshDriverMarket,
         clearDriverMarketRequests,
         suppressDriverInstantOffer,
       }}
