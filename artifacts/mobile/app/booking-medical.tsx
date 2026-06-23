@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams, type Href } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -126,6 +127,25 @@ export default function BookingMedicalScreen() {
   const { addRequest } = useRideRequests();
   const { profile, updateProfile } = useUser();
   const formScrollRef = useRef<ScrollView>(null);
+
+  const exitMedicalBookingScreen = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/" as Href);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        exitMedicalBookingScreen();
+        return true;
+      });
+      return () => sub.remove();
+    }, [exitMedicalBookingScreen]),
+  );
 
   const [patientName, setPatientName] = useState("");
   const [pickupStreet, setPickupStreet] = useState("");
@@ -563,7 +583,7 @@ export default function BookingMedicalScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? topPad + 8 : 0}
     >
       <View style={[styles.header, { paddingTop: topPad, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={exitMedicalBookingScreen} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={colors.foreground} />
         </Pressable>
         <View style={{ flex: 1 }}>
