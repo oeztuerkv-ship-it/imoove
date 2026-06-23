@@ -72,6 +72,12 @@ function fleetLoginUserMessage(errorCode: string): string {
 const DEFAULT_NICHT_FREI_MSG =
   "Sie sind noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb. Die Anmeldung ist möglich; Aufträge sind bis zur Freigabe gesperrt.";
 
+function normalizeDriverPlaceholder(value: string | undefined | null): string {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed || trimmed === "—" || trimmed === "-") return "";
+  return trimmed;
+}
+
 /** Antwort `GET /fleet-driver/v1/me` → Profil (Token bleibt aus `prev`). */
 function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, unknown>): DriverProfile {
   const d = (me.driver ?? {}) as Record<string, unknown>;
@@ -84,6 +90,16 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
         : typeof av.license_plate === "string" && av.license_plate.trim()
           ? av.license_plate.trim()
           : "";
+  const assignedKonzession =
+    typeof me.konzessionNumber === "string" && me.konzessionNumber.trim()
+      ? me.konzessionNumber.trim()
+      : typeof av.konzessionNumber === "string" && av.konzessionNumber.trim()
+        ? av.konzessionNumber.trim()
+        : typeof av.konzession_number === "string" && av.konzession_number.trim()
+          ? av.konzession_number.trim()
+          : typeof me.companyConcessionNumber === "string" && me.companyConcessionNumber.trim()
+            ? me.companyConcessionNumber.trim()
+            : "";
   const einsatzbereit = me.einsatzbereit === true;
   const isMarketOnline = me.isMarketOnline === true;
   const notFreigegebenMessage =
@@ -127,7 +143,9 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     name:
       `${String(d.firstName ?? "").trim()} ${String(d.lastName ?? "").trim()}`.trim() ||
       prev.name,
-    plate: assignedPlate || prev.plate,
+    plate: assignedPlate || normalizeDriverPlaceholder(prev.plate) || prev.plate,
+    konzessionNumber:
+      assignedKonzession || normalizeDriverPlaceholder(prev.konzessionNumber) || "—",
     car:
       typeof av.model === "string" && av.model.trim()
         ? av.model.trim()
@@ -172,6 +190,7 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     authToken: String(p.authToken ?? ""),
     mustChangePassword: Boolean(p.mustChangePassword),
     plate: String(p.plate ?? "—"),
+    konzessionNumber: String(p.konzessionNumber ?? "—"),
     car: String(p.car ?? "—"),
     rating: typeof p.rating === "number" && Number.isFinite(p.rating) ? p.rating : 5,
     isAvailable: Boolean(p.isAvailable),
@@ -226,6 +245,8 @@ export interface DriverProfile {
   authToken: string;
   mustChangePassword: boolean;
   plate: string;
+  /** Freigegebenes Zuweisungs-Fahrzeug, sonst Admin-Mandanten-Konzession (`/fleet-driver/v1/me`). */
+  konzessionNumber: string;
   car: string;
   rating: number;
   isAvailable: boolean;
@@ -260,6 +281,11 @@ interface DriverContextValue {
   blockedUntilDate: Date | null;
   driver: DriverProfile | null;
   refreshEinsatzbereit: () => Promise<void>;
+  patchAssignedVehicleSnapshot: (snap: {
+    plate?: string;
+    konzessionNumber?: string;
+    car?: string;
+  }) => void;
   login: (email: string, password: string) => Promise<{ ok: true; mustChangePassword: boolean } | { ok: false; error: string }>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
@@ -275,6 +301,7 @@ const DriverContext = createContext<DriverContextValue>({
   blockedUntilDate: null,
   driver: null,
   refreshEinsatzbereit: async () => {},
+  patchAssignedVehicleSnapshot: () => {},
   login: async () => ({ ok: false, error: "Anmeldung fehlgeschlagen." }),
   changePassword: async () => ({ ok: false, error: "Passwortänderung fehlgeschlagen." }),
   logout: async () => {},
@@ -396,6 +423,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         authToken: token,
         mustChangePassword: Boolean(data.passwordChangeRequired ?? d.mustChangePassword),
         plate: "—",
+        konzessionNumber: "—",
         car: "—",
         rating: 5,
         isAvailable: false,
@@ -545,6 +573,27 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     }
   }, [driver?.authToken]);
 
+  const patchAssignedVehicleSnapshot = useCallback(
+    (snap: { plate?: string; konzessionNumber?: string; car?: string }) => {
+      setDriver((prev) => {
+        if (!prev) return prev;
+        const plate = normalizeDriverPlaceholder(snap.plate) || undefined;
+        const konzessionNumber = normalizeDriverPlaceholder(snap.konzessionNumber) || undefined;
+        const car = normalizeDriverPlaceholder(snap.car) || undefined;
+        if (!plate && !konzessionNumber && !car) return prev;
+        const next = {
+          ...prev,
+          ...(plate ? { plate } : {}),
+          ...(konzessionNumber ? { konzessionNumber } : {}),
+          ...(car ? { car } : {}),
+        };
+        patchStoredDriver(next);
+        return next;
+      });
+    },
+    [],
+  );
+
   const setAvailable = useCallback(async (v: boolean): Promise<void> => {
     if (!driver?.authToken) return;
     if (v && !driver.einsatzbereit) return;
@@ -667,6 +716,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         blockedUntilDate,
         driver,
         refreshEinsatzbereit,
+        patchAssignedVehicleSnapshot,
         login,
         changePassword,
         logout,

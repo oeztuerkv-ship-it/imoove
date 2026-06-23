@@ -29,6 +29,7 @@ import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { enqueueOfflineStatusPatch, flushOfflineStatusQueue } from "@/utils/offlineStatusQueue";
 import { isDriverPushKind, setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
 import { requestDriverPushMarketRefresh, setDriverPushMarketRefreshHandler } from "@/utils/driverPushMarketRefresh";
+import { getDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
 import { sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
 
@@ -543,12 +544,12 @@ function normalizeRequest(r: any): RideRequest {
     pickupReachKm: (() => {
       const raw = r.pickupReachKm ?? r.pickup_reach_km;
       const n = Number(raw);
-      return Number.isFinite(n) && n > 0 ? n : null;
+      return Number.isFinite(n) && n >= 0 ? n : null;
     })(),
     pickupReachMinutes: (() => {
       const raw = r.pickupReachMinutes ?? r.pickup_reach_minutes;
       const n = Number(raw);
-      return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+      return Number.isFinite(n) && n >= 1 ? Math.round(n) : null;
     })(),
     estimatedFare: Number(r.estimatedFare ?? r.estimated_fare ?? r.totalFare ?? r.total_fare ?? 0),
     tariffSnapshot: (() => {
@@ -849,14 +850,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
       const bust = Date.now();
       const marketQs = new URLSearchParams({ _: String(bust) });
-      if (
+      const loc =
         opts?.lat != null &&
         opts?.lon != null &&
         Number.isFinite(opts.lat) &&
         Number.isFinite(opts.lon)
-      ) {
-        marketQs.set("lat", String(opts.lat));
-        marketQs.set("lon", String(opts.lon));
+          ? { lat: opts.lat, lon: opts.lon }
+          : getDriverMarketFetchLocation();
+      if (loc) {
+        marketQs.set("lat", String(loc.lat));
+        marketQs.set("lon", String(loc.lon));
       }
       const headers: Record<string, string> = {
         Authorization: `Bearer ${token}`,

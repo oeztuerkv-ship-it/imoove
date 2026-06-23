@@ -8,9 +8,11 @@ import {
   syncFleetDriverDispatchPriorityFromAdminEmail,
   touchFleetDriverHeartbeat,
   updateFleetDriverMarketLocation,
+  getFleetDriverMarketLocation,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import { listAssignmentsForCompany, setDriverVehicleAssignment } from "../db/fleetAssignmentsData";
+import { findCompanyById } from "../db/adminData";
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
@@ -36,6 +38,11 @@ import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { toDriverOpenMarketOfferView } from "../lib/driverMarketOfferView.js";
+import {
+  fleetDriverAssignedVehiclePayload,
+  resolveFleetDriverKonzessionForMe,
+  resolveFleetDriverKonzessionNumber,
+} from "../lib/fleetDriverAssignedVehicle.js";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
 import { hashPassword, verifyPassword } from "../lib/password";
 import {
@@ -109,10 +116,19 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     a.fleetDriverId,
   );
   const kkAccess = await resolveKkModuleAccessForFleetDriver(a.companyId, a.fleetDriverId);
+  const companyRow = await findCompanyById(a.companyId);
+  const companyConcessionNumber = companyRow?.concession_number ?? "";
+  const konzessionNumber = resolveFleetDriverKonzessionForMe({
+    assignedVehicleApproved: assignedVehicleVisible,
+    assignedVehicleAny: assignedVehicle,
+    companyConcessionNumber,
+  });
   res.json({
     ok: true,
     einsatzbereit,
     isMarketOnline,
+    konzessionNumber,
+    companyConcessionNumber: companyConcessionNumber.trim() || null,
     featureKkModule: kkAccess?.companyEnabled ?? false,
     permissionKkModule: kkAccess?.permissionKkModule ?? false,
     isOwner: kkAccess?.isOwner ?? false,
@@ -145,15 +161,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       ratingAverage: averageFleetDriverRating(listRow.ratingSum, listRow.ratingCount),
     },
     assignedVehicle: assignedVehicleVisible
-      ? {
-          vehicleId: assignedVehicleVisible.id,
-          plate: assignedVehicleVisible.licensePlate,
-          license_plate: assignedVehicleVisible.licensePlate,
-          licensePlate: assignedVehicleVisible.licensePlate,
-          model: assignedVehicleVisible.model,
-          vehicleType: assignedVehicleVisible.vehicleType,
-          vehicleClass: assignedVehicleVisible.vehicleClass,
-        }
+      ? fleetDriverAssignedVehiclePayload(assignedVehicleVisible, companyConcessionNumber)
       : null,
   });
 });
@@ -202,6 +210,8 @@ router.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res)
     listFleetVehiclesForCompany(a.companyId),
   ]);
   const currentAssignment = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
+  const companyRow = await findCompanyById(a.companyId);
+  const companyConcessionNumber = companyRow?.concession_number ?? "";
   const items = vehicles
     .filter((v) => v.isActive && v.approvalStatus === "approved")
     .map((v) => ({
@@ -209,6 +219,8 @@ router.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res)
       plate: v.licensePlate,
       license_plate: v.licensePlate,
       licensePlate: v.licensePlate,
+      konzessionNumber: resolveFleetDriverKonzessionNumber(v, companyConcessionNumber),
+      konzession_number: resolveFleetDriverKonzessionNumber(v, companyConcessionNumber),
       model: v.model,
       vehicleType: v.vehicleType,
       vehicleClass: v.vehicleClass,
@@ -257,18 +269,12 @@ router.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (re
   }
   const refreshedVehicles = await listFleetVehiclesForCompany(a.companyId);
   const selectedVehicleAfter = refreshedVehicles.find((v) => v.id === vehicleId) ?? null;
+  const companyRow = await findCompanyById(a.companyId);
+  const companyConcessionNumber = companyRow?.concession_number ?? "";
   res.json({
     ok: true,
     selectedVehicle: selectedVehicleAfter
-      ? {
-          vehicleId: selectedVehicleAfter.id,
-          plate: selectedVehicleAfter.licensePlate,
-          license_plate: selectedVehicleAfter.licensePlate,
-          licensePlate: selectedVehicleAfter.licensePlate,
-          model: selectedVehicleAfter.model,
-          vehicleType: selectedVehicleAfter.vehicleType,
-          vehicleClass: selectedVehicleAfter.vehicleClass,
-        }
+      ? fleetDriverAssignedVehiclePayload(selectedVehicleAfter, companyConcessionNumber)
       : null,
   });
 });
@@ -335,8 +341,15 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
 
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
-    const driverLat = hasPos ? latRaw : null;
-    const driverLon = hasPos ? lonRaw : null;
+    let driverLat = hasPos ? latRaw : null;
+    let driverLon = hasPos ? lonRaw : null;
+    if (driverLat == null || driverLon == null) {
+      const stored = await getFleetDriverMarketLocation(a.fleetDriverId, a.companyId);
+      if (stored) {
+        driverLat = stored.lat;
+        driverLon = stored.lon;
+      }
+    }
     const driverOffers = withCodes.map((row) =>
       toDriverOpenMarketOfferView(row, { driverLat, driverLon }),
     );

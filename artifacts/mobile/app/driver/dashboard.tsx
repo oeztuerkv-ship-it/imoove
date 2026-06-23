@@ -43,6 +43,7 @@ import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, vali
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
+import { setDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
 import {
   getCurrentPositionSafe,
   requestForegroundPermissionsSafe,
@@ -331,6 +332,9 @@ function hasTaxiEstimateBadge(req: RideRequest): boolean {
 }
 
 const INSTANT_OFFER_COUNTDOWN_SEC = 10;
+const DRIVER_KONZESSION_BORDER = "#B45309";
+const DRIVER_KONZESSION_BG = "#FEF3C7";
+const DRIVER_KONZESSION_TEXT = "#78350F";
 
 function formatReachLabels(km: number, minutes: number): { minLabel: string; kmLabel: string } {
   const kmLabel = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace(".", ",")} km`;
@@ -354,6 +358,10 @@ function resolveInstantOfferReach(
   return null;
 }
 
+function instantOfferReachPlaceholder(driverPos?: { lat: number; lon: number } | null): string {
+  return driverPos ? "Anfahrt wird berechnet…" : "Standort wird ermittelt…";
+}
+
 /* ─── Sofortfahrt-Angebot: nur Anfahrt km/Min., Annahme, Timeout ─── */
 function InstantCard({
   req,
@@ -368,6 +376,7 @@ function InstantCard({
 }) {
   const { t } = useTranslation();
   const reach = resolveInstantOfferReach(req, driverPos);
+  const reachPendingLabel = instantOfferReachPlaceholder(driverPos);
 
   const [secondsLeft, setSecondsLeft] = useState(INSTANT_OFFER_COUNTDOWN_SEC);
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -473,7 +482,7 @@ function InstantCard({
                   textAlign: "center",
                 }}
               >
-                {reach ? reach.minLabel : "—"}
+                {reach ? reach.minLabel : reachPendingLabel}
               </Text>
               <Text
                 style={{
@@ -484,7 +493,7 @@ function InstantCard({
                   textAlign: "center",
                 }}
               >
-                {reach ? `${reach.kmLabel} entfernt` : "—"}
+                {reach ? `${reach.kmLabel} entfernt` : reachPendingLabel}
               </Text>
             </View>
           </LinearGradient>
@@ -846,7 +855,7 @@ function TabUebersicht({
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 16, padding: 32 }}>
         <MaterialCommunityIcons name="taxi" size={56} color="#DC2626" />
         <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#111" }}>
-          {isAvailable ? "Warte auf Aufträge..." : "Offline"}
+          {isAvailable ? "Online" : "Offline"}
         </Text>
         {firstReq && isAvailable && (
           <InstantCard req={firstReq} driverPos={driverPos}
@@ -879,8 +888,8 @@ function TabUebersicht({
               ? "Markt wird geladen…"
               : firstReq
                 ? `${instantReqs.length} ${instantReqs.length > 1 ? "Aufträge" : "Auftrag"} wartend`
-                : "Bereit für Aufträge"
-            : "Offline — Keine Aufträge"}
+                : "Online"
+            : "Offline"}
         </Text>
       </View>
 
@@ -2580,15 +2589,6 @@ const DRIVER_TOGGLE_KNOB = 32;
 const DRIVER_TOGGLE_KNOB_INSET = 2;
 const DRIVER_TOGGLE_KNOB_TRAVEL = DRIVER_TOGGLE_WIDTH - DRIVER_TOGGLE_KNOB - DRIVER_TOGGLE_KNOB_INSET * 2;
 
-function driverInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
-  }
-  if (parts[0]) return parts[0].slice(0, 2).toUpperCase();
-  return "F";
-}
-
 /** iOS: San Francisco (System). Android/Web: Inter. */
 function appleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
   if (Platform.OS === "ios") {
@@ -2615,7 +2615,7 @@ export default function DriverDashboard() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { t } = useTranslation();
-  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h, refreshEinsatzbereit } = useDriver();
+  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h, refreshEinsatzbereit, patchAssignedVehicleSnapshot } = useDriver();
   const { config: appPlatformConfig } = useOnrodaAppConfig();
   const allowDriverApp = (appPlatformConfig.system as { allowDriverApp?: boolean } | undefined)?.allowDriverApp !== false;
   const offersTeaserTitle =
@@ -2782,6 +2782,7 @@ export default function DriverDashboard() {
     useCallback(() => {
       void refreshInboxState();
       if (driver?.authToken) {
+        void refreshEinsatzbereit();
         void refreshDriverMarketHard(
           driverPos ? { lat: driverPos.lat, lon: driverPos.lon } : undefined,
         );
@@ -2790,6 +2791,7 @@ export default function DriverDashboard() {
     }, [
       refreshInboxState,
       driver?.authToken,
+      refreshEinsatzbereit,
       refreshDriverMarketHard,
       driverPos,
       routeParams.followUp,
@@ -2894,10 +2896,40 @@ export default function DriverDashboard() {
           },
           body: JSON.stringify({ vehicleId }),
         });
-        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          error?: string;
+          selectedVehicle?: {
+            licensePlate?: string;
+            plate?: string;
+            konzessionNumber?: string;
+            konzession_number?: string;
+          } | null;
+        };
         if (!res.ok || !data?.ok) {
           Alert.alert("Fahrzeugwechsel fehlgeschlagen", data?.error || "Bitte erneut versuchen.");
           return;
+        }
+        const snap = data.selectedVehicle;
+        if (snap) {
+          const plate =
+            typeof snap.licensePlate === "string" && snap.licensePlate.trim()
+              ? snap.licensePlate.trim()
+              : typeof snap.plate === "string" && snap.plate.trim()
+                ? snap.plate.trim()
+                : "";
+          const konzessionNumber =
+            typeof snap.konzessionNumber === "string" && snap.konzessionNumber.trim()
+              ? snap.konzessionNumber.trim()
+              : typeof snap.konzession_number === "string" && snap.konzession_number.trim()
+                ? snap.konzession_number.trim()
+                : "";
+          if (plate || konzessionNumber) {
+            patchAssignedVehicleSnapshot({
+              ...(plate ? { plate } : {}),
+              ...(konzessionNumber ? { konzessionNumber } : {}),
+            });
+          }
         }
         await refreshEinsatzbereit();
         await loadVehicleOptions();
@@ -2908,7 +2940,7 @@ export default function DriverDashboard() {
         setVehiclePickerSaving(false);
       }
     },
-    [driver?.authToken, loadVehicleOptions, refreshEinsatzbereit],
+    [driver?.authToken, loadVehicleOptions, patchAssignedVehicleSnapshot, refreshEinsatzbereit],
   );
 
   const prevPendingIds = useRef<Set<string>>(new Set());
@@ -2989,14 +3021,23 @@ export default function DriverDashboard() {
       if (!fg || fg.status !== "granted") return;
       const pos = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
       if (!pos) return;
-      setDriverPos({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      setDriverMarketFetchLocation(lat, lon);
+      setDriverPos({ lat, lon });
+      void refreshDriverMarketHard({ lat, lon });
       sub = await watchPositionSafe(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 10000, distanceInterval: 50 },
-        (loc) => setDriverPos({ lat: loc.coords.latitude, lon: loc.coords.longitude }),
+        (loc) => {
+          const nextLat = loc.coords.latitude;
+          const nextLon = loc.coords.longitude;
+          setDriverMarketFetchLocation(nextLat, nextLon);
+          setDriverPos({ lat: nextLat, lon: nextLon });
+        },
       );
     })().catch(() => {});
     return () => { sub?.remove(); };
-  }, []);
+  }, [refreshDriverMarketHard]);
 
   /** Nur echte Fleet-Driver-ID — E-Mail als driver_id bricht API-/Statuslogik. */
   const driverId = driver?.id ?? "";
@@ -3601,48 +3642,41 @@ export default function DriverDashboard() {
           { top: topPad, backgroundColor: colors.background, borderBottomColor: colors.border },
         ]}
       >
-        <View style={styles.driverIdentity}>
-          <View style={styles.avatarWrap}>
-            <LinearGradient
-              colors={["#EF1D26", "#B91C1C"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatarCircle}
-            >
-              <Text style={[styles.avatarLetter, appleFont("semibold")]}>{driverInitials(driver.name)}</Text>
-            </LinearGradient>
-            <View
-              style={[
-                styles.avatarStatusDot,
-                {
-                  backgroundColor: !driver.einsatzbereit
-                    ? "#F59E0B"
-                    : driverToggleOnline
-                      ? "#22C55E"
-                      : "#94A3B8",
-                  borderColor: colors.background,
-                },
-              ]}
-            />
-          </View>
-          <View
-            style={[
-              styles.driverTextCard,
-              {
-                borderColor: colors.border,
-                backgroundColor: "transparent",
-              },
-            ]}
-          >
-            <Text style={[styles.driverNameModern, appleFont("medium"), { color: colors.foreground }]} numberOfLines={1}>
-              {driver.name}
-            </Text>
-            <View style={[styles.plateFrame, { borderColor: colors.border }]}>
+        <View style={[styles.driverIdentityGroup, { borderColor: colors.border }]}>
+          <View style={styles.driverIdentity}>
+            <View style={[styles.driverChipFrame, { borderColor: colors.border }]}>
               <Text
-                style={[styles.driverNameModern, appleFont("medium"), styles.driverPlateText, { color: colors.foreground }]}
+                style={[styles.driverChipText, appleFont("medium"), { color: colors.foreground }]}
+                numberOfLines={1}
+              >
+                {driver.name}
+              </Text>
+            </View>
+            <View style={[styles.driverChipFrame, { borderColor: colors.border }]}>
+              <Text
+                style={[styles.driverChipText, appleFont("medium"), styles.driverPlateText, { color: colors.foreground }]}
                 numberOfLines={1}
               >
                 {driver.plate}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.driverChipFrame,
+                styles.driverKonzessionChip,
+                { borderColor: DRIVER_KONZESSION_BORDER, backgroundColor: DRIVER_KONZESSION_BG },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.driverChipText,
+                  styles.driverPlateText,
+                  appleFont("semibold"),
+                  { color: DRIVER_KONZESSION_TEXT },
+                ]}
+                numberOfLines={1}
+              >
+                {driver.konzessionNumber?.trim() ? driver.konzessionNumber : "—"}
               </Text>
             </View>
           </View>
@@ -4315,69 +4349,43 @@ const styles = StyleSheet.create({
     gap: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  driverIdentity: {
+  driverIdentityGroup: {
     flex: 1,
+    minWidth: 0,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 6,
+    backgroundColor: "transparent",
+  },
+  driverIdentity: {
     flexDirection: "row",
     alignItems: "center",
     minWidth: 0,
-    gap: 10,
+    gap: 6,
   },
-  avatarWrap: {
-    width: 44,
-    height: 44,
-    position: "relative",
-    flexShrink: 0,
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#EF1D26",
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
-  },
-  avatarLetter: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    letterSpacing: Platform.OS === "ios" ? -0.24 : 0.5,
-  },
-  avatarStatusDot: {
-    position: "absolute",
-    right: -1,
-    bottom: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-  },
-  driverTextCard: {
-    flexShrink: 1,
+  driverChipFrame: {
+    flex: 1,
     minWidth: 0,
-    gap: 5,
     paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
+    backgroundColor: "transparent",
+  },
+  driverChipText: {
+    fontSize: 14,
+    letterSpacing: Platform.OS === "ios" ? -0.28 : -0.2,
+    textAlign: "center",
   },
   driverNameModern: {
-    fontSize: 18,
-    letterSpacing: Platform.OS === "ios" ? -0.45 : -0.35,
+    fontSize: 17,
+    letterSpacing: Platform.OS === "ios" ? -0.4 : -0.3,
   },
   driverPlateText: {
     textTransform: "uppercase",
   },
-  plateFrame: {
-    alignSelf: "flex-start",
-    maxWidth: "100%",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
-    borderWidth: 1,
-    backgroundColor: "transparent",
+  driverKonzessionChip: {
+    borderWidth: 1.5,
   },
   headerDivider: {
     width: StyleSheet.hairlineWidth,
