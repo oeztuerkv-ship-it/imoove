@@ -2843,6 +2843,10 @@ export async function cancelRideForVerifiedCustomerSession(
   });
   if (!financeCf.ok) return { ok: false, status: 500, error: financeCf.error };
 
+  if (cur.status !== nextStatus) {
+    broadcastRideStatusChange(id, nextStatus, cur.status);
+  }
+
   void evaluateCustomerCancellationSuspensionAfterCancel(pax).catch(() => undefined);
 
   return { ok: true, ride: updated, cancelReason: cancelReasonClean };

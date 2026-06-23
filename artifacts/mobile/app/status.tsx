@@ -3,7 +3,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -337,6 +337,28 @@ export default function StatusScreen() {
   useEffect(() => {
     chatOpenRef.current = chatOpen;
   }, [chatOpen]);
+
+  const sendCustomerChatMessage = useCallback(() => {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    const reply = chatReplyTo
+      ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
+      : undefined;
+    const pendingId = rideChatMessageId(`pending-${Date.now()}`, "customer", msg);
+    setChatMsgs((prev) =>
+      mergeRideChatMessages(prev, {
+        id: pendingId,
+        from: "customer",
+        text: msg,
+        pending: true,
+        ...(reply ? { replyTo: reply } : {}),
+      }),
+    );
+    sendRideChat({ text: msg, sender: "customer", replyTo: reply });
+    setChatInput("");
+    setChatReplyTo(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [chatInput, chatReplyTo]);
 
   useEffect(() => {
     setChatMsgs([]);
@@ -1791,8 +1813,19 @@ export default function StatusScreen() {
         >
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setChatOpen(false)} />
           <Pressable style={styles.chatCard} onPress={() => {}}>
-            <Text style={styles.chatTitle}>Chat</Text>
-            <Text style={styles.chatSubtitle}>{driverFirstName}</Text>
+            <View style={styles.chatHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.chatTitle}>Chat</Text>
+              </View>
+              <Pressable
+                onPress={() => setChatOpen(false)}
+                hitSlop={12}
+                style={styles.chatCloseBtn}
+                accessibilityLabel="Chat schließen"
+              >
+                <Feather name="x" size={22} color="#374151" />
+              </Pressable>
+            </View>
             {chatReplyTo ? (
               <View style={styles.chatReplyBanner}>
                 <Text style={styles.chatReplyBannerLabel} numberOfLines={1}>
@@ -1852,40 +1885,25 @@ export default function StatusScreen() {
                   </Pressable>
                 ))}
               </View>
+            </View>
+            <View style={styles.chatComposerRow}>
               <TextInput
-                style={styles.chatInputInThread}
+                style={styles.chatComposerInput}
                 placeholder="Nachricht tippen …"
                 placeholderTextColor="#9CA3AF"
                 value={chatInput}
                 onChangeText={setChatInput}
                 multiline
               />
+              <Pressable
+                style={[styles.chatComposerSendBtn, !chatInput.trim() && styles.chatComposerSendBtnDisabled]}
+                onPress={sendCustomerChatMessage}
+                disabled={!chatInput.trim()}
+                accessibilityLabel="Nachricht senden"
+              >
+                <Feather name="send" size={20} color="#fff" style={styles.chatComposerSendIcon} />
+              </Pressable>
             </View>
-            <Pressable
-              style={styles.chatSendBtn}
-              onPress={() => {
-                const msg = chatInput.trim();
-                if (!msg) return;
-                const reply = chatReplyTo
-                  ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
-                  : undefined;
-                const pendingId = rideChatMessageId(`pending-${Date.now()}`, "customer", msg);
-                setChatMsgs((prev) =>
-                  mergeRideChatMessages(prev, {
-                    id: pendingId,
-                    from: "customer",
-                    text: msg,
-                    pending: true,
-                    ...(reply ? { replyTo: reply } : {}),
-                  }),
-                );
-                sendRideChat({ text: msg, sender: "customer", replyTo: reply });
-                setChatInput("");
-                setChatReplyTo(null);
-              }}
-            >
-              <Text style={styles.chatSendBtnText}>Senden</Text>
-            </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
@@ -2383,7 +2401,20 @@ const styles = StyleSheet.create({
     gap: rs(10),
   },
   chatTitle: { fontSize: rf(18), fontFamily: "Inter_700Bold", color: "#111827" },
-  chatSubtitle: { fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: -4 },
+  chatHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(8),
+    marginBottom: rs(2),
+  },
+  chatCloseBtn: {
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   chatIncoming: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#374151" },
   chatThreadBox: {
     borderWidth: 1.5,
@@ -2455,18 +2486,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: rs(10),
   },
   chatTemplateChipText: { fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#374151" },
-  chatInputInThread: {
-    borderWidth: 1.5,
-    borderColor: "#D1D5DB",
-    borderRadius: rs(10),
-    paddingHorizontal: rs(12),
+  chatComposerRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: rs(10),
+    marginTop: rs(12),
+  },
+  chatComposerInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: rs(22),
+    paddingHorizontal: rs(16),
     paddingVertical: rs(10),
     color: "#111827",
-    fontSize: rf(14),
+    fontSize: rf(15),
     fontFamily: "Inter_400Regular",
+    backgroundColor: "#FFFFFF",
     minHeight: rs(44),
-    textAlignVertical: "top",
+    maxHeight: rs(96),
+    textAlignVertical: "center",
   },
+  chatComposerSendBtn: {
+    width: rs(46),
+    height: rs(46),
+    borderRadius: rs(23),
+    backgroundColor: "#25D366",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#128C7E",
+    shadowOpacity: 0.22,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  chatComposerSendBtnDisabled: { opacity: 0.42 },
+  chatComposerSendIcon: { marginLeft: 2, marginTop: 1 },
   chatInput: {
     borderWidth: 1.5,
     borderColor: "#D1D5DB",

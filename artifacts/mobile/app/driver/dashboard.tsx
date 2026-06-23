@@ -37,6 +37,7 @@ import { type DriverProfile, useDriver } from "@/context/DriverContext";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
+import { isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
 import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -331,7 +332,29 @@ function hasTaxiEstimateBadge(req: RideRequest): boolean {
 
 const INSTANT_OFFER_COUNTDOWN_SEC = 10;
 
-/* ─── Sofortfahrt-Angebot (Fahrer vor Annahme): kein Preis, keine Strecke ─── */
+function formatReachLabels(km: number, minutes: number): { minLabel: string; kmLabel: string } {
+  const kmLabel = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace(".", ",")} km`;
+  return { minLabel: `${minutes} Min.`, kmLabel };
+}
+
+function resolveInstantOfferReach(
+  req: RideRequest,
+  driverPos?: { lat: number; lon: number } | null,
+): { minLabel: string; kmLabel: string } | null {
+  if (req.pickupReachMinutes != null && req.pickupReachKm != null) {
+    return formatReachLabels(req.pickupReachKm, req.pickupReachMinutes);
+  }
+  if (driverPos && req.fromLat != null && req.fromLon != null) {
+    const distM = haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon);
+    const km = distM / 1000;
+    const kmLabel = distM < 1000 ? `${Math.round(distM)} m` : `${km.toFixed(1).replace(".", ",")} km`;
+    const min = Math.max(1, Math.round(km / 0.5));
+    return { minLabel: `${min} Min.`, kmLabel };
+  }
+  return null;
+}
+
+/* ─── Sofortfahrt-Angebot: nur Anfahrt km/Min., Annahme, Timeout ─── */
 function InstantCard({
   req,
   onAccept,
@@ -344,29 +367,10 @@ function InstantCard({
   driverPos?: { lat: number; lon: number } | null;
 }) {
   const { t } = useTranslation();
-  const distToPickupM =
-    driverPos && req.fromLat != null && req.fromLon != null
-      ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon)
-      : null;
-  const distPickupValue =
-    distToPickupM != null
-      ? distToPickupM < 1000
-        ? `${Math.round(distToPickupM)} m`
-        : `${(distToPickupM / 1000).toFixed(1)} km`
-      : "—";
-  const { date, time } = fmt(req.createdAt);
-  const codeLine = accessCodeRideLine(req);
-  const wheelchairLine = wheelchairInfoLine(req);
-  const customerNoteLine = customerDriverNoteLine(req);
-  const medicalChecklist = medicalSteps(req);
-  const customerTransportScan = customerTransportScanFromPartnerMeta(req.partnerBookingMeta ?? null);
-  const rideKindLabel =
-    req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod)
-      ? t("driver.offer.medicalRide")
-      : t("driver.offer.taxiRide");
-  const pickupLine = (req.fromFull || req.from || "Abholadresse").trim();
+  const reach = resolveInstantOfferReach(req, driverPos);
 
   const [secondsLeft, setSecondsLeft] = useState(INSTANT_OFFER_COUNTDOWN_SEC);
+  const pulseAnim = useRef(new Animated.Value(0)).current;
   const offerHandledRef = useRef(false);
   /** Stabil: Parent übergibt oft neue Inline-Callbacks (GPS-Re-Renders) — nicht in Effect-Deps. */
   const onRejectRef = useRef(onReject);
@@ -391,6 +395,30 @@ function InstantCard({
     return () => clearInterval(timer);
   }, [req.id]);
 
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 950, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 950, useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseAnim]);
+
+  const pulseBorderColor = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#86EFAC", "#16A34A"],
+  });
+  const pulseBorderWidth = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [2, 4.5],
+  });
+  const pulseShadowOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.18, 0.55],
+  });
+
   const handleReject = () => {
     if (offerHandledRef.current) return;
     offerHandledRef.current = true;
@@ -408,276 +436,140 @@ function InstantCard({
   };
 
   return (
-    <View
-      style={{
-        marginHorizontal: 14,
-        marginBottom: 14,
-        borderRadius: 20,
-        borderWidth: 2,
-        borderColor: "#22C55E",
-        backgroundColor: "#fff",
-        overflow: "hidden",
-        shadowColor: "#000",
-        shadowOpacity: 0.14,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 12,
-      }}
-    >
-      <View
+    <View style={{ marginHorizontal: 14, marginBottom: 14 }}>
+      <Animated.View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: "#F0FDF4",
+          borderRadius: 32,
+          borderWidth: pulseBorderWidth,
+          borderColor: pulseBorderColor,
+          shadowColor: "#22C55E",
+          shadowOpacity: pulseShadowOpacity,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 14,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
-          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: "#0F172A" }}>{t("driver.offer.instantRide")}</Text>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B" }}>
-            {date} · {time}{t("driver.offer.timeSuffix") ? ` ${t("driver.offer.timeSuffix")}` : ""}
-          </Text>
-          <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#64748B", marginTop: 2 }}>{rideKindLabel}</Text>
-        </View>
-      </View>
-
-      <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
         <View
           style={{
-            alignSelf: "flex-start",
-            minWidth: 120,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: "#FECACA",
-            backgroundColor: "#FEF2F2",
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            alignItems: "center",
+            backgroundColor: "#FFFFFF",
+            borderRadius: 30,
+            overflow: "hidden",
           }}
         >
-          <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color: "#B91C1C", lineHeight: 30 }}>
-            {distPickupValue}
-          </Text>
-          <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3, marginTop: 2 }}>
-            {t("driver.offer.distanceLabel")}
-          </Text>
-        </View>
-      </View>
+          <LinearGradient
+            colors={["#F0FDF4", "#FFFFFF"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 22 }}
+          >
+            <View style={{ alignItems: "center" }}>
+              <Text
+                style={{
+                  fontSize: 40,
+                  fontFamily: "Inter_700Bold",
+                  color: "#0F172A",
+                  lineHeight: 44,
+                  letterSpacing: Platform.OS === "ios" ? -0.8 : -0.4,
+                  textAlign: "center",
+                }}
+              >
+                {reach ? reach.minLabel : "—"}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 17,
+                  fontFamily: "Inter_600SemiBold",
+                  color: "#64748B",
+                  marginTop: 6,
+                  textAlign: "center",
+                }}
+              >
+                {reach ? `${reach.kmLabel} entfernt` : "—"}
+              </Text>
+            </View>
+          </LinearGradient>
 
-      <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 12 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-          <MaterialCommunityIcons name="map-marker" size={20} color="#22C55E" style={{ marginTop: 2 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>{t("driver.offer.pickup")}</Text>
-            <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#0F172A", marginTop: 4 }} numberOfLines={3}>
-              {pickupLine}
-            </Text>
-          </View>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-          <MaterialCommunityIcons name="flag-checkered" size={18} color="#94A3B8" style={{ marginTop: 4 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>{t("driver.offer.destination")}</Text>
-            <View
-              style={{
-                marginTop: 6,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#E2E8F0",
-                backgroundColor: "#F8FAFC",
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-              }}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 18,
+              paddingTop: 6,
+              paddingBottom: 22,
+              gap: 10,
+            }}
+          >
+            <Pressable onPress={handleReject} style={{ alignItems: "center", width: 64 }}>
+              <View
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  borderWidth: 2,
+                  borderColor: "#FECACA",
+                  backgroundColor: "#fff",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="x" size={24} color="#DC2626" />
+              </View>
+              <Text style={{ marginTop: 6, fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#64748B" }}>
+                {t("driver.offer.reject")}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleAccept}
+              style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.92 : 1 }]}
             >
-              <Feather name="lock" size={16} color="#94A3B8" />
-              <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: "#94A3B8" }}>
-                {t("driver.offer.destinationLocked")}
+              <View
+                style={{
+                  backgroundColor: "#16A34A",
+                  borderRadius: 18,
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  gap: 8,
+                  shadowColor: "#16A34A",
+                  shadowOpacity: 0.28,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 6,
+                }}
+              >
+                <Feather name="check" size={22} color="#FFFFFF" />
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" }}>
+                  {t("driver.offer.accept")}
+                </Text>
+              </View>
+            </Pressable>
+
+            <View style={{ alignItems: "center", width: 52 }}>
+              <View
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  borderWidth: 2,
+                  borderColor: "#BBF7D0",
+                  backgroundColor: "#F0FDF4",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#15803D" }}>{secondsLeft}</Text>
+              </View>
+              <Text style={{ marginTop: 6, fontSize: 10, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3 }}>
+                {t("driver.offer.seconds")}
               </Text>
             </View>
           </View>
         </View>
-      </View>
-
-      {codeLine ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
-          <Feather name="shield" size={14} color="#16A34A" />
-          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#15803D" }} numberOfLines={2}>
-            {codeLine}
-          </Text>
-        </View>
-      ) : null}
-      {wheelchairLine ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
-          <MaterialCommunityIcons name="wheelchair-accessibility" size={14} color="#0EA5E9" />
-          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#0369A1" }} numberOfLines={3}>
-            {wheelchairLine}
-          </Text>
-        </View>
-      ) : null}
-      {customerNoteLine ? (
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
-          <Feather name="message-square" size={14} color="#0F766E" style={{ marginTop: 1 }} />
-          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#115E59" }} numberOfLines={4}>
-            Hinweis Kunde: {customerNoteLine}
-          </Text>
-        </View>
-      ) : null}
-      {customerTransportScan ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <MaterialCommunityIcons name="file-document-outline" size={14} color="#2563EB" />
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
-              Transportschein (Kunde)
-            </Text>
-          </View>
-          <View
-            style={{
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor:
-                customerTransportScan.trafficLight === "green"
-                  ? "#86EFAC"
-                  : customerTransportScan.trafficLight === "yellow"
-                    ? "#FCD34D"
-                    : "#FCA5A5",
-              backgroundColor:
-                customerTransportScan.trafficLight === "green"
-                  ? "#ECFDF5"
-                  : customerTransportScan.trafficLight === "yellow"
-                    ? "#FFFBEB"
-                    : "#FEF2F2",
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              gap: 4,
-            }}
-          >
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#0F172A" }}>
-              Ampel: {customerTransportScanAmpelLabel(customerTransportScan.trafficLight)}
-            </Text>
-            {customerTransportScan.insuranceName ? (
-              <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#475569" }} numberOfLines={2}>
-                {customerTransportScan.insuranceName}
-              </Text>
-            ) : null}
-            {customerTransportScan.primaryReasonDe ? (
-              <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#334155" }} numberOfLines={3}>
-                {customerTransportScan.primaryReasonDe}
-              </Text>
-            ) : null}
-            <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#64748B" }}>
-              Vorprüfung durch Kunde — Sie entscheiden vor Ort.
-            </Text>
-          </View>
-        </View>
-      ) : null}
-      {medicalChecklist ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <MaterialCommunityIcons name="hospital-box-outline" size={14} color="#2563EB" />
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>Krankenfahrt-Check</Text>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-            {medicalChecklist.map((step) => (
-              <View
-                key={step.label}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 5,
-                  borderRadius: 999,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  backgroundColor: step.done ? "#DCFCE7" : "#FEE2E2",
-                }}
-              >
-                <Feather name={step.done ? "check-circle" : "alert-circle"} size={12} color={step.done ? "#166534" : "#B91C1C"} />
-                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: step.done ? "#166534" : "#B91C1C" }}>
-                  {step.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          paddingHorizontal: 20,
-          paddingTop: 8,
-          paddingBottom: 20,
-        }}
-      >
-        <Pressable onPress={handleReject} style={{ alignItems: "center", width: 72 }}>
-          <View
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              borderWidth: 2,
-              borderColor: "#FECACA",
-              backgroundColor: "#fff",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Feather name="x" size={26} color="#DC2626" />
-          </View>
-          <Text style={{ marginTop: 6, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748B" }}>{t("driver.offer.reject")}</Text>
-        </Pressable>
-
-        <Pressable onPress={handleAccept} style={{ alignItems: "center", flex: 1, maxWidth: 160 }}>
-          <View
-            style={{
-              width: 88,
-              height: 88,
-              borderRadius: 44,
-              backgroundColor: "#16A34A",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#16A34A",
-              shadowOpacity: 0.35,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 8,
-            }}
-          >
-            <Feather name="check" size={40} color="#0F172A" />
-          </View>
-          <Text style={{ marginTop: 8, fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }}>{t("driver.offer.accept")}</Text>
-          <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#94A3B8" }}>{t("driver.offer.acceptHint")}</Text>
-        </Pressable>
-
-        <View style={{ alignItems: "center", width: 56 }}>
-          <View
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 26,
-              borderWidth: 2,
-              borderColor: "#E2E8F0",
-              backgroundColor: "#F8FAFC",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A" }}>{secondsLeft}</Text>
-          </View>
-          <Text style={{ marginTop: 6, fontSize: 10, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3 }}>
-            {t("driver.offer.seconds")}
-          </Text>
-        </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -900,13 +792,17 @@ function TabUebersicht({
     if (!driverPos) return base;
     return [...base].sort((a, b) => {
       const da =
-        a.fromLat != null && a.fromLon != null
-          ? haversineDistance(driverPos.lat, driverPos.lon, a.fromLat, a.fromLon)
-          : Infinity;
+        a.pickupReachKm != null
+          ? a.pickupReachKm * 1000
+          : a.fromLat != null && a.fromLon != null
+            ? haversineDistance(driverPos.lat, driverPos.lon, a.fromLat, a.fromLon)
+            : Infinity;
       const db =
-        b.fromLat != null && b.fromLon != null
-          ? haversineDistance(driverPos.lat, driverPos.lon, b.fromLat, b.fromLon)
-          : Infinity;
+        b.pickupReachKm != null
+          ? b.pickupReachKm * 1000
+          : b.fromLat != null && b.fromLon != null
+            ? haversineDistance(driverPos.lat, driverPos.lon, b.fromLat, b.fromLon)
+            : Infinity;
       return da - db;
     });
   }, [pendingRequests, driverPos]);
@@ -1055,12 +951,16 @@ function TabBestellungen({ scheduledPool, onAccept, onReject, driverPos }: {
 function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
   const colors = useColors();
   const activeReq = pendingRequests[0] ?? null;
-  const origin = activeReq?.fromLat
-    ? { lat: activeReq.fromLat, lon: activeReq.fromLon!, displayName: activeReq.fromFull }
-    : { lat: 48.7394, lon: 9.3114, displayName: "Esslingen am Neckar" };
-  const destination = activeReq?.toLat
-    ? { lat: activeReq.toLat, lon: activeReq.toLon!, displayName: activeReq.toFull }
-    : null;
+  const showCustomerOnMap = Boolean(activeReq?.driverId);
+  const offerReach = activeReq ? resolveInstantOfferReach(activeReq) : null;
+  const origin =
+    showCustomerOnMap && activeReq?.fromLat
+      ? { lat: activeReq.fromLat, lon: activeReq.fromLon!, displayName: activeReq.fromFull }
+      : { lat: 48.7394, lon: 9.3114, displayName: "Esslingen am Neckar" };
+  const destination =
+    showCustomerOnMap && activeReq?.toLat
+      ? { lat: activeReq.toLat, lon: activeReq.toLon!, displayName: activeReq.toFull }
+      : null;
 
   return (
     <View style={styles.mapTabContainer}>
@@ -1071,21 +971,39 @@ function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
             <>
               <View style={styles.mapCardRow}>
                 <PulsingDot />
-                <Text style={styles.mapCardTitle}>Abholpunkt</Text>
+                <Text style={styles.mapCardTitle}>
+                  {showCustomerOnMap ? "Abholpunkt" : "Neue Anfrage"}
+                </Text>
               </View>
-              <Text style={styles.mapCardAddr} numberOfLines={2}>{activeReq.fromFull}</Text>
+              {showCustomerOnMap ? (
+                <Text style={styles.mapCardAddr} numberOfLines={2}>{activeReq.fromFull}</Text>
+              ) : (
+                <Text style={styles.mapCardAddr} numberOfLines={2}>
+                  {offerReach ? `${offerReach.minLabel} · ${offerReach.kmLabel}` : "Anfahrt wird berechnet…"}
+                </Text>
+              )}
               <View style={styles.mapCardDivider} />
               <View style={styles.mapCardStats}>
                 <View style={styles.mapStatItem}>
-                  <Text style={styles.mapStatValue}>{activeReq.distanceKm.toFixed(1)} km</Text>
+                  <Text style={styles.mapStatValue}>
+                    {activeReq.pickupReachKm != null
+                      ? `${activeReq.pickupReachKm.toFixed(1).replace(".", ",")} km`
+                      : showCustomerOnMap
+                        ? activeReq.distanceKm.toFixed(1)
+                        : "—"}
+                  </Text>
                   <Text style={styles.mapStatLabel}>Entfernung</Text>
                 </View>
                 <View style={styles.mapStatDivider} />
                 <View style={styles.mapStatItem}>
                   <Text style={[styles.mapStatValue, { color: "#0F172A" }]}>
-                    {Math.max(1, Math.round(activeReq.durationMinutes || 0))} Min
+                    {activeReq.pickupReachMinutes != null
+                      ? `${activeReq.pickupReachMinutes} Min`
+                      : showCustomerOnMap
+                        ? `${Math.max(1, Math.round(activeReq.durationMinutes || 0))} Min`
+                        : "—"}
                   </Text>
-                  <Text style={styles.mapStatLabel}>Fahrtzeit (ca.)</Text>
+                  <Text style={styles.mapStatLabel}>Anfahrt (ca.)</Text>
                 </View>
               </View>
             </>
@@ -2714,6 +2632,7 @@ export default function DriverDashboard() {
       : "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag.";
   const { history } = useRide();
   const {
+    requests,
     driverMarketRequests,
     driverMarketScheduledPool,
     driverMarketPending: allPending,
@@ -2734,17 +2653,17 @@ export default function DriverDashboard() {
   } = useRideRequests();
   const isConnected = isDriverMarketConnected;
   const allPendingRef = useRef(allPending);
-  // Foreground-Push-Handler + Token-Sync beim Mount
+  // Foreground-Push-Handler + Token-Sync nur bei ONLINE am Markt
   useEffect(() => {
     ensureExpoNotificationsHandler();
-    if (driver?.authToken && driver?.id && driver?.companyId) {
-      syncDriverExpoPushTokenWithRetry({
-        authToken: driver.authToken,
-        fleetDriverId: driver.id,
-        companyId: driver.companyId,
-      }).catch(() => {});
-    }
-  }, [driver?.authToken, driver?.id, driver?.companyId]);
+    if (!driver?.authToken || !driver?.id || !driver?.companyId) return;
+    if (!driver.einsatzbereit || !driver.isAvailable) return;
+    syncDriverExpoPushTokenWithRetry({
+      authToken: driver.authToken,
+      fleetDriverId: driver.id,
+      companyId: driver.companyId,
+    }).catch(() => {});
+  }, [driver?.authToken, driver?.id, driver?.companyId, driver?.einsatzbereit, driver?.isAvailable]);
 
   useEffect(() => {
     allPendingRef.current = allPending;
@@ -3242,8 +3161,10 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     if (!driverId) return;
-    const myCancelled = driverMarketRequests.find(
-      (r) => r.driverId === driverId && r.status === "cancelled_by_customer",
+    const myCancelled = requests.find(
+      (r) =>
+        r.driverId === driverId &&
+        isCustomerFinalCancelledStatus(r.status),
     );
     if (!myCancelled) return;
     if (cancelNoticeShownRef.current.has(myCancelled.id)) return;
@@ -3255,7 +3176,7 @@ export default function DriverDashboard() {
         : "Die Fahrt wurde vom Kunden storniert.",
     );
     setActiveTab("uebersicht");
-  }, [driverMarketRequests, driverId]);
+  }, [requests, driverId]);
 
   const appRides = history.filter((r) => r.status === "completed");
   const [serverRides, setServerRides] = useState<RideEntry[]>([]);

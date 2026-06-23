@@ -127,6 +127,9 @@ export interface RideRequest {
   toLon?: number;
   distanceKm: number;
   durationMinutes: number;
+  /** Sofort-Markt vor Annahme (API): Anfahrt ohne Abholkoordinaten. */
+  pickupReachKm?: number | null;
+  pickupReachMinutes?: number | null;
   estimatedFare: number;
   tariffSnapshot?: RideTariffSnapshot | null;
   pricingMode?: "taxi_tariff" | null;
@@ -537,6 +540,16 @@ function normalizeRequest(r: any): RideRequest {
     toLon: r.toLon ?? r.to_lon ?? undefined,
     distanceKm: Number(r.distanceKm ?? r.distance_km ?? 0),
     durationMinutes: Number(r.durationMinutes ?? r.duration_minutes ?? 0),
+    pickupReachKm: (() => {
+      const raw = r.pickupReachKm ?? r.pickup_reach_km;
+      const n = Number(raw);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })(),
+    pickupReachMinutes: (() => {
+      const raw = r.pickupReachMinutes ?? r.pickup_reach_minutes;
+      const n = Number(raw);
+      return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+    })(),
     estimatedFare: Number(r.estimatedFare ?? r.estimated_fare ?? r.totalFare ?? r.total_fare ?? 0),
     tariffSnapshot: (() => {
       const raw = r.tariffSnapshot ?? r.tariff_snapshot ?? r.tariff_snapshot_json;
@@ -1042,13 +1055,15 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const id = rideId.trim();
       const next = status.trim() as RequestStatus;
       if (!id || !next) return;
-      setRequests((prev) => {
+      const applyStatus = (prev: RideRequest[]) => {
         const idx = prev.findIndex((r) => r.id === id);
         if (idx < 0) return prev;
         const copy = [...prev];
         copy[idx] = { ...copy[idx], status: next };
         return copy;
-      });
+      };
+      setRequests(applyStatus);
+      setDriverMarketRequests(applyStatus);
       if (isDriverSurfaceRef.current && fleetAuthToken) {
         void fetchDriverMarket({ hardReset: false });
       }

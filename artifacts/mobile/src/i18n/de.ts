@@ -107,7 +107,7 @@ export const de: TranslationTree = {
       seconds: "Sek.",
       taxiRide: "Taxifahrt",
       medicalRide: "Krankenfahrt",
-      newRideBanner: "Neuer Auftrag",
+      newRideBanner: "Neue Anfrage",
       timeSuffix: "Uhr",
     },
     scheduled: {

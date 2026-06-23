@@ -10,6 +10,7 @@ import { acceptDriverGpsFix } from "@/utils/gpsOutlierFilter";
 import {
   syncDriverExpoPushTokenIfStale,
   syncDriverExpoPushTokenWithRetry,
+  unregisterDriverExpoPushToken,
 } from "@/utils/syncDriverExpoPushToken";
 
 const STORAGE_KEY = "@Onroda_driver_session";
@@ -328,15 +329,17 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!driver?.authToken || !driver.id || !driver.companyId) return;
+    if (!driver.isAvailable || !driver.einsatzbereit) return;
     void syncDriverExpoPushTokenWithRetry({
       authToken: driver.authToken,
       fleetDriverId: driver.id,
       companyId: driver.companyId,
     });
-  }, [driver?.authToken, driver?.id, driver?.companyId]);
+  }, [driver?.authToken, driver?.id, driver?.companyId, driver?.isAvailable, driver?.einsatzbereit]);
 
   useEffect(() => {
     if (!driver?.authToken || !driver.id || !driver.companyId) return;
+    if (!driver.isAvailable || !driver.einsatzbereit) return;
     const sub = AppState.addEventListener("change", (state) => {
       if (state !== "active") return;
       void syncDriverExpoPushTokenWithRetry({
@@ -346,7 +349,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       });
     });
     return () => sub.remove();
-  }, [driver?.authToken, driver?.id, driver?.companyId]);
+  }, [driver?.authToken, driver?.id, driver?.companyId, driver?.isAvailable, driver?.einsatzbereit]);
 
   const login = useCallback(
     async (
@@ -504,15 +507,18 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await stopDriverPresenceEntirely();
-    try {
-      if (driver?.authToken) {
+    const authToken = driver?.authToken?.trim();
+    if (authToken) {
+      try {
+        await syncFleetMarketAvailability(authToken, false);
+        await unregisterDriverExpoPushToken({ authToken });
         await fetch(`${API_BASE}/fleet-auth/logout`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${driver.authToken}` },
+          headers: { Authorization: `Bearer ${authToken}` },
         });
+      } catch {
+        /* offline */
       }
-    } catch {
-      /* ignore */
     }
     setDriver(null);
     await AsyncStorage.removeItem(STORAGE_KEY);
@@ -556,6 +562,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
           fleetDriverId: driver.id,
           companyId: driver.companyId,
         });
+      } else if (!v) {
+        await unregisterDriverExpoPushToken({ authToken: driver.authToken });
       }
     } catch (e) {
       setDriver((prev) => {
@@ -639,7 +647,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
           ...(Object.keys(body).length ? { body: JSON.stringify(body) } : {}),
         }).catch(() => {});
       })();
-      if (driver.id && driver.companyId) {
+      if (driver.id && driver.companyId && driver.isAvailable && driver.einsatzbereit) {
         void syncDriverExpoPushTokenIfStale({
           authToken: driver.authToken,
           fleetDriverId: driver.id,
@@ -648,7 +656,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }
     }, DRIVER_HEARTBEAT_MS);
     return () => clearInterval(t);
-  }, [driver?.authToken, driver?.isAvailable, driver?.id, driver?.companyId]);
+  }, [driver?.authToken, driver?.isAvailable, driver?.einsatzbereit, driver?.id, driver?.companyId]);
 
   return (
     <DriverContext.Provider

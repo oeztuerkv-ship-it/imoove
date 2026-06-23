@@ -19,6 +19,7 @@ import { filterOpenInstantMarketRides, listMarketRidesForFleetDriver } from "../
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
 import { dismissDriverMessage, listDriverMessagesForFleetDriver } from "../db/driverMessagesData";
 import {
+  deleteFleetDriverExpoPushTokens,
   listFleetDriverExpoPushTokens,
   upsertFleetDriverExpoPushToken,
 } from "../db/fleetDriverExpoPushData";
@@ -34,6 +35,7 @@ import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservatio
 import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
+import { toDriverOpenMarketOfferView } from "../lib/driverMarketOfferView.js";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
 import { hashPassword, verifyPassword } from "../lib/password";
 import {
@@ -333,6 +335,11 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
 
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    const driverLat = hasPos ? latRaw : null;
+    const driverLon = hasPos ? lonRaw : null;
+    const driverOffers = withCodes.map((row) =>
+      toDriverOpenMarketOfferView(row, { driverLat, driverLon }),
+    );
     const openInstantIds = pool.rides
       .filter((r) => !r.driverId && isInstantDispatchRideStatus(r.status))
       .map((r) => r.id);
@@ -340,9 +347,9 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     res.json({
       ok: true,
       einsatzbereit: true,
-      rides: withCodes,
+      rides: driverOffers,
       message:
-        withCodes.length === 0
+        driverOffers.length === 0
           ? "Aktuell kein passendes Fahrzeug verfügbar"
           : null,
     });
@@ -386,10 +393,11 @@ router.get("/fleet-driver/v1/follow-up-offer", requireFleetDriverAuth, async (re
     const [publicRide] = await attachAccessCodeSummariesToRides([
       stripPartnerOnlyRideFields(offer.ride),
     ]);
+    const driverOfferRide = toDriverOpenMarketOfferView(publicRide, { driverLat: lat, driverLon: lon });
     res.json({
       ok: true,
       suggestion: {
-        ride: publicRide,
+        ride: driverOfferRide,
         distanceKm: Math.round(offer.distanceKm * 10) / 10,
         directionMatch: offer.directionMatch,
       },
@@ -653,8 +661,31 @@ router.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (r
       res.status(400).json({ error: "invalid_expo_push_token" });
       return;
     }
+    const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
+    if (!marketOnline) {
+      res.status(403).json({ error: "market_offline", message: "Push-Token nur bei ONLINE am Markt." });
+      return;
+    }
     await upsertFleetDriverExpoPushToken(a.fleetDriverId, a.companyId, expoPushToken);
     res.json({ ok: true, fleetDriverId: a.fleetDriverId, companyId: a.companyId });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    await deleteFleetDriverExpoPushTokens(a.fleetDriverId, a.companyId);
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }
@@ -750,6 +781,9 @@ router.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, asy
   if (!updated) {
     res.status(404).json({ error: "not_found" });
     return;
+  }
+  if (!body.available) {
+    await deleteFleetDriverExpoPushTokens(a.fleetDriverId, a.companyId);
   }
   await touchFleetDriverHeartbeat(a.fleetDriverId);
   const pushTokens =

@@ -1,6 +1,7 @@
 import type { RideRequest } from "../domain/rideRequest";
 import { listMarketOnlineDriversEligibleForInstantRide } from "../db/fleetInstantRideMarketData";
 import { listFleetDriverExpoPushTokens } from "../db/fleetDriverExpoPushData";
+import { getFleetDriverMarketOnline } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "./dispatchStatus";
 import { sendExpoPushMessages, type ExpoPushMessage } from "./expoPushGateway";
 
@@ -40,18 +41,16 @@ export async function notifyMarketOnlineDriversInstantRideOffer(ride: RideReques
   const drivers = await listMarketOnlineDriversEligibleForInstantRide(ride);
   if (drivers.length === 0) return;
 
-  const fromLabel = (ride.fromFull || ride.from || "Abholung").trim().slice(0, 80);
-  const toLabel = (ride.toFull || ride.to || "Ziel").trim().slice(0, 80);
-  const body = `${fromLabel} → ${toLabel}`;
-
   const messages: ExpoPushMessage[] = [];
   for (const { fleetDriverId, companyId } of drivers) {
+    const marketOnline = await getFleetDriverMarketOnline(fleetDriverId, companyId);
+    if (!marketOnline) continue;
     const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
     for (const to of tokens) {
       messages.push({
         to,
-        title: "Neue Fahrt",
-        body,
+        title: "Neue Anfrage",
+        body: "\u200B",
         sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
         priority: "high",
         channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,

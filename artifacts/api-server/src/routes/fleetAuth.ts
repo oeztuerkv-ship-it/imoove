@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
-import { findFleetDriverByEmailNormalized, getCompanyKind, syncFleetDriverDispatchPriorityFromAdminEmail, touchFleetDriverLogin } from "../db/fleetDriversData";
+import { deleteFleetDriverExpoPushTokens } from "../db/fleetDriverExpoPushData";
+import { findFleetDriverByEmailNormalized, getCompanyKind, setFleetDriverMarketOnline, syncFleetDriverDispatchPriorityFromAdminEmail, touchFleetDriverLogin } from "../db/fleetDriversData";
 import { findActivePanelUserByEmailNormalized } from "../db/panelAuthData";
 import {
   getFleetLoginCompanyDenyReason,
@@ -10,7 +11,7 @@ import {
   FLEET_LOGIN_COMPANY_NOT_READY_MESSAGE_DE,
   PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE,
 } from "../lib/onrodaAccessMessages.js";
-import { isFleetDriverJwtConfigured, signFleetDriverJwt } from "../lib/fleetDriverJwt";
+import { isFleetDriverJwtConfigured, signFleetDriverJwt, verifyFleetDriverJwt } from "../lib/fleetDriverJwt";
 import { rateLimitFleetLogin } from "../lib/fleetLoginRateLimit";
 import { verifyPassword } from "../lib/password";
 
@@ -126,7 +127,20 @@ router.post("/fleet-auth/login", async (req, res) => {
   });
 });
 
-router.post("/fleet-auth/logout", (_req, res) => {
+router.post("/fleet-auth/logout", async (req, res) => {
+  const authHeader = req.headers.authorization?.trim() ?? "";
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  if (bearer && isPostgresConfigured()) {
+    try {
+      const claims = await verifyFleetDriverJwt(bearer);
+      if (claims?.fleetDriverId && claims?.companyId) {
+        await setFleetDriverMarketOnline(claims.fleetDriverId, claims.companyId, false);
+        await deleteFleetDriverExpoPushTokens(claims.fleetDriverId, claims.companyId);
+      }
+    } catch {
+      /* abgelaufenes Token — trotzdem ok */
+    }
+  }
   res.json({ ok: true });
 });
 

@@ -75,3 +75,18 @@ export async function listFleetDriverExpoPushTokens(fleetDriverId: string, compa
     .where(and(eq(fleetDriverExpoPushTokensTable.fleet_driver_id, did), eq(fleetDriverExpoPushTokensTable.company_id, cid)));
   return rows.map((r) => r.t).filter((t) => typeof t === "string" && t.length > 0);
 }
+
+/** Logout / Abmelden: keine Fahrer-Pushes mehr an dieses Konto. */
+export async function deleteFleetDriverExpoPushTokens(
+  fleetDriverId: string,
+  companyId: string,
+): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  const did = fleetDriverId.trim();
+  const cid = companyId.trim();
+  if (!did || !cid) return;
+  await db
+    .delete(fleetDriverExpoPushTokensTable)
+    .where(and(eq(fleetDriverExpoPushTokensTable.fleet_driver_id, did), eq(fleetDriverExpoPushTokensTable.company_id, cid)));
+}

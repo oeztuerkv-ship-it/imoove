@@ -142,6 +142,9 @@ export interface RideRequest {
   toLon?: number;
   distanceKm: number;
   durationMinutes: number;
+  /** Sofort-Markt vor Annahme: Anfahrt zum Kunden ohne Abholkoordinaten/-adresse. */
+  pickupReachKm?: number | null;
+  pickupReachMinutes?: number | null;
   /**
    * Geschätzter Fahrpreis bei Buchung — nur serverseitig (operationalTariffEngine), kein Client-Override.
    */

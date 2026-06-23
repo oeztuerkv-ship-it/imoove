@@ -18,6 +18,7 @@ import {
   TextInput,
   View,
   Animated,
+  type TextStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -29,7 +30,7 @@ import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHint
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { DriverPassengerRatingModal } from "@/components/DriverPassengerRatingModal";
 import { useDriver } from "@/context/DriverContext";
-import { useRideRequests } from "@/context/RideRequestContext";
+import { useRideRequests, type RequestStatus } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
   requestForegroundPermissionsSafe,
@@ -72,8 +73,8 @@ import {
   driverFinalFareNeedsAcknowledgement,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
-import { formatWaitingChargeDe } from "@/utils/waitingTimeCharge";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
+import { isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   driverRidePaymentLooksLikeCash,
@@ -87,9 +88,59 @@ import {
 const API_BASE = getApiBaseUrl();
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const START_SLIDER_HANDLE = 52;
-/** Unteres Panel während Zielfahrt: eingeklappt vs. hochgezogen (px Inhalt ohne Safe-Area). */
-const DRIVE_SHEET_COLLAPSED_H = 96;
-const DRIVE_SHEET_EXPANDED_H = 252;
+const PICKUP_AUX_ICON_RED = "#FF3B30";
+const PICKUP_AUX_BORDER_LIGHT_RED = "#FECACA";
+const PICKUP_AUX_PRESSED_BG = "#FFF1F2";
+const DRIVE_SHEET_GRAB_H = 32;
+const DRIVE_SHEET_DETAILS_H = 136;
+const DRIVE_SHEET_ACTIONS_H = 56;
+const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_ACTIONS_H + 12;
+const DRIVE_SHEET_EXPANDED_H = DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_H + 8;
+
+type NavPaymentUi = {
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+  label: string;
+  iconColor: string;
+  chipBg: string;
+};
+
+function resolveNavPaymentUi(paymentMethod: string): NavPaymentUi {
+  const pm = (paymentMethod ?? "").trim();
+  const lower = pm.toLowerCase();
+  if (lower.startsWith("krankenkasse") || lower.includes("kv") || lower.includes("voucher")) {
+    return { icon: "ticket-percent-outline", label: "Krankenkasse", iconColor: "#007AFF", chipBg: "#E8F2FF" };
+  }
+  if (
+    lower.includes("karte") ||
+    lower.includes("card") ||
+    lower.includes("kredit") ||
+    lower.includes("paypal") ||
+    lower.includes("apple") ||
+    lower.includes("google")
+  ) {
+    return {
+      icon: lower.includes("paypal") ? "cellphone" : "credit-card-outline",
+      label: pm || "Karte",
+      iconColor: "#FF3B30",
+      chipBg: "#FFEBEA",
+    };
+  }
+  return { icon: "cash", label: pm || "Bar", iconColor: "#34C759", chipBg: "#E8F8EC" };
+}
+
+function navAppleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
+  if (Platform.OS === "ios") {
+    const map = { regular: "400", medium: "500", semibold: "600", bold: "700" } as const;
+    return { fontWeight: map[weight] };
+  }
+  const inter = {
+    regular: "Inter_400Regular",
+    medium: "Inter_500Medium",
+    semibold: "Inter_600SemiBold",
+    bold: "Inter_700Bold",
+  };
+  return { fontFamily: inter[weight] };
+}
 
 async function fleetAuthHeadersJson(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -290,9 +341,6 @@ export default function DriverNavigationScreen() {
   const [fareInput, setFareInput] = useState(
     defaultDriverFareInputForCompletion(rideFleetStatus),
   );
-  const [waitingChargeEur, setWaitingChargeEur] = useState(0);
-  const [waitingMinutes, setWaitingMinutes] = useState(0);
-  const [waitingEurPerHour, setWaitingEurPerHour] = useState(38);
   const [showCancelReasonModal, setShowCancelReasonModal] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
   const [customCancelReason, setCustomCancelReason] = useState("");
@@ -304,6 +352,8 @@ export default function DriverNavigationScreen() {
   const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
+  const hadActiveRideInListRef = useRef(false);
+  const exitAfterCustomerCancelRef = useRef<(cancelReason?: string | null) => void>(() => {});
   const [driveSheetOpen, setDriveSheetOpen] = useState(false);
   const driveSheetAnim = useRef(new Animated.Value(0)).current;
   const driveSheetOpenRef = useRef(false);
@@ -332,6 +382,28 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     chatOpenRef.current = chatOpen;
   }, [chatOpen]);
+
+  const sendDriverChatMessage = useCallback(() => {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    const reply = chatReplyTo
+      ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
+      : undefined;
+    const pendingId = rideChatMessageId(`pending-${Date.now()}`, "driver", msg);
+    setChatMsgs((prev) =>
+      mergeRideChatMessages(prev, {
+        id: pendingId,
+        from: "driver",
+        text: msg,
+        pending: true,
+        ...(reply ? { replyTo: reply } : {}),
+      }),
+    );
+    sendRideChat({ text: msg, sender: "driver", replyTo: reply });
+    setChatInput("");
+    setChatReplyTo(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [chatInput, chatReplyTo]);
 
   useEffect(() => {
     setChatMsgs([]);
@@ -465,36 +537,6 @@ export default function DriverNavigationScreen() {
     },
     [params.rideId, driverLat, driverLon],
   );
-
-  useEffect(() => {
-    if (!params.rideId) return;
-    let cancelled = false;
-    const loadWaiting = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/rides/${params.rideId}/waiting-charge-live`, {
-          headers: await fleetAuthHeadersJson(),
-        });
-        const data = (await res.json().catch(() => ({}))) as {
-          ok?: boolean;
-          waitingMinutesBilled?: number;
-          waitingChargeEur?: number;
-          eurPerHour?: number;
-        };
-        if (cancelled || !res.ok || !data.ok) return;
-        setWaitingMinutes(Number(data.waitingMinutesBilled ?? 0));
-        setWaitingChargeEur(Number(data.waitingChargeEur ?? 0));
-        setWaitingEurPerHour(Number(data.eurPerHour ?? 38));
-      } catch {
-        // ignore
-      }
-    };
-    void loadWaiting();
-    const id = setInterval(() => void loadWaiting(), 15_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [params.rideId, hasArrived, isPickupPhase]);
 
   const handleAngekommen = useCallback(async () => {
     await patchStatus("driver_waiting");
@@ -696,11 +738,84 @@ export default function DriverNavigationScreen() {
     [hasArrived, isPickupPhase, maxSlideX, resetSlide, startRideBySlide],
   );
 
+  const exitAfterCustomerCancel = useCallback(
+    (cancelReason?: string | null) => {
+      if (cancelHandledRef.current) return;
+      cancelHandledRef.current = true;
+      void syncNavPresence(null);
+      disconnectSocket();
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      trySpeak("Die Fahrt wurde vom Kunden storniert.", soundRef.current);
+      replaceDriverStackExclusive("/driver/dashboard");
+      const reason = typeof cancelReason === "string" ? cancelReason.trim() : "";
+      Alert.alert(
+        "Kunde hat storniert",
+        reason ? `Grund: ${reason}` : "Die Fahrt wurde vom Kunden storniert.",
+        [{ text: "OK" }],
+        { cancelable: false },
+      );
+    },
+    [syncNavPresence],
+  );
+
+  exitAfterCustomerCancelRef.current = exitAfterCustomerCancel;
+
+  const probeFleetRideCancel = useCallback(async () => {
+    if (!params.rideId || cancelHandledRef.current) return;
+    try {
+      const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(params.rideId)}/fleet-snapshot`, {
+        cache: "no-store",
+        headers: await fleetAuthHeadersJson(),
+      });
+      if (!res.ok) return;
+      const payload = (await res.json()) as { status?: string; cancelReason?: string | null };
+      if (typeof payload.status === "string" && payload.status) {
+        setRideFleetStatus(payload.status);
+      }
+      if (
+        typeof payload.status === "string" &&
+        isCustomerFinalCancelledStatus(payload.status as RequestStatus)
+      ) {
+        exitAfterCustomerCancel(payload.cancelReason);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [exitAfterCustomerCancel, params.rideId]);
+
+  useEffect(() => {
+    if (activeRide) hadActiveRideInListRef.current = true;
+  }, [activeRide]);
+
+  useEffect(() => {
+    const status = activeRide?.status;
+    if (!status || !isCustomerFinalCancelledStatus(status)) return;
+    exitAfterCustomerCancel(activeRide?.cancelReason ?? null);
+  }, [activeRide?.status, activeRide?.cancelReason, exitAfterCustomerCancel]);
+
+  useEffect(() => {
+    if (!params.rideId || cancelHandledRef.current || !hadActiveRideInListRef.current) return;
+    if (activeRide) return;
+    if (isCustomerFinalCancelledStatus(rideFleetStatus as RequestStatus)) {
+      exitAfterCustomerCancel(null);
+      return;
+    }
+    void probeFleetRideCancel();
+  }, [activeRide, exitAfterCustomerCancel, params.rideId, probeFleetRideCancel, rideFleetStatus]);
+
   useEffect(() => {
     if (!params.rideId) return;
     connectToRide(
       params.rideId,
       (msg) => {
+        if (msg.type === "ride:status:update" && typeof msg.status === "string") {
+          const next = msg.status as RequestStatus;
+          setRideFleetStatus(next);
+          if (isCustomerFinalCancelledStatus(next)) {
+            exitAfterCustomerCancelRef.current(null);
+          }
+          return;
+        }
         if (msg.type === "chat:ride:update") {
           const row = parseRideChatUpdate(msg);
           if (!row) return;
@@ -716,32 +831,10 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     if (!params.rideId) return;
     cancelHandledRef.current = false;
-    const timer = setInterval(async () => {
-      if (cancelHandledRef.current) return;
-      try {
-        const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(params.rideId)}/fleet-snapshot`, {
-          cache: "no-store",
-          headers: await fleetAuthHeadersJson(),
-        });
-        if (!res.ok) return;
-        const payload = (await res.json()) as { status?: string; cancelReason?: string | null };
-        if (typeof payload.status === "string" && payload.status) {
-          setRideFleetStatus(payload.status);
-        }
-        if (payload.status !== "cancelled_by_customer") return;
-        cancelHandledRef.current = true;
-        void syncNavPresence(null);
-        Alert.alert(
-          "Kunde hat storniert",
-          payload.cancelReason ? `Grund: ${payload.cancelReason}` : "Die Fahrt wurde vom Kunden storniert.",
-          [{ text: "OK", onPress: () => replaceDriverStackExclusive("/driver/dashboard") }],
-        );
-      } catch {
-        /* ignore */
-      }
-    }, 3500);
+    void probeFleetRideCancel();
+    const timer = setInterval(() => void probeFleetRideCancel(), 3500);
     return () => clearInterval(timer);
-  }, [params.rideId]);
+  }, [params.rideId, probeFleetRideCancel]);
 
   /**
    * Nach App-Neustart stellt iOS/Android oft den alten Native-Stack wieder her
@@ -1042,7 +1135,10 @@ export default function DriverNavigationScreen() {
 
   const bottomInset = Math.max(insets.bottom, 16);
   const floatingControlsBottom =
-    bottomInset + (isDrivingPhase ? (driveSheetOpen ? DRIVE_SHEET_EXPANDED_H + 20 : DRIVE_SHEET_COLLAPSED_H + 16) : 230);
+    bottomInset +
+    (isDrivingPhase
+      ? (driveSheetOpen ? DRIVE_SHEET_EXPANDED_H : DRIVE_SHEET_COLLAPSED_H) + 16
+      : 230);
 
   const driveSheetHeight = driveSheetAnim.interpolate({
     inputRange: [0, 1],
@@ -1050,42 +1146,51 @@ export default function DriverNavigationScreen() {
   });
   const driveDetailsHeight = driveSheetAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 118],
+    outputRange: [0, DRIVE_SHEET_DETAILS_H],
   });
 
+  const paymentUi = resolveNavPaymentUi(params.paymentMethod ?? "");
+
   const rideDetailsBlock = (
-    <View style={styles.etaRow}>
-      <View style={styles.etaBlock}>
-        <Text style={styles.etaMin}>{remainingMin > 0 ? `${remainingMin} min` : "—"}</Text>
-        <Text style={styles.etaDetail}>
-          {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
-          {remainingMin > 0 ? ` · ${fmtArrival(remainingMin)}` : ""}
-        </Text>
-      </View>
-      <View style={styles.etaCustomerBlock}>
-        {params.customerName ? (
-          <Text style={styles.etaCustomer} numberOfLines={1}>
-            {params.customerName}
-          </Text>
-        ) : null}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <MaterialCommunityIcons
-            name={
-              (params.paymentMethod ?? "").startsWith("Krankenkasse")
-                ? "ticket-percent-outline"
-                : (params.paymentMethod ?? "").toLowerCase().includes("karte") ||
-                    (params.paymentMethod ?? "").toLowerCase().includes("kreditkarte")
-                  ? "credit-card-outline"
-                  : (params.paymentMethod ?? "").toLowerCase().includes("paypal")
-                    ? "cellphone"
-                    : "cash"
-            }
-            size={15}
-            color={(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "#60A5FA" : "#94A3B8"}
-          />
-          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={1}>
-            {(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "Krankenkasse" : params.paymentMethod || "Bar"}
-          </Text>
+    <View style={styles.rideInfoFrameOuter}>
+      <View style={styles.rideInfoFrameInner}>
+        <View style={styles.rideInfoTopRow}>
+          <View style={styles.rideInfoEtaFrame}>
+            <View style={styles.rideInfoEtaFrameInner}>
+              <Text style={[styles.rideInfoEtaValue, navAppleFont("semibold")]}>
+                {remainingMin > 0 ? remainingMin : "—"}
+              </Text>
+              <Text style={[styles.rideInfoEtaUnit, navAppleFont("medium")]}>min</Text>
+            </View>
+          </View>
+          <View style={styles.rideInfoDivider} />
+          <View style={styles.rideInfoBody}>
+            {params.customerName ? (
+              <Text style={[styles.rideInfoName, navAppleFont("semibold")]} numberOfLines={1}>
+                {params.customerName}
+              </Text>
+            ) : null}
+            <Text style={[styles.rideInfoMeta, navAppleFont("semibold")]} numberOfLines={1}>
+              {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
+              {remainingMin > 0 ? ` · ${fmtArrival(remainingMin)}` : ""}
+            </Text>
+          </View>
+          <View style={styles.rideInfoPaymentCol}>
+            <View
+              style={[
+                styles.rideInfoPaymentChip,
+                { backgroundColor: paymentUi.chipBg, borderColor: `${paymentUi.iconColor}33` },
+              ]}
+            >
+              <MaterialCommunityIcons name={paymentUi.icon} size={26} color={paymentUi.iconColor} />
+              <Text
+                style={[styles.rideInfoPaymentText, navAppleFont("semibold"), { color: paymentUi.iconColor }]}
+                numberOfLines={2}
+              >
+                {paymentUi.label}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
     </View>
@@ -1128,25 +1233,6 @@ export default function DriverNavigationScreen() {
               <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
             </Animated.View>
           </View>
-          {waitingMinutes > 0 ? (
-            <Text style={styles.waitingLiveBanner}>
-              {formatWaitingChargeDe(waitingMinutes, waitingChargeEur, waitingEurPerHour)}
-            </Text>
-          ) : null}
-          {noShowCountdownEndsAt ? (
-            <Text style={styles.noShowCountdownText}>
-              No-Show in {Math.floor(noShowRemainingSec / 60)}:
-              {String(noShowRemainingSec % 60).padStart(2, "0")} Min.
-            </Text>
-          ) : (
-            <Pressable
-              onPress={() => void handleNoShowStart()}
-              disabled={noShowBusy}
-              style={({ pressed }) => [styles.noShowLinkBtn, pressed && { opacity: 0.85 }, noShowBusy && { opacity: 0.5 }]}
-            >
-              <Text style={styles.noShowLinkText}>Kunde nicht da</Text>
-            </Pressable>
-          )}
         </View>
       );
     }
@@ -1213,26 +1299,28 @@ export default function DriverNavigationScreen() {
         <View style={styles.topBrandBadge}>
           <Text style={styles.topBrandBadgeText}>OR</Text>
         </View>
-        <View style={styles.topCard}>
-          <View style={styles.topMain}>
-            <Animated.View style={{ opacity: pulseAnim }}>
-              <MaterialCommunityIcons name={maneuverIcon(currentStep?.instruction ?? "") as any} size={26} color="#fff" />
-            </Animated.View>
-            <View style={styles.topText}>
-              <Text style={styles.topLabel}>Richtung</Text>
-              <Text style={[styles.topStreet, !isPickupPhase && styles.topStreetDriving]} numberOfLines={2}>
-                {topPrimaryText}
-              </Text>
-              {topDistanceText ? <Text style={styles.topDist}>{topDistanceText}</Text> : null}
+        <View style={styles.topNavCluster}>
+          <View style={styles.topCard}>
+            <View style={styles.topMain}>
+              <Animated.View style={{ opacity: pulseAnim }}>
+                <MaterialCommunityIcons name={maneuverIcon(currentStep?.instruction ?? "") as any} size={32} color="#fff" />
+              </Animated.View>
+              <View style={styles.topText}>
+                <Text style={styles.topLabel}>Richtung</Text>
+                <Text style={[styles.topStreet, !isPickupPhase && styles.topStreetDriving]} numberOfLines={2}>
+                  {topPrimaryText}
+                </Text>
+                {topDistanceText ? <Text style={styles.topDist}>{topDistanceText}</Text> : null}
+              </View>
             </View>
           </View>
+          {nextStep ? (
+            <View style={styles.dannCard}>
+              <MaterialCommunityIcons name={maneuverIcon(nextStep.instruction) as any} size={20} color="#374151" />
+              <Text style={styles.dannText} numberOfLines={1}>Dann: {nextStep.instruction}</Text>
+            </View>
+          ) : null}
         </View>
-        {nextStep && (
-          <View style={styles.dannCard}>
-            <MaterialCommunityIcons name={maneuverIcon(nextStep.instruction) as any} size={15} color="#374151" />
-            <Text style={styles.dannText} numberOfLines={1}>Dann: {nextStep.instruction}</Text>
-          </View>
-        )}
       </View>
 
       {/* Floating button column — right side above bottom panel */}
@@ -1289,15 +1377,9 @@ export default function DriverNavigationScreen() {
             >
               <View style={styles.sheetGrabPill} />
             </Pressable>
-            <Pressable style={styles.sheetPeekPress} onPress={() => snapDriveSheet(!driveSheetOpen)}>
-              <Text style={styles.sheetPeekText} numberOfLines={1}>
-                {remainingMin > 0 ? `${remainingMin} min` : "—"}
-                {remainingDistM > 0 ? ` · ${fmtDist(remainingDistM)}` : ""}
-                {params.customerName ? ` · ${params.customerName}` : ""}
-              </Text>
-            </Pressable>
-            <Pressable onPress={() => snapDriveSheet(!driveSheetOpen)} hitSlop={10}>
-              <Feather name={driveSheetOpen ? "chevron-down" : "chevron-up"} size={22} color="#64748B" />
+            <View style={{ flex: 1 }} />
+            <Pressable onPress={() => snapDriveSheet(!driveSheetOpen)} hitSlop={10} style={styles.sheetChevronBtn}>
+              <Feather name={driveSheetOpen ? "chevron-down" : "chevron-up"} size={22} color="#8E8E93" />
             </Pressable>
           </View>
 
@@ -1314,16 +1396,54 @@ export default function DriverNavigationScreen() {
           {rideDetailsBlock}
           <View style={styles.actionBlock}>
             <View style={styles.actionBtnWrapper}>{actionBtn}</View>
-            <Pressable
-              onPress={() => setShowCancelReasonModal(true)}
-              style={({ pressed }) => [
-                styles.actionBlockCancel,
-                pressed && { backgroundColor: "#FEF2F2" },
-              ]}
-            >
-              <Feather name="x-circle" size={18} color="#DC2626" />
-              <Text style={styles.actionBlockCancelText}>Fahrt stornieren</Text>
-            </Pressable>
+            {isPickupPhase && hasArrived ? (
+              <>
+                {noShowCountdownEndsAt ? (
+                  <Text style={styles.noShowCountdownText}>
+                    No-Show in {Math.floor(noShowRemainingSec / 60)}:
+                    {String(noShowRemainingSec % 60).padStart(2, "0")} Min.
+                  </Text>
+                ) : null}
+                <View style={styles.pickupAuxRow}>
+                  {!noShowCountdownEndsAt ? (
+                    <Pressable
+                      onPress={() => void handleNoShowStart()}
+                      disabled={noShowBusy}
+                      style={({ pressed }) => [
+                        styles.pickupAuxBtn,
+                        pressed && { backgroundColor: PICKUP_AUX_PRESSED_BG },
+                        noShowBusy && { opacity: 0.5 },
+                      ]}
+                    >
+                      <Feather name="user-x" size={18} color={PICKUP_AUX_ICON_RED} />
+                      <Text style={styles.pickupAuxBtnText}>Kunde nicht da</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    onPress={() => setShowCancelReasonModal(true)}
+                    style={({ pressed }) => [
+                      styles.pickupAuxBtn,
+                      noShowCountdownEndsAt ? styles.pickupAuxBtnFull : null,
+                      pressed && { backgroundColor: PICKUP_AUX_PRESSED_BG },
+                    ]}
+                  >
+                    <Feather name="x-circle" size={18} color={PICKUP_AUX_ICON_RED} />
+                    <Text style={styles.pickupAuxBtnText}>Fahrt stornieren</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <Pressable
+                onPress={() => setShowCancelReasonModal(true)}
+                style={({ pressed }) => [
+                  styles.actionBlockCancel,
+                  pressed && { backgroundColor: PICKUP_AUX_PRESSED_BG },
+                ]}
+              >
+                <Feather name="x-circle" size={18} color={PICKUP_AUX_ICON_RED} />
+                <Text style={styles.actionBlockCancelText}>Fahrt stornieren</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       )}
@@ -1370,12 +1490,6 @@ export default function DriverNavigationScreen() {
                   keyboardType="numeric"
                   selectTextOnFocus
                 />
-                {waitingChargeEur > 0.009 ? (
-                  <Text style={styles.waitingFareHint}>
-                    + Wartezeit {waitingChargeEur.toFixed(2).replace(".", ",")} € ({waitingMinutes} Min) wird beim
-                    Abschluss addiert.
-                  </Text>
-                ) : null}
               </View>
             ) : null}
             {driverMayBillPositiveFare(rideFleetStatus) &&
@@ -1608,7 +1722,6 @@ export default function DriverNavigationScreen() {
             <View style={styles.driverChatHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cancelReasonTitle}>Chat</Text>
-                <Text style={styles.driverChatSubtitle}>Kunde</Text>
               </View>
               <Pressable
                 onPress={() => setChatOpen(false)}
@@ -1671,43 +1784,23 @@ export default function DriverNavigationScreen() {
                   </Pressable>
                 ))}
               </View>
+            </View>
+            <View style={styles.driverChatComposerRow}>
               <TextInput
-                style={styles.driverChatInputInThread}
+                style={styles.driverChatComposerInput}
                 placeholder="Nachricht tippen …"
                 placeholderTextColor="#9CA3AF"
                 value={chatInput}
                 onChangeText={setChatInput}
                 multiline
               />
-            </View>
-            <View style={styles.cancelReasonBtns}>
-              <Pressable style={styles.cancelReasonBtnGhost} onPress={() => setChatOpen(false)}>
-                <Text style={styles.cancelReasonBtnGhostText}>Schließen</Text>
-              </Pressable>
               <Pressable
-                style={styles.cancelReasonBtnDanger}
-                onPress={() => {
-                  const msg = chatInput.trim();
-                  if (!msg) return;
-                  const reply = chatReplyTo
-                    ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
-                    : undefined;
-                  const pendingId = rideChatMessageId(`pending-${Date.now()}`, "driver", msg);
-                  setChatMsgs((prev) =>
-                    mergeRideChatMessages(prev, {
-                      id: pendingId,
-                      from: "driver",
-                      text: msg,
-                      pending: true,
-                      ...(reply ? { replyTo: reply } : {}),
-                    }),
-                  );
-                  sendRideChat({ text: msg, sender: "driver", replyTo: reply });
-                  setChatInput("");
-                  setChatReplyTo(null);
-                }}
+                style={[styles.driverChatSendBtn, !chatInput.trim() && styles.driverChatSendBtnDisabled]}
+                onPress={sendDriverChatMessage}
+                disabled={!chatInput.trim()}
+                accessibilityLabel="Nachricht senden"
               >
-                <Text style={styles.cancelReasonBtnDangerText}>Senden</Text>
+                <Feather name="send" size={20} color="#fff" style={styles.driverChatSendIcon} />
               </Pressable>
             </View>
           </Pressable>
@@ -1722,14 +1815,25 @@ const styles = StyleSheet.create({
 
   /* Top card */
   topWrapper: { position: "absolute", top: 0, left: 0, right: 0 },
-  topCard: { backgroundColor: "#1B6B3A", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 11 },
+  topNavCluster: {
+    marginHorizontal: 12,
+    marginTop: 4,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+  },
+  topCard: { backgroundColor: "#1B6B3A", paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14 },
   topBrandBadge: {
     position: "absolute",
-    top: 6,
-    left: 12,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    top: 10,
+    left: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#DC2626",
     alignItems: "center",
     justifyContent: "center",
@@ -1738,12 +1842,12 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   topBrandBadgeText: { color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" },
-  topMain: { flexDirection: "row", alignItems: "center", gap: 12 },
+  topMain: { flexDirection: "row", alignItems: "center", gap: 14, paddingLeft: 34 },
   topText: { flex: 1 },
-  topLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.78)" },
-  topStreet: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 25 },
-  topStreetDriving: { fontSize: 24, lineHeight: 29 },
-  topDist: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.84)", marginTop: 2 },
+  topLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.78)" },
+  topStreet: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 27 },
+  topStreetDriving: { fontSize: 26, lineHeight: 31 },
+  topDist: { fontSize: 15, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.84)", marginTop: 3 },
   compassBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
@@ -1772,11 +1876,16 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   dannCard: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#fff", paddingHorizontal: 16, paddingVertical: 7,
-    borderBottomWidth: 1, borderBottomColor: "#E5E7EB",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#fff",
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E7EB",
   },
-  dannText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#374151", flex: 1 },
+  dannText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#374151", flex: 1, lineHeight: 20 },
 
   /* Bottom bar — helles Panel (Angekommen / Fahrt beenden / Storno) */
   bottomBar: {
@@ -1809,10 +1918,37 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
     backgroundColor: "#FFFFFF",
-    borderWidth: 1.5,
-    borderColor: "#FECACA",
+    borderWidth: 1,
+    borderColor: PICKUP_AUX_BORDER_LIGHT_RED,
   },
-  actionBlockCancelText: { color: "#DC2626", fontFamily: "Inter_700Bold", fontSize: 15 },
+  actionBlockCancelText: {
+    color: "#1C1C1E",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    letterSpacing: Platform.OS === "ios" ? -0.24 : 0,
+  },
+  pickupAuxRow: { flexDirection: "row", alignItems: "stretch", gap: 8 },
+  pickupAuxBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: PICKUP_AUX_BORDER_LIGHT_RED,
+  },
+  pickupAuxBtnFull: { flex: 1 },
+  pickupAuxBtnText: {
+    color: "#1C1C1E",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+    textAlign: "center",
+    letterSpacing: Platform.OS === "ios" ? -0.24 : 0,
+  },
   driveBottomSheet: {
     position: "absolute",
     bottom: 0,
@@ -1836,26 +1972,103 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingBottom: 6,
+    minHeight: DRIVE_SHEET_GRAB_H,
   },
-  sheetGrabHit: { paddingVertical: 4, paddingHorizontal: 4 },
+  sheetGrabHit: { paddingVertical: 6, paddingHorizontal: 8, flex: 1, alignItems: "center" },
   sheetGrabPill: {
-    width: 40,
+    width: 36,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#CBD5E1",
+    backgroundColor: "#C7C7CC",
   },
-  sheetPeekPress: { flex: 1, minWidth: 0 },
-  sheetPeekText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#475569" },
-  driveDetailsWrap: { paddingTop: 4, paddingBottom: 8 },
+  sheetChevronBtn: { paddingVertical: 4, paddingHorizontal: 4 },
+  driveDetailsWrap: { paddingTop: 2, paddingBottom: 10 },
   driveEndActionWrap: { marginTop: 2, marginBottom: 4 },
-  etaRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  etaBlock: { minWidth: 90 },
-  etaMin: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#15803D", lineHeight: 34 },
-  etaDetail: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#64748B", marginTop: 2 },
-  etaCustomerBlock: { flex: 1, justifyContent: "center" },
-  etaCustomer: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#0F172A" },
-  etaDest: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748B", marginTop: 3 },
-  etaPickupDist: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#15803D", marginTop: 4 },
+  rideInfoFrameOuter: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#C6C6C8",
+    backgroundColor: "#FFFFFF",
+    padding: 4,
+  },
+  rideInfoFrameInner: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    backgroundColor: "#FAFAFC",
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  rideInfoTopRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  rideInfoEtaFrame: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D1D1D6",
+    backgroundColor: "#FFFFFF",
+    padding: 3,
+    alignSelf: "flex-start",
+  },
+  rideInfoEtaFrameInner: {
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: "#EBEBF0",
+    backgroundColor: "#F2F2F7",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    minWidth: 58,
+  },
+  rideInfoDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    backgroundColor: "#D1D1D6",
+    marginVertical: 4,
+  },
+  rideInfoEtaValue: {
+    fontSize: 32,
+    color: "#1C1C1E",
+    letterSpacing: Platform.OS === "ios" ? -0.6 : -0.35,
+    lineHeight: 36,
+  },
+  rideInfoEtaUnit: {
+    fontSize: 13,
+    color: "#8E8E93",
+    marginTop: -1,
+    letterSpacing: Platform.OS === "ios" ? -0.08 : 0,
+  },
+  rideInfoBody: { flex: 1, minWidth: 0, gap: 4, justifyContent: "center" },
+  rideInfoName: {
+    fontSize: 19,
+    color: "#1C1C1E",
+    letterSpacing: Platform.OS === "ios" ? -0.45 : -0.35,
+  },
+  rideInfoMeta: {
+    fontSize: 16,
+    color: "#3A3A3C",
+    letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
+  },
+  rideInfoPaymentCol: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+    maxWidth: 124,
+    paddingLeft: 2,
+  },
+  rideInfoPaymentChip: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    minWidth: 84,
+  },
+  rideInfoPaymentText: {
+    fontSize: 14,
+    textAlign: "center",
+    letterSpacing: Platform.OS === "ios" ? -0.1 : 0,
+  },
   actionBtnWrapper: { width: "100%" },
   actionRow: { flexDirection: "row", alignItems: "stretch", gap: 10 },
   actionBtnFlex: { flex: 1 },
@@ -1913,36 +2126,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#DCFCE7",
   },
-  noShowLinkBtn: {
-    alignSelf: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  noShowLinkText: {
-    color: "#FCA5A5",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    textDecorationLine: "underline",
-  },
   noShowCountdownText: {
-    color: "#FEF3C7",
     fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-  },
-  waitingLiveBanner: {
-    color: "#BFDBFE",
-    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
+    color: "#B45309",
     textAlign: "center",
-    paddingHorizontal: 8,
-  },
-  waitingFareHint: {
-    marginTop: 8,
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    color: "#6B7280",
-    lineHeight: 17,
+    marginBottom: 2,
   },
 
   /* Fare Modal */
@@ -2031,7 +2220,6 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontFamily: "Inter_400Regular",
   },
-  driverChatSubtitle: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: -6 },
   driverChatThreadBox: {
     borderWidth: 1.5,
     borderColor: "#E5E7EB",
@@ -2117,18 +2305,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   driverChatTemplateChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#374151" },
-  driverChatInputInThread: {
-    borderWidth: 1.5,
-    borderColor: "#D1D5DB",
-    borderRadius: 10,
-    paddingHorizontal: 12,
+  driverChatComposerRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 10,
+    marginTop: 12,
+  },
+  driverChatComposerInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 22,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     color: "#111827",
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
+    backgroundColor: "#FFFFFF",
     minHeight: 44,
-    textAlignVertical: "top",
+    maxHeight: 96,
+    textAlignVertical: "center",
   },
+  driverChatSendBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#25D366",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#128C7E",
+    shadowOpacity: 0.22,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  driverChatSendBtnDisabled: { opacity: 0.42 },
+  driverChatSendIcon: { marginLeft: 2, marginTop: 1 },
   cancelReasonBtns: { flexDirection: "row", gap: 10, marginTop: 2 },
   cancelReasonBtnGhost: {
     flex: 1,

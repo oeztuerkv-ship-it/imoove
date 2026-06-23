@@ -250,3 +250,24 @@ export async function syncDriverExpoPushTokenIfStale(opts: {
   }
   return syncDriverExpoPushTokenWithRetry(opts, 2);
 }
+
+/** Abmelden / OFFLINE: Push-Token vom Server löschen, lokalen Sync-Stand zurücksetzen. */
+export async function unregisterDriverExpoPushToken(opts: { authToken: string }): Promise<void> {
+  if (Platform.OS === "web") return;
+  const authToken = opts.authToken.trim();
+  if (!authToken) return;
+  try {
+    const API_BASE = getApiBaseUrl();
+    await fetch(`${API_BASE}/fleet-driver/v1/expo-push-token`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+  } catch {
+    /* offline */
+  }
+  try {
+    await AsyncStorage.multiRemove([STORAGE_LAST_SYNC_AT, STORAGE_LAST_TOKEN]);
+  } catch {
+    /* ignore */
+  }
+}
