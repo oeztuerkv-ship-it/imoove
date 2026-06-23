@@ -35,7 +35,8 @@ import { submitDriverPassengerRating } from "../lib/fleetDriverRatings.js";
 import { averageFleetDriverRating } from "../lib/fleetDriverRatings.js";
 import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
 import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
-import { listRides, listRidesForDriver } from "../db/ridesData";
+import { listRides, listRidesForDriver, findRide } from "../db/ridesData";
+import { getCustomerCancelReasonForRide } from "./rides";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { toDriverOpenMarketOfferView } from "../lib/driverMarketOfferView.js";
 import {
@@ -538,6 +539,40 @@ router.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAu
     }
     await dismissDriverMessage(a.fleetDriverId, messageId);
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Live-Status für zugewiesene Fahrt (Fahrer-Navi: Kunden-Storno erkennen). */
+router.get("/fleet-driver/v1/rides/:rideId/live-status", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (assigned !== a.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.json({
+      ok: true,
+      id: ride.id,
+      status: ride.status,
+      cancelReason: getCustomerCancelReasonForRide(ride.id),
+    });
   } catch (e) {
     next(e);
   }

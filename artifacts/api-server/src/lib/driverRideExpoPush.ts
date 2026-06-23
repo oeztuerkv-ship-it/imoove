@@ -102,3 +102,22 @@ export async function notifyDriverMissedActivationReservation(
     })),
   );
 }
+
+/** Zugewiesener Fahrer: Kunde hat nach Annahme storniert (Navi beenden). */
+export async function notifyDriverRideCancelledByCustomer(
+  fleetDriverId: string,
+  companyId: string,
+  rideId: string,
+): Promise<void> {
+  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrt storniert",
+      body: "Der Kunde hat die Fahrt storniert.",
+      priority: "high",
+      data: { kind: "ride_cancelled_by_customer", rideId },
+    })),
+  );
+}

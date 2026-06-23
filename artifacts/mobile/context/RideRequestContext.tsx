@@ -19,8 +19,10 @@ import {
   countCustomerReservationBadge,
   isCustomerActiveRide,
   isCustomerCancelledStatus,
+  isCustomerFinalCancelledStatus,
   isCustomerRideRequest,
 } from "@/utils/customerRideListFilters";
+import { notifyDriverRideCancelledByCustomer } from "@/utils/driverLiveNavigation";
 import {
   filterDriverInstantMarketOffers,
   instantMarketOfferIdsKey,
@@ -1058,6 +1060,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const id = rideId.trim();
       const next = status.trim() as RequestStatus;
       if (!id || !next) return;
+      if (isCustomerFinalCancelledStatus(next)) {
+        notifyDriverRideCancelledByCustomer(id);
+      }
       const applyStatus = (prev: RideRequest[]) => {
         const idx = prev.findIndex((r) => r.id === id);
         if (idx < 0) return prev;
@@ -1439,6 +1444,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
             : r,
         ),
       );
+      notifyDriverRideCancelledByCustomer(id, reason);
       try {
         await patchStatus(id, "cancelled_by_customer", finalFare, undefined, reason);
       } catch (err) {

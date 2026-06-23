@@ -75,6 +75,10 @@ import {
 } from "@/utils/driverRideCompletion";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
 import { isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
+import {
+  setDriverLiveNavigationRideId,
+  subscribeDriverRideCancelledByCustomer,
+} from "@/utils/driverLiveNavigation";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   driverRidePaymentLooksLikeCash,
@@ -244,7 +248,7 @@ export default function DriverNavigationScreen() {
     arrived?: string;
   }>();
 
-  const { driverCancelRequest, requests } = useRideRequests();
+  const { driverCancelRequest, requests, driverMarketRequests } = useRideRequests();
   const { driver, refreshEinsatzbereit } = useDriver();
   const driverMarketOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
   const syncNavPresence = useCallback(
@@ -256,10 +260,15 @@ export default function DriverNavigationScreen() {
     },
     [driverMarketOnline, params.rideId],
   );
-  const activeRide = useMemo(
-    () => requests.find((r) => r.id === (params.rideId ?? "").trim()) ?? null,
-    [requests, params.rideId],
-  );
+  const activeRide = useMemo(() => {
+    const id = (params.rideId ?? "").trim();
+    if (!id) return null;
+    return (
+      requests.find((r) => r.id === id) ??
+      driverMarketRequests.find((r) => r.id === id) ??
+      null
+    );
+  }, [requests, driverMarketRequests, params.rideId]);
   const stackCollapsedForRideRef = useRef<string | null>(null);
 
   const phase = params.phase ?? "pickup";
@@ -353,6 +362,7 @@ export default function DriverNavigationScreen() {
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
   const hadActiveRideInListRef = useRef(false);
+  const prevListedRideRef = useRef<RequestStatus | null>(null);
   const exitAfterCustomerCancelRef = useRef<(cancelReason?: string | null) => void>(() => {});
   const [driveSheetOpen, setDriveSheetOpen] = useState(false);
   const driveSheetAnim = useRef(new Animated.Value(0)).current;
@@ -762,36 +772,84 @@ export default function DriverNavigationScreen() {
 
   const probeFleetRideCancel = useCallback(async () => {
     if (!params.rideId || cancelHandledRef.current) return;
-    try {
-      const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(params.rideId)}/fleet-snapshot`, {
-        cache: "no-store",
-        headers: await fleetAuthHeadersJson(),
-      });
-      if (!res.ok) return;
-      const payload = (await res.json()) as { status?: string; cancelReason?: string | null };
-      if (typeof payload.status === "string" && payload.status) {
-        setRideFleetStatus(payload.status);
+    const rideId = params.rideId.trim();
+    const headers = await fleetAuthHeadersJson();
+    const urls = [
+      `${API_BASE}/fleet-driver/v1/rides/${encodeURIComponent(rideId)}/live-status`,
+      `${API_BASE}/rides/${encodeURIComponent(rideId)}/fleet-snapshot`,
+    ];
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { cache: "no-store", headers });
+        if (!res.ok) continue;
+        const payload = (await res.json()) as { status?: string; cancelReason?: string | null };
+        if (typeof payload.status === "string" && payload.status) {
+          setRideFleetStatus(payload.status);
+        }
+        if (
+          typeof payload.status === "string" &&
+          isCustomerFinalCancelledStatus(payload.status as RequestStatus)
+        ) {
+          exitAfterCustomerCancel(payload.cancelReason);
+          return;
+        }
+        return;
+      } catch {
+        /* try next */
       }
-      if (
-        typeof payload.status === "string" &&
-        isCustomerFinalCancelledStatus(payload.status as RequestStatus)
-      ) {
-        exitAfterCustomerCancel(payload.cancelReason);
-      }
-    } catch {
-      /* ignore */
     }
   }, [exitAfterCustomerCancel, params.rideId]);
 
   useEffect(() => {
     if (activeRide) hadActiveRideInListRef.current = true;
-  }, [activeRide]);
+    const id = params.rideId?.trim() ?? "";
+    if (!id) return;
+    const listedStatus = activeRide?.status ?? null;
+    const prev = prevListedRideRef.current;
+    if (listedStatus && isCustomerFinalCancelledStatus(listedStatus)) {
+      exitAfterCustomerCancel(activeRide?.cancelReason ?? null);
+    } else if (prev && !listedStatus && hadActiveRideInListRef.current) {
+      void probeFleetRideCancel();
+    }
+    if (listedStatus) prevListedRideRef.current = listedStatus;
+  }, [
+    activeRide,
+    activeRide?.cancelReason,
+    activeRide?.status,
+    exitAfterCustomerCancel,
+    params.rideId,
+    probeFleetRideCancel,
+  ]);
 
   useEffect(() => {
-    const status = activeRide?.status;
-    if (!status || !isCustomerFinalCancelledStatus(status)) return;
-    exitAfterCustomerCancel(activeRide?.cancelReason ?? null);
-  }, [activeRide?.status, activeRide?.cancelReason, exitAfterCustomerCancel]);
+    const rideId = params.rideId?.trim() ?? "";
+    setDriverLiveNavigationRideId(rideId || null);
+    return () => setDriverLiveNavigationRideId(null);
+  }, [params.rideId]);
+
+  useEffect(() => {
+    const rideId = params.rideId?.trim() ?? "";
+    if (!rideId) return;
+    return subscribeDriverRideCancelledByCustomer((cancelledId, cancelReason) => {
+      if (cancelledId !== rideId) return;
+      exitAfterCustomerCancelRef.current(cancelReason);
+    });
+  }, [params.rideId]);
+
+  useEffect(() => {
+    const rideId = params.rideId?.trim() ?? "";
+    if (!rideId) return;
+    let sub: { remove: () => void } | null = null;
+    void import("expo-notifications").then((Notifications) => {
+      sub = Notifications.addNotificationReceivedListener((notification) => {
+        const data = notification.request.content.data as { kind?: unknown; rideId?: unknown };
+        if (data.kind !== "ride_cancelled_by_customer") return;
+        if (typeof data.rideId !== "string" || data.rideId.trim() !== rideId) return;
+        exitAfterCustomerCancelRef.current(null);
+      });
+    });
+    return () => sub?.remove();
+  }, [params.rideId]);
 
   useEffect(() => {
     if (!params.rideId || cancelHandledRef.current || !hadActiveRideInListRef.current) return;
@@ -803,36 +861,41 @@ export default function DriverNavigationScreen() {
     void probeFleetRideCancel();
   }, [activeRide, exitAfterCustomerCancel, params.rideId, probeFleetRideCancel, rideFleetStatus]);
 
+  const onRideWsMessage = useCallback((msg: Record<string, unknown>) => {
+    if (msg.type === "ride:status:update" && typeof msg.status === "string") {
+      const next = msg.status as RequestStatus;
+      setRideFleetStatus(next);
+      if (isCustomerFinalCancelledStatus(next)) {
+        exitAfterCustomerCancelRef.current(null);
+      }
+      return;
+    }
+    if (msg.type === "chat:ride:update") {
+      const row = parseRideChatUpdate(msg);
+      if (!row) return;
+      setChatMsgs((prev) => mergeRideChatMessages(prev, row));
+      if (row.from === "customer" && !chatOpenRef.current) setChatUnread(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!params.rideId) return;
-    connectToRide(
-      params.rideId,
-      (msg) => {
-        if (msg.type === "ride:status:update" && typeof msg.status === "string") {
-          const next = msg.status as RequestStatus;
-          setRideFleetStatus(next);
-          if (isCustomerFinalCancelledStatus(next)) {
-            exitAfterCustomerCancelRef.current(null);
-          }
-          return;
-        }
-        if (msg.type === "chat:ride:update") {
-          const row = parseRideChatUpdate(msg);
-          if (!row) return;
-          setChatMsgs((prev) => mergeRideChatMessages(prev, row));
-          if (row.from === "customer" && !chatOpenRef.current) setChatUnread(true);
-        }
-      },
-      readFleetJwtForWsJoin,
-    );
-    return () => disconnectSocket();
-  }, [params.rideId]);
+    connectToRide(params.rideId, onRideWsMessage, readFleetJwtForWsJoin);
+    const reconnectTimer = setInterval(() => {
+      if (cancelHandledRef.current || !params.rideId) return;
+      connectToRide(params.rideId, onRideWsMessage, readFleetJwtForWsJoin);
+    }, 8000);
+    return () => {
+      clearInterval(reconnectTimer);
+      disconnectSocket();
+    };
+  }, [onRideWsMessage, params.rideId]);
 
   useEffect(() => {
     if (!params.rideId) return;
     cancelHandledRef.current = false;
     void probeFleetRideCancel();
-    const timer = setInterval(() => void probeFleetRideCancel(), 3500);
+    const timer = setInterval(() => void probeFleetRideCancel(), 2000);
     return () => clearInterval(timer);
   }, [params.rideId, probeFleetRideCancel]);
 

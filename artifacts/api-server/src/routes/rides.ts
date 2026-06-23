@@ -70,6 +70,7 @@ import { DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES } from "../jobs/re
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
   notifyDriverFollowUpOffer,
+  notifyDriverRideCancelledByCustomer,
   notifyMarketOnlineDriversInstantRideOffer,
 } from "../lib/driverRideExpoPush";
 import { findFollowUpOfferForDriver } from "../db/fleetFollowUpOfferData";
@@ -167,6 +168,10 @@ const DEMO: RideRequest[] = [];
 export const driverLocations = new Map<string, DriverLocation>();
 export const customerLocations = new Map<string, DriverLocation>();
 const customerCancelReasons = new Map<string, string>();
+
+export function getCustomerCancelReasonForRide(rideId: string): string | null {
+  return customerCancelReasons.get(rideId.trim()) ?? null;
+}
 
 const router = Router();
 
@@ -2685,6 +2690,13 @@ export async function patchRideStatusRoute(
 
     if (cur.status !== nextStatus) {
       broadcastRideStatusChange(id, nextStatus, cur.status);
+      if (nextStatus === "cancelled_by_customer") {
+        const fleetDriverId = (updated.driverId ?? cur.driverId ?? "").trim();
+        const companyId = (updated.companyId ?? cur.companyId ?? "").trim();
+        if (fleetDriverId && companyId) {
+          void notifyDriverRideCancelledByCustomer(fleetDriverId, companyId, id).catch(() => undefined);
+        }
+      }
     }
 
     const opsEv = supplementalEventForTransition(cur.status, nextStatus);
@@ -2845,6 +2857,11 @@ export async function cancelRideForVerifiedCustomerSession(
 
   if (cur.status !== nextStatus) {
     broadcastRideStatusChange(id, nextStatus, cur.status);
+    const fleetDriverId = (updated.driverId ?? cur.driverId ?? "").trim();
+    const companyId = (updated.companyId ?? cur.companyId ?? "").trim();
+    if (fleetDriverId && companyId) {
+      void notifyDriverRideCancelledByCustomer(fleetDriverId, companyId, id).catch(() => undefined);
+    }
   }
 
   void evaluateCustomerCancellationSuspensionAfterCancel(pax).catch(() => undefined);

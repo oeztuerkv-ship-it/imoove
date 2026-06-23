@@ -57,6 +57,7 @@ import {
 } from "@/utils/rideChat";
 import { estimatePickupEtaMinutes, formatPickupDistanceKm } from "@/utils/ridePickupEta";
 import { connectToRide, disconnectSocket, sendCustomerLocation, sendRideChat } from "@/utils/socket";
+import { getDriverLiveNavigationRideId } from "@/utils/driverLiveNavigation";
 import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -564,6 +565,9 @@ export default function StatusScreen() {
     )
       return;
     const rid = effectiveAcceptedRequest.id;
+    if (getDriverLiveNavigationRideId() === rid) {
+      return;
+    }
 
     connectToRide(
       rid,
