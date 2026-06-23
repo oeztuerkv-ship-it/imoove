@@ -6,7 +6,7 @@ import { findRide, insertSupplementalRideEvent } from "./ridesData";
 import { ridesTable } from "./schema";
 import {
   getDispatchTierTimeoutSec,
-  isOpenInstantRideForDispatch,
+  isDispatchTierManagedRide,
   nextDispatchTier,
   normalizeDispatchPriority,
   shouldAdvanceDispatchTierByTimeout,
@@ -36,7 +36,7 @@ export async function advanceRideDispatchTier(opts: {
   if (!rid) return null;
 
   const cur = await findRide(rid);
-  if (!cur || !isOpenInstantRideForDispatch(cur)) return cur;
+  if (!cur || !isDispatchTierManagedRide(cur)) return cur;
 
   const now = new Date();
   await db
@@ -70,7 +70,7 @@ export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<
   ride: RideRequest;
   advanced: boolean;
 }> {
-  if (!isOpenInstantRideForDispatch(ride)) return { ride, advanced: false };
+  if (!isDispatchTierManagedRide(ride)) return { ride, advanced: false };
   const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
   if (tier === "C") return { ride, advanced: false };
 
@@ -94,7 +94,7 @@ export async function syncDispatchTiersForRides(rides: RideRequest[]): Promise<R
 
   const openIds = [
     ...new Set(
-      rides.filter((r) => isOpenInstantRideForDispatch(r)).map((r) => r.id),
+      rides.filter((r) => isDispatchTierManagedRide(r)).map((r) => r.id),
     ),
   ];
   for (const id of openIds) {
@@ -114,6 +114,18 @@ export async function releaseInstantRideDispatchOffer(opts: {
   | { ok: true; ride: RideRequest }
   | { ok: false; error: string }
 > {
+  return releaseRideDispatchOffer(opts);
+}
+
+/** Premium A: Angebot freigeben → nächste Stufe (Sofortfahrt oder offene Reservierung). */
+export async function releaseRideDispatchOffer(opts: {
+  rideId: string;
+  fleetDriverId: string;
+  companyId: string;
+}): Promise<
+  | { ok: true; ride: RideRequest }
+  | { ok: false; error: string }
+> {
   const rid = opts.rideId.trim();
   const did = opts.fleetDriverId.trim();
   const cid = opts.companyId.trim();
@@ -121,7 +133,7 @@ export async function releaseInstantRideDispatchOffer(opts: {
 
   const ride = await findRide(rid);
   if (!ride) return { ok: false, error: "not_found" };
-  if (!isOpenInstantRideForDispatch(ride)) return { ok: false, error: "ride_not_open" };
+  if (!isDispatchTierManagedRide(ride)) return { ok: false, error: "ride_not_open" };
 
   const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
   if (tier !== "A") return { ok: false, error: "release_only_tier_a" };

@@ -66,10 +66,12 @@ import {
   formatDriverFareInputDe,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
+import { warnCashPaymentIfNeeded } from "@/utils/driverCashPaymentApi";
 import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
 import { requestNotificationPermissions, stopRideSound } from "@/utils/notifications";
 import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
 import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
+import { releaseDispatchOffer } from "@/utils/releaseDispatchOffer";
 import { syncDriverExpoPushTokenWithRetry } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
@@ -363,21 +365,54 @@ function instantOfferReachPlaceholder(driverPos?: { lat: number; lon: number } |
   return driverPos ? "Anfahrt wird berechnet…" : "Standort wird ermittelt…";
 }
 
+function splitRideAddress(value?: string | null) {
+  const parts = String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return {
+    place: parts[0] || "",
+    address: parts.slice(1).join(", ") || "",
+  };
+}
+
+function hasDriverPremiumRouteDetails(req: RideRequest): boolean {
+  return Boolean(String(req.fromFull ?? req.from ?? "").trim() || String(req.toFull ?? req.to ?? "").trim());
+}
+
+function canReleaseDispatchOffer(
+  req: RideRequest,
+  driverPriority?: DriverProfile["dispatchPriority"],
+): boolean {
+  if (driverPriority !== "A") return false;
+  if (req.driverId) return false;
+  return (req.dispatchTier ?? "A") === "A";
+}
+
 /* ─── Sofortfahrt-Angebot: nur Anfahrt km/Min., Annahme, Timeout ─── */
 function InstantCard({
   req,
   onAccept,
   onReject,
   driverPos,
+  showReleaseButton,
+  onRelease,
+  releaseBusy,
 }: {
   req: RideRequest;
   onAccept: () => void;
   onReject: () => void;
   driverPos?: { lat: number; lon: number } | null;
+  showReleaseButton?: boolean;
+  onRelease?: () => void;
+  releaseBusy?: boolean;
 }) {
   const { t } = useTranslation();
   const reach = resolveInstantOfferReach(req, driverPos);
   const reachPendingLabel = instantOfferReachPlaceholder(driverPos);
+  const premiumRoute = hasDriverPremiumRouteDetails(req);
+  const fromAddress = splitRideAddress(req.fromFull || req.from);
+  const toAddress = splitRideAddress(req.toFull || req.to);
 
   const [secondsLeft, setSecondsLeft] = useState(INSTANT_OFFER_COUNTDOWN_SEC);
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -497,7 +532,74 @@ function InstantCard({
                 {reach ? `${reach.kmLabel} entfernt` : reachPendingLabel}
               </Text>
             </View>
+
+            {premiumRoute ? (
+              <View style={{ marginTop: 20, width: "100%" }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#64748B", marginBottom: 8, textTransform: "uppercase" }}>
+                  Abholung
+                </Text>
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={2}>
+                  {fromAddress.place || req.from}
+                </Text>
+                {fromAddress.address ? (
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748B", marginTop: 4 }} numberOfLines={3}>
+                    {fromAddress.address}
+                  </Text>
+                ) : null}
+                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#64748B", marginTop: 14, marginBottom: 8, textTransform: "uppercase" }}>
+                  Ziel
+                </Text>
+                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={2}>
+                  {toAddress.place || req.to}
+                </Text>
+                {toAddress.address ? (
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748B", marginTop: 4 }} numberOfLines={3}>
+                    {toAddress.address}
+                  </Text>
+                ) : null}
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                  {req.distanceKm > 0 ? (
+                    <View style={{ backgroundColor: "#F1F5F9", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#334155" }}>
+                        {req.distanceKm.toFixed(1)} km Fahrt
+                      </Text>
+                    </View>
+                  ) : null}
+                  {req.estimatedFare > 0 ? (
+                    <View style={{ backgroundColor: "#FFF1F2", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#BE123C" }}>
+                        ca. {req.estimatedFare.toFixed(2).replace(".", ",")} €
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
           </LinearGradient>
+
+          {showReleaseButton && onRelease ? (
+            <Pressable
+              onPress={onRelease}
+              disabled={releaseBusy}
+              style={({ pressed }) => [
+                {
+                  marginHorizontal: 18,
+                  marginBottom: 8,
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  borderColor: "#BFDBFE",
+                  backgroundColor: "#EFF6FF",
+                  paddingVertical: 12,
+                  alignItems: "center",
+                  opacity: pressed || releaseBusy ? 0.75 : 1,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
+                {releaseBusy ? "Freigabe …" : "Freigeben für Stufe B/C"}
+              </Text>
+            </Pressable>
+          ) : null}
 
           <View
             style={{
@@ -596,6 +698,9 @@ function ScheduledCard({
   driverId,
   onMedicalUpdated,
   kkModuleAuthorized = true,
+  showReleaseButton,
+  onRelease,
+  releaseBusy,
 }: {
   req: RideRequest;
   onAccept: () => void;
@@ -607,6 +712,9 @@ function ScheduledCard({
   driverId?: string;
   onMedicalUpdated?: () => void | Promise<void>;
   kkModuleAuthorized?: boolean;
+  showReleaseButton?: boolean;
+  onRelease?: () => void;
+  releaseBusy?: boolean;
 }) {
   const { t } = useTranslation();
   const isAssignedUpcoming = req.status === "scheduled_assigned";
@@ -622,16 +730,9 @@ function ScheduledCard({
   const minsLeft = useMemo(() => minutesUntil(scheduledAtDate), [req.scheduledAt, activationTick]);
   const activatable = isAssignedUpcoming && canActivate(scheduledAtDate);
 
-  const splitAddress = (value?: string | null) => {
-    const parts = String(value || "").split(",").map((part) => part.trim()).filter(Boolean);
-    return {
-      place: parts[0] || "Adresse folgt",
-      address: parts.slice(1).join(", ") || "",
-    };
-  };
-
-  const fromAddress = splitAddress(req.fromFull);
-  const toAddress = splitAddress(req.toFull);
+  const fromAddress = splitRideAddress(req.fromFull || req.from);
+  const toAddress = splitRideAddress(req.toFull || req.to);
+  const premiumRoute = hasDriverPremiumRouteDetails(req);
   const customerNoteLine = customerDriverNoteLine(req);
 
   return (
@@ -650,34 +751,47 @@ function ScheduledCard({
         </View>
 
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
-                {fromAddress.place}
-              </Text>
-              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
-                {fromAddress.address}
-              </Text>
-            </View>
+          {premiumRoute ? (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
+                    {fromAddress.place || "Abholung"}
+                  </Text>
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
+                    {fromAddress.address}
+                  </Text>
+                </View>
 
-            <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
+                <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#111827" }}>
+                    {date}
+                  </Text>
+                  <Text style={{ fontSize: 25, fontFamily: "Inter_900Black", color: "#E11D2E", marginTop: 4 }}>
+                    {time}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ marginTop: 38 }}>
+                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
+                  {toAddress.place || "Ziel"}
+                </Text>
+                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
+                  {toAddress.address}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <View>
               <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#111827" }}>
-                {date}
+                {date} · {time}
               </Text>
-              <Text style={{ fontSize: 25, fontFamily: "Inter_900Black", color: "#E11D2E", marginTop: 4 }}>
-                {time}
+              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 10, lineHeight: 20 }}>
+                Route und Adressen sind in Ihrer Stufe noch nicht sichtbar.
               </Text>
             </View>
-          </View>
-
-          <View style={{ marginTop: 38 }}>
-            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
-              {toAddress.place}
-            </Text>
-            <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
-              {toAddress.address}
-            </Text>
-          </View>
+          )}
         </View>
       </View>
 
@@ -706,17 +820,21 @@ function ScheduledCard({
       ) : null}
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
-          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
-            {req.distanceKm.toFixed(1)} km
-          </Text>
-        </View>
+        {premiumRoute && req.distanceKm > 0 ? (
+          <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
+              {req.distanceKm.toFixed(1)} km
+            </Text>
+          </View>
+        ) : null}
 
-        <View style={{ backgroundColor: "#FFF1F1", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#E11D2E" }}>
-            ca. {req.estimatedFare.toFixed(2)} €
-          </Text>
-        </View>
+        {premiumRoute && req.estimatedFare > 0 ? (
+          <View style={{ backgroundColor: "#FFF1F1", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
+            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#E11D2E" }}>
+              ca. {req.estimatedFare.toFixed(2)} €
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {isMedical && fleetAuthToken?.trim() ? (
@@ -731,17 +849,41 @@ function ScheduledCard({
       ) : null}
 
       {!isAssignedUpcoming ? (
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
-          <Pressable
-            style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 10, borderRadius: 14 }]}
-            onPress={onReject}
-          >
-            <Text style={[styles.rejectText, { color: "#B91C1C" }]}>{t("driver.scheduled.reject")}</Text>
-          </Pressable>
-          <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#DC2626", paddingVertical: 15, borderRadius: 14 }]} onPress={onAccept}>
-            <Text style={styles.acceptText}>{t("driver.scheduled.accept")}</Text>
-          </Pressable>
-        </View>
+        <>
+          {showReleaseButton && onRelease ? (
+            <Pressable
+              onPress={onRelease}
+              disabled={releaseBusy}
+              style={({ pressed }) => [
+                {
+                  marginTop: 16,
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  borderColor: "#BFDBFE",
+                  backgroundColor: "#EFF6FF",
+                  paddingVertical: 12,
+                  alignItems: "center",
+                  opacity: pressed || releaseBusy ? 0.75 : 1,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
+                {releaseBusy ? "Freigabe …" : "Freigeben für Stufe B/C"}
+              </Text>
+            </Pressable>
+          ) : null}
+          <View style={{ flexDirection: "row", gap: 8, marginTop: showReleaseButton && onRelease ? 12 : 24 }}>
+            <Pressable
+              style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 10, borderRadius: 14 }]}
+              onPress={onReject}
+            >
+              <Text style={[styles.rejectText, { color: "#B91C1C" }]}>{t("driver.scheduled.reject")}</Text>
+            </Pressable>
+            <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#DC2626", paddingVertical: 15, borderRadius: 14 }]} onPress={onAccept}>
+              <Text style={styles.acceptText}>{t("driver.scheduled.accept")}</Text>
+            </Pressable>
+          </View>
+        </>
       ) : (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
           <Pressable
@@ -781,6 +923,9 @@ function TabUebersicht({
   marketLoading,
   fleetAuthToken,
   followUpHighlight,
+  driverDispatchPriority,
+  onReleaseDispatch,
+  releaseBusyId,
 }: {
   pendingRequests: RideRequest[];
   onAccept: (id: string) => void;
@@ -790,6 +935,9 @@ function TabUebersicht({
   marketLoading?: boolean;
   fleetAuthToken?: string;
   followUpHighlight?: { ride: RideRequest; distanceKm: number } | null;
+  driverDispatchPriority?: DriverProfile["dispatchPriority"];
+  onReleaseDispatch?: (id: string) => void;
+  releaseBusyId?: string | null;
 }) {
   const slideAnim = useRef(new Animated.Value(300)).current;
   const prevCountRef = useRef(0);
@@ -861,7 +1009,11 @@ function TabUebersicht({
         {firstReq && isAvailable && (
           <InstantCard req={firstReq} driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
-            onReject={() => onReject(firstReq.id)} />
+            onReject={() => onReject(firstReq.id)}
+            showReleaseButton={Boolean(onReleaseDispatch && canReleaseDispatchOffer(firstReq, driverDispatchPriority))}
+            onRelease={() => onReleaseDispatch?.(firstReq.id)}
+            releaseBusy={releaseBusyId === firstReq.id}
+          />
         )}
       </View>
     );
@@ -913,6 +1065,9 @@ function TabUebersicht({
             driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)}
+            showReleaseButton={Boolean(onReleaseDispatch && canReleaseDispatchOffer(firstReq, driverDispatchPriority))}
+            onRelease={() => onReleaseDispatch?.(firstReq.id)}
+            releaseBusy={releaseBusyId === firstReq.id}
           />
           {instantReqs.length > 1 && (
             <Text style={styles.mapMoreReqs}>+{instantReqs.length - 1} weitere Anfrage{instantReqs.length > 2 ? "n" : ""}</Text>
@@ -1993,14 +2148,16 @@ function ActiveRideScreen({
     : { lat: req.toLat ?? 48.69, lon: req.toLon ?? 9.2216, displayName: req.toFull };
 
   const handleFinishTap = () => {
-    if (isKK && req.status === "in_progress") {
-      const parsed = parseEuroDriverInput(driverEigenanteil);
-      const euro = parsed ?? 0;
-      setFinalPriceInput(euro > 0 ? euro.toFixed(2).replace(".", ",") : "");
-    } else {
-      setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
-    }
-    setShowPriceModal(true);
+    warnCashPaymentIfNeeded(req.paymentMethod, () => {
+      if (isKK && req.status === "in_progress") {
+        const parsed = parseEuroDriverInput(driverEigenanteil);
+        const euro = parsed ?? 0;
+        setFinalPriceInput(euro > 0 ? euro.toFixed(2).replace(".", ",") : "");
+      } else {
+        setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
+      }
+      setShowPriceModal(true);
+    });
   };
 
   const handleConfirmFare = async () => {
@@ -2676,6 +2833,7 @@ export default function DriverDashboard() {
   const [adminMessage, setAdminMessage] = useState<DriverAdminMessage | null>(null);
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
+  const [releaseBusyId, setReleaseBusyId] = useState<string | null>(null);
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
   const [vehiclePickerLoading, setVehiclePickerLoading] = useState(false);
@@ -3368,6 +3526,39 @@ export default function DriverDashboard() {
       Alert.alert("Ablehnen fehlgeschlagen", "Bitte erneut versuchen oder Liste aktualisieren.");
     }
   };
+  const handleReleaseDispatch = async (id: string) => {
+    if (!driver?.authToken?.trim()) {
+      Alert.alert("Freigabe nicht möglich", "Bitte erneut als Fahrer anmelden.");
+      return;
+    }
+    setReleaseBusyId(id);
+    try {
+      const result = await releaseDispatchOffer({ authToken: driver.authToken.trim(), rideId: id });
+      if (!result.ok) {
+        const msg =
+          result.error === "driver_not_priority_a"
+            ? "Nur Premium-Fahrer (Stufe A) dürfen freigeben."
+            : result.error === "release_only_tier_a"
+              ? "Diese Fahrt ist bereits an Stufe B oder C."
+              : result.error === "ride_not_open"
+                ? "Die Fahrt ist nicht mehr offen."
+                : "Freigabe fehlgeschlagen.";
+        Alert.alert("Freigabe", msg);
+        return;
+      }
+      suppressedMarketOfferIdsRef.current.add(id);
+      prevPendingIds.current.add(id);
+      clearInstantOfferDeadline(id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshRequests?.();
+      await refreshDriverMarketHard();
+      Alert.alert("Freigegeben", "Die Fahrt ist jetzt für Fahrer der Stufe B sichtbar.");
+    } catch {
+      Alert.alert("Freigabe fehlgeschlagen", "Bitte erneut versuchen.");
+    } finally {
+      setReleaseBusyId(null);
+    }
+  };
   const handleComplete = async (id: string, finalFare: number) => {
     try {
       await completeRequest(id, finalFare);
@@ -3849,6 +4040,9 @@ export default function DriverDashboard() {
                 isAvailable={driver.einsatzbereit && driver.isAvailable}
                 marketLoading={marketRefreshing}
                 followUpHighlight={followUpHighlight}
+                driverDispatchPriority={driver.dispatchPriority}
+                onReleaseDispatch={handleReleaseDispatch}
+                releaseBusyId={releaseBusyId}
               />
             )}
             {activeTab === "auftraege" && (
@@ -3981,6 +4175,9 @@ export default function DriverDashboard() {
                           driverPos={driverPos}
                           onAccept={() => handleAccept(req.id)}
                           onReject={() => handleReject(req.id)}
+                          showReleaseButton={canReleaseDispatchOffer(req, driver.dispatchPriority)}
+                          onRelease={() => void handleReleaseDispatch(req.id)}
+                          releaseBusy={releaseBusyId === req.id}
                         />
                       ))}
                       {[...scheduledOpenRequests]
@@ -3998,6 +4195,9 @@ export default function DriverDashboard() {
                             onReject={() => handleReject(req.id)}
                             onActivate={() => handleActivateScheduled(req.id)}
                             onCancelAssigned={() => handleCancelScheduled(req)}
+                            showReleaseButton={canReleaseDispatchOffer(req, driver.dispatchPriority)}
+                            onRelease={() => void handleReleaseDispatch(req.id)}
+                            releaseBusy={releaseBusyId === req.id}
                           />
                         ))}
                     </>

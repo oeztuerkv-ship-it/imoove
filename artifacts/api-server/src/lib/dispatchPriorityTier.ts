@@ -39,6 +39,26 @@ export function isOpenInstantRideForDispatch(ride: Pick<RideRequest, "status" | 
   return OPEN_INSTANT_STATUSES.has(ride.status);
 }
 
+/** Offene Vorbestellung am Markt (noch ohne Fahrer). */
+export function isOpenReservationForDispatch(
+  ride: Pick<RideRequest, "status" | "driverId" | "scheduledAt">,
+): boolean {
+  if (ride.driverId) return false;
+  if (ride.status !== "scheduled") return false;
+  const scheduledAt = ride.scheduledAt ?? null;
+  if (!scheduledAt) return false;
+  const scheduledMs = new Date(scheduledAt).getTime();
+  if (!Number.isFinite(scheduledMs) || scheduledMs < Date.now()) return false;
+  return true;
+}
+
+/** Sofort- oder Reservierungsangebot mit A→B→C-Stufen. */
+export function isDispatchTierManagedRide(
+  ride: Pick<RideRequest, "status" | "driverId" | "scheduledAt">,
+): boolean {
+  return isOpenInstantRideForDispatch(ride) || isOpenReservationForDispatch(ride);
+}
+
 export function getDispatchTierTimeoutSec(dispatchConfig?: Record<string, unknown>): number {
   const env = Number(process.env.ONRODA_DISPATCH_TIER_TIMEOUT_SEC);
   if (Number.isFinite(env) && env >= 5 && env <= 300) return Math.round(env);
@@ -66,7 +86,8 @@ export function shouldAdvanceDispatchTierByTimeout(
   timeoutSec: number,
   nowMs = Date.now(),
 ): boolean {
-  if (!isOpenInstantRideForDispatch(ride)) return false;
+  if (!isDispatchTierManagedRide(ride)) return false;
+  if (isOpenReservationForDispatch(ride) && !ride.dispatchTierStartedAt) return false;
   const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
   if (tier === "C") return false;
   return dispatchTierElapsedSec(ride, nowMs) >= timeoutSec;

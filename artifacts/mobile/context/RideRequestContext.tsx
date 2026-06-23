@@ -155,6 +155,8 @@ export interface RideRequest {
   cancelReason?: string | null;
   rejectedBy: string[];
   status: RequestStatus;
+  /** Premium-Dispatch-Stufe (Sofort/Reservierung am Markt). */
+  dispatchTier?: "A" | "B" | "C" | null;
 }
 
 interface RideRequestContextValue {
@@ -603,6 +605,12 @@ function normalizeRequest(r: any): RideRequest {
       : Array.isArray(r.rejected_by)
         ? r.rejected_by
         : [],
+    dispatchTier: (() => {
+      const t = String(r.dispatchTier ?? r.dispatch_tier ?? "A")
+        .trim()
+        .toUpperCase();
+      return t === "A" || t === "B" || t === "C" ? t : "A";
+    })(),
   } as RideRequest;
 }
 

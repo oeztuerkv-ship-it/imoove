@@ -3,6 +3,7 @@ import { isPostgresConfigured } from "../db/client";
 import {
   findFleetDriverInCompany,
   fleetDriverTableRowToList,
+  getFleetDriverDispatchPriority,
   getFleetDriverMarketOnline,
   setFleetDriverMarketOnline,
   syncFleetDriverDispatchPriorityFromAdminEmail,
@@ -34,11 +35,12 @@ import { getFleetDriverRideEarnings } from "../lib/fleetDriverRideEarnings.js";
 import { submitDriverPassengerRating } from "../lib/fleetDriverRatings.js";
 import { averageFleetDriverRating } from "../lib/fleetDriverRatings.js";
 import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
-import { releaseInstantRideDispatchOffer } from "../db/rideDispatchTierData";
+import { releaseInstantRideDispatchOffer, syncDispatchTiersForRides } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver, findRide } from "../db/ridesData";
 import { getCustomerCancelReasonForRide } from "./rides";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
-import { toDriverOpenMarketOfferView } from "../lib/driverMarketOfferView.js";
+import { toDriverOpenMarketOfferView, toDriverOpenReservationView } from "../lib/driverMarketOfferView.js";
+import { driverMatchesDispatchTier, normalizeDispatchPriority } from "../lib/dispatchPriorityTier.js";
 import {
   fleetDriverAssignedVehiclePayload,
   resolveFleetDriverKonzessionForMe,
@@ -351,8 +353,9 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         driverLon = stored.lon;
       }
     }
+    const driverPriority = await getFleetDriverDispatchPriority(a.fleetDriverId, a.companyId);
     const driverOffers = withCodes.map((row) =>
-      toDriverOpenMarketOfferView(row, { driverLat, driverLon }),
+      toDriverOpenMarketOfferView(row, { driverLat, driverLon, driverDispatchPriority: driverPriority }),
     );
     const openInstantIds = pool.rides
       .filter((r) => !r.driverId && isInstantDispatchRideStatus(r.status))
@@ -404,10 +407,15 @@ router.get("/fleet-driver/v1/follow-up-offer", requireFleetDriverAuth, async (re
       return;
     }
 
+    const driverPriority = await getFleetDriverDispatchPriority(a.fleetDriverId, a.companyId);
     const [publicRide] = await attachAccessCodeSummariesToRides([
       stripPartnerOnlyRideFields(offer.ride),
     ]);
-    const driverOfferRide = toDriverOpenMarketOfferView(publicRide, { driverLat: lat, driverLon: lon });
+    const driverOfferRide = toDriverOpenMarketOfferView(publicRide, {
+      driverLat: lat,
+      driverLon: lon,
+      driverDispatchPriority: driverPriority,
+    });
     res.json({
       ok: true,
       suggestion: {
@@ -466,6 +474,7 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
     );
     const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
     const companyKkModuleEnabled = await getCompanyFeatureKkModule(a.companyId);
+    const driverPriority = await getFleetDriverDispatchPriority(a.fleetDriverId, a.companyId);
     const all = await listRides();
     const pool = all.filter((ride) => {
       const isFutureReservationStatus =
@@ -490,7 +499,20 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       }
       return isRideCompatibleWithCapability(ride, capability);
     });
-    const publicRows = pool.map(stripPartnerOnlyRideFields);
+    const syncedPool = await syncDispatchTiersForRides(pool);
+    const tierFiltered = syncedPool.filter((ride) => {
+      if (ride.status === "scheduled_assigned" && ride.driverId === a.fleetDriverId) return true;
+      if (ride.status === "scheduled" && !ride.driverId) {
+        const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
+        return driverMatchesDispatchTier(driverPriority, rideTier);
+      }
+      return false;
+    });
+    const publicRows = tierFiltered.map((row) =>
+      toDriverOpenReservationView(stripPartnerOnlyRideFields(row), {
+        driverDispatchPriority: driverPriority,
+      }),
+    );
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json({
       ok: true,
