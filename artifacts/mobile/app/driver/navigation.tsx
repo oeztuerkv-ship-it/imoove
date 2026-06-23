@@ -1807,42 +1807,38 @@ export default function DriverNavigationScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Feather name="flag" size={26} color="#22C55E" />
               <Text style={styles.modalTitle}>Fahrt beenden</Text>
             </View>
-            <Text style={styles.modalSubtitle}>
-              {driverMayBillPositiveFare(rideFleetStatus)
-                ? (
-                  <>
-                    Fahrtpreis für{" "}
-                    <Text style={{ fontFamily: "Inter_700Bold" }}>{params.customerName ?? "Kunden"}</Text> bestätigen:
-                  </>
-                )
-                : "Keine Fahrt zum Ziel — bitte 0,00 € bestätigen (Kunde wird nicht belastet)."}
-            </Text>
-            <DriverFareEntryLegalHints
-              vehicle={params.vehicle}
-              mayBillPositive={driverMayBillPositiveFare(rideFleetStatus)}
-              snapshotVehicleClassMultiplier={
-                params.vehicleClassMultiplier?.trim()
-                  ? Number.parseFloat(params.vehicleClassMultiplier)
-                  : null
-              }
-              snapshotXlFixedSurchargeEur={
-                params.xlFixedSurchargeEur?.trim()
-                  ? Number.parseFloat(params.xlFixedSurchargeEur)
-                  : null
-              }
-            />
+            {driverMayBillPositiveFare(rideFleetStatus) ? (
+              <DriverFareEntryLegalHints
+                vehicle={params.vehicle}
+                mayBillPositive
+                snapshotVehicleClassMultiplier={
+                  params.vehicleClassMultiplier?.trim()
+                    ? Number.parseFloat(params.vehicleClassMultiplier)
+                    : null
+                }
+                snapshotXlFixedSurchargeEur={
+                  params.xlFixedSurchargeEur?.trim()
+                    ? Number.parseFloat(params.xlFixedSurchargeEur)
+                    : null
+                }
+              />
+            ) : (
+              <Text style={styles.modalSubtitle}>
+                Keine Fahrt zum Ziel — bitte 0,00 € bestätigen (Kunde wird nicht belastet).
+              </Text>
+            )}
             {driverMayBillPositiveFare(rideFleetStatus) ? (
               <View style={styles.fareBox}>
-                <Text style={styles.fareBoxLabel}>Taxameter-Endpreis (€)</Text>
                 <TextInput
                   style={styles.fareInput}
                   value={fareInput}
                   onChangeText={setFareInput}
                   keyboardType="numeric"
                   selectTextOnFocus
+                  placeholder="0,00"
+                  placeholderTextColor="#9CA3AF"
                 />
               </View>
             ) : null}

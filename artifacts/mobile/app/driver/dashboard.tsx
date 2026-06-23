@@ -2446,19 +2446,21 @@ function ActiveRideScreen({
           <Pressable style={{ flex: 1 }} onPress={() => setShowPriceModal(false)} />
           <View style={activeStyles.priceModal}>
             <View style={activeStyles.priceModalHandle} />
-            <Text style={activeStyles.priceModalTitle}>Fahrtpreis eingeben</Text>
-            <Text style={activeStyles.priceModalSub}>
-              {mayBillPositive
-                ? "Der Endpreis wird dem Kunden übermittelt."
-                : "Keine Fahrt zum Ziel — bitte 0,00 € eingeben (Kunde wird nicht belastet)."}
-            </Text>
+            <Text style={activeStyles.priceModalTitle}>Fahrt beenden</Text>
+            {!mayBillPositive ? (
+              <Text style={activeStyles.priceModalSub}>
+                Keine Fahrt zum Ziel — bitte 0,00 € eingeben (Kunde wird nicht belastet).
+              </Text>
+            ) : null}
 
-            <DriverFareEntryLegalHints
-              vehicle={req.vehicle}
-              mayBillPositive={mayBillPositive}
-              snapshotVehicleClassMultiplier={req.tariffSnapshot?.breakdown?.vehicleClassMultiplier}
-              snapshotXlFixedSurchargeEur={req.tariffSnapshot?.breakdown?.xlFixedSurchargeEur}
-            />
+            {mayBillPositive ? (
+              <DriverFareEntryLegalHints
+                vehicle={req.vehicle}
+                mayBillPositive
+                snapshotVehicleClassMultiplier={req.tariffSnapshot?.breakdown?.vehicleClassMultiplier}
+                snapshotXlFixedSurchargeEur={req.tariffSnapshot?.breakdown?.xlFixedSurchargeEur}
+              />
+            ) : null}
 
             {/* Route summary */}
             <View style={activeStyles.priceModalRoute}>
@@ -2494,11 +2496,9 @@ function ActiveRideScreen({
                 autoFocus
               />
             </View>
-            <Text style={activeStyles.priceInputHint}>
-              {mayBillPositive
-                ? "Euro-Betrag wie auf dem Taxameter (amtlicher Endpreis)"
-                : "Bei Abbruch ohne Fahrt: 0,00"}
-            </Text>
+            {!mayBillPositive ? (
+              <Text style={activeStyles.priceInputHint}>Bei Abbruch ohne Fahrt: 0,00</Text>
+            ) : null}
 
             {/* Buttons */}
             <View style={activeStyles.priceModalBtns}>
