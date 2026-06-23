@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { useKeepAwake } from "expo-keep-awake";
@@ -23,6 +24,7 @@ import {
   TextInput,
   View,
   AppState,
+  type TextStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -2654,6 +2656,36 @@ function DriverAdminMessageBanner({
 }
 
 /* ─── Main Dashboard ─── */
+const DRIVER_TOGGLE_WIDTH = 72;
+const DRIVER_TOGGLE_HEIGHT = 36;
+const DRIVER_TOGGLE_KNOB = 32;
+const DRIVER_TOGGLE_KNOB_INSET = 2;
+const DRIVER_TOGGLE_KNOB_TRAVEL = DRIVER_TOGGLE_WIDTH - DRIVER_TOGGLE_KNOB - DRIVER_TOGGLE_KNOB_INSET * 2;
+
+function driverInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
+  }
+  if (parts[0]) return parts[0].slice(0, 2).toUpperCase();
+  return "F";
+}
+
+/** iOS: San Francisco (System). Android/Web: Inter. */
+function appleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
+  if (Platform.OS === "ios") {
+    const map = { regular: "400", medium: "500", semibold: "600", bold: "700" } as const;
+    return { fontWeight: map[weight] };
+  }
+  const inter = {
+    regular: "Inter_400Regular",
+    medium: "Inter_500Medium",
+    semibold: "Inter_600SemiBold",
+    bold: "Inter_700Bold",
+  };
+  return { fontFamily: inter[weight] };
+}
+
 export default function DriverDashboard() {
   // Keep screen awake while driver app is open — never goes dark during shift
   useKeepAwake();
@@ -2976,6 +3008,16 @@ export default function DriverDashboard() {
   const [bannerRide, setBannerRide] = useState<RideRequest | null>(null);
   const bannerAnim = useRef(new Animated.Value(-140)).current;
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toggleKnobAnim = useRef(new Animated.Value(0)).current;
+  const driverToggleOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
+
+  useEffect(() => {
+    Animated.timing(toggleKnobAnim, {
+      toValue: driverToggleOnline ? DRIVER_TOGGLE_KNOB_TRAVEL : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [driverToggleOnline, toggleKnobAnim]);
 
   const showBanner = useCallback((req: RideRequest) => {
     setBannerRide(req);
@@ -3639,11 +3681,52 @@ export default function DriverDashboard() {
         ]}
       >
         <View style={styles.driverIdentity}>
-          <View style={styles.driverTextBlock}>
-            <Text style={styles.driverNameModern} numberOfLines={1}>{driver.name}</Text>
-            <Text style={styles.driverPlateModern} numberOfLines={1}>{driver.plate}</Text>
+          <View style={styles.avatarWrap}>
+            <LinearGradient
+              colors={["#EF1D26", "#B91C1C"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.avatarCircle}
+            >
+              <Text style={[styles.avatarLetter, appleFont("semibold")]}>{driverInitials(driver.name)}</Text>
+            </LinearGradient>
+            <View
+              style={[
+                styles.avatarStatusDot,
+                {
+                  backgroundColor: !driver.einsatzbereit
+                    ? "#F59E0B"
+                    : driverToggleOnline
+                      ? "#22C55E"
+                      : "#94A3B8",
+                  borderColor: colors.background,
+                },
+              ]}
+            />
+          </View>
+          <View
+            style={[
+              styles.driverTextCard,
+              {
+                borderColor: colors.border,
+                backgroundColor: "transparent",
+              },
+            ]}
+          >
+            <Text style={[styles.driverNameModern, appleFont("medium"), { color: colors.foreground }]} numberOfLines={1}>
+              {driver.name}
+            </Text>
+            <View style={[styles.plateFrame, { borderColor: colors.border }]}>
+              <Text
+                style={[styles.driverNameModern, appleFont("medium"), styles.driverPlateText, { color: colors.foreground }]}
+                numberOfLines={1}
+              >
+                {driver.plate}
+              </Text>
+            </View>
           </View>
         </View>
+
         <View style={[styles.headerDivider, { backgroundColor: colors.border }]} />
 
         <Pressable
@@ -3713,27 +3796,35 @@ export default function DriverDashboard() {
             })();
           }}
           style={[
-            styles.segmentSwitch,
-            { opacity: driver.einsatzbereit ? 1 : 0.7, backgroundColor: colors.muted },
+            styles.toggleSwitchPressable,
+            { opacity: driver.einsatzbereit ? 1 : 0.7 },
           ]}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: driverToggleOnline }}
+          accessibilityLabel={
+            !driver.einsatzbereit
+              ? "Auftragsmarkt gesperrt"
+              : driver.isAvailable
+                ? "Online — tippen für Offline"
+                : "Offline — tippen für Online"
+          }
         >
-          <View
-            style={[
-              styles.segmentActive,
-              driver.einsatzbereit && driver.isAvailable ? styles.segmentOnline : styles.segmentOffline,
-            ]}
-          >
-            <View style={styles.segmentDotActive} />
-            <Text style={styles.segmentActiveText}>
-              {!driver.einsatzbereit ? "Gesperrt" : driver.isAvailable ? "Online" : "Offline"}
-            </Text>
-          </View>
-
-          <View style={styles.segmentInactive}>
-            <View style={styles.segmentDotInactive} />
-            <Text style={styles.segmentInactiveText}>
-              {driver.isAvailable ? "Offline" : "Online"}
-            </Text>
+          <View style={styles.toggleSwitch}>
+            <LinearGradient
+              colors={driverToggleOnline ? ["#66bb6a", "#43a047"] : ["#FF0000", "#c21807"]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.toggleTrack}
+            />
+            <Animated.View
+              style={[
+                styles.toggleKnob,
+                {
+                  transform: [{ translateX: toggleKnobAnim }],
+                  backgroundColor: driverToggleOnline ? "#e0e9e0" : "#FFFFFF",
+                },
+              ]}
+            />
           </View>
         </Pressable>
       </View>
@@ -4294,101 +4385,112 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 20,
-    minHeight: 72,
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    minHeight: 68,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 0.5,
+    justifyContent: "space-between",
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   driverIdentity: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     minWidth: 0,
+    gap: 10,
   },
-  avatarWrap: { width: 58, height: 58, marginRight: 14 },
+  avatarWrap: {
+    width: 44,
+    height: 44,
+    position: "relative",
+    flexShrink: 0,
+  },
   avatarCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#EF1D26",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#EF1D26",
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-  avatarLetter: { color: "#FFFFFF", fontSize: 21, fontFamily: "Inter_700Bold" },
+  avatarLetter: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    letterSpacing: Platform.OS === "ios" ? -0.24 : 0.5,
+  },
   avatarStatusDot: {
     position: "absolute",
     right: -1,
-    bottom: 3,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 3,
-    borderColor: "#151A1F",
+    bottom: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
   },
-  driverTextBlock: { flexShrink: 1, minWidth: 0 },
+  driverTextCard: {
+    flexShrink: 1,
+    minWidth: 0,
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
   driverNameModern: {
-    color: "#000000",
-    fontSize: 22,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: -0.5,
+    fontSize: 18,
+    letterSpacing: Platform.OS === "ios" ? -0.45 : -0.35,
   },
-  driverPlateModern: {
-    color: "#6B6B6B",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 0.3,
+  driverPlateText: {
+    textTransform: "uppercase",
+  },
+  plateFrame: {
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
+    borderWidth: 1,
+    backgroundColor: "transparent",
   },
   headerDivider: {
-    width: 1,
-    height: 38,
-    marginHorizontal: 10,
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "center",
+    height: 32,
+    marginTop: 8,
+    marginHorizontal: 4,
   },
-  segmentSwitch: {
-    height: 38,
-    borderRadius: 24,
-    padding: 3,
-    flexDirection: "row",
-    alignItems: "center",
-    minWidth: 160,
+  toggleSwitchPressable: {
     flexShrink: 0,
+    paddingVertical: 4,
   },
-  segmentActive: {
-    flex: 1,
-    height: 32,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+  toggleSwitch: {
+    position: "relative",
+    width: DRIVER_TOGGLE_WIDTH,
+    height: DRIVER_TOGGLE_HEIGHT,
   },
-  segmentOnline: { backgroundColor: "#22C55E" },
-  segmentOffline: { backgroundColor: "#6B7280" },
-  segmentInactive: {
-    flex: 1,
-    height: 32,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+  toggleTrack: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: DRIVER_TOGGLE_HEIGHT / 2,
   },
-  segmentDotActive: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FFFFFF",
-    marginRight: 5,
+  toggleKnob: {
+    position: "absolute",
+    top: DRIVER_TOGGLE_KNOB_INSET,
+    left: DRIVER_TOGGLE_KNOB_INSET,
+    width: DRIVER_TOGGLE_KNOB,
+    height: DRIVER_TOGGLE_KNOB,
+    borderRadius: DRIVER_TOGGLE_KNOB / 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3,
   },
-  segmentDotInactive: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#9CA3AF",
-    marginRight: 5,
-  },
-  segmentActiveText: { color: "#FFFFFF", fontSize: 15, fontFamily: "Inter_700Bold", paddingHorizontal: 4 },
-  segmentInactiveText: { color: "#8E8E93", fontSize: 13, fontFamily: "Inter_700Bold", paddingHorizontal: 4 },
   availToggle: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 9 },
   availDot: { width: 8, height: 8, borderRadius: 4 },
   availLabel: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#111827" },
