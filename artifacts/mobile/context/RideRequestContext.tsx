@@ -1444,9 +1444,20 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
             : r,
         ),
       );
-      notifyDriverRideCancelledByCustomer(id, reason);
+      setDriverMarketRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: "cancelled_by_customer",
+                cancelReason: reason,
+              }
+            : r,
+        ),
+      );
       try {
         await patchStatus(id, "cancelled_by_customer", finalFare, undefined, reason);
+        notifyDriverRideCancelledByCustomer(id, reason);
       } catch (err) {
         // Bei Fehler wieder vom Server synchronisieren, damit kein lokaler Zombie-State bleibt.
         await fetchAll();

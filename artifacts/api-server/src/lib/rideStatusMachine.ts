@@ -111,9 +111,16 @@ const TRANSITIONS: Partial<Record<RideRequest["status"], RideRequest["status"][]
     "cancelled_by_driver",
     "cancelled_by_system",
   ],
-  passenger_onboard: ["completed", "cancelled_by_system"],
+  passenger_onboard: ["completed", "cancelled_by_system", "cancelled_by_customer", "cancelled_by_driver"],
   arrived: ["passenger_onboard", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
-  in_progress: ["completed", "cancelled_by_system", "cancelled", "expired"],
+  in_progress: [
+    "completed",
+    "cancelled_by_system",
+    "cancelled",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "expired",
+  ],
 };
 
 export function canTransitionRideStatus(from: RideRequest["status"], to: RideRequest["status"]): boolean {
