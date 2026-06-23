@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   VEHICLE_CLASSES,
   VEHICLE_DOCUMENT_KIND_OPTIONS,
@@ -6,6 +7,17 @@ import {
   vehicleStatusDe,
   vehicleStatusTone,
 } from "./fleetPanelHelpers.js";
+
+function vehicleKonzessionLabel(v) {
+  return (v.konzessionNumber ?? v.taxiOrderNumber ?? "").trim() || "—";
+}
+
+function vehicleAssignLabel(v) {
+  const kz = vehicleKonzessionLabel(v);
+  const plate = v.licensePlate || "—";
+  const model = v.model ? ` · ${v.model}` : "";
+  return kz !== "—" ? `${plate} · Konz. ${kz}${model}` : `${plate}${model}`;
+}
 
 /**
  * @param {{
@@ -28,6 +40,7 @@ import {
  *   uploadVehicleDocument: (vehicleId: string, kind: string, ev: React.ChangeEvent<HTMLInputElement>) => void | Promise<void>;
  *   submitVehicleApproval: (vehicleId: string) => void | Promise<void>;
  *   setVehicleActive: (vehicleId: string, isActive: boolean) => void | Promise<void>;
+ *   patchVehicleStammdaten: (vehicleId: string, body: Record<string, string | null>) => Promise<{ ok: boolean }>;
  *   clearAssignment: (driverId: string) => void | Promise<void>;
  * }} props
  */
@@ -51,8 +64,36 @@ export default function FleetVehiclesTab({
   uploadVehicleDocument,
   submitVehicleApproval,
   setVehicleActive,
+  patchVehicleStammdaten,
   clearAssignment,
 }) {
+  const [editingVehicleId, setEditingVehicleId] = useState(null);
+  const [editForm, setEditForm] = useState({ model: "", color: "", nextInspectionDate: "" });
+  const [editBusy, setEditBusy] = useState(false);
+
+  function openVehicleEdit(v) {
+    setEditingVehicleId(v.id);
+    setEditForm({
+      model: v.model || "",
+      color: v.color || "",
+      nextInspectionDate: v.nextInspectionDate ? String(v.nextInspectionDate).slice(0, 10) : "",
+    });
+  }
+
+  async function saveVehicleEdit(vehicleId) {
+    setEditBusy(true);
+    try {
+      const r = await patchVehicleStammdaten(vehicleId, {
+        model: editForm.model.trim(),
+        color: editForm.color.trim(),
+        nextInspectionDate: editForm.nextInspectionDate.trim() || null,
+      });
+      if (r.ok) setEditingVehicleId(null);
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
   return (
     <div className="partner-card partner-card--section">
       <div style={{ marginBottom: 12 }}>
@@ -151,6 +192,9 @@ export default function FleetVehiclesTab({
               Hochgeladene Unterlagen können Sie durch eine neue Version ersetzen; Onroda behält ältere Versionen zur Nachvollziehbarkeit. Eine Löschung von
               Nachweisen durch Partner ist nicht vorgesehen.
             </p>
+            <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
+              Die Konzessionsnummer wird beim Anlegen festgelegt und kann danach nur von Onroda geändert werden.
+            </p>
             <button type="submit" className="partner-btn-primary" style={{ marginTop: 8 }}>
               Fahrzeug anlegen &amp; einreichen
             </button>
@@ -191,7 +235,7 @@ export default function FleetVehiclesTab({
                   .filter((v) => v.approvalStatus === "approved")
                   .map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.licensePlate} {v.model ? `· ${v.model}` : ""}
+                      {vehicleAssignLabel(v)}
                     </option>
                   ))}
               </select>
@@ -219,22 +263,24 @@ export default function FleetVehiclesTab({
               <th>Konzession</th>
               <th>HU</th>
               <th>Aktueller Fahrer</th>
+              {canManage ? <th>Aktionen</th> : null}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8}>Laden …</td>
+                <td colSpan={canManage ? 9 : 8}>Laden …</td>
               </tr>
             ) : vehicles.length === 0 ? (
               <tr>
-                <td colSpan={8}>Keine Fahrzeuge.</td>
+                <td colSpan={canManage ? 9 : 8}>Keine Fahrzeuge.</td>
               </tr>
             ) : (
               vehicles.map((v) => {
                 const a = assignments.find((x) => x.vehicleId === v.id);
                 const drv = a ? drivers.find((d) => d.id === a.driverId) : null;
-                const kz = v.konzessionNumber ?? v.taxiOrderNumber ?? "—";
+                const kz = vehicleKonzessionLabel(v);
+                const isEditing = editingVehicleId === v.id;
                 return (
                   <tr key={v.id}>
                     <td>{v.licensePlate}</td>
@@ -314,11 +360,46 @@ export default function FleetVehiclesTab({
                         ) : null}
                       </div>
                     </td>
-                    <td>{v.model || "—"}</td>
+                    <td>
+                      {isEditing ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <input
+                            className="partner-input"
+                            value={editForm.model}
+                            onChange={(ev) => setEditForm((f) => ({ ...f, model: ev.target.value }))}
+                            placeholder="Modell"
+                          />
+                          <input
+                            className="partner-input"
+                            value={editForm.color}
+                            onChange={(ev) => setEditForm((f) => ({ ...f, color: ev.target.value }))}
+                            placeholder="Farbe"
+                          />
+                        </div>
+                      ) : (
+                        v.model || "—"
+                      )}
+                    </td>
                     <td>{VEHICLE_TYPES.find((t) => t.value === v.vehicleType)?.label ?? v.vehicleType}</td>
                     <td>{VEHICLE_CLASSES.find((t) => t.value === v.vehicleClass)?.label ?? v.vehicleClass}</td>
-                    <td>{kz}</td>
-                    <td>{v.nextInspectionDate || "—"}</td>
+                    <td>
+                      <div>{kz}</div>
+                      <span className="partner-muted" style={{ fontSize: 11 }}>
+                        Nur Onroda änderbar
+                      </span>
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          className="partner-input"
+                          type="date"
+                          value={editForm.nextInspectionDate}
+                          onChange={(ev) => setEditForm((f) => ({ ...f, nextInspectionDate: ev.target.value }))}
+                        />
+                      ) : (
+                        v.nextInspectionDate || "—"
+                      )}
+                    </td>
                     <td>
                       {drv ? (
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
@@ -348,6 +429,38 @@ export default function FleetVehiclesTab({
                         "—"
                       )}
                     </td>
+                    {canManage ? (
+                      <td>
+                        {isEditing ? (
+                          <span style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            <button
+                              type="button"
+                              className="partner-btn-primary partner-btn-secondary--sm"
+                              disabled={editBusy}
+                              onClick={() => void saveVehicleEdit(v.id)}
+                            >
+                              {editBusy ? "…" : "Speichern"}
+                            </button>
+                            <button
+                              type="button"
+                              className="partner-btn-secondary partner-btn-secondary--sm"
+                              disabled={editBusy}
+                              onClick={() => setEditingVehicleId(null)}
+                            >
+                              Abbrechen
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="partner-btn-secondary partner-btn-secondary--sm"
+                            onClick={() => openVehicleEdit(v)}
+                          >
+                            Bearbeiten
+                          </button>
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })

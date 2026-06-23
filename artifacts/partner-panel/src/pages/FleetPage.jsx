@@ -384,6 +384,38 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     }
   }
 
+  async function patchVehicleStammdaten(vehicleId, body) {
+    if (!token || !canManage) return { ok: false };
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        if (data?.error === "admin_only_field") {
+          setMsg("Dieses Feld kann nur von Onroda geändert werden (z. B. Konzessionsnummer).");
+        } else if (data?.error === "field_locked") {
+          setMsg("In diesem Status können nur Modell, Farbe und HU-Datum geändert werden.");
+        } else {
+          setMsg("Fahrzeug konnte nicht gespeichert werden.");
+        }
+        return { ok: false };
+      }
+      setMsg("Fahrzeugdaten gespeichert.");
+      await loadAll();
+      return { ok: true };
+    } catch {
+      setMsg("Fahrzeug konnte nicht gespeichert werden.");
+      return { ok: false };
+    }
+  }
+
   async function setVehicleActive(vehicleId, isActive) {
     if (!token || !canManage) return;
     const actionLabel = isActive ? "aktivieren" : "deaktivieren";
@@ -771,6 +803,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
           uploadVehicleDocument={uploadVehicleDocument}
           submitVehicleApproval={submitVehicleApproval}
           setVehicleActive={setVehicleActive}
+          patchVehicleStammdaten={patchVehicleStammdaten}
           clearAssignment={clearAssignment}
         />
       ) : null}

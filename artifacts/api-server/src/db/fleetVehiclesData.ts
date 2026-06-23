@@ -539,6 +539,57 @@ export async function unblockFleetVehicleByAdmin(
   return { ok: true };
 }
 
+/** Admin: Stammdaten inkl. Kennzeichen/Konzession — ohne Partner-`field_locked`. */
+export async function adminPatchFleetVehicleStammdaten(
+  companyId: string,
+  vehicleId: string,
+  patch: Partial<{
+    licensePlate: string;
+    vin: string;
+    color: string;
+    model: string;
+    vehicleType: FleetVehicleType;
+    vehicleLegalType: FleetVehicleLegalType;
+    vehicleClass: FleetVehicleClass;
+    konzessionNumber: string;
+    nextInspectionDate: string | null;
+  }>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const keys = Object.keys(patch) as (keyof typeof patch)[];
+  if (keys.length === 0) return { ok: false, error: "no_fields" };
+  if (patch.konzessionNumber !== undefined && !patch.konzessionNumber.trim()) {
+    return { ok: false, error: "konzession_number_required" };
+  }
+  if (patch.licensePlate !== undefined && !patch.licensePlate.trim()) {
+    return { ok: false, error: "license_plate_required" };
+  }
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const set: Partial<typeof fleetVehiclesTable.$inferInsert> = { updated_at: new Date() };
+  if (patch.licensePlate !== undefined) set.license_plate = patch.licensePlate.trim();
+  if (patch.vin !== undefined) set.vin = patch.vin.trim();
+  if (patch.color !== undefined) set.color = patch.color.trim();
+  if (patch.model !== undefined) set.model = patch.model.trim();
+  if (patch.vehicleType !== undefined) set.vehicle_type = patch.vehicleType;
+  if (patch.vehicleLegalType !== undefined) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== undefined) set.vehicle_class = patch.vehicleClass;
+  if (patch.konzessionNumber !== undefined) {
+    const kz = patch.konzessionNumber.trim();
+    set.konzession_number = kz;
+    set.taxi_order_number = kz;
+  }
+  if (patch.nextInspectionDate !== undefined) {
+    set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
+  }
+  await db
+    .update(fleetVehiclesTable)
+    .set(set)
+    .where(and(eq(fleetVehiclesTable.id, vehicleId), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+
 export async function adminPatchFleetVehicleFields(
   companyId: string,
   vehicleId: string,

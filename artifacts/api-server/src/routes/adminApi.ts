@@ -227,7 +227,12 @@ import {
 } from "../db/adminTaxiFleetVehiclesData";
 import {
   adminPatchFleetVehicleFields,
+  adminPatchFleetVehicleStammdaten,
   findFleetVehicleInCompany,
+  insertFleetVehicle,
+  type FleetVehicleClass,
+  type FleetVehicleLegalType,
+  type FleetVehicleType,
   forceBlockFleetVehicleByAdmin,
   getFleetVehicleAdminDetail,
   listFleetVehicleDocumentStorageKeysAdmin,
@@ -2471,6 +2476,141 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles", async (req, res, next)
     if (!allowed) return;
     const items = await listAdminTaxiFleetVehicleRows(companyId);
     res.json({ ok: true, companyId, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate.trim() : "";
+    const konzessionNumber =
+      typeof b.konzessionNumber === "string"
+        ? b.konzessionNumber.trim()
+        : typeof b.taxiOrderNumber === "string"
+          ? b.taxiOrderNumber.trim()
+          : "";
+    if (!licensePlate) {
+      res.status(400).json({ error: "license_plate_required" });
+      return;
+    }
+    if (!konzessionNumber) {
+      res.status(400).json({ error: "konzession_number_required" });
+      return;
+    }
+    const vehicleType = (typeof b.vehicleType === "string" ? b.vehicleType : "sedan") as FleetVehicleType;
+    const allowedTypes: FleetVehicleType[] = ["sedan", "station_wagon", "van", "wheelchair"];
+    if (!allowedTypes.includes(vehicleType)) {
+      res.status(400).json({ error: "invalid_vehicle_type" });
+      return;
+    }
+    const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetVehicleClass;
+    const allowedClasses: FleetVehicleClass[] = ["standard", "xl", "wheelchair"];
+    if (!allowedClasses.includes(vehicleClass)) {
+      res.status(400).json({ error: "vehicle_class_invalid" });
+      return;
+    }
+    const resolvedClass: FleetVehicleClass = vehicleType === "wheelchair" ? "wheelchair" : vehicleClass;
+    const approveNow = b.approveNow !== false;
+    const ins = await insertFleetVehicle({
+      companyId,
+      licensePlate,
+      vin: typeof b.vin === "string" ? b.vin : "",
+      color: typeof b.color === "string" ? b.color : "",
+      model: typeof b.model === "string" ? b.model : "",
+      vehicleType,
+      vehicleLegalType: "taxi" as FleetVehicleLegalType,
+      vehicleClass: resolvedClass,
+      konzessionNumber,
+      nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
+      approvalStatus: approveNow ? "approved" : "draft",
+    });
+    if (!ins.ok) {
+      res.status(400).json({ error: ins.error });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_vehicle.created",
+      subjectType: "fleet_vehicle",
+      subjectId: ins.id,
+      meta: { licensePlate, konzessionNumber, approveNow, adminUserId: adminId },
+    });
+    res.status(201).json({ ok: true, id: ins.id, approvalStatus: approveNow ? "approved" : "draft" });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/stammdaten", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const patch: Parameters<typeof adminPatchFleetVehicleStammdaten>[2] = {};
+    if (typeof b.licensePlate === "string") patch.licensePlate = b.licensePlate;
+    if (typeof b.vin === "string") patch.vin = b.vin;
+    if (typeof b.color === "string") patch.color = b.color;
+    if (typeof b.model === "string") patch.model = b.model;
+    if (typeof b.konzessionNumber === "string") patch.konzessionNumber = b.konzessionNumber;
+    if (typeof b.taxiOrderNumber === "string" && patch.konzessionNumber === undefined) {
+      patch.konzessionNumber = b.taxiOrderNumber;
+    }
+    if (typeof b.nextInspectionDate === "string" || b.nextInspectionDate === null) {
+      patch.nextInspectionDate = b.nextInspectionDate === null ? null : String(b.nextInspectionDate);
+    }
+    if (typeof b.vehicleType === "string") {
+      const vt = b.vehicleType as FleetVehicleType;
+      const allowedTypes: FleetVehicleType[] = ["sedan", "station_wagon", "van", "wheelchair"];
+      if (!allowedTypes.includes(vt)) {
+        res.status(400).json({ error: "invalid_vehicle_type" });
+        return;
+      }
+      patch.vehicleType = vt;
+    }
+    if (typeof b.vehicleClass === "string") {
+      const cls = b.vehicleClass as FleetVehicleClass;
+      const allowedClasses: FleetVehicleClass[] = ["standard", "xl", "wheelchair"];
+      if (!allowedClasses.includes(cls)) {
+        res.status(400).json({ error: "vehicle_class_invalid" });
+        return;
+      }
+      patch.vehicleClass = cls;
+    }
+    const r = await adminPatchFleetVehicleStammdaten(companyId, vehicleId, patch);
+    if (!r.ok) {
+      const status = r.error === "not_found" ? 404 : 400;
+      res.status(status).json({ error: r.error });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_vehicle.stammdaten_patched",
+      subjectType: "fleet_vehicle",
+      subjectId: vehicleId,
+      meta: { fields: Object.keys(patch), adminUserId: adminId },
+    });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

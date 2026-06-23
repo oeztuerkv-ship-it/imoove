@@ -606,7 +606,6 @@ router.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, 
     if (typeof b.color === "string") patch.color = b.color;
     if (typeof b.model === "string") patch.model = b.model;
     if (typeof b.taxiOrderNumber === "string") patch.taxiOrderNumber = b.taxiOrderNumber;
-    if (typeof b.konzessionNumber === "string") patch.konzessionNumber = b.konzessionNumber;
     if (typeof b.nextInspectionDate === "string" || b.nextInspectionDate === null) {
       patch.nextInspectionDate =
         b.nextInspectionDate === null ? null : (b.nextInspectionDate as string);

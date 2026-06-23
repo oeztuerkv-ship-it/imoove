@@ -103,6 +103,8 @@ function auditActionDe(action) {
     "admin.fleet_vehicle.blocked": "Fahrzeug gesperrt",
     "admin.fleet_vehicle.unblocked": "Fahrzeug entsperrt",
     "admin.fleet_vehicle.notes_patched": "Sperrgrund/Notiz aktualisiert",
+    "admin.fleet_vehicle.created": "Fahrzeug angelegt (Admin)",
+    "admin.fleet_vehicle.stammdaten_patched": "Stammdaten aktualisiert",
   };
   return m[action] || action;
 }
@@ -133,6 +135,22 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
   const [noteIn, setNoteIn] = useState("");
   const [blockReasonIn, setBlockReasonIn] = useState("");
   const [actBusy, setActBusy] = useState("");
+  const [createForm, setCreateForm] = useState({
+    licensePlate: "",
+    model: "",
+    color: "",
+    konzessionNumber: "",
+    nextInspectionDate: "",
+  });
+  const [createBusy, setCreateBusy] = useState(false);
+  const [stammdatenForm, setStammdatenForm] = useState({
+    licensePlate: "",
+    model: "",
+    color: "",
+    konzessionNumber: "",
+    nextInspectionDate: "",
+  });
+  const [stammdatenBusy, setStammdatenBusy] = useState(false);
 
   const loadCompanies = useCallback(() => {
     setCLoading(true);
@@ -260,6 +278,18 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
     }
   }, [sel, companyId]);
 
+  useEffect(() => {
+    const v = detail?.vehicle;
+    if (!v) return;
+    setStammdatenForm({
+      licensePlate: v.licensePlate || "",
+      model: v.model || "",
+      color: v.color || "",
+      konzessionNumber: v.konzessionNumber || v.taxiOrderNumber || "",
+      nextInspectionDate: v.nextInspectionDate ? String(v.nextInspectionDate).slice(0, 10) : "",
+    });
+  }, [detail?.vehicle?.id, detail?.vehicle?.licensePlate, detail?.vehicle?.model, detail?.vehicle?.color, detail?.vehicle?.konzessionNumber, detail?.vehicle?.taxiOrderNumber, detail?.vehicle?.nextInspectionDate]);
+
   async function postAction(path, body) {
     if (!companyId || !sel) return;
     setActBusy(path);
@@ -331,6 +361,73 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
     }
   }
 
+  async function createVehicleAdmin(e) {
+    e.preventDefault();
+    if (!companyId) return;
+    setCreateBusy(true);
+    try {
+      const plate = createForm.licensePlate.trim();
+      const res = await fetch(`${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles`, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          licensePlate: plate,
+          model: createForm.model.trim(),
+          color: createForm.color.trim(),
+          konzessionNumber: createForm.konzessionNumber.trim(),
+          nextInspectionDate: createForm.nextInspectionDate.trim() || null,
+          approveNow: true,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.ok) {
+        window.alert(j?.error === "konzession_number_required" ? "Konzessionsnummer fehlt." : j?.error || "Anlegen fehlgeschlagen.");
+        return;
+      }
+      setCreateForm({ licensePlate: "", model: "", color: "", konzessionNumber: "", nextInspectionDate: "" });
+      loadVehicles(companyId);
+      if (j.id) {
+        setSel({ id: j.id, licensePlate: plate });
+      }
+    } catch {
+      window.alert("Anlegen fehlgeschlagen.");
+    } finally {
+      setCreateBusy(false);
+    }
+  }
+
+  async function saveStammdatenAdmin() {
+    if (!companyId || !sel?.id) return;
+    setStammdatenBusy(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(sel.id)}/stammdaten`,
+        {
+          method: "PATCH",
+          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            licensePlate: stammdatenForm.licensePlate.trim(),
+            model: stammdatenForm.model.trim(),
+            color: stammdatenForm.color.trim(),
+            konzessionNumber: stammdatenForm.konzessionNumber.trim(),
+            nextInspectionDate: stammdatenForm.nextInspectionDate.trim() || null,
+          }),
+        },
+      );
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.ok) {
+        window.alert(j?.error || "Speichern fehlgeschlagen.");
+        return;
+      }
+      loadVehicles(companyId);
+      loadDetailAndAudit(companyId, sel.id);
+    } catch {
+      window.alert("Speichern fehlgeschlagen.");
+    } finally {
+      setStammdatenBusy(false);
+    }
+  }
+
   async function openPdf(vehicleId, storageKey) {
     if (!companyId) return;
     try {
@@ -394,6 +491,38 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
             <p className="admin-table-sub">Lade Fahrzeuge …</p>
           ) : (
             <>
+              <form className="admin-m-form admin-taxi-fv-create" onSubmit={createVehicleAdmin} style={{ marginBottom: 14, maxWidth: 720 }}>
+                <div className="admin-m-card__h" style={{ marginBottom: 8 }}>
+                  <span className="admin-panel-card__title" style={{ margin: 0, fontSize: "1rem" }}>
+                    Neues Fahrzeug (direkt freigegeben)
+                  </span>
+                </div>
+                <div className="admin-m-form" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
+                  <label className="admin-m-lbl">
+                    Kennzeichen *
+                    <input className="admin-m-inp" value={createForm.licensePlate} onChange={(e) => setCreateForm((f) => ({ ...f, licensePlate: e.target.value }))} required />
+                  </label>
+                  <label className="admin-m-lbl">
+                    Konzession *
+                    <input className="admin-m-inp" value={createForm.konzessionNumber} onChange={(e) => setCreateForm((f) => ({ ...f, konzessionNumber: e.target.value }))} required />
+                  </label>
+                  <label className="admin-m-lbl">
+                    Modell
+                    <input className="admin-m-inp" value={createForm.model} onChange={(e) => setCreateForm((f) => ({ ...f, model: e.target.value }))} />
+                  </label>
+                  <label className="admin-m-lbl">
+                    Farbe
+                    <input className="admin-m-inp" value={createForm.color} onChange={(e) => setCreateForm((f) => ({ ...f, color: e.target.value }))} />
+                  </label>
+                  <label className="admin-m-lbl">
+                    TÜV bis
+                    <input className="admin-m-inp" type="date" value={createForm.nextInspectionDate} onChange={(e) => setCreateForm((f) => ({ ...f, nextInspectionDate: e.target.value }))} />
+                  </label>
+                </div>
+                <button type="submit" className="admin-c-btn" disabled={createBusy} style={{ marginTop: 10 }}>
+                  {createBusy ? "Speichert …" : "Fahrzeug anlegen"}
+                </button>
+              </form>
               <input
                 className="admin-m-inp"
                 value={dQuery}
@@ -436,7 +565,12 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
                       >
                         <td>
                           <span className="admin-taxi-fv-tdpl">{v.licensePlate}</span>
-                          <div className="admin-taxi-fv-tdsub">{v.model || "—"}</div>
+                          <div className="admin-taxi-fv-tdsub">
+                            {v.model || "—"}
+                            {v.konzessionNumber || v.taxiOrderNumber
+                              ? ` · Konz. ${v.konzessionNumber || v.taxiOrderNumber}`
+                              : ""}
+                          </div>
                         </td>
                         <td>
                           <span className={`admin-c-badge ${approvalBadgeClass(v.approvalStatus)}`}>
@@ -576,25 +710,41 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
                     <span className="admin-panel-card__title" style={{ margin: 0 }}>
                       Fahrzeug — Stammdaten
                     </span>
+                    <button type="button" className="admin-c-btn" disabled={stammdatenBusy} onClick={() => void saveStammdatenAdmin()}>
+                      {stammdatenBusy ? "Speichert …" : "Stammdaten speichern"}
+                    </button>
                   </div>
-                  <div className="admin-taxi-fv-kv">
-                    <KvRow label="Kennzeichen">{detail.vehicle.licensePlate}</KvRow>
+                  <div className="admin-m-form" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", padding: "12px 14px 16px", gap: 10 }}>
+                    <label className="admin-m-lbl">
+                      Kennzeichen
+                      <input className="admin-m-inp" value={stammdatenForm.licensePlate} onChange={(e) => setStammdatenForm((f) => ({ ...f, licensePlate: e.target.value }))} />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Konzession / Ordnungsnr.
+                      <input className="admin-m-inp" value={stammdatenForm.konzessionNumber} onChange={(e) => setStammdatenForm((f) => ({ ...f, konzessionNumber: e.target.value }))} />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Hersteller / Modell
+                      <input className="admin-m-inp" value={stammdatenForm.model} onChange={(e) => setStammdatenForm((f) => ({ ...f, model: e.target.value }))} />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Farbe
+                      <input className="admin-m-inp" value={stammdatenForm.color} onChange={(e) => setStammdatenForm((f) => ({ ...f, color: e.target.value }))} />
+                    </label>
+                    <label className="admin-m-lbl">
+                      TÜV (HU) gültig bis
+                      <input className="admin-m-inp" type="date" value={stammdatenForm.nextInspectionDate} onChange={(e) => setStammdatenForm((f) => ({ ...f, nextInspectionDate: e.target.value }))} />
+                    </label>
+                  </div>
+                  <div className="admin-taxi-fv-kv" style={{ paddingTop: 0 }}>
                     {detail.vehicle.vin ? <KvRow label="FIN / VIN">{detail.vehicle.vin}</KvRow> : null}
-                    <KvRow label="Hersteller / Modell">{detail.vehicle.model || "—"}</KvRow>
                     <KvRow label="Baujahr">{detail.vehicle.modelYear != null ? String(detail.vehicle.modelYear) : "—"}</KvRow>
-                    <KvRow label="Farbe">{detail.vehicle.color || "—"}</KvRow>
                     <KvRow label="Fahrzeugtyp">{vehicleTypeDe(detail.vehicle.vehicleType)}</KvRow>
                     <KvRow label="Fahrart / Klasse">
                       {legalTypeDe(detail.vehicle.vehicleLegalType)} · {vehicleClassDe(detail.vehicle.vehicleClass)}
                     </KvRow>
                     <KvRow label="Sitzplätze">
                       {detail.vehicle.passengerSeats != null ? String(detail.vehicle.passengerSeats) : "—"}
-                    </KvRow>
-                    <KvRow label="Konzession / Ordnungsnr.">
-                      {detail.vehicle.konzessionNumber || detail.vehicle.taxiOrderNumber || "—"}
-                    </KvRow>
-                    <KvRow label="TÜV (Hauptuntersuchung) gültig bis" wideValue>
-                      {fmtDate(detail.vehicle.nextInspectionDate)}
                     </KvRow>
                   </div>
                 </section>

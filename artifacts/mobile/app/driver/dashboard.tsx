@@ -2684,6 +2684,7 @@ export default function DriverDashboard() {
     Array<{
       id: string;
       licensePlate: string;
+      konzessionNumber?: string;
       model: string;
       selected: boolean;
       isActive: boolean;
@@ -2849,6 +2850,8 @@ export default function DriverDashboard() {
           licensePlate?: string;
           plate?: string;
           license_plate?: string;
+          konzessionNumber?: string;
+          konzession_number?: string;
           model: string;
           selected: boolean;
           isActive?: boolean;
@@ -2861,22 +2864,31 @@ export default function DriverDashboard() {
         return;
       }
       setVehicleOptions(
-        data.vehicles.map((v) => ({
-          id: v.id,
-          licensePlate:
-            typeof v.licensePlate === "string" && v.licensePlate.trim()
-              ? v.licensePlate.trim()
-              : typeof v.plate === "string" && v.plate.trim()
-                ? v.plate.trim()
-                : typeof v.license_plate === "string" && v.license_plate.trim()
-                  ? v.license_plate.trim()
-                  : "—",
-          model: v.model,
-          selected: Boolean(v.selected),
-          isActive: Boolean(v.isActive),
-          approvalStatus: typeof v.approvalStatus === "string" ? v.approvalStatus : "pending",
-          selectable: Boolean(v.selectable),
-        })),
+        data.vehicles.map((v) => {
+          const konzessionNumber =
+            typeof v.konzessionNumber === "string" && v.konzessionNumber.trim()
+              ? v.konzessionNumber.trim()
+              : typeof v.konzession_number === "string" && v.konzession_number.trim()
+                ? v.konzession_number.trim()
+                : "";
+          return {
+            id: v.id,
+            licensePlate:
+              typeof v.licensePlate === "string" && v.licensePlate.trim()
+                ? v.licensePlate.trim()
+                : typeof v.plate === "string" && v.plate.trim()
+                  ? v.plate.trim()
+                  : typeof v.license_plate === "string" && v.license_plate.trim()
+                    ? v.license_plate.trim()
+                    : "—",
+            konzessionNumber,
+            model: v.model,
+            selected: Boolean(v.selected),
+            isActive: Boolean(v.isActive),
+            approvalStatus: typeof v.approvalStatus === "string" ? v.approvalStatus : "pending",
+            selectable: Boolean(v.selectable),
+          };
+        }),
       );
     } catch {
       setVehicleOptions([]);
@@ -4285,6 +4297,11 @@ export default function DriverDashboard() {
                       {v.model ? (
                         <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
                           {v.model}
+                        </Text>
+                      ) : null}
+                      {v.konzessionNumber ? (
+                        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12, marginTop: 2 }}>
+                          Konzession {v.konzessionNumber}
                         </Text>
                       ) : null}
                       <View style={activeStyles.sheetStatusRow}>
