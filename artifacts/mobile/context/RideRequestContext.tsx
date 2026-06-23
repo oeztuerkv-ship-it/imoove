@@ -1545,9 +1545,14 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
   const updateRequestDriverNote = useCallback(
     async (id: string, driverNote: string) => {
+      const token = await readStoredCustomerSessionToken();
+      if (!token) throw new Error("unauthorized");
       const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(id)}/driver-note`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ driverNote }),
       });
       const updated = await res.json().catch(() => null);

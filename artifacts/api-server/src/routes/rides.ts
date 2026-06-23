@@ -1903,10 +1903,16 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
 });
 
 
-router.patch("/rides/:id/driver-note", async (req, res, next) => {
+router.patch("/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
   try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
     const { id } = req.params;
-    const cur = await findRide(id);
+    const passengerId = customerPassengerId(sess);
+    const cur = await findRideForPassenger(id, passengerId);
     if (!cur) {
       res.status(404).json({ error: "not_found" });
       return;
@@ -1950,7 +1956,7 @@ router.patch("/rides/:id/driver-note", async (req, res, next) => {
         accessibilityOptions: nextAccessibilityOptions,
         partnerBookingMeta: nextPartnerBookingMeta,
       },
-      { mutationActor: { actorType: "customer", actorId: cur.passengerId ?? null } },
+      { mutationActor: { actorType: "customer", actorId: passengerId } },
     );
 
     if (!updated) {

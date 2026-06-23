@@ -27,7 +27,7 @@ Weitere öffentliche Ride-Routen sollten weiterhin in Reviews (z. B. Schreibzugr
 
 Wenn `requireAdminApiBearer` als `router.use()` auf **die gesamte** `adminApi`-Router-Instanz gelegt wird, läuft die Middleware für **jede** Anfrage, die diesen Router durchläuft — inkl. Pfade, die gar nicht unter `/admin` liegen, sobald die Router-Reihenfolge im Index `adminApi` vor `rides` mountet. Dann lieferte **`GET /rides` fälschlich 401**, sobald `ADMIN_API_BEARER_TOKEN` gesetzt war.
 
-**Fix im Code:** Admin-JSON hängt unter einem **Unter-Router** `router.use("/admin", adminJson)` mit `adminJson.use(requireAdminApiBearer)` — Bearer gilt nur noch für **`/admin/*`**. **`GET /rides` bleibt ohne Bearer erreichbar** (weiterhin das dokumentierte öffentliche Risiko).
+**Fix im Code:** Admin-JSON hängt unter einem **Unter-Router** `router.use("/admin", adminJson)` mit `adminJson.use(requireAdminApiBearer)` — Bearer gilt nur noch für **`/admin/*`**, ohne die öffentlichen Ride-Routen in `rides.ts` mit abzusichern. Die frühere öffentliche **`GET /rides`-Liste** wurde entfernt (`f73e9d0e`); anonymer Aufruf → **404**. Globale Fahrten nur noch **`GET /api/admin/rides`** mit Bearer.
 
 ---
 

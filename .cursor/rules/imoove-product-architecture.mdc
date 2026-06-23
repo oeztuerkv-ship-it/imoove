@@ -32,7 +32,7 @@ Jede neue Funktion **explizit** einer oder mehreren Rollen zuordnen: **welche Ob
 - Admin-Stats (`/api/admin/stats`) **nicht** in Partner- oder Kunden-Apps spiegeln ohne eigene, gefilterte Endpunkte.
 - Partner-Daten **nie** über Admin-only-Shortcuts für den Partner exponieren (und umgekehrt).
 - Öffentliche oder marketing-taugliche Routen **keine** rolleninternen Listen liefern.
-- **Bewusstes Risiko (Stand jetzt):** Die Admin-Fahrtenliste nutzt **`GET /rides`**, dieser Endpunkt ist **ohne** Admin-Bearer **öffentlich** (globale Liste). Nicht mit mandantengebundenen Panel-Routen verwechseln; Hintergrund und Testcheckliste: **`docs/onroda-operator-panel-and-api-risks.md`**.
+- **Globale Fahrtenliste:** Admin nutzt **`GET /api/admin/rides`** mit Admin-Bearer (nicht öffentlich). Die frühere öffentliche **`GET /rides`-Liste** wurde entfernt — Hintergrund und Smoke-Checkliste: **`docs/onroda-operator-panel-and-api-risks.md`**.
 
 ## OAuth / JWT (kurz)
 
