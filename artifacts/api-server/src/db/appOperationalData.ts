@@ -86,6 +86,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     airportFlatEur: 0,
     onrodaFixBase: 3.5,
     onrodaFixPerKm: 2.2,
+    /** Festpreis außerhalb Pflichtfahrgebiet (Formel km × Faktor + Grundgebühr). */
+    fixedPriceOutsideActive: true,
     shortTripRule: "none",
     /** Einheitspreis pro km (wenn > 0, optional kmPricingModel \"single\"). */
     perKm: 0,

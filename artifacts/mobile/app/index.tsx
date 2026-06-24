@@ -253,6 +253,15 @@ export default function HomeScreen() {
     router.replace("/booking-medical" as Href);
   }, [customerAppBlocked, blockedCustomerAlert, resetRide]);
 
+  const goFixedPriceBooking = useCallback(() => {
+    if (customerAppBlocked) {
+      blockedCustomerAlert();
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.replace("/booking-fixed-price" as Href);
+  }, [customerAppBlocked, blockedCustomerAlert]);
+
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
   const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;
 
@@ -1662,13 +1671,19 @@ export default function HomeScreen() {
                 <>
                   <Pressable style={[styles.miniBtnSheetWhite, styles.miniBtnHalf]} onPress={goReserveNewBooking}>
                     <Feather name="calendar" size={16} color={HOME_SHEET_TEXT} />
-                    <Text style={styles.miniBtnSheetWhiteText} numberOfLines={1}>
+                    <Text style={[styles.miniBtnSheetWhiteText, styles.miniBtnCompactText]} numberOfLines={1}>
                       Reservieren
+                    </Text>
+                  </Pressable>
+                  <Pressable style={[styles.miniBtnSheetFixed, styles.miniBtnHalf]} onPress={goFixedPriceBooking}>
+                    <Feather name="tag" size={16} color={ONRODA_MARK_RED} />
+                    <Text style={[styles.miniBtnSheetFixedText, styles.miniBtnCompactText]} numberOfLines={1}>
+                      Festpreis
                     </Text>
                   </Pressable>
                   <Pressable style={[styles.miniBtnSheetMedical, styles.miniBtnHalf]} onPress={goMedicalBooking}>
                     <MaterialCommunityIcons name="medical-bag" size={17} color={HOME_MEDICAL_GREEN_DARK} />
-                    <Text style={styles.miniBtnSheetMedicalText} numberOfLines={1}>
+                    <Text style={[styles.miniBtnSheetMedicalText, styles.miniBtnCompactText]} numberOfLines={1}>
                       Krankenfahrt
                     </Text>
                   </Pressable>
@@ -1677,8 +1692,14 @@ export default function HomeScreen() {
                 <>
                   <Pressable style={[styles.miniBtnSecondaryDark, styles.miniBtnHalf]} onPress={goBookingCenter}>
                     <Feather name="layers" size={20} color={HOME_SHEET_TEXT} />
-                    <Text style={styles.miniBtnSecondaryDarkText} numberOfLines={1}>
+                    <Text style={[styles.miniBtnSecondaryDarkText, styles.miniBtnCompactText]} numberOfLines={1}>
                       Buchungszentrale
+                    </Text>
+                  </Pressable>
+                  <Pressable style={[styles.miniBtnSheetFixed, styles.miniBtnHalf]} onPress={goFixedPriceBooking}>
+                    <Feather name="tag" size={16} color={ONRODA_MARK_RED} />
+                    <Text style={[styles.miniBtnSheetFixedText, styles.miniBtnCompactText]} numberOfLines={1}>
+                      Festpreis
                     </Text>
                   </Pressable>
                   <Pressable style={[styles.miniBtnSheetMedical, styles.miniBtnHalf]} onPress={goMedicalBooking}>
@@ -3584,6 +3605,27 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: HOME_MEDICAL_GREEN_DARK,
     flexShrink: 1,
+  },
+  miniBtnSheetFixed: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(5),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(8),
+    borderRadius: rs(999),
+    backgroundColor: "#FFF5F5",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ONRODA_MARK_RED,
+  },
+  miniBtnSheetFixedText: {
+    fontSize: rf(13),
+    fontFamily: "Inter_600SemiBold",
+    color: ONRODA_MARK_RED,
+    flexShrink: 1,
+  },
+  miniBtnCompactText: {
+    fontSize: rf(12),
   },
   miniBtnPrimaryRed: {
     flex: 1,

@@ -84,6 +84,13 @@ export default function BookingCenterScreen() {
       onPress: () => router.replace("/new-booking"),
     },
     {
+      key: "fixed",
+      title: "Festpreis",
+      subtitle: "Außerhalb Stuttgart/Esslingen — verbindlicher Preis vor der Buchung.",
+      icon: "tag",
+      onPress: () => router.replace("/booking-fixed-price"),
+    },
+    {
       key: "medical",
       title: "Krankenfahrt",
       subtitle: "Fahrtrelevante Angaben ohne Diagnose speichern.",

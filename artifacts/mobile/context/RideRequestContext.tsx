@@ -125,10 +125,12 @@ export interface RideRequest {
   fromFull: string;
   fromLat?: number;
   fromLon?: number;
+  fromCity?: string;
   to: string;
   toFull: string;
   toLat?: number;
   toLon?: number;
+  toCity?: string;
   distanceKm: number;
   durationMinutes: number;
   /** Sofort-Markt vor Annahme (API): Anfahrt ohne Abholkoordinaten. */
@@ -136,7 +138,8 @@ export interface RideRequest {
   pickupReachMinutes?: number | null;
   estimatedFare: number;
   tariffSnapshot?: RideTariffSnapshot | null;
-  pricingMode?: "taxi_tariff" | null;
+  pricingMode?: "taxi_tariff" | "fixed_price" | null;
+  fixedPriceAgreementAccepted?: boolean;
   finalFare?: number | null;
   tipAmount?: number | null;
   tipPaidAt?: string | null;
@@ -565,9 +568,11 @@ function normalizeRequest(r: any): RideRequest {
       return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as RideTariffSnapshot) : null;
     })(),
     pricingMode:
-      r.pricingMode === "taxi_tariff" || r.pricing_mode === "taxi_tariff"
-        ? "taxi_tariff"
-        : null,
+      r.pricingMode === "fixed_price" || r.pricing_mode === "fixed_price"
+        ? "fixed_price"
+        : r.pricingMode === "taxi_tariff" || r.pricing_mode === "taxi_tariff"
+          ? "taxi_tariff"
+          : null,
     finalFare: parseFinalFareFromApi(r as Record<string, unknown>),
     tipAmount: (() => {
       const raw = (r as Record<string, unknown>).tipAmount ?? (r as Record<string, unknown>).tip_amount;

@@ -31,6 +31,9 @@ export default function AppOperationalTariffsPage() {
   const [tariffs, setTariffs] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [tariffsActive, setTariffsActive] = useState(true);
+  const [fixedPriceOutsideActive, setFixedPriceOutsideActive] = useState(true);
+  const [onrodaFixBase, setOnrodaFixBase] = useState("3.50");
+  const [onrodaFixPerKm, setOnrodaFixPerKm] = useState("2.20");
   const [busy, setBusy] = useState(false);
   const editorRef = useRef(null);
 
@@ -69,6 +72,18 @@ export default function AppOperationalTariffsPage() {
       setTariffs(getTariffCatalog(data.config));
       if (data.config?.tariffs?.active !== undefined) {
         setTariffsActive(data.config.tariffs.active !== false);
+      }
+      const t = data.config?.tariffs;
+      if (t && typeof t === "object") {
+        if (t.fixedPriceOutsideActive !== undefined) {
+          setFixedPriceOutsideActive(t.fixedPriceOutsideActive !== false);
+        }
+        if (typeof t.onrodaFixBase === "number" && Number.isFinite(t.onrodaFixBase)) {
+          setOnrodaFixBase(String(t.onrodaFixBase));
+        }
+        if (typeof t.onrodaFixPerKm === "number" && Number.isFinite(t.onrodaFixPerKm)) {
+          setOnrodaFixPerKm(String(t.onrodaFixPerKm));
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
@@ -234,6 +249,33 @@ export default function AppOperationalTariffsPage() {
     }
   };
 
+  const saveFixedPriceOutside = async () => {
+    const base = Number(onrodaFixBase);
+    const perKm = Number(onrodaFixPerKm);
+    if (!Number.isFinite(base) || base < 0 || !Number.isFinite(perKm) || perKm < 0) {
+      setError("Grundgebühr und €/km müssen gültige Zahlen sein.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const prevTar = config?.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
+      await patchOperational({
+        tariffs: {
+          ...prevTar,
+          fixedPriceOutsideActive,
+          onrodaFixBase: base,
+          onrodaFixPerKm: perKm,
+        },
+      });
+      setOk("Festpreis-Einstellungen gespeichert.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const runPreview = async () => {
     setPreview(null);
     setPrevBusy(true);
@@ -302,6 +344,60 @@ export default function AppOperationalTariffsPage() {
             Speichern
           </button>
         </div>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Festpreis außerhalb Pflichtfahrgebiet"
+        subtitle="Formel: Grundgebühr + (km × Faktor) — nur wenn Start und Ziel außerhalb Stuttgart/Esslingen"
+        defaultOpen
+      >
+        <div className="admin-toolbar-inline" style={{ marginBottom: 12 }}>
+          <label className="admin-toolbar-inline__label">
+            <input
+              type="checkbox"
+              checked={fixedPriceOutsideActive}
+              onChange={(e) => setFixedPriceOutsideActive(e.target.checked)}
+            />
+            Festpreis-Buchung in der App aktiv
+          </label>
+        </div>
+        <div className="admin-fares-grid-num admin-fares-grid-num--2" style={{ maxWidth: 420 }}>
+          <div>
+            <label className="admin-field-label">Grundgebühr (€)</label>
+            <input
+              className="admin-input"
+              type="number"
+              step="0.01"
+              min="0"
+              value={onrodaFixBase}
+              onChange={(e) => setOnrodaFixBase(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="admin-field-label">Faktor (€ / km)</label>
+            <input
+              className="admin-input"
+              type="number"
+              step="0.01"
+              min="0"
+              value={onrodaFixPerKm}
+              onChange={(e) => setOnrodaFixPerKm(e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginTop: 10 }}>
+          Beispiel: {Number(onrodaFixBase || 0).toFixed(2)} € + 40 km × {Number(onrodaFixPerKm || 0).toFixed(2)} €/km.
+          Zuordnung über Ortsname in der Adresse (Stuttgart, Esslingen-Landkreis) — kein Polygon.
+        </p>
+        <button
+          type="button"
+          className="admin-c-btn-sec"
+          style={{ marginTop: 12 }}
+          disabled={busy}
+          onClick={() => void saveFixedPriceOutside()}
+        >
+          Festpreis speichern
+        </button>
       </AdminCollapsibleSection>
 
       <AdminCollapsibleSection

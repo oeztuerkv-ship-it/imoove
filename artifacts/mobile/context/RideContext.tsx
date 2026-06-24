@@ -13,6 +13,18 @@ import { fetchFareEstimate } from "@/utils/fareEstimateApi";
 import { vehicleSurchargeFromEstimates } from "@/utils/customerFareDisplay";
 import { type FareBreakdown } from "@/utils/fareCalculator";
 import { type GeoLocation, type RouteResult, getRoute, getRouteThrough } from "@/utils/routing";
+import {
+  isFixedPriceOutsideMandatoryAreaEligible,
+  isMandatoryTaxiAreaLocation,
+  isOnrodaFixRouteEligible,
+  isTripWithinStuttgartEsslingenTariffArea,
+} from "@/utils/mandatoryTaxiArea";
+
+export {
+  isFixedPriceOutsideMandatoryAreaEligible,
+  isOnrodaFixRouteEligible,
+  isTripWithinStuttgartEsslingenTariffArea,
+};
 
 export type VehicleType = "standard" | "xl" | "wheelchair";
 export type RideServiceClass = "rollstuhl" | "xl" | "taxi";
@@ -166,53 +178,6 @@ function normalizeForMatch(value: string | null | undefined): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-const ESSLINGEN_COUNTY_MUNICIPALITIES = [
-  "altbach", "aichwald", "beuren", "deizisau", "denkendorf", "dettingen unter teck",
-  "esslingen", "frickenhausen", "grossbettlingen", "hochdorf",
-  "holzmaden", "kirchheim unter teck", "koengen", "köngen",
-  "lenningen", "lichtenwald", "neuhausen auf den fildern", "neidlingen", "neckartailfingen",
-  "neckartenzlingen", "nuertingen", "oberboihingen", "ostfildern", "owen",
-  "plochingen", "reichenbach an der fils", "schlaitdorf", "unterensingen", "weilheim an der teck",
-  "wendlingen am neckar", "wolfschlugen",
-];
-
-function isStuttgart(loc: GeoLocation): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("stuttgart")) return true;
-  return normalizeForMatch(loc.displayName).includes("stuttgart");
-}
-
-function isLeinfeldenEchterdingen(loc: GeoLocation): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("leinfelden-echterdingen") || city.includes("leinfelden echterdingen")) return true;
-  const name = normalizeForMatch(loc.displayName);
-  return name.includes("leinfelden-echterdingen") || name.includes("leinfelden echterdingen");
-}
-
-function isFilderstadt(loc: GeoLocation): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("filderstadt")) return true;
-  return normalizeForMatch(loc.displayName).includes("filderstadt");
-}
-
-function isEsslingenCounty(loc: GeoLocation): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("esslingen")) return true;
-  if (ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => city.includes(municipality))) return true;
-  const name = normalizeForMatch(loc.displayName);
-  if (name.includes("esslingen")) return true;
-  return ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => name.includes(municipality));
-}
-
-function isTariffAreaLocation(loc: GeoLocation): boolean {
-  return (
-    isStuttgart(loc) ||
-    isEsslingenCounty(loc) ||
-    isLeinfeldenEchterdingen(loc) ||
-    isFilderstadt(loc)
-  );
-}
-
 export interface TariffAreaDebugInfo {
   originRaw: string;
   destinationRaw: string;
@@ -231,8 +196,8 @@ export function getTariffAreaDebugInfo(origin: GeoLocation, destination: GeoLoca
     : "";
   const originNormalized = normalizeForMatch(originRaw);
   const destinationNormalized = normalizeForMatch(destinationRaw);
-  const originInTariffArea = isTariffAreaLocation(origin);
-  const destinationInTariffArea = destination ? isTariffAreaLocation(destination) : false;
+  const originInTariffArea = isMandatoryTaxiAreaLocation(origin);
+  const destinationInTariffArea = destination ? isMandatoryTaxiAreaLocation(destination) : false;
   return {
     originRaw,
     destinationRaw,
@@ -244,22 +209,15 @@ export function getTariffAreaDebugInfo(origin: GeoLocation, destination: GeoLoca
   };
 }
 
-export function isTripWithinStuttgartEsslingenTariffArea(origin: GeoLocation, destination: GeoLocation | null): boolean {
-  if (!destination) return false;
-  return isTariffAreaLocation(origin) && isTariffAreaLocation(destination);
-}
-
-export function isOnrodaFixRouteEligible(origin: GeoLocation, destination: GeoLocation | null): boolean {
-  return !isTripWithinStuttgartEsslingenTariffArea(origin, destination);
-}
-
-/** pricing_mode für Kundenbuchungen: Onroda nutzt nur noch Taxi-Schätzpreis. */
-export function effectivePricingModeForCustomerRide(_input: {
+/** pricing_mode für Kundenbuchungen (Standard = Taxameter). */
+export function effectivePricingModeForCustomerRide(input: {
   selectedServiceClass: RideServiceClass | null;
   selectedVehicle: VehicleType | null;
   origin: GeoLocation;
   destination: GeoLocation | null;
-}): "taxi_tariff" {
+  bookingFlow?: "fixed_price" | "standard";
+}): "taxi_tariff" | "fixed_price" {
+  if (input.bookingFlow === "fixed_price") return "fixed_price";
   return "taxi_tariff";
 }
 

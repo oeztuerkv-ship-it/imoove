@@ -90,6 +90,7 @@ function RootLayoutNav() {
         options={{ headerShown: false, gestureEnabled: true, animation: "slide_from_right" }}
       />
       <Stack.Screen name="booking-medical" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="booking-fixed-price" options={{ headerShown: false, gestureEnabled: true }} />
       <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
       <Stack.Screen name="camera-test" options={{ headerShown: true, title: "Kamera-Test" }} />
       <Stack.Screen name="service-detail" options={{ headerShown: false, animation: "slide_from_right" }} />

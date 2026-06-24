@@ -55,6 +55,7 @@ import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePu
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, computeRideBookingPricing } from "../lib/rideBookingPricing";
+import { checkFixedPriceBooking, computeFixedPriceRideBookingPricing } from "../lib/fixedPriceBooking";
 import { buildCustomerReceiptHtmlForRide } from "../lib/customerReceipt";
 import { buildCustomerReceiptPdfForRide } from "../lib/customerReceiptPdf";
 import { anyActiveRegionRequiresClientCoordinates } from "../lib/serviceRegionMatch";
@@ -588,6 +589,58 @@ router.get("/fare-estimate", async (req, res, next) => {
         engine: { subtotal: est.subtotal, afterMinFare: est.afterMinFare },
       },
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/fixed-price-estimate", async (req, res, next) => {
+  try {
+    const opPayload = await getOperationalConfigPayload();
+    const gate = assertPlatformNewRideAllowed(opPayload);
+    if (!gate.ok) {
+      res.status(gate.status).json({ error: gate.error, message: gate.message });
+      return;
+    }
+    const fromFull = String(req.query.fromFull ?? req.query.from ?? "").trim();
+    const toFull = String(req.query.toFull ?? req.query.to ?? "").trim();
+    if (!fromFull || !toFull) {
+      res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    const fromLat = optCoord(
+      (req.query as { fromLat?: unknown; from_lat?: unknown }).fromLat ??
+        (req.query as { from_lat?: unknown }).from_lat,
+    );
+    const fromLon = optCoord(
+      (req.query as { fromLon?: unknown; from_lon?: unknown }).fromLon ??
+        (req.query as { from_lon?: unknown }).from_lon,
+    );
+    const toLat = optCoord(
+      (req.query as { toLat?: unknown; to_lat?: unknown }).toLat ?? (req.query as { to_lat?: unknown }).to_lat,
+    );
+    const toLon = optCoord(
+      (req.query as { toLon?: unknown; to_lon?: unknown }).toLon ?? (req.query as { to_lon?: unknown }).to_lon,
+    );
+    const distanceKmRaw = Number(req.query.distanceKm ?? req.query.distance_km ?? 0);
+    let distanceKm = Number.isFinite(distanceKmRaw) && distanceKmRaw > 0 ? distanceKmRaw : 0;
+    if (distanceKm <= 0 && fromLat != null && fromLon != null && toLat != null && toLon != null) {
+      distanceKm = haversineDistanceKm(fromLat, fromLon, toLat, toLon);
+    }
+    if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
+      res.status(400).json({ error: "distance_km_invalid" });
+      return;
+    }
+    const fromCity =
+      typeof req.query.fromCity === "string" ? req.query.fromCity.trim() : undefined;
+    const toCity = typeof req.query.toCity === "string" ? req.query.toCity.trim() : undefined;
+    const result = checkFixedPriceBooking({
+      opPayload,
+      from: { displayName: fromFull, city: fromCity || null },
+      to: { displayName: toFull, city: toCity || null },
+      distanceKm,
+    });
+    res.json({ ok: true, ...result });
   } catch (e) {
     next(e);
   }
@@ -1557,22 +1610,61 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
       }
     }
     const atBooking = new Date();
-    const bookingPricing = computeRideBookingPricing({
-      opPayload,
-      regions,
-      fromFull,
-      fromLat: fromLatB,
-      fromLon: fromLonB,
-      distanceKm: distanceKmB,
-      tripMinutes: tripMinutesB,
-      waitingMinutes: waitingMinutesB,
-      vehicle: vehicleB,
-      passengerCount: passengerCountB,
-      at: atBooking,
-    });
+    const fromCityB =
+      typeof (raw as { fromCity?: unknown }).fromCity === "string"
+        ? String((raw as { fromCity?: unknown }).fromCity).trim()
+        : "";
+    const toCityB =
+      typeof (raw as { toCity?: unknown }).toCity === "string"
+        ? String((raw as { toCity?: unknown }).toCity).trim()
+        : "";
+    const fixedPriceAgreementAccepted =
+      (raw as { fixedPriceAgreementAccepted?: unknown }).fixedPriceAgreementAccepted === true;
+
+    let bookingPricing: ReturnType<typeof computeRideBookingPricing>;
+    let serverPricingMode: string;
+
+    if (rawPricingModeStr === "fixed_price") {
+      if (!fixedPriceAgreementAccepted) {
+        res.status(400).json({
+          error: "fixed_price_agreement_required",
+          message: "Bitte den Festpreis und die Fahrpreisvereinbarung bestätigen.",
+        });
+        return;
+      }
+      const fixedPricing = computeFixedPriceRideBookingPricing({
+        opPayload,
+        from: { displayName: fromFull, city: fromCityB || null },
+        to: { displayName: toFull, city: toCityB || null },
+        distanceKm: distanceKmB,
+        tripMinutes: tripMinutesB,
+        vehicle: vehicleB,
+        at: atBooking,
+      });
+      if (!fixedPricing.ok) {
+        res.status(400).json({ error: fixedPricing.error, message: fixedPricing.message });
+        return;
+      }
+      bookingPricing = fixedPricing;
+      serverPricingMode = "fixed_price";
+    } else {
+      bookingPricing = computeRideBookingPricing({
+        opPayload,
+        regions,
+        fromFull,
+        fromLat: fromLatB,
+        fromLon: fromLonB,
+        distanceKm: distanceKmB,
+        tripMinutes: tripMinutesB,
+        waitingMinutes: waitingMinutesB,
+        vehicle: vehicleB,
+        passengerCount: passengerCountB,
+        at: atBooking,
+      });
+      serverPricingMode = bookingPricing.pricingMode;
+    }
     const finalPriceB = bookingPricing.finalPrice;
     const snapB = bookingPricing.snapshot;
-    const serverPricingMode = bookingPricing.pricingMode;
     if (
       rawPricingModeStr &&
       rawPricingModeStr !== serverPricingMode
@@ -1718,6 +1810,13 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
             ...medicalFinanceSnapshot(finalPriceB),
           }
         : {};
+    if (serverPricingMode === "fixed_price") {
+      normalizedPartnerMeta = {
+        ...normalizedPartnerMeta,
+        fixed_price_agreement_at: atBooking.toISOString(),
+        fixed_price_agreed_eur: finalPriceB,
+      };
+    }
     if (rideKind === "medical") {
       if (medicalMeta.medical_demo_mode === true) {
         normalizedPartnerMeta.medical_demo_mode = true;
