@@ -85,7 +85,6 @@ export type CustomerAccountAdminDto = {
   id: string;
   email: string;
   name: string;
-  phone: string | null;
   emailVerifiedAt: string;
   createdAt: string;
 };
@@ -116,7 +115,6 @@ export async function listCustomerAccountsAdmin(limit = 500): Promise<CustomerAc
       id: customerAccountsTable.id,
       email: customerAccountsTable.email,
       name: customerAccountsTable.name,
-      phone: customerAccountsTable.phone,
       email_verified_at: customerAccountsTable.email_verified_at,
       created_at: customerAccountsTable.created_at,
     })
@@ -127,7 +125,6 @@ export async function listCustomerAccountsAdmin(limit = 500): Promise<CustomerAc
     id: r.id,
     email: r.email,
     name: r.name,
-    phone: r.phone,
     emailVerifiedAt: r.email_verified_at.toISOString(),
     createdAt: r.created_at.toISOString(),
   }));

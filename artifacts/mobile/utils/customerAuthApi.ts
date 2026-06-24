@@ -39,7 +39,6 @@ export async function registerCustomerWithPassword(body: {
   email: string;
   proofToken: string;
   name: string;
-  phone: string;
   password: string;
   passwordConfirm: string;
 }): Promise<RegisterCustomerResult> {
@@ -53,7 +52,6 @@ export async function registerCustomerWithPassword(body: {
       email: body.email.trim().toLowerCase(),
       proofToken: body.proofToken.trim(),
       name: body.name.trim(),
-      phone: body.phone.trim(),
       password: body.password,
       passwordConfirm: body.passwordConfirm,
     }),

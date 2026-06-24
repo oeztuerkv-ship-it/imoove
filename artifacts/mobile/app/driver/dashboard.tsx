@@ -4333,7 +4333,12 @@ export default function DriverDashboard() {
                   <View style={styles.badge}><Text style={styles.badgeText}>{tab.badge}</Text></View>
                 ) : null}
               </View>
-              <Text style={[styles.tabLabel, { color: active ? "#DC2626" : colors.mutedForeground, fontFamily: active ? "Inter_700Bold" : "Inter_400Regular" }]}>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: active ? "#DC2626" : "#111827", fontFamily: "Inter_400Regular" },
+                ]}
+              >
                 {tab.label}
               </Text>
               {active && <View style={styles.tabActiveBar} />}

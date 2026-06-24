@@ -19,7 +19,6 @@ router.post("/auth/customer/register", async (req, res) => {
     bodyEmail: req.body?.email,
     bodyProofToken: req.body?.proofToken ?? req.body?.proof_token,
     bodyName: req.body?.name,
-    bodyPhone: req.body?.phone,
     bodyPassword: req.body?.password,
     bodyPasswordConfirm: req.body?.passwordConfirm ?? req.body?.password_confirm,
   });

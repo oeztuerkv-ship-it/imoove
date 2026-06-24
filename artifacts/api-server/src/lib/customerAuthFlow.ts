@@ -53,7 +53,6 @@ export async function registerCustomerAccount(opts: {
   bodyEmail: unknown;
   bodyProofToken: unknown;
   bodyName: unknown;
-  bodyPhone: unknown;
   bodyPassword: unknown;
   bodyPasswordConfirm: unknown;
 }): Promise<
@@ -67,12 +66,11 @@ export async function registerCustomerAccount(opts: {
   const email = normalizeCustomerEmail(typeof opts.bodyEmail === "string" ? opts.bodyEmail : "");
   const proofToken = typeof opts.bodyProofToken === "string" ? opts.bodyProofToken.trim() : "";
   const name = typeof opts.bodyName === "string" ? opts.bodyName.trim() : "";
-  const phone = typeof opts.bodyPhone === "string" ? opts.bodyPhone.trim() : "";
   const password = typeof opts.bodyPassword === "string" ? opts.bodyPassword : "";
   const passwordConfirm =
     typeof opts.bodyPasswordConfirm === "string" ? opts.bodyPasswordConfirm : "";
 
-  if (!isPlausibleRegistrationEmail(email) || !proofToken || !name || !phone) {
+  if (!isPlausibleRegistrationEmail(email) || !proofToken || !name) {
     return { ok: false, error: "invalid_params", status: 400 };
   }
 
@@ -106,7 +104,7 @@ export async function registerCustomerAccount(opts: {
     email,
     passwordHash,
     name,
-    phone: phone || null,
+    phone: null,
     emailVerifiedAt: new Date(),
   });
 

@@ -81,7 +81,6 @@ export default function CustomerAccountsPage() {
             <tr>
               <th>E-Mail</th>
               <th>Name</th>
-              <th>Telefon</th>
               <th>E-Mail bestätigt</th>
               <th>Registriert</th>
             </tr>
@@ -89,14 +88,13 @@ export default function CustomerAccountsPage() {
           <tbody>
             {items.length === 0 && !loading ? (
               <tr>
-                <td colSpan={5}>Noch keine Kundenkonten.</td>
+                <td colSpan={4}>Noch keine Kundenkonten.</td>
               </tr>
             ) : null}
             {items.map((row) => (
               <tr key={row.id}>
                 <td>{row.email}</td>
                 <td>{row.name}</td>
-                <td>{row.phone || "—"}</td>
                 <td>{formatDt(row.emailVerifiedAt)}</td>
                 <td>{formatDt(row.createdAt)}</td>
               </tr>

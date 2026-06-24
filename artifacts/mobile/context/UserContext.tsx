@@ -114,7 +114,6 @@ interface UserContextValue {
   registerCustomerAccount: (data: {
     name: string;
     email: string;
-    phone: string;
     password: string;
     passwordConfirm: string;
     emailVerificationProofToken: string;
@@ -310,7 +309,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     async (data: {
       name: string;
       email: string;
-      phone: string;
       password: string;
       passwordConfirm: string;
       emailVerificationProofToken: string;
@@ -319,7 +317,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         email: data.email,
         proofToken: data.emailVerificationProofToken,
         name: data.name,
-        phone: data.phone,
         password: data.password,
         passwordConfirm: data.passwordConfirm,
       });
@@ -329,9 +326,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       applyCustomerSession(outcome.customer, outcome.sessionToken);
       if (!outcome.customer.name.trim() && data.name.trim()) {
         updateProfile({ name: data.name.trim() });
-      }
-      if (!outcome.customer.phone && data.phone.trim()) {
-        updateProfile({ phone: data.phone.trim() });
       }
       return { ok: true };
     },

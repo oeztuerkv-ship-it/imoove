@@ -965,7 +965,6 @@ export default function ProfileScreen() {
   }, [logout, resetLoginUiState, pathname]);
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
-  const [regPhone, setRegPhone] = useState("");
   const [regOtpDigits, setRegOtpDigits] = useState("");
   const [pendingEmailProofToken, setPendingEmailProofToken] = useState<string | undefined>(undefined);
   const [cooldownSecs, setCooldownSecs] = useState(0);
@@ -975,7 +974,6 @@ export default function ProfileScreen() {
   const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
   const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
   const regNameRef = useRef<TextInput>(null);
-  const regPhoneRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (cooldownSecs <= 0) return undefined;
@@ -1050,7 +1048,6 @@ export default function ProfileScreen() {
   const goRegister = () => {
     setRegName("");
     setRegEmail("");
-    setRegPhone("");
     setRegOtpDigits("");
     setPendingEmailProofToken(undefined);
     setCooldownSecs(0);
@@ -1179,9 +1176,8 @@ export default function ProfileScreen() {
   const continueToRegisterPassword = () => {
     const email = regEmail.trim().toLowerCase();
     const name = regName.trim();
-    const phone = regPhone.trim();
-    if (!name || !phone || !isPlausibleEmail(email)) {
-      Alert.alert("Hinweis", "Bitte Namen und Telefon ausfüllen.");
+    if (!name || !isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", "Bitte deinen Namen eintragen.");
       return;
     }
     setRegPassword("");
@@ -1340,9 +1336,8 @@ export default function ProfileScreen() {
   const handleRegisterComplete = async () => {
     const email = regEmail.trim().toLowerCase();
     const name = regName.trim();
-    const phone = regPhone.trim();
     const proof = pendingEmailProofToken?.trim() ?? "";
-    if (!name || !phone || !isPlausibleEmail(email) || !proof) {
+    if (!name || !isPlausibleEmail(email) || !proof) {
       Alert.alert("Hinweis", "Bitte Registrierung von vorne starten.");
       return;
     }
@@ -1351,7 +1346,6 @@ export default function ProfileScreen() {
       const outcome = await registerCustomerAccount({
         name,
         email,
-        phone,
         password: regPassword,
         passwordConfirm: regPasswordConfirm,
         emailVerificationProofToken: proof,
@@ -2219,7 +2213,7 @@ export default function ProfileScreen() {
 
                   <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>Profil</Text>
                   <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 8 }}>
-                    E-Mail bestätigt. Name und Telefon für Buchungen angeben.
+                    E-Mail bestätigt. Bitte deinen Namen angeben.
                   </Text>
 
                   <Pressable
@@ -2238,40 +2232,24 @@ export default function ProfileScreen() {
                       returnKeyType="done"
                       editable
                       onPressIn={focusRegNameInput}
-                      onSubmitEditing={() => regPhoneRef.current?.focus()}
+                      onSubmitEditing={continueToRegisterPassword}
                     />
                   </Pressable>
 
-                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
-                    <Feather name="phone" size={16} color={colors.mutedForeground} />
-                    <TextInput
-                      ref={regPhoneRef}
-                      style={[styles.inputField, { color: colors.foreground }]}
-                      placeholder="Telefonnummer"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={regPhone}
-                      onChangeText={setRegPhone}
-                      keyboardType="phone-pad"
-                      returnKeyType="done"
-                      editable
-                    />
-                  </View>
-
                   <Pressable
                     style={[styles.registerBtn, {
-                      backgroundColor:
-                        regName.trim() && regPhone.trim() ? "#111111" : colors.muted,
+                      backgroundColor: regName.trim() ? "#111111" : colors.muted,
                     }]}
                     onPress={continueToRegisterPassword}
-                    disabled={!regName.trim() || !regPhone.trim()}
+                    disabled={!regName.trim()}
                   >
                     <Feather
                       name="arrow-right"
                       size={18}
-                      color={regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground}
+                      color={regName.trim() ? "#fff" : colors.mutedForeground}
                     />
                     <Text style={[styles.registerBtnText, {
-                      color: regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground,
+                      color: regName.trim() ? "#fff" : colors.mutedForeground,
                     }]}
                     >
                       Weiter

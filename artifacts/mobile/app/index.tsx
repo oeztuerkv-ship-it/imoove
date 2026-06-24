@@ -80,6 +80,7 @@ import {
   loginActionLabelStyle,
   socialLoginButtonStyle,
 } from "@/src/screens/LoginScreen";
+import { AppNewsDetailModal } from "@/components/AppNewsDetailModal";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
@@ -383,7 +384,6 @@ export default function HomeScreen() {
   const [onboardingCustomerStep, setOnboardingCustomerStep] = useState<OnboardingCustomerStep>("social");
   const [obRegName, setObRegName] = useState("");
   const [obRegEmail, setObRegEmail] = useState("");
-  const [obRegPhone, setObRegPhone] = useState("");
   const [emailOtpDigits, setEmailOtpDigits] = useState("");
   /** Nach `/auth/email/verify`; optional gespeichert mit der Konto-Anlage */
   const [pendingEmailProofToken, setPendingEmailProofToken] = useState<string | undefined>(undefined);
@@ -405,7 +405,6 @@ export default function HomeScreen() {
   const [resetSubmitLoading, setResetSubmitLoading] = useState(false);
   const [resetCooldownSecs, setResetCooldownSecs] = useState(0);
   const obRegNameRef = useRef<TextInput>(null);
-  const obRegPhoneRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (cooldownSecs <= 0) return undefined;
@@ -433,7 +432,6 @@ export default function HomeScreen() {
       setOnboardingCustomerStep("social");
       setObRegName("");
       setObRegEmail("");
-      setObRegPhone("");
       setEmailOtpDigits("");
       setPendingEmailProofToken(undefined);
       setCooldownSecs(0);
@@ -907,23 +905,21 @@ export default function HomeScreen() {
   const continueToRegisterPassword = useCallback(() => {
     const email = obRegEmail.trim().toLowerCase();
     const name = obRegName.trim();
-    const phone = obRegPhone.trim();
-    if (!name || !phone || !isPlausibleEmail(email)) {
-      Alert.alert("Hinweis", "Bitte Namen und Telefonnummer ausfüllen (E-Mail ist bereits bestätigt).");
+    if (!name || !isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", "Bitte deinen Namen eintragen (E-Mail ist bereits bestätigt).");
       return;
     }
     setObRegPassword("");
     setObRegPasswordConfirm("");
     setOnboardingCustomerStep("register_password");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [obRegEmail, obRegName, obRegPhone]);
+  }, [obRegEmail, obRegName]);
 
   const submitCustomerRegistration = useCallback(async () => {
     const email = obRegEmail.trim().toLowerCase();
     const name = obRegName.trim();
-    const phone = obRegPhone.trim();
     const proof = pendingEmailProofToken?.trim() ?? "";
-    if (!name || !phone || !isPlausibleEmail(email) || !proof) {
+    if (!name || !isPlausibleEmail(email) || !proof) {
       Alert.alert("Hinweis", "Bitte den Registrierungsflow von vorne starten (E-Mail bestätigen).");
       return;
     }
@@ -932,7 +928,6 @@ export default function HomeScreen() {
       const outcome = await registerCustomerAccount({
         name,
         email,
-        phone,
         password: obRegPassword,
         passwordConfirm: obRegPasswordConfirm,
         emailVerificationProofToken: proof,
@@ -950,7 +945,6 @@ export default function HomeScreen() {
   }, [
     obRegEmail,
     obRegName,
-    obRegPhone,
     obRegPassword,
     obRegPasswordConfirm,
     pendingEmailProofToken,
@@ -2106,52 +2100,12 @@ export default function HomeScreen() {
         )}
       </View>
 
-      <Modal visible={appNewsDetail != null} animationType="slide" transparent onRequestClose={() => setAppNewsDetail(null)}>
-        <Pressable style={styles.appNewsModalBackdrop} onPress={() => setAppNewsDetail(null)}>
-          <Pressable
-            style={[styles.appNewsModalCard, { backgroundColor: colors.card }]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {appNewsDetail?.imageUrl ? (
-                <Image source={{ uri: appNewsDetail.imageUrl }} style={styles.appNewsModalImage} resizeMode="cover" />
-              ) : null}
-              <Text style={[styles.appNewsModalTitle, { color: colors.foreground }]}>{appNewsDetail?.title}</Text>
-              <Text style={[styles.appNewsModalBody, { color: colors.mutedForeground }]}>{appNewsDetail?.body}</Text>
-              {appNewsDetail?.buttonText && appNewsDetail.targetType === "external_url" && appNewsDetail.targetValue ? (
-                <Pressable
-                  style={[styles.appNewsModalBtn, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    const u = appNewsDetail.targetValue?.trim();
-                    if (u) void WebBrowser.openBrowserAsync(u);
-                  }}
-                >
-                  <Text style={styles.appNewsModalBtnText}>{appNewsDetail.buttonText}</Text>
-                </Pressable>
-              ) : null}
-              {appNewsDetail?.buttonText && appNewsDetail.targetType === "internal_screen" && appNewsDetail.targetValue ? (
-                <Pressable
-                  style={[styles.appNewsModalBtn, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    const p = appNewsDetail.targetValue?.trim();
-                    if (p === "/sponsors") {
-                      router.push(SPONSORS_ROUTE as Href);
-                    } else if (p) {
-                      router.push(p as Href);
-                    }
-                    setAppNewsDetail(null);
-                  }}
-                >
-                  <Text style={styles.appNewsModalBtnText}>{appNewsDetail.buttonText}</Text>
-                </Pressable>
-              ) : null}
-              <Pressable style={styles.appNewsModalClose} onPress={() => setAppNewsDetail(null)}>
-                <Text style={[styles.appNewsModalCloseText, { color: colors.primary }]}>Schließen</Text>
-              </Pressable>
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <AppNewsDetailModal
+        item={appNewsDetail}
+        onClose={() => setAppNewsDetail(null)}
+        colors={colors}
+        sponsorsRoute={SPONSORS_ROUTE as Href}
+      />
 
       {/* ── BOTTOM TAB BAR ── */}
       <BottomTabBar active="start" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
@@ -2578,7 +2532,6 @@ export default function HomeScreen() {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setObRegName("");
                       setObRegEmail("");
-                      setObRegPhone("");
                       setEmailOtpDigits("");
                       setPendingEmailProofToken(undefined);
                       setCooldownSecs(0);
@@ -2902,7 +2855,7 @@ export default function HomeScreen() {
                   </Pressable>
                   <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Profil</Text>
                   <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
-                    E-Mail ist bestätigt. Bitte Namen und Telefon für die Buchung angeben.
+                    E-Mail ist bestätigt. Bitte deinen Namen angeben.
                   </Text>
                   <Pressable
                     style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}
@@ -2920,33 +2873,20 @@ export default function HomeScreen() {
                       returnKeyType="done"
                       editable
                       onPressIn={focusObRegNameInput}
-                      onSubmitEditing={() => obRegPhoneRef.current?.focus()}
+                      onSubmitEditing={continueToRegisterPassword}
                     />
                   </Pressable>
-                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                    <Feather name="phone" size={18} color={colors.mutedForeground} />
-                    <TextInput
-                      ref={obRegPhoneRef}
-                      style={[styles.onboardingInputField, { color: colors.foreground }]}
-                      placeholder="Telefonnummer"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={obRegPhone}
-                      onChangeText={setObRegPhone}
-                      keyboardType="phone-pad"
-                      returnKeyType="done"
-                      editable
-                    />
-                  </View>
                   <Pressable
                     style={[styles.socialBtn, {
-                      backgroundColor: "#111111",
-                      borderColor: "#111111",
+                      backgroundColor: obRegName.trim() ? "#111111" : colors.muted,
+                      borderColor: obRegName.trim() ? "#111111" : colors.border,
                       paddingVertical: isSmallScreen ? 13 : 16,
                     }]}
                     onPress={continueToRegisterPassword}
+                    disabled={!obRegName.trim()}
                   >
-                    <Feather name="arrow-right" size={20} color="#fff" />
-                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
+                    <Feather name="arrow-right" size={20} color={obRegName.trim() ? "#fff" : colors.mutedForeground} />
+                    <Text style={[styles.socialBtnText, { color: obRegName.trim() ? "#fff" : colors.mutedForeground, fontSize: isSmallScreen ? 15 : 16 }]}>
                       Weiter
                     </Text>
                   </Pressable>
@@ -4002,30 +3942,6 @@ const styles = StyleSheet.create({
     height: rs(6),
     borderRadius: rs(3),
   },
-  appNewsModalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "flex-end",
-  },
-  appNewsModalCard: {
-    borderTopLeftRadius: rs(20),
-    borderTopRightRadius: rs(20),
-    padding: rs(20),
-    maxHeight: "88%",
-  },
-  appNewsModalImage: { width: "100%", height: rs(180), borderRadius: rs(12), marginBottom: rs(12) },
-  appNewsModalTitle: { fontSize: rf(20), fontFamily: "Inter_700Bold", marginBottom: rs(8) },
-  appNewsModalBody: { fontSize: rf(15), fontFamily: "Inter_400Regular", lineHeight: rf(22), marginBottom: rs(16) },
-  appNewsModalBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: rs(12),
-    paddingHorizontal: rs(18),
-    borderRadius: rs(12),
-    marginBottom: rs(12),
-  },
-  appNewsModalBtnText: { color: "#fff", fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
-  appNewsModalClose: { paddingVertical: rs(8), alignItems: "center" },
-  appNewsModalCloseText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
   sponsorTeaserCard: {
     borderWidth: 1,
     borderRadius: 14,

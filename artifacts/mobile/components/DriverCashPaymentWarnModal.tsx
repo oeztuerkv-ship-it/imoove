@@ -9,7 +9,7 @@ type Props = {
   onConfirm: () => void;
 };
 
-/** System-Alert-Optik — nur OK mit vollem blauen Hintergrund (nicht natives Alert). */
+/** System-Alert-Optik — Abbrechen | OK nebeneinander, OK mit blauem Hintergrund. */
 export function DriverCashPaymentWarnModal({ visible, onCancel, onConfirm }: Props) {
   return (
     <Modal
@@ -27,18 +27,20 @@ export function DriverCashPaymentWarnModal({ visible, onCancel, onConfirm }: Pro
               Bitte Barzahlung am Ziel vom Kunden annehmen — nicht vergessen.
             </Text>
           </View>
-          <Pressable
-            style={({ pressed }) => [styles.cancelBtn, pressed && styles.btnPressed]}
-            onPress={onCancel}
-          >
-            <Text style={styles.cancelText}>Abbrechen</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.okBtn, pressed && styles.okBtnPressed]}
-            onPress={onConfirm}
-          >
-            <Text style={styles.okText}>OK</Text>
-          </Pressable>
+          <View style={styles.actions}>
+            <Pressable
+              style={({ pressed }) => [styles.cancelBtn, pressed && styles.btnPressed]}
+              onPress={onCancel}
+            >
+              <Text style={styles.cancelText}>Abbrechen</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.okBtn, pressed && styles.okBtnPressed]}
+              onPress={onConfirm}
+            >
+              <Text style={styles.okText}>OK</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -51,11 +53,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 36,
+    paddingHorizontal: 28,
   },
   card: {
     width: "100%",
-    maxWidth: 270,
+    maxWidth: 292,
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     overflow: "hidden",
@@ -70,39 +72,45 @@ const styles = StyleSheet.create({
     }),
   },
   body: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 14,
     alignItems: "center",
   },
   title: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: Platform.OS === "ios" ? "600" : "700",
     color: "#000000",
     textAlign: "center",
   },
   message: {
-    marginTop: 4,
-    fontSize: 13,
+    marginTop: 6,
+    fontSize: 14,
     color: "#000000",
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 19,
+  },
+  actions: {
+    flexDirection: "row",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(60,60,67,0.29)",
+    minHeight: 46,
   },
   cancelBtn: {
+    flex: 1,
     paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(60,60,67,0.29)",
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: "rgba(60,60,67,0.29)",
   },
   okBtn: {
-    paddingVertical: 13,
+    flex: 1,
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: APPLE_BLUE,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(60,60,67,0.18)",
   },
   btnPressed: { opacity: 0.72 },
   okBtnPressed: { backgroundColor: "#0062CC" },
