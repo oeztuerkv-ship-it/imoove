@@ -15,6 +15,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar, mainTabScrollPaddingBottom } from "@/components/BottomTabBar";
+import {
+  buildScheduledDate,
+  defaultScheduleWheelIndices,
+  isReservationLeadValid,
+  ReservationSchedulePicker,
+  type BookingTiming,
+} from "@/components/ReservationSchedulePicker";
 import { accountSheetHeaderTitle, accountSheetPrimaryLabel, accountSheetSecondaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
@@ -72,8 +79,32 @@ export default function BookingFixedPriceScreen() {
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card">("cash");
   const [submitting, setSubmitting] = useState(false);
+  const [bookingTiming, setBookingTiming] = useState<BookingTiming>("instant");
+  const [dayOffset, setDayOffset] = useState(0);
+  const [hour, setHour] = useState(12);
+  const [minuteIndex, setMinuteIndex] = useState(0);
+  const [wheelKey, setWheelKey] = useState(0);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pickedScheduleDate = useMemo(
+    () => buildScheduledDate(dayOffset, hour, minuteIndex),
+    [dayOffset, hour, minuteIndex],
+  );
+
+  const scheduleLeadValid =
+    bookingTiming === "instant" || isReservationLeadValid(pickedScheduleDate);
+
+  const handleTimingChange = useCallback((timing: BookingTiming) => {
+    setBookingTiming(timing);
+    if (timing === "scheduled") {
+      const d = defaultScheduleWheelIndices();
+      setDayOffset(d.dayOffset);
+      setHour(d.hour);
+      setMinuteIndex(d.minuteIndex);
+      setWheelKey((k) => k + 1);
+    }
+  }, []);
 
   const exit = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -185,14 +216,22 @@ export default function BookingFixedPriceScreen() {
       priceEur != null &&
       priceEur > 0 &&
       agreementAccepted &&
+      scheduleLeadValid &&
       !submitting,
-    [fromStop, toStop, eligible, priceEur, agreementAccepted, submitting],
+    [fromStop, toStop, eligible, priceEur, agreementAccepted, scheduleLeadValid, submitting],
   );
 
   const handleSubmit = async () => {
     if (!canSubmit || !fromStop || !toStop || priceEur == null) return;
     if (!profile.isLoggedIn) {
       Alert.alert("Anmeldung", "Bitte zuerst anmelden, um eine Festpreis-Fahrt zu buchen.");
+      return;
+    }
+    if (bookingTiming === "scheduled" && !isReservationLeadValid(pickedScheduleDate)) {
+      Alert.alert(
+        "Termin",
+        "Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte späteren Zeitpunkt wählen oder „Sofort“ buchen.",
+      );
       return;
     }
     setSubmitting(true);
@@ -222,7 +261,7 @@ export default function BookingFixedPriceScreen() {
         paymentMethod: paymentMethod === "cash" ? "Bar" : "Karte",
         vehicle: "standard",
         customerName,
-        scheduledAt: null,
+        scheduledAt: bookingTiming === "instant" ? null : pickedScheduleDate,
         rideKind: "standard",
         payerKind: "passenger",
         pricingMode,
@@ -232,15 +271,20 @@ export default function BookingFixedPriceScreen() {
       router.replace("/my-rides" as Href);
     } catch (e) {
       const code = e instanceof Error ? e.message : "request_failed";
+      const errWithMsg = e as Error & { userMessage?: string };
       const msg =
-        code === "fixed_price_agreement_required"
-          ? "Bitte die Fahrpreisvereinbarung bestätigen."
-          : code === "both_in_mandatory_area" ||
-              code === "same_city" ||
-              code === "inside_mandatory_taxi_area" ||
-              code === "fixed_price_not_eligible"
-            ? "Festpreis für diese Strecke nicht verfügbar."
-            : "Die Buchung ist fehlgeschlagen. Bitte erneut versuchen.";
+        typeof errWithMsg.userMessage === "string" && errWithMsg.userMessage.trim()
+          ? errWithMsg.userMessage.trim()
+          : code === "fixed_price_agreement_required"
+            ? "Bitte die Fahrpreisvereinbarung bestätigen."
+            : code === "reservation_lead_time_too_short"
+              ? "Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte „Sofort“ oder einen späteren Termin wählen."
+              : code === "both_in_mandatory_area" ||
+                  code === "same_city" ||
+                  code === "inside_mandatory_taxi_area" ||
+                  code === "fixed_price_not_eligible"
+                ? "Festpreis für diese Strecke nicht verfügbar."
+                : "Die Buchung ist fehlgeschlagen. Bitte erneut versuchen.";
       Alert.alert("Festpreis", msg);
     } finally {
       setSubmitting(false);
@@ -345,6 +389,20 @@ export default function BookingFixedPriceScreen() {
           </View>
         ) : null}
 
+        {fromStop && toStop ? (
+          <ReservationSchedulePicker
+            timing={bookingTiming}
+            onTimingChange={handleTimingChange}
+            dayOffset={dayOffset}
+            hour={hour}
+            minuteIndex={minuteIndex}
+            onDayOffsetChange={setDayOffset}
+            onHourChange={setHour}
+            onMinuteIndexChange={setMinuteIndex}
+            wheelKey={wheelKey}
+          />
+        ) : null}
+
         {eligible === true && priceEur != null ? (
           <>
             <View style={[styles.card, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL, marginTop: rs(12) }]}>
@@ -385,7 +443,11 @@ export default function BookingFixedPriceScreen() {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitText}>Festpreis buchen — {formatEuro(priceEur)}</Text>
+                <Text style={styles.submitText}>
+                  {bookingTiming === "instant"
+                    ? `Festpreis buchen — ${formatEuro(priceEur)}`
+                    : `Festpreis reservieren — ${formatEuro(priceEur)}`}
+                </Text>
               )}
             </Pressable>
           </>
