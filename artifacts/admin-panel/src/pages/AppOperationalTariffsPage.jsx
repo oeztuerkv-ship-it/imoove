@@ -34,6 +34,8 @@ export default function AppOperationalTariffsPage() {
   const [fixedPriceOutsideActive, setFixedPriceOutsideActive] = useState(true);
   const [onrodaFixBase, setOnrodaFixBase] = useState("3.50");
   const [onrodaFixPerKm, setOnrodaFixPerKm] = useState("2.20");
+  const [mandatoryAreaCities, setMandatoryAreaCities] = useState(["Stuttgart", "Esslingen"]);
+  const [newMandatoryCity, setNewMandatoryCity] = useState("");
   const [busy, setBusy] = useState(false);
   const editorRef = useRef(null);
 
@@ -83,6 +85,12 @@ export default function AppOperationalTariffsPage() {
         }
         if (typeof t.onrodaFixPerKm === "number" && Number.isFinite(t.onrodaFixPerKm)) {
           setOnrodaFixPerKm(String(t.onrodaFixPerKm));
+        }
+        if (Array.isArray(t.fixedPriceMandatoryAreaCities)) {
+          const cities = t.fixedPriceMandatoryAreaCities
+            .filter((c) => typeof c === "string" && c.trim())
+            .map((c) => c.trim());
+          if (cities.length > 0) setMandatoryAreaCities(cities);
         }
       }
     } catch (e) {
@@ -256,6 +264,11 @@ export default function AppOperationalTariffsPage() {
       setError("Grundgebühr und €/km müssen gültige Zahlen sein.");
       return;
     }
+    const cities = mandatoryAreaCities.map((c) => c.trim()).filter(Boolean);
+    if (cities.length === 0) {
+      setError("Mindestens eine Pflichtfahrgebiet-Stadt erforderlich.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -266,14 +279,33 @@ export default function AppOperationalTariffsPage() {
           fixedPriceOutsideActive,
           onrodaFixBase: base,
           onrodaFixPerKm: perKm,
+          fixedPriceMandatoryAreaCities: cities,
         },
       });
+      setMandatoryAreaCities(cities);
       setOk("Festpreis-Einstellungen gespeichert.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
       setBusy(false);
     }
+  };
+
+  const addMandatoryCity = () => {
+    const name = newMandatoryCity.trim();
+    if (!name) return;
+    const norm = name.toLowerCase();
+    if (mandatoryAreaCities.some((c) => c.toLowerCase() === norm)) {
+      setError("Stadt ist bereits in der Liste.");
+      return;
+    }
+    setMandatoryAreaCities((prev) => [...prev, name]);
+    setNewMandatoryCity("");
+    setError("");
+  };
+
+  const removeMandatoryCity = (city) => {
+    setMandatoryAreaCities((prev) => prev.filter((c) => c !== city));
   };
 
   const runPreview = async () => {
@@ -348,7 +380,7 @@ export default function AppOperationalTariffsPage() {
 
       <AdminCollapsibleSection
         title="Festpreis außerhalb Pflichtfahrgebiet"
-        subtitle="Formel: Grundgebühr + (km × Faktor) — nur wenn Start und Ziel außerhalb Stuttgart/Esslingen"
+        subtitle="Formel: Grundgebühr + (km × Faktor) — Festpreis verboten nur wenn Start und Ziel in einer Pflichtfahrgebiet-Stadt liegen"
         defaultOpen
       >
         <div className="admin-toolbar-inline" style={{ marginBottom: 12 }}>
@@ -387,7 +419,7 @@ export default function AppOperationalTariffsPage() {
         </div>
         <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginTop: 10 }}>
           Beispiel: {Number(onrodaFixBase || 0).toFixed(2)} € + 40 km × {Number(onrodaFixPerKm || 0).toFixed(2)} €/km.
-          Zuordnung über Ortsname in der Adresse (Stuttgart, Esslingen-Landkreis) — kein Polygon.
+          Zusätzlich gilt: Festpreis nicht bei Start = Ziel (gleiche Stadt).
         </p>
         <button
           type="button"
@@ -397,6 +429,75 @@ export default function AppOperationalTariffsPage() {
           onClick={() => void saveFixedPriceOutside()}
         >
           Festpreis speichern
+        </button>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Pflichtfahrgebiet-Städte"
+        subtitle="Taxameter-Pflicht, wenn Start und Ziel in derselben Liste-Stadt liegen (getrennt von Gebiete/Tarifzonen)"
+        defaultOpen
+      >
+        <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginBottom: 12 }}>
+          Standard: Stuttgart und Esslingen (eine Tarifzone). Festpreis ist möglich, sobald mindestens ein Punkt außerhalb
+          dieser Städte liegt — z. B. Stuttgart → Tübingen. Leinfelden-Echterdingen wird nicht automatisch mit einbezogen.
+        </p>
+        <ul style={{ listStyle: "none", padding: 0, margin: "0 0 12px", display: "grid", gap: 8, maxWidth: 420 }}>
+          {mandatoryAreaCities.map((city) => (
+            <li
+              key={city}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                padding: "8px 12px",
+                border: "1px solid rgba(0,0,0,0.08)",
+                borderRadius: 8,
+                background: "#fff",
+              }}
+            >
+              <span style={{ fontWeight: 500 }}>{city}</span>
+              <button
+                type="button"
+                className="admin-c-btn-sec admin-btn-compact admin-btn-compact--danger"
+                disabled={busy || mandatoryAreaCities.length <= 1}
+                onClick={() => removeMandatoryCity(city)}
+                title={mandatoryAreaCities.length <= 1 ? "Mindestens eine Stadt erforderlich" : "Entfernen"}
+              >
+                Entfernen
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxWidth: 420, alignItems: "flex-end" }}>
+          <label className="admin-form-label" style={{ flex: "1 1 200px" }}>
+            Stadt hinzufügen
+            <input
+              className="admin-input"
+              style={{ display: "block", marginTop: 4 }}
+              value={newMandatoryCity}
+              onChange={(e) => setNewMandatoryCity(e.target.value)}
+              placeholder="z. B. Waiblingen"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addMandatoryCity();
+                }
+              }}
+            />
+          </label>
+          <button type="button" className="admin-c-btn-sec" disabled={busy || !newMandatoryCity.trim()} onClick={addMandatoryCity}>
+            Hinzufügen
+          </button>
+        </div>
+        <button
+          type="button"
+          className="admin-c-btn-sec"
+          style={{ marginTop: 12 }}
+          disabled={busy}
+          onClick={() => void saveFixedPriceOutside()}
+        >
+          Liste speichern
         </button>
       </AdminCollapsibleSection>
 

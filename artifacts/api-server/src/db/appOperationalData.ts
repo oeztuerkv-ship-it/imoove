@@ -88,6 +88,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     onrodaFixPerKm: 2.2,
     /** Festpreis außerhalb Pflichtfahrgebiet (Formel km × Faktor + Grundgebühr). */
     fixedPriceOutsideActive: true,
+    /** Admin-pflegbare Städte: Festpreis nur verboten, wenn Start und Ziel in dieser Liste liegen. */
+    fixedPriceMandatoryAreaCities: ["Stuttgart", "Esslingen"],
     shortTripRule: "none",
     /** Einheitspreis pro km (wenn > 0, optional kmPricingModel \"single\"). */
     perKm: 0,

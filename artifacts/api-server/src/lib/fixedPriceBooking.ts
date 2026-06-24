@@ -1,8 +1,9 @@
 import type { TariffBookingSnapshotV1 } from "../domain/rideRequest";
 import {
-  isFixedPriceOutsideMandatoryAreaEligible,
-  type MandatoryAreaPoint,
-} from "./mandatoryTaxiArea";
+  evaluateFixedPriceEligibility,
+  readFixedPriceMandatoryAreaCities,
+  type FixedPriceLocationPoint,
+} from "./fixedPriceMandatoryArea";
 import { TARIFF_ENGINE_SCHEMA_VERSION } from "./bookingTariffEstimate";
 import {
   bookingPriceToleranceEur,
@@ -26,6 +27,7 @@ export function readFixedPriceTariffParams(op: Record<string, unknown>): {
   active: boolean;
   baseFeeEur: number;
   perKmEur: number;
+  mandatoryAreaCities: string[];
 } {
   const t = tariffsSection(op);
   const active = t.fixedPriceOutsideActive !== false;
@@ -33,6 +35,7 @@ export function readFixedPriceTariffParams(op: Record<string, unknown>): {
     active,
     baseFeeEur: Math.max(0, num(t.onrodaFixBase, 3.5)),
     perKmEur: Math.max(0, num(t.onrodaFixPerKm, 2.2)),
+    mandatoryAreaCities: readFixedPriceMandatoryAreaCities(op),
   };
 }
 
@@ -66,14 +69,18 @@ export type FixedPriceCheckResult =
   | {
       ok: true;
       eligible: false;
-      reason: "fixed_price_disabled" | "inside_mandatory_taxi_area" | "distance_km_invalid";
+      reason:
+        | "fixed_price_disabled"
+        | "both_in_mandatory_area"
+        | "same_city"
+        | "distance_km_invalid";
       message: string;
     };
 
 export function checkFixedPriceBooking(args: {
   opPayload: Record<string, unknown>;
-  from: MandatoryAreaPoint;
-  to: MandatoryAreaPoint;
+  from: FixedPriceLocationPoint;
+  to: FixedPriceLocationPoint;
   distanceKm: number;
 }): FixedPriceCheckResult {
   const params = readFixedPriceTariffParams(args.opPayload);
@@ -85,13 +92,17 @@ export function checkFixedPriceBooking(args: {
       message: "Festpreis-Buchungen sind derzeit nicht verfügbar.",
     };
   }
-  if (!isFixedPriceOutsideMandatoryAreaEligible(args.from, args.to)) {
+  const eligibility = evaluateFixedPriceEligibility({
+    from: args.from,
+    to: args.to,
+    mandatoryCities: params.mandatoryAreaCities,
+  });
+  if (!eligibility.eligible) {
     return {
       ok: true,
       eligible: false,
-      reason: "inside_mandatory_taxi_area",
-      message:
-        "Festpreis gilt nur außerhalb von Stuttgart und Esslingen. Bitte normale Taxameter-Buchung wählen.",
+      reason: eligibility.reason,
+      message: eligibility.message,
     };
   }
   if (!Number.isFinite(args.distanceKm) || args.distanceKm <= 0) {
@@ -117,8 +128,8 @@ export function checkFixedPriceBooking(args: {
 
 export function computeFixedPriceRideBookingPricing(args: {
   opPayload: Record<string, unknown>;
-  from: MandatoryAreaPoint;
-  to: MandatoryAreaPoint;
+  from: FixedPriceLocationPoint;
+  to: FixedPriceLocationPoint;
   distanceKm: number;
   tripMinutes: number;
   vehicle: string;
@@ -166,6 +177,7 @@ export function computeFixedPriceRideBookingPricing(args: {
       onrodaFixBase: check.baseFeeEur,
       onrodaFixPerKm: check.perKmEur,
       fixedPriceOutside: true,
+      mandatoryAreaCities: readFixedPriceMandatoryAreaCities(args.opPayload),
     },
   };
   return {

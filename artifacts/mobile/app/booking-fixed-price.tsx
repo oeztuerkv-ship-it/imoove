@@ -23,7 +23,6 @@ import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
-import { isFixedPriceOutsideMandatoryAreaEligible } from "@/utils/mandatoryTaxiArea";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   CUSTOMER_FIXED_PRICE_AGREEMENT_DE,
@@ -111,14 +110,6 @@ export default function BookingFixedPriceScreen() {
     setPriceEur(null);
     setIneligibleMessage("");
     try {
-      const clientEligible = isFixedPriceOutsideMandatoryAreaEligible(toGeoLocation(from), toGeoLocation(to));
-      if (!clientEligible) {
-        setEligible(false);
-        setIneligibleMessage(
-          "Festpreis gilt nur außerhalb von Stuttgart und Esslingen. Bitte normale Taxameter-Buchung wählen.",
-        );
-        return;
-      }
       const area = await validateServiceAreaForBooking(from.displayName, to.displayName, {
         fromLat: from.lat,
         fromLon: from.lon,
@@ -244,7 +235,10 @@ export default function BookingFixedPriceScreen() {
       const msg =
         code === "fixed_price_agreement_required"
           ? "Bitte die Fahrpreisvereinbarung bestätigen."
-          : code === "inside_mandatory_taxi_area" || code === "fixed_price_not_eligible"
+          : code === "both_in_mandatory_area" ||
+              code === "same_city" ||
+              code === "inside_mandatory_taxi_area" ||
+              code === "fixed_price_not_eligible"
             ? "Festpreis für diese Strecke nicht verfügbar."
             : "Die Buchung ist fehlgeschlagen. Bitte erneut versuchen.";
       Alert.alert("Festpreis", msg);
