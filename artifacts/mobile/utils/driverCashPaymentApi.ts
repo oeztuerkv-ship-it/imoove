@@ -1,8 +1,6 @@
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 
-import { Alert } from "react-native";
-
 export async function postDriverCashConfirmed(rideId: string): Promise<
   | { ok: true; cashConfirmedAt: string }
   | { ok: false; error: string }
@@ -40,27 +38,4 @@ export function driverRidePaymentLooksLikeCash(paymentMethod: string | null | un
   }
   if (pm.includes("krankenkasse") || pm.includes("voucher") || pm.includes("kv")) return false;
   return pm.includes("bar") || pm === "cash";
-}
-
-/** Vor „Fahrt beenden“: Hinweis Barzahlung am Ziel — OK öffnet den nächsten Schritt. */
-export function confirmCashPaymentBeforeRideEnd(onConfirm: () => void): void {
-  Alert.alert(
-    "Achtung Barzahlung!",
-    "Bitte Barzahlung am Ziel vom Kunden annehmen — nicht vergessen.",
-    [
-      { text: "Abbrechen", style: "cancel" },
-      { text: "OK", onPress: onConfirm },
-    ],
-  );
-}
-
-export function warnCashPaymentIfNeeded(
-  paymentMethod: string | null | undefined,
-  onConfirm: () => void,
-): void {
-  if (driverRidePaymentLooksLikeCash(paymentMethod)) {
-    confirmCashPaymentBeforeRideEnd(onConfirm);
-    return;
-  }
-  onConfirm();
 }

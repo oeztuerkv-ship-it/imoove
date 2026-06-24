@@ -27,6 +27,7 @@ import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
+import { DriverCashPaymentWarnModal } from "@/components/DriverCashPaymentWarnModal";
 import { NavRouteGlowPolyline } from "@/components/NavRouteGlowPolyline";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { DriverPassengerRatingModal } from "@/components/DriverPassengerRatingModal";
@@ -85,7 +86,6 @@ import { formatEuro } from "@/utils/fareCalculator";
 import {
   driverRidePaymentLooksLikeCash,
   postDriverCashConfirmed,
-  warnCashPaymentIfNeeded,
 } from "@/utils/driverCashPaymentApi";
 import {
   fetchFleetDriverRideEarnings,
@@ -450,6 +450,8 @@ export default function DriverNavigationScreen() {
   const [rideFleetStatus, setRideFleetStatus] = useState("accepted");
   const [completingRide, setCompletingRide] = useState(false);
   const [showFareModal, setShowFareModal] = useState(false);
+  const [showCashPaymentWarn, setShowCashPaymentWarn] = useState(false);
+  const afterCashPaymentWarnRef = useRef<(() => void) | null>(null);
   const [showCashConfirmModal, setShowCashConfirmModal] = useState(false);
   const [cashConfirmBusy, setCashConfirmBusy] = useState(false);
   const [showEarningsModal, setShowEarningsModal] = useState(false);
@@ -1195,12 +1197,19 @@ export default function DriverNavigationScreen() {
     void refreshEinsatzbereit();
   }, [showFareModal, refreshEinsatzbereit]);
 
+  const openFareModalAfterRideEnd = useCallback(() => {
+    trySpeak("Fahrt wird beendet.", soundRef.current);
+    setFareInput(defaultDriverFareInputForCompletion(rideFleetStatus));
+    setShowFareModal(true);
+  }, [rideFleetStatus]);
+
   const handleFahrtBeenden = () => {
-    warnCashPaymentIfNeeded(params.paymentMethod, () => {
-      trySpeak("Fahrt wird beendet.", soundRef.current);
-      setFareInput(defaultDriverFareInputForCompletion(rideFleetStatus));
-      setShowFareModal(true);
-    });
+    if (driverRidePaymentLooksLikeCash(params.paymentMethod)) {
+      afterCashPaymentWarnRef.current = openFareModalAfterRideEnd;
+      setShowCashPaymentWarn(true);
+      return;
+    }
+    openFareModalAfterRideEnd();
   };
 
   const goToDashboardAfterRide = useCallback(() => {
@@ -1798,6 +1807,20 @@ export default function DriverNavigationScreen() {
           </View>
         </View>
       )}
+
+      <DriverCashPaymentWarnModal
+        visible={showCashPaymentWarn}
+        onCancel={() => {
+          setShowCashPaymentWarn(false);
+          afterCashPaymentWarnRef.current = null;
+        }}
+        onConfirm={() => {
+          setShowCashPaymentWarn(false);
+          const next = afterCashPaymentWarnRef.current;
+          afterCashPaymentWarnRef.current = null;
+          next?.();
+        }}
+      />
 
       {/* Fare Modal */}
       <Modal visible={showFareModal} transparent animationType="slide" onRequestClose={() => setShowFareModal(false)}>

@@ -66,7 +66,8 @@ import {
   formatDriverFareInputDe,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
-import { warnCashPaymentIfNeeded } from "@/utils/driverCashPaymentApi";
+import { DriverCashPaymentWarnModal } from "@/components/DriverCashPaymentWarnModal";
+import { driverRidePaymentLooksLikeCash } from "@/utils/driverCashPaymentApi";
 import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
 import { requestNotificationPermissions, stopRideSound } from "@/utils/notifications";
 import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
@@ -1956,6 +1957,7 @@ function ActiveRideScreen({
   const [phase, setPhase] = useState<ActivePhase>(req.status === "in_progress" ? "driving" : "pickup");
   const [startTripBusy, setStartTripBusy] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showCashPaymentWarn, setShowCashPaymentWarn] = useState(false);
   const mayBillPositive = driverMayBillPositiveFare(req.status);
   const [finalPriceInput, setFinalPriceInput] = useState(
     defaultDriverFareInputForCompletion(req.status),
@@ -2147,17 +2149,23 @@ function ActiveRideScreen({
     ? { lat: req.fromLat ?? 48.6741, lon: req.fromLon ?? 9.38, displayName: req.fromFull }
     : { lat: req.toLat ?? 48.69, lon: req.toLon ?? 9.2216, displayName: req.toFull };
 
+  const openPriceModalAfterRideEnd = () => {
+    if (isKK && req.status === "in_progress") {
+      const parsed = parseEuroDriverInput(driverEigenanteil);
+      const euro = parsed ?? 0;
+      setFinalPriceInput(euro > 0 ? euro.toFixed(2).replace(".", ",") : "");
+    } else {
+      setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
+    }
+    setShowPriceModal(true);
+  };
+
   const handleFinishTap = () => {
-    warnCashPaymentIfNeeded(req.paymentMethod, () => {
-      if (isKK && req.status === "in_progress") {
-        const parsed = parseEuroDriverInput(driverEigenanteil);
-        const euro = parsed ?? 0;
-        setFinalPriceInput(euro > 0 ? euro.toFixed(2).replace(".", ",") : "");
-      } else {
-        setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
-      }
-      setShowPriceModal(true);
-    });
+    if (driverRidePaymentLooksLikeCash(req.paymentMethod)) {
+      setShowCashPaymentWarn(true);
+      return;
+    }
+    openPriceModalAfterRideEnd();
   };
 
   const handleConfirmFare = async () => {
@@ -2596,6 +2604,15 @@ function ActiveRideScreen({
           </Pressable>
         ) : null}
       </View>
+
+      <DriverCashPaymentWarnModal
+        visible={showCashPaymentWarn}
+        onCancel={() => setShowCashPaymentWarn(false)}
+        onConfirm={() => {
+          setShowCashPaymentWarn(false);
+          openPriceModalAfterRideEnd();
+        }}
+      />
 
       {/* ─── Final price modal ─── */}
       <Modal visible={showPriceModal} transparent animationType="slide" onRequestClose={() => setShowPriceModal(false)}>
