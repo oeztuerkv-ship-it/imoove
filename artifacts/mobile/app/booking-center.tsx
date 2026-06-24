@@ -86,7 +86,7 @@ export default function BookingCenterScreen() {
     {
       key: "fixed",
       title: "Festpreis",
-      subtitle: "Außerhalb Stuttgart/Esslingen — verbindlicher Preis vor der Buchung.",
+      subtitle: "Garantierter Preis, kein Taxameter. Verfügbarkeit wird geprüft.",
       icon: "tag",
       onPress: () => router.replace("/booking-fixed-price"),
     },
@@ -141,7 +141,14 @@ export default function BookingCenterScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>{c.title}</Text>
-                <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>{c.subtitle}</Text>
+                <Text
+                  style={[
+                    styles.cardSub,
+                    c.key === "fixed" ? styles.cardSubFixed : { color: colors.mutedForeground },
+                  ]}
+                >
+                  {c.subtitle}
+                </Text>
               </View>
               <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
             </Pressable>
@@ -201,6 +208,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: accountSheetPrimaryLabel,
   cardSub: { ...accountSheetSecondaryLabel, marginTop: rs(2) },
+  cardSubFixed: { color: "#111827", fontFamily: "Inter_400Regular" },
   notice: {
     borderRadius: rs(16),
     borderWidth: StyleSheet.hairlineWidth,

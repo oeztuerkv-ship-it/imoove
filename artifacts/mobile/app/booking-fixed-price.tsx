@@ -267,8 +267,8 @@ export default function BookingFixedPriceScreen() {
         contentContainerStyle={{ padding: rs(16), paddingBottom: mainTabScrollPaddingBottom(insets.bottom) }}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.lead, { color: colors.mutedForeground }]}>
-          Für Fahrten außerhalb von Stuttgart und Esslingen — verbindlicher Festpreis vor der Buchung.
+        <Text style={styles.lead}>
+          Garantierter Preis, kein Taxameter. Verfügbarkeit wird geprüft.
         </Text>
 
         <View style={[styles.card, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
@@ -414,7 +414,12 @@ const styles = StyleSheet.create({
   },
   headerBtn: { width: rs(36), height: rs(36), alignItems: "center", justifyContent: "center" },
   headerTitle: accountSheetHeaderTitle,
-  lead: { ...accountSheetSecondaryLabel, marginBottom: rs(12) },
+  lead: {
+    ...accountSheetSecondaryLabel,
+    marginBottom: rs(12),
+    color: "#111827",
+    fontFamily: "Inter_400Regular",
+  },
   card: {
     borderRadius: rs(14),
     borderWidth: 1,
