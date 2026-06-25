@@ -129,7 +129,13 @@ import {
 } from "../lib/companyOnboardingConstants";
 import { saveMarketingCmsAsset } from "../lib/marketingCmsAssets";
 import { parseMultipartForm } from "../lib/parseMultipartForm";
-import { getHomepageContentAdmin, patchHomepageContentAdmin, parseFixpreisSectionPatch } from "../db/homepageContentData";
+import {
+  getHomepageContentAdmin,
+  patchHomepageContentAdmin,
+  parseFixpreisSectionPatch,
+  parseSectionThemesPatch,
+  parseSiteBrandingPatch,
+} from "../db/homepageContentData";
 import {
   getOperationalConfigPayload,
   insertServiceRegion,
@@ -3062,6 +3068,8 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
           })();
     const fixpreisSection =
       b.fixpreisSection === undefined ? undefined : parseFixpreisSectionPatch(b.fixpreisSection);
+    const siteBranding = b.siteBranding === undefined ? undefined : parseSiteBrandingPatch(b.siteBranding);
+    const sectionThemes = b.sectionThemes === undefined ? undefined : parseSectionThemesPatch(b.sectionThemes);
     const item = await patchHomepageContentAdmin(
       {
         section2Title: toText(b.section2Title),
@@ -3091,6 +3099,8 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
         aboutTagline: toText(b.aboutTagline),
         navPromo,
         fixpreisSection,
+        siteBranding,
+        sectionThemes,
       },
       req.adminAuth?.adminUserId ?? null,
     );

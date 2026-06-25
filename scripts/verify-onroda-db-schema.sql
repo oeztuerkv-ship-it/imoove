@@ -661,6 +661,20 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'site_branding'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.site_branding (Migration 119)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'section_themes'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.section_themes (Migration 119)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'insurer_cost_centers'
   ) THEN

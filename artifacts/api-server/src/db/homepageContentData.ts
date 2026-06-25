@@ -75,6 +75,50 @@ export type HomepageFixpreisSection = {
   isActive: boolean;
 };
 
+export type HomepageSectionTheme = {
+  titleFontSize: "sm" | "md" | "lg" | "xl";
+  bodyFontSize: "sm" | "md" | "lg";
+  titleColor: string;
+  bodyColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  textAlign: "left" | "center" | "right";
+};
+
+export type HomepageSiteBranding = {
+  headerLogoUrl: string;
+  faviconUrl: string;
+};
+
+export type HomepageSectionThemes = {
+  hero: HomepageSectionTheme;
+  section2: HomepageSectionTheme;
+  services: HomepageSectionTheme;
+  manifest: HomepageSectionTheme;
+};
+
+export const defaultHomepageSectionTheme = (): HomepageSectionTheme => ({
+  titleFontSize: "lg",
+  bodyFontSize: "md",
+  titleColor: "",
+  bodyColor: "",
+  accentColor: "",
+  backgroundColor: "",
+  textAlign: "center",
+});
+
+export const defaultHomepageSectionThemes = (): HomepageSectionThemes => ({
+  hero: { ...defaultHomepageSectionTheme(), textAlign: "left" },
+  section2: defaultHomepageSectionTheme(),
+  services: defaultHomepageSectionTheme(),
+  manifest: defaultHomepageSectionTheme(),
+});
+
+export const defaultHomepageSiteBranding = (): HomepageSiteBranding => ({
+  headerLogoUrl: "",
+  faviconUrl: "",
+});
+
 export type HomepageContentDto = {
   section2Title: string;
   section2Cards: Array<{
@@ -110,6 +154,8 @@ export type HomepageContentDto = {
   aboutTagline: string;
   navPromo: HomepageNavPromo;
   fixpreisSection: HomepageFixpreisSection;
+  siteBranding: HomepageSiteBranding;
+  sectionThemes: HomepageSectionThemes;
   updatedAt: string | null;
 };
 
@@ -286,6 +332,8 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
     footerNote: "",
     isActive: true,
   },
+  siteBranding: defaultHomepageSiteBranding(),
+  sectionThemes: defaultHomepageSectionThemes(),
 };
 
 function normalizeNavPromoHref(href: string): string {
@@ -358,6 +406,47 @@ function mapFixpreisContentPanels(raw: unknown): HomepageFixpreisPanel[] {
   });
 }
 
+function parseTextAlign(raw: unknown): HomepageFixpreisSection["textAlign"] {
+  const v = String(raw ?? "").trim();
+  if (v === "left" || v === "center" || v === "right") return v;
+  return "center";
+}
+
+function mapSectionTheme(raw: unknown, fallback: HomepageSectionTheme): HomepageSectionTheme {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const titleFs = String(o.titleFontSize ?? fallback.titleFontSize).trim();
+  const bodyFs = String(o.bodyFontSize ?? fallback.bodyFontSize).trim();
+  return {
+    titleFontSize: titleFs === "sm" || titleFs === "md" || titleFs === "lg" || titleFs === "xl" ? titleFs : fallback.titleFontSize,
+    bodyFontSize: bodyFs === "sm" || bodyFs === "md" || bodyFs === "lg" ? bodyFs : fallback.bodyFontSize,
+    titleColor: String(o.titleColor ?? fallback.titleColor).trim(),
+    bodyColor: String(o.bodyColor ?? fallback.bodyColor).trim(),
+    accentColor: String(o.accentColor ?? fallback.accentColor).trim(),
+    backgroundColor: String(o.backgroundColor ?? fallback.backgroundColor).trim(),
+    textAlign: parseTextAlign(o.textAlign ?? fallback.textAlign),
+  };
+}
+
+function mapSiteBranding(raw: unknown): HomepageSiteBranding {
+  const d = DEFAULT_CONTENT.siteBranding;
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    headerLogoUrl: String(o.headerLogoUrl ?? d.headerLogoUrl).trim(),
+    faviconUrl: String(o.faviconUrl ?? d.faviconUrl).trim(),
+  };
+}
+
+function mapSectionThemes(raw: unknown): HomepageSectionThemes {
+  const d = DEFAULT_CONTENT.sectionThemes;
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    hero: mapSectionTheme(o.hero, d.hero),
+    section2: mapSectionTheme(o.section2, d.section2),
+    services: mapSectionTheme(o.services, d.services),
+    manifest: mapSectionTheme(o.manifest, d.manifest),
+  };
+}
+
 function parseTitleFontSize(raw: unknown): HomepageFixpreisSection["titleFontSize"] {
   const v = String(raw ?? "").trim();
   if (v === "sm" || v === "md" || v === "lg" || v === "xl") return v;
@@ -370,10 +459,18 @@ function parseBodyFontSize(raw: unknown): HomepageFixpreisSection["bodyFontSize"
   return DEFAULT_CONTENT.fixpreisSection.bodyFontSize;
 }
 
-function parseTextAlign(raw: unknown): HomepageFixpreisSection["textAlign"] {
+function parseFixpreisTextAlign(raw: unknown): HomepageFixpreisSection["textAlign"] {
   const v = String(raw ?? "").trim();
   if (v === "left" || v === "center" || v === "right") return v;
   return DEFAULT_CONTENT.fixpreisSection.textAlign;
+}
+
+export function parseSiteBrandingPatch(raw: unknown): HomepageSiteBranding {
+  return mapSiteBranding(raw);
+}
+
+export function parseSectionThemesPatch(raw: unknown): HomepageSectionThemes {
+  return mapSectionThemes(raw);
 }
 
 export function parseFixpreisSectionPatch(raw: unknown): HomepageFixpreisSection {
@@ -395,7 +492,7 @@ function mapFixpreisSection(raw: unknown): HomepageFixpreisSection {
     bodyColor: String(o.bodyColor ?? d.bodyColor).trim(),
     accentColor: String(o.accentColor ?? d.accentColor).trim(),
     backgroundColor: String(o.backgroundColor ?? d.backgroundColor).trim(),
-    textAlign: parseTextAlign(o.textAlign),
+    textAlign: parseFixpreisTextAlign(o.textAlign),
     ctaText: String(o.ctaText ?? d.ctaText).trim() || d.ctaText,
     ctaLink: String(o.ctaLink ?? d.ctaLink).trim() || d.ctaLink,
     secondaryCtaText: String(o.secondaryCtaText ?? d.secondaryCtaText).trim(),
@@ -502,6 +599,8 @@ export function normalizeHomepageContentDto(dto: HomepageContentDto): HomepageCo
       })),
       footerNote: normalizeGermanMarketingText((dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection).footerNote),
     },
+    siteBranding: mapSiteBranding(dto.siteBranding),
+    sectionThemes: mapSectionThemes(dto.sectionThemes),
     section2Cards: dto.section2Cards.map((c) => ({
       ...c,
       title: normalizeGermanMarketingText(c.title),
@@ -562,6 +661,8 @@ function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDt
     aboutTagline: (row.about_tagline || "").trim() || DEFAULT_CONTENT.aboutTagline,
     navPromo: mapNavPromo(row.nav_promo),
     fixpreisSection: mapFixpreisSection(row.fixpreis_section),
+    siteBranding: mapSiteBranding(row.site_branding),
+    sectionThemes: mapSectionThemes(row.section_themes),
     updatedAt: row.updated_at ? row.updated_at.toISOString() : null,
   });
 }
@@ -628,6 +729,8 @@ export async function patchHomepageContentAdmin(
       about_tagline: merged.aboutTagline,
       nav_promo: merged.navPromo,
       fixpreis_section: merged.fixpreisSection,
+      site_branding: merged.siteBranding,
+      section_themes: merged.sectionThemes,
       updated_by_admin_user_id: actorAdminUserId ?? null,
       created_at: now,
       updated_at: now,
@@ -663,6 +766,8 @@ export async function patchHomepageContentAdmin(
         about_tagline: merged.aboutTagline,
         nav_promo: merged.navPromo,
         fixpreis_section: merged.fixpreisSection,
+        site_branding: merged.siteBranding,
+        section_themes: merged.sectionThemes,
         updated_by_admin_user_id: actorAdminUserId ?? null,
         updated_at: now,
       })

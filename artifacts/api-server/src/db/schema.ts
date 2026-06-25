@@ -1325,6 +1325,11 @@ export const homepageContentTable = pgTable("homepage_content", {
       ctaLink: "/#jetzt-buchen",
       isActive: true,
     }),
+  site_branding: jsonb("site_branding")
+    .$type<{ headerLogoUrl: string; faviconUrl: string }>()
+    .notNull()
+    .default({ headerLogoUrl: "", faviconUrl: "" }),
+  section_themes: jsonb("section_themes").$type<Record<string, unknown>>().notNull().default({}),
   updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
     onDelete: "set null",
   }),
