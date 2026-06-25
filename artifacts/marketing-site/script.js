@@ -579,6 +579,7 @@
     }
 
     function loadFixpreisePageContent() {
+      if (isCmsPreviewMode()) return;
       if (!document.getElementById("fixpreis-page-title")) return;
       var host = window.location.hostname;
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
@@ -598,11 +599,136 @@
         .catch(function () {});
     }
 
-    function loadHomepageContent() {
-      var host = window.location.hostname;
-      if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
-        return;
+    function cmsAssetUrl(url) {
+      var u = String(url || "").trim();
+      if (!u) return "";
+      if (/^https?:\/\//i.test(u)) return u;
+      return u.charAt(0) === "/" ? u : "/" + u;
+    }
+
+    function isCmsPreviewMode() {
+      return /[?&]cmsPreview=1(?:&|$)/.test(window.location.search);
+    }
+
+    var CMS_PREVIEW_ALLOWED_ORIGINS = [
+      "https://admin.onroda.de",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:4173",
+    ];
+
+    function cmsTitleSizeRem(key) {
+      if (key === "sm") return "1.35rem";
+      if (key === "md") return "1.75rem";
+      if (key === "xl") return "2.75rem";
+      return "2.25rem";
+    }
+
+    function cmsBodySizeRem(key) {
+      if (key === "sm") return "0.95rem";
+      if (key === "lg") return "1.15rem";
+      return "1.05rem";
+    }
+
+    function applySiteBrandingFromCms(item) {
+      var b = item && item.siteBranding ? item.siteBranding : null;
+      if (!b) return;
+      var logoUrl = cmsAssetUrl(b.headerLogoUrl);
+      var favUrl = cmsAssetUrl(b.faviconUrl);
+      var logos = document.querySelectorAll(".hp-brand-logo");
+      for (var i = 0; i < logos.length; i++) {
+        if (logoUrl) logos[i].setAttribute("src", logoUrl);
       }
+      var fav = document.querySelector('link[rel="icon"]');
+      if (fav && favUrl) fav.setAttribute("href", favUrl);
+    }
+
+    function paintHomepageSectionTheme(sectionEl, theme, selectors) {
+      if (!sectionEl || !theme) return;
+      sectionEl.classList.add("hp-cms-themed");
+      if (theme.textAlign) sectionEl.style.textAlign = theme.textAlign;
+      if (theme.backgroundColor) sectionEl.style.background = theme.backgroundColor;
+      if (theme.accentColor) sectionEl.style.setProperty("--cms-accent", theme.accentColor);
+      var titles = sectionEl.querySelectorAll(selectors.titles);
+      var bodies = sectionEl.querySelectorAll(selectors.bodies);
+      var kickers = selectors.kickers ? sectionEl.querySelectorAll(selectors.kickers) : [];
+      var ti;
+      for (ti = 0; ti < titles.length; ti++) {
+        if (theme.titleColor) titles[ti].style.color = theme.titleColor;
+        if (theme.titleFontSize) titles[ti].style.fontSize = cmsTitleSizeRem(theme.titleFontSize);
+      }
+      for (ti = 0; ti < bodies.length; ti++) {
+        if (theme.bodyColor) bodies[ti].style.color = theme.bodyColor;
+        if (theme.bodyFontSize) bodies[ti].style.fontSize = cmsBodySizeRem(theme.bodyFontSize);
+      }
+      for (ti = 0; ti < kickers.length; ti++) {
+        if (theme.accentColor) kickers[ti].style.color = theme.accentColor;
+      }
+    }
+
+    function applyHomepageSectionThemesFromCms(item) {
+      var themes = item && item.sectionThemes ? item.sectionThemes : null;
+      if (!themes) return;
+      paintHomepageSectionTheme(document.getElementById("top"), themes.hero, {
+        titles: "#hero-headline",
+        bodies: "#hero-subline, .hp-hero-lead",
+        kickers: null,
+      });
+      paintHomepageSectionTheme(document.getElementById("fuer-wen"), themes.section2, {
+        titles: "#fuer-wen-heading, .hp-audience-card h3",
+        bodies: "#fuer-wen .hp-audience-card p, #fuer-wen .hp-sub",
+        kickers: null,
+      });
+      paintHomepageSectionTheme(document.getElementById("services"), themes.services, {
+        titles: "#services-title, #services h3",
+        bodies: "#services-sub, #services .hp-card p",
+        kickers: "#services-kicker",
+      });
+      paintHomepageSectionTheme(document.getElementById("manifest"), themes.manifest, {
+        titles: "#manifest-title, #manifest h3",
+        bodies: "#manifest-sub, #manifest .hp-manifest-card p",
+        kickers: "#manifest-kicker",
+      });
+    }
+
+    function applyHomepageCmsModules(modules) {
+      if (!modules || typeof modules !== "object") return;
+      var faq = Array.isArray(modules.faq) ? modules.faq : [];
+      for (var i = 1; i <= 8; i++) {
+        var wrap = document.getElementById("faq-item-" + i);
+        var q = document.getElementById("faq-item-" + i + "-question");
+        var a = document.getElementById("faq-item-" + i + "-answer");
+        var it = faq[i - 1] || null;
+        if (!wrap && it) continue;
+        if (!wrap || !q || !a) continue;
+        if (!it || it.isActive === false) {
+          wrap.setAttribute("hidden", "hidden");
+          continue;
+        }
+        wrap.removeAttribute("hidden");
+        q.textContent = String(it.question || "");
+        a.textContent = String(it.answer || "");
+      }
+      var trust = Array.isArray(modules.trust) ? modules.trust : [];
+      for (var t = 1; t <= 4; t++) {
+        var twrap = document.getElementById("trust-card-" + t);
+        var value = document.getElementById("trust-card-" + t + "-value");
+        var label = document.getElementById("trust-card-" + t + "-label");
+        var desc = document.getElementById("trust-card-" + t + "-desc");
+        if (!twrap || !value || !label || !desc) continue;
+        var tit = trust[t - 1] || null;
+        if (!tit || tit.isActive === false) {
+          twrap.setAttribute("hidden", "hidden");
+          continue;
+        }
+        twrap.removeAttribute("hidden");
+        value.textContent = String(tit.value || "");
+        label.textContent = String(tit.label || "");
+        desc.textContent = String(tit.description || "");
+      }
+    }
+
+    function applyHomepageCmsItem(item) {
       var headlineEl = document.getElementById("hero-headline");
       var sublineEl = document.getElementById("hero-subline");
       var cta1El = document.getElementById("hero-cta1");
@@ -615,15 +741,7 @@
       var defaultCta2Text = cta2El ? cta2El.textContent || "" : "";
       var defaultCta2Link = cta2El ? cta2El.getAttribute("href") || "" : "";
       var defaultSection2Title = section2TitleEl ? section2TitleEl.textContent || "" : "";
-      var url = publicApiBase() + "/public/homepage-content";
-      fetch(url, { method: "GET", credentials: "omit" })
-        .then(function (res) {
-          if (!res.ok) return { ok: false, item: null };
-          return res.json().catch(function () { return { ok: false, item: null }; });
-        })
-        .then(function (data) {
-          var item = data && data.ok ? data.item : null;
-          if (headlineEl) {
+      if (headlineEl) {
             setMultilineText(headlineEl, pickCms(item && item.heroHeadline, defaultHeadline));
           }
           if (sublineEl) {
@@ -797,7 +915,26 @@
             }
           }
           applyNavPromo(item);
+          applySiteBrandingFromCms(item);
+          applyHomepageSectionThemesFromCms(item);
           renderHomepageBanners(item);
+          applyFixpreisSection(item);
+    }
+
+    function loadHomepageContent() {
+      var host = window.location.hostname;
+      if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
+        return;
+      }
+      if (isCmsPreviewMode()) return;
+      var url = publicApiBase() + "/public/homepage-content";
+      fetch(url, { method: "GET", credentials: "omit" })
+        .then(function (res) {
+          if (!res.ok) return { ok: false, item: null };
+          return res.json().catch(function () { return { ok: false, item: null }; });
+        })
+        .then(function (data) {
+          applyHomepageCmsItem(data && data.ok ? data.item : null);
         })
         .catch(function () {
           renderHomepageBanners(null);
@@ -882,6 +1019,7 @@
     }
 
     function loadAboutPageContent() {
+      if (isCmsPreviewMode()) return;
       if (!document.getElementById("about-page-headline")) return;
       var host = window.location.hostname;
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
@@ -905,6 +1043,7 @@
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
         return;
       }
+      if (isCmsPreviewMode()) return;
       /* Prozess-Schritte: festes 5-Schritte-Layout in index.html (Buchen → Abrechnung).
          Kein Override durch /public/homepage-how — DB hatte noch 3 alte „Fahrt anfragen“-Texte. */
 
@@ -980,10 +1119,38 @@
         .catch(function () {});
     }
 
-    loadHomepageContent();
-    loadAboutPageContent();
-    loadFixpreisePageContent();
-    loadHomepageModules();
+    function initCmsPreviewBridge() {
+      document.documentElement.classList.add("onroda-cms-preview");
+      var banner = document.createElement("div");
+      banner.className = "onroda-cms-preview-banner";
+      banner.setAttribute("role", "status");
+      banner.textContent = "CMS-Vorschau — nicht gespeichert";
+      document.body.insertBefore(banner, document.body.firstChild);
+      window.addEventListener("message", function (ev) {
+        if (CMS_PREVIEW_ALLOWED_ORIGINS.indexOf(ev.origin) < 0) return;
+        var data = ev.data;
+        if (!data || data.type !== "onroda-cms-preview") return;
+        var payload = data.payload || {};
+        if (payload.item) applyHomepageCmsItem(payload.item);
+        if (payload.modules) applyHomepageCmsModules(payload.modules);
+      });
+      if (window.parent !== window) {
+        try {
+          window.parent.postMessage({ type: "onroda-cms-preview-ready" }, "*");
+        } catch (previewErr) {
+          /* ignore */
+        }
+      }
+    }
+
+    if (isCmsPreviewMode()) {
+      initCmsPreviewBridge();
+    } else {
+      loadHomepageContent();
+      loadAboutPageContent();
+      loadFixpreisePageContent();
+      loadHomepageModules();
+    }
 
     function motionModalLog() {
       if (

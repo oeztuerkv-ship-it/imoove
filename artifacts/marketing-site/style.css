@@ -467,6 +467,25 @@
       color: var(--fixpreis-accent, var(--onroda-red));
     }
 
+    .onroda-cms-preview-banner {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      padding: 0.45rem 1rem;
+      text-align: center;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #fff;
+      background: linear-gradient(90deg, #0f172a, #334155);
+      border-bottom: 2px solid var(--onroda-red, #ef1d26);
+    }
+
+    .hp-cms-themed .hp-btn-primary {
+      background: var(--cms-accent, var(--onroda-red));
+      border-color: var(--cms-accent, var(--onroda-red));
+    }
+
     .hp-nav-dropdown {
       position: relative;
     }
