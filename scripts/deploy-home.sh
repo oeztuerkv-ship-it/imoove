@@ -39,6 +39,10 @@ for f in index.html style.css script.js datenschutz.html impressum.html ueber-on
     exit 1
   fi
 done
+if [[ ! -f "${TARGET}/fixpreise/index.html" ]]; then
+  echo "[deploy-home] FEHLER: fehlt nach rsync: ${TARGET}/fixpreise/index.html (Route /fixpreise)" >&2
+  exit 1
+fi
 
 if [[ -x "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh" ]]; then
   LIVE_MARKETING_ROOT="${TARGET}" bash "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh"

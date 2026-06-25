@@ -16,6 +16,9 @@ IDX="${STATIC}/index.html"
 [[ -f "${STATIC}/datenschutz.html" ]] || err "Fehlt: ${STATIC}/datenschutz.html"
 [[ -f "${STATIC}/ueber-onroda.html" ]] || err "Fehlt: ${STATIC}/ueber-onroda.html"
 [[ -f "${STATIC}/fixpreise.html" ]] || err "Fehlt: ${STATIC}/fixpreise.html"
+[[ -f "${STATIC}/fixpreise/index.html" ]] || err "Fehlt: ${STATIC}/fixpreise/index.html (Nginx try_files /fixpreise)"
+
+grep -qF 'id="fixpreis-page-title"' "${STATIC}/fixpreise/index.html" || err "fixpreise/index.html: erwarteter Seiten-Marker fehlt"
 
 grep -qF "Status Ihrer Partner-Registrierung" "$STATUS" || err "partner-status.html: erwarteter Titel-Text fehlt"
 grep -qF "registration-request" "$STATUS" || err "partner-status.html: API-Pfad-Hinweis fehlt"
@@ -32,5 +35,8 @@ if [[ -n "${LIVE_MARKETING_ROOT:-}" ]]; then
   L="${LIVE_MARKETING_ROOT%/}/partner-status.html"
   [[ -f "$L" ]] || err "Live-Webroot: fehlt $L — rsync aus artifacts/marketing-site/ ausführen"
   grep -qF "Status Ihrer Partner-Registrierung" "$L" || err "Live partner-status.html: Inhalt unplausibel"
+  L_FIX="${LIVE_MARKETING_ROOT%/}/fixpreise/index.html"
+  [[ -f "$L_FIX" ]] || err "Live-Webroot: fehlt $L_FIX — /fixpreise liefert sonst die Startseite (try_files)"
+  grep -qF 'id="fixpreis-page-title"' "$L_FIX" || err "Live fixpreise/index.html: Inhalt unplausibel"
   echo "verify-onroda-marketing-partner-status-repo: OK (LIVE_MARKETING_ROOT=${LIVE_MARKETING_ROOT})"
 fi

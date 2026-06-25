@@ -231,6 +231,12 @@
         });
     }
 
+    function normalizeNavPromoHref(href) {
+      var h = String(href || "").trim();
+      if (!h || h === "#fixpreise" || h === "/#fixpreise") return "/fixpreise";
+      return h;
+    }
+
     function applyNavPromo(item) {
       var navLink = document.getElementById("hp-nav-promo-fixpreise");
       var navLabel = document.getElementById("hp-nav-promo-fixpreise-label");
@@ -248,7 +254,7 @@
       if (navLabel) {
         navLabel.textContent = pickCms(promo && promo.label, defaultLabel);
       }
-      navLink.setAttribute("href", String(promo && promo.href ? promo.href : defaultHref));
+      navLink.setAttribute("href", normalizeNavPromoHref(promo && promo.href ? promo.href : defaultHref));
       if (promo && promo.highlight === false) {
         navLink.classList.remove("hp-nav-link--highlight");
       } else {

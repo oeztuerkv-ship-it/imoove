@@ -217,12 +217,19 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   },
 };
 
+function normalizeNavPromoHref(href: string): string {
+  const h = href.trim();
+  if (!h || h === "#fixpreise" || h === "/#fixpreise") return "/fixpreise";
+  return h;
+}
+
 function mapNavPromo(raw: unknown): HomepageNavPromo {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const d = DEFAULT_CONTENT.navPromo;
+  const hrefRaw = String(o.href ?? d.href).trim() || d.href;
   return {
     label: String(o.label ?? d.label).trim() || d.label,
-    href: String(o.href ?? d.href).trim() || d.href,
+    href: normalizeNavPromoHref(hrefRaw),
     isActive: o.isActive !== false,
     badge: String(o.badge ?? d.badge).trim(),
     highlight: o.highlight !== false,

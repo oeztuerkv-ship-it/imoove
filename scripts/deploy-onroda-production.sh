@@ -71,6 +71,8 @@ Umgebung (Auswahl):
   ONRODA_RELOAD_NGINX       Wenn 1: nginx -t && systemctl reload nginx
   ONRODA_MARKETING_STATUS_VERIFY_URL  Optional: öffentliche URL z. B. https://www.onroda.de/partner/anfrage-status (curl: muss Status-HTML sein, nicht Startseite)
   ONRODA_MARKETING_STATUS_VERIFY_TIMEOUT  Sekunden für curl (Default: 25)
+  ONRODA_MARKETING_FIXPREISE_VERIFY_URL  Optional: Default https://www.onroda.de/fixpreise (nach Marketing-Rsync: muss Fixpreis-Seite sein)
+  ONRODA_SKIP_MARKETING_FIXPREISE_VERIFY  1 = Fixpreise-URL-Check überspringen (Notfall)
   ONRODA_HEALTHCHECK_URLS   Leerzeichen-getrennte GET-URLs (Default: http://127.0.0.1:<PORT>/api/healthz, PORT aus api-server/.env oder 3000)
   ONRODA_HEALTHCHECK_TIMEOUT Sekunden für curl (Default: 20)
   ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS  Wartezeit direkt nach PM2-Restart vor erstem Check (Default: 3)
@@ -513,6 +515,33 @@ do_optional_marketing_status_verify() {
   log "Marketing-Status-URL: OK (Inhalt plausibel)."
 }
 
+# Fixpreis-Landing: /fixpreise darf nicht die Startseite sein (Nginx try_files ohne fixpreise/index.html).
+do_marketing_fixpreise_verify() {
+  [[ "$DRY_RUN" -eq 1 ]] && return 0
+  [[ "${ONRODA_SKIP_MARKETING_RSYNC:-0}" == "1" ]] && return 0
+  [[ "${ONRODA_SKIP_MARKETING_FIXPREISE_VERIFY:-0}" == "1" ]] && return 0
+  local target="${ONRODA_RSYNC_MARKETING_STATIC_TO:-}"
+  [[ -z "$target" ]] && return 0
+  local url="${ONRODA_MARKETING_FIXPREISE_VERIFY_URL:-https://www.onroda.de/fixpreise}"
+  local t="${ONRODA_MARKETING_FIXPREISE_VERIFY_TIMEOUT:-25}"
+  log "Prüfe Fixpreise-URL: ${url}"
+  command -v curl >/dev/null 2>&1 || { log "curl fehlt — Fixpreise-URL-Check übersprungen"; return 0; }
+  local body
+  body="$(curl -fsSL --max-time "$t" "$url")" || {
+    echo "[deploy-onroda] FEHLER: curl für Fixpreise-URL fehlgeschlagen: $url" >&2
+    exit 1
+  }
+  if ! grep -qF 'id="fixpreis-page-title"' <<<"$body"; then
+    echo "[deploy-onroda] FEHLER: /fixpreise liefert nicht die Fixpreis-Seite (Marker fixpreis-page-title fehlt). fixpreise/index.html nach rsync prüfen oder Nginx location = /fixpreise setzen." >&2
+    exit 1
+  fi
+  if grep -qF 'id="hero-headline"' <<<"$body"; then
+    echo "[deploy-onroda] FEHLER: Unter /fixpreise wird die Startseite ausgeliefert (hero-headline gefunden)." >&2
+    exit 1
+  fi
+  log "Fixpreise-URL: OK (Inhalt plausibel)."
+}
+
 # --- main ---
 if [[ "$LIST_MIGRATIONS" -eq 1 ]]; then
   command -v psql >/dev/null 2>&1 || { echo "[deploy-onroda] psql nicht im PATH" >&2; exit 1; }
@@ -589,6 +618,7 @@ do_optional_rsync
 do_pm2
 do_optional_nginx
 do_optional_marketing_status_verify
+do_marketing_fixpreise_verify
 do_marketing_home_verify
 do_health_checks
 
