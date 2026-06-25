@@ -633,17 +633,6 @@
             var quote = data.quote || {};
             if (quote.eligible) {
               resultEl.className = "hp-fixpreis-calc-result hp-fixpreis-calc-result--ok";
-              var breakdown =
-                "Grundgebühr " +
-                fmtEuroCalc(quote.baseFeeEur) +
-                " + " +
-                String(quote.distanceKm).replace(".", ",") +
-                " km × " +
-                fmtEuroCalc(quote.perKmEur) +
-                "/km";
-              if (Number(quote.vehicleSurchargeEur) > 0) {
-                breakdown += " + Fahrzeug " + fmtEuroCalc(quote.vehicleSurchargeEur);
-              }
               resultEl.innerHTML =
                 '<div class="hp-fixpreis-calc-price">' +
                 fmtEuroCalc(quote.priceEur) +
@@ -653,9 +642,6 @@
                 " km · ca. " +
                 String(route.durationMinutes || "—") +
                 " Min.</div>" +
-                '<div class="hp-fixpreis-calc-breakdown">' +
-                breakdown +
-                "</div>" +
                 '<a class="hp-btn-primary hp-fixpreis-calc-book" href="/#jetzt-buchen">In der App buchen</a>';
             } else {
               resultEl.className = "hp-fixpreis-calc-result hp-fixpreis-calc-result--warn";
