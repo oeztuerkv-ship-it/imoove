@@ -293,6 +293,145 @@
       return "1.05rem";
     }
 
+    function escapeHtmlText(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatFixpreisInlineMd(line) {
+      var esc = escapeHtmlText(line);
+      return esc.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function fixpreisHasStructuredPanels(block) {
+      var panels = block && Array.isArray(block.contentPanels) ? block.contentPanels : [];
+      for (var i = 0; i < panels.length; i++) {
+        var p = panels[i];
+        if (!p || p.isActive === false) continue;
+        if (String(p.title || "").trim() || String(p.subtitle || "").trim() || String(p.body || "").trim()) return true;
+        var items = Array.isArray(p.items) ? p.items : [];
+        for (var j = 0; j < items.length; j++) {
+          var it = items[j];
+          if (it && (String(it.primary || "").trim() || String(it.secondary || "").trim())) return true;
+        }
+      }
+      return false;
+    }
+
+    function renderFixpreisBodyRich(el, raw) {
+      if (!el) return;
+      var text = String(raw || "").trim();
+      if (!text) {
+        el.textContent = "";
+        el.classList.remove("hp-fixpreis-body--rich");
+        return;
+      }
+      var lines = text.split("\n");
+      var html = "";
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var t = line.trim();
+        if (!t) {
+          html += "<br>";
+          continue;
+        }
+        if (t.charAt(0) === "#" && t.indexOf("### ") === 0) {
+          html += '<h3 class="hp-fixpreis-md-h3">' + formatFixpreisInlineMd(t.slice(4).trim()) + "</h3>";
+        } else if (t.charAt(0) === "#") {
+          html += '<h2 class="hp-fixpreis-md-h2">' + formatFixpreisInlineMd(t.replace(/^#+\s*/, "").trim()) + "</h2>";
+        } else if (t.indexOf("🚕") === 0) {
+          html += '<div class="hp-fixpreis-route-row hp-fixpreis-route-row--legacy">' + formatFixpreisInlineMd(t) + "</div>";
+        } else if (t.indexOf("✅") === 0) {
+          html += '<div class="hp-fixpreis-benefit-row hp-fixpreis-benefit-row--legacy">' + formatFixpreisInlineMd(t) + "</div>";
+        } else if (t.indexOf("🚐") === 0 || t.indexOf("📲") === 0) {
+          html += '<div class="hp-fixpreis-panel hp-fixpreis-panel--highlight hp-fixpreis-panel--inline">' + formatFixpreisInlineMd(t) + "</div>";
+        } else {
+          html += '<p class="hp-fixpreis-md-p">' + formatFixpreisInlineMd(line) + "</p>";
+        }
+      }
+      el.innerHTML = html;
+      el.classList.add("hp-fixpreis-body--rich");
+    }
+
+    function renderFixpreisPanels(root, panels) {
+      if (!root) return;
+      root.innerHTML = "";
+      var list = Array.isArray(panels) ? panels : [];
+      for (var i = 0; i < list.length; i++) {
+        var p = list[i];
+        if (!p || p.isActive === false) continue;
+        var kind = p.kind || "text";
+        var article = document.createElement("article");
+        article.className = "hp-fixpreis-panel hp-fixpreis-panel--" + kind;
+        var titleText = String(p.title || "").trim();
+        var subtitleText = String(p.subtitle || "").trim();
+        var bodyText = String(p.body || "").trim();
+        if (titleText) {
+          var h2 = document.createElement("h2");
+          h2.className = "hp-fixpreis-panel__title";
+          h2.textContent = titleText;
+          article.appendChild(h2);
+        }
+        if (subtitleText) {
+          var sub = document.createElement("p");
+          sub.className = "hp-fixpreis-panel__subtitle";
+          sub.textContent = subtitleText;
+          article.appendChild(sub);
+        }
+        if (kind === "text" || kind === "highlight") {
+          if (bodyText) {
+            var bodyP = document.createElement("p");
+            bodyP.className = "hp-fixpreis-panel__body";
+            bodyP.textContent = bodyText;
+            article.appendChild(bodyP);
+          }
+        } else {
+          var listEl = document.createElement("div");
+          listEl.className = kind === "routes" ? "hp-fixpreis-route-list" : "hp-fixpreis-benefit-list";
+          var items = Array.isArray(p.items) ? p.items : [];
+          for (var j = 0; j < items.length; j++) {
+            var it = items[j];
+            if (!it) continue;
+            var primary = String(it.primary || "").trim();
+            var secondary = String(it.secondary || "").trim();
+            if (!primary && !secondary) continue;
+            var row = document.createElement("div");
+            row.className = kind === "routes" ? "hp-fixpreis-route-row" : "hp-fixpreis-benefit-row";
+            var iconText = String(it.icon || "").trim();
+            if (iconText) {
+              var ic = document.createElement("span");
+              ic.className = "hp-fixpreis-panel-row__icon";
+              ic.setAttribute("aria-hidden", "true");
+              ic.textContent = iconText;
+              row.appendChild(ic);
+            }
+            var main = document.createElement("span");
+            main.className = "hp-fixpreis-panel-row__primary";
+            main.textContent = primary;
+            row.appendChild(main);
+            if (kind === "routes" && secondary) {
+              var price = document.createElement("span");
+              price.className = "hp-fixpreis-route-row__price";
+              price.textContent = secondary;
+              row.appendChild(price);
+            }
+            listEl.appendChild(row);
+          }
+          if (listEl.childNodes.length) article.appendChild(listEl);
+          if (bodyText) {
+            var extra = document.createElement("p");
+            extra.className = "hp-fixpreis-panel__body";
+            extra.textContent = bodyText;
+            article.appendChild(extra);
+          }
+        }
+        if (article.childNodes.length) root.appendChild(article);
+      }
+    }
+
     function applyFixpreisSection(item) {
       var block = item && item.fixpreisSection ? item.fixpreisSection : null;
       var landing = document.getElementById("fixpreis-landing");
@@ -305,6 +444,9 @@
       }
       var titleEl = document.getElementById("fixpreis-page-title");
       var bodyEl = document.getElementById("fixpreis-page-body");
+      var introCard = document.getElementById("fixpreis-intro-card");
+      var panelsRoot = document.getElementById("fixpreis-content-panels");
+      var footerNoteEl = document.getElementById("fixpreis-footer-note");
       var ctaEl = document.getElementById("fixpreis-page-cta");
       var cta2El = document.getElementById("fixpreis-page-cta-secondary");
       var kickerEl = document.getElementById("fixpreis-kicker");
@@ -359,8 +501,43 @@
       if (titleEl) {
         titleEl.textContent = pickCms(block && block.title, titleEl.textContent || "");
       }
+      var hasPanels = fixpreisHasStructuredPanels(block);
+      var bodyText = pickCms(block && block.body, bodyEl ? bodyEl.textContent || "" : "");
       if (bodyEl) {
-        bodyEl.textContent = pickCms(block && block.body, bodyEl.textContent || "");
+        bodyEl.classList.remove("hp-fixpreis-body--rich");
+        if (hasPanels) {
+          if (String(bodyText || "").trim()) {
+            bodyEl.textContent = bodyText;
+            if (introCard) introCard.removeAttribute("hidden");
+          } else {
+            bodyEl.textContent = "";
+            if (introCard) introCard.setAttribute("hidden", "hidden");
+          }
+        } else if (String(bodyText || "").indexOf("#") >= 0 || String(bodyText || "").indexOf("**") >= 0 || String(bodyText || "").indexOf("🚕") >= 0) {
+          renderFixpreisBodyRich(bodyEl, bodyText);
+          if (introCard) introCard.removeAttribute("hidden");
+        } else {
+          bodyEl.textContent = bodyText;
+          if (introCard) {
+            if (String(bodyText || "").trim()) introCard.removeAttribute("hidden");
+            else introCard.setAttribute("hidden", "hidden");
+          }
+        }
+      }
+      if (panelsRoot) {
+        renderFixpreisPanels(panelsRoot, block && block.contentPanels);
+        if (panelsRoot.childNodes.length) panelsRoot.removeAttribute("hidden");
+        else panelsRoot.setAttribute("hidden", "hidden");
+      }
+      if (footerNoteEl) {
+        var note = block && block.footerNote ? String(block.footerNote).trim() : "";
+        if (note) {
+          footerNoteEl.textContent = note;
+          footerNoteEl.removeAttribute("hidden");
+        } else {
+          footerNoteEl.textContent = "";
+          footerNoteEl.setAttribute("hidden", "hidden");
+        }
       }
       if (ctaEl) {
         var defaultCtaText = ctaEl.textContent || "";

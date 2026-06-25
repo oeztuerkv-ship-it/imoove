@@ -37,6 +37,21 @@ export type HomepageFixpreisPromoBlock = {
   isActive: boolean;
 };
 
+export type HomepageFixpreisPanelItem = {
+  icon: string;
+  primary: string;
+  secondary: string;
+};
+
+export type HomepageFixpreisPanel = {
+  kind: "routes" | "list" | "text" | "highlight";
+  title: string;
+  subtitle: string;
+  body: string;
+  items: HomepageFixpreisPanelItem[];
+  isActive: boolean;
+};
+
 export type HomepageFixpreisSection = {
   title: string;
   body: string;
@@ -55,6 +70,8 @@ export type HomepageFixpreisSection = {
   secondaryCtaText: string;
   secondaryCtaLink: string;
   promoBlocks: HomepageFixpreisPromoBlock[];
+  contentPanels: HomepageFixpreisPanel[];
+  footerNote: string;
   isActive: boolean;
 };
 
@@ -265,6 +282,8 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
         isActive: true,
       },
     ],
+    contentPanels: [],
+    footerNote: "",
     isActive: true,
   },
 };
@@ -302,6 +321,39 @@ function mapFixpreisPromoBlocks(raw: unknown): HomepageFixpreisPromoBlock[] {
       title: String(o?.title ?? fallback.title).trim(),
       body: String(o?.body ?? fallback.body).trim(),
       isActive: o?.isActive !== false,
+    };
+  });
+}
+
+function parseFixpreisPanelKind(raw: unknown): HomepageFixpreisPanel["kind"] {
+  const v = String(raw ?? "").trim();
+  if (v === "routes" || v === "list" || v === "text" || v === "highlight") return v;
+  return "text";
+}
+
+function mapFixpreisPanelItems(raw: unknown): HomepageFixpreisPanelItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 20).map((c) => {
+    const o = c && typeof c === "object" ? (c as Record<string, unknown>) : {};
+    return {
+      icon: String(o.icon ?? "").trim(),
+      primary: String(o.primary ?? "").trim(),
+      secondary: String(o.secondary ?? "").trim(),
+    };
+  });
+}
+
+function mapFixpreisContentPanels(raw: unknown): HomepageFixpreisPanel[] {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  return raw.slice(0, 8).map((c) => {
+    const o = c && typeof c === "object" ? (c as Record<string, unknown>) : {};
+    return {
+      kind: parseFixpreisPanelKind(o.kind),
+      title: String(o.title ?? "").trim(),
+      subtitle: String(o.subtitle ?? "").trim(),
+      body: String(o.body ?? "").trim(),
+      items: mapFixpreisPanelItems(o.items),
+      isActive: o.isActive !== false,
     };
   });
 }
@@ -349,6 +401,8 @@ function mapFixpreisSection(raw: unknown): HomepageFixpreisSection {
     secondaryCtaText: String(o.secondaryCtaText ?? d.secondaryCtaText).trim(),
     secondaryCtaLink: String(o.secondaryCtaLink ?? d.secondaryCtaLink).trim(),
     promoBlocks: mapFixpreisPromoBlocks(o.promoBlocks),
+    contentPanels: mapFixpreisContentPanels(o.contentPanels),
+    footerNote: String(o.footerNote ?? d.footerNote).trim(),
     isActive: o.isActive !== false,
   };
 }
@@ -435,6 +489,18 @@ export function normalizeHomepageContentDto(dto: HomepageContentDto): HomepageCo
         title: normalizeGermanMarketingText(b.title),
         body: normalizeGermanMarketingText(b.body),
       })),
+      contentPanels: (dto.fixpreisSection?.contentPanels ?? DEFAULT_CONTENT.fixpreisSection.contentPanels).map((p) => ({
+        ...p,
+        title: normalizeGermanMarketingText(p.title),
+        subtitle: normalizeGermanMarketingText(p.subtitle),
+        body: normalizeGermanMarketingText(p.body),
+        items: p.items.map((it) => ({
+          ...it,
+          primary: normalizeGermanMarketingText(it.primary),
+          secondary: normalizeGermanMarketingText(it.secondary),
+        })),
+      })),
+      footerNote: normalizeGermanMarketingText((dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection).footerNote),
     },
     section2Cards: dto.section2Cards.map((c) => ({
       ...c,
