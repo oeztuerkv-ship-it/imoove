@@ -368,7 +368,7 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
           <span className="admin-field-hint" style={{ display: "block", margin: "0 0 6px", fontSize: 13, color: "#64748b" }}>
             1–3 Sätze unter der Überschrift. Längere Inhalte bitte in die Bereiche unten pflegen.
           </span>
-          <textarea className="admin-textarea" rows={3} value={fixpreisSection.body} onChange={(e) => onFixpreisChange({ ...fixpreisSection, body: e.target.value })} />
+          <textarea className="admin-textarea admin-textarea--resize-both" rows={3} value={fixpreisSection.body} onChange={(e) => onFixpreisChange({ ...fixpreisSection, body: e.target.value })} />
         </label>
 
         <div className="admin-panel-card" style={{ padding: 12, marginTop: 12 }}>
@@ -469,22 +469,12 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
         </label>
         <div className="admin-form-grid-2">
           <label className="admin-form-pair">
-            <span className="admin-field-label">Haupt-Button Text</span>
+            <span className="admin-field-label">Button Text</span>
             <input className="admin-input" value={fixpreisSection.ctaText} onChange={(e) => onFixpreisChange({ ...fixpreisSection, ctaText: e.target.value })} />
           </label>
           <label className="admin-form-pair">
-            <span className="admin-field-label">Haupt-Button Ziel</span>
+            <span className="admin-field-label">Button Ziel</span>
             <input className="admin-input" value={fixpreisSection.ctaLink} onChange={(e) => onFixpreisChange({ ...fixpreisSection, ctaLink: e.target.value })} />
-          </label>
-        </div>
-        <div className="admin-form-grid-2">
-          <label className="admin-form-pair">
-            <span className="admin-field-label">Zweit-Button Text (optional)</span>
-            <input className="admin-input" value={fixpreisSection.secondaryCtaText} onChange={(e) => onFixpreisChange({ ...fixpreisSection, secondaryCtaText: e.target.value })} />
-          </label>
-          <label className="admin-form-pair">
-            <span className="admin-field-label">Zweit-Button Ziel</span>
-            <input className="admin-input" value={fixpreisSection.secondaryCtaLink} onChange={(e) => onFixpreisChange({ ...fixpreisSection, secondaryCtaLink: e.target.value })} />
           </label>
         </div>
 

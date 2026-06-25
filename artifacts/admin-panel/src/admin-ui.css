@@ -1421,6 +1421,13 @@
   outline-offset: 2px;
 }
 
+.admin-textarea--resize-both {
+  resize: both;
+  width: 72%;
+  min-width: min(100%, 280px);
+  max-width: 100%;
+}
+
 .admin-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;

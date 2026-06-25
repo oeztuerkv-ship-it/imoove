@@ -448,7 +448,6 @@
       var panelsRoot = document.getElementById("fixpreis-content-panels");
       var footerNoteEl = document.getElementById("fixpreis-footer-note");
       var ctaEl = document.getElementById("fixpreis-page-cta");
-      var cta2El = document.getElementById("fixpreis-page-cta-secondary");
       var kickerEl = document.getElementById("fixpreis-kicker");
       var logoEl = document.getElementById("fixpreis-logo");
       var heroImgEl = document.getElementById("fixpreis-hero-image");
@@ -544,17 +543,6 @@
         var defaultCtaHref = ctaEl.getAttribute("href") || "/#jetzt-buchen";
         ctaEl.textContent = pickCms(block && block.ctaText, defaultCtaText);
         ctaEl.setAttribute("href", String(block && block.ctaLink ? block.ctaLink : defaultCtaHref));
-      }
-      if (cta2El) {
-        var sText = block && block.secondaryCtaText ? String(block.secondaryCtaText).trim() : "";
-        var sHref = block && block.secondaryCtaLink ? String(block.secondaryCtaLink).trim() : "";
-        if (sText && sHref) {
-          cta2El.textContent = sText;
-          cta2El.setAttribute("href", sHref);
-          cta2El.removeAttribute("hidden");
-        } else {
-          cta2El.setAttribute("hidden", "hidden");
-        }
       }
       if (blocksRoot) {
         var blocks = block && Array.isArray(block.promoBlocks) ? block.promoBlocks : [];
