@@ -578,7 +578,113 @@
       applyFixpreisSection(item);
     }
 
+    function fmtEuroCalc(n) {
+      var x = Number(n);
+      if (!Number.isFinite(x)) return "—";
+      return x.toFixed(2).replace(".", ",") + " €";
+    }
+
+    function initFixpreisCalculator() {
+      var form = document.getElementById("fixpreis-calc-form");
+      if (!form || form.getAttribute("data-hp-calc-bound") === "1") return;
+      form.setAttribute("data-hp-calc-bound", "1");
+
+      var fromEl = document.getElementById("fixpreis-calc-from");
+      var toEl = document.getElementById("fixpreis-calc-to");
+      var vehicleEl = document.getElementById("fixpreis-calc-vehicle");
+      var submitBtn = document.getElementById("fixpreis-calc-submit");
+      var resultEl = document.getElementById("fixpreis-calc-result");
+
+      form.addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        var fromFull = fromEl ? String(fromEl.value || "").trim() : "";
+        var toFull = toEl ? String(toEl.value || "").trim() : "";
+        var vehicle = vehicleEl ? String(vehicleEl.value || "standard") : "standard";
+        if (!fromFull || !toFull) return;
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Berechnet …";
+        }
+        if (resultEl) {
+          resultEl.hidden = true;
+          resultEl.className = "hp-fixpreis-calc-result";
+          resultEl.innerHTML = "";
+        }
+
+        var q = new URLSearchParams({ fromFull: fromFull, toFull: toFull, vehicle: vehicle });
+        fetch(publicApiBase() + "/public/fixed-price-quote?" + q.toString(), {
+          method: "GET",
+          credentials: "omit",
+        })
+          .then(function (res) {
+            return res.json().then(function (body) {
+              return { res: res, body: body };
+            });
+          })
+          .then(function (pack) {
+            var data = pack.body || {};
+            if (!pack.res.ok || data.ok === false) {
+              throw new Error(data.message || data.error || "quote_failed");
+            }
+            if (!resultEl) return;
+            resultEl.hidden = false;
+            var route = data.route || {};
+            var quote = data.quote || {};
+            if (quote.eligible) {
+              resultEl.className = "hp-fixpreis-calc-result hp-fixpreis-calc-result--ok";
+              var breakdown =
+                "Grundgebühr " +
+                fmtEuroCalc(quote.baseFeeEur) +
+                " + " +
+                String(quote.distanceKm).replace(".", ",") +
+                " km × " +
+                fmtEuroCalc(quote.perKmEur) +
+                "/km";
+              if (Number(quote.vehicleSurchargeEur) > 0) {
+                breakdown += " + Fahrzeug " + fmtEuroCalc(quote.vehicleSurchargeEur);
+              }
+              resultEl.innerHTML =
+                '<div class="hp-fixpreis-calc-price">' +
+                fmtEuroCalc(quote.priceEur) +
+                "</div>" +
+                '<div class="hp-fixpreis-calc-meta">' +
+                String(route.distanceKm || quote.distanceKm).replace(".", ",") +
+                " km · ca. " +
+                String(route.durationMinutes || "—") +
+                " Min.</div>" +
+                '<div class="hp-fixpreis-calc-breakdown">' +
+                breakdown +
+                "</div>" +
+                '<a class="hp-btn-primary hp-fixpreis-calc-book" href="/#jetzt-buchen">In der App buchen</a>';
+            } else {
+              resultEl.className = "hp-fixpreis-calc-result hp-fixpreis-calc-result--warn";
+              resultEl.innerHTML =
+                '<p class="hp-fixpreis-calc-msg">' +
+                String(quote.message || "Festpreis für diese Strecke nicht verfügbar.") +
+                "</p>";
+            }
+          })
+          .catch(function (err) {
+            if (!resultEl) return;
+            resultEl.hidden = false;
+            resultEl.className = "hp-fixpreis-calc-result hp-fixpreis-calc-result--error";
+            resultEl.innerHTML =
+              '<p class="hp-fixpreis-calc-msg">' +
+              (err && err.message ? String(err.message) : "Berechnung fehlgeschlagen.") +
+              "</p>";
+          })
+          .finally(function () {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = "Preis berechnen";
+            }
+          });
+      });
+    }
+
     function loadFixpreisePageContent() {
+      initFixpreisCalculator();
       if (isCmsPreviewMode()) return;
       if (!document.getElementById("fixpreis-page-title")) return;
       var host = window.location.hostname;

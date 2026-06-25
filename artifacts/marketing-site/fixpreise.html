@@ -76,6 +76,31 @@
               Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.
             </p>
           </div>
+          <div class="hp-fixpreis-calculator hp-fixpreis-panel" id="fixpreis-calculator" aria-labelledby="fixpreis-calc-title">
+            <h2 class="hp-fixpreis-panel__title" id="fixpreis-calc-title">Festpreis berechnen</h2>
+            <p class="hp-fixpreis-panel__subtitle">Gleiche Logik wie in der ONRODA App — Tarife aus dem Betriebs-Setup.</p>
+            <form class="hp-fixpreis-calc-form" id="fixpreis-calc-form" novalidate>
+              <label class="hp-fixpreis-calc-field">
+                <span class="hp-fixpreis-calc-label">Start</span>
+                <input class="hp-fixpreis-calc-input" id="fixpreis-calc-from" name="from" type="text" autocomplete="off" placeholder="z. B. Böblingen, Bahnhof" required />
+              </label>
+              <label class="hp-fixpreis-calc-field">
+                <span class="hp-fixpreis-calc-label">Ziel</span>
+                <input class="hp-fixpreis-calc-input" id="fixpreis-calc-to" name="to" type="text" autocomplete="off" placeholder="z. B. Flughafen Stuttgart" required />
+              </label>
+              <label class="hp-fixpreis-calc-field hp-fixpreis-calc-field--vehicle">
+                <span class="hp-fixpreis-calc-label">Fahrzeug</span>
+                <select class="hp-fixpreis-calc-input" id="fixpreis-calc-vehicle" name="vehicle">
+                  <option value="standard">Standard</option>
+                  <option value="xl">XL / Großraum</option>
+                  <option value="wheelchair">Rollstuhl</option>
+                </select>
+              </label>
+              <button class="hp-btn-primary hp-fixpreis-calc-submit" id="fixpreis-calc-submit" type="submit">Preis berechnen</button>
+            </form>
+            <p class="hp-fixpreis-calc-hint" id="fixpreis-calc-hint">Schätzung — verbindlich nach Buchung in der App.</p>
+            <div class="hp-fixpreis-calc-result" id="fixpreis-calc-result" hidden role="status"></div>
+          </div>
           <div class="hp-fixpreis-panels" id="fixpreis-content-panels" aria-label="Festpreis-Inhalte"></div>
           <div class="hp-fixpreis-promo-grid" id="fixpreis-promo-blocks" aria-label="Vorteile"></div>
           <div class="hp-fixpreis-actions hp-fixpreis-actions--row">

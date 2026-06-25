@@ -261,6 +261,116 @@
       margin: 0;
     }
 
+    .hp-fixpreis-calculator {
+      margin-top: 1.5rem;
+      text-align: left;
+    }
+
+    .hp-fixpreis-calc-form {
+      display: grid;
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .hp-fixpreis-calc-form {
+        grid-template-columns: 1fr 1fr;
+        align-items: end;
+      }
+      .hp-fixpreis-calc-field--vehicle,
+      .hp-fixpreis-calc-submit {
+        grid-column: span 1;
+      }
+      .hp-fixpreis-calc-submit {
+        justify-self: start;
+      }
+    }
+
+    .hp-fixpreis-calc-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .hp-fixpreis-calc-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .hp-fixpreis-calc-input {
+      width: 100%;
+      padding: 0.7rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      font-size: 1rem;
+      font-family: inherit;
+      background: #fff;
+    }
+
+    .hp-fixpreis-calc-input:focus-visible {
+      outline: 2px solid var(--fixpreis-accent, var(--onroda-red));
+      outline-offset: 1px;
+    }
+
+    .hp-fixpreis-calc-hint {
+      margin: 0.85rem 0 0;
+      font-size: 0.82rem;
+      color: #64748b;
+    }
+
+    .hp-fixpreis-calc-result {
+      margin-top: 1rem;
+      padding: 1rem 1.1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .hp-fixpreis-calc-result--ok {
+      border-color: rgba(22, 163, 74, 0.25);
+      background: linear-gradient(165deg, #f0fdf4 0%, #fff 70%);
+    }
+
+    .hp-fixpreis-calc-result--warn,
+    .hp-fixpreis-calc-result--error {
+      border-color: rgba(239, 29, 38, 0.2);
+      background: #fff8f8;
+    }
+
+    .hp-fixpreis-calc-price {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--fixpreis-accent, var(--onroda-red));
+      letter-spacing: -0.02em;
+    }
+
+    .hp-fixpreis-calc-meta {
+      margin-top: 0.35rem;
+      font-size: 0.92rem;
+      color: #475569;
+    }
+
+    .hp-fixpreis-calc-breakdown {
+      margin-top: 0.5rem;
+      font-size: 0.88rem;
+      color: #64748b;
+    }
+
+    .hp-fixpreis-calc-book {
+      display: inline-block;
+      margin-top: 0.85rem;
+      text-decoration: none;
+    }
+
+    .hp-fixpreis-calc-msg {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #334155;
+    }
+
     .hp-fixpreis-panels {
       display: flex;
       flex-direction: column;
