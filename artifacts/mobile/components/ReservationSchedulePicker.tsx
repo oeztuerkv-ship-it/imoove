@@ -1,5 +1,5 @@
 /**
- * Sofort / Termin + Datum-Uhrzeit-Räder — gleiches Muster wie `reserve-ride.tsx`.
+ * Sofort / Termin + Datum-Uhrzeit-Räder — visuell wie `reserve-ride.tsx` (Schritt „Abholzeit“).
  */
 
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,6 +20,7 @@ const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", 
 const DAY_NAMES = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
 export type BookingTiming = "instant" | "scheduled";
+export type ReservationScheduleUiVariant = "sheet" | "reservation";
 
 function pad2(n: number) {
   return n.toString().padStart(2, "0");
@@ -58,16 +59,19 @@ function TimeWheel({
   selectedIndex,
   onSelectIndex,
   wheelKey,
+  uiVariant,
 }: {
   labels: string[];
   selectedIndex: number;
   onSelectIndex: (i: number) => void;
   wheelKey: number;
+  uiVariant: ReservationScheduleUiVariant;
 }) {
   const colors = useColors();
   const scrollRef = useRef<ScrollView>(null);
   const didInitScroll = useRef(false);
   const fade = colors.background;
+  const isReservationUi = uiVariant === "reservation";
 
   useEffect(() => {
     didInitScroll.current = false;
@@ -128,8 +132,10 @@ function TimeWheel({
       <View
         pointerEvents="none"
         style={[
-          styles.wheelSelectionBar,
-          { borderColor: colors.primary + "55", backgroundColor: colors.primary + "0D" },
+          isReservationUi ? styles.wheelSelectionBarReservation : styles.wheelSelectionBarSheet,
+          isReservationUi
+            ? { borderColor: colors.border }
+            : { borderColor: colors.primary + "55", backgroundColor: colors.primary + "0D" },
         ]}
       />
     </View>
@@ -146,6 +152,8 @@ export function ReservationSchedulePicker({
   onHourChange,
   onMinuteIndexChange,
   wheelKey,
+  uiVariant = "sheet",
+  hideTimingToggle = false,
 }: {
   timing: BookingTiming;
   onTimingChange: (t: BookingTiming) => void;
@@ -156,8 +164,13 @@ export function ReservationSchedulePicker({
   onHourChange: (n: number) => void;
   onMinuteIndexChange: (n: number) => void;
   wheelKey: number;
+  /** `reservation` = gleiche Optik wie `reserve-ride.tsx` (Schritt Abholzeit). */
+  uiVariant?: ReservationScheduleUiVariant;
+  /** Nur Datum/Uhrzeit-Räder (Reservieren-Flow ohne Sofort/Termin). */
+  hideTimingToggle?: boolean;
 }) {
   const colors = useColors();
+  const isReservationUi = uiVariant === "reservation";
 
   const hourLabels = useMemo(() => Array.from({ length: 24 }, (_, i) => pad2(i)), []);
   const minuteLabels = useMemo(() => Array.from({ length: 12 }, (_, i) => pad2(i * 5)), []);
@@ -179,37 +192,82 @@ export function ReservationSchedulePicker({
   );
 
   const scheduleLeadOk = isReservationLeadValid(pickedDate);
+  const showScheduleWheels = hideTimingToggle || timing === "scheduled";
+
+  const rootStyle = isReservationUi
+    ? styles.reservationRoot
+    : [styles.card, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }];
+
+  const sectionLabelStyle = isReservationUi
+    ? [styles.sectionLabelReservation, { color: colors.foreground }]
+    : [styles.sectionLabelSheet, { color: colors.foreground }];
 
   return (
-    <View style={[styles.card, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}>
-      <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Abholzeit</Text>
-      <View style={styles.timingRow}>
-        {(["instant", "scheduled"] as const).map((mode) => {
-          const active = timing === mode;
-          return (
-            <Pressable
-              key={mode}
-              style={[styles.timingChip, active && styles.timingChipActive]}
-              onPress={() => {
-                Haptics.selectionAsync();
-                onTimingChange(mode);
-              }}
-            >
-              <Text style={[styles.timingChipText, active && styles.timingChipTextActive]}>
-                {mode === "instant" ? "Sofort" : "Termin"}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+    <View style={rootStyle}>
+      <Text style={[sectionLabelStyle, isReservationUi && !hideTimingToggle && styles.sectionLabelWithToggle]}>
+        Abholzeit
+      </Text>
 
-      {timing === "instant" ? (
-        <View style={styles.instantBadge}>
+      {!hideTimingToggle ? (
+        <View style={isReservationUi ? styles.timingRowReservation : styles.timingRowSheet}>
+          {(["instant", "scheduled"] as const).map((mode) => {
+            const active = timing === mode;
+            return (
+              <Pressable
+                key={mode}
+                style={[
+                  isReservationUi ? styles.timingChipReservation : styles.timingChipSheet,
+                  isReservationUi
+                    ? {
+                        borderColor: colors.border,
+                        backgroundColor: colors.background,
+                      }
+                    : null,
+                  active &&
+                    (isReservationUi
+                      ? {
+                          borderColor: colors.primary,
+                          backgroundColor: colors.primary + "18",
+                          borderWidth: 2,
+                        }
+                      : styles.timingChipSheetActive),
+                ]}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  onTimingChange(mode);
+                }}
+              >
+                <Text
+                  style={[
+                    isReservationUi ? styles.timingChipTextReservation : styles.timingChipTextSheet,
+                    { color: colors.foreground },
+                    active &&
+                      (isReservationUi
+                        ? { color: colors.primary, fontFamily: "Inter_700Bold" }
+                        : styles.timingChipTextSheetActive),
+                  ]}
+                >
+                  {mode === "instant" ? "Sofort" : "Termin"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {timing === "instant" && !hideTimingToggle ? (
+        <View style={[styles.instantBadge, isReservationUi && styles.instantBadgeReservation]}>
           <Text style={styles.instantBadgeText}>Sofort – Fahrer wird gesucht</Text>
         </View>
-      ) : (
+      ) : null}
+
+      {showScheduleWheels ? (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={isReservationUi ? styles.dayRowReservation : styles.dayRowSheet}
+          >
             {dayChips.map((chip) => {
               const active = dayOffset === chip.offset;
               return (
@@ -220,19 +278,38 @@ export function ReservationSchedulePicker({
                     onDayOffsetChange(chip.offset);
                   }}
                   style={[
-                    styles.dayChip,
-                    { borderColor: HOME_SHEET_RIM, backgroundColor: colors.background },
-                    active && styles.dayChipActive,
+                    isReservationUi ? styles.dayChipReservation : styles.dayChipSheet,
+                    {
+                      borderColor: isReservationUi ? colors.border : HOME_SHEET_RIM,
+                      backgroundColor: colors.background,
+                    },
+                    active &&
+                      (isReservationUi
+                        ? {
+                            borderColor: colors.primary,
+                            backgroundColor: colors.primary,
+                            borderWidth: 1.5,
+                          }
+                        : styles.dayChipSheetActive),
                   ]}
                 >
-                  <Text style={[styles.dayChipText, { color: colors.foreground }, active && styles.dayChipTextActive]}>
+                  <Text
+                    style={[
+                      styles.dayChipText,
+                      { color: colors.foreground },
+                      active &&
+                        (isReservationUi
+                          ? { color: colors.primaryForeground }
+                          : styles.dayChipTextSheetActive),
+                    ]}
+                  >
                     {chip.label}
                   </Text>
                   <Text
                     style={[
                       styles.dayChipSub,
                       { color: colors.mutedForeground },
-                      active && styles.dayChipSubActive,
+                      active && (isReservationUi ? { color: "rgba(255,255,255,0.9)" } : styles.dayChipSubSheetActive),
                     ]}
                   >
                     {chip.sub}
@@ -242,30 +319,39 @@ export function ReservationSchedulePicker({
             })}
           </ScrollView>
           <View style={styles.wheelRow}>
-            <TimeWheel wheelKey={wheelKey} labels={hourLabels} selectedIndex={hour} onSelectIndex={onHourChange} />
+            <TimeWheel
+              uiVariant={uiVariant}
+              wheelKey={wheelKey}
+              labels={hourLabels}
+              selectedIndex={hour}
+              onSelectIndex={onHourChange}
+            />
             <Text style={[styles.wheelColon, { color: colors.primary }]}>:</Text>
             <TimeWheel
+              uiVariant={uiVariant}
               wheelKey={wheelKey + 1000}
               labels={minuteLabels}
               selectedIndex={minuteIndex}
               onSelectIndex={onMinuteIndexChange}
             />
           </View>
-          <Text style={[styles.summary, { color: colors.foreground }]}>
+          <Text style={[isReservationUi ? styles.summaryReservation : styles.summarySheet, { color: colors.foreground }]}>
             {pickedDate.getDate()}. {MONTHS[pickedDate.getMonth()]} {pickedDate.getFullYear()} · {pad2(pickedDate.getHours())}:
             {pad2(pickedDate.getMinutes())} Uhr
           </Text>
-          {!scheduleLeadOk ? (
-            <Text style={styles.leadWarn}>
-              Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen oder „Sofort“ buchen.
-            </Text>
-          ) : (
-            <Text style={[styles.leadHint, { color: colors.mutedForeground }]}>
-              Fahrersuche startet automatisch 30 Minuten vor der Abholzeit.
-            </Text>
-          )}
+          {!hideTimingToggle ? (
+            !scheduleLeadOk ? (
+              <Text style={styles.leadWarn}>
+                Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen oder „Sofort“ buchen.
+              </Text>
+            ) : (
+              <Text style={[styles.leadHint, { color: colors.mutedForeground }]}>
+                Fahrersuche startet automatisch 30 Minuten vor der Abholzeit.
+              </Text>
+            )
+          ) : null}
         </>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -277,9 +363,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: rs(14),
   },
-  sectionLabel: { fontFamily: "Inter_600SemiBold", fontSize: 15, marginBottom: rs(10) },
-  timingRow: { flexDirection: "row", gap: rs(8), marginBottom: rs(10) },
-  timingChip: {
+  reservationRoot: {
+    marginTop: rs(18),
+  },
+  sectionLabelSheet: { fontFamily: "Inter_600SemiBold", fontSize: 15, marginBottom: rs(10) },
+  sectionLabelReservation: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  sectionLabelWithToggle: {
+    marginBottom: 10,
+  },
+  timingRowSheet: { flexDirection: "row", gap: rs(8), marginBottom: rs(10) },
+  timingRowReservation: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  timingChipSheet: {
     flex: 1,
     paddingVertical: rs(10),
     borderRadius: rs(10),
@@ -288,9 +388,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
   },
-  timingChipActive: { borderColor: ONRODA_MARK_RED, backgroundColor: "#FEE2E2" },
-  timingChipText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#374151" },
-  timingChipTextActive: { color: ONRODA_MARK_RED },
+  timingChipSheetActive: { borderColor: ONRODA_MARK_RED, backgroundColor: "#FEE2E2" },
+  timingChipTextSheet: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#374151" },
+  timingChipTextSheetActive: { color: ONRODA_MARK_RED },
+  timingChipReservation: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timingChipTextReservation: { fontSize: 17, fontFamily: "Inter_500Medium" },
   instantBadge: {
     backgroundColor: "#DCFCE7",
     borderColor: "#BBF7D0",
@@ -300,26 +409,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: rs(12),
     alignItems: "center",
   },
+  instantBadgeReservation: {
+    marginTop: 4,
+  },
   instantBadgeText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#166534" },
-  dayRow: { gap: rs(8), paddingBottom: rs(4) },
-  dayChip: {
+  dayRowSheet: { gap: rs(8), paddingBottom: rs(4) },
+  dayRowReservation: { gap: 8, paddingBottom: 8 },
+  dayChipSheet: {
     paddingVertical: rs(10),
     paddingHorizontal: rs(12),
     borderRadius: rs(10),
     borderWidth: StyleSheet.hairlineWidth,
     minWidth: rs(88),
   },
-  dayChipActive: { borderColor: ONRODA_MARK_RED, backgroundColor: ONRODA_MARK_RED, borderWidth: 1.5 },
+  dayChipSheetActive: { borderColor: ONRODA_MARK_RED, backgroundColor: ONRODA_MARK_RED, borderWidth: 1.5 },
+  dayChipTextSheetActive: { color: "#fff" },
+  dayChipSubSheetActive: { color: "rgba(255,255,255,0.9)" },
+  dayChipReservation: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginRight: 4,
+    minWidth: 92,
+  },
   dayChipText: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  dayChipTextActive: { color: "#fff" },
   dayChipSub: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2 },
-  dayChipSubActive: { color: "rgba(255,255,255,0.9)" },
   wheelRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: rs(4),
-    gap: rs(4),
+    paddingVertical: 8,
+    gap: 4,
   },
   wheelWrap: { width: 88, position: "relative" },
   wheelItem: { height: WHEEL_ITEM, justifyContent: "center", alignItems: "center" },
@@ -342,7 +463,7 @@ const styles = StyleSheet.create({
     height: WHEEL_ITEM * 1.25,
     zIndex: 2,
   },
-  wheelSelectionBar: {
+  wheelSelectionBarSheet: {
     position: "absolute",
     left: 4,
     right: 4,
@@ -352,8 +473,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     zIndex: 1,
   },
-  summary: {
+  wheelSelectionBarReservation: {
+    position: "absolute",
+    left: 4,
+    right: 4,
+    top: WHEEL_ITEM * 2,
+    height: WHEEL_ITEM,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    zIndex: 1,
+  },
+  summarySheet: {
     marginTop: rs(8),
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+  },
+  summaryReservation: {
+    marginTop: 16,
     fontSize: 15,
     fontFamily: "Inter_500Medium",
     textAlign: "center",

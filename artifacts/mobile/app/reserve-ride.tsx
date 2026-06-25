@@ -1,5 +1,4 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as Location from "expo-location";
@@ -30,29 +29,20 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
+import { buildScheduledDate, ReservationSchedulePicker } from "@/components/ReservationSchedulePicker";
 import { useColors } from "@/hooks/useColors";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 
 const GROUP_RADIUS = 10;
-const WHEEL_ITEM = 44;
-const WHEEL_VISIBLE = 5;
 const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
 
 const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-const DAY_NAMES = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
 type Step = "where" | "extras" | "when" | "review";
 
 function pad2(n: number) {
   return n.toString().padStart(2, "0");
-}
-
-function buildScheduledDate(dayOffset: number, hour: number, minuteIndex: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + dayOffset);
-  d.setHours(hour, minuteIndex * 5, 0, 0);
-  return d;
 }
 
 function shortPlace(displayName: string) {
@@ -116,97 +106,6 @@ function AddressRoutePanel({
           </Text>
         ) : null}
       </View>
-    </View>
-  );
-}
-
-function TimeWheel({
-  labels,
-  selectedIndex,
-  onSelectIndex,
-  wheelKey,
-}: {
-  labels: string[];
-  selectedIndex: number;
-  onSelectIndex: (i: number) => void;
-  wheelKey: number;
-}) {
-  const colors = useColors();
-  const scrollRef = useRef<ScrollView>(null);
-  const didInitScroll = useRef(false);
-  const fade = colors.background;
-
-  useEffect(() => {
-    didInitScroll.current = false;
-  }, [wheelKey]);
-
-  useEffect(() => {
-    if (didInitScroll.current) return;
-    didInitScroll.current = true;
-    const y = selectedIndex * WHEEL_ITEM;
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y, animated: false });
-    });
-  }, [selectedIndex, wheelKey]);
-
-  const onScrollEnd = useCallback(
-    (y: number) => {
-      const i = Math.round(y / WHEEL_ITEM);
-      const clamped = Math.max(0, Math.min(labels.length - 1, i));
-      if (clamped !== selectedIndex) {
-        Haptics.selectionAsync();
-        onSelectIndex(clamped);
-      }
-    },
-    [labels.length, onSelectIndex, selectedIndex],
-  );
-
-  return (
-    <View style={styles.wheelWrap} key={wheelKey}>
-      <LinearGradient
-        pointerEvents="none"
-        colors={[fade, "transparent"]}
-        style={styles.wheelFadeTop}
-      />
-      <ScrollView
-        ref={scrollRef}
-        style={{ height: WHEEL_ITEM * WHEEL_VISIBLE }}
-        contentContainerStyle={{ paddingVertical: WHEEL_ITEM * ((WHEEL_VISIBLE - 1) / 2) }}
-        snapToInterval={WHEEL_ITEM}
-        decelerationRate="fast"
-        showsVerticalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => onScrollEnd(e.nativeEvent.contentOffset.y)}
-        onScrollEndDrag={(e) => onScrollEnd(e.nativeEvent.contentOffset.y)}
-      >
-        {labels.map((label, i) => {
-          const active = i === selectedIndex;
-          return (
-            <View key={i} style={styles.wheelItem}>
-              <Text
-                style={[
-                  styles.wheelLabelBase,
-                  { color: active ? colors.primary : colors.mutedForeground },
-                  active && styles.wheelLabelActiveSize,
-                ]}
-              >
-                {label}
-              </Text>
-            </View>
-          );
-        })}
-      </ScrollView>
-      <LinearGradient
-        pointerEvents="none"
-        colors={["transparent", fade]}
-        style={styles.wheelFadeBottom}
-      />
-      <View
-        pointerEvents="none"
-        style={[
-          styles.wheelSelectionBar,
-          { borderColor: colors.primary + "55", backgroundColor: colors.primary + "0D" },
-        ]}
-      />
     </View>
   );
 }
@@ -445,28 +344,6 @@ export default function ReserveRideScreen() {
       void fetchRoute();
     }
   }, [step, destination, selectedVehicle, fetchRoute]);
-
-  const hourLabels = useMemo(() => Array.from({ length: 24 }, (_, i) => pad2(i)), []);
-  const minuteLabels = useMemo(
-    () => Array.from({ length: 12 }, (_, i) => pad2(i * 5)),
-    [],
-  );
-
-  const dayChips = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() + i);
-      const label =
-        i === 0 ? "Heute" : i === 1 ? "Morgen" : `${DAY_NAMES[d.getDay()]} ${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.`;
-      return { offset: i, label, sub: `${MONTHS[d.getMonth()]} ${d.getDate()}` };
-    });
-  }, []);
-
-  const pickedDate = useMemo(
-    () => buildScheduledDate(dayOffset, hour, minuteIndex),
-    [dayOffset, hour, minuteIndex],
-  );
 
   const luggageLabel =
     luggage === "none" ? "Kein Koffer" : luggage === "one" ? "1 Koffer" : "Mehrere";
@@ -1073,79 +950,21 @@ export default function ReserveRideScreen() {
         )}
 
         {step === "when" && (
-          <>
-            <Text style={[styles.sectionLabel, styles.sectionLabelAfterRoute, { color: colors.foreground }]}>
-              Abholzeit
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dayRow}
-            >
-              {dayChips.map((chip) => {
-                const active = dayOffset === chip.offset;
-                return (
-                  <Pressable
-                    key={chip.offset}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setDayOffset(chip.offset);
-                    }}
-                    style={[
-                      styles.dayChip,
-                      {
-                        borderColor: colors.border,
-                        backgroundColor: colors.background,
-                      },
-                      active && {
-                        borderColor: colors.primary,
-                        backgroundColor: colors.primary,
-                        borderWidth: 1.5,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayChipText,
-                        { color: colors.foreground },
-                        active && { color: colors.primaryForeground },
-                      ]}
-                    >
-                      {chip.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.dayChipSub,
-                        { color: colors.mutedForeground },
-                        active && { color: "rgba(255,255,255,0.9)" },
-                      ]}
-                    >
-                      {chip.sub}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <View style={styles.wheelRow}>
-              <TimeWheel
-                wheelKey={wheelKey}
-                labels={hourLabels}
-                selectedIndex={hour}
-                onSelectIndex={setHour}
-              />
-              <Text style={[styles.wheelColon, { color: colors.primary }]}>:</Text>
-              <TimeWheel
-                wheelKey={wheelKey + 1000}
-                labels={minuteLabels}
-                selectedIndex={minuteIndex}
-                onSelectIndex={setMinuteIndex}
-              />
-            </View>
-            <Text style={[styles.summary, { color: colors.foreground }]}>
-              {pickedDate.getDate()}. {MONTHS[pickedDate.getMonth()]} {pickedDate.getFullYear()} · {pad2(pickedDate.getHours())}:
-              {pad2(pickedDate.getMinutes())} Uhr
-            </Text>
-          </>
+          <View style={{ paddingHorizontal: 20 }}>
+            <ReservationSchedulePicker
+              uiVariant="reservation"
+              hideTimingToggle
+              timing="scheduled"
+              onTimingChange={() => {}}
+              dayOffset={dayOffset}
+              hour={hour}
+              minuteIndex={minuteIndex}
+              onDayOffsetChange={setDayOffset}
+              onHourChange={setHour}
+              onMinuteIndexChange={setMinuteIndex}
+              wheelKey={wheelKey}
+            />
+          </View>
         )}
 
         {step === "review" && (
@@ -1470,55 +1289,6 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   scroll: { flex: 1 },
-  dayRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 8 },
-  dayChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginRight: 4,
-    minWidth: 92,
-  },
-  dayChipText: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  dayChipSub: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2 },
-  wheelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    gap: 4,
-  },
-  wheelWrap: { width: 88, position: "relative" },
-  wheelItem: { height: WHEEL_ITEM, justifyContent: "center", alignItems: "center" },
-  wheelLabelBase: { fontSize: 22, fontFamily: "Inter_400Regular" },
-  wheelLabelActiveSize: { fontSize: 30, fontFamily: "Inter_700Bold" },
-  wheelColon: { fontSize: 32, fontFamily: "Inter_700Bold", marginBottom: 8 },
-  wheelFadeTop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: WHEEL_ITEM * 1.25,
-    zIndex: 2,
-  },
-  wheelFadeBottom: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: WHEEL_ITEM * 1.25,
-    zIndex: 2,
-  },
-  wheelSelectionBar: {
-    position: "absolute",
-    left: 4,
-    right: 4,
-    top: WHEEL_ITEM * 2,
-    height: WHEEL_ITEM,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    zIndex: 1,
-  },
   group: {
     marginHorizontal: 20,
     borderRadius: GROUP_RADIUS,
@@ -1587,13 +1357,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   transportscheinChipText: { fontSize: 17, fontFamily: "Inter_500Medium" },
-  summary: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-    textAlign: "center",
-  },
   infoGroup: {
     marginHorizontal: 20,
     marginBottom: 16,

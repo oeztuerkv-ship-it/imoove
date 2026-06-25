@@ -391,6 +391,7 @@ export default function BookingFixedPriceScreen() {
 
         {fromStop && toStop ? (
           <ReservationSchedulePicker
+            uiVariant="reservation"
             timing={bookingTiming}
             onTimingChange={handleTimingChange}
             dayOffset={dayOffset}
