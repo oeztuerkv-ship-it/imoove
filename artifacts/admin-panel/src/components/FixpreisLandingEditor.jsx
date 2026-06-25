@@ -2,6 +2,7 @@ import { useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import IconPickerField from "./IconPickerField.jsx";
+import FixpreisIntroField from "./FixpreisIntroField.jsx";
 
 const UPLOAD_URL = `${API_BASE}/admin/homepage-marketing-assets`;
 const HOMEPAGE_URL = `${API_BASE}/admin/homepage-content`;
@@ -317,6 +318,20 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
           <span className="admin-field-label">Überschrift</span>
           <input className="admin-input" value={fixpreisSection.title} onChange={(e) => onFixpreisChange({ ...fixpreisSection, title: e.target.value })} />
         </label>
+
+        <FixpreisIntroField
+          value={fixpreisSection.body}
+          onChange={(body) => onFixpreisChange({ ...fixpreisSection, body })}
+          bodyFontSize={fixpreisSection.bodyFontSize}
+          bodyColor={fixpreisSection.bodyColor}
+          textAlign={fixpreisSection.textAlign}
+        />
+
+        <div className="admin-panel-card admin-cms-design-card" style={{ padding: 12, marginTop: 4 }}>
+          <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Darstellung (Hero)</div>
+          <p className="admin-muted" style={{ marginTop: 0, fontSize: 13 }}>
+            Schrift, Farben und Ausrichtung für Überschrift und Einleitung auf der Werbeseite.
+          </p>
         <div className="admin-form-grid-2">
           <label className="admin-form-pair">
             <span className="admin-field-label">Überschrift Größe</span>
@@ -364,13 +379,7 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
           <span className="admin-field-label">Hintergrundfarbe</span>
           <input className="admin-input" value={fixpreisSection.backgroundColor} onChange={(e) => onFixpreisChange({ ...fixpreisSection, backgroundColor: e.target.value })} placeholder="optional, z. B. #fff8f7" />
         </label>
-        <label className="admin-form-pair">
-          <span className="admin-field-label">Einleitung (kurz)</span>
-          <span className="admin-field-hint" style={{ display: "block", margin: "0 0 6px", fontSize: 13, color: "#64748b" }}>
-            1–3 Sätze unter der Überschrift. Längere Inhalte bitte in die Bereiche unten pflegen.
-          </span>
-          <textarea className="admin-textarea admin-textarea--resize-both" rows={3} value={fixpreisSection.body} onChange={(e) => onFixpreisChange({ ...fixpreisSection, body: e.target.value })} />
-        </label>
+        </div>
 
         <div className="admin-panel-card" style={{ padding: 12, marginTop: 12 }}>
           <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Inhalts-Bereiche (Rahmen auf der Seite)</div>

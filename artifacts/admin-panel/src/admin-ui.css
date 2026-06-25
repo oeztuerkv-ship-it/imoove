@@ -1511,6 +1511,114 @@
   line-height: 1.2;
 }
 
+.admin-cms-intro-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 14px;
+  margin: 12px 0 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--onroda-border-outline);
+  background: linear-gradient(165deg, #f8fafc 0%, #fff 48%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.admin-cms-intro-editor__compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-cms-intro-editor__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-cms-intro-editor__title {
+  font-size: var(--admin-type-footnote, 0.9375rem);
+  font-weight: 600;
+  color: var(--onroda-text-dark);
+}
+
+.admin-cms-intro-editor__meta {
+  font-size: var(--admin-type-caption, 0.8125rem);
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-cms-intro-editor__hint {
+  margin: 0;
+  font-size: var(--admin-type-caption, 0.8125rem);
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.admin-cms-intro-editor__input {
+  width: 100%;
+  min-height: 112px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: var(--onroda-text-dark);
+  font-size: var(--admin-type-body, 1.0625rem);
+  line-height: 1.55;
+  font-family: inherit;
+  resize: vertical;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.admin-cms-intro-editor__input:focus-visible {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.admin-cms-intro-editor__preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-cms-intro-editor__preview-label {
+  font-size: var(--admin-type-caption, 0.8125rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.admin-cms-intro-editor__preview-card {
+  flex: 1;
+  padding: 1.1rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.admin-cms-intro-editor__preview-text {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.admin-cms-design-card {
+  border: 1px dashed #cbd5e1;
+  background: #fafbfc;
+}
+
+@media (max-width: 960px) {
+  .admin-cms-intro-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
