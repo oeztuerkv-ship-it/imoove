@@ -2887,6 +2887,7 @@ router.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =
       label: typeof body.label === "string" ? body.label : undefined,
       internalNote: typeof body.internalNote === "string" ? body.internalNote : undefined,
       fixedDestination: typeof body.fixedDestination === "string" ? body.fixedDestination : undefined,
+      fixedPickup: typeof body.fixedPickup === "string" ? body.fixedPickup : undefined,
       maxUses: typeof body.maxUses === "number" ? body.maxUses : undefined,
       validFrom: typeof body.validFrom === "string" ? body.validFrom : undefined,
       validUntil: typeof body.validUntil === "string" ? body.validUntil : undefined,

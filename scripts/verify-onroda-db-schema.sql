@@ -1435,6 +1435,20 @@ BEGIN
     errs := array_append(errs, 'index ride_location_history_recorded_at_idx (Migration 114)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'fixed_price_voucher_orders'
+  ) THEN
+    errs := array_append(errs, 'table fixed_price_voucher_orders (Migration 115)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'fixed_price_voucher_orders_company_created_idx'
+  ) THEN
+    errs := array_append(errs, 'index fixed_price_voucher_orders_company_created_idx (Migration 115)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

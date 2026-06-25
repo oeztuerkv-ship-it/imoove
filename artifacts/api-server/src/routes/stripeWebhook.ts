@@ -3,6 +3,7 @@ import { getStripeClient } from "../lib/stripeClient.js";
 import { logger } from "../lib/logger.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { syncStripeConnectAccountFromStripe } from "../lib/stripeConnect.js";
+import { fulfillFixedPriceVoucherFromCheckoutSession } from "../lib/fixedPriceVoucherFulfillment.js";
 
 /**
  * POST /api/stripe/webhook — Rohbody (express.raw in app.ts), Signatur via STRIPE_WEBHOOK_SECRET.
@@ -75,6 +76,22 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
               payoutsEnabled: account.payouts_enabled,
             },
             "[Stripe] Connect account synced from webhook",
+          );
+        }
+        break;
+      }
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        const voucherOutcome = await fulfillFixedPriceVoucherFromCheckoutSession(session);
+        if (voucherOutcome.ok) {
+          logger.info(
+            { orderId: voucherOutcome.orderId, sessionId: session.id },
+            "[Stripe] fixed-price voucher fulfilled from checkout",
+          );
+        } else if (voucherOutcome.reason !== "not_voucher_checkout") {
+          logger.warn(
+            { reason: voucherOutcome.reason, orderId: voucherOutcome.orderId, sessionId: session.id },
+            "[Stripe] voucher checkout not fulfilled",
           );
         }
         break;

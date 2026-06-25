@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import OnrodaMark from "./OnrodaMark.jsx";
+import FixedPriceVoucherPurchaseSection from "./FixedPriceVoucherPurchaseSection.jsx";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import {
@@ -217,6 +218,13 @@ function GutscheineView({ token, user }) {
 
   return (
     <div>
+      <FixedPriceVoucherPurchaseSection
+        token={token}
+        canManage={canManage}
+        Card={Card}
+        Section={Section}
+        accent={RED}
+      />
       {canManage && (
         <Section title="Neuen Gutschein erstellen">
           {err && <p style={{ color: RED, fontSize: 13, margin: "0 0 10px" }}>{err}</p>}

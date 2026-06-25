@@ -1,6 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import FixedPriceVoucherPurchaseSection from "../components/FixedPriceVoucherPurchaseSection.jsx";
+
+function PanelCard({ children, style }) {
+  return (
+    <div className="panel-card panel-card--wide" style={style}>
+      {children}
+    </div>
+  );
+}
+
+function PanelSection({ title, children }) {
+  return (
+    <section className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
+      <h3 className="panel-card__title">{title}</h3>
+      {children}
+    </section>
+  );
+}
 
 const CODE_TYPES = [
   { value: "general", label: "Allgemein" },
@@ -254,6 +272,13 @@ export default function AccessCodesPage() {
       <p className="panel-page__lead">
         Digitale Kostenübernahme: Code bei der Buchung angeben — die Fahrt ist dann mit diesem Code verknüpft.
       </p>
+
+      <FixedPriceVoucherPurchaseSection
+        token={token}
+        canManage={canManage}
+        Card={PanelCard}
+        Section={PanelSection}
+      />
 
       {err ? <p className="panel-page__warn">{err}</p> : null}
 

@@ -485,6 +485,30 @@ export async function listAccessCodesAdmin(): Promise<AdminAccessCodeRow[]> {
   return rows.map(rowToAdmin);
 }
 
+/** Meta eines Access-Codes (Einlösung / Festpreis-Gutschein). */
+export async function getAccessCodeMetaById(id: string): Promise<Record<string, unknown> | null> {
+  const codeId = id.trim();
+  if (!codeId) return null;
+  const db = getDb();
+  if (!db) {
+    for (const m of memByNormalized.values()) {
+      if (m.id === codeId) {
+        return m.meta && typeof m.meta === "object" ? { ...m.meta } : {};
+      }
+    }
+    return null;
+  }
+  const [row] = await db
+    .select({ meta: accessCodesTable.meta })
+    .from(accessCodesTable)
+    .where(eq(accessCodesTable.id, codeId))
+    .limit(1);
+  if (!row) return null;
+  return row.meta && typeof row.meta === "object" && !Array.isArray(row.meta)
+    ? (row.meta as Record<string, unknown>)
+    : {};
+}
+
 /** Nur Codes dieses Mandanten (Partner-Panel). */
 export async function listAccessCodesForCompany(companyId: string): Promise<AdminAccessCodeRow[]> {
   const db = getDb();
@@ -543,6 +567,9 @@ export async function insertAccessCodeAdmin(body: {
   /** Nur Plattform-Admin: interner Zweck / Kontext (Meta.internalNote). */
   internalNote?: string | null;
   fixedDestination?: string | null;
+  fixedPickup?: string | null;
+  /** Zusätzliche Meta-Felder (z. B. fixedPriceVoucher). */
+  meta?: Record<string, unknown>;
 }): Promise<InsertAccessCodeAdminResult> {
   if (!isAccessCodeType(body.codeType)) return { ok: false, error: "code_type_invalid" };
 
@@ -551,8 +578,13 @@ export async function insertAccessCodeAdmin(body: {
   const internalNoteMeta =
     rawNote.length > 2000 ? rawNote.slice(0, 2000) : rawNote.length > 0 ? rawNote : null;
   const fixedDest = typeof body.fixedDestination === "string" ? body.fixedDestination.trim() : "";
+  const fixedPickup = typeof body.fixedPickup === "string" ? body.fixedPickup.trim() : "";
   const meta: Record<string, unknown> = internalNoteMeta ? { internalNote: internalNoteMeta } : {};
   if (fixedDest) meta.fixedDestination = fixedDest;
+  if (fixedPickup) meta.fixedPickup = fixedPickup;
+  if (body.meta && typeof body.meta === "object" && !Array.isArray(body.meta)) {
+    Object.assign(meta, body.meta);
+  }
   const companyId =
     typeof body.companyId === "string" && body.companyId.trim() ? body.companyId.trim() : null;
   const maxUses =

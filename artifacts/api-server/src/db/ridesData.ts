@@ -38,10 +38,12 @@ import {
   normalizeAccessCodeInput,
 } from "../domain/rideAuthorization";
 import {
+  getAccessCodeMetaById,
   redeemAccessCodeInTransaction,
   redeemAccessCodeMemory,
   syncAccessCodeOnRideStatusChange,
 } from "./accessCodesData";
+import { applyFixedPriceVoucherMetaToRide } from "../lib/fixedPriceVoucherRedemption";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
@@ -648,11 +650,18 @@ export async function insertRideWithOptionalAccessCode(
 
   const bookingCompanyId = ride.companyId ?? null;
   const db = getDb();
+
+  async function withAccessCodeRide(base: RideRequest, accessCodeId: string): Promise<RideRequest> {
+    const meta = await getAccessCodeMetaById(accessCodeId);
+    if (!meta) return base;
+    return applyFixedPriceVoucherMetaToRide(base, meta);
+  }
+
   if (!db) {
     const red = redeemAccessCodeMemory(trimmed, bookingCompanyId);
     if (!red.ok) return { ok: false, error: red.error };
     const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
-    const r: RideRequest = {
+    let r: RideRequest = {
       ...stripEphemeral(ride),
       authorizationSource: "access_code",
       accessCodeId: red.id,
@@ -660,6 +669,7 @@ export async function insertRideWithOptionalAccessCode(
       companyId: resolvedCompanyId,
       payerKind: payerKindForAccessCodeRide(resolvedCompanyId),
     };
+    r = await withAccessCodeRide(r, red.id);
     await insertRide(r);
     return { ok: true };
   }
@@ -669,7 +679,7 @@ export async function insertRideWithOptionalAccessCode(
       const red = await redeemAccessCodeInTransaction(trx, normalized, bookingCompanyId);
       if (!red.ok) return { ok: false as const, error: red.error };
       const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
-      const r: RideRequest = {
+      let r: RideRequest = {
         ...stripEphemeral(ride),
         authorizationSource: "access_code",
         accessCodeId: red.id,
@@ -677,6 +687,7 @@ export async function insertRideWithOptionalAccessCode(
         companyId: resolvedCompanyId,
         payerKind: payerKindForAccessCodeRide(resolvedCompanyId),
       };
+      r = await withAccessCodeRide(r, red.id);
       await insertRide(r, trx);
       return { ok: true as const };
     });

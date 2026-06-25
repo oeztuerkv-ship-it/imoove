@@ -391,6 +391,35 @@ export const panelPasswordResetsTable = pgTable("panel_password_resets", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Partner-Panel: Festpreis-Gutschein nach Stripe-Zahlung (Access-Code + PDF). */
+export const fixedPriceVoucherOrdersTable = pgTable("fixed_price_voucher_orders", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  panel_user_id: text("panel_user_id").references(() => panelUsersTable.id, { onDelete: "set null" }),
+  status: text("status").notNull().default("pending"),
+  stripe_checkout_session_id: text("stripe_checkout_session_id").unique(),
+  stripe_payment_intent_id: text("stripe_payment_intent_id"),
+  access_code_id: text("access_code_id").references(() => accessCodesTable.id, { onDelete: "set null" }),
+  code_plain: text("code_plain"),
+  label: text("label").notNull().default(""),
+  from_full: text("from_full").notNull().default(""),
+  to_full: text("to_full").notNull().default(""),
+  from_lat: doublePrecision("from_lat"),
+  from_lon: doublePrecision("from_lon"),
+  to_lat: doublePrecision("to_lat"),
+  to_lon: doublePrecision("to_lon"),
+  distance_km: doublePrecision("distance_km").notNull().default(0),
+  vehicle: text("vehicle").notNull().default("standard"),
+  price_eur: doublePrecision("price_eur").notNull().default(0),
+  base_price_eur: doublePrecision("base_price_eur"),
+  vehicle_surcharge_eur: doublePrecision("vehicle_surcharge_eur"),
+  pricing_snapshot: jsonb("pricing_snapshot").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  paid_at: timestamp("paid_at", { withTimezone: true }),
+});
+
 /** Firmen-Compliance (Gewerbe-/Versicherungsnachweis): aktuelle Fassung pro Typ, Prüf-Metadaten. */
 export const companyComplianceDocumentsTable = pgTable("company_compliance_documents", {
   id: text("id").primaryKey(),
