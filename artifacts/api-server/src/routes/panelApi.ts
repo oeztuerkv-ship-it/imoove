@@ -123,6 +123,7 @@ import {
   PARTNER_COMPANY_PATCH_ADMIN_FIELDS,
   rejectPartnerAdminOnlyBodyFields,
 } from "../lib/fleetAdminOnlyFields";
+import { buildRouteDistanceQuote } from "../lib/fixedPriceRouteQuote";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
@@ -821,6 +822,41 @@ function companyRidesFiltersFromQuery(
 
 router.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
+});
+
+/** Streckenlänge für Partner-Buchung (Photon + OSRM serverseitig — kein Browser-Google-Key). */
+router.post("/panel/v1/route-distance", requirePanelAuth, async (req, res, next) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const optCoord = (v: unknown): number | null => {
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const result = await buildRouteDistanceQuote({
+      fromFull: String(body.fromFull ?? body.from ?? ""),
+      toFull: String(body.toFull ?? body.to ?? ""),
+      fromLat: optCoord(body.fromLat ?? body.from_lat),
+      fromLon: optCoord(body.fromLon ?? body.from_lon),
+      toLat: optCoord(body.toLat ?? body.to_lat),
+      toLon: optCoord(body.toLon ?? body.to_lon),
+      fromCity: typeof body.fromCity === "string" ? body.fromCity : null,
+      toCity: typeof body.toCity === "string" ? body.toCity : null,
+    });
+    if (!result.ok) {
+      res.status(400).json(result);
+      return;
+    }
+    res.json({
+      ok: true,
+      distanceKm: result.route.distanceKm,
+      durationMinutes: result.route.durationMinutes,
+      routingSource: result.route.routingSource,
+      from: result.from,
+      to: result.to,
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 
 router.get("/panel/v1/me", requirePanelAuth, async (req, res) => {

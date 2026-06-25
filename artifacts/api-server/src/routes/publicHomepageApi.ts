@@ -4,8 +4,22 @@ import { getOperationalConfigPayload, listServiceRegionsForApi } from "../db/app
 import { getHomepageContentPublic } from "../db/homepageContentData";
 import { listHomepageFaqPublic, listHomepageHowPublic, listHomepageTrustPublic } from "../db/homepageModulesData";
 import { listHomepagePlaceholdersPublic } from "../db/homepagePlaceholdersData";
+import { buildFixedPriceQuote } from "../lib/fixedPriceRouteQuote";
 
 const router: IRouter = Router();
+
+function optCoord(v: unknown): number | null {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseVehicleQuery(raw: unknown): string {
+  const v = typeof raw === "string" ? raw.trim().toLowerCase() : "standard";
+  if (v === "xl" || v === "wheelchair" || v === "standard") return v;
+  if (v.includes("rollstuhl")) return "wheelchair";
+  if (v.includes("xl") || v.includes("großraum")) return "xl";
+  return "standard";
+}
 
 router.get("/public/homepage-placeholders", async (_req, res, next) => {
   try {
@@ -87,6 +101,31 @@ router.get("/public/homepage-trust", async (_req, res, next) => {
     const items = await listHomepageTrustPublic();
     res.setHeader("Cache-Control", "public, max-age=30");
     res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Festpreis-Rechner (Marketing /fixpreise) — gleiche Logik wie App, Tarife aus Admin-Betrieb. */
+router.get("/public/fixed-price-quote", async (req, res, next) => {
+  try {
+    const result = await buildFixedPriceQuote({
+      fromFull: String(req.query.fromFull ?? req.query.from ?? ""),
+      toFull: String(req.query.toFull ?? req.query.to ?? ""),
+      fromLat: optCoord(req.query.fromLat ?? req.query.from_lat),
+      fromLon: optCoord(req.query.fromLon ?? req.query.from_lon),
+      toLat: optCoord(req.query.toLat ?? req.query.to_lat),
+      toLon: optCoord(req.query.toLon ?? req.query.to_lon),
+      fromCity: typeof req.query.fromCity === "string" ? req.query.fromCity : null,
+      toCity: typeof req.query.toCity === "string" ? req.query.toCity : null,
+      vehicle: parseVehicleQuery(req.query.vehicle),
+    });
+    if (!result.ok) {
+      res.status(400).json(result);
+      return;
+    }
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result);
   } catch (e) {
     next(e);
   }
