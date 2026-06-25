@@ -26,12 +26,12 @@ const WHEELCHAIR_ICON_COLOR = "#0369A1";
 interface VehicleSelectorProps {
   selected: VehicleType;
   onSelect: (v: VehicleType) => void;
-  distanceKm?: number;
-  tripMinutes?: number;
-  fromFull?: string;
+  fromFull: string;
   fromLat?: number;
   fromLon?: number;
-  toFull?: string;
+  toFull: string;
+  toLat?: number;
+  toLon?: number;
 }
 
 function VehicleCard({
@@ -127,18 +127,18 @@ function VehicleCard({
 export function VehicleSelector({
   selected,
   onSelect,
-  distanceKm,
-  tripMinutes = 0,
-  fromFull = "",
+  fromFull,
   fromLat,
   fromLon,
   toFull,
+  toLat,
+  toLon,
 }: VehicleSelectorProps) {
   const [estimateByVehicle, setEstimateByVehicle] = useState<Record<string, FareEstimateApiResult | null>>({});
   const [standardTotal, setStandardTotal] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!distanceKm || distanceKm <= 0 || !fromFull.trim()) {
+    if (!fromFull.trim() || !toFull.trim()) {
       setEstimateByVehicle({});
       setStandardTotal(null);
       return;
@@ -147,12 +147,12 @@ export function VehicleSelector({
     void (async () => {
       const next: Record<string, FareEstimateApiResult | null> = {};
       const routeInput = {
-        distanceKm,
-        tripMinutes,
         fromFull,
         fromLat,
         fromLon,
         toFull,
+        toLat,
+        toLon,
       };
       await Promise.all(
         VEHICLES.map(async (v) => {
@@ -167,7 +167,7 @@ export function VehicleSelector({
     return () => {
       cancelled = true;
     };
-  }, [distanceKm, tripMinutes, fromFull, fromLat, fromLon, toFull]);
+  }, [fromFull, fromLat, fromLon, toFull, toLat, toLon]);
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>

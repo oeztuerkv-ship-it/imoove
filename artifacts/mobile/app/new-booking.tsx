@@ -63,7 +63,11 @@ import {
   type MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
 import { fetchFareEstimatesByVehicle } from "@/utils/fareEstimateApi";
-import { getRoute, fetchWithTimeout, searchLocation, type GeoLocation } from "@/utils/routing";
+import { fetchWithTimeout, searchLocation, type GeoLocation } from "@/utils/routing";
+import {
+  fetchServerDrivingRoute,
+  ROUTE_NOT_COMPUTABLE_MESSAGE_DE,
+} from "@/utils/routeDistanceApi";
 import { rf, rs } from "@/utils/scale";
 
 const NB_CAR_ICON = "#171717";
@@ -1135,18 +1139,26 @@ export default function NewBookingScreen() {
 
     (async () => {
       try {
-        const route = await getRoute(
-          { lat: from.lat!, lon: from.lon!, displayName: from.fullName || from.name },
-          { lat: to.lat!, lon: to.lon!, displayName: to.fullName || to.name },
-        );
+        const route = await fetchServerDrivingRoute({
+          fromFull: from.fullName || from.name,
+          toFull: to.fullName || to.name,
+          fromLat: from.lat!,
+          fromLon: from.lon!,
+          toLat: to.lat!,
+          toLon: to.lon!,
+        });
+        if (!route.ok) {
+          if (!cancelled) setFareEstimates({});
+          return;
+        }
 
         const estimates = await fetchFareEstimatesByVehicle(["standard", "xl", "wheelchair"], {
-          distanceKm: route.distanceKm,
-          tripMinutes: route.durationMinutes,
           fromFull: from.fullName || from.name,
           fromLat: from.lat!,
           fromLon: from.lon!,
           toFull: to.fullName || to.name,
+          toLat: to.lat!,
+          toLon: to.lon!,
         });
         const results = ["standard", "xl", "wheelchair"].map(
           (vehicle) => [vehicle, estimates.get(vehicle) ?? null] as [string, number | null],
@@ -1286,10 +1298,19 @@ export default function NewBookingScreen() {
         Alert.alert("Buchung nicht möglich", area.message);
         return;
       }
-      const bookingRoute = await getRoute(
-        { lat: originLat!, lon: originLon!, displayName: fromFull },
-        { lat: destinationLat!, lon: destinationLon!, displayName: toFull },
-      );
+      const bookingRoute = await fetchServerDrivingRoute({
+        fromFull,
+        toFull,
+        fromLat: originLat!,
+        fromLon: originLon!,
+        toLat: destinationLat!,
+        toLon: destinationLon!,
+      });
+      if (!bookingRoute.ok) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Buchung nicht möglich", bookingRoute.message || ROUTE_NOT_COMPUTABLE_MESSAGE_DE);
+        return;
+      }
 
       const partnerBookingMeta: Record<string, unknown> = {};
       if (driverNote.trim()) partnerBookingMeta.customer_driver_note = driverNote.trim();

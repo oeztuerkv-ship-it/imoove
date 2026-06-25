@@ -38,7 +38,8 @@ import {
   CUSTOMER_FIXED_PRICE_AGREEMENT_DE,
   fetchFixedPriceEstimate,
 } from "@/utils/fixedPriceApi";
-import { getRoute, searchLocation, type GeoLocation } from "@/utils/routing";
+import { searchLocation, type GeoLocation } from "@/utils/routing";
+import { ROUTE_NOT_COMPUTABLE_MESSAGE_DE } from "@/utils/routeDistanceApi";
 import { rs } from "@/utils/scale";
 
 const NB_CAR_ICON = "#171717";
@@ -159,9 +160,6 @@ export default function BookingFixedPriceScreen() {
           setIneligibleMessage(area.message);
           return;
         }
-        const route = await getRoute(toGeoLocation(from), toGeoLocation(to));
-        setDistanceKm(route.distanceKm);
-        setTripMinutes(route.durationMinutes);
         const est = await fetchFixedPriceEstimate({
           fromFull: from.displayName,
           toFull: to.displayName,
@@ -169,15 +167,18 @@ export default function BookingFixedPriceScreen() {
           fromLon: from.lon,
           toLat: to.lat,
           toLon: to.lon,
-          distanceKm: route.distanceKm,
           fromCity: from.city,
           toCity: to.city,
           vehicle,
         });
         if (!est.ok) {
           setEligible(false);
-          setIneligibleMessage("Preis konnte nicht geladen werden.");
+          setIneligibleMessage(est.message ?? ROUTE_NOT_COMPUTABLE_MESSAGE_DE);
           return;
+        }
+        if (est.eligible) {
+          setDistanceKm(est.distanceKm);
+          if (est.durationMinutes != null) setTripMinutes(est.durationMinutes);
         }
         if (!est.eligible) {
           setEligible(false);

@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { ROUTE_NOT_COMPUTABLE_MESSAGE_DE, type PriceRoutingSource } from "@/utils/routeDistanceApi";
 
 const API_URL = getApiBaseUrl();
 
@@ -11,17 +12,21 @@ export type FixedPriceEstimateResult =
       basePriceEur: number;
       vehicleSurchargeEur: number;
       distanceKm: number;
+      durationMinutes?: number;
       baseFeeEur: number;
       perKmEur: number;
       distanceChargeEur: number;
+      routingSource?: PriceRoutingSource;
     }
   | {
       ok: true;
       eligible: false;
       reason: string;
       message: string;
+      distanceKm?: number;
+      routingSource?: PriceRoutingSource;
     }
-  | { ok: false; error: string };
+  | { ok: false; error: string; message?: string; routingSource?: "error" };
 
 export async function fetchFixedPriceEstimate(body: {
   fromFull: string;
@@ -30,7 +35,6 @@ export async function fetchFixedPriceEstimate(body: {
   fromLon: number;
   toLat: number;
   toLon: number;
-  distanceKm: number;
   fromCity?: string | null;
   toCity?: string | null;
   vehicle?: string;
@@ -45,7 +49,6 @@ export async function fetchFixedPriceEstimate(body: {
     fromLon: String(body.fromLon),
     toLat: String(body.toLat),
     toLon: String(body.toLon),
-    distanceKm: String(body.distanceKm),
   });
   if (body.fromCity?.trim()) q.set("fromCity", body.fromCity.trim());
   if (body.toCity?.trim()) q.set("toCity", body.toCity.trim());
@@ -58,8 +61,16 @@ export async function fetchFixedPriceEstimate(body: {
     data = {};
   }
   if (!res.ok || data.ok === false) {
-    return { ok: false, error: typeof data.error === "string" ? data.error : "estimate_failed" };
+    return {
+      ok: false,
+      error: typeof data.error === "string" ? data.error : "estimate_failed",
+      message:
+        typeof data.message === "string" ? data.message : ROUTE_NOT_COMPUTABLE_MESSAGE_DE,
+      routingSource: "error",
+    };
   }
+  const routingSource =
+    data.routingSource === "osrm" || data.routingSource === "google" ? data.routingSource : undefined;
   if (data.eligible === true) {
     return {
       ok: true,
@@ -69,9 +80,11 @@ export async function fetchFixedPriceEstimate(body: {
       basePriceEur: Number(data.basePriceEur ?? data.priceEur),
       vehicleSurchargeEur: Number(data.vehicleSurchargeEur ?? 0),
       distanceKm: Number(data.distanceKm),
+      durationMinutes: Number(data.durationMinutes),
       baseFeeEur: Number(data.baseFeeEur),
       perKmEur: Number(data.perKmEur),
       distanceChargeEur: Number(data.distanceChargeEur),
+      routingSource,
     };
   }
   return {
@@ -82,6 +95,8 @@ export async function fetchFixedPriceEstimate(body: {
       typeof data.message === "string"
         ? data.message
         : "Festpreis für diese Strecke nicht verfügbar.",
+    distanceKm: Number.isFinite(Number(data.distanceKm)) ? Number(data.distanceKm) : undefined,
+    routingSource,
   };
 }
 

@@ -85,8 +85,13 @@ export default function RideSelectScreen() {
   }, [destination, selectedVehicle, setSelectedVehicle, fetchRoute]);
 
   useEffect(() => {
-    const km = route?.distanceKm ?? 0;
-    if (!km || isLoadingRoute) {
+    if (!destination?.displayName?.trim()) {
+      setVehicleEstimates(new Map());
+      setStandardTotal(null);
+      setFareEstimateError(null);
+      return;
+    }
+    if (isLoadingRoute) {
       setVehicleEstimates(new Map());
       setStandardTotal(null);
       setFareEstimateError(null);
@@ -98,12 +103,12 @@ export default function RideSelectScreen() {
       const byVehicle = new Map<string, FareEstimateApiResult>();
       let anyOk = false;
       const routeInput = {
-        distanceKm: km,
-        tripMinutes: route?.durationMinutes ?? 0,
         fromFull: origin.displayName ?? "",
         fromLat: origin.lat,
         fromLon: origin.lon,
-        toFull: destination?.displayName,
+        toFull: destination.displayName ?? "",
+        toLat: destination.lat,
+        toLon: destination.lon,
       };
       await Promise.all(
         VEHICLES.map(async (v) => {
@@ -125,12 +130,12 @@ export default function RideSelectScreen() {
       cancelled = true;
     };
   }, [
-    route?.distanceKm,
-    route?.durationMinutes,
     origin.displayName,
     origin.lat,
     origin.lon,
     destination?.displayName,
+    destination?.lat,
+    destination?.lon,
     isLoadingRoute,
   ]);
 

@@ -104,12 +104,12 @@ export async function createPartnerTaxiRide(
 
   const { toLat, toLon } = openDestinationCoords(pickup.lat, pickup.lon);
   const fare = await fetchFareEstimate("standard", {
-    distanceKm: MIN_DISTANCE_KM,
-    tripMinutes: MIN_DURATION_MIN,
     fromFull: pickup.full,
     fromLat: pickup.lat,
     fromLon: pickup.lon,
     toFull: OPEN_DEST_FULL,
+    toLat,
+    toLon,
   });
   const estimatedFare = fare?.total ?? 0;
   if (!Number.isFinite(estimatedFare) || estimatedFare <= 0) {
