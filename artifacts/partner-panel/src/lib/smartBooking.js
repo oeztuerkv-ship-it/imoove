@@ -1,3 +1,5 @@
+import { API_BASE } from "./apiBase.js";
+
 const GOOGLE_MATRIX_BASE = "https://maps.googleapis.com/maps/api/distancematrix/json";
 
 const BASE_FARE = 5;
@@ -37,15 +39,42 @@ export function fromIsoToDatetimeLocal(value) {
   return `${y}-${m}-${day}T${hh}:${mm}`;
 }
 
-export async function fetchDistanceMatrixByAddress(fromFull, toFull) {
-  const key = String(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
-  if (!key) {
-    throw new Error("missing_google_maps_key");
-  }
+/** Partner-Panel: Strecke serverseitig (Photon + OSRM) — kein VITE_GOOGLE_MAPS_API_KEY nötig. */
+export async function fetchDistanceMatrixByAddress(fromFull, toFull, token) {
   const from = String(fromFull || "").trim();
   const to = String(toFull || "").trim();
   if (!from || !to) {
     throw new Error("route_fields_required");
+  }
+  const auth = String(token || "").trim();
+  if (auth) {
+    const res = await fetch(`${API_BASE}/panel/v1/route-distance`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${auth}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ fromFull: from, toFull: to }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || data?.message || "matrix_failed");
+    }
+    const distanceKm = Number(data.distanceKm);
+    const durationMinutes = Number(data.durationMinutes);
+    if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
+      throw new Error("matrix_no_route");
+    }
+    return {
+      distanceKm,
+      durationMinutes: Number.isFinite(durationMinutes) ? durationMinutes : 1,
+      estimatedFare: estimateSystemFare(distanceKm),
+    };
+  }
+
+  const key = String(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
+  if (!key) {
+    throw new Error("missing_google_maps_key");
   }
   const url =
     `${GOOGLE_MATRIX_BASE}?origins=${encodeURIComponent(from)}` +

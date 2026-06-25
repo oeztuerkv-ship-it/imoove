@@ -119,7 +119,7 @@ export default function FixedPriceVoucherPurchaseSection({
     setErr("");
     setEstimate(null);
     try {
-      const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull);
+      const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull, token);
       setForm((f) => ({
         ...f,
         distanceKm: String(route.distanceKm),
@@ -129,7 +129,7 @@ export default function FixedPriceVoucherPurchaseSection({
       const code = e instanceof Error ? e.message : "route_error";
       setErr(
         code === "missing_google_maps_key"
-          ? "Google Maps API-Key fehlt (VITE_GOOGLE_MAPS_API_KEY)."
+          ? "Strecke konnte nicht berechnet werden — bitte erneut versuchen oder Adresse prüfen."
           : "Strecke konnte nicht berechnet werden — Adresse prüfen.",
       );
     } finally {

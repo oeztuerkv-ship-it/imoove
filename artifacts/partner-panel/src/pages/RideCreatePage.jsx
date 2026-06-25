@@ -54,7 +54,7 @@ export default function RideCreatePage() {
     setRouting(true);
     setCreateMsg("");
     try {
-      const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull);
+      const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull, token);
       setForm((f) => ({
         ...f,
         distanceKm: String(route.distanceKm),
@@ -65,7 +65,7 @@ export default function RideCreatePage() {
       const code = e instanceof Error ? e.message : "route_error";
       setCreateMsg(
         code === "missing_google_maps_key"
-          ? "Google Maps API-Key fehlt (VITE_GOOGLE_MAPS_API_KEY)."
+          ? "Strecke konnte nicht berechnet werden — bitte erneut versuchen."
           : "Route konnte nicht automatisch berechnet werden.",
       );
     } finally {
