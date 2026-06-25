@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import OnrodaMark from "./OnrodaMark.jsx";
-import FixedPriceVoucherPurchaseSection from "./FixedPriceVoucherPurchaseSection.jsx";
+import FixedPriceVoucherPurchaseSection, { AgCard } from "./FixedPriceVoucherPurchaseSection.jsx";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import "../styles/agentur-gutscheine.css";
 import {
   downloadPanelInvoicePdf,
   fetchPanelInvoice,
@@ -133,7 +134,7 @@ function DashboardView({ token, company }) {
 }
 
 /* ── GUTSCHEINE ────────────────────────────────────────── */
-function GutscheineView({ token, user }) {
+function GutscheineView({ token, user, company }) {
   const canManage = Array.isArray(user?.permissions) && user.permissions.includes("access_codes.manage");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -217,118 +218,182 @@ function GutscheineView({ token, user }) {
   };
 
   return (
-    <div>
-      <FixedPriceVoucherPurchaseSection
-        token={token}
-        canManage={canManage}
-        Card={Card}
-        Section={Section}
-        accent={RED}
-      />
+    <div className="ag-gutscheine">
+      <header className="ag-gutscheine__header">
+        <h1 className="ag-gutscheine__title">Gutscheine</h1>
+        <p className="ag-gutscheine__lead">
+          Festpreis-Gutscheine kaufen oder klassische Codes für Ihre Gäste erstellen — alles an einem Ort.
+        </p>
+      </header>
+
+      <FixedPriceVoucherPurchaseSection token={token} canManage={canManage} />
+
       {canManage && (
-        <Section title="Neuen Gutschein erstellen">
-          {err && <p style={{ color: RED, fontSize: 13, margin: "0 0 10px" }}>{err}</p>}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-              Bezeichnung *
-              <input value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-                placeholder="z. B. Willkommens-Gutschein" style={inp} />
+        <AgCard icon="✨" title="Neuen Gutschein erstellen" subtitle="Code für Gäste — Abrechnung über Ihr Konto">
+          {err ? <div className="ag-alert ag-alert--error">{err}</div> : null}
+          <div className="ag-form-grid">
+            <label className="ag-field">
+              <span className="ag-field__label">Bezeichnung *</span>
+              <input
+                className="ag-field__input"
+                value={form.label}
+                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                placeholder="z. B. Willkommens-Gutschein"
+              />
             </label>
-            <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-              Max. Nutzungen
-              <input type="number" min="1" value={form.maxUses} onChange={e => setForm(f => ({ ...f, maxUses: e.target.value }))} style={inp} />
+            <label className="ag-field">
+              <span className="ag-field__label">Max. Nutzungen</span>
+              <input
+                className="ag-field__input"
+                type="number"
+                min="1"
+                value={form.maxUses}
+                onChange={(e) => setForm((f) => ({ ...f, maxUses: e.target.value }))}
+              />
             </label>
-            <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-              Gültig ab
-              <input type="date" value={form.validFrom} onChange={e => setForm(f => ({ ...f, validFrom: e.target.value }))} style={inp} />
+            <label className="ag-field">
+              <span className="ag-field__label">Gültig ab</span>
+              <input
+                className="ag-field__input"
+                type="date"
+                value={form.validFrom}
+                onChange={(e) => setForm((f) => ({ ...f, validFrom: e.target.value }))}
+              />
             </label>
-            <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-              Gültig bis
-              <input type="date" value={form.validUntil} onChange={e => setForm(f => ({ ...f, validUntil: e.target.value }))} style={inp} />
+            <label className="ag-field">
+              <span className="ag-field__label">Gültig bis</span>
+              <input
+                className="ag-field__input"
+                type="date"
+                value={form.validUntil}
+                onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))}
+              />
+            </label>
+            <label className="ag-field ag-form-grid--full">
+              <span className="ag-field__label">Start (optional)</span>
+              <input
+                className="ag-field__input"
+                value={form.fixedPickup}
+                onChange={(e) => setForm((f) => ({ ...f, fixedPickup: e.target.value }))}
+                placeholder="z. B. Hotel Marriott, Lobby"
+              />
+            </label>
+            <label className="ag-field ag-form-grid--full">
+              <span className="ag-field__label">Ziel (optional)</span>
+              <input
+                className="ag-field__input"
+                value={form.fixedDestination}
+                onChange={(e) => setForm((f) => ({ ...f, fixedDestination: e.target.value }))}
+                placeholder="z. B. Flughafen Stuttgart Terminal 1"
+              />
+            </label>
+            <label className="ag-field ag-form-grid--full">
+              <span className="ag-field__label">Code-Typ</span>
+              <select
+                className="ag-field__input"
+                value={form.codeMode}
+                onChange={(e) => setForm((f) => ({ ...f, codeMode: e.target.value }))}
+              >
+                <option value="generate">Automatisch generieren</option>
+                <option value="custom">Eigenen Code festlegen</option>
+              </select>
+            </label>
+            {form.codeMode === "custom" && (
+              <label className="ag-field ag-form-grid--full">
+                <span className="ag-field__label">Eigener Code</span>
+                <input
+                  className="ag-field__input"
+                  value={form.customCode}
+                  onChange={(e) => setForm((f) => ({ ...f, customCode: e.target.value }))}
+                  placeholder="z. B. HOTEL2026"
+                />
+              </label>
+            )}
+            <label className="ag-field ag-form-grid--full">
+              <span className="ag-field__label">Notiz (intern)</span>
+              <input
+                className="ag-field__input"
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Für wen ist dieser Gutschein?"
+              />
             </label>
           </div>
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
-            Start (optional)
-            <input value={form.fixedPickup} onChange={e => setForm(f => ({ ...f, fixedPickup: e.target.value }))} placeholder="z. B. Hotel Marriott, Lobby" style={inp} />
-          </label>
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
-            Ziel (optional)
-            <input value={form.fixedDestination} onChange={e => setForm(f => ({ ...f, fixedDestination: e.target.value }))} placeholder="z. B. Flughafen Stuttgart Terminal 1" style={inp} />
-          </label>
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
-            Code-Typ
-            <select value={form.codeMode} onChange={e => setForm(f => ({ ...f, codeMode: e.target.value }))} style={inp}>
-              <option value="generate">Automatisch generieren</option>
-              <option value="custom">Eigenen Code festlegen</option>
-            </select>
-          </label>
-          {form.codeMode === "custom" && (
-            <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
-              Eigener Code
-              <input value={form.customCode} onChange={e => setForm(f => ({ ...f, customCode: e.target.value }))}
-                placeholder="z. B. HOTEL2026" style={inp} />
-            </label>
-          )}
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", display: "block", marginTop: 10 }}>
-            Notiz (intern)
-            <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Für wen ist dieser Gutschein?" style={inp} />
-          </label>
-          <button onClick={create} disabled={busy} style={{ ...btn, marginTop: 14, background: RED }}>
-            {busy ? "Wird erstellt …" : "Gutschein erstellen"}
-          </button>
-        </Section>
+          <div className="ag-actions">
+            <button type="button" className="ag-btn ag-btn--primary" onClick={create} disabled={busy}>
+              {busy ? "Wird erstellt …" : "Gutschein erstellen"}
+            </button>
+          </div>
+        </AgCard>
       )}
 
-      <Section title={`Deine Gutscheine (${items.length})`}>
-        {loading ? <p style={{ fontSize: 13, color: "rgba(0,0,0,0.4)" }}>Laden …</p> : items.length === 0 ? (
-          <p style={{ fontSize: 13, color: "rgba(0,0,0,0.4)" }}>Noch keine Gutscheine erstellt.</p>
+      <AgCard icon="🎫" title={`Deine Gutscheine (${items.length})`} subtitle="Aktive Codes und Nutzung">
+        {loading ? (
+          <p className="ag-empty">Laden …</p>
+        ) : items.length === 0 ? (
+          <p className="ag-empty">Noch keine Gutscheine erstellt.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {items.map(item => {
+          <div className="ag-voucher-list">
+            {items.map((item) => {
               const st = statusInfo(item);
               return (
-                <div key={item.id} style={{ border: "0.5px solid rgba(0,0,0,0.08)", borderRadius: 10, padding: "12px 14px", background: item.isActive ? "#fff" : "rgba(0,0,0,0.02)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{item.label || "—"}</span>
-                    <Badge tone={st.tone}>{st.label}</Badge>
-                    {canManage && (
-                      <button onClick={() => toggle(item)} style={{ fontSize: 11, border: "0.5px solid rgba(0,0,0,0.2)", borderRadius: 6, padding: "3px 10px", cursor: "pointer", background: "transparent" }}>
-                        {item.isActive ? "Deaktivieren" : "Aktivieren"}
+                <div key={item.id} className="ag-voucher-item" style={{ opacity: item.isActive ? 1 : 0.72 }}>
+                  <div className="ag-voucher-item__main">
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span className="ag-voucher-item__title">{item.label || "—"}</span>
+                      <Badge tone={st.tone}>{st.label}</Badge>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      <span className="ag-code-pill">{item.codeNormalized || "—"}</span>
+                      <button
+                        type="button"
+                        className="ag-btn ag-btn--ghost ag-btn--sm"
+                        onClick={() => copyCode(item.codeNormalized)}
+                      >
+                        {copied === item.codeNormalized ? "✓ Kopiert" : "Kopieren"}
                       </button>
-                    )}
-                    <button onClick={() => loadBeleg(item)} style={{ fontSize: 11, border: "0.5px solid rgba(0,0,0,0.2)", borderRadius: 6, padding: "3px 10px", cursor: "pointer", background: "transparent" }}>Belege</button>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                    <code style={{ fontSize: 15, fontWeight: 700, letterSpacing: 1, color: RED, background: "#fff0f0", padding: "3px 10px", borderRadius: 6 }}>
-                      {item.codeNormalized || "—"}
-                    </code>
-                    <button onClick={() => copyCode(item.codeNormalized)} style={{ fontSize: 12, border: copied === item.codeNormalized ? "1px solid #16a34a" : "0.5px solid rgba(0,0,0,0.15)", borderRadius: 6, padding: "4px 12px", cursor: "pointer", background: copied === item.codeNormalized ? "#dcfce7" : "#fff", color: copied === item.codeNormalized ? "#16a34a" : "inherit", fontWeight: copied === item.codeNormalized ? 600 : 400, transition: "all 0.2s" }}>
-                      {copied === item.codeNormalized ? "✓ Kopiert!" : "Kopieren"}
-                    </button>
-                    <span style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", marginLeft: "auto" }}>
+                    </div>
+                    <div className="ag-voucher-item__meta" style={{ marginTop: 8 }}>
                       {item.usesCount || 0} / {item.maxUses ?? "∞"} Nutzungen
                       {item.validUntil ? ` · bis ${fmtDate(item.validUntil)}` : ""}
-                    </span>
+                    </div>
+                    {item.fixedPickup ? (
+                      <div className="ag-voucher-item__route">Start: {item.fixedPickup}</div>
+                    ) : null}
+                    {item.fixedDestination ? (
+                      <div className="ag-voucher-item__route">Ziel: {item.fixedDestination}</div>
+                    ) : null}
+                    {item.notes ? <div className="ag-voucher-item__meta">{item.notes}</div> : null}
                   </div>
-                  {item.fixedPickup && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", margin: "5px 0 0" }}>🚩 Start: <strong>{item.fixedPickup}</strong></p>}
-                {item.fixedDestination && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", margin: "3px 0 0" }}>📍 Ziel: <strong>{item.fixedDestination}</strong></p>}
-                {item.notes && <p style={{ fontSize: 12, color: "rgba(0,0,0,0.4)", margin: "6px 0 0" }}>{item.notes}</p>}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {canManage ? (
+                      <button type="button" className="ag-btn ag-btn--ghost ag-btn--sm" onClick={() => toggle(item)}>
+                        {item.isActive ? "Deaktivieren" : "Aktivieren"}
+                      </button>
+                    ) : null}
+                    <button type="button" className="ag-btn ag-btn--secondary ag-btn--sm" onClick={() => loadBeleg(item)}>
+                      Belege
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
-      </Section>
+      </AgCard>
       {belegCode && (
-        <Section title={`Belege: ${belegCode.label}`}>
-          <button onClick={() => setBelegCode(null)} style={{ fontSize: 12, border: "0.5px solid rgba(0,0,0,0.2)", borderRadius: 6, padding: "3px 10px", cursor: "pointer", background: "transparent", marginBottom: 12 }}>✕ Schliessen</button>
-          {belegBusy ? <p style={{ fontSize: 13, color: "rgba(0,0,0,0.4)" }}>Laden …</p> : belegRides.length === 0 ? (
-            <p style={{ fontSize: 13, color: "rgba(0,0,0,0.4)" }}>Keine Fahrten mit diesem Code gefunden.</p>
+        <AgCard icon="🧾" title={`Belege: ${belegCode.label}`} subtitle="Fahrten mit diesem Gutscheincode">
+          <button type="button" className="ag-btn ag-btn--ghost ag-btn--sm" onClick={() => setBelegCode(null)} style={{ marginBottom: 12 }}>
+            Schließen
+          </button>
+          {belegBusy ? (
+            <p className="ag-empty">Laden …</p>
+          ) : belegRides.length === 0 ? (
+            <p className="ag-empty">Keine Fahrten mit diesem Code gefunden.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {belegRides.map((r, i) => (
-                <div key={r.id || i} style={{ border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 12, padding: "16px 18px", background: "#fff" }}>
+                <div key={r.id || i} className="ag-voucher-item" style={{ flexDirection: "column", alignItems: "stretch" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 1 }}>
                       <span style={{ color: RED, fontWeight: 800, fontSize: 16, letterSpacing: -0.5 }}>on</span>
@@ -366,7 +431,7 @@ function GutscheineView({ token, user }) {
               <p style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", fontWeight: 600, marginTop: 4 }}>Gesamt: {fmtMoney(belegRides.reduce((s, r) => s + (Number(r.finalFare) || Number(r.estimatedFare) || 0), 0))}</p>
             </div>
           )}
-        </Section>
+        </AgCard>
       )}
     </div>
   );
@@ -1171,7 +1236,7 @@ export default function AgenturMasterPanel({ company, onLogout }) {
       </div>
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
         {active === "dashboard" && <DashboardView token={token} company={company} />}
-        {active === "gutscheine" && <GutscheineView token={token} user={user} />}
+        {active === "gutscheine" && <GutscheineView token={token} user={user} company={company} />}
         {active === "fahrten" && <FahrtenView token={token} />}
         {active === "abrechnung" && <AbrechnungView token={token} />}
         {active === "posteingang" && (

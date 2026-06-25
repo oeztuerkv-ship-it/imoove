@@ -1,0 +1,422 @@
+/* Agentur/Hotel/Reisebüro — Gutscheine (Partner-Arbeitsplatz, Crimson-Akzent) */
+
+.ag-gutscheine {
+  --ag-accent: #ef1d26;
+  --ag-accent-hover: #d41820;
+  --ag-accent-soft: #fff1f2;
+  --ag-accent-ring: rgba(239, 29, 38, 0.18);
+  --ag-text: #1c1c1e;
+  --ag-muted: #6b7280;
+  --ag-border: #e8e8ed;
+  --ag-surface: #ffffff;
+  --ag-bg-subtle: #f8f9fb;
+  --ag-radius: 16px;
+  --ag-radius-sm: 12px;
+  --ag-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+  max-width: 920px;
+}
+
+.ag-gutscheine__header {
+  margin: 0 0 20px;
+}
+
+.ag-gutscheine__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ag-text);
+}
+
+.ag-gutscheine__lead {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ag-muted);
+}
+
+.ag-card {
+  background: var(--ag-surface);
+  border: 1px solid var(--ag-border);
+  border-radius: var(--ag-radius);
+  box-shadow: var(--ag-shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.ag-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 18px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ag-card__head:hover {
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.ag-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  background: var(--ag-accent-soft);
+  flex-shrink: 0;
+}
+
+.ag-card__title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.ag-card__title {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ag-text);
+}
+
+.ag-card__subtitle {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--ag-muted);
+  font-weight: 500;
+}
+
+.ag-card__chevron {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+}
+
+.ag-card__chevron--open {
+  transform: rotate(0deg);
+}
+
+.ag-card__chevron--closed {
+  transform: rotate(-90deg);
+}
+
+.ag-card__body {
+  padding: 0 20px 20px;
+}
+
+.ag-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--ag-radius-sm);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  margin-bottom: 16px;
+}
+
+.ag-alert--error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.ag-alert--success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.ag-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .ag-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ag-form-grid--full {
+  grid-column: 1 / -1;
+}
+
+.ag-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ag-field__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ag-muted);
+}
+
+.ag-field__input,
+.ag-field select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--ag-border);
+  border-radius: var(--ag-radius-sm);
+  font-size: 0.95rem;
+  color: var(--ag-text);
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ag-field__input:focus,
+.ag-field select:focus {
+  outline: none;
+  border-color: var(--ag-accent);
+  box-shadow: 0 0 0 3px var(--ag-accent-ring);
+}
+
+.ag-field__input::placeholder {
+  color: #9ca3af;
+}
+
+.ag-route-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.ag-route-row .ag-field {
+  flex: 1;
+  min-width: 140px;
+}
+
+.ag-route-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--ag-bg-subtle);
+  border: 1px solid var(--ag-border);
+  font-size: 0.86rem;
+  color: var(--ag-text);
+  font-weight: 500;
+}
+
+.ag-route-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.ag-price-hero {
+  margin-top: 18px;
+  padding: 20px;
+  border-radius: var(--ag-radius);
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 55%, #f8fafc 100%);
+  border: 1px solid #fecdd3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.ag-price-hero__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ag-muted);
+  margin: 0 0 4px;
+}
+
+.ag-price-hero__amount {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ag-accent);
+  line-height: 1.1;
+}
+
+.ag-price-hero__meta {
+  font-size: 0.82rem;
+  color: var(--ag-muted);
+  margin-top: 4px;
+}
+
+.ag-price-hero__actions {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ag-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+
+.ag-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ag-btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.ag-btn--primary {
+  background: var(--ag-accent);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(239, 29, 38, 0.28);
+}
+
+.ag-btn--primary:not(:disabled):hover {
+  background: var(--ag-accent-hover);
+}
+
+.ag-btn--secondary {
+  background: #fff;
+  color: var(--ag-accent);
+  border: 1.5px solid var(--ag-accent);
+}
+
+.ag-btn--secondary:not(:disabled):hover {
+  background: var(--ag-accent-soft);
+}
+
+.ag-btn--ghost {
+  background: var(--ag-bg-subtle);
+  color: var(--ag-text);
+  border: 1px solid var(--ag-border);
+  font-weight: 600;
+}
+
+.ag-btn--sm {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+}
+
+.ag-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.ag-voucher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ag-voucher-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--ag-border);
+  border-radius: var(--ag-radius-sm);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ag-voucher-item:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.ag-voucher-item__main {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ag-voucher-item__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ag-text);
+}
+
+.ag-voucher-item__route {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--ag-muted);
+}
+
+.ag-voucher-item__meta {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
+.ag-code-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--ag-accent-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ag-accent);
+}
+
+.ag-success-card {
+  margin-bottom: 16px;
+  padding: 20px;
+  border-radius: var(--ag-radius);
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border: 1px solid #bbf7d0;
+}
+
+.ag-success-card__title {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.ag-success-card__code {
+  margin: 0 0 10px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--ag-accent);
+}
+
+.ag-success-card__meta {
+  margin: 0 0 14px;
+  font-size: 0.88rem;
+  color: var(--ag-muted);
+}
+
+.ag-empty {
+  font-size: 0.9rem;
+  color: var(--ag-muted);
+  padding: 8px 0;
+}

@@ -8,17 +8,6 @@ import {
   startFixedPriceVoucherCheckout,
 } from "../lib/fixedPriceVoucherApi.js";
 
-const TEAL = "#0d9488";
-const inp = {
-  width: "100%",
-  marginTop: 4,
-  padding: "10px 12px",
-  borderRadius: 10,
-  border: "0.5px solid rgba(0,0,0,0.15)",
-  fontSize: 14,
-  boxSizing: "border-box",
-};
-
 function fmtMoney(n) {
   if (n == null || !Number.isFinite(Number(n))) return "—";
   return `${Number(n).toFixed(2).replace(".", ",")} €`;
@@ -48,16 +37,34 @@ function clearCheckoutReturnParams() {
   window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
+export function AgCard({ icon, title, subtitle, children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="ag-card">
+      <button type="button" className="ag-card__head" onClick={() => setOpen((v) => !v)}>
+        <span className="ag-card__icon" aria-hidden>
+          {icon}
+        </span>
+        <span className="ag-card__title-wrap">
+          <span className="ag-card__title">{title}</span>
+          {subtitle ? <span className="ag-card__subtitle">{subtitle}</span> : null}
+        </span>
+        <span
+          className={`ag-card__chevron ${open ? "ag-card__chevron--open" : "ag-card__chevron--closed"}`}
+          aria-hidden
+        >
+          ▼
+        </span>
+      </button>
+      {open ? <div className="ag-card__body">{children}</div> : null}
+    </section>
+  );
+}
+
 /**
  * Partner-Panel: Festpreis-Gutschein kaufen (Produkt A).
  */
-export default function FixedPriceVoucherPurchaseSection({
-  token,
-  canManage,
-  Card,
-  Section,
-  accent = TEAL,
-}) {
+export default function FixedPriceVoucherPurchaseSection({ token, canManage }) {
   const [form, setForm] = useState({
     label: "",
     fromFull: "",
@@ -128,8 +135,8 @@ export default function FixedPriceVoucherPurchaseSection({
     } catch (e) {
       const code = e instanceof Error ? e.message : "route_error";
       setErr(
-        code === "missing_google_maps_key"
-          ? "Strecke konnte nicht berechnet werden — bitte erneut versuchen oder Adresse prüfen."
+        code === "missing_google_maps_key" || code === "route_not_computable"
+          ? "Strecke konnte nicht berechnet werden — bitte Adresse prüfen oder später erneut versuchen."
           : "Strecke konnte nicht berechnet werden — Adresse prüfen.",
       );
     } finally {
@@ -208,182 +215,145 @@ export default function FixedPriceVoucherPurchaseSection({
   return (
     <div>
       {successOrder?.status === "paid" && (
-        <Card style={{ marginBottom: 14, borderColor: `${accent}55`, background: "#f0fdfa" }}>
-          <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#115e59" }}>Zahlung erfolgreich</p>
+        <div className="ag-success-card">
+          <p className="ag-success-card__title">Zahlung erfolgreich</p>
           {successOrder.codePlain && (
-            <p style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, letterSpacing: 2, color: accent }}>
-              {successOrder.codePlain}
-            </p>
+            <p className="ag-success-card__code">{successOrder.codePlain}</p>
           )}
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "rgba(0,0,0,0.6)" }}>
+          <p className="ag-success-card__meta">
             {successOrder.fromFull} → {successOrder.toFull} · {fmtMoney(successOrder.priceEur)}
           </p>
           {successOrder.canDownloadPdf && (
             <button
               type="button"
+              className="ag-btn ag-btn--primary"
               onClick={() => downloadPdf(successOrder.id)}
               disabled={pdfBusyId === successOrder.id}
-              style={{
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "none",
-                background: accent,
-                color: "#fff",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
             >
               {pdfBusyId === successOrder.id ? "PDF wird erstellt …" : "Gutschein-PDF herunterladen"}
             </button>
           )}
-        </Card>
+        </div>
       )}
 
-      <Section title="Festpreis-Gutschein kaufen">
-        <p style={{ fontSize: 13, color: "rgba(0,0,0,0.55)", margin: "0 0 14px", lineHeight: 1.5 }}>
-          Route berechnen, Festpreis anzeigen und per Karte bezahlen — danach Code und PDF sofort verfügbar.
-        </p>
-        {err && <p style={{ color: "#b91c1c", fontSize: 13, margin: "0 0 10px" }}>{err}</p>}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", gridColumn: "1 / -1" }}>
-            Bezeichnung (optional)
+      <AgCard
+        icon="🎟️"
+        title="Festpreis-Gutschein kaufen"
+        subtitle="Route berechnen, Festpreis anzeigen und per Karte bezahlen"
+      >
+        {err ? <div className="ag-alert ag-alert--error">{err}</div> : null}
+
+        <div className="ag-form-grid">
+          <label className="ag-field ag-form-grid--full">
+            <span className="ag-field__label">Bezeichnung (optional)</span>
             <input
+              className="ag-field__input"
               value={form.label}
               onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
               placeholder="z. B. Gast Müller — Flughafen"
-              style={inp}
             />
           </label>
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-            Start (Straße, PLZ Ort) *
+          <label className="ag-field">
+            <span className="ag-field__label">Start *</span>
             <input
+              className="ag-field__input"
               value={form.fromFull}
               onChange={(e) => setForm((f) => ({ ...f, fromFull: e.target.value }))}
               placeholder="Musterstraße 1, 73728 Esslingen"
-              style={inp}
             />
           </label>
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-            Ziel (Straße, PLZ Ort) *
+          <label className="ag-field">
+            <span className="ag-field__label">Ziel *</span>
             <input
+              className="ag-field__input"
               value={form.toFull}
               onChange={(e) => setForm((f) => ({ ...f, toFull: e.target.value }))}
               placeholder="Flughafen Stuttgart, 70629"
-              style={inp}
             />
           </label>
-          <label style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-            Fahrzeugklasse
+        </div>
+
+        <div className="ag-route-row">
+          <label className="ag-field">
+            <span className="ag-field__label">Fahrzeugklasse</span>
             <select
+              className="ag-field__input"
               value={form.vehicle}
               onChange={(e) => setForm((f) => ({ ...f, vehicle: e.target.value }))}
-              style={inp}
             >
               <option value="standard">Standard</option>
               <option value="xl">XL / Großraum</option>
               <option value="wheelchair">Rollstuhl</option>
             </select>
           </label>
-          <div style={{ display: "flex", alignItems: "flex-end" }}>
-            <button
-              type="button"
-              onClick={calcRoute}
-              disabled={!hasRoute || routing}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: `1px solid ${accent}`,
-                background: "#fff",
-                color: accent,
-                fontWeight: 600,
-                cursor: hasRoute && !routing ? "pointer" : "not-allowed",
-              }}
-            >
-              {routing ? "Strecke …" : "Strecke berechnen"}
-            </button>
-          </div>
-        </div>
-        {form.distanceKm && (
-          <p style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", margin: "10px 0 0" }}>
-            Strecke: {Number(form.distanceKm).toFixed(1).replace(".", ",")} km
-            {form.durationMinutes ? ` · ca. ${form.durationMinutes} Min.` : ""}
-          </p>
-        )}
-        <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={runEstimate}
-            disabled={estimating || !form.distanceKm}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 10,
-              border: `1px solid ${accent}`,
-              background: "#fff",
-              color: accent,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
+            className="ag-btn ag-btn--secondary"
+            onClick={calcRoute}
+            disabled={!hasRoute || routing}
           >
-            {estimating ? "Preis …" : "Festpreis berechnen"}
+            {routing ? "Strecke wird berechnet …" : "Strecke berechnen"}
           </button>
-          {canManage && pricePreview?.eligible && (
+        </div>
+
+        {form.distanceKm ? (
+          <div className="ag-route-chip">
+            <span className="ag-route-chip__dot" aria-hidden />
+            Strecke: {Number(form.distanceKm).toFixed(1).replace(".", ",")} km
+            {form.durationMinutes ? ` · ca. ${form.durationMinutes} Min.` : ""}
+          </div>
+        ) : null}
+
+        {!pricePreview?.eligible ? (
+          <div className="ag-actions">
             <button
               type="button"
-              onClick={payNow}
-              disabled={paying}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 10,
-                border: "none",
-                background: accent,
-                color: "#fff",
-                fontWeight: 700,
-                cursor: paying ? "wait" : "pointer",
-              }}
+              className="ag-btn ag-btn--secondary"
+              onClick={runEstimate}
+              disabled={estimating || !form.distanceKm}
             >
-              {paying ? "Weiterleitung …" : `Jetzt ${fmtMoney(pricePreview.priceEur)} per Karte zahlen`}
+              {estimating ? "Preis wird berechnet …" : "Festpreis berechnen"}
             </button>
-          )}
-        </div>
-        {pricePreview?.eligible && (
-          <div
-            style={{
-              marginTop: 14,
-              padding: 12,
-              borderRadius: 10,
-              background: "#f8fafc",
-              fontSize: 15,
-              color: "#334155",
-            }}
-          >
-            <strong>Festpreis:</strong> {fmtMoney(pricePreview.priceEur)}
+          </div>
+        ) : (
+          <div className="ag-price-hero">
+            <div>
+              <p className="ag-price-hero__label">Ihr Festpreis</p>
+              <div className="ag-price-hero__amount">{fmtMoney(pricePreview.priceEur)}</div>
+              <p className="ag-price-hero__meta">
+                {vehicleLabel(form.vehicle)} · {Number(form.distanceKm).toFixed(1).replace(".", ",")} km
+              </p>
+            </div>
+            <div className="ag-price-hero__actions">
+              <button
+                type="button"
+                className="ag-btn ag-btn--ghost ag-btn--sm"
+                onClick={runEstimate}
+                disabled={estimating}
+              >
+                Neu berechnen
+              </button>
+              {canManage ? (
+                <button type="button" className="ag-btn ag-btn--primary" onClick={payNow} disabled={paying}>
+                  {paying ? "Weiterleitung …" : `Jetzt ${fmtMoney(pricePreview.priceEur)} zahlen`}
+                </button>
+              ) : null}
+            </div>
           </div>
         )}
-      </Section>
+      </AgCard>
 
       {orders.length > 0 && (
-        <Section title="Gekaufte Festpreis-Gutscheine">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <AgCard icon="📋" title="Gekaufte Festpreis-Gutscheine" subtitle={`${orders.length} bezahlt`}>
+          <div className="ag-voucher-list">
             {orders.slice(0, 15).map((o) => (
-              <div
-                key={o.id}
-                style={{
-                  border: "0.5px solid rgba(0,0,0,0.08)",
-                  borderRadius: 10,
-                  padding: "12px 14px",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 10,
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{o.label || "Festpreis-Gutschein"}</div>
-                  <div style={{ fontSize: 12, color: "rgba(0,0,0,0.5)", marginTop: 4 }}>
+              <div key={o.id} className="ag-voucher-item">
+                <div className="ag-voucher-item__main">
+                  <div className="ag-voucher-item__title">{o.label || "Festpreis-Gutschein"}</div>
+                  <div className="ag-voucher-item__route">
                     {o.fromFull} → {o.toFull}
                   </div>
-                  <div style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", marginTop: 2 }}>
+                  <div className="ag-voucher-item__meta">
                     {fmtMoney(o.priceEur)} · {vehicleLabel(o.vehicle)}
                     {o.codePlain ? ` · Code: ${o.codePlain}` : ""}
                   </div>
@@ -391,18 +361,9 @@ export default function FixedPriceVoucherPurchaseSection({
                 {o.canDownloadPdf && (
                   <button
                     type="button"
+                    className="ag-btn ag-btn--secondary ag-btn--sm"
                     onClick={() => downloadPdf(o.id)}
                     disabled={pdfBusyId === o.id}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      border: `1px solid ${accent}`,
-                      background: "#fff",
-                      color: accent,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      fontSize: 13,
-                    }}
                   >
                     PDF
                   </button>
@@ -410,7 +371,7 @@ export default function FixedPriceVoucherPurchaseSection({
               </div>
             ))}
           </div>
-        </Section>
+        </AgCard>
       )}
     </div>
   );
