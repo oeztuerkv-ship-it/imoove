@@ -60,3 +60,17 @@ export function instantMarketOfferIdsKey(reqs: RideRequest[]): string {
     .sort()
     .join("|");
 }
+
+/** Offene Reservierungen im Planer-Pool — unabhängig vom ONLINE/OFFLINE-Toggle. */
+export function filterDriverScheduledOpenOffers(
+  pool: RideRequest[],
+  opts: { driverId: string },
+): RideRequest[] {
+  const driverId = opts.driverId.trim();
+  return pool.filter((r) => {
+    if (r.status !== "scheduled") return false;
+    if (r.driverId) return false;
+    if (driverId && (r.rejectedBy ?? []).includes(driverId)) return false;
+    return true;
+  });
+}

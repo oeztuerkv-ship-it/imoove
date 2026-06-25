@@ -2868,17 +2868,17 @@ export default function DriverDashboard() {
   } = useRideRequests();
   const isConnected = isDriverMarketConnected;
   const allPendingRef = useRef(allPending);
-  // Foreground-Push-Handler + Token-Sync nur bei ONLINE am Markt
+  // Foreground-Push-Handler + Token-Sync bei Einsatzbereit (auch Markt-OFFLINE — Reservierungs-Pushes).
   useEffect(() => {
     ensureExpoNotificationsHandler();
     if (!driver?.authToken || !driver?.id || !driver?.companyId) return;
-    if (!driver.einsatzbereit || !driver.isAvailable) return;
+    if (!driver.einsatzbereit) return;
     syncDriverExpoPushTokenWithRetry({
       authToken: driver.authToken,
       fleetDriverId: driver.id,
       companyId: driver.companyId,
     }).catch(() => {});
-  }, [driver?.authToken, driver?.id, driver?.companyId, driver?.einsatzbereit, driver?.isAvailable]);
+  }, [driver?.authToken, driver?.id, driver?.companyId, driver?.einsatzbereit]);
 
   useEffect(() => {
     allPendingRef.current = allPending;
@@ -3378,7 +3378,6 @@ export default function DriverDashboard() {
   ]);
 
   const scheduledPool = driverMarketScheduledPool.filter((r) => {
-    if (!driverMarketOnline) return false;
     if (r.status !== "scheduled" && r.status !== "scheduled_assigned") return false;
     const assignedDriverId = typeof r.driverId === "string" ? r.driverId.trim() : "";
     if (r.status === "scheduled_assigned" && assignedDriverId !== driverId) return false;
@@ -3524,8 +3523,13 @@ export default function DriverDashboard() {
       );
       return;
     }
-    if (!driver.isAvailable) {
-      Alert.alert("Offline", "Schalten Sie auf ONLINE, um Aufträge anzunehmen.");
+    const poolReq =
+      driverMarketScheduledPool.find((r) => r.id === id) ??
+      driverMarketRequests.find((r) => r.id === id) ??
+      requests.find((r) => r.id === id);
+    const isOpenReservation = poolReq?.status === "scheduled";
+    if (!driver.isAvailable && !isOpenReservation) {
+      Alert.alert("Offline", "Schalten Sie auf ONLINE, um Sofortfahrten anzunehmen.");
       return;
     }
     try {
@@ -4005,6 +4009,7 @@ export default function DriverDashboard() {
                   clearDriverMarketRequests();
                   await setAvailable(false);
                   clearDriverMarketRequests();
+                  void refreshDriverMarket();
                   if (onlineFlowEndTimerRef.current) clearTimeout(onlineFlowEndTimerRef.current);
                   onlineFlowEndTimerRef.current = setTimeout(() => {
                     onlineFlowEndTimerRef.current = null;

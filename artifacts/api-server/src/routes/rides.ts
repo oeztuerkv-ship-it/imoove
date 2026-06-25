@@ -2293,7 +2293,8 @@ export async function patchRideStatusRoute(
         return;
       }
       const marketOnline = await getFleetDriverMarketOnline(bodyDriverIdTrim, capabilityCompanyId);
-      if (!marketOnline) {
+      const acceptingOpenReservation = cur.status === "scheduled";
+      if (!marketOnline && !acceptingOpenReservation) {
         res.status(409).json({
           error: "driver_market_offline",
           message: "Fahrer ist offline — Annahme am Auftragsmarkt nicht möglich.",

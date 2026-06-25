@@ -1,5 +1,8 @@
 import type { RideRequest } from "../domain/rideRequest";
-import { listMarketOnlineDriversEligibleForInstantRide } from "../db/fleetInstantRideMarketData";
+import {
+  listDriversEligibleForScheduledPoolOffer,
+  listMarketOnlineDriversEligibleForInstantRide,
+} from "../db/fleetInstantRideMarketData";
 import { listFleetDriverExpoPushTokens } from "../db/fleetDriverExpoPushData";
 import { getFleetDriverMarketOnline } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "./dispatchStatus";
@@ -55,6 +58,33 @@ export async function notifyMarketOnlineDriversInstantRideOffer(ride: RideReques
         priority: "high",
         channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
         data: { kind: "instant_ride_offer", rideId: ride.id },
+      });
+    }
+  }
+  await sendExpoPushMessages(messages);
+}
+
+/** Neue Reservierung im Planer-Pool: Push an alle einsatzbereiten Fahrer (auch Markt-OFFLINE). */
+export async function notifyEligibleDriversScheduledPoolOffer(ride: RideRequest): Promise<void> {
+  if (ride.status !== "scheduled" || ride.driverId) return;
+  if (!isFarFutureReservation(ride.scheduledAt ?? null)) return;
+
+  const drivers = await listDriversEligibleForScheduledPoolOffer(ride);
+  if (drivers.length === 0) return;
+
+  const fromLabel = (ride.fromFull || ride.from || "Abholung").trim().slice(0, 48);
+  const messages: ExpoPushMessage[] = [];
+  for (const { fleetDriverId, companyId } of drivers) {
+    const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+    for (const to of tokens) {
+      messages.push({
+        to,
+        title: "Neue Reservierung",
+        body: fromLabel,
+        sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
+        priority: "high",
+        channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
+        data: { kind: "scheduled_pool_offer", rideId: ride.id },
       });
     }
   }

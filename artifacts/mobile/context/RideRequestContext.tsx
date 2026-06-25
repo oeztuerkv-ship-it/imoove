@@ -25,6 +25,7 @@ import {
 import { notifyDriverRideCancelledByCustomer } from "@/utils/driverLiveNavigation";
 import {
   filterDriverInstantMarketOffers,
+  filterDriverScheduledOpenOffers,
   instantMarketOfferIdsKey,
 } from "@/utils/driverInstantMarketOffers";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
@@ -747,6 +748,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const driverMarketPrevPendingIdsRef = useRef<Set<string>>(new Set());
   const driverMarketNotifyBootstrappedRef = useRef(false);
   const driverMarketOnlinePrevRef = useRef(Boolean(fleetDriver?.einsatzbereit && fleetDriver?.isAvailable));
+  const driverMarketPrevScheduledOpenIdsRef = useRef<Set<string>>(new Set());
+  const driverMarketScheduledNotifyBootstrappedRef = useRef(false);
 
   useEffect(() => {
     if (profile.isLoggedIn && profile.googleId?.trim()) {
@@ -890,18 +893,18 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           fetch(`${API_BASE}/fleet-driver/v1/market-rides?${marketQs}`, { cache: "no-store", headers }),
           fetch(`${API_BASE}/fleet-driver/v1/scheduled-rides?_=${bust}`, { cache: "no-store", headers }),
         ]);
-        if (!marketRes.ok) throw new Error("fetch failed");
+        if (!marketRes.ok && !schedRes.ok) throw new Error("fetch failed");
         const rejecting = rejectingRideIdsRef.current;
-        const normalized = ridesFromPayload(await marketRes.json()).filter((r) => !rejecting.has(r.id));
+        const normalized = marketRes.ok
+          ? ridesFromPayload(await marketRes.json()).filter((r) => !rejecting.has(r.id))
+          : [];
         const scheduledNorm = schedRes.ok ? ridesFromPayload(await schedRes.json()) : [];
-        if (!fleetDriverMarketOnlineRef.current) {
-          applyDriverMarketPayload([], []);
-        } else {
-          applyDriverMarketPayload(normalized, scheduledNorm);
-        }
-        setIsDriverMarketConnected(true);
-        if (isDriverSurfaceRef.current) setIsConnected(true);
-        return true;
+        // Sofortmarkt nur bei ONLINE; Reservierungen/Planer immer aus scheduled-rides (unabhängig vom Toggle).
+        const instantRows = fleetDriverMarketOnlineRef.current ? normalized : [];
+        applyDriverMarketPayload(instantRows, scheduledNorm);
+        setIsDriverMarketConnected(marketRes.ok || schedRes.ok);
+        if (isDriverSurfaceRef.current) setIsConnected(marketRes.ok || schedRes.ok);
+        return marketRes.ok || schedRes.ok;
       } catch {
         setIsDriverMarketConnected(false);
         if (isDriverSurfaceRef.current) setIsConnected(false);
@@ -934,10 +937,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
   const clearDriverMarketRequests = useCallback(() => {
     setDriverMarketRequests([]);
-    setDriverMarketScheduledPool([]);
     if (isDriverSurfaceRef.current) {
       setRequests([]);
-      setScheduledPoolRequests([]);
       lastCountRef.current = 0;
       setLastAddedRequestId(null);
     }
@@ -1066,7 +1067,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         const kind = data?.kind;
         if (fleetAuthToken && isDriverPushKind(kind)) {
           if (
-            (kind === "instant_ride_offer" || kind === "follow_up_offer") &&
+            (kind === "instant_ride_offer" ||
+              kind === "follow_up_offer" ||
+              kind === "scheduled_pool_offer") &&
             typeof data?.rideId === "string" &&
             data.rideId.trim()
           ) {
@@ -1697,6 +1700,67 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     isDriverSurface,
     driverMarketHydrated,
   ]);
+
+  const driverEinsatzbereit = Boolean(fleetDriver?.einsatzbereit);
+  const eligibleScheduledOpen = useMemo(
+    () => filterDriverScheduledOpenOffers(driverMarketScheduledPool, { driverId: driverIdForMarket }),
+    [driverMarketScheduledPool, driverIdForMarket],
+  );
+  const eligibleScheduledOpenKey = useMemo(
+    () => instantMarketOfferIdsKey(eligibleScheduledOpen),
+    [eligibleScheduledOpen],
+  );
+
+  useEffect(() => {
+    if (!isDriverSurface) {
+      driverMarketPrevScheduledOpenIdsRef.current = new Set();
+      driverMarketScheduledNotifyBootstrappedRef.current = false;
+      return;
+    }
+
+    const pool = eligibleScheduledOpen;
+    const currentIds = new Set(pool.map((r) => r.id));
+
+    if (!fleetAuthToken || !driverEinsatzbereit) {
+      driverMarketPrevScheduledOpenIdsRef.current = new Set();
+      driverMarketScheduledNotifyBootstrappedRef.current = false;
+      return;
+    }
+
+    if (pool.length === 0) {
+      driverMarketPrevScheduledOpenIdsRef.current = currentIds;
+      return;
+    }
+
+    if (!driverMarketScheduledNotifyBootstrappedRef.current) {
+      driverMarketPrevScheduledOpenIdsRef.current = currentIds;
+      driverMarketScheduledNotifyBootstrappedRef.current = true;
+      return;
+    }
+
+    const suppressed = driverSuppressedOfferIdsRef.current;
+    const newReqs = pool.filter(
+      (r) => !driverMarketPrevScheduledOpenIdsRef.current.has(r.id) && !suppressed.has(r.id),
+    );
+    if (newReqs.length > 0 && shouldPresentDriverRideOfferNotification()) {
+      const req = newReqs[0];
+      void ringForDriverInstantOffer({
+        rideId: req.id,
+        customerName: req.customerName || "Kunde",
+        fromAddress: req.fromFull || req.from || "—",
+        distanceKm: null,
+        estimatedFare: Number.isFinite(req.estimatedFare) ? req.estimatedFare : 0,
+      });
+    }
+    driverMarketPrevScheduledOpenIdsRef.current = currentIds;
+  }, [
+    eligibleScheduledOpenKey,
+    eligibleScheduledOpen,
+    fleetAuthToken,
+    driverEinsatzbereit,
+    isDriverSurface,
+  ]);
+
   const acceptedRequest =
     requests.find((r) =>
       r.status === "ready_for_dispatch" ||

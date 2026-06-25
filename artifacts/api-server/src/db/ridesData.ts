@@ -612,6 +612,8 @@ export async function insertRide(r: RideRequest, tx?: any): Promise<void> {
     actor_id: null,
     payload: {},
   });
+  const { notifyEligibleDriversScheduledPoolOffer } = await import("../lib/driverRideExpoPush.js");
+  void notifyEligibleDriversScheduledPoolOffer(persisted);
 }
 
 /**
