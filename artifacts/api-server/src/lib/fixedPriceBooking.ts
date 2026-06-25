@@ -5,6 +5,7 @@ import {
   type FixedPriceLocationPoint,
 } from "./fixedPriceMandatoryArea";
 import { TARIFF_ENGINE_SCHEMA_VERSION } from "./bookingTariffEstimate";
+import { resolveXlPricingConfig } from "./operationalTariffEngine";
 import {
   bookingPriceToleranceEur,
   operationalConfigVersionFromPayload,
@@ -55,12 +56,39 @@ export function computeFixedPriceEur(distanceKm: number, baseFeeEur: number, per
   };
 }
 
+function normalizeFixedPriceVehicleId(vehicle: string): "standard" | "xl" | "wheelchair" {
+  const v = vehicle.trim().toLowerCase();
+  if (v.includes("xl") || v === "van" || v.includes("großraum")) return "xl";
+  if (v.includes("rollstuhl") || v.includes("wheelchair")) return "wheelchair";
+  return "standard";
+}
+
+/** XL/Rollstuhl-Aufschlag auf Festpreis-Basis (Admin-Tarif, fester Betrag). */
+export function computeFixedPriceVehicleSurchargeEur(
+  opPayload: Record<string, unknown>,
+  vehicle: string,
+): number {
+  const merged = tariffsSection(opPayload);
+  const vClass = normalizeFixedPriceVehicleId(vehicle);
+  if (vClass === "xl") {
+    const xlCfg = resolveXlPricingConfig(merged);
+    if (xlCfg.mode === "multiplier") return 0;
+    return Math.max(0, Math.round(xlCfg.fixedEur * 100) / 100);
+  }
+  if (vClass === "wheelchair") {
+    return Math.max(0, Math.round(num(merged.wheelchairFixedSurchargeEur, 0) * 100) / 100);
+  }
+  return 0;
+}
+
 export type FixedPriceCheckResult =
   | {
       ok: true;
       eligible: true;
       pricingMode: "fixed_price";
       priceEur: number;
+      basePriceEur: number;
+      vehicleSurchargeEur: number;
       distanceKm: number;
       baseFeeEur: number;
       perKmEur: number;
@@ -82,6 +110,7 @@ export function checkFixedPriceBooking(args: {
   from: FixedPriceLocationPoint;
   to: FixedPriceLocationPoint;
   distanceKm: number;
+  vehicle?: string;
 }): FixedPriceCheckResult {
   const params = readFixedPriceTariffParams(args.opPayload);
   if (!params.active) {
@@ -114,11 +143,15 @@ export function checkFixedPriceBooking(args: {
     };
   }
   const priced = computeFixedPriceEur(args.distanceKm, params.baseFeeEur, params.perKmEur);
+  const vehicleSurchargeEur = computeFixedPriceVehicleSurchargeEur(args.opPayload, args.vehicle ?? "standard");
+  const priceEur = Math.ceil((priced.priceEur + vehicleSurchargeEur - Number.EPSILON) * 100) / 100;
   return {
     ok: true,
     eligible: true,
     pricingMode: "fixed_price",
-    priceEur: priced.priceEur,
+    priceEur,
+    basePriceEur: priced.priceEur,
+    vehicleSurchargeEur,
     distanceKm: priced.distanceKm,
     baseFeeEur: params.baseFeeEur,
     perKmEur: params.perKmEur,
@@ -142,6 +175,7 @@ export function computeFixedPriceRideBookingPricing(args: {
     from: args.from,
     to: args.to,
     distanceKm: args.distanceKm,
+    vehicle: args.vehicle,
   });
   if (!check.eligible) {
     return {
@@ -165,6 +199,9 @@ export function computeFixedPriceRideBookingPricing(args: {
       waitingCharge: 0,
       fixedPriceFormula: true,
       perKmEur: check.perKmEur,
+      ...(check.vehicleSurchargeEur > 0
+        ? { vehicleSurchargeEur: check.vehicleSurchargeEur, xlFixedSurchargeEur: check.vehicleSurchargeEur }
+        : {}),
     },
     distanceKm: check.distanceKm,
     tripMinutes: args.tripMinutes,

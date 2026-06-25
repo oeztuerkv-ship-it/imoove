@@ -8,23 +8,27 @@ type Props = {
   vehicle: string | null | undefined;
   surchargeEur?: number | null;
   walletHint?: boolean;
+  pricingMode?: string | null;
+  priceEur?: number | null;
   align?: "left" | "center";
   primaryStyle?: StyleProp<TextStyle>;
   secondaryStyle?: StyleProp<TextStyle>;
   style?: StyleProp<ViewStyle>;
 };
 
-/** Kunden-Preiszeile: Taxameter (kein Euro); XL/Rollstuhl optional + Aufschlag. */
+/** Kunden-Preiszeile: Taxameter (kein Euro) oder Festpreis mit Betrag; XL/Rollstuhl optional + Aufschlag. */
 export function CustomerFarePriceBlock({
   vehicle,
   surchargeEur,
   walletHint = false,
+  pricingMode,
+  priceEur,
   align = "left",
   primaryStyle,
   secondaryStyle,
   style,
 }: Props) {
-  const lines = customerFareDisplayLines({ vehicle, surchargeEur, walletHint });
+  const lines = customerFareDisplayLines({ vehicle, surchargeEur, walletHint, pricingMode, priceEur });
   return (
     <View style={[styles.wrap, align === "center" && styles.wrapCenter, style]}>
       <Text style={[styles.primary, align === "center" && styles.textCenter, primaryStyle]}>

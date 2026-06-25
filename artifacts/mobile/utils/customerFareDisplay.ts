@@ -1,5 +1,6 @@
 import type { VehicleType } from "@/context/RideContext";
 import type { FareEstimateApiBreakdown, FareEstimateApiResult } from "@/utils/fareEstimateApi";
+import { formatEuro } from "@/utils/fareCalculator";
 
 export const CUSTOMER_TAXAMETER_LABEL = "Taxameter";
 export const CUSTOMER_FIXED_PRICE_LABEL = "Festpreis";
@@ -79,12 +80,24 @@ export type CustomerFareDisplayLines = {
   secondary?: string;
 };
 
-/** Kunden-UI: kein Euro-Preis — Standard = Taxameter; XL/Rollstuhl nur Aufschlag-Zeile. */
+/** Kunden-UI: Taxameter ohne Euro; Festpreis mit Betrag; XL/Rollstuhl optional + Aufschlag. */
 export function customerFareDisplayLines(opts: {
   vehicle: string | null | undefined;
   surchargeEur?: number | null;
   walletHint?: boolean;
+  pricingMode?: string | null;
+  priceEur?: number | null;
 }): CustomerFareDisplayLines {
+  if (isRideFixedPrice(opts.pricingMode)) {
+    const lines: CustomerFareDisplayLines = {
+      primary: CUSTOMER_FIXED_PRICE_LABEL,
+    };
+    if (opts.priceEur != null && Number.isFinite(opts.priceEur) && opts.priceEur > 0) {
+      lines.secondary = formatEuro(opts.priceEur);
+    }
+    return lines;
+  }
+
   const surcharge = customerVehicleSurchargeLabel({
     vehicle: opts.vehicle,
     surchargeEur: opts.surchargeEur,

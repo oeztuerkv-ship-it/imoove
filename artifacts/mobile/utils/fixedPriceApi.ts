@@ -8,6 +8,8 @@ export type FixedPriceEstimateResult =
       eligible: true;
       pricingMode: "fixed_price";
       priceEur: number;
+      basePriceEur: number;
+      vehicleSurchargeEur: number;
       distanceKm: number;
       baseFeeEur: number;
       perKmEur: number;
@@ -31,6 +33,7 @@ export async function fetchFixedPriceEstimate(body: {
   distanceKm: number;
   fromCity?: string | null;
   toCity?: string | null;
+  vehicle?: string;
 }): Promise<FixedPriceEstimateResult> {
   if (!API_URL?.trim()) {
     return { ok: false, error: "api_not_configured" };
@@ -46,6 +49,7 @@ export async function fetchFixedPriceEstimate(body: {
   });
   if (body.fromCity?.trim()) q.set("fromCity", body.fromCity.trim());
   if (body.toCity?.trim()) q.set("toCity", body.toCity.trim());
+  if (body.vehicle?.trim()) q.set("vehicle", body.vehicle.trim());
   const res = await fetch(`${API_URL}/fixed-price-estimate?${q.toString()}`);
   let data: Record<string, unknown> = {};
   try {
@@ -62,6 +66,8 @@ export async function fetchFixedPriceEstimate(body: {
       eligible: true,
       pricingMode: "fixed_price",
       priceEur: Number(data.priceEur),
+      basePriceEur: Number(data.basePriceEur ?? data.priceEur),
+      vehicleSurchargeEur: Number(data.vehicleSurchargeEur ?? 0),
       distanceKm: Number(data.distanceKm),
       baseFeeEur: Number(data.baseFeeEur),
       perKmEur: Number(data.perKmEur),
@@ -80,4 +86,4 @@ export async function fetchFixedPriceEstimate(body: {
 }
 
 export const CUSTOMER_FIXED_PRICE_AGREEMENT_DE =
-  "Mit „Festpreis buchen“ vereinbarst du verbindlich den angezeigten Gesamtpreis für diese Fahrt (Fahrpreisvereinbarung).";
+  "Mit „Festpreis reservieren“ vereinbarst du verbindlich den angezeigten Gesamtpreis für diese Fahrt (Fahrpreisvereinbarung).";

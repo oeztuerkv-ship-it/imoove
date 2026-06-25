@@ -27,8 +27,6 @@ import {
   useRide,
 } from "@/context/RideContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
-import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { buildScheduledDate, ReservationSchedulePicker } from "@/components/ReservationSchedulePicker";
 import { useColors } from "@/hooks/useColors";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
@@ -970,7 +968,7 @@ export default function ReserveRideScreen() {
         {step === "review" && (
           <>
             <Text style={[styles.sectionLabel, styles.sectionLabelAfterRoute, { color: colors.foreground }]}>
-              Übersicht & Preis
+              Übersicht
             </Text>
             <View style={[styles.infoGroup, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <View style={styles.infoRow}>
@@ -1010,28 +1008,6 @@ export default function ReserveRideScreen() {
                   </View>
                 </>
               )}
-              <View style={[styles.infoSeparator, { backgroundColor: colors.border }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Preis</Text>
-                <View style={{ alignItems: "flex-end", flex: 1 }}>
-                  {isLoadingRoute ? (
-                    <Text style={[styles.priceEmphasis, { color: colors.primary }]}>…</Text>
-                  ) : routeError || fareBreakdown == null ? (
-                    <Text style={[styles.priceEmphasis, { color: colors.primary }]}>—</Text>
-                  ) : (
-                    <CustomerFarePriceBlock
-                      vehicle={selectedVehicle}
-                      surchargeEur={fareBreakdown.vehicleSurchargeEur}
-                      align="center"
-                      primaryStyle={[styles.priceEmphasis, { color: colors.primary }]}
-                      secondaryStyle={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB" }}
-                    />
-                  )}
-                </View>
-              </View>
-              {fareBreakdown != null && !isLoadingRoute && !routeError ? (
-                <CustomerFareEstimateLegalHint align="left" style={{ marginTop: 6 }} />
-              ) : null}
             </View>
             {routeError ? (
               <Text style={[styles.errorText, { color: colors.destructive }]}>{routeError}</Text>

@@ -635,11 +635,16 @@ router.get("/fixed-price-estimate", async (req, res, next) => {
     const fromCity =
       typeof req.query.fromCity === "string" ? req.query.fromCity.trim() : undefined;
     const toCity = typeof req.query.toCity === "string" ? req.query.toCity.trim() : undefined;
+    const vehicle =
+      typeof req.query.vehicle === "string" && req.query.vehicle.trim()
+        ? req.query.vehicle.trim()
+        : "standard";
     const result = checkFixedPriceBooking({
       opPayload,
       from: { displayName: fromFull, city: fromCity || null },
       to: { displayName: toFull, city: toCity || null },
       distanceKm,
+      vehicle,
     });
     res.json({ ok: true, ...result });
   } catch (e) {

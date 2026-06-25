@@ -342,14 +342,22 @@ export function ReservationSchedulePicker({
           {!hideTimingToggle ? (
             !scheduleLeadOk ? (
               <Text style={styles.leadWarn}>
-                Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen oder „Sofort“ buchen.
+                Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen.
               </Text>
             ) : (
               <Text style={[styles.leadHint, { color: colors.mutedForeground }]}>
                 Fahrersuche startet automatisch 30 Minuten vor der Abholzeit.
               </Text>
             )
-          ) : null}
+          ) : !scheduleLeadOk ? (
+            <Text style={styles.leadWarn}>
+              Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen.
+            </Text>
+          ) : (
+            <Text style={[styles.leadHint, { color: colors.mutedForeground }]}>
+              Fahrersuche startet automatisch 30 Minuten vor der Abholzeit.
+            </Text>
+          )}
         </>
       ) : null}
     </View>
