@@ -55,7 +55,11 @@ import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePu
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, computeRideBookingPricing } from "../lib/rideBookingPricing";
-import { checkFixedPriceBooking, computeFixedPriceRideBookingPricing } from "../lib/fixedPriceBooking";
+import { computeFixedPriceRideBookingPricing } from "../lib/fixedPriceBooking";
+import {
+  buildFixedPriceQuote,
+  buildRouteDistanceQuote,
+} from "../lib/fixedPriceRouteQuote";
 import { isRideFixedPrice, resolveFixedPriceAgreedEur } from "../lib/ridePricingModeLabels";
 import { buildCustomerReceiptHtmlForRide } from "../lib/customerReceipt";
 import { buildCustomerReceiptPdfForRide } from "../lib/customerReceiptPdf";
@@ -358,18 +362,6 @@ function optCoord(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function haversineDistanceKm(fromLat: number, fromLon: number, toLat: number, toLon: number): number {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const earthRadiusKm = 6371;
-  const dLat = toRad(toLat - fromLat);
-  const dLon = toRad(toLon - fromLon);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusKm * c;
-}
-
 const ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE =
   "Bitte gib eine vollständige Adresse mit Hausnummer ein oder wähle einen eindeutigen Vorschlag aus.";
 
@@ -524,15 +516,16 @@ router.get("/fare-estimate", async (req, res, next) => {
       res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
       return;
     }
-    const distanceKm = Number(req.query.distanceKm ?? 0);
     const waitingMinutes = Number(req.query.waitingMinutes ?? 0);
-    const tripMinutes = Number(
-      (req.query.tripMinutes as string) ?? (req.query.durationMinutes as string) ?? (req.query.routeMinutes as string) ?? 0,
-    );
     const vehicle = String(req.query.vehicle ?? "standard").trim().toLowerCase();
     const fromFullQ = String(req.query.fromFull ?? req.query.from ?? "").trim();
-    if (!Number.isFinite(distanceKm) || distanceKm < 0) {
-      res.status(400).json({ error: "distance_km_invalid" });
+    const toFullQ = String(req.query.toFull ?? req.query.to ?? "").trim();
+    if (!fromFullQ || !toFullQ) {
+      res.status(400).json({
+        error: "from_to_required",
+        message: "Start und Ziel werden für die Streckenberechnung benötigt.",
+        routingSource: "error",
+      });
       return;
     }
     const regions = await listServiceRegionsForApi();
@@ -547,6 +540,14 @@ router.get("/fare-estimate", async (req, res, next) => {
         (req.query as { pickupLng?: unknown }).pickupLng ??
         (req.query as { pickupLon?: unknown }).pickupLon,
     );
+    const toLatQ = optCoord(
+      (req.query as { toLat?: unknown; to_lat?: unknown }).toLat ??
+        (req.query as { to_lat?: unknown }).to_lat,
+    );
+    const toLonQ = optCoord(
+      (req.query as { toLon?: unknown; to_lon?: unknown }).toLon ??
+        (req.query as { to_lon?: unknown }).to_lon,
+    );
     if (anyActiveRegionRequiresClientCoordinates(regions) && (fromLatQ == null || fromLngQ == null)) {
       res.status(400).json({
         error: "pickup_coordinates_required",
@@ -554,6 +555,21 @@ router.get("/fare-estimate", async (req, res, next) => {
       });
       return;
     }
+    const routeQuote = await buildRouteDistanceQuote({
+      fromFull: fromFullQ,
+      toFull: toFullQ,
+      fromLat: fromLatQ,
+      fromLon: fromLngQ,
+      toLat: toLatQ,
+      toLon: toLonQ,
+    });
+    if (!routeQuote.ok) {
+      res.status(400).json(routeQuote);
+      return;
+    }
+    const distanceKm = routeQuote.route.distanceKm;
+    const tripMinutes = routeQuote.route.durationMinutes;
+    const routingSource = routeQuote.routingSource;
     const atRaw = req.query.at;
     const at =
       typeof atRaw === "string" && atRaw.trim() ? new Date(atRaw.trim()) : new Date();
@@ -575,6 +591,7 @@ router.get("/fare-estimate", async (req, res, next) => {
     const total = est.finalRounded;
     res.json({
       ok: true,
+      routingSource,
       engineSchemaVersion: TARIFF_ENGINE_SCHEMA_VERSION,
       serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null,
       profile: { ...profile, serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null },
@@ -597,56 +614,60 @@ router.get("/fare-estimate", async (req, res, next) => {
 
 router.get("/fixed-price-estimate", async (req, res, next) => {
   try {
-    const opPayload = await getOperationalConfigPayload();
-    const gate = assertPlatformNewRideAllowed(opPayload);
-    if (!gate.ok) {
-      res.status(gate.status).json({ error: gate.error, message: gate.message });
-      return;
-    }
-    const fromFull = String(req.query.fromFull ?? req.query.from ?? "").trim();
-    const toFull = String(req.query.toFull ?? req.query.to ?? "").trim();
-    if (!fromFull || !toFull) {
-      res.status(400).json({ error: "from_to_required" });
-      return;
-    }
-    const fromLat = optCoord(
-      (req.query as { fromLat?: unknown; from_lat?: unknown }).fromLat ??
-        (req.query as { from_lat?: unknown }).from_lat,
-    );
-    const fromLon = optCoord(
-      (req.query as { fromLon?: unknown; from_lon?: unknown }).fromLon ??
-        (req.query as { from_lon?: unknown }).from_lon,
-    );
-    const toLat = optCoord(
-      (req.query as { toLat?: unknown; to_lat?: unknown }).toLat ?? (req.query as { to_lat?: unknown }).to_lat,
-    );
-    const toLon = optCoord(
-      (req.query as { toLon?: unknown; to_lon?: unknown }).toLon ?? (req.query as { to_lon?: unknown }).to_lon,
-    );
-    const distanceKmRaw = Number(req.query.distanceKm ?? req.query.distance_km ?? 0);
-    let distanceKm = Number.isFinite(distanceKmRaw) && distanceKmRaw > 0 ? distanceKmRaw : 0;
-    if (distanceKm <= 0 && fromLat != null && fromLon != null && toLat != null && toLon != null) {
-      distanceKm = haversineDistanceKm(fromLat, fromLon, toLat, toLon);
-    }
-    if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
-      res.status(400).json({ error: "distance_km_invalid" });
-      return;
-    }
-    const fromCity =
-      typeof req.query.fromCity === "string" ? req.query.fromCity.trim() : undefined;
-    const toCity = typeof req.query.toCity === "string" ? req.query.toCity.trim() : undefined;
-    const vehicle =
-      typeof req.query.vehicle === "string" && req.query.vehicle.trim()
-        ? req.query.vehicle.trim()
-        : "standard";
-    const result = checkFixedPriceBooking({
-      opPayload,
-      from: { displayName: fromFull, city: fromCity || null },
-      to: { displayName: toFull, city: toCity || null },
-      distanceKm,
-      vehicle,
+    const result = await buildFixedPriceQuote({
+      fromFull: String(req.query.fromFull ?? req.query.from ?? ""),
+      toFull: String(req.query.toFull ?? req.query.to ?? ""),
+      fromLat: optCoord(
+        (req.query as { fromLat?: unknown; from_lat?: unknown }).fromLat ??
+          (req.query as { from_lat?: unknown }).from_lat,
+      ),
+      fromLon: optCoord(
+        (req.query as { fromLon?: unknown; from_lon?: unknown }).fromLon ??
+          (req.query as { from_lon?: unknown }).from_lon,
+      ),
+      toLat: optCoord(
+        (req.query as { toLat?: unknown; to_lat?: unknown }).toLat ?? (req.query as { to_lat?: unknown }).to_lat,
+      ),
+      toLon: optCoord(
+        (req.query as { toLon?: unknown; to_lon?: unknown }).toLon ?? (req.query as { to_lon?: unknown }).to_lon,
+      ),
+      fromCity: typeof req.query.fromCity === "string" ? req.query.fromCity.trim() : null,
+      toCity: typeof req.query.toCity === "string" ? req.query.toCity.trim() : null,
+      vehicle:
+        typeof req.query.vehicle === "string" && req.query.vehicle.trim()
+          ? req.query.vehicle.trim()
+          : "standard",
     });
-    res.json({ ok: true, ...result });
+    if (!result.ok) {
+      res.status(400).json(result);
+      return;
+    }
+    if (!result.quote.eligible) {
+      res.json({
+        ok: true,
+        eligible: false,
+        reason: result.quote.reason,
+        message: result.quote.message,
+        routingSource: result.routingSource,
+        distanceKm: result.route.distanceKm,
+        durationMinutes: result.route.durationMinutes,
+      });
+      return;
+    }
+    res.json({
+      ok: true,
+      eligible: true,
+      routingSource: result.routingSource,
+      distanceKm: result.route.distanceKm,
+      durationMinutes: result.route.durationMinutes,
+      pricingMode: result.quote.pricingMode,
+      priceEur: result.quote.priceEur,
+      basePriceEur: result.quote.basePriceEur,
+      vehicleSurchargeEur: result.quote.vehicleSurchargeEur,
+      baseFeeEur: result.quote.baseFeeEur,
+      perKmEur: result.quote.perKmEur,
+      distanceChargeEur: result.quote.distanceChargeEur,
+    });
   } catch (e) {
     next(e);
   }
@@ -1552,39 +1573,29 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
       return;
     }
     const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
-    const distanceKmRaw = (raw as { distanceKm?: unknown }).distanceKm ?? (raw as { distance_km?: unknown }).distance_km;
-    const distanceKmParsed = Number(distanceKmRaw);
-    const computedDistanceKm =
-      fromLatB != null && fromLonB != null && toLatB != null && toLonB != null
-        ? haversineDistanceKm(fromLatB, fromLonB, toLatB, toLonB)
-        : null;
-    const distanceKmB =
-      Number.isFinite(distanceKmParsed) && distanceKmParsed > 0
-        ? distanceKmParsed
-        : computedDistanceKm != null && Number.isFinite(computedDistanceKm) && computedDistanceKm > 0
-          ? computedDistanceKm
-          : distanceKmParsed;
-    if (!Number.isFinite(distanceKmB) || distanceKmB <= 0) {
-      console.warn("RIDES_DISTANCE_INVALID", {
-        distanceKmRaw,
-        computedDistanceKm,
-        originLat: fromLatB,
-        originLon: fromLonB,
-        destinationLat: toLatB,
-        destinationLon: toLonB,
-        pricingMode: rawPricingModeStr || null,
-        vehicle: vehicleB,
-        scheduledAt: pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>),
-        routeSnapshot: (raw as { routeSnapshot?: unknown; route_snapshot?: unknown }).routeSnapshot ??
-          (raw as { route_snapshot?: unknown }).route_snapshot ??
-          null,
-        fareBreakdown: (raw as { fareBreakdown?: unknown; fare_breakdown?: unknown }).fareBreakdown ??
-          (raw as { fare_breakdown?: unknown }).fare_breakdown ??
-          null,
-      });
-      res.status(400).json({ error: "distance_km_invalid" });
+    const fromCityB =
+      typeof (raw as { fromCity?: unknown }).fromCity === "string"
+        ? String((raw as { fromCity?: unknown }).fromCity).trim()
+        : "";
+    const toCityB =
+      typeof (raw as { toCity?: unknown }).toCity === "string"
+        ? String((raw as { toCity?: unknown }).toCity).trim()
+        : "";
+    const routeQuote = await buildRouteDistanceQuote({
+      fromFull,
+      toFull,
+      fromLat: fromLatB,
+      fromLon: fromLonB,
+      toLat: toLatB,
+      toLon: toLonB,
+      fromCity: fromCityB || null,
+      toCity: toCityB || null,
+    });
+    if (!routeQuote.ok) {
+      res.status(400).json(routeQuote);
       return;
     }
+    const distanceKmB = routeQuote.route.distanceKm;
     const tripMRaw = Number(
       (raw as { tripMinutes?: unknown }).tripMinutes ??
         (raw as { trip_minutes?: unknown }).trip_minutes ??
@@ -1592,7 +1603,8 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
         (raw as { duration_minutes?: unknown }).duration_minutes ??
         0,
     );
-    const tripMinutesB = Number.isFinite(tripMRaw) ? Math.max(0, tripMRaw) : 0;
+    const tripMinutesB =
+      Number.isFinite(tripMRaw) && tripMRaw > 0 ? Math.max(0, tripMRaw) : routeQuote.route.durationMinutes;
     const waitMRaw = Number(
       (raw as { waitingMinutes?: unknown }).waitingMinutes ?? (raw as { waiting_minutes?: unknown }).waiting_minutes ?? 0,
     );
@@ -1616,14 +1628,6 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
       }
     }
     const atBooking = new Date();
-    const fromCityB =
-      typeof (raw as { fromCity?: unknown }).fromCity === "string"
-        ? String((raw as { fromCity?: unknown }).fromCity).trim()
-        : "";
-    const toCityB =
-      typeof (raw as { toCity?: unknown }).toCity === "string"
-        ? String((raw as { toCity?: unknown }).toCity).trim()
-        : "";
     const fixedPriceAgreementAccepted =
       (raw as { fixedPriceAgreementAccepted?: unknown }).fixedPriceAgreementAccepted === true;
 

@@ -1,13 +1,19 @@
 import { assertPlatformNewRideAllowed, getOperationalConfigPayload } from "../db/appOperationalData";
 import { checkFixedPriceBooking } from "./fixedPriceBooking";
-import { haversineDistanceKm } from "./serviceRegionMatch";
+import { getGooglePlacesApiKey } from "./googlePlacesClient";
 
 const PHOTON_BASE = "https://photon.komoot.io/api";
 const OSRM_BASE = "https://router.project-osrm.org";
+const GOOGLE_DISTANCE_MATRIX_BASE = "https://maps.googleapis.com/maps/api/distancematrix/json";
 const DE_BBOX = "5.866,47.270,15.042,55.059";
 const BIAS_LAT = 48.7395;
 const BIAS_LON = 9.3072;
 const FETCH_TIMEOUT_MS = 12_000;
+
+export const ROUTE_NOT_COMPUTABLE_MESSAGE =
+  "Preis aktuell nicht berechenbar — Streckenlänge konnte nicht ermittelt werden.";
+
+export type PriceRoutingSource = "google" | "osrm";
 
 export type RouteGeoPoint = {
   displayName: string;
@@ -19,7 +25,14 @@ export type RouteGeoPoint = {
 export type DrivingRouteResult = {
   distanceKm: number;
   durationMinutes: number;
-  routingSource: "osrm" | "haversine";
+  routingSource: PriceRoutingSource;
+};
+
+export type RouteQuoteError = {
+  ok: false;
+  error: string;
+  message: string;
+  routingSource: "error";
 };
 
 type PhotonFeature = {
@@ -121,10 +134,37 @@ export async function resolveRouteGeoPoint(
   return geocodeAddressPhoton(displayName);
 }
 
-export async function drivingRouteBetween(
-  from: RouteGeoPoint,
-  to: RouteGeoPoint,
-): Promise<DrivingRouteResult> {
+async function drivingRouteGoogle(from: RouteGeoPoint, to: RouteGeoPoint): Promise<DrivingRouteResult | null> {
+  const key = getGooglePlacesApiKey();
+  if (!key) return null;
+  const origins = encodeURIComponent(`${from.lat},${from.lon}`);
+  const destinations = encodeURIComponent(`${to.lat},${to.lon}`);
+  const url =
+    `${GOOGLE_DISTANCE_MATRIX_BASE}?origins=${origins}` +
+    `&destinations=${destinations}` +
+    `&mode=driving&language=de&units=metric&key=${encodeURIComponent(key)}`;
+  try {
+    const data = (await fetchJson(url)) as {
+      status?: string;
+      rows?: { elements?: { status?: string; distance?: { value?: number }; duration?: { value?: number } }[] }[];
+    };
+    if (data.status !== "OK") return null;
+    const el = data.rows?.[0]?.elements?.[0];
+    if (!el || el.status !== "OK") return null;
+    const meters = Number(el.distance?.value ?? 0);
+    const seconds = Number(el.duration?.value ?? 0);
+    if (!Number.isFinite(meters) || meters <= 0) return null;
+    return {
+      distanceKm: Math.round((meters / 1000) * 100) / 100,
+      durationMinutes: Math.max(1, Math.round(seconds / 60)),
+      routingSource: "google",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function drivingRouteOsrm(from: RouteGeoPoint, to: RouteGeoPoint): Promise<DrivingRouteResult | null> {
   const coordPath = `${from.lon},${from.lat};${to.lon},${to.lat}`;
   const url = `${OSRM_BASE}/route/v1/driving/${coordPath}?overview=false`;
   try {
@@ -140,19 +180,45 @@ export async function drivingRouteBetween(
       };
     }
   } catch {
-    /* fallback */
+    /* try next */
   }
-  const distanceKm =
-    Math.round(haversineDistanceKm(from.lat, from.lon, to.lat, to.lon) * 100) / 100;
-  const durationMinutes = Math.max(1, Math.round((distanceKm / 45) * 60));
-  return { distanceKm, durationMinutes, routingSource: "haversine" };
+  return null;
 }
+
+/** Google primär, OSRM Fallback — kein Haversine für Preis-km. */
+export async function drivingRouteBetween(
+  from: RouteGeoPoint,
+  to: RouteGeoPoint,
+): Promise<DrivingRouteResult | RouteQuoteError> {
+  const google = await drivingRouteGoogle(from, to);
+  if (google) return google;
+  const osrm = await drivingRouteOsrm(from, to);
+  if (osrm) return osrm;
+  return {
+    ok: false,
+    error: "route_not_computable",
+    message: ROUTE_NOT_COMPUTABLE_MESSAGE,
+    routingSource: "error",
+  };
+}
+
+export type RouteDistanceArgs = {
+  fromFull: string;
+  toFull: string;
+  fromLat?: number | null;
+  fromLon?: number | null;
+  toLat?: number | null;
+  toLon?: number | null;
+  fromCity?: string | null;
+  toCity?: string | null;
+};
 
 export type FixedPriceQuoteSuccess = {
   ok: true;
   from: RouteGeoPoint;
   to: RouteGeoPoint;
   route: DrivingRouteResult;
+  routingSource: PriceRoutingSource;
   quote:
     | {
         eligible: true;
@@ -172,27 +238,20 @@ export type FixedPriceQuoteSuccess = {
       };
 };
 
-export type FixedPriceQuoteError = {
-  ok: false;
-  error: string;
-  message: string;
-};
+export type FixedPriceQuoteError = RouteQuoteError;
 
-export async function buildFixedPriceQuote(args: {
-  fromFull: string;
-  toFull: string;
-  fromLat?: number | null;
-  fromLon?: number | null;
-  toLat?: number | null;
-  toLon?: number | null;
-  fromCity?: string | null;
-  toCity?: string | null;
-  vehicle?: string;
-}): Promise<FixedPriceQuoteSuccess | FixedPriceQuoteError> {
+export async function buildFixedPriceQuote(
+  args: RouteDistanceArgs & { vehicle?: string },
+): Promise<FixedPriceQuoteSuccess | FixedPriceQuoteError> {
   const fromFull = String(args.fromFull ?? "").trim();
   const toFull = String(args.toFull ?? "").trim();
   if (!fromFull || !toFull) {
-    return { ok: false, error: "from_to_required", message: "Bitte Start und Ziel angeben." };
+    return {
+      ok: false,
+      error: "from_to_required",
+      message: "Bitte Start und Ziel angeben.",
+      routingSource: "error",
+    };
   }
 
   const opPayload = await getOperationalConfigPayload();
@@ -202,6 +261,7 @@ export async function buildFixedPriceQuote(args: {
       ok: false,
       error: gate.error,
       message: gate.message ?? "Buchungen sind derzeit nicht möglich.",
+      routingSource: "error",
     };
   }
 
@@ -215,6 +275,7 @@ export async function buildFixedPriceQuote(args: {
       ok: false,
       error: "from_not_found",
       message: "Startadresse konnte nicht gefunden werden.",
+      routingSource: "error",
     };
   }
   if (!to) {
@@ -222,10 +283,16 @@ export async function buildFixedPriceQuote(args: {
       ok: false,
       error: "to_not_found",
       message: "Zieladresse konnte nicht gefunden werden.",
+      routingSource: "error",
     };
   }
 
-  const route = await drivingRouteBetween(from, to);
+  const routeOutcome = await drivingRouteBetween(from, to);
+  if ("ok" in routeOutcome && routeOutcome.ok === false) {
+    return routeOutcome;
+  }
+  const route = routeOutcome as DrivingRouteResult;
+
   const vehicle = typeof args.vehicle === "string" && args.vehicle.trim() ? args.vehicle.trim() : "standard";
   const result = checkFixedPriceBooking({
     opPayload,
@@ -241,6 +308,7 @@ export async function buildFixedPriceQuote(args: {
       from,
       to,
       route,
+      routingSource: route.routingSource,
       quote: {
         eligible: false,
         reason: result.reason,
@@ -254,6 +322,7 @@ export async function buildFixedPriceQuote(args: {
     from,
     to,
     route,
+    routingSource: route.routingSource,
     quote: {
       eligible: true,
       pricingMode: "fixed_price",
@@ -268,34 +337,46 @@ export async function buildFixedPriceQuote(args: {
   };
 }
 
-export async function buildRouteDistanceQuote(args: {
-  fromFull: string;
-  toFull: string;
-  fromLat?: number | null;
-  fromLon?: number | null;
-  toLat?: number | null;
-  toLon?: number | null;
-  fromCity?: string | null;
-  toCity?: string | null;
-}): Promise<
-  | { ok: true; from: RouteGeoPoint; to: RouteGeoPoint; route: DrivingRouteResult }
-  | FixedPriceQuoteError
+export async function buildRouteDistanceQuote(
+  args: RouteDistanceArgs,
+): Promise<
+  | { ok: true; from: RouteGeoPoint; to: RouteGeoPoint; route: DrivingRouteResult; routingSource: PriceRoutingSource }
+  | RouteQuoteError
 > {
   const fromFull = String(args.fromFull ?? "").trim();
   const toFull = String(args.toFull ?? "").trim();
   if (!fromFull || !toFull) {
-    return { ok: false, error: "from_to_required", message: "Bitte Start und Ziel angeben." };
+    return {
+      ok: false,
+      error: "from_to_required",
+      message: "Bitte Start und Ziel angeben.",
+      routingSource: "error",
+    };
   }
   const [from, to] = await Promise.all([
     resolveRouteGeoPoint(fromFull, args.fromLat, args.fromLon, args.fromCity),
     resolveRouteGeoPoint(toFull, args.toLat, args.toLon, args.toCity),
   ]);
   if (!from) {
-    return { ok: false, error: "from_not_found", message: "Startadresse konnte nicht gefunden werden." };
+    return {
+      ok: false,
+      error: "from_not_found",
+      message: "Startadresse konnte nicht gefunden werden.",
+      routingSource: "error",
+    };
   }
   if (!to) {
-    return { ok: false, error: "to_not_found", message: "Zieladresse konnte nicht gefunden werden." };
+    return {
+      ok: false,
+      error: "to_not_found",
+      message: "Zieladresse konnte nicht gefunden werden.",
+      routingSource: "error",
+    };
   }
-  const route = await drivingRouteBetween(from, to);
-  return { ok: true, from, to, route };
+  const routeOutcome = await drivingRouteBetween(from, to);
+  if ("ok" in routeOutcome && routeOutcome.ok === false) {
+    return routeOutcome;
+  }
+  const route = routeOutcome as DrivingRouteResult;
+  return { ok: true, from, to, route, routingSource: route.routingSource };
 }

@@ -39,7 +39,7 @@ export function fromIsoToDatetimeLocal(value) {
   return `${y}-${m}-${day}T${hh}:${mm}`;
 }
 
-/** Partner-Panel: Strecke serverseitig (Photon + OSRM) — kein VITE_GOOGLE_MAPS_API_KEY nötig. */
+/** Partner-Panel: Strecke serverseitig (Google primär, OSRM Fallback) — kein VITE_GOOGLE_MAPS_API_KEY nötig. */
 export async function fetchDistanceMatrixByAddress(fromFull, toFull, token) {
   const from = String(fromFull || "").trim();
   const to = String(toFull || "").trim();
@@ -58,7 +58,7 @@ export async function fetchDistanceMatrixByAddress(fromFull, toFull, token) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || data?.message || "matrix_failed");
+      throw new Error(data?.message || data?.error || "matrix_failed");
     }
     const distanceKm = Number(data.distanceKm);
     const durationMinutes = Number(data.durationMinutes);

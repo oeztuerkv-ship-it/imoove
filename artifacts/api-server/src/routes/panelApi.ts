@@ -824,7 +824,7 @@ router.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
 
-/** Streckenlänge für Partner-Buchung (Photon + OSRM serverseitig — kein Browser-Google-Key). */
+/** Streckenlänge für Partner-Buchung (Google primär, OSRM Fallback — kein Browser-Google-Key, kein Haversine). */
 router.post("/panel/v1/route-distance", requirePanelAuth, async (req, res, next) => {
   try {
     const body = req.body as Record<string, unknown>;
