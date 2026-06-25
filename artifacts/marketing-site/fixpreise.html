@@ -27,7 +27,7 @@
       </a>
 
       <nav class="hp-nav" id="hp-primary-nav" aria-label="Hauptnavigation">
-        <a class="hp-nav-link hp-nav-link--promo hp-nav-link--highlight" id="hp-nav-promo-fixpreise" href="/fixpreise" aria-current="page">
+        <a class="hp-nav-link hp-nav-link--promo hp-nav-link--highlight" id="hp-nav-promo-fixpreise" href="/fixpreise/" aria-current="page">
           <span id="hp-nav-promo-fixpreise-label">Fixpreise</span>
           <span class="hp-nav-promo-badge" id="hp-nav-promo-fixpreise-badge" hidden></span>
         </a>
@@ -64,15 +64,20 @@
   </header>
 
   <main>
-    <section class="hp-section hp-section--fixpreis hp-fixpreis-page__hero" aria-labelledby="fixpreis-page-title">
+    <section class="hp-section hp-section--fixpreis hp-fixpreis-page__hero" id="fixpreis-landing" aria-labelledby="fixpreis-page-title">
       <div class="hp-wrap">
-        <div class="hp-section-head">
+        <div class="hp-fixpreis-landing" id="fixpreis-landing-inner">
+          <img class="hp-fixpreis-landing__logo" id="fixpreis-logo" alt="" hidden decoding="async" />
+          <img class="hp-fixpreis-landing__hero-image" id="fixpreis-hero-image" alt="" hidden decoding="async" />
+          <p class="hp-kicker" id="fixpreis-kicker">Werbung · Festpreis</p>
           <h1 id="fixpreis-page-title">Festpreis-Fahrten</h1>
           <p class="hp-sub" id="fixpreis-page-body">
             Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.
           </p>
+          <div class="hp-fixpreis-promo-grid" id="fixpreis-promo-blocks" aria-label="Vorteile"></div>
           <div class="hp-fixpreis-actions hp-fixpreis-actions--row">
             <a class="hp-btn-primary" id="fixpreis-page-cta" href="/#jetzt-buchen">Jetzt in der App buchen</a>
+            <a class="hp-btn-ghost" id="fixpreis-page-cta-secondary" href="#" hidden>Zweiter Button</a>
             <a class="hp-btn-ghost" href="/">Zur Startseite</a>
           </div>
         </div>

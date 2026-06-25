@@ -1304,7 +1304,7 @@ export const homepageContentTable = pgTable("homepage_content", {
     .notNull()
     .default({
       label: "Fixpreise",
-      href: "/fixpreise",
+      href: "/fixpreise/",
       isActive: true,
       badge: "",
       highlight: true,

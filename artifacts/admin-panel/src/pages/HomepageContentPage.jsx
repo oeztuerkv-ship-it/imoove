@@ -2,6 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
+import FixpreisLandingEditor, {
+  defaultFixpreisSection,
+  defaultNavPromo,
+  mergeFixpreisSection,
+  mergeNavPromo,
+} from "../components/FixpreisLandingEditor.jsx";
+
 const URL = `${API_BASE}/admin/homepage-content`;
 const FAQ_URL = `${API_BASE}/admin/homepage-faq`;
 const HOW_URL = `${API_BASE}/admin/homepage-how`;
@@ -89,46 +96,6 @@ function mergeAboutBullets(incoming) {
     const v = arr[idx];
     return typeof v === "string" && v.trim() !== "" ? v.trim() : text;
   });
-}
-
-const defaultNavPromo = () => ({
-  label: "Fixpreise",
-  href: "/fixpreise",
-  isActive: true,
-  badge: "",
-  highlight: true,
-});
-
-const defaultFixpreisSection = () => ({
-  title: "Festpreis-Fahrten",
-  body: "Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.",
-  ctaText: "Jetzt in der App buchen",
-  ctaLink: "/#jetzt-buchen",
-  isActive: true,
-});
-
-function mergeNavPromo(incoming) {
-  const d = defaultNavPromo();
-  const p = incoming && typeof incoming === "object" ? incoming : {};
-  return {
-    label: typeof p.label === "string" && p.label.trim() !== "" ? p.label.trim() : d.label,
-    href: typeof p.href === "string" && p.href.trim() !== "" ? p.href.trim() : d.href,
-    isActive: p.isActive !== false,
-    badge: typeof p.badge === "string" ? p.badge.trim() : d.badge,
-    highlight: p.highlight !== false,
-  };
-}
-
-function mergeFixpreisSection(incoming) {
-  const d = defaultFixpreisSection();
-  const p = incoming && typeof incoming === "object" ? incoming : {};
-  return {
-    title: typeof p.title === "string" && p.title.trim() !== "" ? p.title.trim() : d.title,
-    body: typeof p.body === "string" && p.body.trim() !== "" ? p.body.trim() : d.body,
-    ctaText: typeof p.ctaText === "string" && p.ctaText.trim() !== "" ? p.ctaText.trim() : d.ctaText,
-    ctaLink: typeof p.ctaLink === "string" && p.ctaLink.trim() !== "" ? p.ctaLink.trim() : d.ctaLink,
-    isActive: p.isActive !== false,
-  };
 }
 
 export default function HomepageContentPage() {
@@ -331,126 +298,12 @@ export default function HomepageContentPage() {
       <div className="admin-panel-card">
         <div className="admin-panel-card__title">Homepage-Inhalte (Marketing)</div>
         <form className="admin-form-vertical" onSubmit={onSave}>
-          <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
-            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Navigation: Fixpreise (Werbung)</div>
-            <p className="admin-muted" style={{ marginTop: 0 }}>
-              Link in der Kopfzeile auf onroda.de — z. B. für Kampagnen, Badge „Neu“ oder externe Ziel-URL.
-            </p>
-            <label className="admin-inline-check">
-              <input
-                type="checkbox"
-                checked={form.navPromo.isActive}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, navPromo: { ...p.navPromo, isActive: e.target.checked } }))
-                }
-              />
-              <span>Link in Navigation anzeigen</span>
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Link-Text</span>
-              <input
-                className="admin-input"
-                value={form.navPromo.label}
-                onChange={(e) => setForm((p) => ({ ...p, navPromo: { ...p.navPromo, label: e.target.value } }))}
-              />
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Ziel (URL, z. B. /fixpreise)</span>
-              <input
-                className="admin-input"
-                value={form.navPromo.href}
-                onChange={(e) => setForm((p) => ({ ...p, navPromo: { ...p.navPromo, href: e.target.value } }))}
-              />
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Badge (optional, z. B. „Neu“ — leer = kein Badge)</span>
-              <input
-                className="admin-input"
-                value={form.navPromo.badge}
-                onChange={(e) => setForm((p) => ({ ...p, navPromo: { ...p.navPromo, badge: e.target.value } }))}
-              />
-            </label>
-            <label className="admin-inline-check">
-              <input
-                type="checkbox"
-                checked={form.navPromo.highlight}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, navPromo: { ...p.navPromo, highlight: e.target.checked } }))
-                }
-              />
-              <span>Rot hervorheben (Werbung)</span>
-            </label>
-          </div>
-
-          <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
-            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Seite /fixpreise (Inhalt)</div>
-            <label className="admin-inline-check">
-              <input
-                type="checkbox"
-                checked={form.fixpreisSection.isActive}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    fixpreisSection: { ...p.fixpreisSection, isActive: e.target.checked },
-                  }))
-                }
-              />
-              <span>Bereich anzeigen</span>
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Überschrift</span>
-              <input
-                className="admin-input"
-                value={form.fixpreisSection.title}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    fixpreisSection: { ...p.fixpreisSection, title: e.target.value },
-                  }))
-                }
-              />
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Text</span>
-              <textarea
-                className="admin-textarea"
-                rows={4}
-                value={form.fixpreisSection.body}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    fixpreisSection: { ...p.fixpreisSection, body: e.target.value },
-                  }))
-                }
-              />
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Button-Text</span>
-              <input
-                className="admin-input"
-                value={form.fixpreisSection.ctaText}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    fixpreisSection: { ...p.fixpreisSection, ctaText: e.target.value },
-                  }))
-                }
-              />
-            </label>
-            <label className="admin-form-pair">
-              <span className="admin-field-label">Button-Ziel</span>
-              <input
-                className="admin-input"
-                value={form.fixpreisSection.ctaLink}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    fixpreisSection: { ...p.fixpreisSection, ctaLink: e.target.value },
-                  }))
-                }
-              />
-            </label>
-          </div>
+          <FixpreisLandingEditor
+            navPromo={form.navPromo}
+            fixpreisSection={form.fixpreisSection}
+            onNavPromoChange={(navPromo) => setForm((p) => ({ ...p, navPromo }))}
+            onFixpreisChange={(fixpreisSection) => setForm((p) => ({ ...p, fixpreisSection }))}
+          />
 
           <label className="admin-form-pair">
             <span className="admin-field-label">Section 2 Titel (Für wen)</span>

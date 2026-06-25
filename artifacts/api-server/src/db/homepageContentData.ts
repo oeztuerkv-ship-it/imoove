@@ -30,11 +30,31 @@ export type HomepageNavPromo = {
   highlight: boolean;
 };
 
+export type HomepageFixpreisPromoBlock = {
+  icon: string;
+  title: string;
+  body: string;
+  isActive: boolean;
+};
+
 export type HomepageFixpreisSection = {
   title: string;
   body: string;
+  kicker: string;
+  logoUrl: string;
+  heroImageUrl: string;
+  titleFontSize: "sm" | "md" | "lg" | "xl";
+  bodyFontSize: "sm" | "md" | "lg";
+  titleColor: string;
+  bodyColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  textAlign: "left" | "center" | "right";
   ctaText: string;
   ctaLink: string;
+  secondaryCtaText: string;
+  secondaryCtaLink: string;
+  promoBlocks: HomepageFixpreisPromoBlock[];
   isActive: boolean;
 };
 
@@ -203,7 +223,7 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   aboutTagline: "ONRODA – Mobilität neu organisiert.",
   navPromo: {
     label: "Fixpreise",
-    href: "/fixpreise",
+    href: "/fixpreise/",
     isActive: true,
     badge: "",
     highlight: true,
@@ -211,15 +231,48 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   fixpreisSection: {
     title: "Festpreis-Fahrten",
     body: "Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.",
+    kicker: "Werbung · Festpreis",
+    logoUrl: "",
+    heroImageUrl: "",
+    titleFontSize: "lg",
+    bodyFontSize: "md",
+    titleColor: "",
+    bodyColor: "",
+    accentColor: "",
+    backgroundColor: "",
+    textAlign: "center",
     ctaText: "Jetzt in der App buchen",
     ctaLink: "/#jetzt-buchen",
+    secondaryCtaText: "",
+    secondaryCtaLink: "",
+    promoBlocks: [
+      {
+        icon: "🎯",
+        title: "Transparenter Pauschalpreis",
+        body: "Grundgebühr plus Kilometer — vor der Fahrt klar erkennbar.",
+        isActive: true,
+      },
+      {
+        icon: "🎫",
+        title: "Gutschein für Hotels & Partner",
+        body: "Festpreis-Gutscheine für Gäste und Mitarbeitende über das Partner-Panel.",
+        isActive: true,
+      },
+      {
+        icon: "📱",
+        title: "Direkt in der App",
+        body: "Strecke wählen, Preis sehen, buchen — ohne Überraschungen.",
+        isActive: true,
+      },
+    ],
     isActive: true,
   },
 };
 
 function normalizeNavPromoHref(href: string): string {
   const h = href.trim();
-  if (!h || h === "#fixpreise" || h === "/#fixpreise") return "/fixpreise";
+  if (!h || h === "#fixpreise" || h === "/#fixpreise") return "/fixpreise/";
+  if (h === "/fixpreise") return "/fixpreise/";
   return h;
 }
 
@@ -236,14 +289,66 @@ function mapNavPromo(raw: unknown): HomepageNavPromo {
   };
 }
 
+function mapFixpreisPromoBlocks(raw: unknown): HomepageFixpreisPromoBlock[] {
+  const d = DEFAULT_CONTENT.fixpreisSection.promoBlocks;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return d.map((b) => ({ ...b }));
+  }
+  return raw.slice(0, 6).map((c, idx) => {
+    const o = c as Record<string, unknown>;
+    const fallback = d[idx] ?? { icon: "", title: "", body: "", isActive: true };
+    return {
+      icon: String(o?.icon ?? fallback.icon).trim(),
+      title: String(o?.title ?? fallback.title).trim(),
+      body: String(o?.body ?? fallback.body).trim(),
+      isActive: o?.isActive !== false,
+    };
+  });
+}
+
+function parseTitleFontSize(raw: unknown): HomepageFixpreisSection["titleFontSize"] {
+  const v = String(raw ?? "").trim();
+  if (v === "sm" || v === "md" || v === "lg" || v === "xl") return v;
+  return DEFAULT_CONTENT.fixpreisSection.titleFontSize;
+}
+
+function parseBodyFontSize(raw: unknown): HomepageFixpreisSection["bodyFontSize"] {
+  const v = String(raw ?? "").trim();
+  if (v === "sm" || v === "md" || v === "lg") return v;
+  return DEFAULT_CONTENT.fixpreisSection.bodyFontSize;
+}
+
+function parseTextAlign(raw: unknown): HomepageFixpreisSection["textAlign"] {
+  const v = String(raw ?? "").trim();
+  if (v === "left" || v === "center" || v === "right") return v;
+  return DEFAULT_CONTENT.fixpreisSection.textAlign;
+}
+
+export function parseFixpreisSectionPatch(raw: unknown): HomepageFixpreisSection {
+  return mapFixpreisSection(raw);
+}
+
 function mapFixpreisSection(raw: unknown): HomepageFixpreisSection {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const d = DEFAULT_CONTENT.fixpreisSection;
   return {
     title: String(o.title ?? d.title).trim() || d.title,
     body: String(o.body ?? d.body).trim() || d.body,
+    kicker: String(o.kicker ?? d.kicker).trim(),
+    logoUrl: String(o.logoUrl ?? d.logoUrl).trim(),
+    heroImageUrl: String(o.heroImageUrl ?? d.heroImageUrl).trim(),
+    titleFontSize: parseTitleFontSize(o.titleFontSize),
+    bodyFontSize: parseBodyFontSize(o.bodyFontSize),
+    titleColor: String(o.titleColor ?? d.titleColor).trim(),
+    bodyColor: String(o.bodyColor ?? d.bodyColor).trim(),
+    accentColor: String(o.accentColor ?? d.accentColor).trim(),
+    backgroundColor: String(o.backgroundColor ?? d.backgroundColor).trim(),
+    textAlign: parseTextAlign(o.textAlign),
     ctaText: String(o.ctaText ?? d.ctaText).trim() || d.ctaText,
     ctaLink: String(o.ctaLink ?? d.ctaLink).trim() || d.ctaLink,
+    secondaryCtaText: String(o.secondaryCtaText ?? d.secondaryCtaText).trim(),
+    secondaryCtaLink: String(o.secondaryCtaLink ?? d.secondaryCtaLink).trim(),
+    promoBlocks: mapFixpreisPromoBlocks(o.promoBlocks),
     isActive: o.isActive !== false,
   };
 }
@@ -322,7 +427,14 @@ export function normalizeHomepageContentDto(dto: HomepageContentDto): HomepageCo
       ...dto.fixpreisSection,
       title: normalizeGermanMarketingText(dto.fixpreisSection.title),
       body: normalizeGermanMarketingText(dto.fixpreisSection.body),
+      kicker: normalizeGermanMarketingText(dto.fixpreisSection.kicker),
       ctaText: normalizeGermanMarketingText(dto.fixpreisSection.ctaText),
+      secondaryCtaText: normalizeGermanMarketingText(dto.fixpreisSection.secondaryCtaText),
+      promoBlocks: dto.fixpreisSection.promoBlocks.map((b) => ({
+        ...b,
+        title: normalizeGermanMarketingText(b.title),
+        body: normalizeGermanMarketingText(b.body),
+      })),
     },
     section2Cards: dto.section2Cards.map((c) => ({
       ...c,

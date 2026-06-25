@@ -127,8 +127,9 @@ import {
   isCompanyVehicleReviewStatus,
   isOnboardingStatus,
 } from "../lib/companyOnboardingConstants";
+import { saveMarketingCmsAsset } from "../lib/marketingCmsAssets";
 import { parseMultipartForm } from "../lib/parseMultipartForm";
-import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
+import { getHomepageContentAdmin, patchHomepageContentAdmin, parseFixpreisSectionPatch } from "../db/homepageContentData";
 import {
   getOperationalConfigPayload,
   insertServiceRegion,
@@ -3060,18 +3061,7 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
             };
           })();
     const fixpreisSection =
-      b.fixpreisSection === undefined
-        ? undefined
-        : (() => {
-            const r = (b.fixpreisSection ?? {}) as Record<string, unknown>;
-            return {
-              title: typeof r.title === "string" ? r.title.trim() : "",
-              body: typeof r.body === "string" ? r.body.trim() : "",
-              ctaText: typeof r.ctaText === "string" ? r.ctaText.trim() : "",
-              ctaLink: typeof r.ctaLink === "string" ? r.ctaLink.trim() : "",
-              isActive: r.isActive !== false,
-            };
-          })();
+      b.fixpreisSection === undefined ? undefined : parseFixpreisSectionPatch(b.fixpreisSection);
     const item = await patchHomepageContentAdmin(
       {
         section2Title: toText(b.section2Title),
@@ -3110,6 +3100,32 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
     }
     res.json({ ok: true, item });
   } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/homepage-marketing-assets", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const parsed = await parseMultipartForm(req, { maxFileBytes: 3 * 1024 * 1024 });
+    if (!parsed.file) {
+      res.status(400).json({ error: "file_required" });
+      return;
+    }
+    const out = await saveMarketingCmsAsset(parsed.file.buffer, parsed.file.mimeType, parsed.file.fileName);
+    if (!out.ok) {
+      res.status(400).json({ error: out.error });
+      return;
+    }
+    res.status(201).json({ ok: true, url: out.url });
+  } catch (e) {
+    if (e instanceof Error && e.message === "file_too_large") {
+      res.status(413).json({ error: "file_too_large" });
+      return;
+    }
     next(e);
   }
 });
