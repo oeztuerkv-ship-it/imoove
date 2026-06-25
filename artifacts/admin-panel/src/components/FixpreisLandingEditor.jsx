@@ -144,13 +144,11 @@ function AssetField({ label, value, onChange, hint }) {
 }
 
 export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNavPromoChange, onFixpreisChange }) {
-  const [savingNav, setSavingNav] = useState(false);
-  const [savingPage, setSavingPage] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
-  async function savePartial(payload, which) {
-    const setSaving = which === "nav" ? setSavingNav : setSavingPage;
+  async function saveFixpreis() {
     setSaving(true);
     setErr("");
     setMsg("");
@@ -158,7 +156,7 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
       const res = await fetch(HOMEPAGE_URL, {
         method: "PATCH",
         headers: adminApiHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ navPromo, fixpreisSection }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
@@ -167,7 +165,7 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
       }
       if (data.item?.navPromo) onNavPromoChange(mergeNavPromo(data.item.navPromo));
       if (data.item?.fixpreisSection) onFixpreisChange(mergeFixpreisSection(data.item.fixpreisSection));
-      setMsg(which === "nav" ? "Navigation gespeichert." : "Fixpreise-Seite gespeichert.");
+      setMsg("Fixpreise gespeichert (Navigation + Werbeseite).");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Speichern fehlgeschlagen");
     } finally {
@@ -212,9 +210,6 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
           <input type="checkbox" checked={navPromo.highlight} onChange={(e) => onNavPromoChange({ ...navPromo, highlight: e.target.checked })} />
           <span>Rot hervorheben</span>
         </label>
-        <button type="button" className="admin-btn admin-btn--primary" disabled={savingNav} onClick={() => void savePartial({ navPromo }, "nav")}>
-          {savingNav ? "Speichert…" : "Navigation speichern"}
-        </button>
       </div>
 
       <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
@@ -334,8 +329,8 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
           ))}
         </div>
 
-        <button type="button" className="admin-btn admin-btn--primary" style={{ marginTop: 12 }} disabled={savingPage} onClick={() => void savePartial({ fixpreisSection }, "page")}>
-          {savingPage ? "Speichert…" : "Fixpreise-Seite speichern"}
+        <button type="button" className="admin-btn admin-btn--primary" style={{ marginTop: 12 }} disabled={saving} onClick={() => void saveFixpreis()}>
+          {saving ? "Speichert…" : "Fixpreise speichern"}
         </button>
       </div>
     </>
