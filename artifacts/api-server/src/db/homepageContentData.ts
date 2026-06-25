@@ -22,6 +22,22 @@ export type HomepageManifestCard = {
   isActive: boolean;
 };
 
+export type HomepageNavPromo = {
+  label: string;
+  href: string;
+  isActive: boolean;
+  badge: string;
+  highlight: boolean;
+};
+
+export type HomepageFixpreisSection = {
+  title: string;
+  body: string;
+  ctaText: string;
+  ctaLink: string;
+  isActive: boolean;
+};
+
 export type HomepageContentDto = {
   section2Title: string;
   section2Cards: Array<{
@@ -55,6 +71,8 @@ export type HomepageContentDto = {
   aboutBullets: string[];
   aboutClosing: string;
   aboutTagline: string;
+  navPromo: HomepageNavPromo;
+  fixpreisSection: HomepageFixpreisSection;
   updatedAt: string | null;
 };
 
@@ -183,7 +201,45 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   aboutClosing:
     "Gemeinsam mit Partnerbetrieben, Hotels, Kliniken und Unternehmen bauen wir eine regionale Plattform für moderne Mobilität – persönlich, transparent und verlässlich.",
   aboutTagline: "ONRODA – Mobilität neu organisiert.",
+  navPromo: {
+    label: "Fixpreise",
+    href: "#fixpreise",
+    isActive: true,
+    badge: "",
+    highlight: true,
+  },
+  fixpreisSection: {
+    title: "Festpreis-Fahrten",
+    body: "Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.",
+    ctaText: "Jetzt in der App buchen",
+    ctaLink: "#jetzt-buchen",
+    isActive: true,
+  },
 };
+
+function mapNavPromo(raw: unknown): HomepageNavPromo {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const d = DEFAULT_CONTENT.navPromo;
+  return {
+    label: String(o.label ?? d.label).trim() || d.label,
+    href: String(o.href ?? d.href).trim() || d.href,
+    isActive: o.isActive !== false,
+    badge: String(o.badge ?? d.badge).trim(),
+    highlight: o.highlight !== false,
+  };
+}
+
+function mapFixpreisSection(raw: unknown): HomepageFixpreisSection {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const d = DEFAULT_CONTENT.fixpreisSection;
+  return {
+    title: String(o.title ?? d.title).trim() || d.title,
+    body: String(o.body ?? d.body).trim() || d.body,
+    ctaText: String(o.ctaText ?? d.ctaText).trim() || d.ctaText,
+    ctaLink: String(o.ctaLink ?? d.ctaLink).trim() || d.ctaLink,
+    isActive: o.isActive !== false,
+  };
+}
 
 function mapServiceCards(raw: unknown): HomepageServiceCard[] {
   if (!Array.isArray(raw) || raw.length === 0) {
@@ -250,6 +306,17 @@ export function normalizeHomepageContentDto(dto: HomepageContentDto): HomepageCo
     aboutBullets: dto.aboutBullets.map((b) => normalizeGermanMarketingText(b)),
     aboutClosing: normalizeGermanMarketingText(dto.aboutClosing),
     aboutTagline: normalizeGermanMarketingText(dto.aboutTagline),
+    navPromo: {
+      ...dto.navPromo,
+      label: normalizeGermanMarketingText(dto.navPromo.label),
+      badge: normalizeGermanMarketingText(dto.navPromo.badge),
+    },
+    fixpreisSection: {
+      ...dto.fixpreisSection,
+      title: normalizeGermanMarketingText(dto.fixpreisSection.title),
+      body: normalizeGermanMarketingText(dto.fixpreisSection.body),
+      ctaText: normalizeGermanMarketingText(dto.fixpreisSection.ctaText),
+    },
     section2Cards: dto.section2Cards.map((c) => ({
       ...c,
       title: normalizeGermanMarketingText(c.title),
@@ -308,6 +375,8 @@ function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDt
     aboutBullets: mapAboutBullets(row.about_bullets),
     aboutClosing: (row.about_closing || "").trim() || DEFAULT_CONTENT.aboutClosing,
     aboutTagline: (row.about_tagline || "").trim() || DEFAULT_CONTENT.aboutTagline,
+    navPromo: mapNavPromo(row.nav_promo),
+    fixpreisSection: mapFixpreisSection(row.fixpreis_section),
     updatedAt: row.updated_at ? row.updated_at.toISOString() : null,
   });
 }
@@ -369,6 +438,8 @@ export async function patchHomepageContentAdmin(
       about_bullets: merged.aboutBullets,
       about_closing: merged.aboutClosing,
       about_tagline: merged.aboutTagline,
+      nav_promo: merged.navPromo,
+      fixpreis_section: merged.fixpreisSection,
       updated_by_admin_user_id: actorAdminUserId ?? null,
       created_at: now,
       updated_at: now,
@@ -402,6 +473,8 @@ export async function patchHomepageContentAdmin(
         about_bullets: merged.aboutBullets,
         about_closing: merged.aboutClosing,
         about_tagline: merged.aboutTagline,
+        nav_promo: merged.navPromo,
+        fixpreis_section: merged.fixpreisSection,
         updated_by_admin_user_id: actorAdminUserId ?? null,
         updated_at: now,
       })

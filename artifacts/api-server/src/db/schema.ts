@@ -1293,6 +1293,38 @@ export const homepageContentTable = pgTable("homepage_content", {
   about_bullets: jsonb("about_bullets").$type<string[]>().notNull().default([]),
   about_closing: text("about_closing").notNull().default(""),
   about_tagline: text("about_tagline").notNull().default(""),
+  nav_promo: jsonb("nav_promo")
+    .$type<{
+      label: string;
+      href: string;
+      isActive: boolean;
+      badge: string;
+      highlight: boolean;
+    }>()
+    .notNull()
+    .default({
+      label: "Fixpreise",
+      href: "#fixpreise",
+      isActive: true,
+      badge: "",
+      highlight: true,
+    }),
+  fixpreis_section: jsonb("fixpreis_section")
+    .$type<{
+      title: string;
+      body: string;
+      ctaText: string;
+      ctaLink: string;
+      isActive: boolean;
+    }>()
+    .notNull()
+    .default({
+      title: "Festpreis-Fahrten",
+      body: "Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.",
+      ctaText: "Jetzt in der App buchen",
+      ctaLink: "#jetzt-buchen",
+      isActive: true,
+    }),
   updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
     onDelete: "set null",
   }),

@@ -647,6 +647,20 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'nav_promo'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.nav_promo (Migration 116)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'fixpreis_section'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.fixpreis_section (Migration 116)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'insurer_cost_centers'
   ) THEN

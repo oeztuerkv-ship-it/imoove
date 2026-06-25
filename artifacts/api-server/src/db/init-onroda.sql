@@ -926,6 +926,8 @@ CREATE TABLE IF NOT EXISTS homepage_content (
   about_bullets JSONB NOT NULL DEFAULT '[]'::jsonb,
   about_closing TEXT NOT NULL DEFAULT '',
   about_tagline TEXT NOT NULL DEFAULT '',
+  nav_promo JSONB NOT NULL DEFAULT '{"label":"Fixpreise","href":"#fixpreise","isActive":true,"badge":"","highlight":true}'::jsonb,
+  fixpreis_section JSONB NOT NULL DEFAULT '{"title":"Festpreis-Fahrten","body":"Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.","ctaText":"Jetzt in der App buchen","ctaLink":"#jetzt-buchen","isActive":true}'::jsonb,
   updated_by_admin_user_id TEXT REFERENCES admin_auth_users (id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

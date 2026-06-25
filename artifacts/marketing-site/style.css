@@ -170,6 +170,39 @@
       color: var(--onroda-red);
     }
 
+    .hp-nav-link--promo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .hp-nav-link--promo.hp-nav-link--highlight {
+      color: var(--onroda-red);
+    }
+
+    .hp-nav-promo-badge {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: #fff;
+      background: var(--onroda-red);
+    }
+
+    .hp-section--fixpreis {
+      background: linear-gradient(180deg, #fff8f7 0%, #ffffff 100%);
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .hp-fixpreis-actions {
+      margin: 1.25rem 0 0;
+    }
+
     .hp-nav-dropdown {
       position: relative;
     }

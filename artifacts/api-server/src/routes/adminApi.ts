@@ -3046,6 +3046,32 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
               .map((raw) => (typeof raw === "string" ? raw.trim() : ""))
               .filter((s) => s.length > 0)
           : undefined;
+    const navPromo =
+      b.navPromo === undefined
+        ? undefined
+        : (() => {
+            const r = (b.navPromo ?? {}) as Record<string, unknown>;
+            return {
+              label: typeof r.label === "string" ? r.label.trim() : "",
+              href: typeof r.href === "string" ? r.href.trim() : "",
+              isActive: r.isActive !== false,
+              badge: typeof r.badge === "string" ? r.badge.trim() : "",
+              highlight: r.highlight !== false,
+            };
+          })();
+    const fixpreisSection =
+      b.fixpreisSection === undefined
+        ? undefined
+        : (() => {
+            const r = (b.fixpreisSection ?? {}) as Record<string, unknown>;
+            return {
+              title: typeof r.title === "string" ? r.title.trim() : "",
+              body: typeof r.body === "string" ? r.body.trim() : "",
+              ctaText: typeof r.ctaText === "string" ? r.ctaText.trim() : "",
+              ctaLink: typeof r.ctaLink === "string" ? r.ctaLink.trim() : "",
+              isActive: r.isActive !== false,
+            };
+          })();
     const item = await patchHomepageContentAdmin(
       {
         section2Title: toText(b.section2Title),
@@ -3073,6 +3099,8 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
         aboutBullets,
         aboutClosing: toText(b.aboutClosing),
         aboutTagline: toText(b.aboutTagline),
+        navPromo,
+        fixpreisSection,
       },
       req.adminAuth?.adminUserId ?? null,
     );

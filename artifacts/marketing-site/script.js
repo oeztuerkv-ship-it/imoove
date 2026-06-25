@@ -231,6 +231,67 @@
         });
     }
 
+    function applyHomepageNavAndFixpreis(item) {
+      var navLink = document.getElementById("hp-nav-promo-fixpreise");
+      var navLabel = document.getElementById("hp-nav-promo-fixpreise-label");
+      var navBadge = document.getElementById("hp-nav-promo-fixpreise-badge");
+      var promo = item && item.navPromo ? item.navPromo : null;
+      if (navLink) {
+        var defaultLabel = navLabel ? navLabel.textContent || "Fixpreise" : "Fixpreise";
+        var defaultHref = navLink.getAttribute("href") || "#fixpreise";
+        var active = promo ? promo.isActive !== false : true;
+        if (!active) {
+          navLink.setAttribute("hidden", "hidden");
+        } else {
+          navLink.removeAttribute("hidden");
+          if (navLabel) {
+            navLabel.textContent = pickCms(promo && promo.label, defaultLabel);
+          }
+          navLink.setAttribute("href", String(promo && promo.href ? promo.href : defaultHref));
+          if (promo && promo.highlight === false) {
+            navLink.classList.remove("hp-nav-link--highlight");
+          } else {
+            navLink.classList.add("hp-nav-link--highlight");
+          }
+          if (navBadge) {
+            var badgeText = promo && promo.badge ? String(promo.badge).trim() : "";
+            if (badgeText) {
+              navBadge.textContent = badgeText;
+              navBadge.removeAttribute("hidden");
+            } else {
+              navBadge.textContent = "";
+              navBadge.setAttribute("hidden", "hidden");
+            }
+          }
+        }
+      }
+      var section = document.getElementById("fixpreise");
+      var titleEl = document.getElementById("fixpreis-title");
+      var bodyEl = document.getElementById("fixpreis-body");
+      var ctaEl = document.getElementById("fixpreis-cta");
+      var block = item && item.fixpreisSection ? item.fixpreisSection : null;
+      if (section) {
+        var sectionActive = block ? block.isActive !== false : true;
+        if (!sectionActive) {
+          section.setAttribute("hidden", "hidden");
+          return;
+        }
+        section.removeAttribute("hidden");
+      }
+      if (titleEl) {
+        titleEl.textContent = pickCms(block && block.title, titleEl.textContent || "");
+      }
+      if (bodyEl) {
+        bodyEl.textContent = pickCms(block && block.body, bodyEl.textContent || "");
+      }
+      if (ctaEl) {
+        var defaultCtaText = ctaEl.textContent || "";
+        var defaultCtaHref = ctaEl.getAttribute("href") || "#jetzt-buchen";
+        ctaEl.textContent = pickCms(block && block.ctaText, defaultCtaText);
+        ctaEl.setAttribute("href", String(block && block.ctaLink ? block.ctaLink : defaultCtaHref));
+      }
+    }
+
     function loadHomepageContent() {
       var host = window.location.hostname;
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
@@ -429,6 +490,7 @@
               aboutBulletsEl.appendChild(liEl);
             }
           }
+          applyHomepageNavAndFixpreis(item);
           renderHomepageBanners(item);
         })
         .catch(function () {
