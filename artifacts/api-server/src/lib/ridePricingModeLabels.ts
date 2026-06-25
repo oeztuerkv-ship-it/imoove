@@ -36,3 +36,23 @@ export function driverEarningsFareLabel(
 ): string {
   return `Fahrpreis (${customerFareModeLabel(pricingMode)})`;
 }
+
+function roundMoney(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/** Vereinbarter Festpreis beim Abschluss (Meta oder estimatedFare). */
+export function resolveFixedPriceAgreedEur(
+  ride: Pick<RideRequest, "estimatedFare" | "pricingMode" | "partnerBookingMeta">,
+): number | null {
+  if (!isRideFixedPrice(ride.pricingMode)) return null;
+  const meta = ride.partnerBookingMeta as Record<string, unknown> | null | undefined;
+  const fromMeta = meta?.fixed_price_agreed_eur;
+  if (fromMeta != null && Number.isFinite(Number(fromMeta)) && Number(fromMeta) > 0) {
+    return roundMoney(Number(fromMeta));
+  }
+  const est = Number(ride.estimatedFare);
+  if (Number.isFinite(est) && est > 0) return roundMoney(est);
+  return null;
+}

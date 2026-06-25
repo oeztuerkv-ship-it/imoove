@@ -56,6 +56,7 @@ import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, computeRideBookingPricing } from "../lib/rideBookingPricing";
 import { checkFixedPriceBooking, computeFixedPriceRideBookingPricing } from "../lib/fixedPriceBooking";
+import { isRideFixedPrice, resolveFixedPriceAgreedEur } from "../lib/ridePricingModeLabels";
 import { buildCustomerReceiptHtmlForRide } from "../lib/customerReceipt";
 import { buildCustomerReceiptPdfForRide } from "../lib/customerReceiptPdf";
 import { anyActiveRegionRequiresClientCoordinates } from "../lib/serviceRegionMatch";
@@ -2379,6 +2380,16 @@ export async function patchRideStatusRoute(
         }
         finalFareForPatch =
           parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare) ? parsedFinalFare : 0;
+      } else if (isRideFixedPrice(cur.pricingMode)) {
+        const agreed = resolveFixedPriceAgreedEur(cur);
+        if (agreed == null) {
+          res.status(400).json({
+            error: "fixed_price_amount_missing",
+            message: "Der vereinbarte Festpreis fehlt. Abschluss nicht möglich.",
+          });
+          return;
+        }
+        finalFareForPatch = agreed;
       } else {
         // in_progress → completed: finalFare vom Fahrer ist Pflicht (Taxameter)
         if (parsedFinalFare === undefined || !Number.isFinite(parsedFinalFare) || parsedFinalFare < 0) {

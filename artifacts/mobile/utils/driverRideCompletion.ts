@@ -20,9 +20,30 @@ export function defaultFinalFareForDriverCompletion(status: string, _estimatedFa
   return 0;
 }
 
-/** Leeres Eingabefeld — Fahrer trägt Taxameter-Preis selbst ein (kein Schätzwert). */
-export function defaultDriverFareInputForCompletion(status: string): string {
+export function driverSkipsManualFareEntry(pricingMode: string | null | undefined): boolean {
+  return String(pricingMode ?? "").trim() === "fixed_price";
+}
+
+/** Vereinbarter Festpreis aus Ride (estimatedFare). */
+export function driverAgreedFixedPriceEur(input: {
+  pricingMode?: string | null;
+  estimatedFare: number;
+}): number | null {
+  if (!driverSkipsManualFareEntry(input.pricingMode)) return null;
+  const n = Number(input.estimatedFare);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/** Leeres Eingabefeld (Taxameter) oder vorbefüllter Festpreis ohne manuelle Eingabe. */
+export function defaultDriverFareInputForCompletion(
+  status: string,
+  estimatedFare = 0,
+  pricingMode?: string | null,
+): string {
   if (!driverMayBillPositiveFare(status)) return formatDriverFareInputDe(0);
+  const agreed = driverAgreedFixedPriceEur({ pricingMode, estimatedFare });
+  if (agreed != null) return formatDriverFareInputDe(agreed);
   return "";
 }
 

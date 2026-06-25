@@ -71,11 +71,14 @@ import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 import {
   defaultDriverFareInputForCompletion,
   defaultFinalFareForDriverCompletion,
+  driverAgreedFixedPriceEur,
   driverMayBillPositiveFare,
+  driverSkipsManualFareEntry,
   formatDriverFareInputDe,
   driverFinalFareNeedsAcknowledgement,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
+import { CUSTOMER_FIXED_PRICE_LABEL } from "@/utils/customerFareDisplay";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
 import { isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
 import {
@@ -358,6 +361,15 @@ export default function DriverNavigationScreen() {
   const destLon    = parseFloat(params.destLon ?? "0");
   const destName   = params.destName ?? params.toName ?? "Ziel";
   const estimatedFare = parseFloat(params.estimatedFare ?? "0");
+  const isFixedPriceRide = driverSkipsManualFareEntry(activeRide?.pricingMode);
+  const agreedFixedPriceEur = useMemo(
+    () =>
+      driverAgreedFixedPriceEur({
+        pricingMode: activeRide?.pricingMode,
+        estimatedFare: activeRide?.estimatedFare ?? estimatedFare,
+      }),
+    [activeRide?.pricingMode, activeRide?.estimatedFare, estimatedFare],
+  );
 
   const navigationTarget = useMemo(() => {
     if (isPickupPhase) {
@@ -1183,14 +1195,16 @@ export default function DriverNavigationScreen() {
   const fareSettlementPreview = useMemo(() => {
     if (!driverMayBillPositiveFare(rideFleetStatus)) return null;
     const parsed = parseFloat(fareInput.replace(",", "."));
-    const gross = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    const grossFromInput = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    const gross =
+      isFixedPriceRide && agreedFixedPriceEur != null ? agreedFixedPriceEur : grossFromInput;
     const cc = driver?.companyCommission;
     return computeDriverFareSettlementPreview(
       gross,
       cc?.rate ?? 0.1,
       cc?.minCommissionEur,
     );
-  }, [fareInput, rideFleetStatus, driver?.companyCommission]);
+  }, [fareInput, rideFleetStatus, driver?.companyCommission, isFixedPriceRide, agreedFixedPriceEur]);
 
   useEffect(() => {
     if (!showFareModal) return;
@@ -1199,9 +1213,15 @@ export default function DriverNavigationScreen() {
 
   const openFareModalAfterRideEnd = useCallback(() => {
     trySpeak("Fahrt wird beendet.", soundRef.current);
-    setFareInput(defaultDriverFareInputForCompletion(rideFleetStatus));
+    setFareInput(
+      defaultDriverFareInputForCompletion(
+        rideFleetStatus,
+        activeRide?.estimatedFare ?? estimatedFare,
+        activeRide?.pricingMode,
+      ),
+    );
     setShowFareModal(true);
-  }, [rideFleetStatus]);
+  }, [rideFleetStatus, activeRide?.estimatedFare, activeRide?.pricingMode, estimatedFare]);
 
   const handleFahrtBeenden = () => {
     if (driverRidePaymentLooksLikeCash(params.paymentMethod)) {
@@ -1301,6 +1321,18 @@ export default function DriverNavigationScreen() {
 
   const handleConfirmFare = async () => {
     if (completingRide) return;
+    if (isFixedPriceRide && driverMayBillPositiveFare(rideFleetStatus)) {
+      const agreed = agreedFixedPriceEur;
+      if (agreed == null) {
+        Alert.alert(
+          "Festpreis fehlt",
+          "Der vereinbarte Festpreis konnte nicht geladen werden. Bitte kurz warten oder Support kontaktieren.",
+        );
+        return;
+      }
+      await completeRideWithFare(agreed, false);
+      return;
+    }
     const parsed = parseFloat(fareInput.replace(",", "."));
     if (driverMayBillPositiveFare(rideFleetStatus) && (!Number.isFinite(parsed) || parsed <= 0)) {
       Alert.alert("Taxameter-Endpreis", "Bitte den Endpreis vom Taxameter eingeben.");
@@ -1829,7 +1861,11 @@ export default function DriverNavigationScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Fahrt beenden</Text>
             </View>
-            {driverMayBillPositiveFare(rideFleetStatus) ? (
+            {driverMayBillPositiveFare(rideFleetStatus) && isFixedPriceRide ? (
+              <Text style={styles.modalSubtitle}>
+                Vereinbarter Festpreis — keine manuelle Eingabe nötig.
+              </Text>
+            ) : driverMayBillPositiveFare(rideFleetStatus) ? (
               <DriverFareEntryLegalHints
                 vehicle={params.vehicle}
                 mayBillPositive
@@ -1849,7 +1885,17 @@ export default function DriverNavigationScreen() {
                 Keine Fahrt zum Ziel — bitte 0,00 € bestätigen (Kunde wird nicht belastet).
               </Text>
             )}
-            {driverMayBillPositiveFare(rideFleetStatus) ? (
+            {driverMayBillPositiveFare(rideFleetStatus) && isFixedPriceRide ? (
+              <View style={[styles.fareBox, { backgroundColor: "#F0FDF4", borderColor: "#86EFAC", alignItems: "center" }]}>
+                <Text style={[styles.fareBoxLabel, { color: "#15803D" }]}>Festpreis</Text>
+                <Text style={{ fontSize: 32, fontFamily: "Inter_700Bold", color: "#111827" }}>
+                  {formatEuro(agreedFixedPriceEur ?? activeRide?.estimatedFare ?? estimatedFare)}
+                </Text>
+                <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 4 }}>
+                  inkl. MwSt. · {CUSTOMER_FIXED_PRICE_LABEL}
+                </Text>
+              </View>
+            ) : driverMayBillPositiveFare(rideFleetStatus) ? (
               <View style={styles.fareBox}>
                 <View style={styles.fareInputRow}>
                   <TextInput
@@ -1909,7 +1955,9 @@ export default function DriverNavigationScreen() {
                 disabled={completingRide}
               >
                 <Feather name="send" size={16} color="#fff" />
-                <Text style={styles.submitBtnText}>{completingRide ? "Wird gesendet…" : "Abschicken"}</Text>
+                <Text style={styles.submitBtnText}>
+                  {completingRide ? "Wird gesendet…" : isFixedPriceRide ? "Fahrt abschließen" : "Abschicken"}
+                </Text>
               </Pressable>
             </View>
           </View>

@@ -42,7 +42,7 @@ import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
-import { CUSTOMER_FIXED_PRICE_LABEL, isRideFixedPrice } from "@/utils/customerFareDisplay";
+import { CUSTOMER_FIXED_PRICE_LABEL } from "@/utils/customerFareDisplay";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
 import { setDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
 import {
@@ -63,7 +63,9 @@ import {
 } from "@/utils/driverNavigationRoute";
 import {
   defaultDriverFareInputForCompletion,
+  driverAgreedFixedPriceEur,
   driverMayBillPositiveFare,
+  driverSkipsManualFareEntry,
   formatDriverFareInputDe,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
@@ -1961,7 +1963,7 @@ function ActiveRideScreen({
   const [showCashPaymentWarn, setShowCashPaymentWarn] = useState(false);
   const mayBillPositive = driverMayBillPositiveFare(req.status);
   const [finalPriceInput, setFinalPriceInput] = useState(
-    defaultDriverFareInputForCompletion(req.status),
+    defaultDriverFareInputForCompletion(req.status, req.estimatedFare, req.pricingMode),
   );
   const [completingRide, setCompletingRide] = useState(false);
 
@@ -1971,11 +1973,12 @@ function ActiveRideScreen({
 
   useEffect(() => {
     if (!showPriceModal) return;
-    setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
-  }, [showPriceModal, req.status]);
+    setFinalPriceInput(defaultDriverFareInputForCompletion(req.status, req.estimatedFare, req.pricingMode));
+  }, [showPriceModal, req.status, req.estimatedFare, req.pricingMode]);
 
   const isKK = isKrankenkasseRide(req.paymentMethod);
-  const isFixedPrice = isRideFixedPrice(req.pricingMode);
+  const isFixedPrice = driverSkipsManualFareEntry(req.pricingMode);
+  const agreedFixedPriceEur = driverAgreedFixedPriceEur(req);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
   const customerNoteLine = customerDriverNoteLine(req);
@@ -2157,7 +2160,7 @@ function ActiveRideScreen({
       const euro = parsed ?? 0;
       setFinalPriceInput(euro > 0 ? euro.toFixed(2).replace(".", ",") : "");
     } else {
-      setFinalPriceInput(defaultDriverFareInputForCompletion(req.status));
+      setFinalPriceInput(defaultDriverFareInputForCompletion(req.status, req.estimatedFare, req.pricingMode));
     }
     setShowPriceModal(true);
   };
@@ -2172,6 +2175,18 @@ function ActiveRideScreen({
 
   const handleConfirmFare = async () => {
     if (completingRide) return;
+    if (isFixedPrice && mayBillPositive) {
+      const agreed = agreedFixedPriceEur;
+      if (agreed == null) {
+        Alert.alert(
+          "Festpreis fehlt",
+          "Der vereinbarte Festpreis konnte nicht geladen werden. Bitte kurz warten oder Support kontaktieren.",
+        );
+        return;
+      }
+      await submitConfirmedFare(agreed);
+      return;
+    }
     const parsed = parseFloat(finalPriceInput.replace(",", "."));
     if (mayBillPositive && (!Number.isFinite(parsed) || parsed <= 0)) {
       Alert.alert("Taxameter-Endpreis", "Bitte den Endpreis vom Taxameter eingeben.");
@@ -2631,9 +2646,13 @@ function ActiveRideScreen({
               <Text style={activeStyles.priceModalSub}>
                 Keine Fahrt zum Ziel — bitte 0,00 € eingeben (Kunde wird nicht belastet).
               </Text>
+            ) : isFixedPrice ? (
+              <Text style={activeStyles.priceModalSub}>
+                Vereinbarter Festpreis — keine manuelle Eingabe nötig.
+              </Text>
             ) : null}
 
-            {mayBillPositive ? (
+            {mayBillPositive && !isFixedPrice ? (
               <DriverFareEntryLegalHints
                 vehicle={req.vehicle}
                 mayBillPositive
@@ -2657,27 +2676,39 @@ function ActiveRideScreen({
 
             <View style={activeStyles.priceRow}>
               <Text style={activeStyles.priceEstLabel}>
-                {mayBillPositive ? "Schätzpreis:" : "Endpreis:"}
+                {mayBillPositive ? (isFixedPrice ? "Festpreis:" : "Schätzpreis:") : "Endpreis:"}
               </Text>
               <Text style={[activeStyles.priceEstValue, !mayBillPositive && { color: "#15803D", fontFamily: "Inter_700Bold" }]}>
-                {mayBillPositive ? formatEuro(req.estimatedFare) : "0,00 €"}
+                {mayBillPositive
+                  ? formatEuro(isFixedPrice ? (agreedFixedPriceEur ?? req.estimatedFare) : req.estimatedFare)
+                  : "0,00 €"}
               </Text>
             </View>
 
-            {/* Input */}
-            <View style={activeStyles.priceInputWrapper}>
-              <TextInput
-                style={activeStyles.priceInput}
-                value={finalPriceInput}
-                onChangeText={setFinalPriceInput}
-                keyboardType="decimal-pad"
-                selectTextOnFocus
-                autoFocus
-                placeholder="0,00"
-                placeholderTextColor="#9CA3AF"
-              />
-              <Text style={activeStyles.priceInputCurrency}>€</Text>
-            </View>
+            {mayBillPositive && isFixedPrice ? (
+              <View style={[activeStyles.fareBox, { alignItems: "center", marginTop: 8 }]}>
+                <Text style={[activeStyles.fareValue, { fontSize: 32, color: "#111827" }]}>
+                  {formatEuro(agreedFixedPriceEur ?? req.estimatedFare)}
+                </Text>
+                <Text style={activeStyles.fareBruttoHint}>inkl. MwSt. · {CUSTOMER_FIXED_PRICE_LABEL}</Text>
+              </View>
+            ) : null}
+
+            {!(mayBillPositive && isFixedPrice) ? (
+              <View style={activeStyles.priceInputWrapper}>
+                <TextInput
+                  style={activeStyles.priceInput}
+                  value={finalPriceInput}
+                  onChangeText={setFinalPriceInput}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                  autoFocus
+                  placeholder="0,00"
+                  placeholderTextColor="#9CA3AF"
+                />
+                <Text style={activeStyles.priceInputCurrency}>€</Text>
+              </View>
+            ) : null}
             {!mayBillPositive ? (
               <Text style={activeStyles.priceInputHint}>Bei Abbruch ohne Fahrt: 0,00</Text>
             ) : null}
