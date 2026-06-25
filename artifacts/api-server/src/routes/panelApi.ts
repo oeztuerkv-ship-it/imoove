@@ -124,6 +124,7 @@ import {
   rejectPartnerAdminOnlyBodyFields,
 } from "../lib/fleetAdminOnlyFields";
 import { buildRouteDistanceQuote } from "../lib/fixedPriceRouteQuote";
+import { validatePartnerRouteAddressPair } from "../lib/partnerRouteAddress";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
@@ -647,6 +648,10 @@ function parseRouteLeg(body: Record<string, unknown>, label: string): RouteLegPa
   if (!from || !fromFull || !to || !toFull) {
     return { error: `${label}_route_fields_required` };
   }
+  const addrErr = validatePartnerRouteAddressPair(fromFull, toFull);
+  if (addrErr) {
+    return { error: addrErr.error, message: addrErr.message };
+  }
   if (
     distanceKm === undefined ||
     durationMinutes === undefined ||
@@ -832,6 +837,13 @@ router.post("/panel/v1/route-distance", requirePanelAuth, async (req, res, next)
       const n = typeof v === "number" ? v : Number(v);
       return Number.isFinite(n) ? n : null;
     };
+    const fromFull = String(body.fromFull ?? body.from ?? "").trim();
+    const toFull = String(body.toFull ?? body.to ?? "").trim();
+    const addrErr = validatePartnerRouteAddressPair(fromFull, toFull);
+    if (addrErr) {
+      res.status(400).json(addrErr);
+      return;
+    }
     const result = await buildRouteDistanceQuote({
       fromFull: String(body.fromFull ?? body.from ?? ""),
       toFull: String(body.toFull ?? body.to ?? ""),
@@ -1849,6 +1861,11 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         res.status(400).json({ error: "route_fields_required" });
         return;
       }
+      const addrErr = validatePartnerRouteAddressPair(fromFull, toFull);
+      if (addrErr) {
+        res.status(400).json(addrErr);
+        return;
+      }
       if (
         !Number.isFinite(distanceKm) ||
         !Number.isFinite(durationMinutes) ||
@@ -2081,7 +2098,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
 
     const leg = parseRouteLeg(body, "hotel");
     if ("error" in leg) {
-      res.status(400).json({ error: leg.error });
+      res.status(400).json({ error: leg.error, ...(leg.message ? { message: leg.message } : {}) });
       return;
     }
 
@@ -2293,11 +2310,11 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     const outLeg = parseRouteLeg(outboundRaw, "outbound");
     const retLeg = parseRouteLeg(returnRaw, "return");
     if ("error" in outLeg) {
-      res.status(400).json({ error: outLeg.error });
+      res.status(400).json({ error: outLeg.error, ...(outLeg.message ? { message: outLeg.message } : {}) });
       return;
     }
     if ("error" in retLeg) {
-      res.status(400).json({ error: retLeg.error });
+      res.status(400).json({ error: retLeg.error, ...(retLeg.message ? { message: retLeg.message } : {}) });
       return;
     }
 
@@ -2592,7 +2609,7 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
     }
     const leg = parseRouteLeg(tplRaw, "series");
     if ("error" in leg) {
-      res.status(400).json({ error: leg.error });
+      res.status(400).json({ error: leg.error, ...(leg.message ? { message: leg.message } : {}) });
       return;
     }
     const customerName =

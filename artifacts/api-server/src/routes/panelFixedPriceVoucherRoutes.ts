@@ -13,6 +13,7 @@ import {
   resolveFixedPriceVoucherOrderAfterCheckoutReturn,
   startFixedPriceVoucherCheckout,
 } from "../lib/fixedPriceVoucherFulfillment";
+import { validatePartnerRouteAddressPair } from "../lib/partnerRouteAddress";
 import { renderFixedPriceVoucherPdf, vehicleLabelDe } from "../lib/fixedPriceVoucherPdf";
 import { assertActivePanelProfile, denyUnlessPanelModule } from "./panelRouteContext";
 
@@ -43,6 +44,11 @@ router.post("/panel/v1/fixed-price-vouchers/estimate", requirePanelAuth, async (
     const toFull = String(body.toFull ?? body.to ?? "").trim();
     if (!fromFull || !toFull) {
       res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    const addrErrEstimate = validatePartnerRouteAddressPair(fromFull, toFull);
+    if (addrErrEstimate) {
+      res.status(400).json(addrErrEstimate);
       return;
     }
     const distanceKm = Number(body.distanceKm ?? body.distance_km ?? 0);
@@ -88,6 +94,11 @@ router.post("/panel/v1/fixed-price-vouchers/checkout", requirePanelAuth, async (
     const toFull = String(body.toFull ?? body.to ?? "").trim();
     if (!fromFull || !toFull) {
       res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    const addrErrCheckout = validatePartnerRouteAddressPair(fromFull, toFull);
+    if (addrErrCheckout) {
+      res.status(400).json(addrErrCheckout);
       return;
     }
     const distanceKm = Number(body.distanceKm ?? body.distance_km ?? 0);
