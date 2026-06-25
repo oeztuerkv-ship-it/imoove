@@ -1,4 +1,7 @@
 import { API_BASE } from "./apiBase.js";
+import { validatePartnerRouteAddresses, PARTNER_ROUTE_ADDRESS_MESSAGE_DE } from "./partnerAddressValidation.js";
+
+export { PARTNER_ROUTE_ADDRESS_MESSAGE_DE, validatePartnerRouteAddresses };
 
 const GOOGLE_MATRIX_BASE = "https://maps.googleapis.com/maps/api/distancematrix/json";
 
@@ -45,6 +48,10 @@ export async function fetchDistanceMatrixByAddress(fromFull, toFull, token) {
   const to = String(toFull || "").trim();
   if (!from || !to) {
     throw new Error("route_fields_required");
+  }
+  const addrCheck = validatePartnerRouteAddresses(from, to);
+  if (!addrCheck.ok) {
+    throw new Error(addrCheck.message);
   }
   const auth = String(token || "").trim();
   if (auth) {

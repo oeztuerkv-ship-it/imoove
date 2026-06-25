@@ -415,6 +415,13 @@
   color: var(--ag-muted);
 }
 
+.ag-field-hint {
+  margin: 4px 0 14px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ag-muted);
+}
+
 .ag-empty {
   font-size: 0.9rem;
   color: var(--ag-muted);

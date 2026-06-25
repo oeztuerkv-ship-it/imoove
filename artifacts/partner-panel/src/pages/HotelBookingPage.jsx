@@ -4,6 +4,8 @@ import { API_BASE } from "../lib/apiBase.js";
 import {
   fetchDistanceMatrixByAddress,
   toIsoFromDatetimeLocal,
+  validatePartnerRouteAddresses,
+  PARTNER_ROUTE_ADDRESS_MESSAGE_DE,
 } from "../lib/smartBooking.js";
 
 function hasPerm(permissions, key) {
@@ -48,12 +50,7 @@ export default function HotelBookingPage() {
         estimatedFare: String(route.estimatedFare),
       }));
     } catch (e) {
-      const code = e instanceof Error ? e.message : "route_error";
-      setMsg(
-        code === "missing_google_maps_key"
-          ? "Strecke konnte nicht berechnet werden — bitte erneut versuchen."
-          : "Route konnte nicht automatisch berechnet werden.",
-      );
+      setMsg(e instanceof Error ? e.message : "Route konnte nicht automatisch berechnet werden.");
     } finally {
       setRouting(false);
     }
@@ -94,6 +91,11 @@ export default function HotelBookingPage() {
     }
     if (!form.fromFull.trim() || !form.toFull.trim()) {
       setMsg("Route unvollständig.");
+      return;
+    }
+    const addrCheck = validatePartnerRouteAddresses(form.fromFull, form.toFull);
+    if (!addrCheck.ok) {
+      setMsg(addrCheck.message);
       return;
     }
     if (!form.accessCode.trim()) {
@@ -246,6 +248,7 @@ export default function HotelBookingPage() {
                 <input
                   value={form.fromFull}
                   onChange={(ev) => setForm((f) => ({ ...f, fromFull: ev.target.value }))}
+                  placeholder="Musterstraße 12, 70771 Leinfelden-Echterdingen"
                   onBlur={() => void autoFillRoute()}
                 />
               </label>
@@ -254,9 +257,13 @@ export default function HotelBookingPage() {
                 <input
                   value={form.toFull}
                   onChange={(ev) => setForm((f) => ({ ...f, toFull: ev.target.value }))}
+                  placeholder="Zielstraße 1, 72072 Tübingen"
                   onBlur={() => void autoFillRoute()}
                 />
               </label>
+              <p className="panel-page__muted" style={{ gridColumn: "1 / -1", margin: 0 }}>
+                {PARTNER_ROUTE_ADDRESS_MESSAGE_DE}
+              </p>
               <label className="panel-rides-form__field">
                 <span>Entfernung (km)</span>
                 <input

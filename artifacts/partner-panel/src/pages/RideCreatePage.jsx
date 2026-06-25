@@ -6,6 +6,8 @@ import {
   estimateSystemFare,
   fetchDistanceMatrixByAddress,
   toIsoFromDatetimeLocal,
+  validatePartnerRouteAddresses,
+  PARTNER_ROUTE_ADDRESS_MESSAGE_DE,
 } from "../lib/smartBooking.js";
 
 function hasPerm(permissions, key) {
@@ -62,12 +64,7 @@ export default function RideCreatePage() {
         estimatedFare: String(route.estimatedFare),
       }));
     } catch (e) {
-      const code = e instanceof Error ? e.message : "route_error";
-      setCreateMsg(
-        code === "missing_google_maps_key"
-          ? "Strecke konnte nicht berechnet werden — bitte erneut versuchen."
-          : "Route konnte nicht automatisch berechnet werden.",
-      );
+      setCreateMsg(e instanceof Error ? e.message : "Route konnte nicht automatisch berechnet werden.");
     } finally {
       setRouting(false);
     }
@@ -86,6 +83,11 @@ export default function RideCreatePage() {
     }
     if (!form.from.trim() || !form.fromFull.trim() || !form.to.trim() || !form.toFull.trim()) {
       setCreateMsg("Bitte Start und Ziel vollständig ausfüllen.");
+      return;
+    }
+    const addrCheck = validatePartnerRouteAddresses(form.fromFull, form.toFull);
+    if (!addrCheck.ok) {
+      setCreateMsg(addrCheck.message);
       return;
     }
     if (!Number.isFinite(distanceKm) || !Number.isFinite(durationMinutes) || !Number.isFinite(estimatedFare)) {
@@ -294,7 +296,7 @@ export default function RideCreatePage() {
                 <input
                   value={form.fromFull}
                   onChange={(ev) => setForm((f) => ({ ...f, fromFull: ev.target.value }))}
-                  placeholder="Straße, PLZ Ort"
+                  placeholder="Musterstraße 12, 70771 Leinfelden-Echterdingen"
                   onBlur={() => void autoFillRoute()}
                 />
               </label>
@@ -307,9 +309,13 @@ export default function RideCreatePage() {
                 <input
                   value={form.toFull}
                   onChange={(ev) => setForm((f) => ({ ...f, toFull: ev.target.value }))}
+                  placeholder="Zielstraße 1, 72072 Tübingen"
                   onBlur={() => void autoFillRoute()}
                 />
               </label>
+              <p className="panel-page__muted" style={{ gridColumn: "1 / -1", margin: 0 }}>
+                {PARTNER_ROUTE_ADDRESS_MESSAGE_DE}
+              </p>
               <label className="panel-rides-form__field">
                 <span>Entfernung (km)</span>
                 <input

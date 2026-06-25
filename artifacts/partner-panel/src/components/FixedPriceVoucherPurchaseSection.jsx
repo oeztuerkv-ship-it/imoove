@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchDistanceMatrixByAddress } from "../lib/smartBooking.js";
+import { fetchDistanceMatrixByAddress, PARTNER_ROUTE_ADDRESS_MESSAGE_DE, validatePartnerRouteAddresses } from "../lib/smartBooking.js";
 import {
   downloadFixedPriceVoucherPdf,
   estimateFixedPriceVoucher,
@@ -145,6 +145,11 @@ export default function FixedPriceVoucherPurchaseSection({ token, canManage }) {
   }
 
   async function runEstimate() {
+    const addrCheck = validatePartnerRouteAddresses(form.fromFull, form.toFull);
+    if (!addrCheck.ok) {
+      setErr(addrCheck.message);
+      return;
+    }
     const distanceKm = Number(String(form.distanceKm).replace(",", "."));
     if (!hasRoute || !Number.isFinite(distanceKm) || distanceKm <= 0) {
       setErr("Bitte Start, Ziel und Strecke berechnen.");
@@ -259,7 +264,7 @@ export default function FixedPriceVoucherPurchaseSection({ token, canManage }) {
               className="ag-field__input"
               value={form.fromFull}
               onChange={(e) => setForm((f) => ({ ...f, fromFull: e.target.value }))}
-              placeholder="Musterstraße 1, 73728 Esslingen"
+              placeholder="Musterstraße 12, 70771 Leinfelden-Echterdingen"
             />
           </label>
           <label className="ag-field">
@@ -268,10 +273,11 @@ export default function FixedPriceVoucherPurchaseSection({ token, canManage }) {
               className="ag-field__input"
               value={form.toFull}
               onChange={(e) => setForm((f) => ({ ...f, toFull: e.target.value }))}
-              placeholder="Flughafen Stuttgart, 70629"
+              placeholder="Zielstraße 1, 72072 Tübingen"
             />
           </label>
         </div>
+        <p className="ag-field-hint">{PARTNER_ROUTE_ADDRESS_MESSAGE_DE}</p>
 
         <div className="ag-route-row">
           <label className="ag-field">
