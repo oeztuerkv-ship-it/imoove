@@ -419,18 +419,18 @@ export function normalizeHomepageContentDto(dto: HomepageContentDto): HomepageCo
     aboutClosing: normalizeGermanMarketingText(dto.aboutClosing),
     aboutTagline: normalizeGermanMarketingText(dto.aboutTagline),
     navPromo: {
-      ...dto.navPromo,
-      label: normalizeGermanMarketingText(dto.navPromo.label),
-      badge: normalizeGermanMarketingText(dto.navPromo.badge),
+      ...(dto.navPromo ?? DEFAULT_CONTENT.navPromo),
+      label: normalizeGermanMarketingText((dto.navPromo ?? DEFAULT_CONTENT.navPromo).label),
+      badge: normalizeGermanMarketingText((dto.navPromo ?? DEFAULT_CONTENT.navPromo).badge),
     },
     fixpreisSection: {
-      ...dto.fixpreisSection,
-      title: normalizeGermanMarketingText(dto.fixpreisSection.title),
-      body: normalizeGermanMarketingText(dto.fixpreisSection.body),
-      kicker: normalizeGermanMarketingText(dto.fixpreisSection.kicker),
-      ctaText: normalizeGermanMarketingText(dto.fixpreisSection.ctaText),
-      secondaryCtaText: normalizeGermanMarketingText(dto.fixpreisSection.secondaryCtaText),
-      promoBlocks: dto.fixpreisSection.promoBlocks.map((b) => ({
+      ...(dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection),
+      title: normalizeGermanMarketingText((dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection).title),
+      body: normalizeGermanMarketingText((dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection).body),
+      kicker: normalizeGermanMarketingText((dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection).kicker),
+      ctaText: normalizeGermanMarketingText((dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection).ctaText),
+      secondaryCtaText: normalizeGermanMarketingText((dto.fixpreisSection ?? DEFAULT_CONTENT.fixpreisSection).secondaryCtaText),
+      promoBlocks: (dto.fixpreisSection?.promoBlocks ?? DEFAULT_CONTENT.fixpreisSection.promoBlocks).map((b) => ({
         ...b,
         title: normalizeGermanMarketingText(b.title),
         body: normalizeGermanMarketingText(b.body),
@@ -522,11 +522,14 @@ export async function patchHomepageContentAdmin(
 ): Promise<HomepageContentDto | null> {
   const db = getDb();
   if (!db) return null;
+  const definedPatch = Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined),
+  ) as Partial<Omit<HomepageContentDto, "updatedAt">>;
   const existingRows = await db.select().from(homepageContentTable).where(eq(homepageContentTable.id, HOMEPAGE_CONTENT_ID)).limit(1);
   const existing = existingRows[0];
   const merged = normalizeHomepageContentDto({
     ...(existing ? toDto(existing) : { ...DEFAULT_CONTENT, updatedAt: null }),
-    ...patch,
+    ...definedPatch,
   });
   const now = new Date();
   if (!existing) {

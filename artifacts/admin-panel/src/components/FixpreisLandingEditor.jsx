@@ -161,7 +161,10 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) throw new Error(data?.error || `Speichern fehlgeschlagen (${res.status})`);
+      if (!res.ok || !data?.ok) {
+        const detail = typeof data?.error === "string" ? data.error : "";
+        throw new Error(detail ? `${detail} (${res.status})` : `Speichern fehlgeschlagen (${res.status})`);
+      }
       if (data.item?.navPromo) onNavPromoChange(mergeNavPromo(data.item.navPromo));
       if (data.item?.fixpreisSection) onFixpreisChange(mergeFixpreisSection(data.item.fixpreisSection));
       setMsg(which === "nav" ? "Navigation gespeichert." : "Fixpreise-Seite gespeichert.");
@@ -279,7 +282,10 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
         </label>
         <label className="admin-form-pair">
           <span className="admin-field-label">Fließtext</span>
-          <textarea className="admin-textarea" rows={4} value={fixpreisSection.body} onChange={(e) => onFixpreisChange({ ...fixpreisSection, body: e.target.value })} />
+          <span className="admin-field-hint" style={{ display: "block", margin: "0 0 6px", fontSize: 13, color: "#64748b" }}>
+            Enter = neue Zeile — wird auf der Seite genauso angezeigt.
+          </span>
+          <textarea className="admin-textarea" rows={8} value={fixpreisSection.body} onChange={(e) => onFixpreisChange({ ...fixpreisSection, body: e.target.value })} />
         </label>
         <div className="admin-form-grid-2">
           <label className="admin-form-pair">
@@ -322,7 +328,7 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
               </label>
               <label className="admin-form-pair">
                 <span className="admin-field-label">Text</span>
-                <textarea className="admin-textarea" rows={2} value={block.body} onChange={(e) => setBlock(idx, { body: e.target.value })} />
+                <textarea className="admin-textarea" rows={4} value={block.body} onChange={(e) => setBlock(idx, { body: e.target.value })} />
               </label>
             </div>
           ))}

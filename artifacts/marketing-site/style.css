@@ -264,6 +264,11 @@
       margin: 0 auto 1.25rem;
     }
 
+    #fixpreis-page-body,
+    .hp-fixpreis-promo-card p {
+      white-space: pre-line;
+    }
+
     .hp-fixpreis-promo-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
