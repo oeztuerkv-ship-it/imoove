@@ -241,8 +241,7 @@ export default function FixedPriceVoucherPurchaseSection({
 
       <Section title="Festpreis-Gutschein kaufen">
         <p style={{ fontSize: 13, color: "rgba(0,0,0,0.55)", margin: "0 0 14px", lineHeight: 1.5 }}>
-          Route und Festpreis nach ONRODA-Tarif (Grundgebühr + km × Faktor, inkl. Fahrzeug-Aufschlag). Nach Kartenzahlung
-          erhalten Sie sofort den Code und können das PDF herunterladen.
+          Route berechnen, Festpreis anzeigen und per Karte bezahlen — danach Code und PDF sofort verfügbar.
         </p>
         {err && <p style={{ color: "#b91c1c", fontSize: 13, margin: "0 0 10px" }}>{err}</p>}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -354,22 +353,11 @@ export default function FixedPriceVoucherPurchaseSection({
               padding: 12,
               borderRadius: 10,
               background: "#f8fafc",
-              fontSize: 13,
+              fontSize: 15,
               color: "#334155",
             }}
           >
-            <div>
-              <strong>Festpreis:</strong> {fmtMoney(pricePreview.priceEur)}
-            </div>
-            <div>
-              Basis {fmtMoney(pricePreview.basePriceEur)}
-              {pricePreview.vehicleSurchargeEur > 0
-                ? ` + ${vehicleLabel(form.vehicle)} ${fmtMoney(pricePreview.vehicleSurchargeEur)}`
-                : ""}
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(0,0,0,0.45)", marginTop: 4 }}>
-              Tarif: Grundgebühr {fmtMoney(pricePreview.baseFeeEur)} + {pricePreview.perKmEur} €/km
-            </div>
+            <strong>Festpreis:</strong> {fmtMoney(pricePreview.priceEur)}
           </div>
         )}
       </Section>

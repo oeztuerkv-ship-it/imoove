@@ -338,6 +338,19 @@
       background: #fff8f8;
     }
 
+    .hp-fixpreis-calc-price-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.5rem 0.75rem;
+    }
+
+    .hp-fixpreis-calc-price-label {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #334155;
+    }
+
     .hp-fixpreis-calc-price {
       font-size: 2rem;
       font-weight: 800;

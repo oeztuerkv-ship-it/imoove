@@ -634,14 +634,11 @@
             if (quote.eligible) {
               resultEl.className = "hp-fixpreis-calc-result hp-fixpreis-calc-result--ok";
               resultEl.innerHTML =
-                '<div class="hp-fixpreis-calc-price">' +
+                '<div class="hp-fixpreis-calc-price-row">' +
+                '<span class="hp-fixpreis-calc-price-label">Festpreis</span>' +
+                '<span class="hp-fixpreis-calc-price">' +
                 fmtEuroCalc(quote.priceEur) +
-                "</div>" +
-                '<div class="hp-fixpreis-calc-meta">' +
-                String(route.distanceKm || quote.distanceKm).replace(".", ",") +
-                " km · ca. " +
-                String(route.durationMinutes || "—") +
-                " Min.</div>" +
+                "</span></div>" +
                 '<a class="hp-btn-primary hp-fixpreis-calc-book" href="/#jetzt-buchen">In der App buchen</a>';
             } else {
               resultEl.className = "hp-fixpreis-calc-result hp-fixpreis-calc-result--warn";
