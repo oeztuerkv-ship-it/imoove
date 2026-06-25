@@ -22,6 +22,7 @@ export type FleetDriverRideEarnings = {
   toFull: string;
   vehicle: string;
   completedAt: string | null;
+  pricingMode: "taxi_tariff" | "fixed_price" | null;
 };
 
 function roundMoney(value: number): number {
@@ -106,6 +107,12 @@ export async function getFleetDriverRideEarnings(input: {
       toFull: ride.toFull || ride.to || "",
       vehicle: ride.vehicle || "standard",
       completedAt: completedAt ? completedAt.toISOString() : null,
+      pricingMode:
+        ride.pricingMode === "fixed_price"
+          ? "fixed_price"
+          : ride.pricingMode === "taxi_tariff"
+            ? "taxi_tariff"
+            : null,
     },
   };
 }

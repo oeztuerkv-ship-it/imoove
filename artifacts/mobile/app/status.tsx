@@ -41,6 +41,7 @@ import {
   isCustomerOpenDispatchStatus,
 } from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
+import { customerFarePriceRowLabel } from "@/utils/customerFareDisplay";
 import { postCustomerRideTip } from "@/utils/stripePaymentApi";
 import {
   type CustomerLiveRidePhase,
@@ -789,6 +790,7 @@ export default function StatusScreen() {
         completeRide({
           serverRideId: completedForCurrentRide.id,
           finalFare: completedForCurrentRide.finalFare ?? null,
+          pricingMode: completedForCurrentRide.pricingMode ?? null,
         });
         setIsCompleted(true);
         Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
@@ -1149,7 +1151,9 @@ export default function StatusScreen() {
               <View style={styles.receiptDivider} />
               <View style={styles.receiptRows}>
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptLabel}>Fahrtpreis (Taxameter):</Text>
+                  <Text style={styles.receiptLabel}>
+                    {customerFarePriceRowLabel(completedForCurrentRide?.pricingMode)}:
+                  </Text>
                   <Text style={[styles.receiptValue, driverFinalFare != null ? { color: "#22C55E" } : null]}>
                     {driverFinalFare != null ? formatEuro(driverFinalFare) : "—"}
                   </Text>

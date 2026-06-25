@@ -3,6 +3,7 @@ import type { RideRequest } from "../domain/rideRequest";
 import { findCompanyById } from "../db/adminData";
 import { getRideFinancialSnapshotByRideId } from "../db/rideFinancialsData";
 import type { ReceiptDriverInfo } from "./receiptDriverInfo";
+import { customerReceiptBruttoLabel } from "./ridePricingModeLabels";
 
 const DEFAULT_VAT_RATE = 0.19;
 
@@ -276,7 +277,7 @@ export function buildCustomerReceiptHtml(ctx: CustomerReceiptContext): string {
       <div class="tax-block">
         <div class="row"><div class="k">Netto</div><div class="v">${formatEuroHtml(tax.net)}</div></div>
         <div class="row"><div class="k">MwSt (${formatVatRatePercent(tax.vatRate)} %)</div><div class="v">${formatEuroHtml(tax.vatAmount)}</div></div>
-        <div class="row tax-gross"><div class="k">Brutto (Taxameter)</div><div class="v">${formatEuroHtml(tax.gross)}</div></div>
+        <div class="row tax-gross"><div class="k">${escapeHtml(customerReceiptBruttoLabel(r.pricingMode))}</div><div class="v">${formatEuroHtml(tax.gross)}</div></div>
         ${tax.fallbackNote ? `<p class="tax-note">${escapeHtml(tax.fallbackNote)}</p>` : ""}
       </div>`
       : "";

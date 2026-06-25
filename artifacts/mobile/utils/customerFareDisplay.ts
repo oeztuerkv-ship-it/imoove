@@ -2,6 +2,31 @@ import type { VehicleType } from "@/context/RideContext";
 import type { FareEstimateApiBreakdown, FareEstimateApiResult } from "@/utils/fareEstimateApi";
 
 export const CUSTOMER_TAXAMETER_LABEL = "Taxameter";
+export const CUSTOMER_FIXED_PRICE_LABEL = "Festpreis";
+
+export function isRideFixedPrice(pricingMode: string | null | undefined): boolean {
+  return String(pricingMode ?? "").trim() === "fixed_price";
+}
+
+/** Kurzlabel für Abrechnungsart (Taxameter vs. Festpreis). */
+export function customerFareModeLabel(pricingMode: string | null | undefined): string {
+  return isRideFixedPrice(pricingMode) ? CUSTOMER_FIXED_PRICE_LABEL : CUSTOMER_TAXAMETER_LABEL;
+}
+
+/** Zeile „Fahrtpreis (…)“ in Kunden-UI. */
+export function customerFarePriceRowLabel(pricingMode: string | null | undefined): string {
+  return `Fahrtpreis (${customerFareModeLabel(pricingMode)})`;
+}
+
+/** Brutto-Zeile in Quittungs-PDF/HTML (API-Spiegel). */
+export function customerReceiptBruttoLabel(pricingMode: string | null | undefined): string {
+  return `Brutto (${customerFareModeLabel(pricingMode)})`;
+}
+
+/** Fahrer-Umsatzzeile „Fahrpreis (…)“. */
+export function driverEarningsFareLabel(pricingMode: string | null | undefined): string {
+  return `Fahrpreis (${customerFareModeLabel(pricingMode)})`;
+}
 
 export function isCustomerSurchargeVehicle(vehicle: string | null | undefined): boolean {
   const v = vehicleIdFromRideLabel(vehicle);

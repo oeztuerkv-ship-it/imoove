@@ -13,6 +13,7 @@ export type DriverRideEarnings = {
   toFull: string;
   vehicle: string;
   completedAt: string | null;
+  pricingMode: "taxi_tariff" | "fixed_price" | null;
 };
 
 export async function fetchFleetDriverRideEarnings(
@@ -49,6 +50,12 @@ export async function fetchFleetDriverRideEarnings(
       toFull: typeof data.toFull === "string" ? data.toFull : "",
       vehicle: typeof data.vehicle === "string" ? data.vehicle : "standard",
       completedAt: typeof data.completedAt === "string" ? data.completedAt : null,
+      pricingMode:
+        data.pricingMode === "fixed_price"
+          ? "fixed_price"
+          : data.pricingMode === "taxi_tariff"
+            ? "taxi_tariff"
+            : null,
     };
   } catch {
     return null;

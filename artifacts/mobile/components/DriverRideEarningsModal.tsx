@@ -9,6 +9,7 @@ import {
   formatDriverVehicleLabel,
   formatEuroDe,
 } from "@/utils/fleetDriverRideEarnings";
+import { driverEarningsFareLabel } from "@/utils/customerFareDisplay";
 
 type Props = {
   visible: boolean;
@@ -121,7 +122,7 @@ export function DriverRideEarningsModal({ visible, earnings, onClose }: Props) {
 
           <Text style={styles.sectionTitle}>Deine Umsätze</Text>
           <View style={styles.earningsCard}>
-            <EarningsRow label="Fahrpreis" value={formatEuroDe(earnings.gross)} />
+            <EarningsRow label={driverEarningsFareLabel(earnings.pricingMode)} value={formatEuroDe(earnings.gross)} />
             <Divider />
             <EarningsRow
               label="ONRODA-Provision"

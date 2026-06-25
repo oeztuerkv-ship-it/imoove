@@ -5,6 +5,7 @@ import {
   receiptDistanceKmLabel,
   type CustomerReceiptContext,
 } from "./customerReceipt.js";
+import { customerReceiptBruttoLabel } from "./ridePricingModeLabels.js";
 import type { ReceiptDriverInfo } from "./receiptDriverInfo.js";
 import type { RideRequest } from "../domain/rideRequest.js";
 import { ONRODA_INVOICE_BRAND } from "./invoice/invoiceBrand.js";
@@ -116,7 +117,7 @@ export function buildCustomerReceiptPdf(ctx: CustomerReceiptContext): Promise<Bu
       y += 4;
       y = drawRow(doc, "Netto", fmtEuro(tax.net), y, contentWidth);
       y = drawRow(doc, `MwSt (${fmtVatRatePercent(tax.vatRate)} %)`, fmtEuro(tax.vatAmount), y, contentWidth);
-      y = drawRow(doc, "Brutto (Taxameter)", fmtEuro(tax.gross), y, contentWidth);
+      y = drawRow(doc, customerReceiptBruttoLabel(r.pricingMode), fmtEuro(tax.gross), y, contentWidth);
       if (tax.fallbackNote) {
         doc.font("Helvetica").fontSize(9).fillColor("#b45309").text(tax.fallbackNote, 50, y, { width: contentWidth });
         y += 28;

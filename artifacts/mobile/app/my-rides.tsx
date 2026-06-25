@@ -28,7 +28,7 @@ import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
-import { CUSTOMER_TAXAMETER_LABEL } from "@/utils/customerFareDisplay";
+import { CUSTOMER_TAXAMETER_LABEL, customerFareModeLabel } from "@/utils/customerFareDisplay";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   CUSTOMER_RIDE_STATUS_CANCELLED_BY_SYSTEM,
@@ -466,6 +466,12 @@ function serverCompletedToHistoryEntry(r: RideRequest): RideHistoryEntry {
     actualDurationMinutes: r.actualDurationMinutes ?? null,
     totalFare: finalN ?? 0,
     estimatedFare: undefined,
+    pricingMode:
+      r.pricingMode === "fixed_price"
+        ? "fixed_price"
+        : r.pricingMode === "taxi_tariff"
+          ? "taxi_tariff"
+          : null,
     vehicleType: guessVehicleTypeFromRide(r.vehicle),
     paymentMethod: guessPaymentMethodFromRide(r.paymentMethod),
     scheduledTime: sched,
@@ -1150,7 +1156,9 @@ export default function MyRidesScreen() {
                       { value: PAYMENT_LABELS[ride.paymentMethod] },
                       {
                         value:
-                          Math.abs(ride.totalFare) >= 0.005 ? formatEuro(ride.totalFare) : "—",
+                          Math.abs(ride.totalFare) >= 0.005
+                            ? `${formatEuro(ride.totalFare)} · ${customerFareModeLabel(ride.pricingMode)}`
+                            : "—",
                       },
                     ]}
                   />

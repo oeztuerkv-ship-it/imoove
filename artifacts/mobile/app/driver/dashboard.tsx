@@ -42,6 +42,7 @@ import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
+import { CUSTOMER_FIXED_PRICE_LABEL, isRideFixedPrice } from "@/utils/customerFareDisplay";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
 import { setDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
 import {
@@ -1974,6 +1975,7 @@ function ActiveRideScreen({
   }, [showPriceModal, req.status]);
 
   const isKK = isKrankenkasseRide(req.paymentMethod);
+  const isFixedPrice = isRideFixedPrice(req.pricingMode);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
   const customerNoteLine = customerDriverNoteLine(req);
@@ -2293,12 +2295,16 @@ function ActiveRideScreen({
               <View style={activeStyles.fareBox}>
                 <Text style={activeStyles.fareLabel}>ca. Preis (brutto)</Text>
                 <Text style={activeStyles.fareValue}>{formatEuro(req.estimatedFare)}</Text>
-                <Text style={activeStyles.fareBruttoHint}>inkl. MwSt. · Taxameter am Ende</Text>
+                <Text style={activeStyles.fareBruttoHint}>
+                  {isFixedPrice ? `inkl. MwSt. · ${CUSTOMER_FIXED_PRICE_LABEL}` : "inkl. MwSt. · Taxameter am Ende"}
+                </Text>
               </View>
             ) : (
               <View style={[activeStyles.fareBox, { alignItems: "flex-start" }]}>
                 <Text style={activeStyles.fareLabel}>Abrechnung</Text>
-                <Text style={[activeStyles.fareValue, { fontSize: 14 }]}>Nach Taxameter</Text>
+                <Text style={[activeStyles.fareValue, { fontSize: 14 }]}>
+                  {isFixedPrice ? CUSTOMER_FIXED_PRICE_LABEL : "Nach Taxameter"}
+                </Text>
                 <Text style={activeStyles.fareBruttoHint}>Schätzpreis erst nach Fahrtbeginn</Text>
               </View>
             )

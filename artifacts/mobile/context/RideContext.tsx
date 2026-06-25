@@ -84,6 +84,8 @@ export interface RideHistoryEntry {
   totalFare: number;
   /** Schätzpreis zur Buchung — nur gesetzt wenn sich von `totalFare` unterscheidet (z. B. Fahrer-Endpreis). */
   estimatedFare?: number;
+  /** Abrechnungsart aus API (`fixed_price` | `taxi_tariff`). */
+  pricingMode?: "taxi_tariff" | "fixed_price" | null;
   vehicleType: VehicleType;
   paymentMethod: PaymentMethod;
   scheduledTime: string | null;
@@ -97,6 +99,7 @@ export type CompleteRideOptions = {
   serverRideId?: string;
   /** Schätzung (z. B. `estimatedFare` der Ride), für Anzeige „Schätzung war …“ */
   estimatedFare?: number | null;
+  pricingMode?: "taxi_tariff" | "fixed_price" | null;
 };
 
 export type RideStatus = "idle" | "searching" | "active" | "completed";
@@ -374,6 +377,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
           distanceKm: route.distanceKm,
           totalFare: parsedFinal ?? 0,
           estimatedFare: undefined,
+          pricingMode: opts?.pricingMode ?? null,
           vehicleType: selectedVehicle!,
           paymentMethod: paymentMethod ?? "cash",
           scheduledTime: scheduledTime?.toISOString() ?? null,

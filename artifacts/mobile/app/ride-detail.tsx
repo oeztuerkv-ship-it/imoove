@@ -20,6 +20,7 @@ import { useColors } from "@/hooks/useColors";
 import { useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { formatEuro } from "@/utils/fareCalculator";
+import { customerFarePriceRowLabel } from "@/utils/customerFareDisplay";
 import { downloadReceipt } from "@/utils/receipt";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { rs } from "@/utils/scale";
@@ -71,6 +72,7 @@ export default function RideDetailScreen() {
       actualDistanceKm: srv.actualDistanceKm ?? histRide.actualDistanceKm ?? null,
       actualDurationMinutes: srv.actualDurationMinutes ?? histRide.actualDurationMinutes ?? null,
       estimatedFare: undefined,
+      pricingMode: srv.pricingMode ?? histRide.pricingMode ?? null,
     };
   }, [histRide, requests]);
 
@@ -278,7 +280,9 @@ export default function RideDetailScreen() {
 
           {enrichedHistRide?.status === "completed" ? (
             <View style={styles.row}>
-              <Text style={[styles.k, { color: colors.mutedForeground }]}>Fahrtpreis (Taxameter)</Text>
+              <Text style={[styles.k, { color: colors.mutedForeground }]}>
+                {customerFarePriceRowLabel(enrichedHistRide?.pricingMode ?? completedSrv?.pricingMode)}
+              </Text>
               <Text style={[styles.v, { color: colors.foreground }]}>
                 {Math.abs(enrichedHistRide.totalFare) >= 0.005 ? formatEuro(enrichedHistRide.totalFare) : "—"}
               </Text>
