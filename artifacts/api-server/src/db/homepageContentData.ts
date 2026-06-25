@@ -203,7 +203,7 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   aboutTagline: "ONRODA – Mobilität neu organisiert.",
   navPromo: {
     label: "Fixpreise",
-    href: "#fixpreise",
+    href: "/fixpreise",
     isActive: true,
     badge: "",
     highlight: true,
@@ -212,7 +212,7 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
     title: "Festpreis-Fahrten",
     body: "Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.",
     ctaText: "Jetzt in der App buchen",
-    ctaLink: "#jetzt-buchen",
+    ctaLink: "/#jetzt-buchen",
     isActive: true,
   },
 };

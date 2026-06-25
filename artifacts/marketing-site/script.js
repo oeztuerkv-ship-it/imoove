@@ -231,52 +231,71 @@
         });
     }
 
-    function applyHomepageNavAndFixpreis(item) {
+    function applyNavPromo(item) {
       var navLink = document.getElementById("hp-nav-promo-fixpreise");
       var navLabel = document.getElementById("hp-nav-promo-fixpreise-label");
       var navBadge = document.getElementById("hp-nav-promo-fixpreise-badge");
       var promo = item && item.navPromo ? item.navPromo : null;
-      if (navLink) {
-        var defaultLabel = navLabel ? navLabel.textContent || "Fixpreise" : "Fixpreise";
-        var defaultHref = navLink.getAttribute("href") || "#fixpreise";
-        var active = promo ? promo.isActive !== false : true;
-        if (!active) {
-          navLink.setAttribute("hidden", "hidden");
+      if (!navLink) return;
+      var defaultLabel = navLabel ? navLabel.textContent || "Fixpreise" : "Fixpreise";
+      var defaultHref = navLink.getAttribute("href") || "/fixpreise";
+      var active = promo ? promo.isActive !== false : true;
+      if (!active) {
+        navLink.setAttribute("hidden", "hidden");
+        return;
+      }
+      navLink.removeAttribute("hidden");
+      if (navLabel) {
+        navLabel.textContent = pickCms(promo && promo.label, defaultLabel);
+      }
+      navLink.setAttribute("href", String(promo && promo.href ? promo.href : defaultHref));
+      if (promo && promo.highlight === false) {
+        navLink.classList.remove("hp-nav-link--highlight");
+      } else {
+        navLink.classList.add("hp-nav-link--highlight");
+      }
+      if (navBadge) {
+        var badgeText = promo && promo.badge ? String(promo.badge).trim() : "";
+        if (badgeText) {
+          navBadge.textContent = badgeText;
+          navBadge.removeAttribute("hidden");
         } else {
-          navLink.removeAttribute("hidden");
-          if (navLabel) {
-            navLabel.textContent = pickCms(promo && promo.label, defaultLabel);
-          }
-          navLink.setAttribute("href", String(promo && promo.href ? promo.href : defaultHref));
-          if (promo && promo.highlight === false) {
-            navLink.classList.remove("hp-nav-link--highlight");
-          } else {
-            navLink.classList.add("hp-nav-link--highlight");
-          }
-          if (navBadge) {
-            var badgeText = promo && promo.badge ? String(promo.badge).trim() : "";
-            if (badgeText) {
-              navBadge.textContent = badgeText;
-              navBadge.removeAttribute("hidden");
-            } else {
-              navBadge.textContent = "";
-              navBadge.setAttribute("hidden", "hidden");
-            }
-          }
+          navBadge.textContent = "";
+          navBadge.setAttribute("hidden", "hidden");
         }
       }
-      var section = document.getElementById("fixpreise");
-      var titleEl = document.getElementById("fixpreis-title");
-      var bodyEl = document.getElementById("fixpreis-body");
-      var ctaEl = document.getElementById("fixpreis-cta");
+    }
+
+    function applyFixpreisSection(item) {
       var block = item && item.fixpreisSection ? item.fixpreisSection : null;
+      var titleIds = ["fixpreis-page-title", "fixpreis-title"];
+      var bodyIds = ["fixpreis-page-body", "fixpreis-body"];
+      var ctaIds = ["fixpreis-page-cta", "fixpreis-cta"];
+      var section = document.getElementById("fixpreise");
+      var pageHero = document.querySelector(".hp-fixpreis-page__hero");
+      var sectionActive = block ? block.isActive !== false : true;
       if (section) {
-        var sectionActive = block ? block.isActive !== false : true;
         if (!sectionActive) {
           section.setAttribute("hidden", "hidden");
-          return;
+        } else {
+          section.removeAttribute("hidden");
         }
-        section.removeAttribute("hidden");
+      }
+      if (pageHero && !sectionActive) {
+        window.location.replace("/");
+        return;
+      }
+      var titleEl = null;
+      var bodyEl = null;
+      var ctaEl = null;
+      for (var ti = 0; ti < titleIds.length; ti++) {
+        if (!titleEl) titleEl = document.getElementById(titleIds[ti]);
+      }
+      for (var bi = 0; bi < bodyIds.length; bi++) {
+        if (!bodyEl) bodyEl = document.getElementById(bodyIds[bi]);
+      }
+      for (var ci = 0; ci < ctaIds.length; ci++) {
+        if (!ctaEl) ctaEl = document.getElementById(ctaIds[ci]);
       }
       if (titleEl) {
         titleEl.textContent = pickCms(block && block.title, titleEl.textContent || "");
@@ -286,10 +305,35 @@
       }
       if (ctaEl) {
         var defaultCtaText = ctaEl.textContent || "";
-        var defaultCtaHref = ctaEl.getAttribute("href") || "#jetzt-buchen";
+        var defaultCtaHref = ctaEl.getAttribute("href") || "/#jetzt-buchen";
         ctaEl.textContent = pickCms(block && block.ctaText, defaultCtaText);
         ctaEl.setAttribute("href", String(block && block.ctaLink ? block.ctaLink : defaultCtaHref));
       }
+    }
+
+    function applyHomepageNavAndFixpreis(item) {
+      applyNavPromo(item);
+      applyFixpreisSection(item);
+    }
+
+    function loadFixpreisePageContent() {
+      if (!document.getElementById("fixpreis-page-title")) return;
+      var host = window.location.hostname;
+      if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
+        return;
+      }
+      var url = publicApiBase() + "/public/homepage-content";
+      fetch(url, { method: "GET", credentials: "omit" })
+        .then(function (res) {
+          if (!res.ok) return { ok: false, item: null };
+          return res.json().catch(function () { return { ok: false, item: null }; });
+        })
+        .then(function (data) {
+          var item = data && data.ok ? data.item : null;
+          applyNavPromo(item);
+          applyFixpreisSection(item);
+        })
+        .catch(function () {});
     }
 
     function loadHomepageContent() {
@@ -490,7 +534,7 @@
               aboutBulletsEl.appendChild(liEl);
             }
           }
-          applyHomepageNavAndFixpreis(item);
+          applyNavPromo(item);
           renderHomepageBanners(item);
         })
         .catch(function () {
@@ -676,6 +720,7 @@
 
     loadHomepageContent();
     loadAboutPageContent();
+    loadFixpreisePageContent();
     loadHomepageModules();
 
     function motionModalLog() {

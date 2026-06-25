@@ -203,6 +203,45 @@
       margin: 1.25rem 0 0;
     }
 
+    .hp-fixpreis-actions--row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hp-fixpreis-page__hero {
+      min-height: calc(100vh - 220px);
+      display: flex;
+      align-items: center;
+      padding-top: 3rem;
+      padding-bottom: 3rem;
+    }
+
+    .hp-fixpreis-page__footer {
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      padding: 1.25rem 0 2rem;
+    }
+
+    .hp-fixpreis-page__footer .hp-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .hp-fixpreis-page__footer a {
+      color: #334155;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .hp-fixpreis-page__footer a:hover {
+      color: var(--onroda-red);
+    }
+
     .hp-nav-dropdown {
       position: relative;
     }

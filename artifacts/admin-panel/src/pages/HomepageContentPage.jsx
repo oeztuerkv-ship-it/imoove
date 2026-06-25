@@ -93,7 +93,7 @@ function mergeAboutBullets(incoming) {
 
 const defaultNavPromo = () => ({
   label: "Fixpreise",
-  href: "#fixpreise",
+  href: "/fixpreise",
   isActive: true,
   badge: "",
   highlight: true,
@@ -103,7 +103,7 @@ const defaultFixpreisSection = () => ({
   title: "Festpreis-Fahrten",
   body: "Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.",
   ctaText: "Jetzt in der App buchen",
-  ctaLink: "#jetzt-buchen",
+  ctaLink: "/#jetzt-buchen",
   isActive: true,
 });
 
@@ -355,7 +355,7 @@ export default function HomepageContentPage() {
               />
             </label>
             <label className="admin-form-pair">
-              <span className="admin-field-label">Ziel (URL oder Anker, z. B. #fixpreise)</span>
+              <span className="admin-field-label">Ziel (URL, z. B. /fixpreise)</span>
               <input
                 className="admin-input"
                 value={form.navPromo.href}
@@ -383,7 +383,7 @@ export default function HomepageContentPage() {
           </div>
 
           <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
-            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Bereich #fixpreise auf der Startseite</div>
+            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Seite /fixpreise (Inhalt)</div>
             <label className="admin-inline-check">
               <input
                 type="checkbox"

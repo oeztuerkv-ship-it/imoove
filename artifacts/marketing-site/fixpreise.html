@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="onroda-public-api-base" content="https://api.onroda.de/api" />
+  <link rel="icon" type="image/png" href="/onroda-logo-transparent.png" />
+  <title>Fixpreise | ONRODA – Festpreis-Fahrten</title>
+  <meta
+    name="description"
+    content="Transparente Festpreise für Taxi-Fahrten außerhalb des Pflichtfahrgebiets — in der ONRODA App buchen oder Festpreis-Gutschein über Partner."
+  />
+  <link rel="stylesheet" href="/onroda-brand.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body class="hp-fixpreis-page">
+  <header class="hp-header" id="site-header">
+    <div class="hp-wrap hp-header-inner">
+      <a class="hp-logo" href="/" aria-label="ONRODA – Startseite">
+        <img class="hp-brand-logo" src="/onroda-logo-transparent.png" width="196" height="74" alt="ONRODA" decoding="async" />
+      </a>
+
+      <nav class="hp-nav" id="hp-primary-nav" aria-label="Hauptnavigation">
+        <a class="hp-nav-link hp-nav-link--promo hp-nav-link--highlight" id="hp-nav-promo-fixpreise" href="/fixpreise" aria-current="page">
+          <span id="hp-nav-promo-fixpreise-label">Fixpreise</span>
+          <span class="hp-nav-promo-badge" id="hp-nav-promo-fixpreise-badge" hidden></span>
+        </a>
+        <a class="hp-nav-link" href="/#fuer-wen">Fahrgäste</a>
+        <a class="hp-nav-link" href="/#unternehmen">Unternehmen</a>
+        <a class="hp-nav-link" href="/#unternehmen">Hotels &amp; Firmen</a>
+        <a class="hp-nav-link" href="/#care">Krankenfahrten</a>
+        <a class="hp-nav-link" href="/#partner">Partner &amp; Betriebe</a>
+        <a class="hp-nav-link" href="/ueber-onroda">Über ONRODA</a>
+      </nav>
+
+      <div class="hp-header-actions">
+        <a class="hp-header-legal" href="/datenschutz">Datenschutz</a>
+        <a class="hp-header-legal" href="/impressum">Impressum</a>
+        <a class="hp-header-legal" href="/agb">AGB</a>
+        <a class="hp-topbar-btn hp-topbar-btn--header" href="https://panel.onroda.de/" rel="noopener noreferrer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span class="hp-topbar-btn__label">Partner-Login</span>
+        </a>
+      </div>
+
+      <div class="hp-header-tools">
+        <button type="button" class="hp-nav-toggle" id="hp-nav-toggle" aria-expanded="false" aria-controls="hp-primary-nav">
+          <span class="visually-hidden">Menü</span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hp-section hp-section--fixpreis hp-fixpreis-page__hero" aria-labelledby="fixpreis-page-title">
+      <div class="hp-wrap">
+        <div class="hp-section-head">
+          <h1 id="fixpreis-page-title">Festpreis-Fahrten</h1>
+          <p class="hp-sub" id="fixpreis-page-body">
+            Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.
+          </p>
+          <div class="hp-fixpreis-actions hp-fixpreis-actions--row">
+            <a class="hp-btn-primary" id="fixpreis-page-cta" href="/#jetzt-buchen">Jetzt in der App buchen</a>
+            <a class="hp-btn-ghost" href="/">Zur Startseite</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="hp-fixpreis-page__footer">
+    <div class="hp-wrap">
+      <a href="/impressum">Impressum</a>
+      <a href="/datenschutz">Datenschutz</a>
+      <a href="/agb">AGB</a>
+    </div>
+  </footer>
+
+  <script src="/script.js" defer></script>
+  <script src="/analytics.js" defer></script>
+</body>
+</html>
