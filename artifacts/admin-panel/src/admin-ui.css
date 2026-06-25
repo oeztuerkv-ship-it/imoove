@@ -1428,6 +1428,89 @@
   max-width: 100%;
 }
 
+.homepage-cms-preview {
+  margin: 0 0 16px;
+  border: 1px solid var(--onroda-border-outline);
+  border-radius: var(--onroda-radius-md, 8px);
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.homepage-cms-preview--split {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+}
+
+.homepage-cms-preview__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.homepage-cms-preview__frame {
+  width: 100%;
+  height: min(72vh, 920px);
+  border: 0;
+  background: #fff;
+}
+
+.homepage-cms-preview--split .homepage-cms-preview__frame {
+  height: calc(100vh - 120px);
+}
+
+.homepage-cms-page-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.homepage-cms-page-layout--split {
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .homepage-cms-page-layout--split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.homepage-icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.homepage-icon-picker-grid__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--onroda-border-outline);
+  background: var(--onroda-bg-app);
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.homepage-icon-picker-grid__btn.is-active {
+  border-color: var(--onroda-red);
+  box-shadow: 0 0 0 1px var(--onroda-red);
+}
+
+.homepage-icon-picker-grid__label {
+  font-size: 0.68rem;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.2;
+}
+
 .admin-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;

@@ -8,6 +8,16 @@ import FixpreisLandingEditor, {
   mergeFixpreisSection,
   mergeNavPromo,
 } from "../components/FixpreisLandingEditor.jsx";
+import HomepageCmsPreview from "../components/HomepageCmsPreview.jsx";
+import HomepageSectionThemeFields from "../components/HomepageSectionThemeFields.jsx";
+import HomepageSiteBrandingFields from "../components/HomepageSiteBrandingFields.jsx";
+import IconPickerField from "../components/IconPickerField.jsx";
+import {
+  defaultHomepageSectionThemes,
+  defaultHomepageSiteBranding,
+  mergeHomepageSectionThemes,
+  mergeHomepageSiteBranding,
+} from "../lib/homepageSectionThemeDefaults.js";
 
 const URL = `${API_BASE}/admin/homepage-content`;
 const FAQ_URL = `${API_BASE}/admin/homepage-faq`;
@@ -131,7 +141,11 @@ export default function HomepageContentPage() {
     aboutTagline: "",
     navPromo: defaultNavPromo(),
     fixpreisSection: defaultFixpreisSection(),
+    siteBranding: defaultHomepageSiteBranding(),
+    sectionThemes: defaultHomepageSectionThemes(),
   });
+  const [previewSplit, setPreviewSplit] = useState(false);
+  const [previewPath, setPreviewPath] = useState("/");
   const [faqItems, setFaqItems] = useState([]);
   const [howItems, setHowItems] = useState([]);
   const [trustItems, setTrustItems] = useState([]);
@@ -181,6 +195,8 @@ export default function HomepageContentPage() {
         aboutTagline: item.aboutTagline || "",
         navPromo: mergeNavPromo(item.navPromo),
         fixpreisSection: mergeFixpreisSection(item.fixpreisSection),
+        siteBranding: mergeHomepageSiteBranding(item.siteBranding),
+        sectionThemes: mergeHomepageSectionThemes(item.sectionThemes),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unbekannter Fehler");
@@ -278,6 +294,8 @@ export default function HomepageContentPage() {
           aboutTagline: form.aboutTagline,
           navPromo: form.navPromo,
           fixpreisSection: form.fixpreisSection,
+          siteBranding: form.siteBranding,
+          sectionThemes: form.sectionThemes,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -295,9 +313,32 @@ export default function HomepageContentPage() {
       {error ? <div className="admin-error-banner">{error}</div> : null}
       {okMsg ? <div className="admin-info-banner">{okMsg}</div> : null}
 
+      <div className="admin-toolbar-row" style={{ marginBottom: 12 }}>
+        <button
+          type="button"
+          className={`admin-btn admin-btn--secondary${previewSplit ? " is-active" : ""}`}
+          onClick={() => setPreviewSplit((v) => !v)}
+        >
+          {previewSplit ? "Vorschau neben Editor" : "Vorschau einblenden"}
+        </button>
+        <label className="admin-form-pair" style={{ margin: 0 }}>
+          <span className="admin-field-label">Vorschau-Seite</span>
+          <select className="admin-input" value={previewPath} onChange={(e) => setPreviewPath(e.target.value)}>
+            <option value="/">Startseite</option>
+            <option value="/fixpreise/">Fixpreise</option>
+          </select>
+        </label>
+      </div>
+
+      <div className={`homepage-cms-page-layout${previewSplit ? " homepage-cms-page-layout--split" : ""}`}>
+        <div>
       <div className="admin-panel-card">
         <div className="admin-panel-card__title">Homepage-Inhalte (Marketing)</div>
         <form className="admin-form-vertical" onSubmit={onSave}>
+          <HomepageSiteBrandingFields
+            branding={form.siteBranding}
+            onChange={(siteBranding) => setForm((p) => ({ ...p, siteBranding }))}
+          />
           <FixpreisLandingEditor
             navPromo={form.navPromo}
             fixpreisSection={form.fixpreisSection}
@@ -313,6 +354,11 @@ export default function HomepageContentPage() {
               onChange={(e) => setForm((p) => ({ ...p, section2Title: e.target.value }))}
             />
           </label>
+          <HomepageSectionThemeFields
+            title="Section 2 (Für wen)"
+            theme={form.sectionThemes.section2}
+            onChange={(section2) => setForm((p) => ({ ...p, sectionThemes: { ...p.sectionThemes, section2 } }))}
+          />
           <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
             <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Section 2 Boxen (max. 4)</div>
             <div className="admin-form-vertical">
@@ -320,20 +366,17 @@ export default function HomepageContentPage() {
                 <div key={`s2-card-${idx}`} className="admin-panel-card" style={{ padding: 12 }}>
                   <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Box {idx + 1}</div>
                   <div className="admin-form-grid-2">
-                    <label className="admin-form-pair">
-                      <span className="admin-field-label">Icon (Emoji)</span>
-                      <input
-                        className="admin-input"
-                        value={card.icon}
-                        onChange={(e) =>
-                          setForm((p) => {
-                            const next = [...p.section2Cards];
-                            next[idx] = { ...next[idx], icon: e.target.value };
-                            return { ...p, section2Cards: next };
-                          })
-                        }
-                      />
-                    </label>
+                    <IconPickerField
+                      label="Icon"
+                      value={card.icon}
+                      onChange={(icon) =>
+                        setForm((p) => {
+                          const next = [...p.section2Cards];
+                          next[idx] = { ...next[idx], icon };
+                          return { ...p, section2Cards: next };
+                        })
+                      }
+                    />
                     <label className="admin-inline-check">
                       <input
                         type="checkbox"
@@ -440,24 +483,26 @@ export default function HomepageContentPage() {
                   onChange={(e) => setForm((p) => ({ ...p, servicesSubline: e.target.value }))}
                 />
               </label>
+              <HomepageSectionThemeFields
+                title="Leistungen (Services)"
+                theme={form.sectionThemes.services}
+                onChange={(services) => setForm((p) => ({ ...p, sectionThemes: { ...p.sectionThemes, services } }))}
+              />
               {form.servicesCards.map((card, idx) => (
                 <div key={`svc-${idx}`} className="admin-panel-card" style={{ padding: 12 }}>
                   <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Service {idx + 1}</div>
                   <div className="admin-form-grid-2">
-                    <label className="admin-form-pair">
-                      <span className="admin-field-label">Icon</span>
-                      <input
-                        className="admin-input"
-                        value={card.icon}
-                        onChange={(e) =>
-                          setForm((p) => {
-                            const next = [...p.servicesCards];
-                            next[idx] = { ...next[idx], icon: e.target.value };
-                            return { ...p, servicesCards: next };
-                          })
-                        }
-                      />
-                    </label>
+                    <IconPickerField
+                      label="Icon"
+                      value={card.icon}
+                      onChange={(icon) =>
+                        setForm((p) => {
+                          const next = [...p.servicesCards];
+                          next[idx] = { ...next[idx], icon };
+                          return { ...p, servicesCards: next };
+                        })
+                      }
+                    />
                     <label className="admin-inline-check">
                       <input
                         type="checkbox"
@@ -535,6 +580,11 @@ export default function HomepageContentPage() {
                   onChange={(e) => setForm((p) => ({ ...p, manifestSubline: e.target.value }))}
                 />
               </label>
+              <HomepageSectionThemeFields
+                title="Manifest"
+                theme={form.sectionThemes.manifest}
+                onChange={(manifest) => setForm((p) => ({ ...p, sectionThemes: { ...p.sectionThemes, manifest } }))}
+              />
               {form.manifestCards.map((card, idx) => (
                 <div key={`man-${idx}`} className="admin-panel-card" style={{ padding: 12 }}>
                   <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Punkt {idx + 1}</div>
@@ -553,20 +603,17 @@ export default function HomepageContentPage() {
                         }
                       />
                     </label>
-                    <label className="admin-form-pair">
-                      <span className="admin-field-label">Icon</span>
-                      <input
-                        className="admin-input"
-                        value={card.icon}
-                        onChange={(e) =>
-                          setForm((p) => {
-                            const next = [...p.manifestCards];
-                            next[idx] = { ...next[idx], icon: e.target.value };
-                            return { ...p, manifestCards: next };
-                          })
-                        }
-                      />
-                    </label>
+                    <IconPickerField
+                      label="Icon"
+                      value={card.icon}
+                      onChange={(icon) =>
+                        setForm((p) => {
+                          const next = [...p.manifestCards];
+                          next[idx] = { ...next[idx], icon };
+                          return { ...p, manifestCards: next };
+                        })
+                      }
+                    />
                     <label className="admin-inline-check" style={{ gridColumn: "1 / -1" }}>
                       <input
                         type="checkbox"
@@ -742,6 +789,11 @@ export default function HomepageContentPage() {
               onChange={(e) => setForm((p) => ({ ...p, heroHeadline: e.target.value }))}
             />
           </label>
+          <HomepageSectionThemeFields
+            title="Hero"
+            theme={form.sectionThemes.hero}
+            onChange={(hero) => setForm((p) => ({ ...p, sectionThemes: { ...p.sectionThemes, hero } }))}
+          />
           <label className="admin-form-pair">
             <span className="admin-field-label">Hero-Subline</span>
             <textarea
@@ -990,6 +1042,17 @@ export default function HomepageContentPage() {
             <button className="admin-btn-primary" type="button" onClick={async () => { try { await createModuleItem(TRUST_URL, trustDraft); setTrustDraft({ value: "", label: "", description: "", sortOrder: 10, isActive: true }); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "KPI erstellen fehlgeschlagen"); } }}>KPI hinzufügen</button>
           </div>
         </div>
+      </div>
+        </div>
+        {previewSplit ? (
+          <HomepageCmsPreview
+            form={form}
+            faqItems={faqItems}
+            trustItems={trustItems}
+            previewPath={previewPath}
+            split
+          />
+        ) : null}
       </div>
     </div>
   );

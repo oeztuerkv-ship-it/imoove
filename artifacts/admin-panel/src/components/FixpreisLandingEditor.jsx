@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import IconPickerField from "./IconPickerField.jsx";
 
 const UPLOAD_URL = `${API_BASE}/admin/homepage-marketing-assets`;
 const HOMEPAGE_URL = `${API_BASE}/admin/homepage-content`;
@@ -421,10 +422,11 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
                   <div className="admin-field-label" style={{ marginBottom: 6 }}>{panelKindLabel[panel.kind] || "Einträge"}</div>
                   {(panel.items || []).map((item, iIdx) => (
                     <div key={`fp-item-${pIdx}-${iIdx}`} className="admin-form-grid-2" style={{ marginBottom: 8, alignItems: "end" }}>
-                      <label className="admin-form-pair">
-                        <span className="admin-field-label">Icon</span>
-                        <input className="admin-input" value={item.icon} onChange={(e) => setPanelItem(pIdx, iIdx, { icon: e.target.value })} placeholder="🚕" />
-                      </label>
+                      <IconPickerField
+                        label="Icon"
+                        value={item.icon}
+                        onChange={(icon) => setPanelItem(pIdx, iIdx, { icon })}
+                      />
                       <label className="admin-form-pair">
                         <span className="admin-field-label">{panel.kind === "routes" ? "Strecke" : "Text"}</span>
                         <input className="admin-input" value={item.primary} onChange={(e) => setPanelItem(pIdx, iIdx, { primary: e.target.value })} placeholder="Flughafen Stuttgart ↔ Böblingen" />
@@ -483,10 +485,11 @@ export default function FixpreisLandingEditor({ navPromo, fixpreisSection, onNav
           {fixpreisSection.promoBlocks.map((block, idx) => (
             <div key={`fpb-${idx}`} className="admin-panel-card" style={{ padding: 10, marginTop: 8 }}>
               <div className="admin-form-grid-2">
-                <label className="admin-form-pair">
-                  <span className="admin-field-label">Icon</span>
-                  <input className="admin-input" value={block.icon} onChange={(e) => setBlock(idx, { icon: e.target.value })} />
-                </label>
+                <IconPickerField
+                  label="Icon"
+                  value={block.icon}
+                  onChange={(icon) => setBlock(idx, { icon })}
+                />
                 <label className="admin-inline-check">
                   <input type="checkbox" checked={block.isActive} onChange={(e) => setBlock(idx, { isActive: e.target.checked })} />
                   <span>Aktiv</span>
