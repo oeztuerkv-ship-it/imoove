@@ -328,7 +328,7 @@ const PAGE_META = {
   },
   "server-status": {
     title: "Server-Status",
-    subtitle: "CPU, RAM, Festplatte (Netdata) und PM2-Prozesse des Produktionsservers",
+    subtitle: "CPU, RAM, Netzwerk, PostgreSQL, PM2 und Live-Kennzahlen der Plattform",
   },
   "customer-accounts": {
     title: "Kundenkonten (App)",

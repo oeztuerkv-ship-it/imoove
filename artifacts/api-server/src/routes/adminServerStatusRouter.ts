@@ -4,7 +4,7 @@ import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 
 const router = Router();
 
-/** GET /admin/server-status — Netdata-Metriken + PM2-Prozesse (nur Plattform-Admin). */
+/** GET /admin/server-status — Netdata, PostgreSQL, PM2, Live-Plattform-Kennzahlen (nur Plattform-Admin). */
 router.get("/admin/server-status", requireAdminApiBearer, async (_req, res, next) => {
   try {
     const status = await collectServerStatusSnapshot();
