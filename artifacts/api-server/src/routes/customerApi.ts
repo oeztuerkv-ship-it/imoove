@@ -23,6 +23,7 @@ import {
   requireCustomerSession,
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
+import { logger } from "../lib/logger";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
@@ -146,6 +147,17 @@ router.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req
       cancelReason,
     );
     if (!result.ok) {
+      logger.info(
+        {
+          event: "auth.customer.ride_cancel.failed",
+          rideId,
+          error: result.error,
+          status: result.status,
+          from: result.from,
+          to: result.to,
+        },
+        "customer ride cancel rejected",
+      );
       res.status(result.status).json({
         error: result.error,
         ...(result.message ? { message: result.message } : {}),

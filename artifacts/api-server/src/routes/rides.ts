@@ -2130,11 +2130,10 @@ export async function patchRideStatusRoute(
       res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
       return;
     }
-    const cancelReasonClean = typeof cancelReason === "string" ? cancelReason.trim() : "";
-    if (nextStatus === "cancelled_by_customer" && !cancelReasonClean) {
-      res.status(400).json({ error: "cancel_reason_required" });
-      return;
-    }
+    const cancelReasonClean =
+      typeof cancelReason === "string" && cancelReason.trim().length > 0
+        ? cancelReason.trim()
+        : "Storno durch Kunden-App (kein Grund übermittelt)";
     const bodyDriverIdTrim = typeof driverId === "string" ? driverId.trim() : "";
     const actor = await resolveRideMutateActor(req);
     const gate = authorizePatchRideStatusForActor(nextStatus, cur, actor, {
@@ -2881,9 +2880,9 @@ export async function cancelRideForVerifiedCustomerSession(
 ): Promise<CustomerRideCancelResult> {
   const id = rideId.trim();
   const pax = passengerGoogleId.trim();
-  const cancelReasonClean = cancelReason.trim();
+  const cancelReasonClean =
+    cancelReason.trim() || "Storno durch Kunden-App (kein Grund übermittelt)";
   if (!id || !pax) return { ok: false, status: 400, error: "ride_id_required" };
-  if (!cancelReasonClean) return { ok: false, status: 400, error: "cancel_reason_required" };
 
   const cur = await findRideForPassenger(id, pax);
   if (!cur) return { ok: false, status: 404, error: "not_found" };

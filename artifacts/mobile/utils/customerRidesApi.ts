@@ -72,17 +72,41 @@ export function pickRideIdForStripeLink(rides: CustomerRideListItem[]): string |
   return any?.id?.trim() ?? null;
 }
 
-export async function cancelCustomerRide(authToken: string | null | undefined, rideId: string): Promise<void> {
+export async function cancelCustomerRide(
+  authToken: string | null | undefined,
+  rideId: string,
+  cancelReason?: string,
+): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
   const token = (await resolveCustomerBearerToken(authToken)) ?? "";
   const id = rideId.trim();
   const apiBase = getApiBaseUrl();
-  if (!token || !id || !apiBase) return;
-  await fetch(`${apiBase}/customer/v1/rides/${encodeURIComponent(id)}/cancel`, {
+  if (!token || !id || !apiBase) {
+    return { ok: false, error: "api_not_configured", status: 503 };
+  }
+  const reason =
+    typeof cancelReason === "string" && cancelReason.trim().length > 0
+      ? cancelReason.trim()
+      : "Storno durch Kunden-App";
+  const res = await fetch(`${apiBase}/customer/v1/rides/${encodeURIComponent(id)}/cancel`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({}),
-  }).catch(() => undefined);
+    body: JSON.stringify({ cancelReason: reason }),
+  }).catch(() => null);
+  if (!res) {
+    return { ok: false, error: "network_error", status: 0 };
+  }
+  if (!res.ok) {
+    let error = "cancel_failed";
+    try {
+      const body = (await res.json()) as { error?: unknown };
+      if (typeof body.error === "string" && body.error.trim()) error = body.error.trim();
+    } catch {
+      /* ignore */
+    }
+    return { ok: false, error, status: res.status };
+  }
+  return { ok: true };
 }

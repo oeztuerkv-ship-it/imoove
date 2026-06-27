@@ -698,6 +698,9 @@ function stornoErrorUserMessage(code: string): string | undefined {
   if (code === "status_transition_invalid") {
     return "Diese Fahrt kann im aktuellen Status nicht mehr storniert werden.";
   }
+  if (code === "cancel_reason_required") {
+    return "Storno konnte nicht gespeichert werden — bitte erneut versuchen.";
+  }
   return undefined;
 }
 
@@ -1191,25 +1194,25 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         ...(driverCoords ? { driverLat: driverCoords.lat, driverLon: driverCoords.lon } : {}),
       });
       if (status === "cancelled_by_customer") {
-        // Zuerst Legacy-Route (auf Prod immer vorhanden); neue Cancel-Route oft noch nicht deployt.
-        res = await fetch(legacyStatusUrl, {
+        // Dedizierte Kunden-Storno-Route (Session + passenger_id); Legacy nur bei 404.
+        res = await fetch(customerCancelUrl, {
           method: "PATCH",
           headers: patchHeaders,
-          body: stornoBody,
+          body: customerCancelBody,
         });
         if (ENABLE_STORNO_TRACE) {
           console.log(
-            `[Storno-Trace] Auth gesendet: ${patchHeaders.Authorization ? "ja" : "nein"}, URL: ${legacyStatusUrl}, Status: ${res.status}`,
+            `[Storno-Trace] Auth gesendet: ${patchHeaders.Authorization ? "ja" : "nein"}, URL: ${customerCancelUrl}, Status: ${res.status}`,
           );
         }
         if (res.status === 404) {
           if (ENABLE_STORNO_TRACE) {
-            console.log(`[Storno-Trace] Legacy 404 — versuche ${customerCancelUrl}`);
+            console.log(`[Storno-Trace] Customer-Cancel 404 — versuche ${legacyStatusUrl}`);
           }
-          const alt = await fetch(customerCancelUrl, {
+          const alt = await fetch(legacyStatusUrl, {
             method: "PATCH",
             headers: patchHeaders,
-            body: customerCancelBody,
+            body: stornoBody,
           });
           if (alt.ok || alt.status !== 404) res = alt;
         }
