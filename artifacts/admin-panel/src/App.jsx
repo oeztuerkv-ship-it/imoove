@@ -65,6 +65,7 @@ import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 import DriversOverviewPage from "./pages/DriversOverviewPage.jsx";
 import DriversRevenuePage from "./pages/DriversRevenuePage.jsx";
 import Fail2BanPage from "./pages/Fail2BanPage.jsx";
+import ServerStatusPage from "./pages/ServerStatusPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -324,6 +325,10 @@ const PAGE_META = {
   "fail2ban": {
     title: "Firewall & Gesperrte IPs",
     subtitle: "Fail2Ban — gesperrte IPs einsehen und manuell entsperren oder sperren",
+  },
+  "server-status": {
+    title: "Server-Status",
+    subtitle: "CPU, RAM, Festplatte (Netdata) und PM2-Prozesse des Produktionsservers",
   },
   "customer-accounts": {
     title: "Kundenkonten (App)",
@@ -901,6 +906,8 @@ export default function App() {
         return <VisitorAnalyticsPage />;
       case "fail2ban":
         return <Fail2BanPage />;
+      case "server-status":
+        return <ServerStatusPage />;
       case "customer-accounts":
         return <CustomerAccountsPage />;
       case "customers":
