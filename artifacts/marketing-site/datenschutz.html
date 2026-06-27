@@ -41,19 +41,21 @@
         <li>Telefonnummer (optional, bei Buchungsregeln erforderlich)</li>
         <li>Live-Standort bei aktiver Fahrtsuche und Fahrt (Vordergrund)</li>
         <li>Abholadresse und Zieladresse</li>
-        <li>Fahrtdaten (Datum, Uhrzeit, Strecke, Preis, Fahrtdauer)</li>
-        <li>Zahlungsart (z. B. Bar, Rechnung)</li>
+        <li>Fahrtdaten (Datum, Uhrzeit, Strecke, Preis, Fahrtdauer, Preismodus: Taxameter oder Festpreis)</li>
+        <li>Zahlungsart und Zahlungsdaten (Bar, Kreditkarte, Apple Pay, Google Pay, Gutschein/Zugangscode)</li>
+        <li>Zahlungsabwicklungsdaten bei Kartenzahlung (siehe Ziffer 5, Stripe)</li>
         <li>Push-Token für Fahrtbenachrichtigungen</li>
         <li>Buchungshistorie</li>
+        <li>Trinkgeld-Angaben (freiwillig, geht vollständig an den Fahrer)</li>
       </ul>
 
       <h3>2.2 Fahrer</h3>
       <ul>
         <li>Name, E-Mail-Adresse, Telefonnummer</li>
-        <li>Fahrzeugdaten (Kennzeichen, Fahrzeugtyp)</li>
+        <li>Fahrzeugdaten (Kennzeichen, Fahrzeugtyp, Konzessionsnummer)</li>
         <li>Führerschein, P-Schein, Konzessionsdaten (Upload zur Verifikation)</li>
         <li>Live-Standort während aktiver Fahrten (Vorder- und Hintergrund)</li>
-        <li>Fahrtdaten, Umsatzdaten, Abrechnungsdaten</li>
+        <li>Fahrtdaten, Umsatzdaten, Abrechnungsdaten (Fahrpreis, Provision, Auszahlungsbetrag)</li>
         <li>Push-Token für Fahrtangebote</li>
         <li>Verfügbarkeitsstatus (Online/Offline)</li>
       </ul>
@@ -64,7 +66,7 @@
         <li>Zugangsdaten zum Partner-Panel</li>
         <li>Fahrtdaten der vermittelten Fahrten</li>
         <li>Abrechnungs- und Rechnungsdaten</li>
-        <li>Zugangscodes und Kostenstellen</li>
+        <li>Zugangscodes, Gutschein-Daten und Kostenstellen</li>
       </ul>
 
       <h3>2.4 Krankenfahrten</h3>
@@ -74,6 +76,7 @@
         <li>Medizinisch erforderliche Beförderungsangaben</li>
         <li>Abrechnungsdaten gegenüber Krankenkassen</li>
         <li>Dokument-Uploads (Transportschein, Unterschrift)</li>
+        <li>Automatisierte Texterkennung des Transportscheins durch einen KI-gestützten Dienst (siehe Ziffer 5, Anthropic)</li>
       </ul>
       <p>Rechtsgrundlage: Art. 9 Abs. 2 lit. h DSGVO (medizinische Versorgung) sowie Art. 6 Abs. 1 lit. b DSGVO.</p>
       <p><strong>Hinweis zur Datenminimierung:</strong> ONRODA speichert keine Diagnosedaten. Nur die für die Beförderung und Abrechnung notwendigen Angaben werden verarbeitet.</p>
@@ -83,9 +86,9 @@
       <table>
         <tr><th>Nutzergruppe</th><th>Art der Ortung</th><th>Zweck</th><th>Speicherdauer</th></tr>
         <tr><td>Fahrgast</td><td>Vordergrund (bei Buchung)</td><td>Abholadresse bestimmen</td><td>Fahrtende</td></tr>
-        <tr><td>Fahrer</td><td>Vordergrund + Hintergrund (aktive Fahrt)</td><td>Live-Tracking, Fahrtnachweis</td><td>30 Tage nach Fahrt</td></tr>
+        <tr><td>Fahrer</td><td>Vordergrund + Hintergrund (aktive Fahrt)</td><td>Live-Tracking, Fahrtnachweis, Streckenermittlung</td><td>90 Tage nach Fahrt</td></tr>
       </table>
-      <p>Die Hintergrund-Ortung des Fahrers ist nur während aktiver Fahrten aktiv und wird nach Fahrtende beendet. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.</p>
+      <p>Die Hintergrund-Ortung des Fahrers ist nur während aktiver Fahrten aktiv und wird nach Fahrtende beendet. Die während der Fahrt erfassten Standortpunkte werden zur Ermittlung der tatsächlich gefahrenen Strecke (z. B. bei Reklamationen) genutzt und nach 90 Tagen automatisiert gelöscht. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.</p>
 
       <h2>4. Push-Benachrichtigungen</h2>
       <p>Für Push-Benachrichtigungen verwenden wir Expo Push Notifications (Expo Inc., San Francisco, USA). Dabei werden Geräte-Push-Token gespeichert:</p>
@@ -95,15 +98,18 @@
       </ul>
       <p>Push-Token werden getrennt gespeichert und beim Wechsel zwischen Fahrer- und Fahrgast-Rolle automatisch aktualisiert. Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).</p>
 
-      <h2>5. Datenweitergabe</h2>
+      <h2>5. Datenweitergabe und eingesetzte Dienstleister</h2>
       <ul>
         <li><strong>Fahrer:</strong> erhalten Abholadresse, Zieladresse und Fahrgastname bei Fahrtannahme</li>
         <li><strong>Partnerunternehmen:</strong> erhalten Fahrtdaten ihrer gebuchten Fahrten</li>
         <li><strong>Krankenkassen:</strong> erhalten abrechnungsrelevante Transportdaten</li>
-        <li><strong>Hetzner Online GmbH:</strong> Hosting-Dienstleister (Auftragsverarbeitung gemäß Art. 28 DSGVO)</li>
-        <li><strong>Expo Inc.:</strong> Push-Benachrichtigungsdienst</li>
+        <li><strong>Hetzner Online GmbH</strong> (Deutschland): Hosting-Dienstleister (Auftragsverarbeitung gemäß Art. 28 DSGVO)</li>
+        <li><strong>Expo Inc.</strong> (USA): Push-Benachrichtigungsdienst</li>
+        <li><strong>Stripe Payments Europe, Ltd.</strong> (Irland) bzw. Stripe, Inc. (USA): Zahlungsabwicklung bei Kreditkarten-, Apple-Pay- und Google-Pay-Zahlungen. Es werden ausschließlich die zur Zahlungsabwicklung notwendigen Daten (Zahlungsbetrag, Zahlungsmethode, Transaktionsstatus) übermittelt; Kartendaten selbst verarbeitet ausschließlich Stripe als PCI-DSS-zertifizierter Anbieter</li>
+        <li><strong>Anthropic, PBC</strong> (USA): automatisierte Texterkennung (OCR) von hochgeladenen Transportscheinen im Rahmen der Krankenfahrten-Vermittlung. Es werden ausschließlich Bilddaten des Transportscheins zur Texterkennung übermittelt</li>
+        <li><strong>Google Ireland Limited / Google LLC</strong>: Geocoding und Streckenberechnung (Adressdaten, Start- und Zielkoordinaten) zur Ermittlung von Fahrtstrecken und Festpreisen sowie Kartendarstellung in der App</li>
       </ul>
-      <p>Eine Weitergabe an sonstige Dritte erfolgt nicht, sofern keine gesetzliche Verpflichtung besteht.</p>
+      <p>Eine Weitergabe an sonstige Dritte erfolgt nicht, sofern keine gesetzliche Verpflichtung besteht. Mit allen genannten Dienstleistern bestehen, soweit erforderlich, Verträge zur Auftragsverarbeitung gemäß Art. 28 DSGVO bzw. Standardvertragsklauseln bei Datenübermittlung in Drittländer (USA).</p>
 
       <h2>6. Datensicherheit</h2>
       <ul>
@@ -121,10 +127,11 @@
         <tr><td>Rechnungs- und Abrechnungsdaten</td><td>10 Jahre (gesetzliche Aufbewahrungspflicht)</td></tr>
         <tr><td>Vertragsdaten</td><td>Vertragslaufzeit + 3 Jahre</td></tr>
         <tr><td>Fahrtdaten</td><td>3 Jahre nach Fahrtdurchführung</td></tr>
-        <tr><td>Standortdaten (Fahrer)</td><td>30 Tage nach Fahrtende</td></tr>
+        <tr><td>Standortdaten (Fahrer, Tracking während der Fahrt)</td><td>90 Tage nach Fahrtende</td></tr>
         <tr><td>Sicherheitslogs / API-Logs</td><td>90 Tage</td></tr>
         <tr><td>Push-Token</td><td>Bis zur Abmeldung oder Token-Erneuerung</td></tr>
         <tr><td>Dokument-Uploads (Krankenfahrt)</td><td>Gesetzliche Aufbewahrungspflicht</td></tr>
+        <tr><td>Gutschein- und Zahlungsdaten</td><td>10 Jahre (gesetzliche Aufbewahrungspflicht)</td></tr>
       </table>
 
       <h2>8. Cookies und lokale Speicherung</h2>
@@ -158,6 +165,7 @@
       <div class="links">
         <a href="/">Zur Startseite</a>
         <a href="/impressum">Impressum</a>
+        <a href="/agb">AGB</a>
       </div>
     </article>
   </main>
