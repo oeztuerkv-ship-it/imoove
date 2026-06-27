@@ -817,6 +817,13 @@
       }
     }
 
+    function syncHomepageMetaDescription(text) {
+      var desc = String(text || "").trim();
+      if (!desc) return;
+      var meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.setAttribute("content", desc);
+    }
+
     function applyHomepageCmsItem(item) {
       var headlineEl = document.getElementById("hero-headline");
       var sublineEl = document.getElementById("hero-subline");
@@ -834,7 +841,9 @@
             setMultilineText(headlineEl, pickCms(item && item.heroHeadline, defaultHeadline));
           }
           if (sublineEl) {
-            sublineEl.textContent = pickCms(item && item.heroSubline, defaultSubline);
+            var sublineText = pickCms(item && item.heroSubline, defaultSubline);
+            sublineEl.textContent = sublineText;
+            syncHomepageMetaDescription(sublineText);
           }
           if (cta1El) {
             cta1El.textContent = pickCms(item && item.cta1Text, defaultCta1Text);

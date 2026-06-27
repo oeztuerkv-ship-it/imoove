@@ -11,7 +11,10 @@ import { handleStripeWebhook } from "./routes/stripeWebhook.js";
 import { logger } from "./lib/logger";
 import { isPostgresConfigured } from "./db/client";
 import { getLegalPagePublic, type LegalPageSlug } from "./db/legalPagesData";
+import { getHomepageContentPublic } from "./db/homepageContentData";
 import { renderLegalPageHtml } from "./lib/renderLegalPageHtml";
+import { injectMarketingMetaDescription } from "./lib/injectMarketingMetaDescription";
+import fs from "node:fs/promises";
 
 const app: Express = express();
 
@@ -228,6 +231,27 @@ function isMarketingHost(host: string): boolean {
   return host === "onroda.de" || host === "www.onroda.de";
 }
 
+async function serveMarketingHomepage(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const indexPath = path.join(staticRoot, "index.html");
+  try {
+    let html = await fs.readFile(indexPath, "utf8");
+    if (isPostgresConfigured()) {
+      const content = await getHomepageContentPublic();
+      const subline = (content?.heroSubline ?? "").trim();
+      if (subline) {
+        html = injectMarketingMetaDescription(html, subline);
+      }
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.send(html);
+  } catch (e) {
+    res.sendFile(indexPath, (err) => {
+      if (err) next(err);
+    });
+  }
+}
+
 async function serveMarketingLegalPage(slug: LegalPageSlug, req: express.Request, res: express.Response, next: express.NextFunction) {
   if (!isMarketingHost(hostname(req))) return next();
   if (!isPostgresConfigured()) {
@@ -291,7 +315,10 @@ app.use((req, res, next) => {
 
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") {
+    void serveMarketingHomepage(req, res, next);
+    return;
+  }
   return next();
 });
 
@@ -311,7 +338,10 @@ app.get("/fixpreise", (req, res, next) => {
 
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") {
+    void serveMarketingHomepage(req, res, next);
+    return;
+  }
   if (isApiHost(host)) {
     return res.json({ ok: true, service: "onroda-api" });
   }

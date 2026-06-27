@@ -796,6 +796,9 @@ export default function HomepageContentPage() {
           />
           <label className="admin-form-pair">
             <span className="admin-field-label">Hero-Subline</span>
+            <span className="admin-field-hint" style={{ display: "block", marginBottom: 6 }}>
+              Wird auch als Meta-Description für Google (Startseite) verwendet.
+            </span>
             <textarea
               className="admin-textarea"
               rows={3}
