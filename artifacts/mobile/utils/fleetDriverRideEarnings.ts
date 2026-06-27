@@ -1,5 +1,8 @@
 import { getApiBaseUrl } from "./apiBase";
 
+/** Entspricht ONRODA_DRIVER_PROVISION_RATE (8 %) — Fallback wenn payout_amount fehlt. */
+const DRIVER_PROVISION_RATE = 0.08;
+
 export type DriverRideEarnings = {
   gross: number;
   commission: number;
@@ -15,6 +18,18 @@ export type DriverRideEarnings = {
   completedAt: string | null;
   pricingMode: "taxi_tariff" | "fixed_price" | null;
 };
+
+/** Listen-Anzeige: payout_amount + tip_amount (Fahrer-Netto inkl. Trinkgeld). */
+export function computeDriverListNetEur(ride: Record<string, unknown>): number {
+  const tip = Math.max(0, Number(ride.tipAmount ?? ride.tip_amount ?? 0) || 0);
+  const payoutRaw = ride.payoutAmount ?? ride.payout_amount;
+  if (payoutRaw != null && Number.isFinite(Number(payoutRaw))) {
+    return Math.round((Number(payoutRaw) + tip) * 100) / 100;
+  }
+  const gross = Math.max(0, Number(ride.finalFare ?? ride.estimatedFare ?? 0) || 0);
+  const payout = Math.round(gross * (1 - DRIVER_PROVISION_RATE) * 100) / 100;
+  return Math.round((payout + tip) * 100) / 100;
+}
 
 export async function fetchFleetDriverRideEarnings(
   rideId: string,

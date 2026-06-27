@@ -29,6 +29,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
+import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
 import { nativeMapViewProps } from "@/utils/nativeMapProvider";
@@ -42,6 +43,11 @@ import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
+import {
+  computeDriverListNetEur,
+  fetchFleetDriverRideEarnings,
+  type DriverRideEarnings,
+} from "@/utils/fleetDriverRideEarnings";
 import { CUSTOMER_FIXED_PRICE_LABEL } from "@/utils/customerFareDisplay";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
 import { setDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
@@ -262,7 +268,7 @@ function parseEuroDriverInput(text: string): number | null {
 }
 
 // MOCK_RIDES entfernt - nur echte Fahrten aus RideContext
-type RideEntry = { id: string; date: string; time: string; from: string; to: string; km: number; duration: number; amount: number; payment: string; };
+type RideEntry = { id: string; date: string; time: string; from: string; to: string; km: number; duration: number; netAmount: number; payment: string; };
 
 const API_BASE = getApiBaseUrl();
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -1189,15 +1195,38 @@ function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
 }
 
 /* ─── Tab: Fahrten ─── */
-function TabFahrten({ allRides }: { allRides: RideEntry[] }) {
+function TabFahrten({ allRides, fleetAuthToken }: { allRides: RideEntry[]; fleetAuthToken?: string }) {
   const colors = useColors();
   const [activeFilter, setActiveFilter] = useState<"heute" | "woche" | "alle">("alle");
+  const [rideEarnings, setRideEarnings] = useState<DriverRideEarnings | null>(null);
+  const [showEarningsModal, setShowEarningsModal] = useState(false);
+  const [earningsLoadingId, setEarningsLoadingId] = useState<string | null>(null);
   const todayStr = fmt(new Date()).date;
   const displayed = activeFilter === "heute"
     ? allRides.filter((r) => r.date === todayStr)
     : activeFilter === "woche" ? allRides.slice(0, 12) : allRides;
 
+  const openRideBreakdown = useCallback(async (rideId: string) => {
+    if (!fleetAuthToken) {
+      Alert.alert("Details", "Bitte erneut anmelden, um Verdienst-Details zu laden.");
+      return;
+    }
+    setEarningsLoadingId(rideId);
+    try {
+      const earnings = await fetchFleetDriverRideEarnings(rideId, fleetAuthToken);
+      if (!earnings) {
+        Alert.alert("Details", "Verdienst-Details konnten nicht geladen werden.");
+        return;
+      }
+      setRideEarnings(earnings);
+      setShowEarningsModal(true);
+    } finally {
+      setEarningsLoadingId(null);
+    }
+  }, [fleetAuthToken]);
+
   return (
+    <>
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
       <View style={[styles.filterRow, { backgroundColor: colors.muted }]}>
         {(["heute", "woche", "alle"] as const).map((f) => (
@@ -1217,10 +1246,22 @@ function TabFahrten({ allRides }: { allRides: RideEntry[] }) {
           <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Keine Fahrten in diesem Zeitraum</Text>
         </View>
       ) : displayed.map((ride) => (
-        <View key={ride.id} style={[styles.rideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Pressable
+          key={ride.id}
+          style={[styles.rideCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => void openRideBreakdown(ride.id)}
+          disabled={earningsLoadingId === ride.id}
+        >
           <View style={styles.rideTop}>
             <Text style={[styles.rideId, { color: colors.mutedForeground }]}>#{ride.id} · {ride.date} {ride.time}</Text>
-            <Text style={[styles.rideAmount, { color: "#22C55E" }]}>{formatEuro(ride.amount)}</Text>
+            <View style={styles.rideAmountRow}>
+              {earningsLoadingId === ride.id ? (
+                <ActivityIndicator size="small" color="#22C55E" />
+              ) : (
+                <Text style={[styles.rideAmount, { color: "#22C55E" }]}>{formatEuro(ride.netAmount)}</Text>
+              )}
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </View>
           </View>
           <View style={styles.rideRouteBlock}>
             <View style={styles.rideRouteRow}>
@@ -1238,9 +1279,18 @@ function TabFahrten({ allRides }: { allRides: RideEntry[] }) {
             <View style={styles.rideMetaItem}><Feather name="clock" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.duration} Min.</Text></View>
             <View style={styles.rideMetaItem}><Feather name="credit-card" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.payment}</Text></View>
           </View>
-        </View>
+        </Pressable>
       ))}
     </ScrollView>
+    <DriverRideEarningsModal
+      visible={showEarningsModal}
+      earnings={rideEarnings}
+      onClose={() => {
+        setShowEarningsModal(false);
+        setRideEarnings(null);
+      }}
+    />
+    </>
   );
 }
 
@@ -1255,9 +1305,9 @@ function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driv
     const [dd, mm, yy] = r.date.split(".");
     return new Date(`${yy}-${mm}-${dd}`) >= sevenDaysAgo;
   });
-  const todayTotal = todayRides.reduce((s, r) => s + r.amount, 0);
-  const weekTotal = weekRides.reduce((s, r) => s + r.amount, 0);
-  const allTotal = allRides.reduce((s, r) => s + r.amount, 0);
+  const todayTotal = todayRides.reduce((s, r) => s + r.netAmount, 0);
+  const weekTotal = weekRides.reduce((s, r) => s + r.netAmount, 0);
+  const allTotal = allRides.reduce((s, r) => s + r.netAmount, 0);
   const allKm = allRides.reduce((s, r) => s + r.km, 0);
   const avgFare = allRides.length > 0 ? allTotal / allRides.length : 0;
 
@@ -3475,7 +3525,7 @@ export default function DriverDashboard() {
               typeof r.actualDurationMinutes === "number" && r.actualDurationMinutes > 0
                 ? r.actualDurationMinutes
                 : r.durationMinutes ?? 0,
-            amount: r.finalFare ?? r.estimatedFare ?? 0,
+            netAmount: computeDriverListNetEur(r),
             payment:
               r.paymentMethod === "cash" ? "Bar" :
               r.paymentMethod === "paypal" ? "PayPal" :
@@ -3498,7 +3548,7 @@ export default function DriverDashboard() {
       to: typeof r.destination === "string" ? r.destination.split(",")[0] : (r.destination as any)?.displayName?.split(",")[0] ?? "Ziel",
       km: (r as any).route?.distanceKm ?? r.distanceKm ?? 0,
       duration: (r as any).route?.durationMinutes ?? 0,
-      amount: (r as any).fareBreakdown?.total ?? r.totalFare ?? 0,
+      netAmount: computeDriverListNetEur(r as unknown as Record<string, unknown>),
       payment:
         r.paymentMethod === "cash" ? "Bar" :
         r.paymentMethod === "paypal" ? "PayPal" :
@@ -4299,7 +4349,7 @@ export default function DriverDashboard() {
                 )}
               </ScrollView>
             )}
-            {activeTab === "fahrten" && <TabFahrten allRides={allRides} />}
+            {activeTab === "fahrten" && <TabFahrten allRides={allRides} fleetAuthToken={driver?.authToken} />}
             {activeTab === "geldbeutel" && <TabGeldbeutel allRides={allRides} driverRating={driver.rating} />}
             {activeTab === "profil" && (
               <TabProfil
@@ -4895,6 +4945,7 @@ const styles = StyleSheet.create({
   rideTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   rideId: { fontSize: 11, fontFamily: "Inter_400Regular" },
   rideAmount: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  rideAmountRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   rideRouteBlock: { gap: 3 },
   rideRouteRow: { flexDirection: "row", alignItems: "center", gap: 9 },
   rideDot: { width: 8, height: 8, borderRadius: 4 },

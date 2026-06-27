@@ -30,6 +30,7 @@ import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHint
 import { DriverCashPaymentWarnModal } from "@/components/DriverCashPaymentWarnModal";
 import { NavRouteGlowPolyline } from "@/components/NavRouteGlowPolyline";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
+import { DriverTipThanksOverlay } from "@/components/DriverTipThanksOverlay";
 import { DriverPassengerRatingModal } from "@/components/DriverPassengerRatingModal";
 import { useDriver } from "@/context/DriverContext";
 import { useRideRequests, type RequestStatus } from "@/context/RideRequestContext";
@@ -467,6 +468,7 @@ export default function DriverNavigationScreen() {
   const [showCashConfirmModal, setShowCashConfirmModal] = useState(false);
   const [cashConfirmBusy, setCashConfirmBusy] = useState(false);
   const [showEarningsModal, setShowEarningsModal] = useState(false);
+  const [showTipThanksOverlay, setShowTipThanksOverlay] = useState(false);
   const [showPassengerRatingModal, setShowPassengerRatingModal] = useState(false);
   const [passengerRatingSubmitting, setPassengerRatingSubmitting] = useState(false);
   const [rideEarnings, setRideEarnings] = useState<DriverRideEarnings | null>(null);
@@ -1294,8 +1296,17 @@ export default function DriverNavigationScreen() {
       return;
     }
     setRideEarnings(earnings);
-    setShowEarningsModal(true);
+    if (earnings.tip > 0.005) {
+      setShowTipThanksOverlay(true);
+    } else {
+      setShowEarningsModal(true);
+    }
   }, [driver?.authToken, params.rideId, showPassengerRatingPrompt]);
+
+  const finishTipThanksOverlay = useCallback(() => {
+    setShowTipThanksOverlay(false);
+    setShowEarningsModal(true);
+  }, []);
 
   const completeRideWithFare = async (fare: number, plausibilityAck = false) => {
     setCompletingRide(true);
@@ -2024,6 +2035,8 @@ export default function DriverNavigationScreen() {
           </View>
         </View>
       </Modal>
+
+      <DriverTipThanksOverlay visible={showTipThanksOverlay} onFinished={finishTipThanksOverlay} />
 
       <DriverRideEarningsModal
         visible={showEarningsModal}
