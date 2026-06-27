@@ -9,8 +9,8 @@
 #   5b) optional rsync (Panel-Dists)
 #   6) pm2 restart (ONRODA_PM2_APPS)
 #   7) optional nginx reload
-#   8) optional öffentliche Marketing-Status-URL (curl + grep)
-#   9) HTTP-Health-Checks (curl)
+#   8) Warte auf App-Start + HTTP-Health-Checks (curl, mit Retries)
+#   9) optional Marketing-URL-Checks (Status, Fixpreise, AGB, Homepage) — nach Health
 #
 # Voraussetzung: Repo-Root (imoove), pnpm, psql, pm2, curl;
 # DATABASE_URL: Umgebung oder artifacts/api-server/.env
@@ -73,12 +73,15 @@ Umgebung (Auswahl):
   ONRODA_MARKETING_STATUS_VERIFY_TIMEOUT  Sekunden für curl (Default: 25)
   ONRODA_MARKETING_FIXPREISE_VERIFY_URL  Optional: Default https://www.onroda.de/fixpreise (nach Marketing-Rsync: muss Fixpreis-Seite sein)
   ONRODA_SKIP_MARKETING_FIXPREISE_VERIFY  1 = Fixpreise-URL-Check überspringen (Notfall)
+  ONRODA_SKIP_MARKETING_AGB_VERIFY  1 = AGB-URL-Check überspringen (Notfall)
+  ONRODA_MARKETING_VERIFY_RETRIES  Retries für Fixpreise/AGB-curl nach PM2-Restart (Default: 3)
+  ONRODA_MARKETING_VERIFY_RETRY_DELAY_SECONDS  Pause zwischen Retries (Default: 2)
   ONRODA_HEALTHCHECK_URLS   Leerzeichen-getrennte GET-URLs (Default: http://127.0.0.1:<PORT>/api/healthz, PORT aus api-server/.env oder 3000)
   ONRODA_HEALTHCHECK_TIMEOUT Sekunden für curl (Default: 20)
   ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS  Wartezeit direkt nach PM2-Restart vor erstem Check (Default: 3)
   ONRODA_HEALTHCHECK_RETRIES Anzahl Versuche pro URL (Default: 8)
   ONRODA_HEALTHCHECK_RETRY_DELAY_SECONDS Pause zwischen Versuchen (Default: 2)
-  ONRODA_SKIP_HEALTHCHECKS  Wenn 1: Schritt 8 überspringen (nur Notfall)
+  ONRODA_SKIP_HEALTHCHECKS  Wenn 1: Health-Checks überspringen (nur Notfall)
   ONRODA_SKIP_PARTNER_APPROVE_DB_VERIFY  Wenn 1: Partner-Freigabe-DB-Prüfung (4b) überspringen — nur Notfall
 
 EOF
@@ -336,6 +339,41 @@ do_panel_builds() {
   (cd "$ROOT" && pnpm --filter partner-panel run build)
 }
 
+wait_after_pm2_restart() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] sleep ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS nach PM2-Restart"
+    return 0
+  fi
+  local initial_wait="${ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS:-3}"
+  if [[ "$initial_wait" =~ ^[0-9]+$ ]] && [[ "$initial_wait" -gt 0 ]]; then
+    log "Warte ${initial_wait}s auf App-Start nach PM2-Restart …"
+    sleep "$initial_wait"
+  fi
+}
+
+# Holt HTTP-Body mit Retries (502 direkt nach PM2-Restart ist üblich).
+curl_fetch_body_with_retries() {
+  local url="$1"
+  local timeout="$2"
+  local label="$3"
+  local retries="${ONRODA_MARKETING_VERIFY_RETRIES:-3}"
+  local retry_delay="${ONRODA_MARKETING_VERIFY_RETRY_DELAY_SECONDS:-2}"
+  local attempt=1
+  local body=""
+  while [[ "$attempt" -le "$retries" ]]; do
+    if body="$(curl -fsSL --max-time "$timeout" "$url" 2>/dev/null)"; then
+      printf '%s' "$body"
+      return 0
+    fi
+    if [[ "$attempt" -lt "$retries" ]]; then
+      log "${label}: noch nicht bereit (${attempt}/${retries}) — retry in ${retry_delay}s …"
+      sleep "$retry_delay"
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
 do_health_checks() {
   if [[ "${ONRODA_SKIP_HEALTHCHECKS:-0}" == "1" ]]; then
     log "Health-Checks übersprungen (ONRODA_SKIP_HEALTHCHECKS=1)."
@@ -350,7 +388,6 @@ do_health_checks() {
     exit 1
   }
   local timeout="${ONRODA_HEALTHCHECK_TIMEOUT:-20}"
-  local initial_wait="${ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS:-3}"
   local retries="${ONRODA_HEALTHCHECK_RETRIES:-8}"
   local retry_delay="${ONRODA_HEALTHCHECK_RETRY_DELAY_SECONDS:-2}"
   local urls=()
@@ -362,10 +399,6 @@ do_health_checks() {
     urls=("http://127.0.0.1:${port}/api/healthz")
   fi
   local url
-  if [[ "$initial_wait" =~ ^[0-9]+$ ]] && [[ "$initial_wait" -gt 0 ]]; then
-    log "Warte ${initial_wait}s auf App-Start nach PM2-Restart …"
-    sleep "$initial_wait"
-  fi
   for url in "${urls[@]}"; do
     [[ -z "$url" ]] && continue
     local attempt=1
@@ -527,8 +560,8 @@ do_marketing_fixpreise_verify() {
   log "Prüfe Fixpreise-URL: ${url}"
   command -v curl >/dev/null 2>&1 || { log "curl fehlt — Fixpreise-URL-Check übersprungen"; return 0; }
   local body
-  body="$(curl -fsSL --max-time "$t" "$url")" || {
-    echo "[deploy-onroda] FEHLER: curl für Fixpreise-URL fehlgeschlagen: $url" >&2
+  body="$(curl_fetch_body_with_retries "$url" "$t" "Fixpreise-URL")" || {
+    echo "[deploy-onroda] FEHLER: curl für Fixpreise-URL fehlgeschlagen nach ${ONRODA_MARKETING_VERIFY_RETRIES:-3} Versuchen: $url" >&2
     exit 1
   }
   if ! grep -qF 'id="fixpreis-page-title"' <<<"$body"; then
@@ -552,8 +585,8 @@ do_marketing_agb_verify() {
   log "Prüfe AGB-URL: ${url}"
   command -v curl >/dev/null 2>&1 || { log "curl fehlt — AGB-URL-Check übersprungen"; return 0; }
   local body
-  body="$(curl -fsSL --max-time "$t" "$url")" || {
-    echo "[deploy-onroda] FEHLER: curl für AGB-URL fehlgeschlagen: $url" >&2
+  body="$(curl_fetch_body_with_retries "$url" "$t" "AGB-URL")" || {
+    echo "[deploy-onroda] FEHLER: curl für AGB-URL fehlgeschlagen nach ${ONRODA_MARKETING_VERIFY_RETRIES:-3} Versuchen: $url" >&2
     exit 1
   }
   if ! grep -qF "Widerrufsrecht" <<<"$body"; then
@@ -646,11 +679,12 @@ do_marketing_rsync
 do_optional_rsync
 do_pm2
 do_optional_nginx
+wait_after_pm2_restart
+do_health_checks
 do_optional_marketing_status_verify
 do_marketing_fixpreise_verify
 do_marketing_agb_verify
 do_marketing_home_verify
-do_health_checks
 
-log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema + Partner-Freigabe-DB → Marketing-Rsync → PM2 → Nginx → Health)."
+log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema + Partner-Freigabe-DB → Marketing-Rsync → PM2 → Nginx → Health → Marketing-URLs)."
 log "Hinweis: Freigabe-Mails brauchen PARTNER_REGISTRATION_SMTP_URL + PARTNER_REGISTRATION_MAIL_FROM in artifacts/api-server/.env (PM2 --update-env)."
