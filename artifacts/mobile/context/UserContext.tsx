@@ -117,6 +117,7 @@ interface UserContextValue {
     password: string;
     passwordConfirm: string;
     emailVerificationProofToken: string;
+    acceptLegal: boolean;
   }) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** E-Mail + Passwort Login (customer_accounts). */
   loginWithEmailAccount: (data: {
@@ -312,6 +313,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       password: string;
       passwordConfirm: string;
       emailVerificationProofToken: string;
+      acceptLegal: boolean;
     }): Promise<{ ok: true } | { ok: false; error: string }> => {
       const outcome = await registerCustomerWithPassword({
         email: data.email,
@@ -319,6 +321,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         name: data.name,
         password: data.password,
         passwordConfirm: data.passwordConfirm,
+        acceptLegal: data.acceptLegal,
       });
       if (!outcome.ok) {
         return { ok: false, error: mapCustomerAuthApiError(outcome.error) };

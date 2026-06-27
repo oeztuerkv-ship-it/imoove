@@ -62,10 +62,15 @@ export async function insertCustomerAccount(row: {
   name: string;
   phone: string | null;
   emailVerifiedAt: Date;
+  termsAcceptedAt?: Date;
+  privacyAcceptedAt?: Date;
+  termsVersion?: string;
+  privacyVersion?: string;
 }): Promise<CustomerAccountRow> {
   const db = getDb();
   if (!db) throw new Error("database_not_configured");
   const now = new Date();
+  const acceptedAt = row.termsAcceptedAt ?? null;
   await db.insert(customerAccountsTable).values({
     id: row.id,
     email: row.email,
@@ -73,6 +78,10 @@ export async function insertCustomerAccount(row: {
     name: row.name,
     phone: row.phone,
     email_verified_at: row.emailVerifiedAt,
+    terms_accepted_at: acceptedAt,
+    privacy_accepted_at: row.privacyAcceptedAt ?? acceptedAt,
+    terms_version: row.termsVersion?.trim() ?? "",
+    privacy_version: row.privacyVersion?.trim() ?? "",
     created_at: now,
     updated_at: now,
   });

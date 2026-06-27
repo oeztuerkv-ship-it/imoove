@@ -24,6 +24,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/components/CustomerPasswordFields";
+import {
+  CustomerLegalConsentCheckbox,
+  CustomerLegalConsentModal,
+  CustomerLegalLinksFooter,
+} from "@/components/CustomerLegalConsent";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { accountSheetPrimaryLabel, accountSheetInputText, ACCOUNT_SHEET_FIELD_BORDER, ACCOUNT_SHEET_FIELD_BORDER_FOCUS, ACCOUNT_SHEET_FIELD_BORDER_WIDTH, ACCOUNT_SHEET_FIELD_BORDER_WIDTH_FOCUS } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
@@ -59,6 +64,11 @@ import { runCustomerGoogleSignIn } from "@/utils/customerGoogleSignIn";
 import { isGoogleOAuthProfile } from "@/utils/customerAuthProvider";
 import { navigateToCustomerStartScreen } from "@/utils/navigateToCustomerStart";
 import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
+import {
+  gateCustomerOAuthSession,
+  type PendingOAuthSession,
+} from "@/utils/completeCustomerOAuthSession";
+import { mapCustomerLegalError, openOnrodaLegalPage } from "@/utils/customerLegalConsent";
 import { rs, rf } from "@/utils/scale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -973,6 +983,10 @@ export default function ProfileScreen() {
   const [regPassword, setRegPassword] = useState("");
   const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
   const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
+  const [registerLegalConsentChecked, setRegisterLegalConsentChecked] = useState(false);
+  const [socialRegisterLegalChecked, setSocialRegisterLegalChecked] = useState(false);
+  const [pendingOAuthSession, setPendingOAuthSession] = useState<PendingOAuthSession | null>(null);
+  const [legalConsentModalVisible, setLegalConsentModalVisible] = useState(false);
   const regNameRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -1006,7 +1020,26 @@ export default function ProfileScreen() {
     try {
       const session = await runCustomerGoogleSignIn(API_URL);
       if (!session) return;
-      loginWithGoogle(session);
+      const gate = await gateCustomerOAuthSession(session.sessionToken, {
+        googleId: session.googleId,
+        name: session.name,
+        email: session.email,
+        photoUri: session.photoUri,
+        authProvider: session.authProvider,
+      });
+      if (gate.kind === "error") {
+        Alert.alert("Hinweis", gate.message);
+        return;
+      }
+      if (gate.kind === "ready") {
+        loginWithGoogle({
+          ...gate.session.profile,
+          sessionToken: gate.session.sessionToken,
+        });
+        return;
+      }
+      setPendingOAuthSession(gate.session);
+      setLegalConsentModalVisible(true);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
@@ -1027,14 +1060,26 @@ export default function ProfileScreen() {
       }
       const session = await runNativeAppleSignIn(API_URL);
       if (!session) return;
-      loginWithGoogle({
+      const gate = await gateCustomerOAuthSession(session.sessionToken, {
         name: session.name,
         email: session.email,
         photoUri: session.photoUri,
         googleId: session.googleId,
-        sessionToken: session.sessionToken,
         authProvider: "apple",
       });
+      if (gate.kind === "error") {
+        Alert.alert("Hinweis", gate.message);
+        return;
+      }
+      if (gate.kind === "ready") {
+        loginWithGoogle({
+          ...gate.session.profile,
+          sessionToken: gate.session.sessionToken,
+        });
+        return;
+      }
+      setPendingOAuthSession(gate.session);
+      setLegalConsentModalVisible(true);
     } catch (e: unknown) {
       const err = e as { code?: string };
       if (err?.code === "ERR_REQUEST_CANCELED") return;
@@ -1046,6 +1091,10 @@ export default function ProfileScreen() {
   };
 
   const goRegister = () => {
+    if (!socialRegisterLegalChecked) {
+      Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
+      return;
+    }
     setRegName("");
     setRegEmail("");
     setRegOtpDigits("");
@@ -1182,6 +1231,7 @@ export default function ProfileScreen() {
     }
     setRegPassword("");
     setRegPasswordConfirm("");
+    setRegisterLegalConsentChecked(false);
     setRegSubStep("password");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
@@ -1341,6 +1391,10 @@ export default function ProfileScreen() {
       Alert.alert("Hinweis", "Bitte Registrierung von vorne starten.");
       return;
     }
+    if (!registerLegalConsentChecked) {
+      Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
+      return;
+    }
     setRegisterSubmitLoading(true);
     try {
       const outcome = await registerCustomerAccount({
@@ -1349,6 +1403,7 @@ export default function ProfileScreen() {
         password: regPassword,
         passwordConfirm: regPasswordConfirm,
         emailVerificationProofToken: proof,
+        acceptLegal: true,
       });
       if (!outcome.ok) {
         Alert.alert("Hinweis", outcome.error);
@@ -1727,6 +1782,12 @@ export default function ProfileScreen() {
                     fontSize={rf(14)}
                     onRegisterPress={goRegister}
                   />
+                  <CustomerLegalConsentCheckbox
+                    checked={socialRegisterLegalChecked}
+                    onCheckedChange={setSocialRegisterLegalChecked}
+                    mutedColor={colors.mutedForeground}
+                    fontSize={rf(11)}
+                  />
                   <View style={{ gap: 10 }}>
                     <Pressable
                       style={({ pressed }) => [
@@ -1867,6 +1928,7 @@ export default function ProfileScreen() {
                     </LoginActionLabel>
                   </Pressable>
                 </View>
+                <CustomerLegalLinksFooter mutedColor={colors.mutedForeground} fontSize={rf(10)} />
                 </>
               ) : profileStep === "email_login" ? (
                 <View style={styles.signInBlock}>
@@ -2278,15 +2340,24 @@ export default function ProfileScreen() {
                     inputFieldStyle={styles.inputField}
                     onSubmitPassword={() => void handleRegisterComplete()}
                   />
+                  <CustomerLegalConsentCheckbox
+                    checked={registerLegalConsentChecked}
+                    onCheckedChange={setRegisterLegalConsentChecked}
+                    mutedColor={colors.mutedForeground}
+                    fontSize={rf(11)}
+                  />
                   <Pressable
                     style={[styles.registerBtn, {
                       backgroundColor: isCustomerPasswordFormValid(regPassword, regPasswordConfirm)
+                        && registerLegalConsentChecked
                         ? "#111111"
                         : colors.muted,
                     }]}
                     onPress={() => void handleRegisterComplete()}
                     disabled={
-                      !isCustomerPasswordFormValid(regPassword, regPasswordConfirm) || registerSubmitLoading
+                      !isCustomerPasswordFormValid(regPassword, regPasswordConfirm)
+                      || !registerLegalConsentChecked
+                      || registerSubmitLoading
                     }
                   >
                     {registerSubmitLoading ? (
@@ -2297,6 +2368,7 @@ export default function ProfileScreen() {
                         size={18}
                         color={
                           isCustomerPasswordFormValid(regPassword, regPasswordConfirm)
+                          && registerLegalConsentChecked
                             ? "#fff"
                             : colors.mutedForeground
                         }
@@ -2304,6 +2376,7 @@ export default function ProfileScreen() {
                     )}
                     <Text style={[styles.registerBtnText, {
                       color: isCustomerPasswordFormValid(regPassword, regPasswordConfirm)
+                        && registerLegalConsentChecked
                         ? "#fff"
                         : colors.mutedForeground,
                     }]}
@@ -2327,12 +2400,34 @@ export default function ProfileScreen() {
             <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Impressum</Text>
           </Pressable>
           <Text style={[styles.footerSep, { color: colors.border }]}>|</Text>
-          <Pressable onPress={() => Alert.alert("Datenschutz", "Datenschutzerklärung folgt in Kürze.")} style={styles.footerLinkBtn}>
+          <Pressable onPress={() => openOnrodaLegalPage("datenschutz")} style={styles.footerLinkBtn}>
             <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Datenschutz</Text>
           </Pressable>
         </View>
 
       </ScrollView>
+      <CustomerLegalConsentModal
+        visible={legalConsentModalVisible}
+        sessionToken={pendingOAuthSession?.sessionToken ?? ""}
+        mutedColor={colors.mutedForeground}
+        foregroundColor={colors.foreground}
+        surfaceColor={colors.surface}
+        borderColor={colors.border}
+        onCancel={() => {
+          setLegalConsentModalVisible(false);
+          setPendingOAuthSession(null);
+        }}
+        onAccepted={() => {
+          if (pendingOAuthSession) {
+            loginWithGoogle({
+              ...pendingOAuthSession.profile,
+              sessionToken: pendingOAuthSession.sessionToken,
+            });
+          }
+          setLegalConsentModalVisible(false);
+          setPendingOAuthSession(null);
+        }}
+      />
       <BottomTabBar active="account" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );

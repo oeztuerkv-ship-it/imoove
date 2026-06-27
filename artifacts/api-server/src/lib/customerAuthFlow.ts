@@ -18,6 +18,7 @@ import { passwordsMatch, validateCustomerPassword } from "./customerPasswordPoli
 import { touchPassengerProfileFromEmailAccount } from "../db/passengerProfilesData";
 import { signSessionJwt } from "./sessionJwt";
 import { rateLimitCustomerLogin } from "./customerLoginRateLimit";
+import { requireLegalConsentForRegistration } from "./customerLegalConsent";
 
 export type CustomerPublicDto = {
   id: string;
@@ -35,11 +36,15 @@ function toPublicDto(row: CustomerAccountRow): CustomerPublicDto {
   };
 }
 
-async function issueSession(row: CustomerAccountRow): Promise<string> {
+async function issueSession(
+  row: CustomerAccountRow,
+  legalConsent?: { termsVersion: string; privacyVersion: string; acceptedAt: Date },
+): Promise<string> {
   void touchPassengerProfileFromEmailAccount({
     passengerId: row.id,
     name: row.name,
     email: row.email,
+    legalConsent,
   }).catch(() => undefined);
   return signSessionJwt({
     googleId: row.id,
@@ -55,6 +60,7 @@ export async function registerCustomerAccount(opts: {
   bodyName: unknown;
   bodyPassword: unknown;
   bodyPasswordConfirm: unknown;
+  bodyAcceptLegal: unknown;
 }): Promise<
   | { ok: true; sessionToken: string; customer: CustomerPublicDto }
   | { ok: false; error: string; status: number }
@@ -82,6 +88,11 @@ export async function registerCustomerAccount(opts: {
     return { ok: false, error: "password_mismatch", status: 400 };
   }
 
+  const legal = await requireLegalConsentForRegistration(opts.bodyAcceptLegal);
+  if (!legal.ok) {
+    return { ok: false, error: legal.error, status: legal.status };
+  }
+
   const proof = await verifyEmailVerificationProofJwt(proofToken);
   if (!proof || proof.email !== email || proof.purpose !== CUSTOMER_REGISTRATION_PURPOSE) {
     return { ok: false, error: "invalid_proof_token", status: 400 };
@@ -106,11 +117,19 @@ export async function registerCustomerAccount(opts: {
     name,
     phone: null,
     emailVerifiedAt: new Date(),
+    termsAcceptedAt: legal.acceptedAt,
+    privacyAcceptedAt: legal.acceptedAt,
+    termsVersion: legal.termsVersion,
+    privacyVersion: legal.privacyVersion,
   });
 
   let sessionToken: string;
   try {
-    sessionToken = await issueSession(row);
+    sessionToken = await issueSession(row, {
+      termsVersion: legal.termsVersion,
+      privacyVersion: legal.privacyVersion,
+      acceptedAt: legal.acceptedAt,
+    });
   } catch {
     return { ok: false, error: "session_token_failed", status: 503 };
   }

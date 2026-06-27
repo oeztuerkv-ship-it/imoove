@@ -465,6 +465,10 @@ export const passengerProfilesTable = pgTable("passenger_profiles", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   rating_sum: integer("rating_sum").notNull().default(0),
   rating_count: integer("rating_count").notNull().default(0),
+  terms_accepted_at: timestamp("terms_accepted_at", { withTimezone: true }),
+  privacy_accepted_at: timestamp("privacy_accepted_at", { withTimezone: true }),
+  terms_version: text("terms_version").notNull().default(""),
+  privacy_version: text("privacy_version").notNull().default(""),
 });
 
 /** Kunden-Storno-Sperre (passenger_id = JWT sub / customer_accounts.id / OAuth sub). */
@@ -487,6 +491,10 @@ export const customerAccountsTable = pgTable("customer_accounts", {
   name: text("name").notNull(),
   phone: text("phone"),
   email_verified_at: timestamp("email_verified_at", { withTimezone: true }).notNull(),
+  terms_accepted_at: timestamp("terms_accepted_at", { withTimezone: true }),
+  privacy_accepted_at: timestamp("privacy_accepted_at", { withTimezone: true }),
+  terms_version: text("terms_version").notNull().default(""),
+  privacy_version: text("privacy_version").notNull().default(""),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

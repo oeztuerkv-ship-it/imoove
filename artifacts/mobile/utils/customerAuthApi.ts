@@ -41,6 +41,7 @@ export async function registerCustomerWithPassword(body: {
   name: string;
   password: string;
   passwordConfirm: string;
+  acceptLegal: boolean;
 }): Promise<RegisterCustomerResult> {
   if (!API_URL?.trim()) {
     return { ok: false, error: "api_not_configured", status: 503 };
@@ -54,6 +55,7 @@ export async function registerCustomerWithPassword(body: {
       name: body.name.trim(),
       password: body.password,
       passwordConfirm: body.passwordConfirm,
+      acceptLegal: body.acceptLegal === true,
     }),
   });
   const data = await readJson(res);
@@ -232,6 +234,8 @@ export function mapCustomerAuthApiError(code: unknown): string {
   if (k === "password_mismatch") return "Passwörter stimmen nicht überein.";
   if (k === "invalid_proof_token") return "E-Mail-Bestätigung abgelaufen — bitte Code erneut anfordern.";
   if (k === "account_exists") return "Diese E-Mail ist bereits registriert.";
+  if (k === "legal_acceptance_required") return "Bitte AGB und Datenschutzerklärung akzeptieren.";
+  if (k === "legal_versions_unavailable") return "Rechtstexte momentan nicht verfügbar — bitte später erneut.";
   if (k === "invalid_credentials") return "E-Mail oder Passwort falsch.";
   if (k === "rate_limit_ip") return "Zu viele Anmeldeversuche — bitte kurz warten.";
   if (k === "database_not_configured" || k === "database_error") return "Server noch nicht bereit.";

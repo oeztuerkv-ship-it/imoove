@@ -4,7 +4,7 @@ import { getOperationalConfigPayload, listServiceRegionsForApi } from "../db/app
 import { getHomepageContentPublic } from "../db/homepageContentData";
 import { listHomepageFaqPublic, listHomepageHowPublic, listHomepageTrustPublic } from "../db/homepageModulesData";
 import { listHomepagePlaceholdersPublic } from "../db/homepagePlaceholdersData";
-import { getLegalPagePublic, isLegalPageSlug } from "../db/legalPagesData";
+import { getLegalPagePublic, getLegalConsentVersions, isLegalPageSlug } from "../db/legalPagesData";
 import { buildFixedPriceQuote, buildRouteDistanceQuote } from "../lib/fixedPriceRouteQuote";
 
 const router: IRouter = Router();
@@ -172,6 +172,24 @@ router.get("/public/app-operational", async (_req, res, next) => {
     ]);
     res.setHeader("Cache-Control", "public, max-age=15");
     res.json({ ok: true, config, serviceRegions });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/public/legal-pages/consent-versions", async (_req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const versions = await getLegalConsentVersions();
+    if (!versions) {
+      res.status(503).json({ ok: false, error: "legal_versions_unavailable" });
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.json({ ok: true, versions });
   } catch (e) {
     next(e);
   }

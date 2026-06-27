@@ -148,6 +148,45 @@ export async function listLegalPagesAdmin(): Promise<LegalPageDto[]> {
   return rows.map(toDto);
 }
 
+export type LegalConsentVersionDto = {
+  version: string;
+  standLabel: string;
+  updatedAt: string | null;
+};
+
+/** Versionsreferenz für Zustimmungs-Audit (stand_label + updated_at aus legal_pages). */
+export function formatLegalPageVersion(
+  dto: Pick<LegalPageDto, "standLabel" | "updatedAt">,
+): string {
+  const stand = dto.standLabel.trim();
+  const updated = (dto.updatedAt ?? "").trim();
+  if (stand && updated) return `${stand}|${updated}`;
+  if (stand) return stand;
+  if (updated) return updated;
+  return "unknown";
+}
+
+export async function getLegalConsentVersions(): Promise<{
+  agb: LegalConsentVersionDto;
+  datenschutz: LegalConsentVersionDto;
+} | null> {
+  const agb = await getLegalPagePublic("agb");
+  const datenschutz = await getLegalPagePublic("datenschutz");
+  if (!agb || !datenschutz) return null;
+  return {
+    agb: {
+      version: formatLegalPageVersion(agb),
+      standLabel: agb.standLabel,
+      updatedAt: agb.updatedAt,
+    },
+    datenschutz: {
+      version: formatLegalPageVersion(datenschutz),
+      standLabel: datenschutz.standLabel,
+      updatedAt: datenschutz.updatedAt,
+    },
+  };
+}
+
 export async function getLegalPagePublic(slug: LegalPageSlug): Promise<LegalPageDto | null> {
   await ensureLegalPagesSeeded();
   const db = getDb();

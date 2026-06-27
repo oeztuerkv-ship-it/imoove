@@ -1,6 +1,7 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { passengerProfilesTable } from "./schema";
+import { recordPassengerLegalConsent } from "./customerLegalConsentData";
 
 export type PassengerAuthProvider = "email" | "google" | "apple";
 
@@ -52,6 +53,7 @@ export async function touchPassengerProfileFromEmailAccount(input: {
   passengerId: string;
   name: string;
   email: string;
+  legalConsent?: { termsVersion: string; privacyVersion: string; acceptedAt: Date };
 }): Promise<void> {
   await upsertPassengerProfile({
     passengerId: input.passengerId,
@@ -59,4 +61,11 @@ export async function touchPassengerProfileFromEmailAccount(input: {
     email: input.email,
     authProvider: "email",
   });
+  if (input.legalConsent) {
+    await recordPassengerLegalConsent({
+      passengerId: input.passengerId,
+      termsVersion: input.legalConsent.termsVersion,
+      privacyVersion: input.legalConsent.privacyVersion,
+    });
+  }
 }

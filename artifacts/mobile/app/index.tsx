@@ -72,15 +72,18 @@ import {
   LoginActionIcon,
   LoginActionLabel,
   NeuBeiOnrodaRegisterRow,
-  ONRODA_LEGAL_DOC,
   OnboardingFeatureIconsRow,
-  OnboardingSignupLegalFooter,
   emailLoginSubmitButtonStyle,
   loginActionButtonStyle,
   loginActionLabelStyle,
   socialLoginButtonStyle,
 } from "@/src/screens/LoginScreen";
 import { AppNewsDetailModal } from "@/components/AppNewsDetailModal";
+import {
+  CustomerLegalConsentCheckbox,
+  CustomerLegalConsentModal,
+  CustomerLegalLinksFooter,
+} from "@/components/CustomerLegalConsent";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
@@ -100,6 +103,11 @@ import {
 } from "@/utils/emailVerificationErrors";
 import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
 import { runCustomerGoogleSignIn } from "@/utils/customerGoogleSignIn";
+import {
+  gateCustomerOAuthSession,
+  type PendingOAuthSession,
+} from "@/utils/completeCustomerOAuthSession";
+import { mapCustomerLegalError } from "@/utils/customerLegalConsent";
 import { rs, rf } from "@/utils/scale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -402,6 +410,10 @@ export default function HomeScreen() {
   const [obRegPassword, setObRegPassword] = useState("");
   const [obRegPasswordConfirm, setObRegPasswordConfirm] = useState("");
   const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
+  const [registerLegalConsentChecked, setRegisterLegalConsentChecked] = useState(false);
+  const [socialRegisterLegalChecked, setSocialRegisterLegalChecked] = useState(false);
+  const [pendingOAuthSession, setPendingOAuthSession] = useState<PendingOAuthSession | null>(null);
+  const [legalConsentModalVisible, setLegalConsentModalVisible] = useState(false);
   const [obLoginEmail, setObLoginEmail] = useState("");
   const [obLoginPassword, setObLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -737,19 +749,52 @@ export default function HomeScreen() {
   const [appleSignInLoading, setAppleSignInLoading] = useState(false);
 
   /* ── Google OAuth ── */
+  const applyOAuthSession = useCallback(
+    (session: PendingOAuthSession) => {
+      loginWithGoogle({
+        ...session.profile,
+        sessionToken: session.sessionToken,
+      });
+    },
+    [loginWithGoogle],
+  );
+
+  const completeOAuthAfterSession = useCallback(
+    async (sessionToken: string, profile: Record<string, unknown>) => {
+      const gate = await gateCustomerOAuthSession(sessionToken, profile);
+      if (gate.kind === "error") {
+        Alert.alert("Hinweis", gate.message);
+        return;
+      }
+      if (gate.kind === "ready") {
+        applyOAuthSession(gate.session);
+        return;
+      }
+      setPendingOAuthSession(gate.session);
+      setLegalConsentModalVisible(true);
+    },
+    [applyOAuthSession],
+  );
+
   const handleGoogleSignIn = useCallback(async () => {
     setGoogleSignInLoading(true);
     try {
       const session = await runCustomerGoogleSignIn(API_URL);
       if (!session) return;
-      loginWithGoogle(session);
+      await completeOAuthAfterSession(session.sessionToken, {
+        googleId: session.googleId,
+        name: session.name,
+        email: session.email,
+        photoUri: session.photoUri,
+        authProvider: session.authProvider,
+      });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
       setGoogleSignInLoading(false);
     }
-  }, [loginWithGoogle]);
+  }, [completeOAuthAfterSession]);
 
   const handleAppleSignIn = useCallback(async () => {
     if (Platform.OS !== "ios") {
@@ -763,12 +808,11 @@ export default function HomeScreen() {
       }
       const session = await runNativeAppleSignIn(API_URL);
       if (!session) return;
-      loginWithGoogle({
+      await completeOAuthAfterSession(session.sessionToken, {
         name: session.name,
         email: session.email,
         photoUri: session.photoUri,
         googleId: session.googleId,
-        sessionToken: session.sessionToken,
         authProvider: "apple",
       });
     } catch (e: unknown) {
@@ -779,7 +823,7 @@ export default function HomeScreen() {
     } finally {
       setAppleSignInLoading(false);
     }
-  }, [loginWithGoogle]);
+  }, [completeOAuthAfterSession]);
 
   const submitEmailVerificationStart = useCallback(async () => {
     const email = obRegEmail.trim().toLowerCase();
@@ -920,6 +964,7 @@ export default function HomeScreen() {
     }
     setObRegPassword("");
     setObRegPasswordConfirm("");
+    setRegisterLegalConsentChecked(false);
     setOnboardingCustomerStep("register_password");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [obRegEmail, obRegName]);
@@ -932,6 +977,10 @@ export default function HomeScreen() {
       Alert.alert("Hinweis", "Bitte den Registrierungsflow von vorne starten (E-Mail bestätigen).");
       return;
     }
+    if (!registerLegalConsentChecked) {
+      Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
+      return;
+    }
     setRegisterSubmitLoading(true);
     try {
       const outcome = await registerCustomerAccount({
@@ -940,6 +989,7 @@ export default function HomeScreen() {
         password: obRegPassword,
         passwordConfirm: obRegPasswordConfirm,
         emailVerificationProofToken: proof,
+        acceptLegal: true,
       });
       if (!outcome.ok) {
         Alert.alert("Hinweis", outcome.error);
@@ -958,6 +1008,7 @@ export default function HomeScreen() {
     obRegPasswordConfirm,
     pendingEmailProofToken,
     registerCustomerAccount,
+    registerLegalConsentChecked,
   ]);
 
   const submitEmailLogin = useCallback(async () => {
@@ -2128,6 +2179,26 @@ export default function HomeScreen() {
         sponsorsRoute={SPONSORS_ROUTE as Href}
       />
 
+      <CustomerLegalConsentModal
+        visible={legalConsentModalVisible}
+        sessionToken={pendingOAuthSession?.sessionToken ?? ""}
+        mutedColor={colors.mutedForeground}
+        foregroundColor={colors.foreground}
+        surfaceColor={colors.surface}
+        borderColor={colors.border}
+        onCancel={() => {
+          setLegalConsentModalVisible(false);
+          setPendingOAuthSession(null);
+        }}
+        onAccepted={() => {
+          if (pendingOAuthSession) {
+            applyOAuthSession(pendingOAuthSession);
+          }
+          setLegalConsentModalVisible(false);
+          setPendingOAuthSession(null);
+        }}
+      />
+
       {/* ── BOTTOM TAB BAR ── */}
       <BottomTabBar active="start" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
 
@@ -2551,6 +2622,10 @@ export default function HomeScreen() {
                     fontSize={isSmallScreen ? 13 : 14}
                     onRegisterPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (!socialRegisterLegalChecked) {
+                        Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
+                        return;
+                      }
                       setObRegName("");
                       setObRegEmail("");
                       setEmailOtpDigits("");
@@ -2558,6 +2633,12 @@ export default function HomeScreen() {
                       setCooldownSecs(0);
                       setOnboardingCustomerStep("email_enter");
                     }}
+                  />
+                  <CustomerLegalConsentCheckbox
+                    checked={socialRegisterLegalChecked}
+                    onCheckedChange={setSocialRegisterLegalChecked}
+                    mutedColor={colors.mutedForeground}
+                    fontSize={isSmallScreen ? 10 : 11}
                   />
                   <View style={{ gap: isSmallScreen ? 8 : 10 }}>
                     <Pressable
@@ -2733,20 +2814,9 @@ export default function HomeScreen() {
                     compact={isSmallScreen}
                   />
 
-                  <OnboardingSignupLegalFooter
+                  <CustomerLegalLinksFooter
                     mutedColor={colors.mutedForeground}
                     fontSize={isSmallScreen ? 9 : 10}
-                    onAgbPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push({ pathname: "/legal-web", params: { doc: ONRODA_LEGAL_DOC.agb } } as Href);
-                    }}
-                    onDatenschutzPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push({
-                        pathname: "/legal-web",
-                        params: { doc: ONRODA_LEGAL_DOC.datenschutz },
-                      } as Href);
-                    }}
                   />
                 </View>
               </>
@@ -2940,12 +3010,20 @@ export default function HomeScreen() {
                     inputFieldStyle={styles.onboardingInputField}
                     onSubmitPassword={() => void submitCustomerRegistration()}
                   />
+                  <CustomerLegalConsentCheckbox
+                    checked={registerLegalConsentChecked}
+                    onCheckedChange={setRegisterLegalConsentChecked}
+                    mutedColor={colors.mutedForeground}
+                    fontSize={isSmallScreen ? 10 : 11}
+                  />
                   <Pressable
                     style={[styles.socialBtn, {
                       backgroundColor: isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                        && registerLegalConsentChecked
                         ? "#111111"
                         : colors.muted,
                       borderColor: isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                        && registerLegalConsentChecked
                         ? "#111111"
                         : colors.border,
                       paddingVertical: isSmallScreen ? 13 : 16,
@@ -2953,7 +3031,9 @@ export default function HomeScreen() {
                     }]}
                     onPress={() => void submitCustomerRegistration()}
                     disabled={
-                      !isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm) || registerSubmitLoading
+                      !isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                      || !registerLegalConsentChecked
+                      || registerSubmitLoading
                     }
                   >
                     {registerSubmitLoading ? (
@@ -2964,6 +3044,7 @@ export default function HomeScreen() {
                         size={20}
                         color={
                           isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                          && registerLegalConsentChecked
                             ? "#fff"
                             : colors.mutedForeground
                         }
@@ -2971,6 +3052,7 @@ export default function HomeScreen() {
                     )}
                     <Text style={[styles.socialBtnText, {
                       color: isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                        && registerLegalConsentChecked
                         ? "#fff"
                         : colors.mutedForeground,
                       fontSize: isSmallScreen ? 15 : 16,

@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import { getApiBaseUrl } from "./apiBase";
 import { ensureExpoNotificationsHandler } from "./ensureExpoNotificationsHandler";
+import { ensureExpoNotificationPermission } from "./expoNotificationPermissions";
 
 /**
  * Registriert das Expo-Push-Token beim Backend (Kunden-Session).
@@ -16,13 +17,8 @@ export async function syncCustomerExpoPushToken(opts: { sessionToken: string; go
     await ensureExpoNotificationsHandler();
     const Notifications = await import("expo-notifications");
 
-    const existing = await Notifications.getPermissionsAsync();
-    let status = existing.status;
-    if (status !== "granted") {
-      const req = await Notifications.requestPermissionsAsync();
-      status = req.status;
-    }
-    if (status !== "granted") return;
+    const granted = await ensureExpoNotificationPermission(Notifications);
+    if (!granted) return;
 
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("ride-updates", {

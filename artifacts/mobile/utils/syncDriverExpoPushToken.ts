@@ -6,6 +6,10 @@ import {
 } from "@/constants/driverPushNotifications";
 import { getApiBaseUrl } from "./apiBase";
 import { ensureExpoNotificationsHandler } from "./ensureExpoNotificationsHandler";
+import {
+  ensureExpoNotificationPermission,
+  hasExpoNotificationPermission,
+} from "./expoNotificationPermissions";
 
 const STORAGE_LAST_SYNC_AT = "onroda_driver_expo_push_sync_at_v1";
 const STORAGE_LAST_TOKEN = "onroda_driver_expo_push_token_v1";
@@ -19,8 +23,7 @@ export async function isDriverPushReady(): Promise<DriverPushReadyState> {
   try {
     await ensureExpoNotificationsHandler();
     const Notifications = await import("expo-notifications");
-    const perm = await Notifications.getPermissionsAsync();
-    if (perm.status !== "granted") return "denied";
+    if (!(await hasExpoNotificationPermission(Notifications))) return "denied";
     const token = (await AsyncStorage.getItem(STORAGE_LAST_TOKEN))?.trim();
     return token ? "ok" : "missing";
   } catch {
@@ -97,14 +100,9 @@ export async function syncDriverExpoPushToken(opts: {
     await ensureExpoNotificationsHandler();
     const Notifications = await import("expo-notifications");
 
-    const existing = await Notifications.getPermissionsAsync();
-    let status = existing.status;
-    if (status !== "granted") {
-      const req = await Notifications.requestPermissionsAsync();
-      status = req.status;
-    }
-    if (status !== "granted") {
-      const r = { ok: false as const, reason: "permission_denied" as const, detail: status };
+    const granted = await ensureExpoNotificationPermission(Notifications);
+    if (!granted) {
+      const r = { ok: false as const, reason: "permission_denied" as const, detail: "not_granted" };
       devLog(r);
       return r;
     }
