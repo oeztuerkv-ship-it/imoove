@@ -115,6 +115,10 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
        alias /var/www/onroda/datenschutz.html;
        default_type text/html;
    }
+   location = /agb {
+       alias /var/www/onroda/agb.html;
+       default_type text/html;
+   }
    location = /ueber-onroda {
        alias /var/www/onroda/ueber-onroda.html;
        default_type text/html;

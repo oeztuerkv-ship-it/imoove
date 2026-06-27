@@ -542,6 +542,35 @@ do_marketing_fixpreise_verify() {
   log "Fixpreise-URL: OK (Inhalt plausibel)."
 }
 
+# AGB: /agb darf nicht die Startseite oder eine veraltete Static-Version sein.
+do_marketing_agb_verify() {
+  [[ "$DRY_RUN" -eq 1 ]] && return 0
+  [[ "${ONRODA_SKIP_MARKETING_RSYNC:-0}" == "1" ]] && return 0
+  [[ "${ONRODA_SKIP_MARKETING_AGB_VERIFY:-0}" == "1" ]] && return 0
+  local url="${ONRODA_MARKETING_AGB_VERIFY_URL:-https://onroda.de/agb}"
+  local t="${ONRODA_MARKETING_AGB_VERIFY_TIMEOUT:-25}"
+  log "Prüfe AGB-URL: ${url}"
+  command -v curl >/dev/null 2>&1 || { log "curl fehlt — AGB-URL-Check übersprungen"; return 0; }
+  local body
+  body="$(curl -fsSL --max-time "$t" "$url")" || {
+    echo "[deploy-onroda] FEHLER: curl für AGB-URL fehlgeschlagen: $url" >&2
+    exit 1
+  }
+  if ! grep -qF "Widerrufsrecht" <<<"$body"; then
+    echo "[deploy-onroda] FEHLER: /agb liefert nicht die aktuelle AGB (Marker Widerrufsrecht fehlt). rsync + Nginx location = /agb prüfen." >&2
+    exit 1
+  fi
+  if grep -qF "2 Stunden vor dem geplanten Abholzeitpunkt" <<<"$body"; then
+    echo "[deploy-onroda] FEHLER: /agb enthält noch die alte Storno-Frist (2 Stunden). Static-Drift oder Browser-Cache — rsync prüfen." >&2
+    exit 1
+  fi
+  if grep -qF 'id="hero-headline"' <<<"$body"; then
+    echo "[deploy-onroda] FEHLER: Unter /agb wird die Startseite ausgeliefert (hero-headline gefunden). Nginx location = /agb setzen." >&2
+    exit 1
+  fi
+  log "AGB-URL: OK (Inhalt plausibel)."
+}
+
 # --- main ---
 if [[ "$LIST_MIGRATIONS" -eq 1 ]]; then
   command -v psql >/dev/null 2>&1 || { echo "[deploy-onroda] psql nicht im PATH" >&2; exit 1; }
@@ -619,6 +648,7 @@ do_pm2
 do_optional_nginx
 do_optional_marketing_status_verify
 do_marketing_fixpreise_verify
+do_marketing_agb_verify
 do_marketing_home_verify
 do_health_checks
 
