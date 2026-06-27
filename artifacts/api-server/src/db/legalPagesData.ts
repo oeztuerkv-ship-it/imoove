@@ -33,8 +33,20 @@ function toDto(row: typeof legalPagesTable.$inferSelect): LegalPageDto {
 }
 
 function marketingSiteDir(): string {
+  const override = (process.env.MARKETING_STATIC_DIR ?? "").trim();
+  if (override) return override;
+
   const here = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(here, "../../../marketing-site");
+  // Gebündelt (dist/index.mjs): ../../marketing-site → artifacts/marketing-site
+  // Ungebündelt (src/db): ../../../marketing-site → artifacts/marketing-site
+  const candidates = [
+    path.join(here, "..", "..", "marketing-site"),
+    path.join(here, "..", "..", "..", "marketing-site"),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "agb.html"))) return dir;
+  }
+  return candidates[0]!;
 }
 
 function staticHtmlPath(slug: LegalPageSlug): string {
@@ -66,32 +78,66 @@ function defaultSeedMeta(slug: LegalPageSlug): { pageTitle: string; standLabel: 
 
 function readStaticSeed(slug: LegalPageSlug): { pageTitle: string; standLabel: string; bodyHtml: string } {
   const defaults = defaultSeedMeta(slug);
+  const filePath = staticHtmlPath(slug);
   try {
-    const full = fs.readFileSync(staticHtmlPath(slug), "utf8");
+    const full = fs.readFileSync(filePath, "utf8");
     const bodyHtml = extractLegalArticleHtml(full);
+    if (!bodyHtml || bodyHtml.length < 80) {
+      throw new Error(`extracted body too short (${bodyHtml.length} chars) from ${filePath}`);
+    }
     return {
       pageTitle: parseTitleFromArticle(bodyHtml, defaults.pageTitle),
       standLabel: parseStandFromArticle(bodyHtml) || defaults.standLabel,
       bodyHtml,
     };
-  } catch {
+  } catch (err) {
+    console.error(
+      `[legal_pages] Static-Seed fehlgeschlagen für ${slug} (${filePath}):`,
+      err instanceof Error ? err.message : err,
+    );
     return { ...defaults, bodyHtml: `<h1>${defaults.pageTitle}</h1>` };
   }
+}
+
+function placeholderBodyHtml(slug: LegalPageSlug): string {
+  return `<h1>${defaultSeedMeta(slug).pageTitle}</h1>`;
+}
+
+/** Erkennt fehlerhafte Erst-Seeds (Pfad-Bug im Bundle → nur Fallback-h1). */
+export function isPlaceholderLegalBody(slug: LegalPageSlug, bodyHtml: string): boolean {
+  const trimmed = bodyHtml.trim();
+  if (trimmed === placeholderBodyHtml(slug)) return true;
+  return trimmed.length < 80;
 }
 
 /** Beim ersten Zugriff: Static-HTML aus artifacts/marketing-site/ als Startinhalt. */
 export async function ensureLegalPagesSeeded(): Promise<void> {
   const db = getDb();
   for (const slug of LEGAL_PAGE_SLUGS) {
-    const existing = await db.select().from(legalPagesTable).where(eq(legalPagesTable.slug, slug)).limit(1);
-    if (existing.length > 0) continue;
     const seed = readStaticSeed(slug);
-    await db.insert(legalPagesTable).values({
-      slug,
-      page_title: seed.pageTitle,
-      stand_label: seed.standLabel,
-      body_html: seed.bodyHtml,
-    });
+    const existing = await db.select().from(legalPagesTable).where(eq(legalPagesTable.slug, slug)).limit(1);
+    if (existing.length === 0) {
+      await db.insert(legalPagesTable).values({
+        slug,
+        page_title: seed.pageTitle,
+        stand_label: seed.standLabel,
+        body_html: seed.bodyHtml,
+      });
+      continue;
+    }
+    const row = existing[0]!;
+    if (isPlaceholderLegalBody(slug, row.body_html) && !isPlaceholderLegalBody(slug, seed.bodyHtml)) {
+      await db
+        .update(legalPagesTable)
+        .set({
+          page_title: seed.pageTitle,
+          stand_label: seed.standLabel,
+          body_html: seed.bodyHtml,
+          updated_at: new Date(),
+        })
+        .where(eq(legalPagesTable.slug, slug));
+      console.info(`[legal_pages] Platzhalter für ${slug} aus Static nachgezogen (${seed.bodyHtml.length} Zeichen)`);
+    }
   }
 }
 
