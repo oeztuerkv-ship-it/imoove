@@ -15,6 +15,7 @@ import {
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
 import { isPostgresConfigured } from "../db/client";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -35,6 +36,18 @@ router.post("/auth/customer/register", async (req, res) => {
     bodyAcceptLegal: req.body?.acceptLegal ?? req.body?.accept_legal,
   });
   if (!outcome.ok) {
+    const emailRaw = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const emailDomain = emailRaw.includes("@") ? emailRaw.split("@")[1] : "";
+    logger.info(
+      {
+        event: "auth.customer.register.failed",
+        error: outcome.error,
+        status: outcome.status,
+        emailDomain,
+        acceptLegal: req.body?.acceptLegal ?? req.body?.accept_legal ?? null,
+      },
+      "customer register rejected",
+    );
     res.status(outcome.status).json({ ok: false, error: outcome.error });
     return;
   }

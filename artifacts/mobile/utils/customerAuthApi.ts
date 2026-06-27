@@ -41,22 +41,26 @@ export async function registerCustomerWithPassword(body: {
   name: string;
   password: string;
   passwordConfirm: string;
-  acceptLegal: boolean;
+  /** true nach Checkbox; weglassen nur für Legacy-Aufrufer — nie `false` senden. */
+  acceptLegal?: boolean;
 }): Promise<RegisterCustomerResult> {
   if (!API_URL?.trim()) {
     return { ok: false, error: "api_not_configured", status: 503 };
   }
+  const payload: Record<string, unknown> = {
+    email: body.email.trim().toLowerCase(),
+    proofToken: body.proofToken.trim(),
+    name: body.name.trim(),
+    password: body.password,
+    passwordConfirm: body.passwordConfirm,
+  };
+  if (body.acceptLegal === true) {
+    payload.acceptLegal = true;
+  }
   const res = await fetch(`${API_URL}/auth/customer/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: body.email.trim().toLowerCase(),
-      proofToken: body.proofToken.trim(),
-      name: body.name.trim(),
-      password: body.password,
-      passwordConfirm: body.passwordConfirm,
-      acceptLegal: body.acceptLegal === true,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await readJson(res);
   if (!res.ok || data?.ok === false) {
@@ -192,7 +196,10 @@ export async function verifyEmailVerificationCode(body: {
       status: res.status,
     };
   }
-  const proofToken = typeof data.proofToken === "string" ? data.proofToken : undefined;
+  const proofToken = typeof data.proofToken === "string" ? data.proofToken.trim() : "";
+  if (!proofToken) {
+    return { ok: false, error: "proof_token_failed", status: 502 };
+  }
   return { ok: true, proofToken };
 }
 
@@ -236,6 +243,8 @@ export function mapCustomerAuthApiError(code: unknown): string {
   if (k === "account_exists") return "Diese E-Mail ist bereits registriert.";
   if (k === "legal_acceptance_required") return "Bitte AGB und Datenschutzerklärung akzeptieren.";
   if (k === "legal_versions_unavailable") return "Rechtstexte momentan nicht verfügbar — bitte später erneut.";
+  if (k === "proof_token_failed") return "E-Mail-Bestätigung konnte nicht abgeschlossen werden — bitte Code erneut anfordern.";
+  if (k === "register_failed") return "Registrierung fehlgeschlagen — bitte erneut versuchen.";
   if (k === "invalid_credentials") return "E-Mail oder Passwort falsch.";
   if (k === "rate_limit_ip") return "Zu viele Anmeldeversuche — bitte kurz warten.";
   if (k === "database_not_configured" || k === "database_error") return "Server noch nicht bereit.";

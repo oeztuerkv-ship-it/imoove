@@ -23,6 +23,9 @@ export function mapEmailVerificationApiError(code: unknown): string {
   if (k === "account_exists") {
     return "Bereits registriert — bitte einloggen. Diese E-Mail-Adresse hat schon ein Konto.";
   }
+  if (k === "proof_token_failed") {
+    return "E-Mail-Bestätigung konnte nicht abgeschlossen werden — bitte Code erneut anfordern.";
+  }
   return "Es ist ein Fehler aufgetreten.";
 }
 

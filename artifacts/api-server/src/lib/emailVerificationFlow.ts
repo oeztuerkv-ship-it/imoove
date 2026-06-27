@@ -271,5 +271,9 @@ export async function verifyEmailCode(opts: {
     proofToken = null;
   }
 
+  if (!proofToken) {
+    return { ok: false, error: "proof_token_failed", status: 503 };
+  }
+
   return { ok: true, email: normalized, proofToken };
 }

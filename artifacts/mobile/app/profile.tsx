@@ -1205,7 +1205,12 @@ export default function ProfileScreen() {
         );
         return;
       }
-      setPendingEmailProofToken(typeof data.proofToken === "string" ? data.proofToken : undefined);
+      const proofToken = typeof data.proofToken === "string" ? data.proofToken.trim() : "";
+      if (!proofToken) {
+        Alert.alert("Hinweis", mapEmailVerificationApiError("proof_token_failed"));
+        return;
+      }
+      setPendingEmailProofToken(proofToken);
       setRegEmail(email);
       Keyboard.dismiss();
       setRegSubStep("profile");

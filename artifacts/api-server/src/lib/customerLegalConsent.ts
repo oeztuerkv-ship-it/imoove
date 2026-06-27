@@ -75,13 +75,21 @@ export async function acceptCustomerLegalConsent(opts: {
   return { ok: true, status };
 }
 
+/** true = explizite Checkbox; fehlend/undefined = Legacy-App ohne acceptLegal-Feld (E-Mail-Flow). */
+export function isLegalConsentAcceptedForRegistration(acceptLegal: unknown): boolean {
+  if (acceptLegal === false) return false;
+  if (acceptLegal === true) return true;
+  // Ältere Mobile-Builds senden acceptLegal nicht — Zustimmung wird serverseitig beim Abschluss gespeichert.
+  return acceptLegal === undefined || acceptLegal === null;
+}
+
 export async function requireLegalConsentForRegistration(
   acceptLegal: unknown,
 ): Promise<
   | { ok: true; termsVersion: string; privacyVersion: string; acceptedAt: Date }
   | { ok: false; error: string; status: number }
 > {
-  if (acceptLegal !== true) {
+  if (!isLegalConsentAcceptedForRegistration(acceptLegal)) {
     return { ok: false, error: "legal_acceptance_required", status: 400 };
   }
   const versionsOutcome = await fetchLegalConsentVersions();
