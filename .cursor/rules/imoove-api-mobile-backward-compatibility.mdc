@@ -1,0 +1,41 @@
+---
+description: API-Änderungen rückwärtskompatibel — ältere Mobile-Builds dürfen nicht brechen (Pflichtfelder, Validierung, Deploy-Reihenfolge)
+alwaysApply: true
+---
+
+# API ↔ Mobile: Rückwärtskompatibilität (verbindlich)
+
+**Kontext:** App-Store- und TestFlight-Updates erreichen Nutzer **nicht synchron**. Nach einem API-Deploy laufen oft noch **ältere App-Versionen** gegen die neue API.
+
+## Grundregel
+
+Neue **Pflichtfelder** an **bestehenden** Endpunkten (v. a. Mobile: Kunde/Fahrer) dürfen ältere Clients **nicht plötzlich ablehnen**.
+
+| Client sendet | API-Verhalten (Standard) |
+|---------------|--------------------------|
+| Feld **fehlt** / `undefined` / `null` | **Sinnvoller Default** — Flow weiter erlauben, serverseitig persistieren wo nötig |
+| Feld **`true`** / explizit gültiger Wert | Normal verarbeiten |
+| Feld **`false`** oder klar ungültig | Ablehnen (z. B. explizite Ablehnung einer Zustimmung) |
+
+**Nicht:** `if (field !== true) return 400` — bricht alle Clients ohne das neue Feld.
+
+## Referenz-Postmortem (2026-06)
+
+`POST /auth/customer/register` + neues `acceptLegal`: API verlangte strikt `true` → **jede E-Mail-Registrierung** mit älterem Mobile-Build blockiert (`legal_acceptance_required`, 400). Fix: fehlendes Feld = Zustimmung beim Abschluss speichern; nur explizites `false` ablehnen.
+
+## Bei jeder API-Änderung an Mobile-Endpunkten mitdenken
+
+1. **Bestehender Endpunkt?** → Default für fehlende Felder definieren, **nicht** sofort härter validieren.
+2. **Deploy-Reihenfolge:** API tolerant **vor** oder **mit** Mobile-Release; harte Pflicht erst, wenn alte Builds vernachlässigbar (selten).
+3. **Mobile:** Neue Felder nur senden, wenn gesetzt — **nie** `false` als Ersatz für „nicht gesendet“ (`field === true ? { field: true } : {}`).
+4. **PR „Auswirkungen“:** explizit „Rückwärtskompatibilität Mobile — ja/nein, Default wenn fehlend“.
+5. **Logging:** bei neuen Validierungen strukturiertes Log mit Fehlercode (nicht nur 400 im Access-Log).
+
+## Ausnahmen (bewusst, selten)
+
+- Sicherheitsfix ohne tolerierbare Alternative → kurz begründen, Mobile-Hotfix parallel planen.
+- **Neue** Endpunkte (kein bestehender Client) — Regel gilt primär für **Erweiterung bestehender** Routen.
+
+## Für Agents
+
+Vor Merge/Deploy neuer API-Pflichtfelder: **curl ohne neues Feld** gegen den Endpunkt — darf den bisherigen Happy Path nicht härter blockieren als vorher.

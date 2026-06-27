@@ -48,6 +48,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`** — produktiver Nginx-/TLS-/Domain-Referenzstand (z. B. `sites-enabled/final-try`, `api.onroda.de`-SAN, Panel-`/partners`-Redirect)
 - **`scripts/verify-onroda-nginx-example-invariants.sh`** — wird von `verify-onroda-repo-invariants.sh` aufgerufen; hält `artifacts/deploy/nginx-onroda.example.conf` gegen harte Routing-Regressionen (Admin/Panel/API müssen `proxy_pass` haben, kein Panel→Admin-301)
 - `.cursor/rules/imoove-product-architecture.mdc` — Schichten Marketing / API / Mobile / Panel
+- `.cursor/rules/imoove-api-mobile-backward-compatibility.mdc` — **API ↔ Mobile:** neue Pflichtfelder an bestehenden Endpunkten rückwärtskompatibel (fehlend = Default, nicht 400)
 - `.cursor/rules/imoove-panel-ux-separation.mdc` — **Admin = Plattform-Konsole**, **Partner = Unternehmens-Panel** (Sprache, Farben, Navigation, kein UI-Mix)
 - **ONRODA Admin-Standard** (`artifacts/admin-panel/`): `docs/admin-ui-reference.md` + `.cursor/rules/imoove-admin-panel-ui-reference.mdc` — helles Karten-Layout, Mandantenzentrale-Referenz, Bearbeiten in der Zentrale, typgetrennte Zusatzsektionen, kein TaxiMaster-Design; gleiche Tragfähigkeit aller `company_kind`
 
