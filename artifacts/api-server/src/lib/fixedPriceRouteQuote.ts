@@ -1,6 +1,10 @@
 import { assertPlatformNewRideAllowed, getOperationalConfigPayload } from "../db/appOperationalData";
 import { checkFixedPriceBooking } from "./fixedPriceBooking";
-import { getGooglePlacesApiKey } from "./googlePlacesClient";
+import {
+  getGoogleDistanceMatrixApiKey,
+  getGoogleDistanceMatrixKeySource,
+} from "./googlePlacesClient";
+import { logger } from "./logger";
 
 const PHOTON_BASE = "https://photon.komoot.io/api";
 const OSRM_BASE = "https://router.project-osrm.org";
@@ -135,8 +139,15 @@ export async function resolveRouteGeoPoint(
 }
 
 async function drivingRouteGoogle(from: RouteGeoPoint, to: RouteGeoPoint): Promise<DrivingRouteResult | null> {
-  const key = getGooglePlacesApiKey();
-  if (!key) return null;
+  const key = getGoogleDistanceMatrixApiKey();
+  const keySource = getGoogleDistanceMatrixKeySource();
+  if (!key) {
+    logger.warn(
+      { event: "price_route.google_skipped", reason: "no_api_key", keySource },
+      "[price-route] Google Distance Matrix skipped — no API key configured",
+    );
+    return null;
+  }
   const origins = encodeURIComponent(`${from.lat},${from.lon}`);
   const destinations = encodeURIComponent(`${to.lat},${to.lon}`);
   const url =
@@ -146,20 +157,74 @@ async function drivingRouteGoogle(from: RouteGeoPoint, to: RouteGeoPoint): Promi
   try {
     const data = (await fetchJson(url)) as {
       status?: string;
+      error_message?: string;
       rows?: { elements?: { status?: string; distance?: { value?: number }; duration?: { value?: number } }[] }[];
     };
-    if (data.status !== "OK") return null;
+    if (data.status !== "OK") {
+      logger.warn(
+        {
+          event: "price_route.google_failed",
+          keySource,
+          apiStatus: data.status ?? "unknown",
+          errorMessage: data.error_message ?? null,
+          from: from.displayName,
+          to: to.displayName,
+        },
+        "[price-route] Google Distance Matrix API rejected request",
+      );
+      return null;
+    }
     const el = data.rows?.[0]?.elements?.[0];
-    if (!el || el.status !== "OK") return null;
+    if (!el || el.status !== "OK") {
+      logger.warn(
+        {
+          event: "price_route.google_element_failed",
+          keySource,
+          elementStatus: el?.status ?? "missing",
+          from: from.displayName,
+          to: to.displayName,
+        },
+        "[price-route] Google Distance Matrix returned no route for coordinates",
+      );
+      return null;
+    }
     const meters = Number(el.distance?.value ?? 0);
     const seconds = Number(el.duration?.value ?? 0);
-    if (!Number.isFinite(meters) || meters <= 0) return null;
+    if (!Number.isFinite(meters) || meters <= 0) {
+      logger.warn(
+        { event: "price_route.google_invalid_distance", keySource, meters, from: from.displayName, to: to.displayName },
+        "[price-route] Google Distance Matrix distance invalid",
+      );
+      return null;
+    }
+    const distanceKm = Math.round((meters / 1000) * 100) / 100;
+    logger.info(
+      {
+        event: "price_route.google_ok",
+        keySource,
+        distanceKm,
+        durationMinutes: Math.max(1, Math.round(seconds / 60)),
+        from: from.displayName,
+        to: to.displayName,
+      },
+      "[price-route] Google Distance Matrix route used",
+    );
     return {
-      distanceKm: Math.round((meters / 1000) * 100) / 100,
+      distanceKm,
       durationMinutes: Math.max(1, Math.round(seconds / 60)),
       routingSource: "google",
     };
-  } catch {
+  } catch (err) {
+    logger.warn(
+      {
+        event: "price_route.google_error",
+        keySource,
+        err: err instanceof Error ? err.message : String(err),
+        from: from.displayName,
+        to: to.displayName,
+      },
+      "[price-route] Google Distance Matrix request failed",
+    );
     return null;
   }
 }
@@ -192,6 +257,10 @@ export async function drivingRouteBetween(
 ): Promise<DrivingRouteResult | RouteQuoteError> {
   const google = await drivingRouteGoogle(from, to);
   if (google) return google;
+  logger.info(
+    { event: "price_route.osrm_fallback", from: from.displayName, to: to.displayName },
+    "[price-route] falling back to OSRM after Google unavailable or failed",
+  );
   const osrm = await drivingRouteOsrm(from, to);
   if (osrm) return osrm;
   return {
