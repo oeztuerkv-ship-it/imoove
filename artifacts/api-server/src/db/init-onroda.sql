@@ -963,6 +963,14 @@ CREATE TABLE IF NOT EXISTS insurer_ride_transport_documents (
 CREATE INDEX IF NOT EXISTS insurer_ride_transport_documents_company_ride_idx
   ON insurer_ride_transport_documents (company_id, ride_id);
 
+CREATE TABLE IF NOT EXISTS legal_pages (
+  slug TEXT PRIMARY KEY,
+  page_title TEXT NOT NULL DEFAULT '',
+  stand_label TEXT NOT NULL DEFAULT '',
+  body_html TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS homepage_faq_items (
   id TEXT PRIMARY KEY,
   question TEXT NOT NULL DEFAULT '',

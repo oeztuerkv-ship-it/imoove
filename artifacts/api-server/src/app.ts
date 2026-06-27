@@ -9,6 +9,9 @@ import router from "./routes";
 import adminRouter from "./routes/admin";
 import { handleStripeWebhook } from "./routes/stripeWebhook.js";
 import { logger } from "./lib/logger";
+import { isPostgresConfigured } from "./db/client";
+import { getLegalPagePublic, type LegalPageSlug } from "./db/legalPagesData";
+import { renderLegalPageHtml } from "./lib/renderLegalPageHtml";
 
 const app: Express = express();
 
@@ -219,6 +222,41 @@ app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
   if (req.path === "/partners" || req.path.startsWith("/partners/")) return res.redirect(302, "/");
   return next();
+});
+
+function isMarketingHost(host: string): boolean {
+  return host === "onroda.de" || host === "www.onroda.de";
+}
+
+async function serveMarketingLegalPage(slug: LegalPageSlug, req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!isMarketingHost(hostname(req))) return next();
+  if (!isPostgresConfigured()) {
+    return res.sendFile(path.join(staticRoot, `${slug}.html`), (err) => {
+      if (err) next(err);
+    });
+  }
+  try {
+    const page = await getLegalPagePublic(slug);
+    if (!page) {
+      res.status(404).send("Seite nicht gefunden");
+      return;
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.send(renderLegalPageHtml(page));
+  } catch (e) {
+    next(e);
+  }
+}
+
+app.get("/agb", (req, res, next) => {
+  void serveMarketingLegalPage("agb", req, res, next);
+});
+app.get("/datenschutz", (req, res, next) => {
+  void serveMarketingLegalPage("datenschutz", req, res, next);
+});
+app.get("/impressum", (req, res, next) => {
+  void serveMarketingLegalPage("impressum", req, res, next);
 });
 
 // Admin-Static

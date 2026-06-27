@@ -169,6 +169,11 @@ import {
   listHomepagePlaceholdersAdmin,
   patchHomepagePlaceholder,
 } from "../db/homepagePlaceholdersData";
+import {
+  isLegalPageSlug,
+  listLegalPagesAdmin,
+  updateLegalPageAdmin,
+} from "../db/legalPagesData";
 import { getAdminOperatorSnapshot } from "../db/adminOperatorSnapshotData";
 import { getCompanyMandateRead } from "../db/adminMandateDetailData";
 import {
@@ -3106,6 +3111,54 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
     );
     if (!item) {
       res.status(503).json({ error: "patch_failed" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/legal-pages", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listLegalPagesAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/legal-pages/:slug", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const slug = typeof req.params.slug === "string" ? req.params.slug.trim() : "";
+    if (!isLegalPageSlug(slug)) {
+      res.status(400).json({ error: "invalid_slug" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const item = await updateLegalPageAdmin(slug, {
+      pageTitle: typeof b.pageTitle === "string" ? b.pageTitle : undefined,
+      standLabel: typeof b.standLabel === "string" ? b.standLabel : undefined,
+      bodyHtml: typeof b.bodyHtml === "string" ? b.bodyHtml : undefined,
+    });
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
       return;
     }
     res.json({ ok: true, item });

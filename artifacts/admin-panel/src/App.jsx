@@ -42,6 +42,7 @@ import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
 import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
 import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
 import HomepageContentPage from "./pages/HomepageContentPage.jsx";
+import LegalPagesPage from "./pages/LegalPagesPage.jsx";
 import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
 import VisitorAnalyticsPage from "./pages/VisitorAnalyticsPage.jsx";
 import AppOperationalTariffsPage from "./pages/AppOperationalTariffsPage.jsx";
@@ -311,6 +312,10 @@ const PAGE_META = {
   "homepage-content": {
     title: "Homepage-Inhalte",
     subtitle: "Hero-Texte und Hinweiszeile der Marketing-Homepage ohne Codeänderung steuern",
+  },
+  "legal-pages": {
+    title: "Rechtstexte",
+    subtitle: "AGB, Datenschutz und Impressum für onroda.de — ohne Code-Deploy bearbeiten",
   },
   "visitor-analytics": {
     title: "Besucherstatistik",
@@ -890,6 +895,8 @@ export default function App() {
         return <HomepagePlaceholdersPage />;
       case "homepage-content":
         return <HomepageContentPage />;
+      case "legal-pages":
+        return <LegalPagesPage />;
       case "visitor-analytics":
         return <VisitorAnalyticsPage />;
       case "fail2ban":

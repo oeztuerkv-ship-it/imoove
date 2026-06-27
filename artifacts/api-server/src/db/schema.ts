@@ -1371,6 +1371,15 @@ export const insurerRideTransportDocumentsTable = pgTable("insurer_ride_transpor
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** CMS: Rechtstexte (AGB, Datenschutz, Impressum). */
+export const legalPagesTable = pgTable("legal_pages", {
+  slug: text("slug").primaryKey(),
+  page_title: text("page_title").notNull().default(""),
+  stand_label: text("stand_label").notNull().default(""),
+  body_html: text("body_html").notNull().default(""),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Homepage CMS: FAQ-Liste (modular getrennt von homepage_content). */
 export const homepageFaqItemsTable = pgTable("homepage_faq_items", {
   id: text("id").primaryKey(),

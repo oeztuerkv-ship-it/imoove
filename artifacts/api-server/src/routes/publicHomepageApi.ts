@@ -4,6 +4,7 @@ import { getOperationalConfigPayload, listServiceRegionsForApi } from "../db/app
 import { getHomepageContentPublic } from "../db/homepageContentData";
 import { listHomepageFaqPublic, listHomepageHowPublic, listHomepageTrustPublic } from "../db/homepageModulesData";
 import { listHomepagePlaceholdersPublic } from "../db/homepagePlaceholdersData";
+import { getLegalPagePublic, isLegalPageSlug } from "../db/legalPagesData";
 import { buildFixedPriceQuote, buildRouteDistanceQuote } from "../lib/fixedPriceRouteQuote";
 
 const router: IRouter = Router();
@@ -171,6 +172,29 @@ router.get("/public/app-operational", async (_req, res, next) => {
     ]);
     res.setHeader("Cache-Control", "public, max-age=15");
     res.json({ ok: true, config, serviceRegions });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/public/legal-pages/:slug", async (req, res, next) => {
+  try {
+    const slug = typeof req.params.slug === "string" ? req.params.slug.trim() : "";
+    if (!isLegalPageSlug(slug)) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const item = await getLegalPagePublic(slug);
+    if (!item) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.json({ ok: true, item });
   } catch (e) {
     next(e);
   }

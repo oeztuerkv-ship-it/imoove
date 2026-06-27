@@ -676,6 +676,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'legal_pages'
+  ) THEN
+    errs := array_append(errs, 'table legal_pages (Migration 120)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'insurer_cost_centers'
   ) THEN
     errs := array_append(errs, 'table insurer_cost_centers (Migration 041)');

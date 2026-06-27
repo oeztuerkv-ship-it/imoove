@@ -121,3 +121,4 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 117_homepage_nav_fixpreis_page_url.sql
 118_homepage_fixpreis_nav_trailing_slash.sql
 119_homepage_cms_branding_themes.sql
+120_legal_pages.sql

@@ -103,22 +103,35 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
    rsync -a /root/imoove/artifacts/api-server/static/ /var/www/onroda/
    ```
 
-3. **Nginx:** Im `server`-Block für **`onroda.de` / `www.onroda.de`** (vor `location /` mit `try_files`) **explizite** Locations setzen — `alias` auf den **gleichen** Webroot wie `root`:
+3. **Nginx:** Im `server`-Block für **`onroda.de` / `www.onroda.de`** (vor `location /` mit `try_files`) **explizite** Locations setzen:
 
    ```nginx
-   # Webroot = z. B. /var/www/onroda — an root angleichen
+   # Rechtstexte (CMS aus PostgreSQL via Node — Migration 120, Admin „Rechtstexte“)
    location = /impressum {
-       alias /var/www/onroda/impressum.html;
-       default_type text/html;
+       proxy_pass http://onroda_node;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
    }
    location = /datenschutz {
-       alias /var/www/onroda/datenschutz.html;
-       default_type text/html;
+       proxy_pass http://onroda_node;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
    }
    location = /agb {
-       alias /var/www/onroda/agb.html;
-       default_type text/html;
+       proxy_pass http://onroda_node;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
    }
+   # Statische Seiten — alias auf Webroot
    location = /ueber-onroda {
        alias /var/www/onroda/ueber-onroda.html;
        default_type text/html;
@@ -137,9 +150,11 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
    }
    ```
 
-   **Ohne** explizite `location = /…` liefert `try_files … /index.html` die **Startseite** (z. B. unter `/impressum`, `/datenschutz`, `/ueber-onroda`, `/fixpreise`).
+   **Rechtstexte:** nicht mehr als Static-`alias` — sonst überschreibt `/var/www/onroda/*.html` CMS-Änderungen aus dem Admin bis zum nächsten rsync.
 
-   Referenz im Repo: `artifacts/deploy/nginx-onroda.example.conf` (Marketing-`server`). Static-Sync: `./scripts/deploy-home.sh` oder `deploy-onroda-production.sh` (Quelle **`artifacts/marketing-site/`**).
+   **Ohne** explizite `location = /…` liefert `try_files … /index.html` die **Startseite** (z. B. unter `/ueber-onroda`, `/fixpreise`).
+
+   Referenz im Repo: `artifacts/deploy/nginx-onroda.example.conf` (Marketing-`server`). Static-Sync: `./scripts/deploy-home.sh` oder `deploy-onroda-production.sh` (Quelle **`artifacts/marketing-site/`** — weiterhin für Homepage, nicht für AGB/Datenschutz/Impressum nach Migration 120).
 
 4. **`sudo nginx -t`** → bei Erfolg **`sudo systemctl reload nginx`** (oder euer Reload-Kommando).
 
