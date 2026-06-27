@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { StyleSheet } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 
@@ -212,9 +212,19 @@ export function RealMapView({
     fitMap();
   }, [fitMap, centerKey]);
 
-  const routeCoords =
-    polyline?.map(([lat, lon]) => ({ latitude: lat, longitude: lon })) ?? [];
+  const routeCoords = useMemo(() => {
+    if (polyline && polyline.length >= 2) {
+      return polyline.map(([lat, lon]) => ({ latitude: lat, longitude: lon }));
+    }
+    const originPoint = toMapPoint(origin);
+    const destPoint = toMapPoint(destination);
+    if (originPoint && destPoint) {
+      return [originPoint, destPoint];
+    }
+    return [];
+  }, [polyline, origin?.lat, origin?.lon, destination?.lat, destination?.lon]);
 
+  const originPoint = toMapPoint(origin);
   const destPoint = toMapPoint(destination);
   const isHomeMap = destination == null;
   const homeMapPadding = isHomeMap
@@ -239,6 +249,13 @@ export function RealMapView({
       mapPadding={homeMapPadding}
       onMapReady={handleMapReady}
     >
+      {originPoint && (
+        <Marker
+          coordinate={originPoint}
+          title={origin?.displayName?.split(",")[0] ?? "Start"}
+          pinColor="#2563EB"
+        />
+      )}
       {destPoint && destination && (
         <Marker
           coordinate={destPoint}

@@ -221,6 +221,25 @@ async function tryOsrmDrivingCoordPath(
     polyline,
   };
 
+  if (polyline.length < 2) {
+    const parts = coordPath.split(";").map((pair) => pair.split(",").map(Number));
+    const start = parts[0];
+    const end = parts[parts.length - 1];
+    if (
+      start?.length === 2 &&
+      end?.length === 2 &&
+      Number.isFinite(start[1]) &&
+      Number.isFinite(start[0]) &&
+      Number.isFinite(end[1]) &&
+      Number.isFinite(end[0])
+    ) {
+      base.polyline = [
+        [start[1]!, start[0]!],
+        [end[1]!, end[0]!],
+      ];
+    }
+  }
+
   if (!withSteps) return base;
 
   type OsrmStep = {
@@ -247,7 +266,11 @@ async function tryOsrmRoute(from: GeoLocation, to: GeoLocation, withSteps: boole
 
 export async function getRoute(from: GeoLocation, to: GeoLocation): Promise<RouteResult> {
   const osrm = await tryOsrmRoute(from, to, false);
-  if (osrm && !("steps" in osrm)) return osrm as RouteResult;
+  if (osrm && !("steps" in osrm)) {
+    const r = osrm as RouteResult;
+    if (r.polyline && r.polyline.length >= 2) return r;
+    return fallbackRouteResult(from, to);
+  }
   return fallbackRouteResult(from, to);
 }
 
@@ -326,7 +349,10 @@ export async function getRouteWithSteps(
 ): Promise<RouteResultWithSteps> {
   const osrm = await tryOsrmRoute(from, to, true);
   if (osrm && "steps" in osrm && Array.isArray((osrm as RouteResultWithSteps).steps)) {
-    return osrm as RouteResultWithSteps;
+    const withSteps = osrm as RouteResultWithSteps;
+    if (withSteps.polyline && withSteps.polyline.length >= 2) return withSteps;
+    const fb = fallbackRouteResult(from, to);
+    return { ...withSteps, polyline: fb.polyline };
   }
   const fb = fallbackRouteResult(from, to);
   const dM = Math.round(fb.distanceKm * 1000);

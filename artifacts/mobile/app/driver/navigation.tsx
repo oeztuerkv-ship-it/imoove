@@ -683,7 +683,10 @@ export default function DriverNavigationScreen() {
         if (__DEV__ && usedFallback) {
           console.warn("[DriverNav] routing_using_haversine_fallback", { osrmPath });
         }
-        setPolyline(coords);
+        setPolyline(coords.length >= 2 ? coords : [
+          { latitude: fLat, longitude: fLon },
+          { latitude: tLat, longitude: tLon },
+        ]);
         setSteps(result.steps);
         setStepIdx(0);
         prevStepIdx.current = -1;
@@ -710,6 +713,11 @@ export default function DriverNavigationScreen() {
           source: "fallback",
           error: e instanceof Error ? e.message : String(e),
         });
+        const fallbackCoords = [
+          { latitude: fLat, longitude: fLon },
+          { latitude: tLat, longitude: tLon },
+        ];
+        setPolyline(fallbackCoords);
       });
   }, [
     params.rideId,

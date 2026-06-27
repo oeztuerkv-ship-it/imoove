@@ -12,6 +12,26 @@ const PAYMENT_DISPLAY: Record<PaymentMethod, string> = {
   access_code: "Gutschein / Freigabe-Code",
 };
 
+/** Anzeige-Label für Zahlungsart aus API/DB (snake_case, Englisch, Legacy). */
+export function formatCustomerPaymentMethodLabel(raw: string | null | undefined): string {
+  const s = (raw ?? "").trim();
+  if (!s) return "Bar";
+  const lower = s.toLowerCase();
+  if (lower === "cash" || lower === "bar" || lower === "barzahlung") return "Bar";
+  if (lower === "card" || lower.includes("kredit") || lower === "karte") return "Kreditkarte";
+  if (lower === "apple_pay" || lower.includes("apple pay")) return "Apple Pay";
+  if (lower === "google_pay" || lower.includes("google pay")) return "Google Pay";
+  if (lower === "paypal") return "PayPal";
+  if (lower.includes("krankenkasse") || lower.includes("transportschein")) return "Transportschein (Krankenkasse)";
+  if (lower.includes("gutschein") || lower.includes("freigabe") || lower.includes("access")) {
+    return "Gutschein / Freigabe";
+  }
+  if (lower === "app" || lower.includes("app-zahlung")) return "App-Zahlung";
+  const fromEnum = PAYMENT_DISPLAY[s as PaymentMethod];
+  if (fromEnum) return fromEnum;
+  return s;
+}
+
 /** Kurzbeschreibung der Freigabe-Art für Kund:innen (gleiche Sprache wie im Partner-/Fahrerbereich). */
 export function accessCodeTypeCustomerLabel(codeType: string): string {
   const t = codeType.toLowerCase();
@@ -59,7 +79,7 @@ export function customerPayerBlockFromBooking(
 
 /** Nach der Buchung / in Listen: aus API-normalisiertem Auftrag. */
 export function customerPayerBlockFromRideRequest(req: RideRequest): CustomerPayerBlock {
-  const pm = (req.paymentMethod || "").trim() || "Bar";
+  const pm = formatCustomerPaymentMethodLabel(req.paymentMethod);
   const isVoucherish =
     (req.authorizationSource === "passenger_direct" || req.authorizationSource === "partner") &&
     (req.payerKind === "voucher" ||

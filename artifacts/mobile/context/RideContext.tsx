@@ -12,7 +12,7 @@ import { useUser } from "@/context/UserContext";
 import { fetchFareEstimate } from "@/utils/fareEstimateApi";
 import { vehicleSurchargeFromEstimates } from "@/utils/customerFareDisplay";
 import { type FareBreakdown } from "@/utils/fareCalculator";
-import { type GeoLocation, type RouteResult } from "@/utils/routing";
+import { type GeoLocation, getRouteThrough, type RouteResult } from "@/utils/routing";
 import {
   fetchServerDrivingRouteChain,
   ROUTE_NOT_COMPUTABLE_MESSAGE_DE,
@@ -301,9 +301,28 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
         setRouteError(result.message || ROUTE_NOT_COMPUTABLE_MESSAGE_DE);
         return;
       }
+      const chainGeo: GeoLocation[] = chain.map((p) => ({
+        displayName: String(p.displayName ?? ""),
+        lat: p.lat,
+        lon: p.lon,
+      }));
+      const mapGeometry = await getRouteThrough(chainGeo);
+      const fallbackPolyline: [number, number][] =
+        chainGeo.length >= 2
+          ? [
+              [chainGeo[0]!.lat, chainGeo[0]!.lon],
+              [chainGeo[chainGeo.length - 1]!.lat, chainGeo[chainGeo.length - 1]!.lon],
+            ]
+          : [];
       const routeResult: RouteResult = {
         distanceKm: result.distanceKm,
         durationMinutes: result.durationMinutes,
+        polyline:
+          mapGeometry.polyline && mapGeometry.polyline.length >= 2
+            ? mapGeometry.polyline
+            : fallbackPolyline.length >= 2
+              ? fallbackPolyline
+              : undefined,
       };
       setRoute(routeResult);
       if (!selectedVehicle) {
