@@ -155,10 +155,10 @@ export function buildRegionPayloadFromEditor(editor, prev = {}) {
     vehicleClassMultipliers: { standard: 1, xl: 1, wheelchair: 1 },
     xlPricingMode: "fixed",
     xlFixedSurchargeEur: n(editor.xlSurchargeEur),
-    wheelchairFixedSurchargeEur: 0,
+    wheelchairFixedSurchargeEur: n(editor.wcSurchargeEur),
     vehicleTariffOverrides: {
       xl: stdTier,
-      wheelchair: { ...stdTier, surchargeEur: n(editor.wcSurchargeEur) },
+      wheelchair: { ...stdTier, surchargeEur: 0 },
     },
   };
   if (editor.tariffTemplateId) {
@@ -220,7 +220,11 @@ export function loadEditorFromTariff(tpl) {
       xlSurchargeEur:
         rp.xlFixedSurchargeEur != null ? String(rp.xlFixedSurchargeEur).replace(".", ",") : tpl.xlSurchargeEur ?? "7",
       wcSurchargeEur:
-        wc.surchargeEur != null ? String(wc.surchargeEur).replace(".", ",") : tpl.wcSurchargeEur ?? "0",
+        rp.wheelchairFixedSurchargeEur != null
+          ? String(rp.wheelchairFixedSurchargeEur).replace(".", ",")
+          : wc.surchargeEur != null
+            ? String(wc.surchargeEur).replace(".", ",")
+            : tpl.wcSurchargeEur ?? "0",
       surchargeForms: surchargeBlockFromRow(rp),
       validFrom: tpl.validFrom || rp.validFrom || "",
       description: tpl.description || tpl.note || "",

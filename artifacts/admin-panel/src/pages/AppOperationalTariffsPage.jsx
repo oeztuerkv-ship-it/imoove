@@ -187,7 +187,7 @@ export default function AppOperationalTariffsPage() {
     const record = buildTariffTemplateRecord(id, { name, description, validFrom }, editorState);
     const exists = tariffs.some((t) => t.id === id);
     const next = exists ? tariffs.map((t) => (t.id === id ? record : t)) : [...tariffs, record];
-    await saveTariffCatalog(next);
+    await saveTariffCatalog(next, selectedId ? "Tarif inkl. Aufschläge gespeichert." : "Tarif angelegt.");
     if (!selectedId) setSelectedId(id);
   };
 
@@ -353,6 +353,8 @@ export default function AppOperationalTariffsPage() {
     <div className="admin-page admin-page--loose">
       <p className="admin-page-lead">
         Preislogik (Taxameter, Zuschläge) — Tarif-Katalog; Zuordnung zu Gebieten unter „Gebiete“.
+        <strong> XL- und Rollstuhl-Aufschlag (€):</strong> Tarif unten bearbeiten → Block{" "}
+        <strong>„Aufschläge — XL & Rollstuhl“</strong> → Speichern.
       </p>
 
       {error || ok ? (
@@ -606,7 +608,12 @@ export default function AppOperationalTariffsPage() {
 
         <TarifBlock title="Taxameter" value={stdForm} onChange={setStdForm} />
 
-        <CollapsibleCard title="Aufschläge">
+        <CollapsibleCard title="Aufschläge — XL & Rollstuhl" subtitle="Fester €-Zuschlag in der App unter XL / Rollstuhl">
+          <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginTop: 8 }}>
+            XL: fester €-Aufschlag auf Taxameter-Basis (<code>xlFixedSurchargeEur</code>). Rollstuhl: fester €-Aufschlag (
+            <code>wheelchairFixedSurchargeEur</code>). Die App zeigt nur „+ X € Aufschlag“ — kein Gesamtpreis. Nach dem Speichern
+            Tarif unter „Gebiete“ zuordnen; live über <code>GET /api/fare-estimate</code>.
+          </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 12, maxWidth: 400 }}>
             <label className="admin-form-label">
               XL (€)
@@ -653,6 +660,16 @@ export default function AppOperationalTariffsPage() {
                 <span style={{ fontSize: 12, color: "rgba(0,0,0,0.45)" }}>%</span>
               </label>
             ))}
+          </div>
+          <div className="admin-section-toolbar admin-section-toolbar--start" style={{ marginTop: 14 }}>
+            <button
+              type="button"
+              className="admin-c-btn-sec"
+              disabled={busy}
+              onClick={() => void saveCurrentTariff()}
+            >
+              {busy ? "…" : selectedId ? "Aufschläge speichern" : "Tarif anlegen & Aufschläge speichern"}
+            </button>
           </div>
       </CollapsibleCard>
 
