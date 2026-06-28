@@ -1,5 +1,13 @@
-import { evaluateFixedPriceEligibility, type FixedPriceLocationPoint } from "../lib/fixedPriceMandatoryArea";
+import {
+  evaluateFixedPriceEligibility,
+  type FixedPriceLocationPoint,
+} from "../lib/fixedPriceMandatoryArea";
 import { isMandatoryTaxiAreaLocation } from "../lib/mandatoryTaxiArea";
+import {
+  findBoundaryProbePoints,
+  isMandatoryTaxiAreaByCoordinates,
+  mandatoryAreaIdsForCoordinates,
+} from "../lib/mandatoryAreaBoundaries";
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) {
@@ -32,6 +40,13 @@ const PHOTON_FLUGHAFEN_STUTTGART_CITY: FixedPriceLocationPoint = {
   lon: 9.1926989,
 };
 
+const LUDWIGSBURG: FixedPriceLocationPoint = {
+  displayName: "Ludwigsburg Zentrum",
+  city: "Ludwigsburg",
+  lat: 48.8975,
+  lon: 9.1922,
+};
+
 type Case = {
   name: string;
   from: FixedPriceLocationPoint;
@@ -54,6 +69,12 @@ const cases: Case[] = [
     to: { displayName: "Flughafen Stuttgart", city: "Leinfelden-Echterdingen" },
     expectEligible: false,
     expectReason: "both_in_mandatory_area",
+  },
+  {
+    name: "Leinfelden→Ludwigsburg (nur Start im Pflichtgebiet — Festpreis erlaubt)",
+    from: PHOTON_LEINFELDEN,
+    to: LUDWIGSBURG,
+    expectEligible: true,
   },
   {
     name: "Nürtingen→Ostfildern",
@@ -128,10 +149,29 @@ assert(
   isMandatoryTaxiAreaLocation(PHOTON_LEINFELDEN),
   "Leinfelden-Koordinaten im Pflichtgebiet (city=Oberaichen)",
 );
+assert(isMandatoryTaxiAreaLocation(PHOTON_FLUGHAFEN), "Flughafen-Koordinaten im Pflichtgebiet");
+assert(!isMandatoryTaxiAreaByCoordinates(LUDWIGSBURG.lat!, LUDWIGSBURG.lon!), "Ludwigsburg nicht im Polygon");
 assert(
-  isMandatoryTaxiAreaLocation(PHOTON_FLUGHAFEN),
-  "Flughafen-Koordinaten im Pflichtgebiet",
+  mandatoryAreaIdsForCoordinates(LUDWIGSBURG.lat!, LUDWIGSBURG.lon!).length === 0,
+  "Ludwigsburg areaIds leer",
 );
+
+const stuttgartProbe = findBoundaryProbePoints({
+  startLat: 48.778,
+  startLon: 9.18,
+  bearingDeg: 0,
+  isInside: (lat, lon) => isMandatoryTaxiAreaByCoordinates(lat, lon),
+});
+assert(stuttgartProbe != null, "Stuttgart-Grenzsonde konnte nicht berechnet werden");
+assert(
+  isMandatoryTaxiAreaByCoordinates(stuttgartProbe.inside.lat, stuttgartProbe.inside.lon),
+  "Stuttgart Grenzsonde +500m innen",
+);
+assert(
+  !isMandatoryTaxiAreaByCoordinates(stuttgartProbe.outside.lat, stuttgartProbe.outside.lon),
+  "Stuttgart Grenzsonde −500m außen",
+);
+console.log("OK  Stuttgart-Grenze ±500m (automatische Sonde)");
 
 for (const c of cases) {
   const r = evaluateFixedPriceEligibility({ from: c.from, to: c.to, mandatoryCities: cities });
@@ -146,4 +186,4 @@ for (const c of cases) {
   console.log("OK ", c.name);
 }
 
-console.log(`OK fixed price eligibility selftest (${cases.length} Fälle)`);
+console.log(`OK fixed price eligibility selftest (${cases.length} Fälle + Grenzsonde)`);

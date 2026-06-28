@@ -6,6 +6,15 @@ import { listHomepageFaqPublic, listHomepageHowPublic, listHomepageTrustPublic }
 import { listHomepagePlaceholdersPublic } from "../db/homepagePlaceholdersData";
 import { getLegalPagePublic, getLegalConsentVersions, isLegalPageSlug } from "../db/legalPagesData";
 import { buildFixedPriceQuote, buildRouteDistanceQuote } from "../lib/fixedPriceRouteQuote";
+import {
+  evaluateFixedPriceEligibility,
+  readFixedPriceMandatoryAreaCities,
+} from "../lib/fixedPriceMandatoryArea";
+import {
+  isMandatoryTaxiAreaByCoordinates,
+  mandatoryAreaIdsForCoordinates,
+} from "../lib/mandatoryAreaBoundaries";
+import { isMandatoryTaxiAreaLocation } from "../lib/mandatoryTaxiArea";
 
 const router: IRouter = Router();
 
@@ -132,6 +141,64 @@ router.get("/public/route-distance", async (req, res, next) => {
       routingSource: result.routingSource,
       from: result.from,
       to: result.to,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Koordinaten-Check Pflichtfahrgebiet (Polygon, OSM-Grenzen). Mobile nutzt dies als Single Source of Truth. */
+router.get("/public/mandatory-taxi-area-check", (req, res) => {
+  const lat = optCoord(req.query.lat);
+  const lon = optCoord(req.query.lon);
+  if (lat == null || lon == null) {
+    res.status(400).json({ ok: false, error: "coords_required", message: "lat und lon erforderlich" });
+    return;
+  }
+  const areaIds = mandatoryAreaIdsForCoordinates(lat, lon);
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.json({
+    ok: true,
+    lat,
+    lon,
+    inMandatoryArea: areaIds.length > 0,
+    areaIds,
+  });
+});
+
+/** Festpreis-Eligibility (Mobile Vorprüfung — gleiche Regeln wie /fixed-price-estimate). */
+router.get("/public/fixed-price-eligibility-check", async (req, res, next) => {
+  try {
+    const config = await getOperationalConfigPayload();
+    const mandatoryCities = readFixedPriceMandatoryAreaCities(config);
+    const from = {
+      displayName: String(req.query.fromFull ?? req.query.from ?? "").trim(),
+      city: typeof req.query.fromCity === "string" ? req.query.fromCity.trim() : null,
+      lat: optCoord(req.query.fromLat ?? req.query.from_lat),
+      lon: optCoord(req.query.fromLon ?? req.query.from_lon),
+    };
+    const to = {
+      displayName: String(req.query.toFull ?? req.query.to ?? "").trim(),
+      city: typeof req.query.toCity === "string" ? req.query.toCity.trim() : null,
+      lat: optCoord(req.query.toLat ?? req.query.to_lat),
+      lon: optCoord(req.query.toLon ?? req.query.to_lon),
+    };
+    const eligibility = evaluateFixedPriceEligibility({ from, to, mandatoryCities });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      eligible: eligibility.eligible,
+      reason: eligibility.eligible ? null : eligibility.reason,
+      message: eligibility.eligible ? null : eligibility.message,
+      fromInMandatoryArea: isMandatoryTaxiAreaLocation(from),
+      toInMandatoryArea: isMandatoryTaxiAreaLocation(to),
+      fromInMandatoryAreaByCoords:
+        from.lat != null && from.lon != null
+          ? isMandatoryTaxiAreaByCoordinates(from.lat, from.lon)
+          : null,
+      toInMandatoryAreaByCoords:
+        to.lat != null && to.lon != null ? isMandatoryTaxiAreaByCoordinates(to.lat, to.lon) : null,
+      mandatoryCities,
     });
   } catch (e) {
     next(e);

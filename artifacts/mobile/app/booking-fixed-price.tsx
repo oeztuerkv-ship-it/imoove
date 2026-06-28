@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { router, type Href } from "expo-router";
+import { router, useFocusEffect, type Href } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -39,7 +39,6 @@ import {
 } from "@/components/booking/selectedAddress";
 import { taxiRouteCardStyles as routeStyles } from "@/components/booking/taxiAddressInputStyles";
 import { CollapsibleBrokerNotice } from "@/components/CollapsibleBrokerNotice";
-import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { isReservationLeadValid } from "@/components/ReservationSchedulePicker";
 import { accountSheetHeaderTitle, accountSheetPrimaryLabel, accountSheetSecondaryLabel } from "@/constants/accountSheetTypography";
@@ -49,30 +48,26 @@ import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleOption, type
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
-import { fetchAppConfig } from "@/lib/appConfig";
 import { validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import {
   isGeocodedFixpreisLocation,
   MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE,
   validateFixpreisRouteLocation,
 } from "@/lib/appConfig";
-import { customerVehicleSurchargeLabel } from "@/utils/customerFareDisplay";
 import { formatEuro } from "@/utils/fareCalculator";
+import { customerVehicleSurchargeLabel } from "@/utils/customerFareDisplay";
 import {
   CUSTOMER_FIXED_PRICE_AGREEMENT_DE,
+  fetchFixedPriceEligibilityCheck,
   fetchFixedPriceEstimate,
 } from "@/utils/fixedPriceApi";
-import {
-  debugFixedPriceEligibility,
-  evaluateFixedPriceEligibility,
-  parseFixedPriceMandatoryAreaCities,
-  selectedAddressToFixedPricePoint,
-} from "@/utils/fixedPriceEligibility";
+import { selectedAddressToFixedPricePoint } from "@/utils/fixedPriceEligibility";
 import { reverseGeocodeCoords } from "@/utils/reverseGeocode";
 import { ROUTE_NOT_COMPUTABLE_MESSAGE_DE } from "@/utils/routeDistanceApi";
 import { searchLocation, type GeoLocation } from "@/utils/routing";
 import {
   FIXPRICE_DESTINATION_PRESETS,
+  isUsableSearchFavoriteLocation,
   loadSearchFavorites,
   MAX_FAVORITES_STORED,
   type SearchFavorite,
@@ -119,7 +114,6 @@ export default function BookingFixedPriceScreen() {
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [tripMinutes, setTripMinutes] = useState<number>(0);
   const [priceEur, setPriceEur] = useState<number | null>(null);
-  const [basePriceEur, setBasePriceEur] = useState<number | null>(null);
   const [vehicleSurchargeEur, setVehicleSurchargeEur] = useState<number>(0);
   const [eligible, setEligible] = useState<boolean | null>(null);
   const [ineligibleMessage, setIneligibleMessage] = useState("");
@@ -142,12 +136,18 @@ export default function BookingFixedPriceScreen() {
 
   const reloadUserFavorites = useCallback(async () => {
     const stored = await loadSearchFavorites();
-    setUserDestinationFavorites(stored.filter((f) => isGeocodedFixpreisLocation(f.location)));
+    setUserDestinationFavorites(stored.filter((f) => isUsableSearchFavoriteLocation(f.location)));
   }, []);
 
   useEffect(() => {
     void reloadUserFavorites();
   }, [reloadUserFavorites]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadUserFavorites();
+    }, [reloadUserFavorites]),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -189,7 +189,6 @@ export default function BookingFixedPriceScreen() {
   const resetPricing = useCallback(() => {
     setEligible(null);
     setPriceEur(null);
-    setBasePriceEur(null);
     setVehicleSurchargeEur(0);
     setIneligibleMessage("");
   }, []);
@@ -365,28 +364,32 @@ export default function BookingFixedPriceScreen() {
       setEstimateLoading(true);
       setEligible(null);
       setPriceEur(null);
-      setBasePriceEur(null);
       setVehicleSurchargeEur(0);
       setIneligibleMessage("");
       const fromFull = fromAddr.fullName || fromAddr.name;
       const toFull = toAddr.fullName || toAddr.name;
       const isStale = () => requestId !== pricingRequestIdRef.current;
       try {
-        const cfg = await fetchAppConfig();
-        if (isStale()) return;
-        const mandatoryCities = parseFixedPriceMandatoryAreaCities(cfg.tariffs?.fixedPriceMandatoryAreaCities);
-        const fromPoint = selectedAddressToFixedPricePoint(fromAddr);
-        const toPoint = selectedAddressToFixedPricePoint(toAddr);
-        const eligibility = evaluateFixedPriceEligibility({
-          from: fromPoint,
-          to: toPoint,
-          mandatoryCities,
+        const eligibility = await fetchFixedPriceEligibilityCheck({
+          fromFull,
+          toFull,
+          fromLat: fromAddr.lat,
+          fromLon: fromAddr.lon,
+          toLat: toAddr.lat,
+          toLon: toAddr.lon,
+          fromCity: cityForApi(fromAddr),
+          toCity: cityForApi(toAddr),
         });
+        if (isStale()) return;
         if (__DEV__) {
-          console.log("[fixpreis/eligibility]", {
-            ...debugFixedPriceEligibility({ from: fromPoint, to: toPoint, mandatoryCities }),
-            result: eligibility,
-          });
+          console.log("[fixpreis/eligibility]", eligibility);
+        }
+        if (!eligibility.ok) {
+          setEligible(false);
+          setIneligibleMessage(
+            eligibility.message ?? "Festpreis-Prüfung fehlgeschlagen — bitte erneut versuchen.",
+          );
+          return;
         }
         if (!eligibility.eligible) {
           setEligible(false);
@@ -434,7 +437,6 @@ export default function BookingFixedPriceScreen() {
         }
         setEligible(true);
         setPriceEur(est.priceEur);
-        setBasePriceEur(est.basePriceEur);
         setVehicleSurchargeEur(est.vehicleSurchargeEur);
       } catch {
         setEligible(false);
@@ -661,22 +663,27 @@ export default function BookingFixedPriceScreen() {
 
         {eligible === true && priceEur != null ? (
           <View style={[styles.priceCard, { borderColor: "#BBF7D0", backgroundColor: "#ECFDF5" }]}>
-            <CustomerFarePriceBlock
-              vehicle={selectedVehicle}
-              pricingMode="fixed_price"
-              priceEur={priceEur}
-              align="center"
-              primaryStyle={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#166534" }}
-              secondaryStyle={{ fontSize: 28, fontFamily: "Inter_700Bold", color: colors.foreground }}
-            />
-            {vehicleSurchargeEur > 0 && basePriceEur != null ? (
-              <Text style={[styles.priceBreakdown, { color: colors.mutedForeground }]}>
-                {formatEuro(basePriceEur)} Basis + {formatEuro(vehicleSurchargeEur)} Aufschlag
-              </Text>
-            ) : null}
-            {surchargeLabel && vehicleSurchargeEur > 0 ? (
-              <Text style={[styles.surchargeLine, { color: "#2563EB" }]}>{surchargeLabel}</Text>
-            ) : null}
+            <Text
+              style={{
+                fontSize: 16,
+                fontFamily: "Inter_700Bold",
+                color: "#166534",
+                textAlign: "center",
+              }}
+            >
+              {vehicleSurchargeEur > 0 ? "Festpreis inkl. Aufschlag" : "Festpreis"}
+            </Text>
+            <Text
+              style={{
+                fontSize: 28,
+                fontFamily: "Inter_700Bold",
+                color: "#2563EB",
+                textAlign: "center",
+                marginTop: rs(4),
+              }}
+            >
+              {formatEuro(priceEur)}
+            </Text>
             {distanceKm != null ? (
               <Text style={[styles.priceMeta, { color: colors.mutedForeground }]}>
                 ca. {distanceKm.toFixed(1).replace(".", ",")} km — verbindlich für diese Buchung
@@ -759,8 +766,8 @@ export default function BookingFixedPriceScreen() {
                       >
                         {v.name}
                       </Text>
-                      {active && selectedVehicle !== "standard" && surchargeLabel ? (
-                        <Text style={[styles.vehicleSurcharge, { color: ONRODA_MARK_RED }]}>{surchargeLabel}</Text>
+                      {active && v.id !== "standard" && surchargeLabel ? (
+                        <Text style={styles.vehicleSurcharge}>{surchargeLabel}</Text>
                       ) : null}
                       {active ? (
                         <View style={styles.vehicleCheck}>
@@ -908,22 +915,17 @@ export default function BookingFixedPriceScreen() {
                   <Text style={[styles.noteModalAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
                 </Pressable>
                 <Text style={[styles.noteModalTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
-                <Pressable
-                  onPress={() => {
-                    setDriverNote(noteDraft.trim());
-                    setNoteModal(false);
-                    Haptics.selectionAsync();
-                  }}
-                  hitSlop={10}
-                >
-                  <Text style={[styles.noteModalAction, { color: HOME_SHEET_TEXT }]}>Fertig</Text>
-                </Pressable>
+                <View style={{ width: 64 }} />
               </View>
               <View style={styles.noteModalBody}>
                 <TextInput
                   style={[
                     styles.noteModalInput,
-                    { color: colors.foreground, backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM },
+                    {
+                      color: colors.foreground,
+                      backgroundColor: noteDraft.length > 0 ? "#EFF6FF" : HOME_SHEET_INNER,
+                      borderColor: noteDraft.length > 0 ? "#93C5FD" : HOME_SHEET_RIM,
+                    },
                   ]}
                   value={noteDraft}
                   onChangeText={setNoteDraft}
@@ -934,7 +936,27 @@ export default function BookingFixedPriceScreen() {
                   maxLength={140}
                   autoCorrect
                 />
-                <Text style={[styles.noteModalCount, { color: colors.mutedForeground }]}>{noteDraft.length}/140</Text>
+                <View style={[styles.noteModalFooterBar, { borderTopColor: HOME_SHEET_RIM }]}>
+                  <Text style={[styles.noteModalCount, { color: colors.mutedForeground }]}>
+                    {noteDraft.length}/140
+                  </Text>
+                  {noteDraft.length > 0 ? (
+                    <Pressable
+                      style={[styles.noteModalOkBtn, !noteDraft.trim() && styles.noteModalOkBtnDisabled]}
+                      disabled={!noteDraft.trim()}
+                      onPress={() => {
+                        setDriverNote(noteDraft.trim());
+                        setNoteModal(false);
+                        Haptics.selectionAsync();
+                      }}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.noteModalOkBtnText}>OK</Text>
+                    </Pressable>
+                  ) : (
+                    <View style={styles.noteModalOkSpacer} />
+                  )}
+                </View>
               </View>
             </Pressable>
           </Pressable>
@@ -973,7 +995,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   vehicleName: { fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" },
-  vehicleSurcharge: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4 },
+  vehicleSurcharge: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4, color: "#2563EB", textAlign: "center" },
   vehicleCheck: { position: "absolute", top: 8, right: 8 },
   luggageRow: {
     flexDirection: "row",
@@ -989,8 +1011,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   priceOk: { fontFamily: "Inter_700Bold", fontSize: 15 },
-  priceBreakdown: { fontFamily: "Inter_500Medium", fontSize: 13, marginTop: rs(4) },
-  surchargeLine: { fontFamily: "Inter_600SemiBold", fontSize: 13, marginTop: 6 },
   priceMeta: { ...accountSheetSecondaryLabel, marginTop: rs(6), textAlign: "center" },
   payRow: { flexDirection: "row", gap: rs(8) },
   payChip: {
@@ -1068,5 +1088,24 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontFamily: "Inter_400Regular",
   },
-  noteModalCount: { alignSelf: "flex-end", fontSize: 12, fontFamily: "Inter_400Regular" },
+  noteModalCount: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  noteModalFooterBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: rs(10),
+    paddingTop: rs(10),
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  noteModalOkSpacer: { width: rs(48), height: rs(28) },
+  noteModalOkBtn: {
+    backgroundColor: "#2563EB",
+    borderRadius: rs(8),
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(6),
+    minWidth: rs(48),
+    alignItems: "center",
+  },
+  noteModalOkBtnDisabled: { opacity: 0.45 },
+  noteModalOkBtnText: { color: "#FFFFFF", fontSize: 13, fontFamily: "Inter_700Bold" },
 });

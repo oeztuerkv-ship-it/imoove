@@ -1,7 +1,10 @@
+/**
+ * Pflichtfahrgebiet — Koordinaten-Check nur über API (Polygon auf dem Server).
+ * Text-Labels als Offline-Fallback für Debug/Hinweise ohne Netz.
+ */
 import type { GeoLocation } from "@/utils/routing";
 import { canonicalGermanPlaceKey } from "@/utils/germanPlaceKey";
 import { isEsslingenCountyPlace } from "@/utils/esslingenCountyMunicipalities";
-import { isMandatoryTaxiAreaByCoordinates } from "@/utils/mandatoryTaxiAreaZones";
 
 export type MandatoryAreaPoint = {
   displayName: string;
@@ -46,11 +49,15 @@ function isMandatoryTaxiAreaByLabels(loc: MandatoryAreaPoint): boolean {
   );
 }
 
+/**
+ * Nur Text-Fallback — bei Koordinaten bitte API `mandatory-taxi-area-check` nutzen.
+ * Koordinaten allein liefern hier bewusst kein Ergebnis (false), um Radius-/Polygon-Drift zu vermeiden.
+ */
 export function isMandatoryTaxiAreaLocation(loc: MandatoryAreaPoint): boolean {
   const lat = loc.lat;
   const lon = loc.lon;
   if (lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon)) {
-    if (isMandatoryTaxiAreaByCoordinates(lat, lon)) return true;
+    return false;
   }
   return isMandatoryTaxiAreaByLabels(loc);
 }

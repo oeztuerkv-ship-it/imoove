@@ -28,6 +28,61 @@ export type FixedPriceEstimateResult =
     }
   | { ok: false; error: string; message?: string; routingSource?: "error" };
 
+export async function fetchFixedPriceEligibilityCheck(body: {
+  fromFull: string;
+  toFull: string;
+  fromLat: number;
+  fromLon: number;
+  toLat: number;
+  toLon: number;
+  fromCity?: string | null;
+  toCity?: string | null;
+}): Promise<
+  | { ok: true; eligible: true }
+  | { ok: true; eligible: false; reason: string; message: string }
+  | { ok: false; error: string; message?: string }
+> {
+  if (!API_URL?.trim()) {
+    return { ok: false, error: "api_not_configured" };
+  }
+  const q = new URLSearchParams({
+    fromFull: body.fromFull.trim(),
+    toFull: body.toFull.trim(),
+    fromLat: String(body.fromLat),
+    fromLon: String(body.fromLon),
+    toLat: String(body.toLat),
+    toLon: String(body.toLon),
+  });
+  if (body.fromCity?.trim()) q.set("fromCity", body.fromCity.trim());
+  if (body.toCity?.trim()) q.set("toCity", body.toCity.trim());
+  const res = await fetch(`${API_URL}/public/fixed-price-eligibility-check?${q.toString()}`);
+  let data: Record<string, unknown> = {};
+  try {
+    data = (await res.json()) as Record<string, unknown>;
+  } catch {
+    data = {};
+  }
+  if (!res.ok || data.ok === false) {
+    return {
+      ok: false,
+      error: typeof data.error === "string" ? data.error : "eligibility_check_failed",
+      message: typeof data.message === "string" ? data.message : undefined,
+    };
+  }
+  if (data.eligible === true) {
+    return { ok: true, eligible: true };
+  }
+  return {
+    ok: true,
+    eligible: false,
+    reason: typeof data.reason === "string" ? data.reason : "not_eligible",
+    message:
+      typeof data.message === "string"
+        ? data.message
+        : "Festpreis für diese Strecke nicht verfügbar.",
+  };
+}
+
 export async function fetchFixedPriceEstimate(body: {
   fromFull: string;
   toFull: string;

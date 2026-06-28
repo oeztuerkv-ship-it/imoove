@@ -3,7 +3,7 @@
  */
 import { canonicalGermanPlaceKey } from "./germanPlaceKey";
 import { isEsslingenCountyPlace } from "./esslingenCountyMunicipalities";
-import { isMandatoryTaxiAreaByCoordinates } from "./mandatoryTaxiAreaZones";
+import { isMandatoryTaxiAreaByCoordinates } from "./mandatoryAreaBoundaries";
 
 export type MandatoryAreaPoint = {
   displayName: string;

@@ -1,6 +1,9 @@
 node_modules/
 dist/
 data/
+!src/data/
+!src/data/mandatory-area-boundaries/
+!src/data/mandatory-area-boundaries/**
 .env
 .env.*
 !.env.example

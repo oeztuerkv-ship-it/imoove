@@ -11,7 +11,7 @@
 import { canonicalGermanPlaceKey } from "./germanPlaceKey";
 import { isEsslingenCountyPlace } from "./esslingenCountyMunicipalities";
 import { isMandatoryTaxiAreaLocation } from "./mandatoryTaxiArea";
-import { haversineKm } from "./mandatoryTaxiAreaZones";
+import { haversineKm } from "./geoDistance";
 
 export type FixedPriceLocationPoint = {
   displayName: string;
