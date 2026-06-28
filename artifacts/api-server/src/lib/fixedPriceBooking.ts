@@ -5,7 +5,7 @@ import {
   type FixedPriceLocationPoint,
 } from "./fixedPriceMandatoryArea";
 import { TARIFF_ENGINE_SCHEMA_VERSION } from "./bookingTariffEstimate";
-import { resolveXlPricingConfig } from "./operationalTariffEngine";
+import { pickTariffSliceForVehicleClass, resolveXlPricingConfig } from "./operationalTariffEngine";
 import {
   bookingPriceToleranceEur,
   operationalConfigVersionFromPayload,
@@ -73,10 +73,17 @@ export function computeFixedPriceVehicleSurchargeEur(
   if (vClass === "xl") {
     const xlCfg = resolveXlPricingConfig(merged);
     if (xlCfg.mode === "multiplier") return 0;
-    return Math.max(0, Math.round(xlCfg.fixedEur * 100) / 100);
+    const slice = pickTariffSliceForVehicleClass(merged, "xl");
+    const overrideSurcharge = Math.max(0, num((slice as { surchargeEur?: unknown }).surchargeEur, 0));
+    const fixedEur = Math.max(xlCfg.fixedEur, overrideSurcharge);
+    return Math.max(0, Math.round(fixedEur * 100) / 100);
   }
   if (vClass === "wheelchair") {
-    return Math.max(0, Math.round(num(merged.wheelchairFixedSurchargeEur, 0) * 100) / 100);
+    const slice = pickTariffSliceForVehicleClass(merged, "wheelchair");
+    const total =
+      Math.max(0, num(merged.wheelchairFixedSurchargeEur, 0)) +
+      Math.max(0, num((slice as { surchargeEur?: unknown }).surchargeEur, 0));
+    return Math.max(0, Math.round(total * 100) / 100);
   }
   return 0;
 }

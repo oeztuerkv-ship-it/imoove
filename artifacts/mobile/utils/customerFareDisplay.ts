@@ -66,11 +66,9 @@ export function customerVehicleSurchargeLabel(opts: {
   vehicle?: string | null | undefined;
   surchargeEur?: number | null | undefined;
 }): string | null {
-  if (opts.vehicle != null && isCustomerSurchargeVehicle(opts.vehicle)) {
-    return "+ Aufschlag";
-  }
-  if (opts.surchargeEur != null && Number.isFinite(opts.surchargeEur) && opts.surchargeEur > 0) {
-    return "+ Aufschlag";
+  const amount = opts.surchargeEur != null && Number.isFinite(opts.surchargeEur) ? opts.surchargeEur : 0;
+  if (amount > 0) {
+    return `+ ${formatEuro(amount)} Aufschlag`;
   }
   return null;
 }

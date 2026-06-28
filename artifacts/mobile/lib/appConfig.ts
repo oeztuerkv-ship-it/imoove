@@ -192,6 +192,52 @@ export const MESSAGE_ADDRESS_PICK_SUGGESTION_DE =
 export const MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE =
   "Bitte Straße, Hausnummer und Stadt eingeben — am besten einen Vorschlag aus der Liste wählen.";
 
+/** Festpreis: Straße + Hausnummer + PLZ (5-stellig) Pflicht — wie Partner-Panel. */
+export const MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE =
+  "Bitte Straße mit Hausnummer und PLZ angeben (z. B. Musterstraße 12, 70771 Leinfelden-Echterdingen).";
+
+function hasGermanPlzInAddress(address: string): boolean {
+  return /\b\d{5}\b/.test(String(address ?? ""));
+}
+
+export function isCompleteFixpreisAddress(fullName: string): boolean {
+  const full = String(fullName ?? "").trim();
+  if (!full) return false;
+  if (!hasGermanPlzInAddress(full)) return false;
+  if (hasHouseNumberInFirstAddressPart(full)) return true;
+  return full.replace(/[\d,\s./-]/g, "").length >= 3;
+}
+
+export function validateFixpreisRouteAddress(
+  address: string,
+  field: "from" | "to",
+): { ok: true } | { ok: false; message: string } {
+  const label = field === "from" ? "Start" : "Ziel";
+  const full = String(address ?? "").trim();
+  if (!full) {
+    return { ok: false, message: `${label}: Adresse fehlt. ${MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}` };
+  }
+  if (!hasHouseNumberInFirstAddressPart(full) && !isCompleteFixpreisAddress(full)) {
+    return {
+      ok: false,
+      message: `${label}: Straße und Hausnummer fehlen. ${MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}`,
+    };
+  }
+  if (!hasGermanPlzInAddress(full)) {
+    return { ok: false, message: `${label}: PLZ (5-stellig) fehlt. ${MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}` };
+  }
+  return { ok: true };
+}
+
+export function validateFixpreisRouteAddresses(
+  fromFull: string,
+  toFull: string,
+): { ok: true } | { ok: false; message: string } {
+  const from = validateFixpreisRouteAddress(fromFull, "from");
+  if (!from.ok) return from;
+  return validateFixpreisRouteAddress(toFull, "to");
+}
+
 const BOOKING_PREFER_MAP_OVER_API_MESSAGE = new Set([
   "ride_coordinates_required",
   "pickup_coordinates_required",
