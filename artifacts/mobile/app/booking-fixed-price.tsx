@@ -1,13 +1,15 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { router, type Href } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -16,25 +18,43 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AddSearchFavoriteModal } from "@/components/AddSearchFavoriteModal";
 import { BottomTabBar, mainTabScrollPaddingBottom } from "@/components/BottomTabBar";
-import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
+import { BookingDateTimePicker } from "@/components/booking/BookingDateTimePicker";
+import { FixpreisDestinationQuickPicks } from "@/components/booking/FixpreisDestinationQuickPicks";
 import {
-  buildScheduledDate,
-  defaultScheduleWheelIndices,
-  isReservationLeadValid,
-  ReservationSchedulePicker,
-} from "@/components/ReservationSchedulePicker";
+  defaultScheduledPickupDate,
+  formatBookingDateTime,
+  minimumScheduledPickupDate,
+} from "@/components/booking/bookingDateTime";
+import { LiveSearchResultGroup } from "@/components/booking/LiveSearchResultGroup";
+import { LiveSearchRouteCard } from "@/components/booking/LiveSearchRouteCard";
+import { liveSearchRouteStyles as liveStyles } from "@/components/booking/liveSearchRouteStyles";
+import {
+  EMPTY_SELECTED_ADDRESS,
+  geoLocationToSelectedAddress,
+  selectedAddressIsComplete,
+  selectedAddressToGeoLocation,
+  type SelectedAddress,
+} from "@/components/booking/selectedAddress";
+import { taxiRouteCardStyles as routeStyles } from "@/components/booking/taxiAddressInputStyles";
+import { CollapsibleBrokerNotice } from "@/components/CollapsibleBrokerNotice";
+import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { isReservationLeadValid } from "@/components/ReservationSchedulePicker";
 import { accountSheetHeaderTitle, accountSheetPrimaryLabel, accountSheetSecondaryLabel } from "@/constants/accountSheetTypography";
-import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
+import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleOption, type VehicleType } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
+import { fetchAppConfig } from "@/lib/appConfig";
 import { validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import {
+  isGeocodedFixpreisLocation,
   MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE,
-  validateFixpreisRouteAddress,
+  validateFixpreisRouteLocation,
 } from "@/lib/appConfig";
 import { customerVehicleSurchargeLabel } from "@/utils/customerFareDisplay";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -42,36 +62,37 @@ import {
   CUSTOMER_FIXED_PRICE_AGREEMENT_DE,
   fetchFixedPriceEstimate,
 } from "@/utils/fixedPriceApi";
-import { loadSearchFavorites, mergeDestinationQuickPicks, type SearchFavorite } from "@/utils/searchFavorites";
-import { searchLocation, type GeoLocation } from "@/utils/routing";
+import {
+  evaluateFixedPriceEligibility,
+  parseFixedPriceMandatoryAreaCities,
+  selectedAddressToFixedPricePoint,
+} from "@/utils/fixedPriceEligibility";
+import { reverseGeocodeCoords } from "@/utils/reverseGeocode";
 import { ROUTE_NOT_COMPUTABLE_MESSAGE_DE } from "@/utils/routeDistanceApi";
+import { searchLocation, type GeoLocation } from "@/utils/routing";
+import {
+  FIXPRICE_DESTINATION_PRESETS,
+  loadSearchFavorites,
+  MAX_FAVORITES_STORED,
+  type SearchFavorite,
+} from "@/utils/searchFavorites";
+import { getCurrentPositionSafe, requestForegroundPermissionsSafe } from "@/utils/safeExpoLocation";
 import { rs } from "@/utils/scale";
 
 const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
 
-type PickTarget = "from" | "to";
-
-type SelectedStop = {
-  displayName: string;
-  city?: string;
-  lat: number;
-  lon: number;
-};
-
-function toGeoLocation(stop: SelectedStop): GeoLocation {
-  return {
-    displayName: stop.displayName,
-    city: stop.city,
-    lat: stop.lat,
-    lon: stop.lon,
-  };
-}
-
 function vehicleLabelForApi(vehicle: VehicleType): string {
   if (vehicle === "xl") return "XL";
   if (vehicle === "wheelchair") return "Rollstuhl";
   return "Standard";
+}
+
+function cityForApi(addr: SelectedAddress): string | undefined {
+  const c = addr.city?.trim();
+  if (c) return c;
+  const fromPoint = selectedAddressToFixedPricePoint(addr);
+  return fromPoint.city?.trim() || undefined;
 }
 
 export default function BookingFixedPriceScreen() {
@@ -80,13 +101,19 @@ export default function BookingFixedPriceScreen() {
   const { profile } = useUser();
   const { addRequest } = useRideRequests();
 
-  const [fromQuery, setFromQuery] = useState("");
-  const [toQuery, setToQuery] = useState("");
-  const [fromStop, setFromStop] = useState<SelectedStop | null>(null);
-  const [toStop, setToStop] = useState<SelectedStop | null>(null);
-  const [activePick, setActivePick] = useState<PickTarget>("from");
-  const [suggestions, setSuggestions] = useState<GeoLocation[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [from, setFrom] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
+  const [to, setTo] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
+  const [isEditingOrigin, setIsEditingOrigin] = useState(true);
+  const [originQuery, setOriginQuery] = useState("");
+  const [destQuery, setDestQuery] = useState("");
+  const [originResults, setOriginResults] = useState<GeoLocation[]>([]);
+  const [destResults, setDestResults] = useState<GeoLocation[]>([]);
+  const [isSearchingOrigin, setIsSearchingOrigin] = useState(false);
+  const [isSearchingDest, setIsSearchingDest] = useState(false);
+  const originInputRef = useRef<TextInput>(null);
+  const destInputRef = useRef<TextInput>(null);
+  const originDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const destDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [tripMinutes, setTripMinutes] = useState<number>(0);
@@ -104,55 +131,233 @@ export default function BookingFixedPriceScreen() {
   const [driverNote, setDriverNote] = useState("");
   const [noteModal, setNoteModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
-  const [dayOffset, setDayOffset] = useState(() => defaultScheduleWheelIndices().dayOffset);
-  const [hour, setHour] = useState(() => defaultScheduleWheelIndices().hour);
-  const [minuteIndex, setMinuteIndex] = useState(() => defaultScheduleWheelIndices().minuteIndex);
-  const [wheelKey, setWheelKey] = useState(0);
-  const [destinationQuickPicks, setDestinationQuickPicks] = useState<SearchFavorite[]>([]);
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(() => defaultScheduledPickupDate());
+  const [showDtPicker, setShowDtPicker] = useState(false);
+  const [searchUserGps, setSearchUserGps] = useState<{ lat: number; lon: number } | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [userDestinationFavorites, setUserDestinationFavorites] = useState<SearchFavorite[]>([]);
+  const [addFavoriteOpen, setAddFavoriteOpen] = useState(false);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    void loadSearchFavorites().then((custom) => setDestinationQuickPicks(mergeDestinationQuickPicks(custom)));
+  const reloadUserFavorites = useCallback(async () => {
+    const stored = await loadSearchFavorites();
+    setUserDestinationFavorites(stored.filter((f) => isGeocodedFixpreisLocation(f.location)));
   }, []);
 
-  const pickedScheduleDate = useMemo(
-    () => buildScheduledDate(dayOffset, hour, minuteIndex),
-    [dayOffset, hour, minuteIndex],
-  );
+  useEffect(() => {
+    void reloadUserFavorites();
+  }, [reloadUserFavorites]);
 
-  const scheduleLeadValid = isReservationLeadValid(pickedScheduleDate);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const fg = await requestForegroundPermissionsSafe();
+        if (!fg || fg.status !== "granted" || cancelled) return;
+        const pos = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+        if (pos && !cancelled) {
+          setSearchUserGps({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        }
+      } catch {
+        /* optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const fromComplete = selectedAddressIsComplete(from);
+  const toComplete = selectedAddressIsComplete(to);
+  const routeComplete = fromComplete && toComplete;
+
+  const showOriginResults =
+    isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
+  const showDestResults = !isEditingOrigin && destResults.length > 0;
+  const showDestQuickPicks =
+    !isEditingOrigin && !showDestResults && !isSearchingDest;
+  const showAddressHint =
+    isEditingOrigin && !showOriginResults && originQuery.trim().length < 2;
 
   const exit = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (router.canGoBack()) router.back();
     else router.replace("/" as Href);
   }, []);
 
-  useEffect(() => {
-    const q = activePick === "from" ? fromQuery : toQuery;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (q.trim().length < 2) {
-      setSuggestions([]);
-      return undefined;
-    }
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const locs = await searchLocation(q.trim());
-        setSuggestions(locs);
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setSearching(false);
+  const resetPricing = useCallback(() => {
+    setEligible(null);
+    setPriceEur(null);
+    setBasePriceEur(null);
+    setVehicleSurchargeEur(0);
+    setIneligibleMessage("");
+  }, []);
+
+  const handleOriginQueryChange = useCallback(
+    (text: string) => {
+      setOriginQuery(text);
+      if (from.name) {
+        setFrom(EMPTY_SELECTED_ADDRESS);
+        resetPricing();
       }
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [fromQuery, toQuery, activePick]);
+      if (originDebounceRef.current) clearTimeout(originDebounceRef.current);
+      if (text.length < 2) {
+        setOriginResults([]);
+        setIsSearchingOrigin(false);
+        return;
+      }
+      setIsSearchingOrigin(true);
+      originDebounceRef.current = setTimeout(async () => {
+        try {
+          const locs = await searchLocation(text, searchUserGps ?? undefined);
+          setOriginResults(locs.slice(0, 5));
+        } catch {
+          setOriginResults([]);
+        } finally {
+          setIsSearchingOrigin(false);
+        }
+      }, 300);
+    },
+    [from.name, resetPricing, searchUserGps],
+  );
+
+  const handleDestQueryChange = useCallback(
+    (text: string) => {
+      setDestQuery(text);
+      if (to.name) {
+        setTo(EMPTY_SELECTED_ADDRESS);
+        resetPricing();
+      }
+      if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+      if (text.length < 2) {
+        setDestResults([]);
+        setIsSearchingDest(false);
+        return;
+      }
+      setIsSearchingDest(true);
+      destDebounceRef.current = setTimeout(async () => {
+        try {
+          const locs = await searchLocation(text, searchUserGps ?? undefined);
+          setDestResults(locs.slice(0, 6));
+        } catch {
+          setDestResults([]);
+        } finally {
+          setIsSearchingDest(false);
+        }
+      }, 300);
+    },
+    [resetPricing, searchUserGps, to.name],
+  );
+
+  const pickFrom = useCallback(
+    (loc: GeoLocation) => {
+      const check = validateFixpreisRouteLocation(loc, "from");
+      if (!check.ok) {
+        Alert.alert("Adresse unvollständig", check.message);
+        return;
+      }
+      const addr = geoLocationToSelectedAddress(loc);
+      setFrom(addr);
+      setOriginQuery(addr.name);
+      setOriginResults([]);
+      setIsEditingOrigin(false);
+      resetPricing();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setTimeout(() => destInputRef.current?.focus(), 100);
+    },
+    [resetPricing],
+  );
+
+  const pickTo = useCallback(
+    (loc: GeoLocation) => {
+      const check = validateFixpreisRouteLocation(loc, "to");
+      if (!check.ok) {
+        Alert.alert("Adresse unvollständig", check.message);
+        return;
+      }
+      const addr = geoLocationToSelectedAddress(loc);
+      setTo(addr);
+      setDestQuery(addr.name);
+      setDestResults([]);
+      setIsEditingOrigin(false);
+      resetPricing();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    },
+    [resetPricing],
+  );
+
+  const clearDestQuery = useCallback(() => {
+    setDestQuery("");
+    setDestResults([]);
+    setTo(EMPTY_SELECTED_ADDRESS);
+    resetPricing();
+  }, [resetPricing]);
+
+  const pickDestinationFavorite = useCallback(
+    (fav: SearchFavorite) => {
+      pickTo(fav.location);
+    },
+    [pickTo],
+  );
+
+  const openAddFavoriteModal = useCallback(() => {
+    if (userDestinationFavorites.length >= MAX_FAVORITES_STORED) {
+      Alert.alert(
+        "Limit erreicht",
+        `Es sind höchstens ${MAX_FAVORITES_STORED} Favoriten möglich.`,
+      );
+      return;
+    }
+    setAddFavoriteOpen(true);
+  }, [userDestinationFavorites.length]);
+
+  const handleGpsPickup = useCallback(async () => {
+    setGpsLoading(true);
+    try {
+      const fg = await requestForegroundPermissionsSafe();
+      if (!fg || fg.status !== "granted") {
+        Alert.alert("Standort", "Bitte Standortzugriff erlauben, um den Abholort zu übernehmen.");
+        return;
+      }
+      const pos = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      if (!pos) {
+        Alert.alert("Standort", "Standort konnte nicht abgerufen werden.");
+        return;
+      }
+      setSearchUserGps({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      let geoLoc = await reverseGeocodeCoords(pos.coords.latitude, pos.coords.longitude);
+      if (!isGeocodedFixpreisLocation(geoLoc)) {
+        const q = [geoLoc.street, geoLoc.housenumber, geoLoc.postcode, geoLoc.city]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        if (q) {
+          const results = await searchLocation(q);
+          const match = results.find((loc) => isGeocodedFixpreisLocation(loc));
+          if (match) geoLoc = match;
+        }
+      }
+      const check = validateFixpreisRouteLocation(geoLoc, "from");
+      if (!check.ok) {
+        Alert.alert("Adresse unvollständig", check.message);
+        return;
+      }
+      const addr = geoLocationToSelectedAddress(geoLoc);
+      setFrom(addr);
+      setOriginQuery(addr.name);
+      setOriginResults([]);
+      setIsEditingOrigin(false);
+      resetPricing();
+      Haptics.selectionAsync();
+      setTimeout(() => destInputRef.current?.focus(), 100);
+    } catch {
+      Alert.alert("Standort", "Standort konnte nicht abgerufen werden.");
+    } finally {
+      setGpsLoading(false);
+    }
+  }, [resetPricing]);
 
   const recomputeRouteAndPrice = useCallback(
-    async (from: SelectedStop, to: SelectedStop, vehicle: VehicleType) => {
+    async (fromAddr: SelectedAddress, toAddr: SelectedAddress, vehicle: VehicleType) => {
       setRouteLoading(true);
       setEstimateLoading(true);
       setEligible(null);
@@ -160,12 +365,27 @@ export default function BookingFixedPriceScreen() {
       setBasePriceEur(null);
       setVehicleSurchargeEur(0);
       setIneligibleMessage("");
+      const fromFull = fromAddr.fullName || fromAddr.name;
+      const toFull = toAddr.fullName || toAddr.name;
       try {
-        const area = await validateServiceAreaForBooking(from.displayName, to.displayName, {
-          fromLat: from.lat,
-          fromLon: from.lon,
-          toLat: to.lat,
-          toLon: to.lon,
+        const cfg = await fetchAppConfig();
+        const mandatoryCities = parseFixedPriceMandatoryAreaCities(cfg.tariffs?.fixedPriceMandatoryAreaCities);
+        const eligibility = evaluateFixedPriceEligibility({
+          from: selectedAddressToFixedPricePoint(fromAddr),
+          to: selectedAddressToFixedPricePoint(toAddr),
+          mandatoryCities,
+        });
+        if (!eligibility.eligible) {
+          setEligible(false);
+          setIneligibleMessage(eligibility.message);
+          return;
+        }
+
+        const area = await validateServiceAreaForBooking(fromFull, toFull, {
+          fromLat: fromAddr.lat,
+          fromLon: fromAddr.lon,
+          toLat: toAddr.lat,
+          toLon: toAddr.lon,
         });
         if (!area.ok) {
           setEligible(false);
@@ -173,14 +393,14 @@ export default function BookingFixedPriceScreen() {
           return;
         }
         const est = await fetchFixedPriceEstimate({
-          fromFull: from.displayName,
-          toFull: to.displayName,
-          fromLat: from.lat,
-          fromLon: from.lon,
-          toLat: to.lat,
-          toLon: to.lon,
-          fromCity: from.city,
-          toCity: to.city,
+          fromFull,
+          toFull,
+          fromLat: fromAddr.lat,
+          fromLon: fromAddr.lon,
+          toLat: toAddr.lat,
+          toLon: toAddr.lon,
+          fromCity: cityForApi(fromAddr),
+          toCity: cityForApi(toAddr),
           vehicle,
         });
         if (!est.ok) {
@@ -213,49 +433,12 @@ export default function BookingFixedPriceScreen() {
   );
 
   useEffect(() => {
-    if (!fromStop || !toStop) return;
-    void recomputeRouteAndPrice(fromStop, toStop, selectedVehicle);
-  }, [fromStop, toStop, selectedVehicle, recomputeRouteAndPrice]);
+    if (!routeComplete) return;
+    void recomputeRouteAndPrice(from, to, selectedVehicle);
+  }, [from, to, selectedVehicle, routeComplete, recomputeRouteAndPrice]);
 
-  const applyStop = useCallback(
-    (target: PickTarget, loc: GeoLocation) => {
-      const field = target === "from" ? "from" : "to";
-      const check = validateFixpreisRouteAddress(loc.displayName, field);
-      if (!check.ok) {
-        Alert.alert("Adresse unvollständig", check.message);
-        return false;
-      }
-      const stop: SelectedStop = {
-        displayName: loc.displayName,
-        city: loc.city,
-        lat: loc.lat,
-        lon: loc.lon,
-      };
-      if (target === "from") {
-        setFromStop(stop);
-        setFromQuery(loc.displayName);
-        if (toStop) void recomputeRouteAndPrice(stop, toStop, selectedVehicle);
-        else setActivePick("to");
-      } else {
-        setToStop(stop);
-        setToQuery(loc.displayName);
-        if (fromStop) void recomputeRouteAndPrice(fromStop, stop, selectedVehicle);
-      }
-      setSuggestions([]);
-      Haptics.selectionAsync();
-      return true;
-    },
-    [fromStop, toStop, selectedVehicle, recomputeRouteAndPrice],
-  );
-
-  const pickSuggestion = (loc: GeoLocation) => {
-    void applyStop(activePick, loc);
-  };
-
-  const pickDestinationFavorite = (fav: SearchFavorite) => {
-    setActivePick("to");
-    void applyStop("to", fav.location);
-  };
+  const scheduleLeadValid = scheduledAt != null && isReservationLeadValid(scheduledAt);
+  const minPickupDate = useMemo(() => minimumScheduledPickupDate(), []);
 
   const surchargeLabel = customerVehicleSurchargeLabel({
     vehicle: selectedVehicle,
@@ -264,25 +447,26 @@ export default function BookingFixedPriceScreen() {
 
   const canSubmit = useMemo(
     () =>
-      !!fromStop &&
-      !!toStop &&
+      routeComplete &&
       eligible === true &&
       priceEur != null &&
       priceEur > 0 &&
       agreementAccepted &&
       scheduleLeadValid &&
       !submitting,
-    [fromStop, toStop, eligible, priceEur, agreementAccepted, scheduleLeadValid, submitting],
+    [routeComplete, eligible, priceEur, agreementAccepted, scheduleLeadValid, submitting],
   );
 
   const handleSubmit = async () => {
-    if (!canSubmit || !fromStop || !toStop || priceEur == null) return;
-    const addrCheck = validateFixpreisRouteAddress(fromStop.displayName, "from");
+    if (!canSubmit || !scheduledAt || priceEur == null) return;
+    const fromLoc = selectedAddressToGeoLocation(from);
+    const toLoc = selectedAddressToGeoLocation(to);
+    const addrCheck = validateFixpreisRouteLocation(fromLoc, "from");
     if (!addrCheck.ok) {
       Alert.alert("Startadresse", addrCheck.message);
       return;
     }
-    const toCheck = validateFixpreisRouteAddress(toStop.displayName, "to");
+    const toCheck = validateFixpreisRouteLocation(toLoc, "to");
     if (!toCheck.ok) {
       Alert.alert("Zieladresse", toCheck.message);
       return;
@@ -291,7 +475,7 @@ export default function BookingFixedPriceScreen() {
       Alert.alert("Anmeldung", "Bitte zuerst anmelden, um eine Festpreis-Fahrt zu buchen.");
       return;
     }
-    if (!isReservationLeadValid(pickedScheduleDate)) {
+    if (!isReservationLeadValid(scheduledAt)) {
       Alert.alert(
         "Termin",
         "Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte einen späteren Zeitpunkt wählen.",
@@ -301,37 +485,36 @@ export default function BookingFixedPriceScreen() {
     setSubmitting(true);
     try {
       const customerName = profile.name?.trim() || "Gast";
+      const fromFull = from.fullName || from.name;
+      const toFull = to.fullName || to.name;
       const pricingMode = effectivePricingModeForCustomerRide({
         selectedServiceClass: "taxi",
         selectedVehicle,
-        origin: toGeoLocation(fromStop),
-        destination: toGeoLocation(toStop),
+        origin: fromLoc,
+        destination: toLoc,
         bookingFlow: "fixed_price",
       });
-      const noteParts = [
-        driverNote.trim(),
-        hasLuggage ? "Gepäck: Ja" : null,
-      ].filter(Boolean);
+      const noteParts = [driverNote.trim(), hasLuggage ? "Gepäck: Ja" : null].filter(Boolean);
       const partnerBookingMeta =
         noteParts.length > 0 ? { partnerBookingMeta: { customer_driver_note: noteParts.join(" · ") } } : {};
       await addRequest({
-        from: fromStop.displayName.split(",")[0]?.trim() || fromStop.displayName,
-        fromFull: fromStop.displayName,
-        fromLat: fromStop.lat,
-        fromLon: fromStop.lon,
-        fromCity: fromStop.city,
-        to: toStop.displayName.split(",")[0]?.trim() || toStop.displayName,
-        toFull: toStop.displayName,
-        toLat: toStop.lat,
-        toLon: toStop.lon,
-        toCity: toStop.city,
+        from: from.name,
+        fromFull,
+        fromLat: from.lat,
+        fromLon: from.lon,
+        fromCity: cityForApi(from),
+        to: to.name,
+        toFull,
+        toLat: to.lat,
+        toLon: to.lon,
+        toCity: cityForApi(to),
         distanceKm: distanceKm ?? 0,
         durationMinutes: tripMinutes,
         estimatedFare: priceEur,
         paymentMethod: paymentMethod === "cash" ? "Bar" : "Karte",
         vehicle: vehicleLabelForApi(selectedVehicle),
         customerName,
-        scheduledAt: pickedScheduleDate,
+        scheduledAt,
         rideKind: "standard",
         payerKind: "passenger",
         pricingMode,
@@ -364,116 +547,87 @@ export default function BookingFixedPriceScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
-        <Pressable onPress={exit} hitSlop={10} style={styles.headerBtn}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Festpreis</Text>
-        <View style={styles.headerBtn} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: rs(16), paddingBottom: mainTabScrollPaddingBottom(insets.bottom) }}
-        keyboardShouldPersistTaps="handled"
+      <View
+        style={[
+          liveStyles.searchHeader,
+          {
+            paddingTop: insets.top + 8,
+            borderBottomColor: "#E5E7EB",
+            backgroundColor: "#FFFFFF",
+          },
+        ]}
       >
-        <Text style={styles.lead}>
-          Garantierter Preis, kein Taxameter. Termin ab 60 Minuten Vorlauf.
-        </Text>
-
-        <View style={[styles.card, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
-          <Text style={[styles.label, { color: colors.foreground }]}>Start</Text>
-          <TextInput
-            style={[styles.input, { color: colors.foreground, borderColor: activePick === "from" ? ONRODA_MARK_RED : HOME_SHEET_RIM }]}
-            placeholder="Abholadresse"
-            placeholderTextColor={colors.mutedForeground}
-            value={fromQuery}
-            onChangeText={(t) => {
-              setFromQuery(t);
-              setFromStop(null);
-              setActivePick("from");
-              setEligible(null);
-              setPriceEur(null);
-              setBasePriceEur(null);
-              setVehicleSurchargeEur(0);
-            }}
-            onFocus={() => setActivePick("from")}
-          />
-          <Text style={[styles.label, { color: colors.foreground, marginTop: rs(12) }]}>Ziel</Text>
-          <TextInput
-            style={[styles.input, { color: colors.foreground, borderColor: activePick === "to" ? ONRODA_MARK_RED : HOME_SHEET_RIM }]}
-            placeholder="Zieladresse"
-            placeholderTextColor={colors.mutedForeground}
-            value={toQuery}
-            onChangeText={(t) => {
-              setToQuery(t);
-              setToStop(null);
-              setActivePick("to");
-              setEligible(null);
-              setPriceEur(null);
-              setBasePriceEur(null);
-              setVehicleSurchargeEur(0);
-            }}
-            onFocus={() => setActivePick("to")}
-          />
-          {destinationQuickPicks.length > 0 ? (
-            <View style={styles.favoritesBlock}>
-              <Text style={[styles.favoritesLabel, { color: colors.mutedForeground }]}>Lieblingsorte</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.favoritesRow}>
-                {destinationQuickPicks.map((fav) => {
-                  const active = toStop?.displayName === fav.location.displayName;
-                  return (
-                    <Pressable
-                      key={fav.id}
-                      style={({ pressed }) => [
-                        styles.favoriteChip,
-                        {
-                          borderColor: active ? colors.primary : colors.border,
-                          backgroundColor: active ? colors.primary + "14" : colors.background,
-                          opacity: pressed ? 0.92 : 1,
-                        },
-                      ]}
-                      onPress={() => pickDestinationFavorite(fav)}
-                    >
-                      <Feather name="star" size={13} color={active ? colors.primary : "#F59E0B"} />
-                      <Text
-                        style={[
-                          styles.favoriteChipText,
-                          { color: active ? colors.primary : colors.foreground },
-                          active && { fontFamily: "Inter_700Bold" },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {fav.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          ) : null}
+        <View style={liveStyles.searchHeaderRow}>
+          <Pressable style={liveStyles.backBtn} onPress={exit} hitSlop={10}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </Pressable>
+          <View style={liveStyles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Festpreis</Text>
+          </View>
+          <Pressable style={liveStyles.cancelBtn} onPress={exit} hitSlop={10}>
+            <Text style={[liveStyles.cancelBtnText, { color: colors.primary }]}>Abbrechen</Text>
+          </Pressable>
         </View>
 
-        <Text style={[styles.addressHint, { color: colors.mutedForeground }]}>{MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}</Text>
+        <LiveSearchRouteCard
+          isEditingOrigin={isEditingOrigin}
+          originQuery={originQuery}
+          destQuery={destQuery}
+          onOriginQueryChange={handleOriginQueryChange}
+          onDestQueryChange={handleDestQueryChange}
+          onFocusOrigin={() => setIsEditingOrigin(true)}
+          onFocusDest={() => setIsEditingOrigin(false)}
+          originInputRef={originInputRef}
+          destInputRef={destInputRef}
+          gpsLoading={gpsLoading}
+          onGpsPress={() => void handleGpsPickup()}
+          isSearchingDest={isSearchingDest}
+          onClearDest={clearDestQuery}
+        />
+      </View>
 
-        {searching ? (
-          <ActivityIndicator style={{ marginTop: rs(12) }} color={colors.primary} />
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          liveStyles.resultsContent,
+          { paddingBottom: mainTabScrollPaddingBottom(insets.bottom) },
+        ]}
+        bottomOffset={insets.bottom + rs(8)}
+      >
+        {showOriginResults ? (
+          <LiveSearchResultGroup
+            locations={originResults}
+            loading={isSearchingOrigin}
+            onPick={pickFrom}
+          />
         ) : null}
 
-        {suggestions.length > 0 ? (
-          <View style={[styles.suggestBox, { borderColor: HOME_SHEET_RIM }]}>
-            {suggestions.map((loc, i) => (
-              <Pressable
-                key={`${loc.lat}-${loc.lon}-${i}`}
-                style={[styles.suggestRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: HOME_SHEET_RIM }]}
-                onPress={() => pickSuggestion(loc)}
-              >
-                <Feather name="map-pin" size={16} color={colors.mutedForeground} />
-                <Text style={[styles.suggestText, { color: colors.foreground }]} numberOfLines={2}>
-                  {loc.displayName}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+        {showDestResults ? (
+          <LiveSearchResultGroup
+            locations={destResults}
+            isDestination
+            onPick={pickTo}
+          />
+        ) : null}
+
+        {showDestQuickPicks ? (
+          <FixpreisDestinationQuickPicks
+            presets={FIXPRICE_DESTINATION_PRESETS}
+            userFavorites={userDestinationFavorites}
+            activeDisplayName={to.fullName || to.name}
+            onPick={pickDestinationFavorite}
+            onAddFavorite={openAddFavoriteModal}
+            maxFavorites={MAX_FAVORITES_STORED}
+          />
+        ) : null}
+
+        {showAddressHint ? (
+          <Text style={[liveStyles.addressHint, { color: colors.mutedForeground }]}>
+            {MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}
+          </Text>
         ) : null}
 
         {routeLoading || estimateLoading ? (
@@ -483,116 +637,11 @@ export default function BookingFixedPriceScreen() {
           </View>
         ) : null}
 
-        {fromStop && toStop ? (
-          <>
-            <ReservationSchedulePicker
-              uiVariant="reservation"
-              hideTimingToggle
-              timing="scheduled"
-              onTimingChange={() => {}}
-              dayOffset={dayOffset}
-              hour={hour}
-              minuteIndex={minuteIndex}
-              onDayOffsetChange={setDayOffset}
-              onHourChange={setHour}
-              onMinuteIndexChange={setMinuteIndex}
-              wheelKey={wheelKey}
-            />
-
-            <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Fahrzeugwahl</Text>
-            <View style={styles.vehicleRow}>
-              {VEHICLES.map((v: VehicleOption) => {
-                const active = selectedVehicle === v.id;
-                return (
-                  <Pressable
-                    key={v.id}
-                    style={[
-                      styles.vehicleCard,
-                      { borderColor: colors.border, backgroundColor: colors.background },
-                      active && {
-                        borderColor: colors.primary,
-                        borderWidth: 2,
-                        backgroundColor: colors.primary + "12",
-                      },
-                    ]}
-                    onPress={() => {
-                      setSelectedVehicle(v.id);
-                      Haptics.selectionAsync();
-                    }}
-                  >
-                    <View
-                      style={[
-                        styles.vehicleIcon,
-                        { backgroundColor: colors.muted },
-                        active && { backgroundColor: colors.primary + "22" },
-                      ]}
-                    >
-                      <MaterialCommunityIcons
-                        name={v.icon as any}
-                        size={30}
-                        color={v.id === "wheelchair" ? NB_WHEELCHAIR_ICON : NB_CAR_ICON}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.vehicleName,
-                        { color: colors.foreground },
-                        active && { color: colors.primary, fontFamily: "Inter_700Bold" },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {v.name}
-                    </Text>
-                    <Text style={[styles.vehicleDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
-                      {v.description}
-                    </Text>
-                    {active && selectedVehicle !== "standard" && surchargeLabel ? (
-                      <Text style={[styles.vehicleSurcharge, { color: colors.primary }]}>{surchargeLabel}</Text>
-                    ) : null}
-                    {active ? (
-                      <View style={styles.vehicleCheck}>
-                        <Feather name="check-circle" size={14} color={colors.primary} />
-                      </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.background, marginTop: rs(16) }]}>
-              <Pressable
-                style={styles.row}
-                onPress={() => {
-                  setNoteDraft(driverNote);
-                  setNoteModal(true);
-                }}
-              >
-                <Text style={[styles.rowLabel, { color: colors.foreground }]}>Notiz für Fahrer</Text>
-                <View style={styles.rowRight}>
-                  <Text style={[styles.rowValue, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {driverNote ? driverNote : "Optional"}
-                  </Text>
-                  <Feather name="chevron-right" size={20} color={colors.primary} />
-                </View>
-              </Pressable>
-              <View style={[styles.separator, { backgroundColor: colors.border }]} />
-              <View style={styles.row}>
-                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <Feather name="briefcase" size={18} color={colors.foreground} />
-                  <Text style={[styles.rowLabel, { color: colors.foreground }]}>Gepäck</Text>
-                </View>
-                <Switch
-                  value={hasLuggage}
-                  onValueChange={(v) => {
-                    Haptics.selectionAsync();
-                    setHasLuggage(v);
-                  }}
-                  trackColor={{ false: colors.border, true: "#22C55E" }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-            </View>
-          </>
+        {eligible === false && ineligibleMessage ? (
+          <View style={[styles.priceCard, { borderColor: "#FECACA", backgroundColor: "#FEF2F2" }]}>
+            <Text style={[styles.priceOk, { color: "#B91C1C" }]}>Kein Festpreis</Text>
+            <Text style={[styles.priceMeta, { color: "#7F1D1D" }]}>{ineligibleMessage}</Text>
+          </View>
         ) : null}
 
         {eligible === true && priceEur != null ? (
@@ -621,27 +670,155 @@ export default function BookingFixedPriceScreen() {
           </View>
         ) : null}
 
-        {eligible === false && ineligibleMessage ? (
-          <View style={[styles.priceCard, { borderColor: "#FECACA", backgroundColor: "#FEF2F2" }]}>
-            <Text style={[styles.priceOk, { color: "#B91C1C" }]}>Kein Festpreis</Text>
-            <Text style={[styles.priceMeta, { color: "#7F1D1D" }]}>{ineligibleMessage}</Text>
+        {routeComplete ? (
+          <View style={{ gap: rs(16) }}>
+            <View style={[routeStyles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+              <Text style={[routeStyles.sectionTitle, { color: colors.foreground }]}>Termin</Text>
+              <Pressable
+                style={[routeStyles.dtField, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}
+                onPress={() => setShowDtPicker(true)}
+              >
+                <Feather name="calendar" size={18} color="#DC2626" />
+                <Text
+                  style={[
+                    routeStyles.dtFieldText,
+                    { color: scheduledAt ? colors.foreground : colors.mutedForeground },
+                  ]}
+                >
+                  {scheduledAt ? formatBookingDateTime(scheduledAt) : "Datum und Uhrzeit wählen"}
+                </Text>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </Pressable>
+              {!scheduleLeadValid ? (
+                <Text style={[styles.leadTimeHint, { color: "#B45309" }]}>
+                  Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen.
+                </Text>
+              ) : null}
+              <View style={[routeStyles.infoBox, { backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM }]}>
+                <Feather name="info" size={15} color={colors.mutedForeground} />
+                <Text style={[routeStyles.dtNote, { color: colors.mutedForeground, flex: 1 }]}>
+                  Alle Zeitangaben basieren auf dem Abholort. Kostenlose Stornierung bis 1 Stunde vor Abholung.
+                </Text>
+              </View>
+            </View>
+
+            <View style={[routeStyles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+              <Text style={[routeStyles.sectionTitle, { color: colors.foreground }]}>Fahrzeug</Text>
+              <View style={styles.vehicleRow}>
+                {VEHICLES.map((v: VehicleOption) => {
+                  const active = selectedVehicle === v.id;
+                  return (
+                    <Pressable
+                      key={v.id}
+                      style={[
+                        styles.vehicleCard,
+                        {
+                          borderColor: active ? ONRODA_MARK_RED : colors.border,
+                          backgroundColor: active ? `${ONRODA_MARK_RED}0F` : HOME_SHEET_INNER,
+                          borderWidth: active ? 2 : 1.5,
+                        },
+                      ]}
+                      onPress={() => {
+                        setSelectedVehicle(v.id);
+                        Haptics.selectionAsync();
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.vehicleIcon,
+                          { backgroundColor: active ? "#DC262622" : colors.border + "40" },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={v.icon as any}
+                          size={28}
+                          color={v.id === "wheelchair" ? NB_WHEELCHAIR_ICON : NB_CAR_ICON}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          styles.vehicleName,
+                          { color: active ? ONRODA_MARK_RED : colors.foreground },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {v.name}
+                      </Text>
+                      {active && selectedVehicle !== "standard" && surchargeLabel ? (
+                        <Text style={[styles.vehicleSurcharge, { color: ONRODA_MARK_RED }]}>{surchargeLabel}</Text>
+                      ) : null}
+                      {active ? (
+                        <View style={styles.vehicleCheck}>
+                          <Feather name="check-circle" size={14} color={ONRODA_MARK_RED} />
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[routeStyles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+              <Text style={[routeStyles.sectionTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+              <Pressable
+                style={[routeStyles.dtField, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}
+                onPress={() => {
+                  setNoteDraft(driverNote);
+                  setNoteModal(true);
+                }}
+              >
+                <Feather name="edit-3" size={18} color={colors.mutedForeground} />
+                <Text
+                  style={[
+                    routeStyles.dtFieldText,
+                    { color: driverNote.trim() ? colors.foreground : colors.mutedForeground, flex: 1 },
+                  ]}
+                  numberOfLines={3}
+                >
+                  {driverNote.trim() ? driverNote : "z. B. Bitte am Haupteingang warten"}
+                </Text>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </Pressable>
+              <View style={styles.luggageRow}>
+                <View style={styles.luggageLeft}>
+                  <Feather name="briefcase" size={18} color={colors.foreground} />
+                  <Text style={[routeStyles.dtFieldText, { color: colors.foreground }]}>Gepäck</Text>
+                </View>
+                <Switch
+                  value={hasLuggage}
+                  onValueChange={(v) => {
+                    Haptics.selectionAsync();
+                    setHasLuggage(v);
+                  }}
+                  trackColor={{ false: colors.border, true: "#22C55E" }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+            </View>
           </View>
         ) : null}
 
         {eligible === true && priceEur != null ? (
           <>
-            <View style={[styles.card, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL, marginTop: rs(12) }]}>
-              <Text style={[styles.label, { color: colors.foreground }]}>Zahlung</Text>
+            <View style={[routeStyles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+              <Text style={[routeStyles.sectionTitle, { color: colors.foreground }]}>Zahlungsart</Text>
               <View style={styles.payRow}>
                 {(["cash", "card"] as const).map((m) => {
                   const active = paymentMethod === m;
                   return (
                     <Pressable
                       key={m}
-                      style={[styles.payChip, active && styles.payChipActive]}
+                      style={[
+                        styles.payChip,
+                        {
+                          borderColor: active ? ONRODA_MARK_RED : colors.border,
+                          backgroundColor: active ? `${ONRODA_MARK_RED}0F` : HOME_SHEET_INNER,
+                          borderWidth: active ? 2 : 1.5,
+                        },
+                      ]}
                       onPress={() => setPaymentMethod(m)}
                     >
-                      <Text style={[styles.payChipText, active && styles.payChipTextActive]}>
+                      <Text style={[styles.payChipText, { color: active ? ONRODA_MARK_RED : colors.foreground }]}>
                         {m === "cash" ? "Bar" : "Karte"}
                       </Text>
                     </Pressable>
@@ -650,10 +827,7 @@ export default function BookingFixedPriceScreen() {
               </View>
             </View>
 
-            <Pressable
-              style={styles.agreeRow}
-              onPress={() => setAgreementAccepted((v) => !v)}
-            >
+            <Pressable style={styles.agreeRow} onPress={() => setAgreementAccepted((v) => !v)}>
               <View style={[styles.checkbox, agreementAccepted && styles.checkboxOn]}>
                 {agreementAccepted ? <Feather name="check" size={14} color="#fff" /> : null}
               </View>
@@ -673,32 +847,83 @@ export default function BookingFixedPriceScreen() {
             </Pressable>
           </>
         ) : null}
-      </ScrollView>
+
+        <CollapsibleBrokerNotice />
+      </KeyboardAwareScrollViewCompat>
+
+      <AddSearchFavoriteModal
+        visible={addFavoriteOpen}
+        onClose={() => setAddFavoriteOpen(false)}
+        onSaved={(favorites) => {
+          setUserDestinationFavorites(favorites.filter((f) => isGeocodedFixpreisLocation(f.location)));
+        }}
+        foregroundColor={colors.foreground}
+        mutedColor={colors.mutedForeground}
+        surfaceColor={colors.surface}
+        borderColor={colors.border}
+        primaryColor={colors.primary}
+        successColor={colors.success}
+      />
+
+      <BookingDateTimePicker
+        visible={showDtPicker}
+        value={scheduledAt}
+        minimumDate={minPickupDate}
+        onClose={() => setShowDtPicker(false)}
+        onConfirm={(d) => {
+          setScheduledAt(d);
+          setShowDtPicker(false);
+        }}
+        colors={colors}
+      />
 
       <Modal visible={noteModal} transparent animationType="fade" onRequestClose={() => setNoteModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setNoteModal(false)}>
-          <Pressable style={[styles.noteCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={(e) => e.stopPropagation()}>
-            <Text style={[styles.label, { color: colors.foreground }]}>Notiz für Fahrer</Text>
-            <TextInput
-              style={[styles.noteInput, { color: colors.foreground, borderColor: colors.border }]}
-              placeholder="z. B. Treffpunkt, Koffer …"
-              placeholderTextColor={colors.mutedForeground}
-              value={noteDraft}
-              onChangeText={setNoteDraft}
-              multiline
-              maxLength={300}
-            />
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={0}
+        >
+          <Pressable style={styles.modalOverlayInner} onPress={() => setNoteModal(false)}>
             <Pressable
-              style={[styles.submitBtn, { marginTop: rs(12) }]}
-              onPress={() => {
-                setDriverNote(noteDraft.trim());
-                setNoteModal(false);
-              }}
+              style={[styles.noteModalCard, { backgroundColor: HOME_SHEET_PANEL }]}
+              onPress={(e) => e.stopPropagation()}
             >
-              <Text style={styles.submitText}>Speichern</Text>
+              <View style={[styles.noteModalHeader, { borderBottomColor: HOME_SHEET_RIM }]}>
+                <Pressable onPress={() => setNoteModal(false)} hitSlop={10}>
+                  <Text style={[styles.noteModalAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
+                </Pressable>
+                <Text style={[styles.noteModalTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+                <Pressable
+                  onPress={() => {
+                    setDriverNote(noteDraft.trim());
+                    setNoteModal(false);
+                    Haptics.selectionAsync();
+                  }}
+                  hitSlop={10}
+                >
+                  <Text style={[styles.noteModalAction, { color: HOME_SHEET_TEXT }]}>Fertig</Text>
+                </Pressable>
+              </View>
+              <View style={styles.noteModalBody}>
+                <TextInput
+                  style={[
+                    styles.noteModalInput,
+                    { color: colors.foreground, backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM },
+                  ]}
+                  value={noteDraft}
+                  onChangeText={setNoteDraft}
+                  placeholder="z. B. Bitte am Haupteingang warten"
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  textAlignVertical="top"
+                  maxLength={140}
+                  autoCorrect
+                />
+                <Text style={[styles.noteModalCount, { color: colors.mutedForeground }]}>{noteDraft.length}/140</Text>
+              </View>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <BottomTabBar active="buchen" />
@@ -708,87 +933,20 @@ export default function BookingFixedPriceScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: rs(8),
-    paddingBottom: rs(12),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerBtn: { width: rs(36), height: rs(36), alignItems: "center", justifyContent: "center" },
   headerTitle: accountSheetHeaderTitle,
-  lead: {
-    ...accountSheetSecondaryLabel,
-    marginBottom: rs(12),
-    color: "#111827",
-    fontFamily: "Inter_400Regular",
+  leadTimeHint: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    lineHeight: 18,
   },
-  sectionLabel: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginTop: rs(18),
-    marginBottom: 10,
-  },
-  card: {
-    borderRadius: rs(14),
-    borderWidth: 1,
-    padding: rs(14),
-  },
-  label: { ...accountSheetPrimaryLabel, marginBottom: rs(6) },
-  input: {
-    borderWidth: 1,
-    borderRadius: rs(10),
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(10),
-    fontFamily: "Inter_400Regular",
-    fontSize: 15,
-  },
-  addressHint: {
-    ...accountSheetSecondaryLabel,
-    marginTop: rs(8),
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  favoritesBlock: { marginTop: rs(10) },
-  favoritesLabel: { fontFamily: "Inter_500Medium", fontSize: 12, marginBottom: rs(6) },
-  favoritesRow: { flexDirection: "row", gap: rs(8), paddingRight: rs(4) },
-  favoriteChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(6),
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(8),
-    borderRadius: rs(999),
-    borderWidth: StyleSheet.hairlineWidth,
-    maxWidth: rs(160),
-  },
-  favoriteChipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
-  suggestBox: {
-    marginTop: rs(8),
-    borderWidth: 1,
-    borderRadius: rs(12),
-    overflow: "hidden",
-    backgroundColor: "#fff",
-  },
-  suggestRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(10),
-    padding: rs(12),
-  },
-  suggestText: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 14 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: rs(8), marginTop: rs(14) },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: rs(8), paddingHorizontal: rs(4) },
   vehicleRow: { flexDirection: "row", gap: 10 },
   vehicleCard: {
     flex: 1,
     borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
     padding: 12,
     alignItems: "center",
-    minHeight: 120,
+    minHeight: 110,
     position: "relative",
   },
   vehicleIcon: {
@@ -800,23 +958,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   vehicleName: { fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" },
-  vehicleDesc: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 2 },
   vehicleSurcharge: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 4 },
   vehicleCheck: { position: "absolute", top: 8, right: 8 },
-  group: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
-  row: {
+  luggageRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: rs(10),
   },
-  rowLabel: { fontSize: 16, fontFamily: "Inter_500Medium" },
-  rowRight: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, justifyContent: "flex-end" },
-  rowValue: { fontSize: 15, fontFamily: "Inter_400Regular", maxWidth: "55%", textAlign: "right" },
-  separator: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
+  luggageLeft: { flexDirection: "row", alignItems: "center", gap: rs(10), flex: 1 },
   priceCard: {
-    marginTop: rs(14),
     borderRadius: rs(14),
     borderWidth: 1,
     padding: rs(14),
@@ -828,17 +979,14 @@ const styles = StyleSheet.create({
   priceMeta: { ...accountSheetSecondaryLabel, marginTop: rs(6), textAlign: "center" },
   payRow: { flexDirection: "row", gap: rs(8) },
   payChip: {
+    flex: 1,
     paddingHorizontal: rs(14),
-    paddingVertical: rs(8),
-    borderRadius: rs(999),
-    borderWidth: 1,
-    borderColor: HOME_SHEET_RIM,
-    backgroundColor: HOME_SHEET_INNER,
+    paddingVertical: rs(12),
+    borderRadius: rs(12),
+    alignItems: "center",
   },
-  payChipActive: { borderColor: ONRODA_MARK_RED, backgroundColor: "#FEE2E2" },
-  payChipText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#374151" },
-  payChipTextActive: { color: ONRODA_MARK_RED },
-  agreeRow: { flexDirection: "row", gap: rs(10), marginTop: rs(16), alignItems: "flex-start" },
+  payChipText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  agreeRow: { flexDirection: "row", gap: rs(10), alignItems: "flex-start", paddingHorizontal: rs(4) },
   checkbox: {
     width: rs(22),
     height: rs(22),
@@ -852,33 +1000,58 @@ const styles = StyleSheet.create({
   checkboxOn: { backgroundColor: ONRODA_MARK_RED, borderColor: ONRODA_MARK_RED },
   agreeText: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
   submitBtn: {
-    marginTop: rs(16),
     backgroundColor: ONRODA_MARK_RED,
     borderRadius: rs(14),
     paddingVertical: rs(14),
     alignItems: "center",
+    marginHorizontal: rs(4),
   },
   submitBtnDisabled: { opacity: 0.45 },
   submitText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
-    padding: 24,
+    backgroundColor: "#00000055",
+    paddingHorizontal: rs(24),
   },
-  noteCard: {
-    borderRadius: 16,
+  modalOverlayInner: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+  },
+  noteModalCard: {
+    width: "100%",
+    maxWidth: rs(360),
+    borderRadius: rs(20),
+    overflow: "hidden",
+  },
+  noteModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  noteModalTitle: accountSheetPrimaryLabel,
+  noteModalAction: { fontFamily: "Inter_500Medium", fontSize: 15 },
+  noteModalBody: {
+    paddingHorizontal: rs(16),
+    paddingTop: rs(14),
+    paddingBottom: rs(16),
+    gap: rs(8),
+  },
+  noteModalInput: {
+    minHeight: rs(120),
+    maxHeight: rs(160),
+    borderRadius: rs(12),
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-  },
-  noteInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    minHeight: 100,
-    textAlignVertical: "top",
-    fontFamily: "Inter_400Regular",
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
     fontSize: 15,
-    marginTop: 8,
+    lineHeight: 21,
+    fontFamily: "Inter_400Regular",
   },
+  noteModalCount: { alignSelf: "flex-end", fontSize: 12, fontFamily: "Inter_400Regular" },
 });

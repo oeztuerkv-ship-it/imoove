@@ -1,0 +1,97 @@
+import { StyleSheet } from "react-native";
+
+import { rs } from "@/utils/scale";
+
+/** 1:1 wie `index.tsx` Live-Such-Overlay (twoFieldCard + Ergebnisliste). */
+export const liveSearchRouteStyles = StyleSheet.create({
+  searchHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "column",
+    gap: 8,
+  },
+  searchHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerCenter: { flex: 1, alignItems: "center" },
+  cancelBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+  twoFieldCard: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  dotsCol: {
+    width: 32,
+    alignItems: "center",
+    paddingTop: 18,
+    paddingBottom: 18,
+    gap: 2,
+  },
+  dotOrigin: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#222",
+    borderWidth: 2,
+    borderColor: "#555",
+  },
+  dotLine: { flex: 1, width: 2, borderRadius: 1, marginVertical: 3 },
+  dotDestination: { width: 10, height: 10, borderRadius: 5 },
+  fieldsCol: { flex: 1 },
+  fieldWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+    gap: 8,
+    borderBottomWidth: 0,
+  },
+  fieldInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    paddingVertical: 0,
+  },
+  fieldSeparator: { height: 2, marginLeft: 8, marginRight: 8, opacity: 0.45 },
+  gpsIconBtn: { padding: 4 },
+  resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
+  resultGroup: { borderRadius: 14, borderWidth: 1.5, overflow: "hidden" },
+  resultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  resultIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  resultText: { flex: 1 },
+  resultTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  resultSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
+  resultDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
+  searchingRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
+  searchingText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  addressHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+    paddingHorizontal: rs(4),
+  },
+});

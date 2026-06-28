@@ -3,7 +3,6 @@ import type { GeoLocation } from "@/utils/routing";
 
 export const FAVORITES_STORAGE_KEY = "@Onroda_search_favorites_v1";
 export const MAX_FAVORITES_STORED = 5;
-export const MAX_CUSTOM_FAVORITES = 3;
 
 export type SearchFavorite = {
   id: string;
@@ -11,7 +10,7 @@ export type SearchFavorite = {
   location: GeoLocation;
 };
 
-/** Feste Lieblingsziele (POI) — immer verfügbar auf Festpreis & Suche. */
+/** Feste häufige Ziele (POI) — Festpreis-Screen „Häufige Ziele“. */
 export const FIXPRICE_DESTINATION_PRESETS: SearchFavorite[] = [
   {
     id: "preset-str-airport",
@@ -69,8 +68,29 @@ export async function loadSearchFavorites(): Promise<SearchFavorite[]> {
   }
 }
 
-/** Eigene Favoriten (max. 3) + feste POI-Presets für Ziel-Auswahl. */
-export function mergeDestinationQuickPicks(customFavorites: SearchFavorite[]): SearchFavorite[] {
-  const custom = customFavorites.slice(0, MAX_CUSTOM_FAVORITES);
-  return [...FIXPRICE_DESTINATION_PRESETS, ...custom];
+export function createSearchFavoriteId(): string {
+  return `fav-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export async function saveSearchFavorites(favorites: SearchFavorite[]): Promise<SearchFavorite[]> {
+  const capped = favorites.filter(isSearchFavorite).slice(0, MAX_FAVORITES_STORED);
+  await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(capped));
+  return capped;
+}
+
+export async function appendSearchFavorite(input: {
+  label: string;
+  location: GeoLocation;
+}): Promise<{ ok: true; favorites: SearchFavorite[] } | { ok: false; error: "limit_reached" }> {
+  const existing = await loadSearchFavorites();
+  if (existing.length >= MAX_FAVORITES_STORED) {
+    return { ok: false, error: "limit_reached" };
+  }
+  const next: SearchFavorite = {
+    id: createSearchFavoriteId(),
+    label: input.label.trim() || input.location.displayName.split(",")[0]?.trim() || "Favorit",
+    location: input.location,
+  };
+  const favorites = await saveSearchFavorites([...existing, next]);
+  return { ok: true, favorites };
 }

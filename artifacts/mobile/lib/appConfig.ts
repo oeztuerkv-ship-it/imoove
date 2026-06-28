@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/utils/apiBase";
+import type { GeoLocation } from "@/utils/routing";
 
 export type OnrodaServiceRegion = {
   id: string;
@@ -192,9 +193,9 @@ export const MESSAGE_ADDRESS_PICK_SUGGESTION_DE =
 export const MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE =
   "Bitte Straße, Hausnummer und Stadt eingeben — am besten einen Vorschlag aus der Liste wählen.";
 
-/** Festpreis: Straße + Hausnummer + PLZ (5-stellig) Pflicht — wie Partner-Panel. */
+/** Festpreis: einzeiliger Hinweis (nur UI, nicht an Validierungs-Alerts anhängen). */
 export const MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE =
-  "Bitte Straße mit Hausnummer und PLZ angeben (z. B. Musterstraße 12, 70771 Leinfelden-Echterdingen).";
+  "Bitte Hausnummer und PLZ oder Stadt — oder einen Vorschlag wählen.";
 
 function hasGermanPlzInAddress(address: string): boolean {
   return /\b\d{5}\b/.test(String(address ?? ""));
@@ -208,6 +209,34 @@ export function isCompleteFixpreisAddress(fullName: string): boolean {
   return full.replace(/[\d,\s./-]/g, "").length >= 3;
 }
 
+export function isGeocodedFixpreisLocation(loc: GeoLocation): boolean {
+  if (!Number.isFinite(loc.lat) || !Number.isFinite(loc.lon)) return false;
+  const full = String(loc.displayName ?? "").trim();
+  if (!full) return false;
+
+  const hasHouse =
+    Boolean(String(loc.housenumber ?? "").trim()) ||
+    hasHouseNumberInFirstAddressPart(full) ||
+    (Boolean(String(loc.street ?? "").trim()) && /\d/.test(`${loc.street} ${loc.housenumber ?? ""}`));
+
+  if (!hasHouse) return false;
+
+  return (
+    Boolean(String(loc.postcode ?? "").trim() && /^\d{5}$/.test(String(loc.postcode).trim())) ||
+    Boolean(String(loc.city ?? "").trim()) ||
+    hasGermanPlzInAddress(full) ||
+    Boolean(extractCityFromBookingAddress(full))
+  );
+}
+
+export function validateFixpreisRouteLocation(
+  loc: GeoLocation,
+  field: "from" | "to",
+): { ok: true } | { ok: false; message: string } {
+  if (isGeocodedFixpreisLocation(loc)) return { ok: true };
+  return validateFixpreisRouteAddress(loc.displayName, field);
+}
+
 export function validateFixpreisRouteAddress(
   address: string,
   field: "from" | "to",
@@ -215,16 +244,13 @@ export function validateFixpreisRouteAddress(
   const label = field === "from" ? "Start" : "Ziel";
   const full = String(address ?? "").trim();
   if (!full) {
-    return { ok: false, message: `${label}: Adresse fehlt. ${MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}` };
+    return { ok: false, message: `${label}: Adresse fehlt.` };
   }
   if (!hasHouseNumberInFirstAddressPart(full) && !isCompleteFixpreisAddress(full)) {
-    return {
-      ok: false,
-      message: `${label}: Straße und Hausnummer fehlen. ${MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}`,
-    };
+    return { ok: false, message: `${label}: Hausnummer fehlt.` };
   }
   if (!hasGermanPlzInAddress(full)) {
-    return { ok: false, message: `${label}: PLZ (5-stellig) fehlt. ${MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}` };
+    return { ok: false, message: `${label}: PLZ oder Stadt fehlt.` };
   }
   return { ok: true };
 }

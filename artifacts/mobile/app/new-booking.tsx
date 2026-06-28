@@ -53,6 +53,12 @@ import {
   validateAddressCompletenessForBooking,
   validateServiceAreaForBooking,
 } from "@/lib/appOperationalConfig";
+import { TaxiRouteAddressCard, type TaxiRouteAddressCardHandle } from "@/components/booking/TaxiRouteAddressCard";
+import {
+  EMPTY_SELECTED_ADDRESS,
+  selectedAddressIsBookingComplete,
+  type SelectedAddress,
+} from "@/components/booking/selectedAddress";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
 import { useColors } from "@/hooks/useColors";
@@ -144,26 +150,6 @@ function subName(display: string) {
 
 type GeoItem = GeoResult;
 
-type SelectedAddress = {
-  name: string;
-  subline: string;
-  fullName: string;
-  lat: number;
-  lon: number;
-  isStreetAddress: boolean;
-  isPoiAddress: boolean;
-};
-
-const EMPTY_SELECTED_ADDRESS: SelectedAddress = {
-  name: "",
-  subline: "",
-  fullName: "",
-  lat: 0,
-  lon: 0,
-  isStreetAddress: false,
-  isPoiAddress: false,
-};
-
 function parseDisplayNameFallback(display: string): { line1: string; subline: string } {
   const parts = String(display ?? "")
     .split(",")
@@ -190,6 +176,7 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
   name: string;
   subline: string;
   fullName: string;
+  city: string;
   isStreetAddress: boolean;
   isPoiAddress: boolean;
 } {
@@ -243,60 +230,10 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
     name: line1,
     subline,
     fullName,
+    city,
     isStreetAddress: Boolean(street && house),
     isPoiAddress,
   };
-}
-
-function plzCitySubline(loc: GeoLocation, displayParts: string[]): string {
-  const plz =
-    loc.postcode?.trim() ||
-    displayParts.find((p) => /^\d{5}$/.test(p)) ||
-    "";
-  const city =
-    loc.city?.trim() ||
-    displayParts.find(
-      (p, i) =>
-        i > 0 &&
-        !/^\d{5}$/.test(p) &&
-        !/\d/.test(p) &&
-        !/deutschland|germany|baden-württemberg|landkreis|region/i.test(p),
-    ) ||
-    "";
-  return [plz, city].filter(Boolean).join(" ");
-}
-
-function geoLocationToSelectedAddress(loc: GeoLocation): SelectedAddress {
-  const parts = loc.displayName.split(",").map((p) => p.trim()).filter(Boolean);
-  const street = loc.street?.trim() ?? "";
-  const house = loc.housenumber?.trim() ?? "";
-  let name = (parts[0] ?? loc.displayName).trim();
-  if (street) {
-    name = house ? `${street} ${house}` : street;
-  }
-  const subline = plzCitySubline(loc, parts) || parts.slice(1, 3).join(", ").trim();
-  const fullName = subline ? `${name}, ${subline}` : loc.displayName;
-  const hasHouse =
-    Boolean(house) || /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(name);
-  const hasCity = Boolean(loc.city?.trim() || subline);
-  const isPoiAddress = !hasHouse || !hasCity;
-  return {
-    name,
-    subline,
-    fullName,
-    lat: loc.lat,
-    lon: loc.lon,
-    isStreetAddress: !isPoiAddress,
-    isPoiAddress,
-  };
-}
-
-function selectedAddressIsBookingComplete(addr: SelectedAddress): boolean {
-  return isCompleteStreetAddressForBooking({
-    fullName: addr.fullName || addr.name,
-    subline: addr.subline,
-    isPoiAddress: addr.isPoiAddress,
-  });
 }
 
 async function reverseGeocodeLatLon(lat: number, lon: number): Promise<SelectedAddress | null> {
@@ -327,449 +264,6 @@ async function reverseGeocodeLatLon(lat: number, lon: number): Promise<SelectedA
   }
 }
 
-function AddressInput({
-  label = "",
-  value,
-  subline,
-  placeholder,
-  onSelect,
-  colors,
-  compact = false,
-  routeRow = false,
-  taxiRoute = false,
-  fieldLabel,
-  showGps = false,
-  onGpsPress,
-  gpsLoading = false,
-  inputAccessoryViewID,
-  onRouteFocus,
-  onRouteClear,
-  userGps,
-  onAfterSelect,
-  showClear = false,
-  isDestination = false,
-  inputRef: externalInputRef,
-}: {
-  label?: string;
-  value: string;
-  subline: string;
-  placeholder: string;
-  onSelect: (selection: SelectedAddress) => void;
-  colors: ReturnType<typeof useColors>;
-  compact?: boolean;
-  routeRow?: boolean;
-  taxiRoute?: boolean;
-  fieldLabel?: string;
-  showGps?: boolean;
-  onGpsPress?: () => void;
-  gpsLoading?: boolean;
-  inputAccessoryViewID?: string;
-  onRouteFocus?: () => void;
-  onRouteClear?: () => void;
-  userGps?: { lat: number; lon: number } | null;
-  onAfterSelect?: () => void;
-  showClear?: boolean;
-  isDestination?: boolean;
-  inputRef?: React.RefObject<TextInput | null>;
-}) {
-  const [query, setQuery] = useState(value);
-  const [nominatimResults, setNominatimResults] = useState<GeoItem[]>([]);
-  const [photonResults, setPhotonResults] = useState<GeoLocation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchAbortRef = useRef<AbortController | null>(null);
-  const localInputRef = useRef<TextInput>(null);
-  const inputRef = externalInputRef ?? localInputRef;
-
-  useEffect(() => {
-    if (!value.trim()) {
-      setQuery("");
-      return;
-    }
-    if (taxiRoute) {
-      if (!focused) return;
-      setQuery(value);
-      return;
-    }
-    const next = subline ? `${value}, ${subline}` : value;
-    if (!focused) setQuery(next);
-  }, [focused, value, subline, taxiRoute]);
-
-  useEffect(
-    () => () => {
-      searchAbortRef.current?.abort();
-    },
-    [],
-  );
-
-  const showPhotonResults = taxiRoute && focused && query.length >= 2;
-  const showNominatimResults = !taxiRoute && focused && nominatimResults.length > 0 && query.length >= 2;
-
-  const dismissEdit = () => {
-    inputRef.current?.blur();
-    Keyboard.dismiss();
-    setFocused(false);
-    setNominatimResults([]);
-    setPhotonResults([]);
-  };
-
-  const enterEditMode = () => {
-    setQuery(taxiRoute ? value : subline ? `${value}, ${subline}` : value);
-    setFocused(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const handleChange = (text: string) => {
-    setQuery(text);
-    setNominatimResults([]);
-    setPhotonResults([]);
-    if (text.length === 0) {
-      onSelect(EMPTY_SELECTED_ADDRESS);
-    }
-    if (debounce.current) clearTimeout(debounce.current);
-    if (text.length < 2) {
-      setLoading(false);
-      return;
-    }
-    if (taxiRoute) {
-      setLoading(true);
-      debounce.current = setTimeout(async () => {
-        try {
-          const locs = await searchLocation(text, userGps ?? undefined);
-          setPhotonResults(locs.slice(0, isDestination ? 6 : 5));
-        } catch {
-          setPhotonResults([]);
-        } finally {
-          setLoading(false);
-        }
-      }, 300);
-      return;
-    }
-    debounce.current = setTimeout(async () => {
-      searchAbortRef.current?.abort();
-      const ac = new AbortController();
-      searchAbortRef.current = ac;
-      setLoading(true);
-      try {
-        const r = await nominatimSearch(text, ac.signal);
-        if (!ac.signal.aborted) setNominatimResults(r);
-      } finally {
-        if (searchAbortRef.current === ac) setLoading(false);
-      }
-    }, 350);
-  };
-
-  const handlePick = (selection: SelectedAddress) => {
-    if (!selectedAddressIsBookingComplete(selection)) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Adresse unvollständig", MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE);
-      return;
-    }
-    setQuery(selection.name);
-    setNominatimResults([]);
-    setPhotonResults([]);
-    setFocused(false);
-    inputRef.current?.blur();
-    onSelect(selection);
-    Haptics.selectionAsync();
-    onAfterSelect?.();
-  };
-
-  const handlePhotonPick = (loc: GeoLocation) => {
-    handlePick(geoLocationToSelectedAddress(loc));
-  };
-
-  const hasSelection = value.trim().length > 0;
-  /** taxiRoute: Straße+Nr. / PLZ+Stadt zweizeilig; sonst Preview wie bisher. */
-  const showSelectedPreview =
-    hasSelection && !focused && (taxiRoute || compact || routeRow);
-  const FieldShell = showSelectedPreview ? Pressable : View;
-
-  const handleClear = () => {
-    searchAbortRef.current?.abort();
-    if (debounce.current) clearTimeout(debounce.current);
-    setQuery("");
-    setNominatimResults([]);
-    setPhotonResults([]);
-    setLoading(false);
-    onSelect(EMPTY_SELECTED_ADDRESS);
-    onRouteClear?.();
-  };
-
-  const handleClearAndDismiss = () => {
-    handleClear();
-    dismissEdit();
-  };
-
-  const fieldBorder = focused ? HELP_FIELD_FOCUS : HOME_SHEET_RIM;
-  const fieldBorderWidth = focused ? 1.5 : StyleSheet.hairlineWidth;
-
-  const showGpsBtn = routeRow && showGps && (taxiRoute || (!focused && !hasSelection && !loading));
-  const showClearBtn = taxiRoute && showClear && focused && query.length > 0 && !loading;
-  const showDestSpinner = taxiRoute && isDestination && loading;
-  const showRouteEditActions = routeRow && focused && !taxiRoute;
-
-  return (
-    <>
-      {Platform.OS === "ios" && inputAccessoryViewID && !taxiRoute ? (
-        <InputAccessoryView nativeID={inputAccessoryViewID}>
-          <View style={[styles.accessoryBar, { borderTopColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
-            <View style={{ flex: 1 }} />
-            <Pressable onPress={dismissEdit} hitSlop={10}>
-              <Text style={styles.accessoryDone}>Fertig</Text>
-            </Pressable>
-          </View>
-        </InputAccessoryView>
-      ) : null}
-    <View
-      style={[
-        routeRow ? styles.routeRowWrap : undefined,
-        routeRow && focused && !taxiRoute ? styles.routeRowWrapFocused : null,
-      ]}
-    >
-      {!compact && !routeRow ? (
-        <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      ) : null}
-      <FieldShell
-        style={[
-          routeRow ? styles.routeRowPress : styles.inputBox,
-          !routeRow && compact && styles.inputBoxRoute,
-          routeRow && focused && styles.routeRowEditing,
-          !routeRow && {
-            backgroundColor: HOME_SHEET_INNER,
-            borderColor: fieldBorder,
-            borderWidth: fieldBorderWidth,
-          },
-          routeRow && taxiRoute && {
-            backgroundColor: "transparent",
-            borderColor: focused ? fieldBorder : "transparent",
-            borderWidth: focused ? fieldBorderWidth : 0,
-          },
-          routeRow && !taxiRoute && {
-            backgroundColor: focused || showSelectedPreview ? "#FFFFFF" : "transparent",
-            borderColor: focused ? fieldBorder : showSelectedPreview ? HOME_SHEET_RIM : "transparent",
-            borderWidth: focused ? fieldBorderWidth : showSelectedPreview ? StyleSheet.hairlineWidth : 0,
-          },
-        ]}
-        {...(showSelectedPreview
-          ? {
-              onPress: () => {
-                enterEditMode();
-              },
-            }
-          : {})}
-      >
-        <View style={[routeRow ? styles.routeRowBody : styles.inputBody, routeRow ? styles.routeRowBodyGrow : null]}>
-          {routeRow && fieldLabel ? (
-            <Text style={[styles.routeRowCaption, { color: colors.mutedForeground }]}>{fieldLabel}</Text>
-          ) : null}
-          {showSelectedPreview ? (
-            <View style={[styles.addressPreview, routeRow && styles.routeAddressPreview]}>
-              <Text
-                style={[
-                  routeRow ? styles.routeAddressLine1 : styles.addressLine1,
-                  { color: colors.foreground },
-                ]}
-                numberOfLines={2}
-              >
-                {value}
-              </Text>
-              {subline ? (
-                <Text
-                  style={[
-                    routeRow ? styles.routeAddressLine2 : styles.addressLine2,
-                    { color: colors.mutedForeground },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {subline}
-                </Text>
-              ) : null}
-            </View>
-          ) : (
-            <TextInput
-              ref={inputRef}
-              style={[
-                styles.inputText,
-                routeRow && styles.routeRowInput,
-                compact && !routeRow && styles.inputTextRoute,
-                { color: colors.foreground },
-              ]}
-              value={query}
-              onChangeText={handleChange}
-              onFocus={() => {
-                setFocused(true);
-                onRouteFocus?.();
-              }}
-              onBlur={() => {
-                setTimeout(() => setFocused(false), 200);
-              }}
-              placeholder={placeholder}
-              placeholderTextColor={colors.mutedForeground}
-              returnKeyType="search"
-              autoCorrect={false}
-              autoCapitalize="words"
-              inputAccessoryViewID={
-                Platform.OS === "ios" && inputAccessoryViewID && !taxiRoute ? inputAccessoryViewID : undefined
-              }
-            />
-          )}
-        </View>
-        {loading && !taxiRoute ? (
-          <ActivityIndicator size="small" color={colors.foreground} style={styles.routePreviewTrailing} />
-        ) : null}
-        {showGpsBtn && onGpsPress ? (
-          <Pressable hitSlop={8} onPress={onGpsPress} style={taxiRoute ? styles.liveGpsIconBtn : styles.routeGpsBtn}>
-            {gpsLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Feather name="navigation" size={taxiRoute ? 15 : 17} color={colors.primary} />
-            )}
-          </Pressable>
-        ) : null}
-        {showDestSpinner ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-        {showClearBtn ? (
-          <Pressable onPress={handleClear} hitSlop={8}>
-            <Feather name="x" size={16} color={colors.mutedForeground} />
-          </Pressable>
-        ) : null}
-        {showRouteEditActions && taxiRoute ? (
-          <View style={styles.routeEditActionsInline}>
-            <Pressable
-              hitSlop={8}
-              onPress={handleClearAndDismiss}
-              style={({ pressed }) => [styles.routeIconBtn, { borderColor: HOME_SHEET_RIM, opacity: pressed ? 0.65 : 1 }]}
-              accessibilityLabel="Adresse leeren"
-            >
-              <Feather name="x" size={16} color={colors.mutedForeground} />
-            </Pressable>
-            <Pressable
-              hitSlop={8}
-              onPress={dismissEdit}
-              style={({ pressed }) => [styles.routeIconBtn, styles.routeIconBtnDone, { opacity: pressed ? 0.85 : 1 }]}
-              accessibilityLabel="Fertig"
-            >
-              <Feather name="check" size={16} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        ) : null}
-        {routeRow && showSelectedPreview && !showRouteEditActions ? (
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={styles.routePreviewTrailing} />
-        ) : null}
-      </FieldShell>
-      {showRouteEditActions && !taxiRoute ? (
-        <View style={styles.routeEditBarBelow}>
-          <View style={styles.routeEditActions}>
-            <Pressable hitSlop={8} onPress={handleClearAndDismiss} style={({ pressed }) => [styles.routeIconBtn, { borderColor: HOME_SHEET_RIM, opacity: pressed ? 0.65 : 1 }]}>
-              <Feather name="x" size={16} color={colors.mutedForeground} />
-            </Pressable>
-            <Pressable hitSlop={8} onPress={dismissEdit} style={({ pressed }) => [styles.routeIconBtn, styles.routeIconBtnDone, { opacity: pressed ? 0.85 : 1 }]}>
-              <Feather name="check" size={16} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
-
-      {/* Photon (Sofortfahrt / Reservieren — wie Startseiten-Suche) */}
-      {showPhotonResults ? (
-        <View style={[styles.liveResultGroup, { borderColor: colors.border, marginTop: rs(4) }]}>
-          {loading && photonResults.length === 0 ? (
-            <View style={styles.liveSearchingRow}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={[styles.liveSearchingText, { color: colors.mutedForeground }]}>Suche läuft...</Text>
-            </View>
-          ) : (
-            photonResults.map((loc, i) => {
-              const structured = geoLocationToSelectedAddress(loc);
-              return (
-                <React.Fragment key={`${loc.lat}-${loc.lon}-${i}`}>
-                  {i > 0 ? <View style={[styles.liveResultDivider, { backgroundColor: colors.border }]} /> : null}
-                  <Pressable
-                    style={({ pressed }) => [styles.liveResultRow, pressed && { backgroundColor: colors.muted }]}
-                    onPress={() => handlePhotonPick(loc)}
-                  >
-                    <View
-                      style={[
-                        styles.liveResultIcon,
-                        { backgroundColor: isDestination ? colors.muted : "#F0F9FF" },
-                      ]}
-                    >
-                      <Feather name="map-pin" size={15} color={isDestination ? colors.primary : "#3B82F6"} />
-                    </View>
-                    <View style={styles.liveResultText}>
-                      <Text style={[styles.liveResultTitle, { color: colors.foreground }]} numberOfLines={1}>
-                        {structured.name}
-                      </Text>
-                      <Text style={[styles.liveResultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        {structured.subline || loc.displayName.split(",").slice(1, 3).join(",").trim()}
-                      </Text>
-                    </View>
-                  </Pressable>
-                </React.Fragment>
-              );
-            })
-          )}
-        </View>
-      ) : null}
-
-      {/* Nominatim (Legacy-Felder) */}
-      {showNominatimResults ? (
-        <View
-          style={[
-            styles.suggestionBox,
-            { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
-          ]}
-        >
-          {nominatimResults.map((s, i) => (
-            <Pressable
-              key={i}
-              style={[
-                styles.suggestionItem,
-                i < nominatimResults.length - 1 && {
-                  borderBottomWidth: StyleSheet.hairlineWidth,
-                  borderBottomColor: HOME_SHEET_RIM,
-                },
-              ]}
-              onPress={() => {
-                const structured = buildStructuredAddressFromGeo(s);
-                handlePick({
-                  name: structured.name,
-                  subline: structured.subline,
-                  fullName: structured.fullName,
-                  lat: parseFloat(s.lat),
-                  lon: parseFloat(s.lon),
-                  isStreetAddress: structured.isStreetAddress,
-                  isPoiAddress: structured.isPoiAddress,
-                });
-              }}
-            >
-              <View style={[styles.suggestionIconBox, { backgroundColor: colors.muted }]}>
-                <Feather name="map-pin" size={13} color={colors.mutedForeground} />
-              </View>
-              <View style={{ flex: 1 }}>
-                {(() => {
-                  const structured = buildStructuredAddressFromGeo(s);
-                  return (
-                    <>
-                      <Text style={[styles.suggestionText, { color: colors.foreground }]} numberOfLines={1}>
-                        {structured.name}
-                      </Text>
-                      <Text style={[styles.suggestionSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        {structured.subline || subName(s.display_name)}
-                      </Text>
-                    </>
-                  );
-                })()}
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-    </View>
-    </>
-  );
-}
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
 
@@ -982,8 +476,7 @@ export default function NewBookingScreen() {
   );
 
   const [searchUserGps, setSearchUserGps] = useState<{ lat: number; lon: number } | null>(null);
-  const originAddressInputRef = useRef<TextInput>(null);
-  const destAddressInputRef = useRef<TextInput>(null);
+  const routeAddressCardRef = useRef<TaxiRouteAddressCardHandle>(null);
 
   const exitBookingScreen = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -995,8 +488,7 @@ export default function NewBookingScreen() {
   }, []);
 
   const dismissBookingKeyboard = useCallback(() => {
-    originAddressInputRef.current?.blur();
-    destAddressInputRef.current?.blur();
+    routeAddressCardRef.current?.blurAll();
     Keyboard.dismiss();
   }, []);
 
@@ -1023,8 +515,7 @@ export default function NewBookingScreen() {
   }, []);
 
   const focusDestAddressField = useCallback(() => {
-    originAddressInputRef.current?.blur();
-    setTimeout(() => destAddressInputRef.current?.focus(), 150);
+    routeAddressCardRef.current?.focusDestAddressField();
   }, []);
 
   const handleGpsPickup = async () => {
@@ -1392,46 +883,16 @@ export default function NewBookingScreen() {
   );
 
   const renderRouteAddressCard = () => (
-    <View style={[styles.routeAddressCard, { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-      <View style={styles.fahrzielRoute}>
-        <View style={styles.fahrzielTimeline} pointerEvents="none">
-          <View style={styles.fahrzielDotOrigin} />
-          <View style={[styles.fahrzielConnector, { backgroundColor: colors.border }]} />
-          <View style={[styles.fahrzielDotDest, { backgroundColor: colors.primary }]} />
-        </View>
-        <View style={styles.fahrzielFieldsCol}>
-          <AddressInput
-            routeRow
-            taxiRoute
-            showGps
-            userGps={searchUserGps}
-            inputRef={originAddressInputRef}
-            onGpsPress={() => void handleGpsPickup()}
-            gpsLoading={gpsLoading}
-            value={from.name}
-            subline={from.subline}
-            placeholder="Startadresse eingeben..."
-            onSelect={setFrom}
-            onAfterSelect={focusDestAddressField}
-            colors={colors}
-          />
-          <View style={[styles.fahrzielFieldSep, { backgroundColor: colors.border }]} />
-          <AddressInput
-            routeRow
-            taxiRoute
-            showClear
-            isDestination
-            userGps={searchUserGps}
-            inputRef={destAddressInputRef}
-            value={to.name}
-            subline={to.subline}
-            placeholder="Ziel eingeben..."
-            onSelect={setTo}
-            colors={colors}
-          />
-        </View>
-      </View>
-    </View>
+    <TaxiRouteAddressCard
+      ref={routeAddressCardRef}
+      from={from}
+      to={to}
+      onFromSelect={setFrom}
+      onToSelect={setTo}
+      searchUserGps={searchUserGps}
+      gpsLoading={gpsLoading}
+      onGpsPickup={() => void handleGpsPickup()}
+    />
   );
 
   const renderBookingFormSections = () => (
