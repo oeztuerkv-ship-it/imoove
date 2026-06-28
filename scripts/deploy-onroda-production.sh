@@ -82,6 +82,9 @@ Umgebung (Auswahl):
   ONRODA_HEALTHCHECK_RETRIES Anzahl Versuche pro URL (Default: 8)
   ONRODA_HEALTHCHECK_RETRY_DELAY_SECONDS Pause zwischen Versuchen (Default: 2)
   ONRODA_SKIP_HEALTHCHECKS  Wenn 1: Health-Checks überspringen (nur Notfall)
+  ONRODA_SKIP_ADMIN_PANEL_VERIFY  Wenn 1: Admin-Panel dist + Serve-Check überspringen (Notfall)
+  ONRODA_ADMIN_PANEL_VERIFY_URL  Optional: öffentliche URL z. B. https://admin.onroda.de/partners/ (Asset-Hash muss zu frischem dist passen)
+  ONRODA_ADMIN_PANEL_VERIFY_MARKER  Optional: String muss im gebauten index-*.js unter dist/ vorkommen (Regressionsschutz)
   ONRODA_SKIP_PARTNER_APPROVE_DB_VERIFY  Wenn 1: Partner-Freigabe-DB-Prüfung (4b) überspringen — nur Notfall
 
 EOF
@@ -429,6 +432,88 @@ do_health_checks() {
   log "Health-Checks: OK (${#urls[@]} URL(s))."
 }
 
+admin_panel_dist_index_asset() {
+  local index_file="$ADMIN_DIR/dist/index.html"
+  grep -oE '/partners/assets/index-[^"'"'"'<> ]+\.js' "$index_file" 2>/dev/null | head -1 || true
+}
+
+do_admin_panel_build_verify() {
+  if [[ "${ONRODA_SKIP_ADMIN_PANEL_VERIFY:-0}" == "1" ]]; then
+    log "Admin-Panel dist-Check übersprungen (ONRODA_SKIP_ADMIN_PANEL_VERIFY=1)."
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] verify-admin-partners-routes.sh (Dateisystem)"
+    return 0
+  fi
+  log "Admin-Panel dist prüfen (Dateisystem)…"
+  bash "${ROOT}/scripts/verify-admin-partners-routes.sh"
+  if [[ -n "${ONRODA_ADMIN_PANEL_VERIFY_MARKER:-}" ]]; then
+    local rel asset_path
+    rel="$(admin_panel_dist_index_asset)"
+    if [[ -z "$rel" ]]; then
+      echo "[deploy-onroda] Admin-Panel: kein index-*.js in dist/index.html gefunden." >&2
+      exit 1
+    fi
+    asset_path="${ADMIN_DIR}/dist/${rel#/partners/}"
+    if ! grep -qF "${ONRODA_ADMIN_PANEL_VERIFY_MARKER}" "$asset_path"; then
+      echo "[deploy-onroda] Admin-Panel-Marker fehlt im Build: ${ONRODA_ADMIN_PANEL_VERIFY_MARKER}" >&2
+      echo "[deploy-onroda] Datei: ${asset_path} — Commit/Push vor Deploy? Build fehlgeschlagen?" >&2
+      exit 1
+    fi
+    log "Admin-Panel Build-Marker OK."
+  fi
+}
+
+do_admin_panel_serve_verify() {
+  if [[ "${ONRODA_SKIP_ADMIN_PANEL_VERIFY:-0}" == "1" ]]; then
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] verify-admin-partners-routes.sh http://127.0.0.1:<PORT> admin.onroda.de"
+    return 0
+  fi
+  command -v curl >/dev/null 2>&1 || return 0
+  local port dist_asset
+  port="$(load_api_port)"
+  dist_asset="$(admin_panel_dist_index_asset)"
+  log "Admin-Panel Serve-Check (Node :${port}, Host: admin.onroda.de)…"
+  bash "${ROOT}/scripts/verify-admin-partners-routes.sh" "http://127.0.0.1:${port}" "admin.onroda.de"
+  if [[ -n "$dist_asset" ]]; then
+    local live_html live_asset
+    live_html="$(curl -fsSL --max-time "${ONRODA_HEALTHCHECK_TIMEOUT:-20}" -H "Host: admin.onroda.de" "http://127.0.0.1:${port}/partners/" 2>/dev/null)" || {
+      echo "[deploy-onroda] Admin-Panel: index.html von Node nicht lesbar." >&2
+      exit 1
+    }
+    live_asset="$(printf '%s' "$live_html" | grep -oE '/partners/assets/index-[^"'"'"'<> ]+\.js' | head -1 || true)"
+    if [[ "$live_asset" != "$dist_asset" ]]; then
+      echo "[deploy-onroda] Admin-Panel Asset-Mismatch: dist=${dist_asset} live=${live_asset:-<leer>}" >&2
+      echo "[deploy-onroda] Node liefert nicht den frischen Build — PM2-Pfad, Nginx root vs proxy_pass oder ONRODA_RSYNC_ADMIN_DIST_TO prüfen." >&2
+      exit 1
+    fi
+    log "Admin-Panel Asset-Hash stimmt (dist = Node): ${dist_asset}"
+  fi
+  local public_url="${ONRODA_ADMIN_PANEL_VERIFY_URL:-}"
+  if [[ -n "$public_url" ]]; then
+    local timeout="${ONRODA_ADMIN_PANEL_VERIFY_TIMEOUT:-25}"
+    log "Admin-Panel öffentlich prüfen: ${public_url}"
+    local pub_html pub_asset
+    pub_html="$(curl_fetch_body_with_retries "$public_url" "$timeout" "Admin-Panel öffentlich")" || {
+      echo "[deploy-onroda] Admin-Panel öffentlicher Check fehlgeschlagen: ${public_url}" >&2
+      exit 1
+    }
+    if [[ -n "$dist_asset" ]]; then
+      pub_asset="$(printf '%s' "$pub_html" | grep -oE '/partners/assets/index-[^"'"'"'<> ]+\.js' | head -1 || true)"
+      if [[ "$pub_asset" != "$dist_asset" ]]; then
+        echo "[deploy-onroda] Admin-Panel öffentlicher Asset-Mismatch: dist=${dist_asset} public=${pub_asset:-<leer>}" >&2
+        echo "[deploy-onroda] Nginx evtl. auf altes /var/www/… statt proxy_pass — oder CDN/Browser-Cache." >&2
+        exit 1
+      fi
+      log "Admin-Panel öffentlicher Asset-Hash OK: ${pub_asset}"
+    fi
+  fi
+}
+
 do_pm2() {
   local app
   for app in $ONRODA_PM2_APPS; do
@@ -665,6 +750,7 @@ do_git_pull
 do_pnpm_install
 do_api_build
 do_panel_builds
+do_admin_panel_build_verify
 
 if [[ "$SKIP_MIGRATIONS" -ne 1 ]]; then
   apply_migrations
@@ -681,10 +767,11 @@ do_pm2
 do_optional_nginx
 wait_after_pm2_restart
 do_health_checks
+do_admin_panel_serve_verify
 do_optional_marketing_status_verify
 do_marketing_fixpreise_verify
 do_marketing_agb_verify
 do_marketing_home_verify
 
-log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema + Partner-Freigabe-DB → Marketing-Rsync → PM2 → Nginx → Health → Marketing-URLs)."
+log "Deploy fertig (Git → pnpm → Builds → Admin-dist-Check → Migrationen + Schema + Partner-Freigabe-DB → Marketing-Rsync → PM2 → Nginx → Health → Admin-Serve-Check → Marketing-URLs)."
 log "Hinweis: Freigabe-Mails brauchen PARTNER_REGISTRATION_SMTP_URL + PARTNER_REGISTRATION_MAIL_FROM in artifacts/api-server/.env (PM2 --update-env)."

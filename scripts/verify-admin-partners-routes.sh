@@ -2,7 +2,7 @@
 # Verifiziert Admin-Build (dist) und optional HTTP 200 gegen einen laufenden Server.
 # Nutzung:
 #   ./scripts/verify-admin-partners-routes.sh              # nur Dateisystem
-#   ./scripts/verify-admin-partners-routes.sh http://127.0.0.1:8080   # + curl
+#   ./scripts/verify-admin-partners-routes.sh http://127.0.0.1:3000 admin.onroda.de   # + curl (Host-Header nötig: API liefert /partners/ nur für admin.onroda.de)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -41,18 +41,34 @@ else
 fi
 
 BASE="${1:-}"
+HTTP_HOST="${2:-${ADMIN_VERIFY_HTTP_HOST:-}}"
+
+curl_http_code() {
+  local url="$1"
+  if [[ -n "$HTTP_HOST" ]]; then
+    curl -sS -H "Host: ${HTTP_HOST}" -o /dev/null -w "%{http_code}" "$url" || true
+  else
+    curl -sS -o /dev/null -w "%{http_code}" "$url" || true
+  fi
+}
+
 if [[ -n "$BASE" ]]; then
-  echo "== HTTP gegen $BASE"
-  code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/partners/" || true)
+  if [[ -n "$HTTP_HOST" ]]; then
+    echo "== HTTP gegen $BASE (Host: $HTTP_HOST)"
+  else
+    echo "== HTTP gegen $BASE"
+    echo "Hinweis: /partners/ wird von der API nur für Host admin.onroda.de ausgeliefert — zweites Argument setzen oder ADMIN_VERIFY_HTTP_HOST=admin.onroda.de" >&2
+  fi
+  code=$(curl_http_code "$BASE/partners/")
   if [[ "$code" != "200" ]]; then
-    echo "FEHLT: GET /partners/ → $code (Server läuft?)" >&2
+    echo "FEHLT: GET /partners/ → $code (Server läuft? Host-Header korrekt?)" >&2
     exit 1
   fi
   echo "OK  GET /partners/ → 200"
   while IFS= read -r rel; do
     [[ -z "$rel" ]] && continue
     url="${BASE}${rel}"
-    code=$(curl -sS -o /dev/null -w "%{http_code}" "$url" || true)
+    code=$(curl_http_code "$url")
     if [[ "$code" != "200" ]]; then
       echo "FEHLT: GET $url → $code" >&2
       rm -f "$ASSETS_FILE"
@@ -60,7 +76,7 @@ if [[ -n "$BASE" ]]; then
     fi
     echo "OK  GET $rel → 200"
   done <"$ASSETS_FILE"
-  code=$(curl -sS -o /dev/null -w "%{http_code}" "$BASE/partners/favicon.svg" || true)
+  code=$(curl_http_code "$BASE/partners/favicon.svg")
   if [[ "$code" == "200" ]]; then
     echo "OK  GET /partners/favicon.svg → 200"
   fi
