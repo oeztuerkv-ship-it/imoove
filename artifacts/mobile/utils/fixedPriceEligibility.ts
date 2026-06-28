@@ -5,6 +5,7 @@
 import { isEsslingenCountyPlace } from "@/utils/esslingenCountyMunicipalities";
 import { canonicalGermanPlaceKey } from "@/utils/germanPlaceKey";
 import { isMandatoryTaxiAreaLocation } from "@/utils/mandatoryTaxiArea";
+import { haversineKm } from "@/utils/mandatoryTaxiAreaZones";
 import type { GeoLocation } from "@/utils/routing";
 
 export const DEFAULT_FIXED_PRICE_MANDATORY_AREA_CITIES = ["Stuttgart", "Esslingen"] as const;
@@ -18,6 +19,8 @@ export const FIXED_PRICE_MSG_SAME_CITY =
 export type FixedPriceLocationPoint = {
   displayName: string;
   city?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 };
 
 const SKIP_CITY_SEGMENT = /^(deutschland|germany|baden-württemberg|region)/i;
@@ -143,6 +146,29 @@ export function evaluateFixedPriceEligibility(args: {
       message: FIXED_PRICE_MSG_SAME_CITY,
     };
   }
+  const fLat = args.from.lat;
+  const fLon = args.from.lon;
+  const tLat = args.to.lat;
+  const tLon = args.to.lon;
+  if (
+    fLat != null &&
+    fLon != null &&
+    tLat != null &&
+    tLon != null &&
+    Number.isFinite(fLat) &&
+    Number.isFinite(fLon) &&
+    Number.isFinite(tLat) &&
+    Number.isFinite(tLon)
+  ) {
+    const distKm = haversineKm(fLat, fLon, tLat, tLon);
+    if (distKm <= 12 && fromTaxi && toTaxi) {
+      return {
+        eligible: false,
+        reason: "same_city",
+        message: FIXED_PRICE_MSG_SAME_CITY,
+      };
+    }
+  }
   return { eligible: true };
 }
 
@@ -150,6 +176,8 @@ export function geoLocationToFixedPricePoint(loc: GeoLocation): FixedPriceLocati
   return {
     displayName: loc.displayName,
     city: loc.city?.trim() || null,
+    lat: loc.lat,
+    lon: loc.lon,
   };
 }
 
@@ -158,6 +186,8 @@ export function selectedAddressToFixedPricePoint(input: {
   name: string;
   subline: string;
   city?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 }): FixedPriceLocationPoint {
   const city =
     typeof input.city === "string" && input.city.trim()
@@ -166,6 +196,8 @@ export function selectedAddressToFixedPricePoint(input: {
   return {
     displayName: input.fullName || input.name,
     city,
+    lat: input.lat ?? null,
+    lon: input.lon ?? null,
   };
 }
 

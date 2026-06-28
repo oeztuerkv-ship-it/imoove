@@ -1,10 +1,13 @@
 import type { GeoLocation } from "@/utils/routing";
 import { canonicalGermanPlaceKey } from "@/utils/germanPlaceKey";
 import { isEsslingenCountyPlace } from "@/utils/esslingenCountyMunicipalities";
+import { isMandatoryTaxiAreaByCoordinates } from "@/utils/mandatoryTaxiAreaZones";
 
 export type MandatoryAreaPoint = {
   displayName: string;
   city?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 };
 
 function isStuttgart(loc: MandatoryAreaPoint): boolean {
@@ -16,11 +19,15 @@ function isStuttgart(loc: MandatoryAreaPoint): boolean {
 function isLeinfeldenEchterdingen(loc: MandatoryAreaPoint): boolean {
   const cityKey = canonicalGermanPlaceKey(loc.city);
   const nameKey = canonicalGermanPlaceKey(loc.displayName);
+  const hay = `${cityKey} ${nameKey}`;
   return (
-    cityKey.includes("leinfelden-echterdingen") ||
-    cityKey.includes("leinfelden echterdingen") ||
-    nameKey.includes("leinfelden-echterdingen") ||
-    nameKey.includes("leinfelden echterdingen")
+    hay.includes("leinfelden-echterdingen") ||
+    hay.includes("leinfelden echterdingen") ||
+    hay.includes("leinfelden") ||
+    hay.includes("echterdingen") ||
+    hay.includes("oberaichen") ||
+    hay.includes("unteraichen") ||
+    hay.includes("stetten am kalten markt")
   );
 }
 
@@ -30,13 +37,22 @@ function isFilderstadt(loc: MandatoryAreaPoint): boolean {
   return cityKey.includes("filderstadt") || nameKey.includes("filderstadt");
 }
 
-export function isMandatoryTaxiAreaLocation(loc: MandatoryAreaPoint): boolean {
+function isMandatoryTaxiAreaByLabels(loc: MandatoryAreaPoint): boolean {
   return (
     isStuttgart(loc) ||
     isEsslingenCountyPlace(loc.city, loc.displayName) ||
     isLeinfeldenEchterdingen(loc) ||
     isFilderstadt(loc)
   );
+}
+
+export function isMandatoryTaxiAreaLocation(loc: MandatoryAreaPoint): boolean {
+  const lat = loc.lat;
+  const lon = loc.lon;
+  if (lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon)) {
+    if (isMandatoryTaxiAreaByCoordinates(lat, lon)) return true;
+  }
+  return isMandatoryTaxiAreaByLabels(loc);
 }
 
 export function isFixedPriceOutsideMandatoryAreaEligible(

@@ -365,8 +365,18 @@ export async function buildFixedPriceQuote(
   const vehicle = typeof args.vehicle === "string" && args.vehicle.trim() ? args.vehicle.trim() : "standard";
   const result = checkFixedPriceBooking({
     opPayload,
-    from: { displayName: from.displayName, city: from.city ?? args.fromCity ?? null },
-    to: { displayName: to.displayName, city: to.city ?? args.toCity ?? null },
+    from: {
+      displayName: from.displayName,
+      city: from.city ?? args.fromCity ?? null,
+      lat: from.lat,
+      lon: from.lon,
+    },
+    to: {
+      displayName: to.displayName,
+      city: to.city ?? args.toCity ?? null,
+      lat: to.lat,
+      lon: to.lon,
+    },
     distanceKm: route.distanceKm,
     vehicle,
   });

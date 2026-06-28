@@ -1,13 +1,15 @@
 /**
- * Pflichtfahrgebiet Stuttgart / Landkreis Esslingen — Text-Heuristik (kein Polygon).
- * Gleiche Logik wie Mobile `utils/mandatoryTaxiArea.ts`.
+ * Pflichtfahrgebiet Stuttgart / Landkreis Esslingen — Koordinaten zuerst, Text als Fallback.
  */
 import { canonicalGermanPlaceKey } from "./germanPlaceKey";
 import { isEsslingenCountyPlace } from "./esslingenCountyMunicipalities";
+import { isMandatoryTaxiAreaByCoordinates } from "./mandatoryTaxiAreaZones";
 
 export type MandatoryAreaPoint = {
   displayName: string;
   city?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 };
 
 function isStuttgart(city: string | null | undefined, displayName: string | null | undefined): boolean {
@@ -19,11 +21,15 @@ function isStuttgart(city: string | null | undefined, displayName: string | null
 function isLeinfeldenEchterdingen(city: string | null | undefined, displayName: string | null | undefined): boolean {
   const cityKey = canonicalGermanPlaceKey(city);
   const nameKey = canonicalGermanPlaceKey(displayName);
+  const hay = `${cityKey} ${nameKey}`;
   return (
-    cityKey.includes("leinfelden-echterdingen") ||
-    cityKey.includes("leinfelden echterdingen") ||
-    nameKey.includes("leinfelden-echterdingen") ||
-    nameKey.includes("leinfelden echterdingen")
+    hay.includes("leinfelden-echterdingen") ||
+    hay.includes("leinfelden echterdingen") ||
+    hay.includes("leinfelden") ||
+    hay.includes("echterdingen") ||
+    hay.includes("oberaichen") ||
+    hay.includes("unteraichen") ||
+    hay.includes("stetten am kalten markt")
   );
 }
 
@@ -33,17 +39,25 @@ function isFilderstadt(city: string | null | undefined, displayName: string | nu
   return cityKey.includes("filderstadt") || nameKey.includes("filderstadt");
 }
 
-/** Liegt der Punkt im Taxameter-Pflichtgebiet (Stuttgart / Landkreis Esslingen / Fildern)? */
-export function isMandatoryTaxiAreaLocation(point: MandatoryAreaPoint): boolean {
+function isMandatoryTaxiAreaByLabels(city: string | null | undefined, displayName: string | null | undefined): boolean {
   return (
-    isStuttgart(point.city, point.displayName) ||
-    isEsslingenCountyPlace(point.city, point.displayName) ||
-    isLeinfeldenEchterdingen(point.city, point.displayName) ||
-    isFilderstadt(point.city, point.displayName)
+    isStuttgart(city, displayName) ||
+    isEsslingenCountyPlace(city, displayName) ||
+    isLeinfeldenEchterdingen(city, displayName) ||
+    isFilderstadt(city, displayName)
   );
 }
 
-/** Festpreis nur wenn weder Start noch Ziel im Pflichtgebiet liegt (Legacy-Helfer). */
+/** Liegt der Punkt im Taxameter-Pflichtgebiet? Koordinaten haben Vorrang vor Geocoding-Labels. */
+export function isMandatoryTaxiAreaLocation(point: MandatoryAreaPoint): boolean {
+  const lat = point.lat;
+  const lon = point.lon;
+  if (lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon)) {
+    if (isMandatoryTaxiAreaByCoordinates(lat, lon)) return true;
+  }
+  return isMandatoryTaxiAreaByLabels(point.city, point.displayName);
+}
+
 export function isFixedPriceOutsideMandatoryAreaEligible(
   from: MandatoryAreaPoint,
   to: MandatoryAreaPoint,

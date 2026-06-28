@@ -34,8 +34,16 @@ export type FixedPriceVoucherEstimateInput = {
 export function estimateFixedPriceVoucher(input: FixedPriceVoucherEstimateInput) {
   return checkFixedPriceBooking({
     opPayload: input.opPayload,
-    from: { displayName: input.fromFull },
-    to: { displayName: input.toFull },
+    from: {
+      displayName: input.fromFull,
+      lat: input.fromLat ?? null,
+      lon: input.fromLon ?? null,
+    },
+    to: {
+      displayName: input.toFull,
+      lat: input.toLat ?? null,
+      lon: input.toLon ?? null,
+    },
     distanceKm: input.distanceKm,
     vehicle: input.vehicle,
   });

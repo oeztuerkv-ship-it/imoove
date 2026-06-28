@@ -11,10 +11,13 @@
 import { canonicalGermanPlaceKey } from "./germanPlaceKey";
 import { isEsslingenCountyPlace } from "./esslingenCountyMunicipalities";
 import { isMandatoryTaxiAreaLocation } from "./mandatoryTaxiArea";
+import { haversineKm } from "./mandatoryTaxiAreaZones";
 
 export type FixedPriceLocationPoint = {
   displayName: string;
   city?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 };
 
 export const DEFAULT_FIXED_PRICE_MANDATORY_AREA_CITIES = ["Stuttgart", "Esslingen"] as const;
@@ -128,6 +131,29 @@ export function evaluateFixedPriceEligibility(args: {
       reason: "same_city",
       message: FIXED_PRICE_MSG_SAME_CITY,
     };
+  }
+  const fLat = args.from.lat;
+  const fLon = args.from.lon;
+  const tLat = args.to.lat;
+  const tLon = args.to.lon;
+  if (
+    fLat != null &&
+    fLon != null &&
+    tLat != null &&
+    tLon != null &&
+    Number.isFinite(fLat) &&
+    Number.isFinite(fLon) &&
+    Number.isFinite(tLat) &&
+    Number.isFinite(tLon)
+  ) {
+    const distKm = haversineKm(fLat, fLon, tLat, tLon);
+    if (distKm <= 12 && fromTaxi && toTaxi) {
+      return {
+        eligible: false,
+        reason: "same_city",
+        message: FIXED_PRICE_MSG_SAME_CITY,
+      };
+    }
   }
   return { eligible: true };
 }
