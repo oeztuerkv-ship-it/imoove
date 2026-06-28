@@ -1416,6 +1416,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'passenger_profiles' AND column_name = 'deleted_at'
+  ) THEN
+    errs := array_append(errs, 'passenger_profiles.deleted_at (Migration 122)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'payment_capture_attempt_count'
   ) THEN
     errs := array_append(errs, 'rides.payment_capture_attempt_count (Migration 111)');

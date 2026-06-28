@@ -8,7 +8,7 @@ export type SavedStripeCard = {
   last4: string | null;
 };
 
-async function findStripeCustomerIdForPassenger(
+export async function findStripeCustomerIdForPassenger(
   stripe: Stripe,
   passengerId: string,
   email?: string | null,
@@ -109,6 +109,39 @@ export async function resolvePassengerSavedCardPaymentMethod(
   const customerId = await getOrCreateStripeCustomerForPassenger(stripe, passengerId, email);
   const card = await resolveStripeCustomerSavedCard(stripe, customerId);
   return { customerId, card };
+}
+
+/** Entfernt gespeicherte Karten und anonymisiert den Stripe-Customer (Konto-Löschung). */
+export async function clearStripePaymentMethodsForPassenger(
+  stripe: Stripe,
+  passengerId: string,
+  email?: string | null,
+): Promise<void> {
+  const customerId = await findStripeCustomerIdForPassenger(stripe, passengerId, email);
+  if (!customerId) return;
+
+  let startingAfter: string | undefined;
+  for (;;) {
+    const list = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: "card",
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    for (const pm of list.data) {
+      await stripe.paymentMethods.detach(pm.id);
+    }
+    if (!list.has_more || list.data.length === 0) break;
+    startingAfter = list.data[list.data.length - 1]?.id;
+    if (!startingAfter) break;
+  }
+
+  const anonEmail = `deleted_${passengerId.trim()}@deleted.onroda.de`;
+  await stripe.customers.update(customerId, {
+    email: anonEmail,
+    name: "Gelöschter Nutzer",
+    invoice_settings: { default_payment_method: "" },
+  });
 }
 
 export type ChargeSavedCardResult =

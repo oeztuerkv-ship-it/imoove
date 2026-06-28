@@ -1,7 +1,6 @@
 import { Router } from "express";
-import { getDb } from "../db/client";
-import { customerAccountsTable, passengerExpoPushTokensTable } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { getStripeClient } from "../lib/stripeClient.js";
+import { anonymizeCustomerAccount } from "../lib/customerAccountDeletion";
 import { cancelRideForVerifiedCustomerSession } from "./rides";
 import { findRideForPassenger, listRidesForPassenger, updateRide } from "../db/ridesData";
 import {
@@ -21,10 +20,10 @@ import {
   customerPassengerId,
   rejectSuspendedCustomerBooking,
   requireCustomerSession,
+  requireCustomerSessionJwtOnly,
   type CustomerSessionRequest,
 } from "../middleware/requireCustomerSession";
 import { logger } from "../lib/logger";
-import { getStripeClient } from "../lib/stripeClient.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
 import { retryPassengerFailedRidePayment } from "../lib/ridePaymentRecovery";
@@ -759,33 +758,27 @@ router.post("/customer/v1/rides/:rideId/tip", requireCustomerSession, async (req
   }
 });
 
-router.delete("/customer/v1/account", requireCustomerSession, async (req, res, next) => {
+router.delete("/customer/v1/account", requireCustomerSessionJwtOnly, async (req, res, next) => {
   try {
-    const sess = (req as CustomerAuthRequest).customerSession;
+    const sess = (req as CustomerSessionRequest).customerSession;
     const passengerId = customerPassengerId(sess);
     if (!passengerId) {
-      res.status(401).json({ error: "unauthorized" });
+      res.status(401).json({ ok: false, error: "unauthorized" });
       return;
     }
-    const db = getDb();
-    if (!db) {
-      res.status(500).json({ error: "database_not_configured" });
+    const result = await anonymizeCustomerAccount(passengerId);
+    if (!result.ok) {
+      res.status(result.error === "database_not_configured" ? 503 : 400).json({
+        ok: false,
+        error: result.error,
+      });
       return;
     }
-    // Push-Token löschen
-    await db.delete(passengerExpoPushTokensTable)
-      .where(eq(passengerExpoPushTokensTable.passenger_id, passengerId));
-    // Konto anonymisieren (DSGVO Art. 17)
-    await db.update(customerAccountsTable)
-      .set({
-        email: `deleted_${passengerId}@deleted.onroda.de`,
-        name: "Gelöschter Nutzer",
-        password_hash: "DELETED",
-        phone: null,
-        updated_at: new Date(),
-      })
-      .where(eq(customerAccountsTable.id, passengerId));
-    res.json({ ok: true, message: "Konto wurde gelöscht. Deine Daten wurden anonymisiert." });
+    res.json({
+      ok: true,
+      alreadyDeleted: result.alreadyDeleted,
+      message: "Konto wurde gelöscht. Deine Daten wurden anonymisiert.",
+    });
   } catch (e) {
     next(e);
   }

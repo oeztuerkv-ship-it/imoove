@@ -68,6 +68,7 @@ import {
   gateCustomerOAuthSession,
   type PendingOAuthSession,
 } from "@/utils/completeCustomerOAuthSession";
+import { deleteCustomerAccount } from "@/utils/customerAccountApi";
 import { mapCustomerLegalError, openOnrodaLegalPage } from "@/utils/customerLegalConsent";
 import { prepareCustomerOAuthLogin } from "@/utils/prepareCustomerOAuthLogin";
 import {
@@ -944,6 +945,7 @@ export default function ProfileScreen() {
   const pathname = usePathname();
   const logoutInFlightRef = useRef(false);
   const isMountedRef = useRef(true);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -979,6 +981,50 @@ export default function ProfileScreen() {
       logoutInFlightRef.current = false;
     }
   }, [logout, resetLoginUiState, pathname]);
+
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      "Konto wirklich löschen?",
+      "Dein Konto und deine persönlichen Daten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.\n\nHinweis: Abgeschlossene Fahrten und Rechnungsdaten müssen aus gesetzlichen Gründen (Aufbewahrungspflicht, 10 Jahre) weiterhin gespeichert bleiben, werden aber von deinem Namen getrennt (anonymisiert).",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Endgültig löschen",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              if (deleteAccountLoading) return;
+              setDeleteAccountLoading(true);
+              try {
+                const result = await deleteCustomerAccount(profile.sessionToken);
+                if (!result.ok) {
+                  Alert.alert(
+                    "Löschen fehlgeschlagen",
+                    result.message ??
+                      "Dein Konto konnte nicht gelöscht werden. Bitte versuche es erneut oder kontaktiere den Support.",
+                  );
+                  return;
+                }
+                resetLoginUiState();
+                await logout();
+                if (isMountedRef.current) {
+                  Alert.alert(
+                    "Konto gelöscht",
+                    result.message ??
+                      "Dein Konto wurde gelöscht. Deine persönlichen Daten wurden anonymisiert.",
+                    [{ text: "OK", onPress: () => navigateToCustomerStartScreen(pathname) }],
+                  );
+                }
+              } finally {
+                if (isMountedRef.current) setDeleteAccountLoading(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [deleteAccountLoading, logout, pathname, profile.sessionToken, resetLoginUiState]);
+
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regOtpDigits, setRegOtpDigits] = useState("");
@@ -1723,6 +1769,29 @@ export default function ProfileScreen() {
               <View style={styles.accountSection}>
                 <SectionCard compact>
                   <AccountRow
+                    icon={<MaterialCommunityIcons name="file-document-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="AGB"
+                    isFirst
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      openOnrodaLegalPage("agb");
+                    }}
+                  />
+                  <AccountRow
+                    icon={<MaterialCommunityIcons name="shield-lock-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Datenschutz"
+                    isLast
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      openOnrodaLegalPage("datenschutz");
+                    }}
+                  />
+                </SectionCard>
+              </View>
+
+              <View style={styles.accountSection}>
+                <SectionCard compact>
+                  <AccountRow
                     icon={<MaterialCommunityIcons name="web" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label={t("profile.language")}
                     isFirst
@@ -1755,6 +1824,28 @@ export default function ProfileScreen() {
                     }}
                   />
                 </SectionCard>
+              </View>
+
+              <View style={[styles.accountSection, { marginTop: rs(4) }]}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={deleteAccountLoading}
+                  onPress={handleDeleteAccount}
+                  style={({ pressed }) => [
+                    styles.deleteAccountBtn,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: pressed ? colors.muted : colors.surface,
+                      opacity: deleteAccountLoading ? 0.6 : 1,
+                    },
+                  ]}
+                >
+                  {deleteAccountLoading ? (
+                    <ActivityIndicator size="small" color="#DC2626" />
+                  ) : (
+                    <Text style={styles.deleteAccountBtnText}>Konto löschen</Text>
+                  )}
+                </Pressable>
               </View>
               </>
               )}
@@ -2595,6 +2686,20 @@ const styles = StyleSheet.create({
   },
   accountSection: {
     gap: rs(10),
+  },
+  deleteAccountBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: rs(16),
+    paddingHorizontal: rs(16),
+    borderRadius: rs(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: rs(52),
+  },
+  deleteAccountBtnText: {
+    fontSize: rf(15),
+    fontFamily: "Inter_600SemiBold",
+    color: "#DC2626",
   },
   accountRow: {
     flexDirection: "row",

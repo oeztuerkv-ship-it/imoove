@@ -16,6 +16,7 @@ import { verifyEmailVerificationProofJwt } from "./emailVerificationJwt";
 import { hashPassword, verifyPassword } from "./password";
 import { passwordsMatch, validateCustomerPassword } from "./customerPasswordPolicy";
 import { touchPassengerProfileFromEmailAccount } from "../db/passengerProfilesData";
+import { assertPassengerMayAuthenticate } from "../db/passengerProfileDeletionData";
 import { signSessionJwt } from "./sessionJwt";
 import { rateLimitCustomerLogin } from "./customerLoginRateLimit";
 import { requireLegalConsentForRegistration } from "./customerLegalConsent";
@@ -170,6 +171,10 @@ export async function loginCustomerAccount(opts: {
   const row = await findCustomerAccountByEmail(email);
   if (!row) {
     return { ok: false, error: "invalid_credentials", status: 401 };
+  }
+
+  if (row.password_hash === "DELETED" || (await assertPassengerMayAuthenticate(row.id)).ok === false) {
+    return { ok: false, error: "account_deleted", status: 403 };
   }
 
   const ok = await verifyPassword(password, row.password_hash);

@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from "express";
 import { createHash, randomBytes } from "crypto";
 import { getFirebaseAuth, isFirebaseAdminConfigured } from "../lib/firebaseAdmin";
 import { upsertPassengerProfile } from "../db/passengerProfilesData";
+import { assertPassengerMayAuthenticate } from "../db/passengerProfileDeletionData";
 import { applePassengerSubject, verifyAppleIdentityToken } from "../lib/appleSignInVerify";
 import {
   isSessionJwtConfigured,
@@ -357,6 +358,12 @@ router.get("/auth/google/callback", async (req, res) => {
       picture?: string;
     };
 
+    const authGate = await assertPassengerMayAuthenticate(profile.sub);
+    if (!authGate.ok) {
+      res.redirect(appendQueryParams(returnUrl, { error: "account_deleted" }));
+      return;
+    }
+
     void idToken;
     void accessToken;
     void accessTokenExpiresAt;
@@ -540,6 +547,13 @@ router.post("/auth/apple/session", async (req, res) => {
   try {
     const verified = await verifyAppleIdentityToken(identityToken);
     const passengerId = applePassengerSubject(verified.sub);
+
+    const authGate = await assertPassengerMayAuthenticate(passengerId);
+    if (!authGate.ok) {
+      res.status(403).json({ ok: false, error: "account_deleted" });
+      return;
+    }
+
     const email = verified.email ?? clientEmail;
     const sessionToken = await signSessionJwt({
       googleId: passengerId,

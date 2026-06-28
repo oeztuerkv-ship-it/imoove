@@ -469,6 +469,7 @@ export const passengerProfilesTable = pgTable("passenger_profiles", {
   privacy_accepted_at: timestamp("privacy_accepted_at", { withTimezone: true }),
   terms_version: text("terms_version").notNull().default(""),
   privacy_version: text("privacy_version").notNull().default(""),
+  deleted_at: timestamp("deleted_at", { withTimezone: true }),
 });
 
 /** Kunden-Storno-Sperre (passenger_id = JWT sub / customer_accounts.id / OAuth sub). */

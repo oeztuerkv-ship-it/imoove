@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
+import { findPassengerProfile } from "./passengerProfileDeletionData";
 import { passengerProfilesTable } from "./schema";
 import { recordPassengerLegalConsent } from "./customerLegalConsentData";
 
@@ -21,6 +22,8 @@ export async function upsertPassengerProfile(input: {
   if (!db) return;
   const passengerId = input.passengerId.trim();
   if (!passengerId) return;
+  const existing = await findPassengerProfile(passengerId);
+  if (existing?.deleted_at) return;
   const now = new Date();
   const name = (input.name ?? "").trim().slice(0, 200);
   const email = (input.email ?? "").trim().slice(0, 254);
