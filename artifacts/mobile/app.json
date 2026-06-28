@@ -83,7 +83,6 @@
           "sounds": ["./assets/ride_alert.caf"]
         }
       ],
-      "./plugins/withAndroidRideAlertPushSound.js",
       "expo-web-browser",
       "expo-apple-authentication",
       "expo-asset",

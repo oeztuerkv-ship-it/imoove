@@ -4,6 +4,7 @@
  * Setzen via `EXPO_PUBLIC_EAS_PROJECT_ID` oder in app.json → extra.eas.projectId.
  */
 const withGoogleMapsEarlyInit = require("./plugins/withGoogleMapsEarlyInit");
+const withAndroidRideAlertPushSound = require("./plugins/withAndroidRideAlertPushSound");
 
 /** Maps-SDK (nicht Places): landet per EAS-Prebuild in AppDelegate + Info.plist GMSApiKey. */
 module.exports = ({ config }) => {
@@ -21,7 +22,12 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
-    plugins: [...(config.plugins || []), withGoogleMapsEarlyInit],
+    plugins: [
+      // Läuft als letztes (Expo-Plugins rückwärts): CAF nach expo-notifications entfernen.
+      withAndroidRideAlertPushSound,
+      ...(config.plugins || []),
+      withGoogleMapsEarlyInit,
+    ],
     ios: {
       ...config.ios,
       config: {
