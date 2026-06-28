@@ -91,20 +91,13 @@ function VehicleCard({
             <Text
               style={[
                 styles.cardPrice,
-                { color: isSelected ? active : colors.primary },
+                { color: "#2563EB" },
               ]}
             >
               {priceLabel}
             </Text>
             {surchargeLabel ? (
-              <Text
-                style={[
-                  styles.cardSurcharge,
-                  { color: isSelected ? active : "#2563EB" },
-                ]}
-              >
-                {surchargeLabel}
-              </Text>
+              <Text style={styles.cardSurcharge}>{surchargeLabel}</Text>
             ) : null}
           </>
         ) : (
@@ -217,6 +210,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
+    color: "#2563EB",
   },
   cardDesc: {
     fontSize: 11,

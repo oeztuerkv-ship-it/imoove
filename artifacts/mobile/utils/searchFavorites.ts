@@ -72,6 +72,15 @@ export function createSearchFavoriteId(): string {
   return `fav-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** Mindestanforderung: geocodiert mit Koordinaten (alle Screens mit Favoriten). */
+export function isUsableSearchFavoriteLocation(loc: GeoLocation): boolean {
+  return (
+    Number.isFinite(loc.lat) &&
+    Number.isFinite(loc.lon) &&
+    Boolean(String(loc.displayName ?? "").trim())
+  );
+}
+
 export async function saveSearchFavorites(favorites: SearchFavorite[]): Promise<SearchFavorite[]> {
   const capped = favorites.filter(isSearchFavorite).slice(0, MAX_FAVORITES_STORED);
   await AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(capped));

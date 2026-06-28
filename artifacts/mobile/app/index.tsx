@@ -114,6 +114,13 @@ import {
   savePendingOAuthSession,
 } from "@/utils/pendingOAuthSessionStorage";
 import { rs, rf } from "@/utils/scale";
+import {
+  createSearchFavoriteId,
+  loadSearchFavorites,
+  MAX_FAVORITES_STORED,
+  saveSearchFavorites,
+  type SearchFavorite,
+} from "@/utils/searchFavorites";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -135,17 +142,9 @@ const HOME_MEDICAL_GREEN_DARK = "#047857";
 /** Krankenfahrt-Pille: kräftiger Rand, heller Grund (Bild 2). */
 const HOME_MEDICAL_SOFT_BG = "#ECFDF5";
 
-const FAVORITES_STORAGE_KEY = "@Onroda_search_favorites_v1";
-const MAX_FAVORITES_STORED = 5;
 const MAX_FAVORITES_ON_HOME = 2;
 const MAX_HOME_HISTORY = 2;
 const MAX_VIA_STOPS = 4;
-
-interface SearchFavorite {
-  id: string;
-  label: string;
-  location: GeoLocation;
-}
 
 const VEHICLE_CAR_ICON = "#171717";
 
@@ -590,40 +589,21 @@ export default function HomeScreen() {
     comboHintTimerRef.current = setTimeout(() => setComboHint(null), 4200);
   }, []);
 
-  const persistSearchFavorites = useCallback((next: SearchFavorite[]) => {
-    const capped = next.slice(0, MAX_FAVORITES_STORED);
+  const persistSearchFavorites = useCallback(async (next: SearchFavorite[]) => {
+    const capped = await saveSearchFavorites(next);
     setSearchFavorites(capped);
-    AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(capped)).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    AsyncStorage.getItem(FAVORITES_STORAGE_KEY)
-      .then((r) => {
-        if (!r) return;
-        try {
-          const parsed = JSON.parse(r) as unknown;
-          if (!Array.isArray(parsed)) return;
-          const ok = parsed.filter(
-            (x): x is SearchFavorite =>
-              typeof x === "object" &&
-              x !== null &&
-              typeof (x as SearchFavorite).id === "string" &&
-              typeof (x as SearchFavorite).label === "string" &&
-              typeof (x as SearchFavorite).location === "object" &&
-              (x as SearchFavorite).location !== null &&
-              typeof (x as SearchFavorite).location.displayName === "string",
-          );
-          const capped = ok.slice(0, MAX_FAVORITES_STORED);
-          setSearchFavorites(capped);
-          if (capped.length !== ok.length) {
-            AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(capped)).catch(() => {});
-          }
-        } catch {
-          /* ignore */
-        }
-      })
-      .catch(() => {});
+  const reloadSearchFavorites = useCallback(async () => {
+    const stored = await loadSearchFavorites();
+    setSearchFavorites(stored);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadSearchFavorites();
+    }, [reloadSearchFavorites]),
+  );
 
   const openAddFavoriteModal = useCallback(() => {
     if (searchFavorites.length >= MAX_FAVORITES_STORED) {
@@ -686,15 +666,15 @@ export default function HomeScreen() {
       return;
     }
     const label = favLabel.trim() || `${favStreet.trim()} ${favHouse.trim()}`;
-    const id = `fav-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    persistSearchFavorites([...searchFavorites, { id, label, location: favPick }]);
+    const id = createSearchFavoriteId();
+    void persistSearchFavorites([...searchFavorites, { id, label, location: favPick }]);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     closeAddFavoriteModal();
   }, [favPick, favLabel, favStreet, favHouse, searchFavorites, persistSearchFavorites, closeAddFavoriteModal]);
 
   const removeSearchFavorite = useCallback(
     (id: string) => {
-      persistSearchFavorites(searchFavorites.filter((f) => f.id !== id));
+      void persistSearchFavorites(searchFavorites.filter((f) => f.id !== id));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
     [searchFavorites, persistSearchFavorites],
@@ -708,7 +688,7 @@ export default function HomeScreen() {
       const tmp = next[index];
       next[index] = next[j]!;
       next[j] = tmp!;
-      persistSearchFavorites(next);
+      void persistSearchFavorites(next);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
     [searchFavorites, persistSearchFavorites],
@@ -2150,7 +2130,7 @@ export default function HomeScreen() {
                       vehicle={selectedVehicle}
                       surchargeEur={fareBreakdown?.vehicleSurchargeEur}
                       align="center"
-                      primaryStyle={{ fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" }}
+                      primaryStyle={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#2563EB", textAlign: "center" }}
                       secondaryStyle={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB", textAlign: "center" }}
                     />
                   </View>

@@ -225,7 +225,7 @@ export default function RideSelectScreen() {
                 <CustomerFarePriceBlock
                   vehicle={v.id}
                   surchargeEur={surcharge}
-                  primaryStyle={[styles.vehiclePrice, { color: colors.foreground }]}
+                  primaryStyle={[styles.vehiclePrice, { color: "#2563EB" }]}
                   secondaryStyle={styles.vehicleSurcharge}
                 />
               </Pressable>
