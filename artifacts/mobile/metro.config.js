@@ -25,7 +25,8 @@ function resolvePkgDir(packageName) {
 
 const config = getDefaultConfig(projectRoot);
 
-config.watchFolders = [workspaceRoot];
+const defaultWatchFolders = config.watchFolders ?? [projectRoot];
+config.watchFolders = [...new Set([...defaultWatchFolders, workspaceRoot])];
 
 config.resolver.nodeModulesPaths = [
   mobileNodeModules,

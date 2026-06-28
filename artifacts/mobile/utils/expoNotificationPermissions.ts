@@ -1,10 +1,10 @@
-import type { PermissionResponse } from "expo-modules-core";
+type NotificationPermissionLike = { granted: boolean };
 
 type NotificationsModule = typeof import("expo-notifications");
 
 /** expo-notifications: NotificationPermissionsStatus erbt in tsc nicht zuverlässig PermissionResponse. */
-function asPermissionResponse(value: unknown): PermissionResponse {
-  return value as PermissionResponse;
+function asPermissionResponse(value: unknown): NotificationPermissionLike {
+  return value as NotificationPermissionLike;
 }
 
 export async function hasExpoNotificationPermission(
