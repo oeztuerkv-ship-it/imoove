@@ -58,6 +58,7 @@ async function buildAll() {
       path.resolve(artifactDir, "src/scripts/invoicePdfStressTest.ts"),
       path.resolve(artifactDir, "src/scripts/customerReceiptSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/platformVehicleSurchargeSelftest.ts"),
+      path.resolve(artifactDir, "src/scripts/fixedPriceEligibilitySelftest.ts"),
       path.resolve(artifactDir, "src/scripts/retryRidePaymentCapture.ts"),
     ],
     platform: "node",

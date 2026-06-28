@@ -531,8 +531,10 @@ export default function AppOperationalTariffsPage() {
         defaultOpen
       >
         <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginBottom: 12 }}>
-          Standard: Stuttgart und Esslingen (eine Tarifzone). Festpreis ist möglich, sobald mindestens ein Punkt außerhalb
-          dieser Städte liegt — z. B. Stuttgart → Tübingen. Leinfelden-Echterdingen wird nicht automatisch mit einbezogen.
+          Taxameter-Pflicht, wenn <strong>Start und Ziel</strong> im Pflichtgebiet liegen. Automatisch erkannt:{" "}
+          <strong>Stuttgart</strong>, der gesamte <strong>Landkreis Esslingen</strong> (alle Gemeinden, z. B. Nürtingen,
+          Ostfildern, Kirchheim, Plochingen …), plus Leinfelden-Echterdingen und Filderstadt. Die Liste unten ergänzt nur
+          bei Bedarf — „Esslingen“ steht für den ganzen Landkreis, nicht nur die Stadt Esslingen.
         </p>
         <ul style={{ listStyle: "none", padding: 0, margin: "0 0 12px", display: "grid", gap: 8, maxWidth: 420 }}>
           {mandatoryAreaCities.map((city) => (

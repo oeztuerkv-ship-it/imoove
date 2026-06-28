@@ -1,21 +1,6 @@
 import type { GeoLocation } from "@/utils/routing";
-
-function normalizeForMatch(value: string | null | undefined): string {
-  return (value ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-const ESSLINGEN_COUNTY_MUNICIPALITIES = [
-  "altbach", "aichwald", "beuren", "deizisau", "denkendorf", "dettingen unter teck",
-  "esslingen", "frickenhausen", "grossbettlingen", "hochdorf",
-  "holzmaden", "kirchheim unter teck", "koengen", "köngen",
-  "lenningen", "lichtenwald", "neuhausen auf den fildern", "neidlingen", "neckartailfingen",
-  "neckartenzlingen", "nuertingen", "oberboihingen", "ostfildern", "owen",
-  "plochingen", "reichenbach an der fils", "schlaitdorf", "unterensingen", "weilheim an der teck",
-  "wendlingen am neckar", "wolfschlugen",
-];
+import { canonicalGermanPlaceKey } from "@/utils/germanPlaceKey";
+import { isEsslingenCountyPlace } from "@/utils/esslingenCountyMunicipalities";
 
 export type MandatoryAreaPoint = {
   displayName: string;
@@ -23,37 +8,32 @@ export type MandatoryAreaPoint = {
 };
 
 function isStuttgart(loc: MandatoryAreaPoint): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("stuttgart")) return true;
-  return normalizeForMatch(loc.displayName).includes("stuttgart");
+  const cityKey = canonicalGermanPlaceKey(loc.city);
+  const nameKey = canonicalGermanPlaceKey(loc.displayName);
+  return cityKey.includes("stuttgart") || nameKey.includes("stuttgart");
 }
 
 function isLeinfeldenEchterdingen(loc: MandatoryAreaPoint): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("leinfelden-echterdingen") || city.includes("leinfelden echterdingen")) return true;
-  const name = normalizeForMatch(loc.displayName);
-  return name.includes("leinfelden-echterdingen") || name.includes("leinfelden echterdingen");
+  const cityKey = canonicalGermanPlaceKey(loc.city);
+  const nameKey = canonicalGermanPlaceKey(loc.displayName);
+  return (
+    cityKey.includes("leinfelden-echterdingen") ||
+    cityKey.includes("leinfelden echterdingen") ||
+    nameKey.includes("leinfelden-echterdingen") ||
+    nameKey.includes("leinfelden echterdingen")
+  );
 }
 
 function isFilderstadt(loc: MandatoryAreaPoint): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("filderstadt")) return true;
-  return normalizeForMatch(loc.displayName).includes("filderstadt");
-}
-
-function isEsslingenCounty(loc: MandatoryAreaPoint): boolean {
-  const city = normalizeForMatch(loc.city);
-  if (city.includes("esslingen")) return true;
-  if (ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => city.includes(municipality))) return true;
-  const name = normalizeForMatch(loc.displayName);
-  if (name.includes("esslingen")) return true;
-  return ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => name.includes(municipality));
+  const cityKey = canonicalGermanPlaceKey(loc.city);
+  const nameKey = canonicalGermanPlaceKey(loc.displayName);
+  return cityKey.includes("filderstadt") || nameKey.includes("filderstadt");
 }
 
 export function isMandatoryTaxiAreaLocation(loc: MandatoryAreaPoint): boolean {
   return (
     isStuttgart(loc) ||
-    isEsslingenCounty(loc) ||
+    isEsslingenCountyPlace(loc.city, loc.displayName) ||
     isLeinfeldenEchterdingen(loc) ||
     isFilderstadt(loc)
   );
@@ -61,8 +41,9 @@ export function isMandatoryTaxiAreaLocation(loc: MandatoryAreaPoint): boolean {
 
 export function isFixedPriceOutsideMandatoryAreaEligible(
   origin: GeoLocation,
-  destination: GeoLocation,
+  destination: GeoLocation | null,
 ): boolean {
+  if (!destination) return false;
   return !isMandatoryTaxiAreaLocation(origin) && !isMandatoryTaxiAreaLocation(destination);
 }
 

@@ -2,6 +2,8 @@
  * Festpreis-Eligibility (Mobile) — gleiche Regeln wie API `fixedPriceMandatoryArea.ts`.
  */
 
+import { isEsslingenCountyPlace } from "@/utils/esslingenCountyMunicipalities";
+import { canonicalGermanPlaceKey } from "@/utils/germanPlaceKey";
 import { isMandatoryTaxiAreaLocation } from "@/utils/mandatoryTaxiArea";
 import type { GeoLocation } from "@/utils/routing";
 
@@ -20,28 +22,19 @@ export type FixedPriceLocationPoint = {
 
 const SKIP_CITY_SEGMENT = /^(deutschland|germany|baden-württemberg|region)/i;
 
-function normalizeForMatch(value: string | null | undefined): string {
-  return (value ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
-
 export function parseFixedPriceMandatoryAreaCities(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [...DEFAULT_FIXED_PRICE_MANDATORY_AREA_CITIES];
   const out: string[] = [];
   for (const item of raw) {
     const s = typeof item === "string" ? item.trim() : "";
-    if (s && !out.some((x) => normalizeForMatch(x) === normalizeForMatch(s))) out.push(s);
+    if (s && !out.some((x) => canonicalGermanPlaceKey(x) === canonicalGermanPlaceKey(s))) out.push(s);
   }
   return out.length > 0 ? out : [...DEFAULT_FIXED_PRICE_MANDATORY_AREA_CITIES];
 }
 
-/** Stadt-Label für Zuordnung (city-Feld oder sinnvolles Adress-Segment, ohne PLZ/Landkreis-only). */
 export function resolvePointCityLabel(point: FixedPriceLocationPoint): string {
   const fromCity = typeof point.city === "string" ? point.city.trim() : "";
-  if (fromCity) return normalizeForMatch(fromCity);
+  if (fromCity) return canonicalGermanPlaceKey(fromCity);
   const parts = String(point.displayName ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -52,21 +45,34 @@ export function resolvePointCityLabel(point: FixedPriceLocationPoint): string {
     const seg = withoutPlz || raw;
     if (!seg || SKIP_CITY_SEGMENT.test(seg)) continue;
     if (/^landkreis\s/i.test(seg)) continue;
-    return normalizeForMatch(seg);
+    return canonicalGermanPlaceKey(seg);
   }
   return "";
+}
+
+function isStuttgartPlace(point: FixedPriceLocationPoint): boolean {
+  const label = resolvePointCityLabel(point);
+  const nameKey = canonicalGermanPlaceKey(point.displayName);
+  return label.includes("stuttgart") || nameKey.includes("stuttgart");
 }
 
 export function isPointInFixedPriceMandatoryArea(
   point: FixedPriceLocationPoint,
   mandatoryCities: string[],
 ): boolean {
-  const label = resolvePointCityLabel(point);
-  if (!label || /^landkreis\s/.test(label)) return false;
   for (const entry of mandatoryCities) {
-    const term = normalizeForMatch(entry);
+    const term = canonicalGermanPlaceKey(entry);
     if (!term) continue;
-    if (label === term || label.includes(term)) return true;
+    if (term === "esslingen" || term.includes("esslingen")) {
+      if (isEsslingenCountyPlace(point.city, point.displayName)) return true;
+      continue;
+    }
+    if (term.includes("stuttgart")) {
+      if (isStuttgartPlace(point)) return true;
+      continue;
+    }
+    const label = resolvePointCityLabel(point);
+    if (label && (label === term || label.includes(term))) return true;
   }
   return false;
 }

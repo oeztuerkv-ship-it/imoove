@@ -1,11 +1,15 @@
 /**
- * Festpreis-Eligibility: Pflichtfahrgebiet (Stuttgart / Esslingen-Korridor) + Admin-Städte + gleiche Stadt.
+ * Festpreis-Eligibility (Taxameter-Pflicht vs. Festpreis außerhalb).
  *
- * Blockiert, wenn BEIDE Punkte im Taxameter-Pflichtgebiet liegen (`mandatoryTaxiArea`),
- * oder BEIDE in der admin-pflegbaren Städte-Liste, oder Start-Stadt = Ziel-Stadt.
- * Erlaubt z. B. Tübingen ↔ Flughafen (nur ein Punkt im Pflichtgebiet).
+ * Festpreis ist VERBOTEN wenn:
+ * 1. Start UND Ziel im Pflichtfahrgebiet (Stuttgart + gesamter Landkreis Esslingen + Fildern), oder
+ * 2. Start UND Ziel in derselben Stadt (z. B. beide „Tübingen“).
+ *
+ * Erlaubt z. B. Stuttgart → Tübingen (nur ein Punkt im Pflichtgebiet) oder Tübingen → Flughafen.
  */
 
+import { canonicalGermanPlaceKey } from "./germanPlaceKey";
+import { isEsslingenCountyPlace } from "./esslingenCountyMunicipalities";
 import { isMandatoryTaxiAreaLocation } from "./mandatoryTaxiArea";
 
 export type FixedPriceLocationPoint = {
@@ -21,13 +25,7 @@ export const FIXED_PRICE_MSG_BOTH_MANDATORY =
 export const FIXED_PRICE_MSG_SAME_CITY =
   "Festpreis nicht möglich – Start und Ziel liegen in derselben Stadt";
 
-function normalizeForMatch(value: string | null | undefined): string {
-  return (value ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
+const SKIP_CITY_SEGMENT = /^(deutschland|germany|baden-württemberg|region)/i;
 
 export function readFixedPriceMandatoryAreaCities(op: Record<string, unknown>): string[] {
   const t = op.tariffs;
@@ -37,17 +35,15 @@ export function readFixedPriceMandatoryAreaCities(op: Record<string, unknown>): 
   const out: string[] = [];
   for (const item of raw) {
     const s = typeof item === "string" ? item.trim() : "";
-    if (s && !out.some((x) => normalizeForMatch(x) === normalizeForMatch(s))) out.push(s);
+    if (s && !out.some((x) => canonicalGermanPlaceKey(x) === canonicalGermanPlaceKey(s))) out.push(s);
   }
   return out.length > 0 ? out : [...DEFAULT_FIXED_PRICE_MANDATORY_AREA_CITIES];
 }
 
-const SKIP_CITY_SEGMENT = /^(deutschland|germany|baden-württemberg|region)/i;
-
-/** Stadt-Label für Zuordnung (city-Feld oder sinnvolles Adress-Segment, ohne PLZ/Landkreis-only). */
+/** Stadt-Label für Zuordnung (city-Feld oder sinnvolles Adress-Segment). */
 export function resolvePointCityLabel(point: FixedPriceLocationPoint): string {
   const fromCity = typeof point.city === "string" ? point.city.trim() : "";
-  if (fromCity) return normalizeForMatch(fromCity);
+  if (fromCity) return canonicalGermanPlaceKey(fromCity);
   const parts = String(point.displayName ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -58,22 +54,35 @@ export function resolvePointCityLabel(point: FixedPriceLocationPoint): string {
     const seg = withoutPlz || raw;
     if (!seg || SKIP_CITY_SEGMENT.test(seg)) continue;
     if (/^landkreis\s/i.test(seg)) continue;
-    return normalizeForMatch(seg);
+    return canonicalGermanPlaceKey(seg);
   }
   return "";
 }
 
-/** Liegt der Punkt in einer admin-pflegbaren Pflichtfahrgebiet-Stadt? */
+function isStuttgartPlace(point: FixedPriceLocationPoint): boolean {
+  const label = resolvePointCityLabel(point);
+  const nameKey = canonicalGermanPlaceKey(point.displayName);
+  return label.includes("stuttgart") || nameKey.includes("stuttgart");
+}
+
+/** Admin-Liste: „Esslingen“ = gesamter Landkreis; „Stuttgart“ = Stadtgebiet. */
 export function isPointInFixedPriceMandatoryArea(
   point: FixedPriceLocationPoint,
   mandatoryCities: string[],
 ): boolean {
-  const label = resolvePointCityLabel(point);
-  if (!label || /^landkreis\s/.test(label)) return false;
   for (const entry of mandatoryCities) {
-    const term = normalizeForMatch(entry);
+    const term = canonicalGermanPlaceKey(entry);
     if (!term) continue;
-    if (label === term || label.includes(term)) return true;
+    if (term === "esslingen" || term.includes("esslingen")) {
+      if (isEsslingenCountyPlace(point.city, point.displayName)) return true;
+      continue;
+    }
+    if (term.includes("stuttgart")) {
+      if (isStuttgartPlace(point)) return true;
+      continue;
+    }
+    const label = resolvePointCityLabel(point);
+    if (label && (label === term || label.includes(term))) return true;
   }
   return false;
 }
