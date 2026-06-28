@@ -63,6 +63,7 @@ import {
   fetchFixedPriceEstimate,
 } from "@/utils/fixedPriceApi";
 import {
+  debugFixedPriceEligibility,
   evaluateFixedPriceEligibility,
   parseFixedPriceMandatoryAreaCities,
   selectedAddressToFixedPricePoint,
@@ -137,6 +138,7 @@ export default function BookingFixedPriceScreen() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [userDestinationFavorites, setUserDestinationFavorites] = useState<SearchFavorite[]>([]);
   const [addFavoriteOpen, setAddFavoriteOpen] = useState(false);
+  const pricingRequestIdRef = useRef(0);
 
   const reloadUserFavorites = useCallback(async () => {
     const stored = await loadSearchFavorites();
@@ -166,8 +168,8 @@ export default function BookingFixedPriceScreen() {
     };
   }, []);
 
-  const fromComplete = selectedAddressIsComplete(from);
-  const toComplete = selectedAddressIsComplete(to);
+  const fromComplete = selectedAddressIsComplete(from) && !(from.lat === 0 && from.lon === 0);
+  const toComplete = selectedAddressIsComplete(to) && !(to.lat === 0 && to.lon === 0);
   const routeComplete = fromComplete && toComplete;
 
   const showOriginResults =
@@ -358,6 +360,7 @@ export default function BookingFixedPriceScreen() {
 
   const recomputeRouteAndPrice = useCallback(
     async (fromAddr: SelectedAddress, toAddr: SelectedAddress, vehicle: VehicleType) => {
+      const requestId = ++pricingRequestIdRef.current;
       setRouteLoading(true);
       setEstimateLoading(true);
       setEligible(null);
@@ -367,14 +370,24 @@ export default function BookingFixedPriceScreen() {
       setIneligibleMessage("");
       const fromFull = fromAddr.fullName || fromAddr.name;
       const toFull = toAddr.fullName || toAddr.name;
+      const isStale = () => requestId !== pricingRequestIdRef.current;
       try {
         const cfg = await fetchAppConfig();
+        if (isStale()) return;
         const mandatoryCities = parseFixedPriceMandatoryAreaCities(cfg.tariffs?.fixedPriceMandatoryAreaCities);
+        const fromPoint = selectedAddressToFixedPricePoint(fromAddr);
+        const toPoint = selectedAddressToFixedPricePoint(toAddr);
         const eligibility = evaluateFixedPriceEligibility({
-          from: selectedAddressToFixedPricePoint(fromAddr),
-          to: selectedAddressToFixedPricePoint(toAddr),
+          from: fromPoint,
+          to: toPoint,
           mandatoryCities,
         });
+        if (__DEV__) {
+          console.log("[fixpreis/eligibility]", {
+            ...debugFixedPriceEligibility({ from: fromPoint, to: toPoint, mandatoryCities }),
+            result: eligibility,
+          });
+        }
         if (!eligibility.eligible) {
           setEligible(false);
           setIneligibleMessage(eligibility.message);
@@ -387,6 +400,7 @@ export default function BookingFixedPriceScreen() {
           toLat: toAddr.lat,
           toLon: toAddr.lon,
         });
+        if (isStale()) return;
         if (!area.ok) {
           setEligible(false);
           setIneligibleMessage(area.message);
@@ -403,6 +417,7 @@ export default function BookingFixedPriceScreen() {
           toCity: cityForApi(toAddr),
           vehicle,
         });
+        if (isStale()) return;
         if (!est.ok) {
           setEligible(false);
           setIneligibleMessage(est.message ?? ROUTE_NOT_COMPUTABLE_MESSAGE_DE);

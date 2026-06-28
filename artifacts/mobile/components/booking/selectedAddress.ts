@@ -24,6 +24,12 @@ export const EMPTY_SELECTED_ADDRESS: SelectedAddress = {
   isPoiAddress: false,
 };
 
+function sublineCityFromPlzLine(subline: string): string {
+  const parts = subline.trim().split(/\s+/);
+  if (parts.length <= 1) return parts[0]?.trim() || "";
+  return parts.slice(1).join(" ").trim();
+}
+
 function plzCitySubline(loc: GeoLocation, displayParts: string[]): string {
   const plz =
     loc.postcode?.trim() ||
@@ -56,7 +62,14 @@ export function geoLocationToSelectedAddress(loc: GeoLocation): SelectedAddress 
     Boolean(house) || /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(name);
   const hasCity = Boolean(loc.city?.trim() || subline);
   const isPoiAddress = !hasHouse || !hasCity;
-  const city = loc.city?.trim() || "";
+  const cityFromSubline = sublineCityFromPlzLine(subline);
+  const city = loc.city?.trim() || cityFromSubline || parts.find(
+    (p, i) =>
+      i > 0 &&
+      !/^\d{5}$/.test(p) &&
+      !/\d/.test(p) &&
+      !/deutschland|germany|baden-württemberg|^landkreis|region/i.test(p),
+  )?.trim() || "";
   return {
     name,
     subline,

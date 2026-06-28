@@ -17,26 +17,31 @@ const ESSLINGEN_COUNTY_MUNICIPALITIES = [
   "wendlingen am neckar", "wolfschlugen",
 ];
 
-function isStuttgart(loc: GeoLocation): boolean {
+export type MandatoryAreaPoint = {
+  displayName: string;
+  city?: string | null;
+};
+
+function isStuttgart(loc: MandatoryAreaPoint): boolean {
   const city = normalizeForMatch(loc.city);
   if (city.includes("stuttgart")) return true;
   return normalizeForMatch(loc.displayName).includes("stuttgart");
 }
 
-function isLeinfeldenEchterdingen(loc: GeoLocation): boolean {
+function isLeinfeldenEchterdingen(loc: MandatoryAreaPoint): boolean {
   const city = normalizeForMatch(loc.city);
   if (city.includes("leinfelden-echterdingen") || city.includes("leinfelden echterdingen")) return true;
   const name = normalizeForMatch(loc.displayName);
   return name.includes("leinfelden-echterdingen") || name.includes("leinfelden echterdingen");
 }
 
-function isFilderstadt(loc: GeoLocation): boolean {
+function isFilderstadt(loc: MandatoryAreaPoint): boolean {
   const city = normalizeForMatch(loc.city);
   if (city.includes("filderstadt")) return true;
   return normalizeForMatch(loc.displayName).includes("filderstadt");
 }
 
-function isEsslingenCounty(loc: GeoLocation): boolean {
+function isEsslingenCounty(loc: MandatoryAreaPoint): boolean {
   const city = normalizeForMatch(loc.city);
   if (city.includes("esslingen")) return true;
   if (ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => city.includes(municipality))) return true;
@@ -45,7 +50,7 @@ function isEsslingenCounty(loc: GeoLocation): boolean {
   return ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => name.includes(municipality));
 }
 
-export function isMandatoryTaxiAreaLocation(loc: GeoLocation): boolean {
+export function isMandatoryTaxiAreaLocation(loc: MandatoryAreaPoint): boolean {
   return (
     isStuttgart(loc) ||
     isEsslingenCounty(loc) ||

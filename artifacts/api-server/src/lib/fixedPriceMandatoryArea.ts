@@ -1,7 +1,12 @@
 /**
- * Festpreis: admin-pflegbare Pflichtfahrgebiet-Städte (getrennt von mandatoryTaxiArea).
- * Regel: Festpreis nur NICHT möglich, wenn BEIDE Punkte in der Liste liegen — oder Start-Stadt = Ziel-Stadt.
+ * Festpreis-Eligibility: Pflichtfahrgebiet (Stuttgart / Esslingen-Korridor) + Admin-Städte + gleiche Stadt.
+ *
+ * Blockiert, wenn BEIDE Punkte im Taxameter-Pflichtgebiet liegen (`mandatoryTaxiArea`),
+ * oder BEIDE in der admin-pflegbaren Städte-Liste, oder Start-Stadt = Ziel-Stadt.
+ * Erlaubt z. B. Tübingen ↔ Flughafen (nur ein Punkt im Pflichtgebiet).
  */
+
+import { isMandatoryTaxiAreaLocation } from "./mandatoryTaxiArea";
 
 export type FixedPriceLocationPoint = {
   displayName: string;
@@ -37,7 +42,9 @@ export function readFixedPriceMandatoryAreaCities(op: Record<string, unknown>): 
   return out.length > 0 ? out : [...DEFAULT_FIXED_PRICE_MANDATORY_AREA_CITIES];
 }
 
-/** Stadt-Label für Zuordnung (city-Feld oder letztes Segment der Adresse, ohne PLZ). */
+const SKIP_CITY_SEGMENT = /^(deutschland|germany|baden-württemberg|region)/i;
+
+/** Stadt-Label für Zuordnung (city-Feld oder sinnvolles Adress-Segment, ohne PLZ/Landkreis-only). */
 export function resolvePointCityLabel(point: FixedPriceLocationPoint): string {
   const fromCity = typeof point.city === "string" ? point.city.trim() : "";
   if (fromCity) return normalizeForMatch(fromCity);
@@ -45,10 +52,15 @@ export function resolvePointCityLabel(point: FixedPriceLocationPoint): string {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (parts.length === 0) return "";
-  const last = parts[parts.length - 1] ?? "";
-  const withoutPlz = last.replace(/^\d{5}\s*/, "").trim();
-  return normalizeForMatch(withoutPlz || last);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const raw = parts[i] ?? "";
+    const withoutPlz = raw.replace(/^\d{5}\s*/, "").trim();
+    const seg = withoutPlz || raw;
+    if (!seg || SKIP_CITY_SEGMENT.test(seg)) continue;
+    if (/^landkreis\s/i.test(seg)) continue;
+    return normalizeForMatch(seg);
+  }
+  return "";
 }
 
 /** Liegt der Punkt in einer admin-pflegbaren Pflichtfahrgebiet-Stadt? */
@@ -57,7 +69,7 @@ export function isPointInFixedPriceMandatoryArea(
   mandatoryCities: string[],
 ): boolean {
   const label = resolvePointCityLabel(point);
-  if (!label) return false;
+  if (!label || /^landkreis\s/.test(label)) return false;
   for (const entry of mandatoryCities) {
     const term = normalizeForMatch(entry);
     if (!term) continue;
@@ -81,6 +93,15 @@ export function evaluateFixedPriceEligibility(args: {
   to: FixedPriceLocationPoint;
   mandatoryCities: string[];
 }): FixedPriceEligibilityResult {
+  const fromTaxi = isMandatoryTaxiAreaLocation(args.from);
+  const toTaxi = isMandatoryTaxiAreaLocation(args.to);
+  if (fromTaxi && toTaxi) {
+    return {
+      eligible: false,
+      reason: "both_in_mandatory_area",
+      message: FIXED_PRICE_MSG_BOTH_MANDATORY,
+    };
+  }
   const fromIn = isPointInFixedPriceMandatoryArea(args.from, args.mandatoryCities);
   const toIn = isPointInFixedPriceMandatoryArea(args.to, args.mandatoryCities);
   if (fromIn && toIn) {

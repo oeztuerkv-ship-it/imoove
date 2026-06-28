@@ -135,7 +135,7 @@ export async function searchLocation(
         displayName: photonLabel(f),
         street: f.properties.street,
         housenumber: f.properties.housenumber,
-        city: f.properties.city ?? f.properties.town ?? f.properties.village,
+        city: f.properties.city ?? f.properties.town ?? f.properties.village ?? f.properties.district,
         postcode: f.properties.postcode,
         country: f.properties.country,
       }))
