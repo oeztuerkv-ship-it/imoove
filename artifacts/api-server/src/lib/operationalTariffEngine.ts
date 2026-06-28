@@ -105,8 +105,50 @@ export function resolveMergedTariff(
   const lon0 = pickup?.lon != null && Number.isFinite(Number(pickup.lon)) ? Number(pickup.lon) : null;
   const id = findServiceRegionIdForPickup(String(fromFull ?? "").trim(), lat0, lon0, serviceRegions);
   const reg = id && isPlainTariffObject(bySr[id]) ? (bySr[id] as Record<string, unknown>) : null;
-  const merged = mergeTariffsForServiceRegion(t, reg);
+  const merged = applyPlatformVehicleSurcharges(mergeTariffsForServiceRegion(t, reg), t);
   return { merged, serviceRegionId: id };
+}
+
+/** Einzige Quelle für XL/Rollstuhl-Aufschlag in der App: tariffs.xlFixedSurchargeEur / wheelchairFixedSurchargeEur (Admin → Tarife). */
+export function readPlatformVehicleSurchargeEur(tariffsRoot: Record<string, unknown> | null | undefined): {
+  xlEur: number;
+  wheelchairEur: number;
+} {
+  const t = tariffsRoot && isPlainTariffObject(tariffsRoot) ? tariffsRoot : {};
+  let xlEur = Math.max(0, n(t.xlFixedSurchargeEur, 0));
+  const lvs = isPlainTariffObject(t.largeVehicleSurcharge)
+    ? (t.largeVehicleSurcharge as Record<string, unknown>)
+    : {};
+  const legacyXl = Math.max(0, n(lvs.amountEur, 0));
+  if (xlEur <= 0 && legacyXl > 0) xlEur = legacyXl;
+  const wheelchairEur = Math.max(0, n(t.wheelchairFixedSurchargeEur, 0));
+  return { xlEur, wheelchairEur };
+}
+
+/** Erzwingt Plattform-Aufschläge nach Regions-Merge (Gebiete/Tarif-Katalog dürfen XL/Rollstuhl nicht mehr überschreiben). */
+export function applyPlatformVehicleSurcharges(
+  merged: Record<string, unknown>,
+  tariffsRoot: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const { xlEur, wheelchairEur } = readPlatformVehicleSurchargeEur(tariffsRoot);
+  const out: Record<string, unknown> = {
+    ...merged,
+    xlFixedSurchargeEur: xlEur,
+    xlPricingMode: "fixed",
+    wheelchairFixedSurchargeEur: wheelchairEur,
+  };
+  const vtoRaw = merged.vehicleTariffOverrides;
+  if (isPlainTariffObject(vtoRaw)) {
+    const vto = { ...(vtoRaw as Record<string, unknown>) };
+    if (isPlainTariffObject(vto.xl)) {
+      vto.xl = { ...(vto.xl as Record<string, unknown>), surchargeEur: 0 };
+    }
+    if (isPlainTariffObject(vto.wheelchair)) {
+      vto.wheelchair = { ...(vto.wheelchair as Record<string, unknown>), surchargeEur: 0 };
+    }
+    out.vehicleTariffOverrides = vto;
+  }
+  return out;
 }
 
 const BERLIN_TZ = "Europe/Berlin";
@@ -268,15 +310,23 @@ export function estimateTaxiFromMergedTariff(
 } {
   const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
   const xlCfg = vClass === "xl" ? resolveXlPricingConfig(merged) : null;
-  /** XL mit festem Aufschlag: Taxameter-Basis wie Standard, dann + xlFixedSurchargeEur (Admin). */
-  const tariffSliceClass = xlCfg?.mode === "fixed" ? "standard" : vClass;
+  const wheelchairFixedEurPlatform = Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0));
+  /** XL/Rollstuhl mit festem Plattform-Aufschlag: Taxameter-Basis wie Standard, dann + € (Admin → Tarife). */
+  const useStandardTaxameterBase =
+    (vClass === "xl" && xlCfg?.mode === "fixed") ||
+    (vClass === "wheelchair" && wheelchairFixedEurPlatform > 0);
+  const tariffSliceClass = useStandardTaxameterBase ? "standard" : vClass;
   const m = pickTariffSliceForVehicleClass(merged, tariffSliceClass);
-  const vehicleClassMultiplier = vehicleClassMultiplierFor(merged, vClass, xlCfg);
+  const vehicleClassMultiplier = useStandardTaxameterBase
+    ? 1
+    : vehicleClassMultiplierFor(merged, vClass, xlCfg);
   const xlFixedEur = xlCfg && xlCfg.mode !== "multiplier" ? xlCfg.fixedEur : 0;
   const wheelchairFixedEur =
     vClass === "wheelchair"
-      ? Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) +
-        Math.max(0, n((m as { surchargeEur?: unknown }).surchargeEur, 0))
+      ? wheelchairFixedEurPlatform > 0
+        ? wheelchairFixedEurPlatform
+        : Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) +
+          Math.max(0, n((m as { surchargeEur?: unknown }).surchargeEur, 0))
       : 0;
   if (m.active === false) {
     return {
@@ -404,6 +454,9 @@ export function estimateTaxiFromMergedTariff(
       vehicleClassMultiplier,
       ...(xlCfg
         ? { xlFixedSurchargeEur: xlFixedEur, xlPricingMode: xlCfg.mode }
+        : {}),
+      ...(vClass === "wheelchair" && wheelchairFixedEur > 0
+        ? { wheelchairFixedSurchargeEur: wheelchairFixedEur }
         : {}),
     },
   };

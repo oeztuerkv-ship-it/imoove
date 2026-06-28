@@ -54,6 +54,10 @@ export function vehicleSurchargeFromEstimates(
   if (typeof fixedXl === "number" && Number.isFinite(fixedXl) && fixedXl > 0) {
     return Math.round(fixedXl * 100) / 100;
   }
+  const fixedWc = (breakdown as { wheelchairFixedSurchargeEur?: number } | undefined)?.wheelchairFixedSurchargeEur;
+  if (typeof fixedWc === "number" && Number.isFinite(fixedWc) && fixedWc > 0) {
+    return Math.round(fixedWc * 100) / 100;
+  }
 
   if (standardTotal != null && Number.isFinite(standardTotal) && estimate.total > standardTotal + 0.009) {
     return Math.round((estimate.total - standardTotal) * 100) / 100;

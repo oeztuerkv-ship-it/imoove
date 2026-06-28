@@ -158,7 +158,7 @@ const PAGE_META = {
   },
   "app-op-tariffs": {
     title: "App / Betrieb — Tarife",
-    subtitle: "Preislogik (Taxameter, Zuschläge) — Tarif-Katalog; Zuordnung zu Gebieten unter „Gebiete“",
+    subtitle: "XL & Rollstuhl-Aufschläge (plattformweit) und Taxameter-Tarif-Katalog",
   },
   "app-op-regions": {
     title: "App / Betrieb — Gebiete",

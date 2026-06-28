@@ -98,6 +98,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     vehicleClassMultipliers: { standard: 1, xl: 1, wheelchair: 1.15, onroda: 1 } as Record<string, number>,
     xlPricingMode: "fixed",
     xlFixedSurchargeEur: 7,
+    /** Plattform-weit (Admin → Tarife → XL & Rollstuhl); überschreibt Gebiet-/Tarif-Katalog für App-Aufschlag. */
+    wheelchairFixedSurchargeEur: 0,
     largeVehicleSurcharge: {
       minPassengers: 5,
       amountEur: 0,

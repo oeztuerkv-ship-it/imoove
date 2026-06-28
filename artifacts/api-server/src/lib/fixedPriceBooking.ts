@@ -5,7 +5,7 @@ import {
   type FixedPriceLocationPoint,
 } from "./fixedPriceMandatoryArea";
 import { TARIFF_ENGINE_SCHEMA_VERSION } from "./bookingTariffEstimate";
-import { pickTariffSliceForVehicleClass, resolveXlPricingConfig } from "./operationalTariffEngine";
+import { readPlatformVehicleSurchargeEur } from "./operationalTariffEngine";
 import {
   bookingPriceToleranceEur,
   operationalConfigVersionFromPayload,
@@ -63,28 +63,15 @@ function normalizeFixedPriceVehicleId(vehicle: string): "standard" | "xl" | "whe
   return "standard";
 }
 
-/** XL/Rollstuhl-Aufschlag auf Festpreis-Basis (Admin-Tarif, fester Betrag). */
+/** XL/Rollstuhl-Aufschlag auf Festpreis — dieselbe Plattform-Quelle wie Taxameter (/fare-estimate). */
 export function computeFixedPriceVehicleSurchargeEur(
   opPayload: Record<string, unknown>,
   vehicle: string,
 ): number {
-  const merged = tariffsSection(opPayload);
+  const { xlEur, wheelchairEur } = readPlatformVehicleSurchargeEur(tariffsSection(opPayload));
   const vClass = normalizeFixedPriceVehicleId(vehicle);
-  if (vClass === "xl") {
-    const xlCfg = resolveXlPricingConfig(merged);
-    if (xlCfg.mode === "multiplier") return 0;
-    const slice = pickTariffSliceForVehicleClass(merged, "xl");
-    const overrideSurcharge = Math.max(0, num((slice as { surchargeEur?: unknown }).surchargeEur, 0));
-    const fixedEur = Math.max(xlCfg.fixedEur, overrideSurcharge);
-    return Math.max(0, Math.round(fixedEur * 100) / 100);
-  }
-  if (vClass === "wheelchair") {
-    const slice = pickTariffSliceForVehicleClass(merged, "wheelchair");
-    const total =
-      Math.max(0, num(merged.wheelchairFixedSurchargeEur, 0)) +
-      Math.max(0, num((slice as { surchargeEur?: unknown }).surchargeEur, 0));
-    return Math.max(0, Math.round(total * 100) / 100);
-  }
+  if (vClass === "xl") return xlEur;
+  if (vClass === "wheelchair") return wheelchairEur;
   return 0;
 }
 

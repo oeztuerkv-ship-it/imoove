@@ -145,6 +145,7 @@ import {
   updateServiceRegionById,
 } from "../db/appOperationalData";
 import {
+  applyPlatformVehicleSurcharges,
   estimateTaxiFromMergedTariff,
   isPlainTariffObject,
   mergeTariffsForServiceRegion,
@@ -3812,9 +3813,12 @@ adminJson.post("/app-operational/preview-tariff-estimate", async (req, res, next
     const tRaw = (op as { tariffs?: unknown }).tariffs;
     const tSec: Record<string, unknown> = isPlainTariffObject(tRaw) ? tRaw : {};
     const regionT = b.regionTariff;
-    const merged = mergeTariffsForServiceRegion(
+    const merged = applyPlatformVehicleSurcharges(
+      mergeTariffsForServiceRegion(
+        tSec,
+        isPlainTariffObject(regionT) ? (regionT as Record<string, unknown>) : null,
+      ),
       tSec,
-      isPlainTariffObject(regionT) ? (regionT as Record<string, unknown>) : null,
     );
     const atStr = typeof b.at === "string" ? b.at.trim() : "";
     const at = atStr ? new Date(atStr) : new Date();

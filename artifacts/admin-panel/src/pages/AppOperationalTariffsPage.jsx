@@ -7,7 +7,6 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import {
   buildRegionPayloadFromEditor,
   buildTariffTemplateRecord,
-  buildTariffsPatchForTemplatePropagation,
   countTariffUsageInRegions,
   emptySurcharge,
   getTariffCatalog,
@@ -35,6 +34,8 @@ export default function AppOperationalTariffsPage() {
   const [fixedPriceOutsideActive, setFixedPriceOutsideActive] = useState(true);
   const [onrodaFixBase, setOnrodaFixBase] = useState("3.50");
   const [onrodaFixPerKm, setOnrodaFixPerKm] = useState("2.20");
+  const [platformXlEur, setPlatformXlEur] = useState("7");
+  const [platformWcEur, setPlatformWcEur] = useState("0");
   const [mandatoryAreaCities, setMandatoryAreaCities] = useState(["Stuttgart", "Esslingen"]);
   const [newMandatoryCity, setNewMandatoryCity] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,8 +45,6 @@ export default function AppOperationalTariffsPage() {
   const [description, setDescription] = useState("");
   const [validFrom, setValidFrom] = useState("");
   const [stdForm, setStdForm] = useState(() => tierDefaults());
-  const [xlSurchargeEur, setXlSurchargeEur] = useState("7");
-  const [wcSurchargeEur, setWcSurchargeEur] = useState("0");
   const [surchargeForms, setSurchargeForms] = useState({
     night: { ...emptySurcharge },
     weekend: { ...emptySurcharge },
@@ -87,6 +86,12 @@ export default function AppOperationalTariffsPage() {
         if (typeof t.onrodaFixPerKm === "number" && Number.isFinite(t.onrodaFixPerKm)) {
           setOnrodaFixPerKm(String(t.onrodaFixPerKm));
         }
+        if (typeof t.xlFixedSurchargeEur === "number" && Number.isFinite(t.xlFixedSurchargeEur)) {
+          setPlatformXlEur(String(t.xlFixedSurchargeEur).replace(".", ","));
+        }
+        if (typeof t.wheelchairFixedSurchargeEur === "number" && Number.isFinite(t.wheelchairFixedSurchargeEur)) {
+          setPlatformWcEur(String(t.wheelchairFixedSurchargeEur).replace(".", ","));
+        }
         if (Array.isArray(t.fixedPriceMandatoryAreaCities)) {
           const cities = t.fixedPriceMandatoryAreaCities
             .filter((c) => typeof c === "string" && c.trim())
@@ -114,14 +119,12 @@ export default function AppOperationalTariffsPage() {
     setDescription(ed.description);
     setValidFrom(ed.validFrom);
     setStdForm(ed.stdForm);
-    setXlSurchargeEur(ed.xlSurchargeEur);
-    setWcSurchargeEur(ed.wcSurchargeEur);
     setSurchargeForms(ed.surchargeForms);
   }, [selectedTariff]);
 
   const editorState = useMemo(
-    () => ({ stdForm, xlSurchargeEur, wcSurchargeEur, surchargeForms, validFrom }),
-    [stdForm, xlSurchargeEur, wcSurchargeEur, surchargeForms, validFrom],
+    () => ({ stdForm, surchargeForms, validFrom }),
+    [stdForm, surchargeForms, validFrom],
   );
 
   const patchOperational = async (body) => {
@@ -140,9 +143,44 @@ export default function AppOperationalTariffsPage() {
   const saveTariffCatalog = async (nextCatalog, msg = "Gespeichert.") => {
     setBusy(true);
     setError("");
+    setOk("");
     try {
       await patchOperational({ tariffTemplates: nextCatalog });
       setOk(msg);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const parseEurField = (raw, label) => {
+    const x = Number(String(raw ?? "").replace(",", "."));
+    if (!Number.isFinite(x) || x < 0) {
+      throw new Error(`${label} muss eine Zahl ≥ 0 sein.`);
+    }
+    return Math.round(x * 100) / 100;
+  };
+
+  const savePlatformVehicleSurcharges = async () => {
+    setBusy(true);
+    setError("");
+    setOk("");
+    try {
+      const xlEur = parseEurField(platformXlEur, "XL-Aufschlag");
+      const wcEur = parseEurField(platformWcEur, "Rollstuhl-Aufschlag");
+      const prevTar = config?.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
+      await patchOperational({
+        tariffs: {
+          ...prevTar,
+          xlFixedSurchargeEur: xlEur,
+          wheelchairFixedSurchargeEur: wcEur,
+          xlPricingMode: "fixed",
+        },
+      });
+      setPlatformXlEur(String(xlEur).replace(".", ","));
+      setPlatformWcEur(String(wcEur).replace(".", ","));
+      setOk("XL- und Rollstuhl-Aufschläge gespeichert — gelten sofort in der App (Taxameter & Festpreis).");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     } finally {
@@ -162,8 +200,6 @@ export default function AppOperationalTariffsPage() {
     setDescription("");
     setValidFrom("");
     setStdForm(tierDefaults());
-    setXlSurchargeEur("7");
-    setWcSurchargeEur("0");
     setSurchargeForms({
       night: { ...emptySurcharge },
       weekend: { ...emptySurcharge },
@@ -194,12 +230,11 @@ export default function AppOperationalTariffsPage() {
     );
     const exists = tariffs.some((t) => t.id === id);
     const next = exists ? tariffs.map((t) => (t.id === id ? record : t)) : [...tariffs, record];
-    const usage = selectedId ? countTariffUsageInRegions(config, id) : 0;
-    let msg = selectedId ? "Tarif inkl. Aufschläge gespeichert." : "Tarif angelegt.";
-    if (selectedId && usage === 0) {
-      msg += " Hinweis: Tarif ist noch keinem Gebiet zugeordnet — unter „Gebiete“ zuweisen, sonst greift er in der App nicht.";
+    let msg = selectedId ? "Taxameter-Tarif gespeichert." : "Tarif angelegt.";
+    if (selectedId && countTariffUsageInRegions(config, id) === 0) {
+      msg += " Taxameter-Zuordnung: unter „Gebiete“ diesem Tarif zuweisen.";
     }
-    await saveTariffCatalog(next, msg, selectedId ? record : null);
+    await saveTariffCatalog(next, msg);
     if (!selectedId) setSelectedId(id);
     if (!name.trim()) setName(tariffName);
   };
@@ -365,10 +400,8 @@ export default function AppOperationalTariffsPage() {
   return (
     <div className="admin-page admin-page--loose">
       <p className="admin-page-lead">
-        Preislogik (Taxameter, Zuschläge) — Tarif-Katalog; Zuordnung zu Gebieten unter „Gebiete“.
-        <strong> XL- und Rollstuhl-Aufschlag (€):</strong> Tarif unten bearbeiten → Block{" "}
-        <strong>„Aufschläge — XL & Rollstuhl“</strong> → Speichern. Tarif muss unter{" "}
-        <strong>App / Betrieb → Gebiete</strong> zugeordnet sein (einmalig); danach übernimmt Speichern hier die Werte automatisch in alle zugeordneten Gebiete.
+        <strong>XL & Rollstuhl:</strong> fester €-Aufschlag im Block unten — gilt plattformweit in der App.{" "}
+        <strong>Taxameter-Grundtarif:</strong> Tarif-Katalog + Zuordnung unter „Gebiete“.
       </p>
 
       {error || ok ? (
@@ -381,6 +414,50 @@ export default function AppOperationalTariffsPage() {
           </div>
         </section>
       ) : null}
+
+      <AdminCollapsibleSection
+        title="XL & Rollstuhl — Aufschläge"
+        subtitle="Ein Block für die ganze App: Taxameter zeigt „+ X € Aufschlag“, Festpreis addiert denselben Betrag"
+        defaultOpen
+      >
+        <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginBottom: 12 }}>
+          Hier eintragen und speichern — keine Gebiete, kein Tarif-Katalog nötig. Die App liest nur diese Werte (
+          <code>GET /api/fare-estimate</code>).
+        </p>
+        <div className="admin-fares-grid-num admin-fares-grid-num--2" style={{ maxWidth: 420 }}>
+          <div>
+            <label className="admin-field-label">XL — fester Aufschlag (€)</label>
+            <input
+              className="admin-input"
+              type="text"
+              inputMode="decimal"
+              value={platformXlEur}
+              onChange={(e) => setPlatformXlEur(e.target.value)}
+              placeholder="z. B. 7"
+            />
+          </div>
+          <div>
+            <label className="admin-field-label">Rollstuhl — fester Aufschlag (€)</label>
+            <input
+              className="admin-input"
+              type="text"
+              inputMode="decimal"
+              value={platformWcEur}
+              onChange={(e) => setPlatformWcEur(e.target.value)}
+              placeholder="z. B. 0"
+            />
+          </div>
+        </div>
+        <button
+          type="button"
+          className="admin-m-btn-pri"
+          style={{ marginTop: 14 }}
+          disabled={busy}
+          onClick={() => void savePlatformVehicleSurcharges()}
+        >
+          {busy ? "…" : "Aufschläge speichern"}
+        </button>
+      </AdminCollapsibleSection>
 
       <AdminCollapsibleSection title="Preise & Buchung" subtitle="Globaler Schalter für buchbare Preise" defaultOpen>
         <div className="admin-toolbar-inline">
@@ -622,42 +699,7 @@ export default function AppOperationalTariffsPage() {
 
         <TarifBlock title="Taxameter" value={stdForm} onChange={setStdForm} />
 
-        <CollapsibleCard title="Aufschläge — XL & Rollstuhl" subtitle="Fester €-Zuschlag in der App unter XL / Rollstuhl">
-          <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginTop: 8 }}>
-            XL: fester €-Aufschlag auf Taxameter-Basis (<code>xlFixedSurchargeEur</code>). Rollstuhl: fester €-Aufschlag (
-            <code>wheelchairFixedSurchargeEur</code>). Die App zeigt nur „+ X € Aufschlag“ — kein Gesamtpreis. Nach dem Speichern
-            Tarif unter „Gebiete“ zuordnen; live über <code>GET /api/fare-estimate</code>.
-            {selectedId && usageByTariff[selectedId] > 0 ? (
-              <>
-                {" "}
-                Dieser Tarif ist <strong>{usageByTariff[selectedId]} Gebiet{usageByTariff[selectedId] === 1 ? "" : "en"}</strong> zugeordnet — Speichern aktualisiert die App sofort.
-              </>
-            ) : selectedId ? (
-              <> Noch keinem Gebiet zugeordnet — Werte werden erst nach Zuweisung unter „Gebiete“ wirksam.</>
-            ) : null}
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 12, maxWidth: 400 }}>
-            <label className="admin-form-label">
-              XL (€)
-              <input
-                className="admin-input"
-                style={{ display: "block", marginTop: 4 }}
-                value={xlSurchargeEur}
-                onChange={(e) => setXlSurchargeEur(e.target.value)}
-                inputMode="decimal"
-              />
-            </label>
-            <label className="admin-form-label">
-              Rollstuhl (€)
-              <input
-                className="admin-input"
-                style={{ display: "block", marginTop: 4 }}
-                value={wcSurchargeEur}
-                onChange={(e) => setWcSurchargeEur(e.target.value)}
-                inputMode="decimal"
-              />
-            </label>
-          </div>
+        <CollapsibleCard title="Zeit-Zuschläge (%)" subtitle="Nacht, Wochenende, Feiertag — nur Taxameter-Basis">
           <div style={{ marginTop: 14, maxWidth: 400 }}>
             {[
               ["night", "Nacht"],
@@ -683,17 +725,7 @@ export default function AppOperationalTariffsPage() {
               </label>
             ))}
           </div>
-          <div className="admin-section-toolbar admin-section-toolbar--start" style={{ marginTop: 14 }}>
-            <button
-              type="button"
-              className="admin-c-btn-sec"
-              disabled={busy}
-              onClick={() => void saveCurrentTariff()}
-            >
-              {busy ? "…" : selectedId ? "Aufschläge speichern" : "Tarif anlegen & Aufschläge speichern"}
-            </button>
-          </div>
-      </CollapsibleCard>
+        </CollapsibleCard>
 
         <div className="admin-section-toolbar admin-section-toolbar--start">
           <button type="button" className="admin-m-btn-pri" disabled={busy} onClick={() => void saveCurrentTariff()}>
