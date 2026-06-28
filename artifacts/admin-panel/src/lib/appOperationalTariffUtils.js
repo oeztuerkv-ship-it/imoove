@@ -271,3 +271,59 @@ export function countTariffUsageInRegions(config, tariffId) {
   }
   return ids.size;
 }
+
+/** Region-IDs, die diesen Tarif nutzen (Assignments + byServiceRegion). */
+export function regionIdsUsingTariffTemplate(config, tariffId) {
+  if (!tariffId || !config) return [];
+  const assignments = getRegionTariffTemplateIds(config);
+  const bsr = getByServiceRegion(config);
+  const ids = new Set();
+  for (const [rid, tid] of Object.entries(assignments)) {
+    if (tid === tariffId) ids.add(rid);
+  }
+  for (const [rid, row] of Object.entries(bsr)) {
+    if (row && typeof row === "object" && String(row.tariffTemplateId || "") === tariffId) {
+      ids.add(rid);
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * Nach Tarif-Speichern: zugeordnete Gebiete in tariffs.byServiceRegion mit frischem regionPayload füllen.
+ * Die App liest live aus byServiceRegion — der Katalog allein reicht nicht.
+ */
+export function buildTariffsPatchForTemplatePropagation(config, tariffRecord) {
+  const tariffId = tariffRecord?.id;
+  if (!tariffId || !config) return null;
+  const regionIds = regionIdsUsingTariffTemplate(config, tariffId);
+  if (regionIds.length === 0) return null;
+
+  const prevTar = getTariffs(config);
+  const prevBsr = getByServiceRegion(config);
+  const ed = loadEditorFromTariff(tariffRecord);
+  const nextBsr = { ...prevBsr };
+
+  for (const regionId of regionIds) {
+    const prevRow =
+      prevBsr[regionId] && typeof prevBsr[regionId] === "object" ? { ...prevBsr[regionId] } : {};
+    nextBsr[regionId] = buildRegionPayloadFromEditor(
+      {
+        ...ed,
+        tariffTemplateId: tariffId,
+        tariffTemplateName: tariffRecord.name,
+      },
+      { ...prevRow, ...(tariffRecord.regionPayload || {}) },
+    );
+  }
+
+  return {
+    tariffs: {
+      ...prevTar,
+      active: prevTar.active !== false,
+      pricingMode: prevTar.pricingMode || "taxi_tariff",
+      byServiceRegion: nextBsr,
+    },
+    regionCount: regionIds.length,
+  };
+}

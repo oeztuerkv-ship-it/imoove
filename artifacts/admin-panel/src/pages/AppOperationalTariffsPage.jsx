@@ -7,6 +7,7 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import {
   buildRegionPayloadFromEditor,
   buildTariffTemplateRecord,
+  buildTariffsPatchForTemplatePropagation,
   countTariffUsageInRegions,
   emptySurcharge,
   getTariffCatalog,
@@ -179,16 +180,28 @@ export default function AppOperationalTariffsPage() {
   };
 
   const saveCurrentTariff = async () => {
-    if (!name.trim()) {
-      setError("Name fehlt.");
+    const tariffName = name.trim() || selectedTariff?.name?.trim() || "";
+    if (!tariffName) {
+      setError("Tarifname fehlt — bitte oben im Editor „Name“ ausfüllen (oder zuerst in der Liste „Bearbeiten“ wählen).");
+      scrollToEditor();
       return;
     }
     const id = selectedId || Date.now().toString(36);
-    const record = buildTariffTemplateRecord(id, { name, description, validFrom }, editorState);
+    const record = buildTariffTemplateRecord(
+      id,
+      { name: tariffName, description, validFrom },
+      editorState,
+    );
     const exists = tariffs.some((t) => t.id === id);
     const next = exists ? tariffs.map((t) => (t.id === id ? record : t)) : [...tariffs, record];
-    await saveTariffCatalog(next, selectedId ? "Tarif inkl. Aufschläge gespeichert." : "Tarif angelegt.");
+    const usage = selectedId ? countTariffUsageInRegions(config, id) : 0;
+    let msg = selectedId ? "Tarif inkl. Aufschläge gespeichert." : "Tarif angelegt.";
+    if (selectedId && usage === 0) {
+      msg += " Hinweis: Tarif ist noch keinem Gebiet zugeordnet — unter „Gebiete“ zuweisen, sonst greift er in der App nicht.";
+    }
+    await saveTariffCatalog(next, msg, selectedId ? record : null);
     if (!selectedId) setSelectedId(id);
+    if (!name.trim()) setName(tariffName);
   };
 
   const duplicateTariff = async (id) => {
@@ -354,7 +367,8 @@ export default function AppOperationalTariffsPage() {
       <p className="admin-page-lead">
         Preislogik (Taxameter, Zuschläge) — Tarif-Katalog; Zuordnung zu Gebieten unter „Gebiete“.
         <strong> XL- und Rollstuhl-Aufschlag (€):</strong> Tarif unten bearbeiten → Block{" "}
-        <strong>„Aufschläge — XL & Rollstuhl“</strong> → Speichern.
+        <strong>„Aufschläge — XL & Rollstuhl“</strong> → Speichern. Tarif muss unter{" "}
+        <strong>App / Betrieb → Gebiete</strong> zugeordnet sein (einmalig); danach übernimmt Speichern hier die Werte automatisch in alle zugeordneten Gebiete.
       </p>
 
       {error || ok ? (
@@ -613,6 +627,14 @@ export default function AppOperationalTariffsPage() {
             XL: fester €-Aufschlag auf Taxameter-Basis (<code>xlFixedSurchargeEur</code>). Rollstuhl: fester €-Aufschlag (
             <code>wheelchairFixedSurchargeEur</code>). Die App zeigt nur „+ X € Aufschlag“ — kein Gesamtpreis. Nach dem Speichern
             Tarif unter „Gebiete“ zuordnen; live über <code>GET /api/fare-estimate</code>.
+            {selectedId && usageByTariff[selectedId] > 0 ? (
+              <>
+                {" "}
+                Dieser Tarif ist <strong>{usageByTariff[selectedId]} Gebiet{usageByTariff[selectedId] === 1 ? "" : "en"}</strong> zugeordnet — Speichern aktualisiert die App sofort.
+              </>
+            ) : selectedId ? (
+              <> Noch keinem Gebiet zugeordnet — Werte werden erst nach Zuweisung unter „Gebiete“ wirksam.</>
+            ) : null}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 12, maxWidth: 400 }}>
             <label className="admin-form-label">
