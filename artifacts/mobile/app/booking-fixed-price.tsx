@@ -685,7 +685,7 @@ export default function BookingFixedPriceScreen() {
           </View>
         ) : null}
 
-        {routeComplete ? (
+        {eligible === true && priceEur != null ? (
           <View style={{ gap: rs(16) }}>
             <View style={[routeStyles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
               <Text style={[routeStyles.sectionTitle, { color: colors.foreground }]}>Termin</Text>
