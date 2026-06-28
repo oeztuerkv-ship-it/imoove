@@ -32,12 +32,17 @@ import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
+import {
+  MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE,
+  validateFixpreisRouteAddress,
+} from "@/lib/appConfig";
 import { customerVehicleSurchargeLabel } from "@/utils/customerFareDisplay";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   CUSTOMER_FIXED_PRICE_AGREEMENT_DE,
   fetchFixedPriceEstimate,
 } from "@/utils/fixedPriceApi";
+import { loadSearchFavorites, mergeDestinationQuickPicks, type SearchFavorite } from "@/utils/searchFavorites";
 import { searchLocation, type GeoLocation } from "@/utils/routing";
 import { ROUTE_NOT_COMPUTABLE_MESSAGE_DE } from "@/utils/routeDistanceApi";
 import { rs } from "@/utils/scale";
@@ -86,6 +91,7 @@ export default function BookingFixedPriceScreen() {
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [tripMinutes, setTripMinutes] = useState<number>(0);
   const [priceEur, setPriceEur] = useState<number | null>(null);
+  const [basePriceEur, setBasePriceEur] = useState<number | null>(null);
   const [vehicleSurchargeEur, setVehicleSurchargeEur] = useState<number>(0);
   const [eligible, setEligible] = useState<boolean | null>(null);
   const [ineligibleMessage, setIneligibleMessage] = useState("");
@@ -102,8 +108,13 @@ export default function BookingFixedPriceScreen() {
   const [hour, setHour] = useState(() => defaultScheduleWheelIndices().hour);
   const [minuteIndex, setMinuteIndex] = useState(() => defaultScheduleWheelIndices().minuteIndex);
   const [wheelKey, setWheelKey] = useState(0);
+  const [destinationQuickPicks, setDestinationQuickPicks] = useState<SearchFavorite[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    void loadSearchFavorites().then((custom) => setDestinationQuickPicks(mergeDestinationQuickPicks(custom)));
+  }, []);
 
   const pickedScheduleDate = useMemo(
     () => buildScheduledDate(dayOffset, hour, minuteIndex),
@@ -146,6 +157,7 @@ export default function BookingFixedPriceScreen() {
       setEstimateLoading(true);
       setEligible(null);
       setPriceEur(null);
+      setBasePriceEur(null);
       setVehicleSurchargeEur(0);
       setIneligibleMessage("");
       try {
@@ -187,6 +199,7 @@ export default function BookingFixedPriceScreen() {
         }
         setEligible(true);
         setPriceEur(est.priceEur);
+        setBasePriceEur(est.basePriceEur);
         setVehicleSurchargeEur(est.vehicleSurchargeEur);
       } catch {
         setEligible(false);
@@ -204,25 +217,44 @@ export default function BookingFixedPriceScreen() {
     void recomputeRouteAndPrice(fromStop, toStop, selectedVehicle);
   }, [fromStop, toStop, selectedVehicle, recomputeRouteAndPrice]);
 
+  const applyStop = useCallback(
+    (target: PickTarget, loc: GeoLocation) => {
+      const field = target === "from" ? "from" : "to";
+      const check = validateFixpreisRouteAddress(loc.displayName, field);
+      if (!check.ok) {
+        Alert.alert("Adresse unvollständig", check.message);
+        return false;
+      }
+      const stop: SelectedStop = {
+        displayName: loc.displayName,
+        city: loc.city,
+        lat: loc.lat,
+        lon: loc.lon,
+      };
+      if (target === "from") {
+        setFromStop(stop);
+        setFromQuery(loc.displayName);
+        if (toStop) void recomputeRouteAndPrice(stop, toStop, selectedVehicle);
+        else setActivePick("to");
+      } else {
+        setToStop(stop);
+        setToQuery(loc.displayName);
+        if (fromStop) void recomputeRouteAndPrice(fromStop, stop, selectedVehicle);
+      }
+      setSuggestions([]);
+      Haptics.selectionAsync();
+      return true;
+    },
+    [fromStop, toStop, selectedVehicle, recomputeRouteAndPrice],
+  );
+
   const pickSuggestion = (loc: GeoLocation) => {
-    const stop: SelectedStop = {
-      displayName: loc.displayName,
-      city: loc.city,
-      lat: loc.lat,
-      lon: loc.lon,
-    };
-    if (activePick === "from") {
-      setFromStop(stop);
-      setFromQuery(loc.displayName);
-      if (toStop) void recomputeRouteAndPrice(stop, toStop, selectedVehicle);
-      else setActivePick("to");
-    } else {
-      setToStop(stop);
-      setToQuery(loc.displayName);
-      if (fromStop) void recomputeRouteAndPrice(fromStop, stop, selectedVehicle);
-    }
-    setSuggestions([]);
-    Haptics.selectionAsync();
+    void applyStop(activePick, loc);
+  };
+
+  const pickDestinationFavorite = (fav: SearchFavorite) => {
+    setActivePick("to");
+    void applyStop("to", fav.location);
   };
 
   const surchargeLabel = customerVehicleSurchargeLabel({
@@ -245,6 +277,16 @@ export default function BookingFixedPriceScreen() {
 
   const handleSubmit = async () => {
     if (!canSubmit || !fromStop || !toStop || priceEur == null) return;
+    const addrCheck = validateFixpreisRouteAddress(fromStop.displayName, "from");
+    if (!addrCheck.ok) {
+      Alert.alert("Startadresse", addrCheck.message);
+      return;
+    }
+    const toCheck = validateFixpreisRouteAddress(toStop.displayName, "to");
+    if (!toCheck.ok) {
+      Alert.alert("Zieladresse", toCheck.message);
+      return;
+    }
     if (!profile.isLoggedIn) {
       Alert.alert("Anmeldung", "Bitte zuerst anmelden, um eine Festpreis-Fahrt zu buchen.");
       return;
@@ -351,6 +393,8 @@ export default function BookingFixedPriceScreen() {
               setActivePick("from");
               setEligible(null);
               setPriceEur(null);
+              setBasePriceEur(null);
+              setVehicleSurchargeEur(0);
             }}
             onFocus={() => setActivePick("from")}
           />
@@ -366,10 +410,50 @@ export default function BookingFixedPriceScreen() {
               setActivePick("to");
               setEligible(null);
               setPriceEur(null);
+              setBasePriceEur(null);
+              setVehicleSurchargeEur(0);
             }}
             onFocus={() => setActivePick("to")}
           />
+          {destinationQuickPicks.length > 0 ? (
+            <View style={styles.favoritesBlock}>
+              <Text style={[styles.favoritesLabel, { color: colors.mutedForeground }]}>Lieblingsorte</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.favoritesRow}>
+                {destinationQuickPicks.map((fav) => {
+                  const active = toStop?.displayName === fav.location.displayName;
+                  return (
+                    <Pressable
+                      key={fav.id}
+                      style={({ pressed }) => [
+                        styles.favoriteChip,
+                        {
+                          borderColor: active ? colors.primary : colors.border,
+                          backgroundColor: active ? colors.primary + "14" : colors.background,
+                          opacity: pressed ? 0.92 : 1,
+                        },
+                      ]}
+                      onPress={() => pickDestinationFavorite(fav)}
+                    >
+                      <Feather name="star" size={13} color={active ? colors.primary : "#F59E0B"} />
+                      <Text
+                        style={[
+                          styles.favoriteChipText,
+                          { color: active ? colors.primary : colors.foreground },
+                          active && { fontFamily: "Inter_700Bold" },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {fav.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
         </View>
+
+        <Text style={[styles.addressHint, { color: colors.mutedForeground }]}>{MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}</Text>
 
         {searching ? (
           <ActivityIndicator style={{ marginTop: rs(12) }} color={colors.primary} />
@@ -401,6 +485,20 @@ export default function BookingFixedPriceScreen() {
 
         {fromStop && toStop ? (
           <>
+            <ReservationSchedulePicker
+              uiVariant="reservation"
+              hideTimingToggle
+              timing="scheduled"
+              onTimingChange={() => {}}
+              dayOffset={dayOffset}
+              hour={hour}
+              minuteIndex={minuteIndex}
+              onDayOffsetChange={setDayOffset}
+              onHourChange={setHour}
+              onMinuteIndexChange={setMinuteIndex}
+              wheelKey={wheelKey}
+            />
+
             <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Fahrzeugwahl</Text>
             <View style={styles.vehicleRow}>
               {VEHICLES.map((v: VehicleOption) => {
@@ -494,20 +592,6 @@ export default function BookingFixedPriceScreen() {
                 />
               </View>
             </View>
-
-            <ReservationSchedulePicker
-              uiVariant="reservation"
-              hideTimingToggle
-              timing="scheduled"
-              onTimingChange={() => {}}
-              dayOffset={dayOffset}
-              hour={hour}
-              minuteIndex={minuteIndex}
-              onDayOffsetChange={setDayOffset}
-              onHourChange={setHour}
-              onMinuteIndexChange={setMinuteIndex}
-              wheelKey={wheelKey}
-            />
           </>
         ) : null}
 
@@ -521,6 +605,11 @@ export default function BookingFixedPriceScreen() {
               primaryStyle={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#166534" }}
               secondaryStyle={{ fontSize: 28, fontFamily: "Inter_700Bold", color: colors.foreground }}
             />
+            {vehicleSurchargeEur > 0 && basePriceEur != null ? (
+              <Text style={[styles.priceBreakdown, { color: colors.mutedForeground }]}>
+                {formatEuro(basePriceEur)} Basis + {formatEuro(vehicleSurchargeEur)} Aufschlag
+              </Text>
+            ) : null}
             {surchargeLabel && vehicleSurchargeEur > 0 ? (
               <Text style={[styles.surchargeLine, { color: "#2563EB" }]}>{surchargeLabel}</Text>
             ) : null}
@@ -657,6 +746,26 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 15,
   },
+  addressHint: {
+    ...accountSheetSecondaryLabel,
+    marginTop: rs(8),
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  favoritesBlock: { marginTop: rs(10) },
+  favoritesLabel: { fontFamily: "Inter_500Medium", fontSize: 12, marginBottom: rs(6) },
+  favoritesRow: { flexDirection: "row", gap: rs(8), paddingRight: rs(4) },
+  favoriteChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(6),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(8),
+    borderRadius: rs(999),
+    borderWidth: StyleSheet.hairlineWidth,
+    maxWidth: rs(160),
+  },
+  favoriteChipText: { fontFamily: "Inter_500Medium", fontSize: 13 },
   suggestBox: {
     marginTop: rs(8),
     borderWidth: 1,
@@ -714,6 +823,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   priceOk: { fontFamily: "Inter_700Bold", fontSize: 15 },
+  priceBreakdown: { fontFamily: "Inter_500Medium", fontSize: 13, marginTop: rs(4) },
   surchargeLine: { fontFamily: "Inter_600SemiBold", fontSize: 13, marginTop: 6 },
   priceMeta: { ...accountSheetSecondaryLabel, marginTop: rs(6), textAlign: "center" },
   payRow: { flexDirection: "row", gap: rs(8) },
