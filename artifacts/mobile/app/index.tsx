@@ -108,6 +108,11 @@ import {
   type PendingOAuthSession,
 } from "@/utils/completeCustomerOAuthSession";
 import { mapCustomerLegalError } from "@/utils/customerLegalConsent";
+import { prepareCustomerOAuthLogin } from "@/utils/prepareCustomerOAuthLogin";
+import {
+  clearPendingOAuthSession,
+  savePendingOAuthSession,
+} from "@/utils/pendingOAuthSessionStorage";
 import { rs, rf } from "@/utils/scale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -747,38 +752,44 @@ export default function HomeScreen() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [googleSignInLoading, setGoogleSignInLoading] = useState(false);
   const [appleSignInLoading, setAppleSignInLoading] = useState(false);
+  const oauthAttemptRef = useRef(false);
 
   /* ── Google OAuth ── */
   const applyOAuthSession = useCallback(
-    (session: PendingOAuthSession) => {
-      loginWithGoogle({
+    async (session: PendingOAuthSession) => {
+      await loginWithGoogle({
         ...session.profile,
         sessionToken: session.sessionToken,
       });
+      await clearPendingOAuthSession();
     },
     [loginWithGoogle],
   );
 
   const completeOAuthAfterSession = useCallback(
-    async (sessionToken: string, profile: Record<string, unknown>) => {
-      const gate = await gateCustomerOAuthSession(sessionToken, profile);
+    async (sessionToken: string, profileData: Record<string, unknown>) => {
+      const gate = await gateCustomerOAuthSession(sessionToken, profileData);
       if (gate.kind === "error") {
         Alert.alert("Hinweis", gate.message);
         return;
       }
       if (gate.kind === "ready") {
-        applyOAuthSession(gate.session);
+        await applyOAuthSession(gate.session);
         return;
       }
       setPendingOAuthSession(gate.session);
+      await savePendingOAuthSession(gate.session);
       setLegalConsentModalVisible(true);
     },
     [applyOAuthSession],
   );
 
   const handleGoogleSignIn = useCallback(async () => {
+    if (oauthAttemptRef.current || googleSignInLoading) return;
+    oauthAttemptRef.current = true;
     setGoogleSignInLoading(true);
     try {
+      await prepareCustomerOAuthLogin(profile.isLoggedIn);
       const session = await runCustomerGoogleSignIn(API_URL);
       if (!session) return;
       await completeOAuthAfterSession(session.sessionToken, {
@@ -792,20 +803,24 @@ export default function HomeScreen() {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
+      oauthAttemptRef.current = false;
       setGoogleSignInLoading(false);
     }
-  }, [completeOAuthAfterSession]);
+  }, [completeOAuthAfterSession, googleSignInLoading, profile.isLoggedIn]);
 
   const handleAppleSignIn = useCallback(async () => {
     if (Platform.OS !== "ios") {
       Alert.alert("Hinweis", "Sign in with Apple ist nur auf iOS verfügbar.");
       return;
     }
+    if (oauthAttemptRef.current || appleSignInLoading) return;
+    oauthAttemptRef.current = true;
     setAppleSignInLoading(true);
     try {
       if (!API_URL) {
         throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
       }
+      await prepareCustomerOAuthLogin(profile.isLoggedIn);
       const session = await runNativeAppleSignIn(API_URL);
       if (!session) return;
       await completeOAuthAfterSession(session.sessionToken, {
@@ -821,9 +836,10 @@ export default function HomeScreen() {
       const message = e instanceof Error ? e.message : "Apple-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
+      oauthAttemptRef.current = false;
       setAppleSignInLoading(false);
     }
-  }, [completeOAuthAfterSession]);
+  }, [appleSignInLoading, completeOAuthAfterSession, profile.isLoggedIn]);
 
   const submitEmailVerificationStart = useCallback(async () => {
     const email = obRegEmail.trim().toLowerCase();
@@ -2191,14 +2207,15 @@ export default function HomeScreen() {
         foregroundColor={colors.foreground}
         surfaceColor={colors.surface}
         borderColor={colors.border}
-        onCancel={() => {
+        onCancel={async () => {
           setLegalConsentModalVisible(false);
           setPendingOAuthSession(null);
+          await clearPendingOAuthSession();
         }}
-        onAccepted={() => {
-          if (pendingOAuthSession) {
-            applyOAuthSession(pendingOAuthSession);
-          }
+        onAccepted={async () => {
+          const pending = pendingOAuthSession;
+          if (!pending) return;
+          await applyOAuthSession(pending);
           setLegalConsentModalVisible(false);
           setPendingOAuthSession(null);
         }}

@@ -71,6 +71,14 @@ export async function runCustomerGoogleSignIn(
     console.log("[GoogleLogin] redirectUri=", redirectUri, "api=", apiUrl);
   }
 
+  try {
+    if (typeof WebBrowser.dismissAuthSession === "function") {
+      await WebBrowser.dismissAuthSession();
+    }
+  } catch {
+    /* ignore — stale AuthSession kann sonst hängen bleiben */
+  }
+
   const { authUrl } = await fetchGoogleOAuthStart(apiUrl, redirectUri);
   const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
   if (result.type !== "success") return null;

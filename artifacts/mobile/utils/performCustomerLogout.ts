@@ -3,6 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 
 import {
   PASSENGER_ID_STORAGE_KEY,
+  PENDING_OAUTH_STORAGE_KEY,
   USER_PROFILE_STORAGE_KEY,
 } from "@/constants/customerSessionStorage";
 import { queryClient } from "@/lib/queryClient";
@@ -19,7 +20,11 @@ async function runCustomerLogoutCleanup(): Promise<void> {
   }
 
   try {
-    await AsyncStorage.multiRemove([USER_PROFILE_STORAGE_KEY, PASSENGER_ID_STORAGE_KEY]);
+    await AsyncStorage.multiRemove([
+      USER_PROFILE_STORAGE_KEY,
+      PASSENGER_ID_STORAGE_KEY,
+      PENDING_OAUTH_STORAGE_KEY,
+    ]);
   } catch {
     /* ignore */
   }

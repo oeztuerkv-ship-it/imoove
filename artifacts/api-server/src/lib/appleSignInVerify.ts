@@ -14,6 +14,8 @@ function appleClientIds(): string[] {
     process.env.APPLE_BUNDLE_ID,
     process.env.EXPO_PUBLIC_APPLE_BUNDLE_ID,
     "com.vedat.mobile",
+    // Expo Go (iOS): natives Apple-Login nutzt host.exp.Exponent als JWT-Audience.
+    "host.exp.Exponent",
   ];
   const out = new Set<string>();
   for (const v of raw) {

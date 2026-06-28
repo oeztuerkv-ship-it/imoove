@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
-import { router, usePathname } from "expo-router";
+import { router, useLocalSearchParams, usePathname } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
@@ -69,6 +69,12 @@ import {
   type PendingOAuthSession,
 } from "@/utils/completeCustomerOAuthSession";
 import { mapCustomerLegalError, openOnrodaLegalPage } from "@/utils/customerLegalConsent";
+import { prepareCustomerOAuthLogin } from "@/utils/prepareCustomerOAuthLogin";
+import {
+  clearPendingOAuthSession,
+  loadPendingOAuthSession,
+  savePendingOAuthSession,
+} from "@/utils/pendingOAuthSessionStorage";
 import { rs, rf } from "@/utils/scale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -1011,13 +1017,33 @@ export default function ProfileScreen() {
   }, [regSubStep]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const oauthAttemptRef = useRef(false);
+  const oauthLegalParams = useLocalSearchParams<{ oauthLegal?: string | string[] }>();
+  const oauthLegalPending =
+    (typeof oauthLegalParams.oauthLegal === "string"
+      ? oauthLegalParams.oauthLegal
+      : oauthLegalParams.oauthLegal?.[0]) === "1";
+
+  useEffect(() => {
+    if (!oauthLegalPending) return;
+    void loadPendingOAuthSession().then((session) => {
+      if (!session) return;
+      setPendingOAuthSession(session);
+      setLegalConsentModalVisible(true);
+      setProfileStep("social");
+    });
+  }, [oauthLegalPending]);
+
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
 
   const handleGoogleLogin = async () => {
+    if (oauthAttemptRef.current || googleLoading) return;
+    oauthAttemptRef.current = true;
     setGoogleLoading(true);
     try {
+      await prepareCustomerOAuthLogin(profile.isLoggedIn);
       const session = await runCustomerGoogleSignIn(API_URL);
       if (!session) return;
       const gate = await gateCustomerOAuthSession(session.sessionToken, {
@@ -1032,18 +1058,21 @@ export default function ProfileScreen() {
         return;
       }
       if (gate.kind === "ready") {
-        loginWithGoogle({
+        await loginWithGoogle({
           ...gate.session.profile,
           sessionToken: gate.session.sessionToken,
         });
+        await clearPendingOAuthSession();
         return;
       }
       setPendingOAuthSession(gate.session);
+      await savePendingOAuthSession(gate.session);
       setLegalConsentModalVisible(true);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
+      oauthAttemptRef.current = false;
       setGoogleLoading(false);
     }
   };
@@ -1053,11 +1082,14 @@ export default function ProfileScreen() {
       Alert.alert(t("common.comingSoon"), t("profile.appleLoginSoon"));
       return;
     }
+    if (oauthAttemptRef.current || appleLoading) return;
+    oauthAttemptRef.current = true;
     setAppleLoading(true);
     try {
       if (!API_URL) {
         throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
       }
+      await prepareCustomerOAuthLogin(profile.isLoggedIn);
       const session = await runNativeAppleSignIn(API_URL);
       if (!session) return;
       const gate = await gateCustomerOAuthSession(session.sessionToken, {
@@ -1072,13 +1104,15 @@ export default function ProfileScreen() {
         return;
       }
       if (gate.kind === "ready") {
-        loginWithGoogle({
+        await loginWithGoogle({
           ...gate.session.profile,
           sessionToken: gate.session.sessionToken,
         });
+        await clearPendingOAuthSession();
         return;
       }
       setPendingOAuthSession(gate.session);
+      await savePendingOAuthSession(gate.session);
       setLegalConsentModalVisible(true);
     } catch (e: unknown) {
       const err = e as { code?: string };
@@ -1086,6 +1120,7 @@ export default function ProfileScreen() {
       const message = e instanceof Error ? e.message : "Apple-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
+      oauthAttemptRef.current = false;
       setAppleLoading(false);
     }
   };
@@ -2418,17 +2453,19 @@ export default function ProfileScreen() {
         foregroundColor={colors.foreground}
         surfaceColor={colors.surface}
         borderColor={colors.border}
-        onCancel={() => {
+        onCancel={async () => {
           setLegalConsentModalVisible(false);
           setPendingOAuthSession(null);
+          await clearPendingOAuthSession();
         }}
-        onAccepted={() => {
-          if (pendingOAuthSession) {
-            loginWithGoogle({
-              ...pendingOAuthSession.profile,
-              sessionToken: pendingOAuthSession.sessionToken,
-            });
-          }
+        onAccepted={async () => {
+          const pending = pendingOAuthSession;
+          if (!pending) return;
+          await loginWithGoogle({
+            ...pending.profile,
+            sessionToken: pending.sessionToken,
+          });
+          await clearPendingOAuthSession();
           setLegalConsentModalVisible(false);
           setPendingOAuthSession(null);
         }}

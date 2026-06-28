@@ -124,8 +124,8 @@ export function CustomerLegalLinksFooter({
 
 type CustomerLegalConsentModalProps = {
   visible: boolean;
-  onAccepted: () => void;
-  onCancel: () => void;
+  onAccepted: () => void | Promise<void>;
+  onCancel: () => void | Promise<void>;
   sessionToken: string;
   mutedColor: string;
   foregroundColor: string;
@@ -169,7 +169,7 @@ export function CustomerLegalConsentModal({
         setError(mapCustomerLegalError(outcome.error));
         return;
       }
-      onAccepted();
+      await onAccepted();
     } catch {
       setError(mapCustomerLegalError("legal_acceptance_failed"));
     } finally {

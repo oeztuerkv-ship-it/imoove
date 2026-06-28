@@ -8,6 +8,7 @@ import {
   type CustomerAuthDto,
 } from "@/utils/customerAuthApi";
 import { performCustomerLogout } from "@/utils/performCustomerLogout";
+import { clearPendingOAuthSession } from "@/utils/pendingOAuthSessionStorage";
 import { syncCustomerExpoPushToken } from "@/utils/syncCustomerExpoPushToken";
 
 export interface UserProfile {
@@ -104,7 +105,7 @@ interface UserContextValue {
   profile: UserProfile;
   updateProfile: (updates: Partial<UserProfile>) => void;
   logout: () => Promise<void>;
-  loginWithGoogle: (data: Partial<UserProfile> | Record<string, unknown>) => void;
+  loginWithGoogle: (data: Partial<UserProfile> | Record<string, unknown>) => Promise<void>;
   /** @deprecated Nur Legacy — nutze `registerCustomerAccount`. */
   registerLocalCustomer: (
     data: { name: string; email: string; phone: string },
@@ -152,37 +153,33 @@ function isSameCustomerAccount(
   return Boolean(existingEmail && incomingEmail && existingEmail === incomingEmail);
 }
 
-async function readStoredUserProfile(): Promise<UserProfile | null> {
-  try {
-    const raw = await AsyncStorage.getItem(PROFILE_KEY);
-    if (!raw?.trim()) return null;
-    return JSON.parse(raw) as UserProfile;
-  } catch {
-    return null;
-  }
-}
-
-/** Google-Login: Session-Felder aktualisieren, optionale Profildaten des gleichen Kontos behalten. */
-function mergeGoogleSessionIntoProfile(
+/** Google/Apple-OAuth: Session-Felder setzen; bei Konto-Wechsel Profil zurücksetzen. */
+function mergeOAuthSessionIntoProfile(
   existing: UserProfile,
   incoming: Partial<UserProfile>,
 ): UserProfile {
-  const base = isSameCustomerAccount(existing, incoming) ? existing : { ...DEFAULT_PROFILE };
+  const sameAccount = isSameCustomerAccount(existing, incoming);
+  const base = sameAccount ? existing : { ...DEFAULT_PROFILE };
   return {
     ...base,
     isLoggedIn: true,
     name: (incoming.name ?? "").trim() || base.name,
     email: (incoming.email ?? "").trim() || base.email,
+    phone: sameAccount ? base.phone : "",
     photoUri: incoming.photoUri !== undefined ? incoming.photoUri : base.photoUri,
     googleId: incoming.googleId ?? base.googleId,
+    authProvider: incoming.authProvider ?? base.authProvider ?? "google",
     sessionToken: incoming.sessionToken ?? base.sessionToken,
-    googleIdToken: incoming.googleIdToken ?? base.googleIdToken,
-    googleAccessToken: incoming.googleAccessToken ?? base.googleAccessToken,
-    googleAccessTokenExpiresAt: incoming.googleAccessTokenExpiresAt ?? base.googleAccessTokenExpiresAt,
-    emailVerificationProofToken:
-      incoming.emailVerificationProofToken !== undefined
+    googleIdToken: sameAccount ? (incoming.googleIdToken ?? base.googleIdToken) : undefined,
+    googleAccessToken: sameAccount ? (incoming.googleAccessToken ?? base.googleAccessToken) : undefined,
+    googleAccessTokenExpiresAt: sameAccount
+      ? (incoming.googleAccessTokenExpiresAt ?? base.googleAccessTokenExpiresAt)
+      : undefined,
+    emailVerificationProofToken: sameAccount
+      ? incoming.emailVerificationProofToken !== undefined
         ? incoming.emailVerificationProofToken
-        : base.emailVerificationProofToken,
+        : base.emailVerificationProofToken
+      : null,
   };
 }
 
@@ -191,20 +188,22 @@ function mergeCustomerAuthSession(
   customer: CustomerAuthDto,
   sessionToken: string,
 ): UserProfile {
-  const base = isSameCustomerAccount(existing, { googleId: customer.id, email: customer.email })
-    ? existing
-    : { ...DEFAULT_PROFILE };
+  const sameAccount = isSameCustomerAccount(existing, { googleId: customer.id, email: customer.email });
+  const base = sameAccount ? existing : { ...DEFAULT_PROFILE };
   return {
     ...base,
     isLoggedIn: true,
     name: customer.name.trim() || base.name,
     email: customer.email.trim() || base.email,
     phone: (customer.phone ?? "").trim() || base.phone,
-    photoUri: base.photoUri,
+    photoUri: sameAccount ? base.photoUri : null,
     googleId: customer.id,
     authProvider: "email",
     sessionToken,
     emailVerificationProofToken: null,
+    googleIdToken: undefined,
+    googleAccessToken: undefined,
+    googleAccessTokenExpiresAt: undefined,
   };
 }
 
@@ -246,16 +245,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const loginWithGoogle = useCallback((data: Partial<UserProfile> | Record<string, unknown>) => {
+  const loginWithGoogle = useCallback((data: Partial<UserProfile> | Record<string, unknown>): Promise<void> => {
     const incoming = data as Partial<UserProfile>;
-    void (async () => {
-      const stored = await readStoredUserProfile();
+    return new Promise((resolve) => {
       setProfile((prev) => {
-        const merged = mergeGoogleSessionIntoProfile(stored ?? prev, incoming);
+        const merged = mergeOAuthSessionIntoProfile(prev, incoming);
         AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(merged)).catch(() => {});
+        resolve();
         return merged;
       });
-    })();
+    });
   }, []);
 
   const registerLocalCustomer = useCallback(
@@ -277,15 +276,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [save],
   );
 
-  const applyCustomerSession = useCallback((customer: CustomerAuthDto, sessionToken: string) => {
-    void (async () => {
-      const stored = await readStoredUserProfile();
+  const applyCustomerSession = useCallback((customer: CustomerAuthDto, sessionToken: string): Promise<void> => {
+    return new Promise((resolve) => {
       setProfile((prev) => {
-        const merged = mergeCustomerAuthSession(stored ?? prev, customer, sessionToken);
+        const merged = mergeCustomerAuthSession(prev, customer, sessionToken);
         AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(merged)).catch(() => {});
+        resolve();
         return merged;
       });
-    })();
+    });
   }, []);
 
   const loginWithEmailAccount = useCallback(
@@ -300,7 +299,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!outcome.ok) {
         return { ok: false, error: mapCustomerAuthApiError(outcome.error) };
       }
-      applyCustomerSession(outcome.customer, outcome.sessionToken);
+      await clearPendingOAuthSession();
+      await applyCustomerSession(outcome.customer, outcome.sessionToken);
       return { ok: true };
     },
     [applyCustomerSession],
@@ -326,7 +326,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!outcome.ok) {
         return { ok: false, error: mapCustomerAuthApiError(outcome.error) };
       }
-      applyCustomerSession(outcome.customer, outcome.sessionToken);
+      await clearPendingOAuthSession();
+      await applyCustomerSession(outcome.customer, outcome.sessionToken);
       if (!outcome.customer.name.trim() && data.name.trim()) {
         updateProfile({ name: data.name.trim() });
       }

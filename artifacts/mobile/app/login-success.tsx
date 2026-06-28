@@ -3,12 +3,18 @@ import { useEffect, useRef } from "react";
 import { Alert } from "react-native";
 
 import { useUser } from "@/context/UserContext";
+import { gateCustomerOAuthSession } from "@/utils/completeCustomerOAuthSession";
 import { mapGoogleOAuthReturnError } from "@/utils/googleOAuthErrors";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
+import {
+  clearPendingOAuthSession,
+  savePendingOAuthSession,
+} from "@/utils/pendingOAuthSessionStorage";
 
 /**
  * Deep-Link nach Google-OAuth: onroda://login-success?token=…
  * (und gleicher Pfad bei Expo Go / Dev Client über makeRedirectUri).
+ * Legal-Consent-Gate wie bei Profil/Start — kein Login ohne Zustimmung.
  */
 export default function LoginSuccessScreen() {
   const params = useLocalSearchParams<{ token?: string | string[]; error?: string | string[]; detail?: string | string[] }>();
@@ -37,21 +43,39 @@ export default function LoginSuccessScreen() {
     }
 
     const p = parseJwtPayloadUnsafe(token);
-    if (p && typeof p.sub === "string") {
-      loginWithGoogle({
-        name: String(p.name ?? ""),
-        email: String(p.email ?? ""),
-        photoUri: typeof p.picture === "string" ? p.picture : null,
-        googleId: String(p.sub),
-        sessionToken: token,
-        authProvider: "google",
-      });
-      router.replace("/");
+    if (!p || typeof p.sub !== "string") {
+      Alert.alert("Anmeldung fehlgeschlagen", "Ungültiges Session-Token von der API.");
+      router.replace("/profile");
       return;
     }
 
-    Alert.alert("Anmeldung fehlgeschlagen", "Ungültiges Session-Token von der API.");
-    router.replace("/profile");
+    const oauthProfile = {
+      name: String(p.name ?? ""),
+      email: String(p.email ?? ""),
+      photoUri: typeof p.picture === "string" ? p.picture : null,
+      googleId: String(p.sub),
+      authProvider: "google" as const,
+    };
+
+    void (async () => {
+      const gate = await gateCustomerOAuthSession(token, oauthProfile);
+      if (gate.kind === "error") {
+        Alert.alert("Hinweis", gate.message);
+        router.replace("/profile");
+        return;
+      }
+      if (gate.kind === "needs_consent") {
+        await savePendingOAuthSession(gate.session);
+        router.replace("/profile?oauthLegal=1");
+        return;
+      }
+      await loginWithGoogle({
+        ...gate.session.profile,
+        sessionToken: gate.session.sessionToken,
+      });
+      await clearPendingOAuthSession();
+      router.replace("/");
+    })();
   }, [rawToken, rawError, rawDetail, loginWithGoogle, router]);
 
   return null;
