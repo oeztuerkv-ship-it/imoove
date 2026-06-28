@@ -5,12 +5,13 @@ import {
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
   SUPPORTED_LOCALES,
+  CUSTOMER_LOCALE_SELECTION_ENABLED,
   type AppLocale,
   type TranslationTree,
 } from "./types";
 
 export type { AppLocale, TranslationTree } from "./types";
-export { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, SUPPORTED_LOCALES };
+export { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, SUPPORTED_LOCALES, CUSTOMER_LOCALE_SELECTION_ENABLED };
 
 const catalogs: Record<AppLocale, TranslationTree> = { de, en, tr };
 

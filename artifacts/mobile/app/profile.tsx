@@ -44,7 +44,6 @@ import {
 } from "@/src/screens/LoginScreen";
 import { useTranslation } from "@/context/LanguageContext";
 import { type UserProfile, useUser } from "@/context/UserContext";
-import { SUPPORTED_LOCALES, type AppLocale } from "@/src/i18n";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
@@ -139,6 +138,7 @@ function AccountRow({
   isLast,
   hideChevron,
   trailingReorder,
+  readOnly,
 }: {
   icon: React.ReactNode;
   iconBg?: string;
@@ -146,12 +146,13 @@ function AccountRow({
   sublabel?: string;
   valueText?: string;
   valueTint?: "default" | "accent" | "success";
-  onPress: () => void;
+  onPress?: () => void;
   danger?: boolean;
   isFirst?: boolean;
   isLast?: boolean;
   hideChevron?: boolean;
   trailingReorder?: boolean;
+  readOnly?: boolean;
 }) {
   const colors = useColors();
   const valueColor =
@@ -160,15 +161,16 @@ function AccountRow({
       : valueTint === "success"
         ? "#16A34A"
         : colors.mutedForeground;
-  const tileBg = iconBg ?? (danger ? colors.border : colors.muted);
+  const tileBg = iconBg ?? (danger ? "#FEF2F2" : colors.muted);
   return (
     <Pressable
+      disabled={readOnly}
       style={({ pressed }) => [
         styles.accountRow,
-        { backgroundColor: pressed ? colors.muted : "transparent" },
+        { backgroundColor: !readOnly && pressed ? colors.muted : "transparent" },
         !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
       ]}
-      onPress={onPress}
+      onPress={readOnly ? undefined : onPress}
     >
       <View style={[styles.accountRowIconWrap, { backgroundColor: tileBg }]}>
         {icon}
@@ -900,25 +902,9 @@ export default function ProfileScreen() {
   const loginPadH = Math.max(rs(16), Math.min(rs(24), Math.round(screenWidth * 0.055)));
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
-  const { t, setLocale } = useTranslation();
+  const { t } = useTranslation();
 
   const { profile, loginWithGoogle, loginWithEmailAccount, updateProfile, logout, registerCustomerAccount } = useUser();
-
-  const pickLanguage = useCallback(() => {
-    Alert.alert(
-      t("language.title"),
-      t("language.choose"),
-      [
-        ...SUPPORTED_LOCALES.map((code: AppLocale) => ({
-          text: t(`language.names.${code}`),
-          onPress: () => {
-            void setLocale(code);
-          },
-        })),
-        { text: t("common.cancel"), style: "cancel" as const },
-      ],
-    );
-  }, [setLocale, t]);
 
   const [profileStep, setProfileStep] = useState<
     | "social"
@@ -1794,8 +1780,10 @@ export default function ProfileScreen() {
                   <AccountRow
                     icon={<MaterialCommunityIcons name="web" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label={t("profile.language")}
+                    valueText={t("language.names.de")}
+                    hideChevron
+                    readOnly
                     isFirst
-                    onPress={pickLanguage}
                   />
                   <AccountRow
                     icon={<MaterialCommunityIcons name="lock-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
@@ -1805,37 +1793,44 @@ export default function ProfileScreen() {
                   <AccountRow
                     icon={<MaterialCommunityIcons name="help-circle-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label={t("profile.helpSupport")}
+                    isLast
                     onPress={() => {
                       Haptics.selectionAsync();
                       router.replace("/help");
                     }}
                   />
-                  <AccountRow
-                    icon={<Feather name="log-out" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                    label={t("profile.logout")}
-                    danger
-                    isLast
-                    hideChevron
-                    onPress={() => {
-                      Alert.alert(t("profile.logoutConfirmTitle"), t("profile.logoutConfirmMessage"), [
-                        { text: t("common.cancel"), style: "cancel" },
-                        { text: t("profile.logout"), style: "destructive", onPress: () => void handleLogout() },
-                      ]);
-                    }}
-                  />
                 </SectionCard>
               </View>
 
-              <View style={[styles.accountSection, { marginTop: rs(4) }]}>
+              <View style={styles.accountSection}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    Alert.alert(t("profile.logoutConfirmTitle"), t("profile.logoutConfirmMessage"), [
+                      { text: t("common.cancel"), style: "cancel" },
+                      { text: t("profile.logout"), style: "destructive", onPress: () => void handleLogout() },
+                    ]);
+                  }}
+                  style={({ pressed }) => [
+                    styles.accountActionBtn,
+                    styles.logoutAccountBtn,
+                    { backgroundColor: pressed ? "#EFF6FF" : "#FFFFFF" },
+                  ]}
+                >
+                  <View style={styles.accountActionBtnContent}>
+                    <Feather name="log-out" size={rs(18)} color="#2563EB" />
+                    <Text style={styles.logoutAccountBtnText}>{t("profile.logout")}</Text>
+                  </View>
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   disabled={deleteAccountLoading}
                   onPress={handleDeleteAccount}
                   style={({ pressed }) => [
+                    styles.accountActionBtn,
                     styles.deleteAccountBtn,
                     {
-                      borderColor: colors.border,
-                      backgroundColor: pressed ? colors.muted : colors.surface,
+                      backgroundColor: pressed ? "#FEE2E2" : "#FFFFFF",
                       opacity: deleteAccountLoading ? 0.6 : 1,
                     },
                   ]}
@@ -1843,7 +1838,10 @@ export default function ProfileScreen() {
                   {deleteAccountLoading ? (
                     <ActivityIndicator size="small" color="#DC2626" />
                   ) : (
-                    <Text style={styles.deleteAccountBtnText}>Konto löschen</Text>
+                    <View style={styles.accountActionBtnContent}>
+                      <MaterialCommunityIcons name="account-remove-outline" size={rs(18)} color="#DC2626" />
+                      <Text style={styles.deleteAccountBtnText}>Konto löschen</Text>
+                    </View>
                   )}
                 </Pressable>
               </View>
@@ -2687,14 +2685,31 @@ const styles = StyleSheet.create({
   accountSection: {
     gap: rs(10),
   },
-  deleteAccountBtn: {
+  accountActionBtn: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: rs(16),
     paddingHorizontal: rs(16),
     borderRadius: rs(16),
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     minHeight: rs(52),
+  },
+  accountActionBtnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+  },
+  logoutAccountBtn: {
+    borderColor: "#2563EB",
+  },
+  logoutAccountBtnText: {
+    fontSize: rf(15),
+    fontFamily: "Inter_600SemiBold",
+    color: "#2563EB",
+  },
+  deleteAccountBtn: {
+    borderColor: "#DC2626",
   },
   deleteAccountBtnText: {
     fontSize: rf(15),

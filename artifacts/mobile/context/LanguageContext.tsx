@@ -10,6 +10,7 @@ import React, {
 } from "react";
 
 import {
+  CUSTOMER_LOCALE_SELECTION_ENABLED,
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
   SUPPORTED_LOCALES,
@@ -53,8 +54,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<AppLocale>(DEFAULT_LOCALE);
   const [ready, setReady] = useState(false);
 
-  /** Fahrer-App: immer Deutsch — keine Sprachwahl, kein Mix mit Kunden-Locale. */
-  const activeLocale: AppLocale = isDriverSurface ? DEFAULT_LOCALE : locale;
+  /** Fahrer-App und vorübergehend Kunden-App: immer Deutsch. */
+  const activeLocale: AppLocale =
+    isDriverSurface || !CUSTOMER_LOCALE_SELECTION_ENABLED ? DEFAULT_LOCALE : locale;
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +76,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [ready, activeLocale]);
 
   const setLocale = useCallback(async (next: AppLocale) => {
+    if (!CUSTOMER_LOCALE_SELECTION_ENABLED || isDriverSurface) return;
     if (!SUPPORTED_LOCALES.includes(next)) return;
     await AsyncStorage.setItem(LOCALE_STORAGE_KEY, next);
     setLocaleState(next);

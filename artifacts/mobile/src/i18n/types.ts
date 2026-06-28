@@ -4,6 +4,9 @@ export const SUPPORTED_LOCALES: AppLocale[] = ["de", "en", "tr"];
 
 export const DEFAULT_LOCALE: AppLocale = "de";
 
+/** Kunden-App: Sprachwahl im Profil — erst aktivieren, wenn en/tr vollständig sind. */
+export const CUSTOMER_LOCALE_SELECTION_ENABLED = false;
+
 export const LOCALE_STORAGE_KEY = "@Onroda_app_locale";
 
 export type TranslationTree = {
