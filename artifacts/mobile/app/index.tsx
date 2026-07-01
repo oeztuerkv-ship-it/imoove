@@ -101,16 +101,20 @@ import {
   isEmailStartAccountExistsResponse,
   mapEmailVerificationApiError,
 } from "@/utils/emailVerificationErrors";
-import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
+import { runNativeAppleSignIn, isAppleSignInCanceledError } from "@/utils/customerAppleSignIn";
 import { runCustomerGoogleSignIn } from "@/utils/customerGoogleSignIn";
 import {
-  gateCustomerOAuthSession,
+  finalizeCustomerOAuthSession,
   type PendingOAuthSession,
 } from "@/utils/completeCustomerOAuthSession";
 import { mapCustomerLegalError } from "@/utils/customerLegalConsent";
-import { prepareCustomerOAuthLogin } from "@/utils/prepareCustomerOAuthLogin";
+import {
+  prepareGoogleOAuthLogin,
+  prepareNativeAppleOAuthLogin,
+} from "@/utils/prepareCustomerOAuthLogin";
 import {
   clearPendingOAuthSession,
+  loadPendingOAuthSession,
   savePendingOAuthSession,
 } from "@/utils/pendingOAuthSessionStorage";
 import { rs, rf } from "@/utils/scale";
@@ -415,7 +419,6 @@ export default function HomeScreen() {
   const [obRegPasswordConfirm, setObRegPasswordConfirm] = useState("");
   const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
   const [registerLegalConsentChecked, setRegisterLegalConsentChecked] = useState(false);
-  const [socialRegisterLegalChecked, setSocialRegisterLegalChecked] = useState(false);
   const [pendingOAuthSession, setPendingOAuthSession] = useState<PendingOAuthSession | null>(null);
   const [legalConsentModalVisible, setLegalConsentModalVisible] = useState(false);
   const [obLoginEmail, setObLoginEmail] = useState("");
@@ -732,7 +735,17 @@ export default function HomeScreen() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [googleSignInLoading, setGoogleSignInLoading] = useState(false);
   const [appleSignInLoading, setAppleSignInLoading] = useState(false);
-  const oauthAttemptRef = useRef(false);
+  const googleOAuthAttemptRef = useRef(false);
+  const appleOAuthAttemptRef = useRef(false);
+
+  useEffect(() => {
+    if (!showOnboarding) return;
+    void loadPendingOAuthSession().then((session) => {
+      if (!session) return;
+      setPendingOAuthSession(session);
+      setLegalConsentModalVisible(true);
+    });
+  }, [showOnboarding]);
 
   /* ── Google OAuth ── */
   const applyOAuthSession = useCallback(
@@ -747,8 +760,16 @@ export default function HomeScreen() {
   );
 
   const completeOAuthAfterSession = useCallback(
-    async (sessionToken: string, profileData: Record<string, unknown>) => {
-      const gate = await gateCustomerOAuthSession(sessionToken, profileData);
+    async (
+      sessionToken: string,
+      profileData: Record<string, unknown>,
+      options?: { localLegalAccepted?: boolean },
+    ) => {
+      const gate = await finalizeCustomerOAuthSession({
+        sessionToken,
+        profile: profileData,
+        localLegalAccepted: options?.localLegalAccepted,
+      });
       if (gate.kind === "error") {
         Alert.alert("Hinweis", gate.message);
         return;
@@ -765,61 +786,74 @@ export default function HomeScreen() {
   );
 
   const handleGoogleSignIn = useCallback(async () => {
-    if (oauthAttemptRef.current || googleSignInLoading) return;
-    oauthAttemptRef.current = true;
+    if (googleOAuthAttemptRef.current || googleSignInLoading) return;
+    googleOAuthAttemptRef.current = true;
     setGoogleSignInLoading(true);
     try {
-      await prepareCustomerOAuthLogin(profile.isLoggedIn);
+      await prepareGoogleOAuthLogin(profile.isLoggedIn);
       const session = await runCustomerGoogleSignIn(API_URL);
       if (!session) return;
-      await completeOAuthAfterSession(session.sessionToken, {
-        googleId: session.googleId,
-        name: session.name,
-        email: session.email,
-        photoUri: session.photoUri,
-        authProvider: session.authProvider,
-      });
+      await completeOAuthAfterSession(
+        session.sessionToken,
+        {
+          googleId: session.googleId,
+          name: session.name,
+          email: session.email,
+          photoUri: session.photoUri,
+          authProvider: session.authProvider,
+        },
+      );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
-      oauthAttemptRef.current = false;
+      googleOAuthAttemptRef.current = false;
       setGoogleSignInLoading(false);
     }
-  }, [completeOAuthAfterSession, googleSignInLoading, profile.isLoggedIn]);
+  }, [
+    completeOAuthAfterSession,
+    googleSignInLoading,
+    profile.isLoggedIn,
+  ]);
 
   const handleAppleSignIn = useCallback(async () => {
     if (Platform.OS !== "ios") {
       Alert.alert("Hinweis", "Sign in with Apple ist nur auf iOS verfügbar.");
       return;
     }
-    if (oauthAttemptRef.current || appleSignInLoading) return;
-    oauthAttemptRef.current = true;
+    if (appleOAuthAttemptRef.current || appleSignInLoading) return;
+    appleOAuthAttemptRef.current = true;
     setAppleSignInLoading(true);
     try {
       if (!API_URL) {
         throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
       }
-      await prepareCustomerOAuthLogin(profile.isLoggedIn);
+      await prepareNativeAppleOAuthLogin(profile.isLoggedIn);
       const session = await runNativeAppleSignIn(API_URL);
       if (!session) return;
-      await completeOAuthAfterSession(session.sessionToken, {
-        name: session.name,
-        email: session.email,
-        photoUri: session.photoUri,
-        googleId: session.googleId,
-        authProvider: "apple",
-      });
+      await completeOAuthAfterSession(
+        session.sessionToken,
+        {
+          name: session.name,
+          email: session.email,
+          photoUri: session.photoUri,
+          googleId: session.googleId,
+          authProvider: "apple",
+        },
+      );
     } catch (e: unknown) {
-      const err = e as { code?: string };
-      if (err?.code === "ERR_REQUEST_CANCELED") return;
+      if (isAppleSignInCanceledError(e)) return;
       const message = e instanceof Error ? e.message : "Apple-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
-      oauthAttemptRef.current = false;
+      appleOAuthAttemptRef.current = false;
       setAppleSignInLoading(false);
     }
-  }, [appleSignInLoading, completeOAuthAfterSession, profile.isLoggedIn]);
+  }, [
+    appleSignInLoading,
+    completeOAuthAfterSession,
+    profile.isLoggedIn,
+  ]);
 
   const submitEmailVerificationStart = useCallback(async () => {
     const email = obRegEmail.trim().toLowerCase();
@@ -2624,10 +2658,6 @@ export default function HomeScreen() {
                     fontSize={isSmallScreen ? 13 : 14}
                     onRegisterPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      if (!socialRegisterLegalChecked) {
-                        Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
-                        return;
-                      }
                       setObRegName("");
                       setObRegEmail("");
                       setEmailOtpDigits("");
@@ -2635,12 +2665,6 @@ export default function HomeScreen() {
                       setCooldownSecs(0);
                       setOnboardingCustomerStep("email_enter");
                     }}
-                  />
-                  <CustomerLegalConsentCheckbox
-                    checked={socialRegisterLegalChecked}
-                    onCheckedChange={setSocialRegisterLegalChecked}
-                    mutedColor={colors.mutedForeground}
-                    fontSize={isSmallScreen ? 10 : 11}
                   />
                   <View style={{ gap: isSmallScreen ? 8 : 10 }}>
                     <Pressable

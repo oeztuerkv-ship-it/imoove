@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as WebBrowser from "expo-web-browser";
 
 import {
   PASSENGER_ID_STORAGE_KEY,
@@ -7,17 +6,12 @@ import {
   USER_PROFILE_STORAGE_KEY,
 } from "@/constants/customerSessionStorage";
 import { queryClient } from "@/lib/queryClient";
+import { dismissAuthSessionSafe } from "@/utils/dismissAuthSessionSafe";
 
 let customerLogoutInFlight: Promise<void> | null = null;
 
 async function runCustomerLogoutCleanup(): Promise<void> {
-  try {
-    if (typeof WebBrowser.dismissAuthSession === "function") {
-      await WebBrowser.dismissAuthSession();
-    }
-  } catch {
-    /* ignore */
-  }
+  await dismissAuthSessionSafe();
 
   try {
     await AsyncStorage.multiRemove([

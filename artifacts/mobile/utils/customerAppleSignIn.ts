@@ -60,6 +60,11 @@ async function exchangeAppleTokenWithApi(opts: {
   };
 }
 
+export function isAppleSignInCanceledError(error: unknown): boolean {
+  const code = (error as { code?: string })?.code;
+  return code === "ERR_REQUEST_CANCELED" || code === "ERR_CANCELED";
+}
+
 /** iOS: natives Apple-Login → API-Session-JWT. `null` wenn Nutzer abbricht. */
 export async function runNativeAppleSignIn(apiUrl: string): Promise<AppleSessionExchangeResult | null> {
   if (!(await isNativeAppleSignInAvailable())) {

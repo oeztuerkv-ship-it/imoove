@@ -62,14 +62,17 @@ import {
 import { runCustomerGoogleSignIn } from "@/utils/customerGoogleSignIn";
 import { isGoogleOAuthProfile } from "@/utils/customerAuthProvider";
 import { navigateToCustomerStartScreen } from "@/utils/navigateToCustomerStart";
-import { runNativeAppleSignIn } from "@/utils/customerAppleSignIn";
+import { runNativeAppleSignIn, isAppleSignInCanceledError } from "@/utils/customerAppleSignIn";
 import {
-  gateCustomerOAuthSession,
+  finalizeCustomerOAuthSession,
   type PendingOAuthSession,
 } from "@/utils/completeCustomerOAuthSession";
 import { deleteCustomerAccount } from "@/utils/customerAccountApi";
 import { mapCustomerLegalError, openOnrodaLegalPage } from "@/utils/customerLegalConsent";
-import { prepareCustomerOAuthLogin } from "@/utils/prepareCustomerOAuthLogin";
+import {
+  prepareGoogleOAuthLogin,
+  prepareNativeAppleOAuthLogin,
+} from "@/utils/prepareCustomerOAuthLogin";
 import {
   clearPendingOAuthSession,
   loadPendingOAuthSession,
@@ -1022,7 +1025,6 @@ export default function ProfileScreen() {
   const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
   const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
   const [registerLegalConsentChecked, setRegisterLegalConsentChecked] = useState(false);
-  const [socialRegisterLegalChecked, setSocialRegisterLegalChecked] = useState(false);
   const [pendingOAuthSession, setPendingOAuthSession] = useState<PendingOAuthSession | null>(null);
   const [legalConsentModalVisible, setLegalConsentModalVisible] = useState(false);
   const regNameRef = useRef<TextInput>(null);
@@ -1049,7 +1051,8 @@ export default function ProfileScreen() {
   }, [regSubStep]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
-  const oauthAttemptRef = useRef(false);
+  const googleOAuthAttemptRef = useRef(false);
+  const appleOAuthAttemptRef = useRef(false);
   const oauthLegalParams = useLocalSearchParams<{ oauthLegal?: string | string[] }>();
   const oauthLegalPending =
     (typeof oauthLegalParams.oauthLegal === "string"
@@ -1071,19 +1074,22 @@ export default function ProfileScreen() {
   const [billingOpen, setBillingOpen] = useState(false);
 
   const handleGoogleLogin = async () => {
-    if (oauthAttemptRef.current || googleLoading) return;
-    oauthAttemptRef.current = true;
+    if (googleOAuthAttemptRef.current || googleLoading) return;
+    googleOAuthAttemptRef.current = true;
     setGoogleLoading(true);
     try {
-      await prepareCustomerOAuthLogin(profile.isLoggedIn);
+      await prepareGoogleOAuthLogin(profile.isLoggedIn);
       const session = await runCustomerGoogleSignIn(API_URL);
       if (!session) return;
-      const gate = await gateCustomerOAuthSession(session.sessionToken, {
-        googleId: session.googleId,
-        name: session.name,
-        email: session.email,
-        photoUri: session.photoUri,
-        authProvider: session.authProvider,
+      const gate = await finalizeCustomerOAuthSession({
+        sessionToken: session.sessionToken,
+        profile: {
+          googleId: session.googleId,
+          name: session.name,
+          email: session.email,
+          photoUri: session.photoUri,
+          authProvider: session.authProvider,
+        },
       });
       if (gate.kind === "error") {
         Alert.alert("Hinweis", gate.message);
@@ -1104,7 +1110,7 @@ export default function ProfileScreen() {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
-      oauthAttemptRef.current = false;
+      googleOAuthAttemptRef.current = false;
       setGoogleLoading(false);
     }
   };
@@ -1114,22 +1120,25 @@ export default function ProfileScreen() {
       Alert.alert(t("common.comingSoon"), t("profile.appleLoginSoon"));
       return;
     }
-    if (oauthAttemptRef.current || appleLoading) return;
-    oauthAttemptRef.current = true;
+    if (appleOAuthAttemptRef.current || appleLoading) return;
+    appleOAuthAttemptRef.current = true;
     setAppleLoading(true);
     try {
       if (!API_URL) {
         throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
       }
-      await prepareCustomerOAuthLogin(profile.isLoggedIn);
+      await prepareNativeAppleOAuthLogin(profile.isLoggedIn);
       const session = await runNativeAppleSignIn(API_URL);
       if (!session) return;
-      const gate = await gateCustomerOAuthSession(session.sessionToken, {
-        name: session.name,
-        email: session.email,
-        photoUri: session.photoUri,
-        googleId: session.googleId,
-        authProvider: "apple",
+      const gate = await finalizeCustomerOAuthSession({
+        sessionToken: session.sessionToken,
+        profile: {
+          name: session.name,
+          email: session.email,
+          photoUri: session.photoUri,
+          googleId: session.googleId,
+          authProvider: "apple",
+        },
       });
       if (gate.kind === "error") {
         Alert.alert("Hinweis", gate.message);
@@ -1147,21 +1156,16 @@ export default function ProfileScreen() {
       await savePendingOAuthSession(gate.session);
       setLegalConsentModalVisible(true);
     } catch (e: unknown) {
-      const err = e as { code?: string };
-      if (err?.code === "ERR_REQUEST_CANCELED") return;
+      if (isAppleSignInCanceledError(e)) return;
       const message = e instanceof Error ? e.message : "Apple-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
     } finally {
-      oauthAttemptRef.current = false;
+      appleOAuthAttemptRef.current = false;
       setAppleLoading(false);
     }
   };
 
   const goRegister = () => {
-    if (!socialRegisterLegalChecked) {
-      Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
-      return;
-    }
     setRegName("");
     setRegEmail("");
     setRegOtpDigits("");
@@ -1910,12 +1914,6 @@ export default function ProfileScreen() {
                     marginBottom={rs(10)}
                     fontSize={rf(14)}
                     onRegisterPress={goRegister}
-                  />
-                  <CustomerLegalConsentCheckbox
-                    checked={socialRegisterLegalChecked}
-                    onCheckedChange={setSocialRegisterLegalChecked}
-                    mutedColor={colors.mutedForeground}
-                    fontSize={rf(11)}
                   />
                   <View style={{ gap: 10 }}>
                     <Pressable
