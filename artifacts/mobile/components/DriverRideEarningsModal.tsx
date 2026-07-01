@@ -27,15 +27,17 @@ function EarningsRow({
   sublabel,
   bold,
   valueTone,
+  boxed,
 }: {
   label: string;
   value: string;
   sublabel?: string;
   bold?: boolean;
   valueTone?: "default" | "minus" | "tip";
+  boxed?: boolean;
 }) {
   return (
-    <View style={styles.earningsRow}>
+    <View style={[styles.earningsRow, boxed && styles.earningsRowBoxed]}>
       <View style={styles.earningsLabelCol}>
         <Text style={[styles.earningsLabel, bold && styles.earningsLabelBold]}>{label}</Text>
         {sublabel ? <Text style={styles.earningsSublabel}>{sublabel}</Text> : null}
@@ -139,7 +141,7 @@ export function DriverRideEarningsModal({ visible, earnings, onClose }: Props) {
               valueTone={earnings.tip > 0.005 ? "tip" : "default"}
             />
             <Divider />
-            <EarningsRow label="Gesamt" value={formatEuroDe(earnings.net)} bold />
+            <EarningsRow label="Gesamt" value={formatEuroDe(earnings.net)} bold boxed />
           </View>
         </ScrollView>
 
@@ -211,8 +213,8 @@ const styles = StyleSheet.create({
   routeText: { flex: 1, fontSize: 14, color: "#334155", lineHeight: 20 },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: "#0f172a", marginBottom: 12 },
   earningsCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e2e8f0",
+    borderWidth: 1,
+    borderColor: "#000000",
     borderRadius: 14,
     overflow: "hidden",
     backgroundColor: "#fff",
@@ -224,6 +226,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
+  },
+  earningsRowBoxed: {
+    marginHorizontal: 12,
+    marginBottom: 12,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#000000",
+    borderRadius: 10,
   },
   earningsLabelCol: { flex: 1 },
   earningsLabel: { fontSize: 15, color: "#334155" },

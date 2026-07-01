@@ -1,5 +1,4 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { useKeepAwake } from "expo-keep-awake";
@@ -511,11 +510,13 @@ function InstantCard({
             overflow: "hidden",
           }}
         >
-          <LinearGradient
-            colors={["#F0FDF4", "#FFFFFF"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 22 }}
+          <View
+            style={{
+              paddingHorizontal: 24,
+              paddingTop: 24,
+              paddingBottom: 22,
+              backgroundColor: "#F0FDF4",
+            }}
           >
             <View style={{ alignItems: "center" }}>
               <Text
@@ -585,7 +586,7 @@ function InstantCard({
                 </View>
               </View>
             ) : null}
-          </LinearGradient>
+          </View>
 
           {showReleaseButton && onRelease ? (
             <Pressable
@@ -4086,11 +4087,11 @@ export default function DriverDashboard() {
           }
         >
           <View style={styles.toggleSwitch}>
-            <LinearGradient
-              colors={driverToggleOnline ? ["#66bb6a", "#43a047"] : ["#FF0000", "#c21807"]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.toggleTrack}
+            <View
+              style={[
+                styles.toggleTrack,
+                { backgroundColor: driverToggleOnline ? "#43a047" : "#c21807" },
+              ]}
             />
             <Animated.View
               style={[
