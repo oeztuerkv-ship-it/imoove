@@ -652,10 +652,22 @@
   padding: var(--onroda-space-8);
 }
 
+/** Phase-2-Look — kompakter, an admin-filter-toolbar--modern angeglichen. */
+.admin-filter-card--modern {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border-color: var(--onroda-border-subtle, #e2e8f0);
+}
+
 .admin-filter-grid {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr minmax(140px, 180px);
   gap: var(--onroda-space-4);
+}
+
+.admin-filter-grid--modern {
+  gap: 10px 12px;
+  grid-template-columns: minmax(200px, 2.2fr) repeat(auto-fit, minmax(132px, 1fr));
 }
 
 @media (max-width: 960px) {

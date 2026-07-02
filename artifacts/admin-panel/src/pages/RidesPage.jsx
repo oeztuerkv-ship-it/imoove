@@ -591,8 +591,8 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
         </div>
       </div>
 
-      <div className="admin-filter-card">
-        <div className="admin-filter-grid">
+      <div className="admin-filter-card admin-filter-card--modern">
+        <div className="admin-filter-grid admin-filter-grid--modern">
           <div className="admin-filter-item">
             <label className="admin-field-label">Suche</label>
             <input
@@ -676,8 +676,8 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
           <div className="admin-filter-item">
             <label className="admin-field-label">&nbsp;</label>
             <div className="admin-filter-actions">
-              <button type="button" className="admin-btn-refresh" onClick={() => void loadRides(true)}>
-                Neu laden
+              <button type="button" className="admin-btn-refresh" onClick={() => void loadRides(true)} disabled={loading}>
+                {loading ? "Lade …" : "Aktualisieren"}
               </button>
               <button type="button" className="admin-page-btn" disabled={exportBusy} onClick={() => void exportRidesCsv()}>
                 {exportBusy ? "Export …" : "CSV exportieren"}
@@ -694,7 +694,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
           {total} Treffer · Seite {page} von {totalPages} · {PAGE_SIZE} pro Seite
         </div>
 
-        <div className="admin-pagination">{renderPagination()}</div>
+        <div className="admin-pagination admin-pagination--inset">{renderPagination()}</div>
       </div>
 
       <div className="admin-table-card admin-table-card--flush">
@@ -838,7 +838,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
       <div className="admin-table-toolbar">
         <div className="admin-table-toolbar__info" />
-        <div className="admin-pagination">{renderPagination()}</div>
+        <div className="admin-pagination admin-pagination--inset">{renderPagination()}</div>
       </div>
 
       {detailId ? (
