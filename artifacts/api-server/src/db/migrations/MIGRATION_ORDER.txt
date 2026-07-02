@@ -127,3 +127,5 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 123_ride_financials_stripe_fee_payout_line.sql
 124_ride_financials_backfill_service_provider.sql
 125_rides_and_financials_company_from_driver.sql
+126_rides_completed_at.sql
+127_fleet_driver_cancellation_suspension.sql

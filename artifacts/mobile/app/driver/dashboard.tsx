@@ -1297,7 +1297,17 @@ function TabFahrten({ allRides, fleetAuthToken }: { allRides: RideEntry[]; fleet
 }
 
 /* ─── Tab: Geldbeutel ─── */
-function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driverRating: number }) {
+function TabGeldbeutel({
+  allRides,
+  driverRating,
+  ratingCount,
+  offerStats,
+}: {
+  allRides: RideEntry[];
+  driverRating: number | null;
+  ratingCount: number;
+  offerStats: DriverProfile["offerStats"];
+}) {
   const colors = useColors();
   const [hidden, setHidden] = useState(false);
   const todayStr = fmt(new Date()).date;
@@ -1315,11 +1325,12 @@ function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driv
 
   const mask = "***,** €";
   const show = (v: string) => hidden ? mask : v;
-
-  const totalOffers = 42;
-  const accepted = 38;
-  const acceptanceRate = Math.round((accepted / totalOffers) * 100);
-  const rejectionRate = 100 - acceptanceRate;
+  const ratingLabel =
+    driverRating != null && ratingCount > 0 ? `★ ${driverRating.toFixed(1)}` : "—";
+  const acceptanceLabel =
+    offerStats.acceptanceRatePercent != null ? `${offerStats.acceptanceRatePercent} %` : "—";
+  const rejectionLabel =
+    offerStats.rejectionRatePercent != null ? `${offerStats.rejectionRatePercent} %` : "—";
 
   const items = [
     { label: "Heute", value: show(formatEuro(todayTotal)), sub: `${todayRides.length} Fahrten`, icon: "sun" as const, color: "#F59E0B" },
@@ -1327,7 +1338,7 @@ function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driv
     { label: "Gesamt", value: show(formatEuro(allTotal)), sub: `${allRides.length} Fahrten`, icon: "trending-up" as const, color: "#22C55E" },
     { label: "Ø pro Fahrt", value: show(formatEuro(avgFare)), sub: "Durchschnitt", icon: "bar-chart-2" as const, color: "#8B5CF6" },
     { label: "Gesamt km", value: `${allKm.toFixed(0)} km`, sub: "Gefahren", icon: "map" as const, color: "#6B7280" },
-    { label: "Bewertung", value: `★ ${driverRating.toFixed(1)}`, sub: "Kundenbewertung", icon: "star" as const, color: "#F59E0B" },
+    { label: "Bewertung", value: ratingLabel, sub: ratingCount > 0 ? `${ratingCount} Bewertungen` : "Kundenbewertung", icon: "star" as const, color: "#F59E0B" },
   ];
 
   return (
@@ -1363,25 +1374,42 @@ function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driv
       {/* Performance stats */}
       <View style={[styles.perfCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.perfTitle, { color: colors.foreground }]}>Performance-Monitor</Text>
+        <Text style={[styles.perfPeriodHint, { color: colors.mutedForeground }]}>
+          Angebote letzte {offerStats.periodDays} Tage
+        </Text>
         <View style={styles.perfRow}>
           <View style={styles.perfItem}>
-            <Text style={[styles.perfValue, { color: "#F59E0B" }]}>★ {driverRating.toFixed(1)}</Text>
+            <Text style={[styles.perfValue, { color: "#F59E0B" }]}>{ratingLabel}</Text>
             <Text style={[styles.perfLabel, { color: colors.mutedForeground }]}>Sterne</Text>
           </View>
           <View style={[styles.perfDivider, { backgroundColor: colors.border }]} />
           <View style={styles.perfItem}>
-            <Text style={[styles.perfValue, { color: "#22C55E" }]}>{acceptanceRate} %</Text>
+            <Text style={[styles.perfValue, { color: "#22C55E" }]}>{acceptanceLabel}</Text>
             <Text style={[styles.perfLabel, { color: colors.mutedForeground }]}>Akzeptanzrate</Text>
           </View>
           <View style={[styles.perfDivider, { backgroundColor: colors.border }]} />
           <View style={styles.perfItem}>
-            <Text style={[styles.perfValue, { color: "#DC2626" }]}>{rejectionRate} %</Text>
+            <Text style={[styles.perfValue, { color: "#DC2626" }]}>{rejectionLabel}</Text>
             <Text style={[styles.perfLabel, { color: colors.mutedForeground }]}>Ablehnungsrate</Text>
           </View>
         </View>
+        <Text style={[styles.perfFootnote, { color: colors.mutedForeground }]}>
+          {offerStats.offersRejected} abgelehnt · {offerStats.offersAccepted} angenommen
+        </Text>
       </View>
     </ScrollView>
   );
+}
+
+function formatDriverRatingLabel(rating: number | null, ratingCount: number): string {
+  if (ratingCount <= 0 || rating == null) return "Noch keine Bewertungen";
+  return `★ ${rating.toFixed(1)} · ${ratingCount} Bewertung${ratingCount === 1 ? "" : "en"}`;
+}
+
+function dispatchPriorityLabel(priority: DriverProfile["dispatchPriority"]): string {
+  if (priority === "A") return "Priorität A (Premium)";
+  if (priority === "B") return "Priorität B";
+  return "Priorität C (Standard)";
 }
 
 /* ─── Tab: Profil ─── */
@@ -1403,21 +1431,60 @@ function TabProfil({
   inboxUnreadCount: number;
 }) {
   const colors = useColors();
+  const email = driver.email?.trim() || "—";
+  const konzession =
+    driver.konzessionNumber && driver.konzessionNumber !== "—" ? driver.konzessionNumber : null;
+  const stats = driver.offerStats;
+  const cancelSusp = driver.cancellationSuspension;
+  const acceptanceLabel =
+    stats.acceptanceRatePercent != null ? `${stats.acceptanceRatePercent} %` : "—";
+  const rejectionLabel =
+    stats.rejectionRatePercent != null ? `${stats.rejectionRatePercent} %` : "—";
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       directionalLockEnabled={Platform.OS === "ios"}
       contentContainerStyle={[styles.tabScroll, { paddingTop: 8 }]}
     >
-      {/* Driver info header */}
+      {cancelSusp.active ? (
+        <View
+          style={{
+            marginBottom: 12,
+            padding: 14,
+            borderRadius: 14,
+            backgroundColor: "#FEF2F2",
+            borderWidth: 1,
+            borderColor: "#FECACA",
+          }}
+        >
+          <Text style={{ color: "#B91C1C", fontFamily: "Inter_700Bold", fontSize: 14 }}>Storno-Sperre aktiv</Text>
+          <Text style={{ color: "#991B1B", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 8, lineHeight: 18 }}>
+            {cancelSusp.message ??
+              "Zu viele Stornos nach Fahrtannahme. Kein Dispatch und keine neuen Aufträge."}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={{ alignItems: "center", paddingVertical: 24, gap: 6 }}>
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EF1D26", alignItems: "center", justifyContent: "center" }}>
           <Text style={{ color: "#fff", fontSize: 28, fontFamily: "Inter_700Bold" }}>{driver.name?.[0] ?? "F"}</Text>
         </View>
         <Text style={{ color: "#000", fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 }}>{driver.name}</Text>
-        <Text style={{ color: "#8E8E93", fontSize: 13, fontFamily: "Inter_400Regular" }}>{driver.plate}</Text>
+        <Text style={[styles.profilEmail, { color: colors.mutedForeground }]}>{email}</Text>
+        <Text style={{ color: "#8E8E93", fontSize: 13, fontFamily: "Inter_400Regular" }}>
+          {[driver.plate !== "—" ? driver.plate : null, konzession ? `Konz. ${konzession}` : null]
+            .filter(Boolean)
+            .join(" · ") || "Fahrzeug noch nicht gewählt"}
+        </Text>
+        <View style={styles.profilRatingRow}>
+          <Feather name="star" size={14} color="#F59E0B" />
+          <Text style={[styles.profilRatingText, { color: colors.foreground }]}>
+            {formatDriverRatingLabel(driver.rating, driver.ratingCount)}
+          </Text>
+        </View>
       </View>
-      {/* Vehicle info */}
+
       <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>FAHRZEUG</Text>
         <Pressable style={styles.profilRow} onPress={onOpenVehiclePicker}>
@@ -1460,19 +1527,107 @@ function TabProfil({
         ) : null}
       </View>
 
-      {fleetAuthToken?.trim() ? (
-        <View
-          style={[
-            styles.profilCard,
-            { backgroundColor: colors.card, borderColor: colors.border, alignItems: "stretch", alignSelf: "stretch" },
-          ]}
+      <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border, alignItems: "stretch", alignSelf: "stretch" }]}>
+        <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>KONTO</Text>
+        <View style={styles.profilRow}>
+          <View style={[styles.profilIconBg, { backgroundColor: "#F3F4F6" }]}>
+            <Feather name="mail" size={18} color="#374151" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>{email}</Text>
+            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>E-Mail</Text>
+          </View>
+        </View>
+        <View style={[styles.profilDivider, { backgroundColor: colors.border }]} />
+        <View style={styles.profilRow}>
+          <View style={[styles.profilIconBg, { backgroundColor: driver.einsatzbereit ? "#DCFCE7" : "#FEE2E2" }]}>
+            <Feather name={driver.einsatzbereit ? "check-circle" : "alert-circle"} size={18} color={driver.einsatzbereit ? "#16A34A" : "#DC2626"} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>
+              {driver.einsatzbereit ? "Einsatzbereit" : driver.blockBannerTitle || "Noch nicht freigeschaltet"}
+            </Text>
+            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>
+              {driver.einsatzbereit
+                ? "Bereit für Aufträge"
+                : driver.notFreigegebenMessage || "Bitte Betrieb kontaktieren"}
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.profilDivider, { backgroundColor: colors.border }]} />
+        <View style={styles.profilRow}>
+          <View style={[styles.profilIconBg, { backgroundColor: "#F3F4F6" }]}>
+            <Feather name="user" size={18} color="#374151" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>
+              {driver.isOwner ? "Inhaber" : "Fahrer"}
+            </Text>
+            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>
+              {dispatchPriorityLabel(driver.dispatchPriority)}
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.profilDivider, { backgroundColor: colors.border }]} />
+        <Pressable
+          style={styles.profilRow}
+          onPress={() => router.push("/driver/change-password")}
         >
-          <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>KONTO</Text>
+          <View style={[styles.profilIconBg, { backgroundColor: "#F3F4F6" }]}>
+            <Feather name="lock" size={18} color="#374151" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>Passwort ändern</Text>
+            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Sicherheit & Zugang</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+        </Pressable>
+      </View>
+
+      <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border, alignItems: "stretch", alignSelf: "stretch" }]}>
+        <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>AKTIVITÄT</Text>
+        <Text style={[styles.profilRowSub, { color: colors.mutedForeground, marginBottom: 10 }]}>
+          Markt-Angebote · letzte {stats.periodDays} Tage
+        </Text>
+        <View style={styles.profilStatsRow}>
+          <View style={styles.profilStatsItem}>
+            <Text style={[styles.profilStatsValue, { color: "#DC2626" }]}>{stats.offersRejected}</Text>
+            <Text style={[styles.profilStatsLabel, { color: colors.mutedForeground }]}>Abgelehnt</Text>
+          </View>
+          <View style={[styles.profilStatsDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.profilStatsItem}>
+            <Text style={[styles.profilStatsValue, { color: "#22C55E" }]}>{stats.offersAccepted}</Text>
+            <Text style={[styles.profilStatsLabel, { color: colors.mutedForeground }]}>Angenommen</Text>
+          </View>
+          <View style={[styles.profilStatsDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.profilStatsItem}>
+            <Text style={[styles.profilStatsValue, { color: colors.foreground }]}>{acceptanceLabel}</Text>
+            <Text style={[styles.profilStatsLabel, { color: colors.mutedForeground }]}>Akzeptanz</Text>
+          </View>
+          <View style={[styles.profilStatsDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.profilStatsItem}>
+            <Text style={[styles.profilStatsValue, { color: colors.foreground }]}>{rejectionLabel}</Text>
+            <Text style={[styles.profilStatsLabel, { color: colors.mutedForeground }]}>Ablehnung</Text>
+          </View>
+        </View>
+        {stats.dispatchRejectStreak > 0 ? (
+          <Text style={[styles.profilRowSub, { color: "#B45309", marginTop: 10 }]}>
+            {stats.dispatchRejectStreak} Ablehnung{stats.dispatchRejectStreak === 1 ? "" : "en"} in Folge — bei 20 sinkt die Dispatch-Priorität.
+          </Text>
+        ) : null}
+        <Text style={[styles.profilRowSub, { color: colors.mutedForeground, marginTop: 10 }]}>
+          Stornos nach Annahme ({cancelSusp.windowDays} Tage): {cancelSusp.cancellationsInWindow} von {cancelSusp.threshold}
+        </Text>
+      </View>
+
+      {driver.featureKkModule && fleetAuthToken?.trim() ? (
+        <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border, alignItems: "stretch", alignSelf: "stretch" }]}>
+          <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>KRANKENFAHRT</Text>
           {driver.kkModuleAuthorized ? (
             <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="card" />
-          ) : driver.featureKkModule ? (
+          ) : (
             <MedicalTransportNotAuthorizedCard />
-          ) : null}
+          )}
         </View>
       ) : null}
 
@@ -2881,7 +3036,7 @@ export default function DriverDashboard() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { t } = useTranslation();
-  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h, refreshEinsatzbereit, patchAssignedVehicleSnapshot } = useDriver();
+  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, refreshEinsatzbereit, patchAssignedVehicleSnapshot } = useDriver();
   const { config: appPlatformConfig } = useOnrodaAppConfig();
   const allowDriverApp = (appPlatformConfig.system as { allowDriverApp?: boolean } | undefined)?.allowDriverApp !== false;
   const offersTeaserTitle =
@@ -3690,12 +3845,13 @@ export default function DriverDashboard() {
     setBannerRide(null);
     try {
       await driverCancelRequest(id, driverId);
-      if (req?.scheduledAt) {
-        const pickupMs = new Date(req.scheduledAt).getTime();
-        const diffMin = (pickupMs - Date.now()) / 60000;
-        if (diffMin >= 0 && diffMin < 60) {
-          await blockDriver48h();
-        }
+      const refreshed = await refreshEinsatzbereit?.();
+      if (refreshed?.cancellationSuspension.active) {
+        Alert.alert(
+          "Storno-Sperre aktiv",
+          refreshed.cancellationSuspension.message ??
+            "Zu viele Stornos nach Fahrtannahme. Kein Dispatch und keine neuen Aufträge.",
+        );
       }
       setActiveTab("uebersicht");
       await refreshRequests();
@@ -3735,8 +3891,13 @@ export default function DriverDashboard() {
               stopRideSound().catch(() => {});
               setBannerRide(null);
               await driverCancelRequest(req.id, driverId);
-              if (nearPickup) {
-                await blockDriver48h();
+              const refreshed = await refreshEinsatzbereit?.();
+              if (refreshed?.cancellationSuspension.active) {
+                Alert.alert(
+                  "Storno-Sperre aktiv",
+                  refreshed.cancellationSuspension.message ??
+                    "Zu viele Stornos nach Fahrtannahme. Kein Dispatch und keine neuen Aufträge.",
+                );
               }
               await refreshRequests?.();
             } catch (e) {
@@ -4355,7 +4516,14 @@ export default function DriverDashboard() {
               </ScrollView>
             )}
             {activeTab === "fahrten" && <TabFahrten allRides={allRides} fleetAuthToken={driver?.authToken} />}
-            {activeTab === "geldbeutel" && <TabGeldbeutel allRides={allRides} driverRating={driver.rating} />}
+            {activeTab === "geldbeutel" && (
+              <TabGeldbeutel
+                allRides={allRides}
+                driverRating={driver.rating}
+                ratingCount={driver.ratingCount}
+                offerStats={driver.offerStats}
+              />
+            )}
             {activeTab === "profil" && (
               <TabProfil
                 driver={driver}
@@ -4977,6 +5145,8 @@ const styles = StyleSheet.create({
   /* Performance stats */
   perfCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12, marginTop: 4 },
   perfTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  perfPeriodHint: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 12 },
+  perfFootnote: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 12, textAlign: "center" },
   perfRow: { flexDirection: "row", justifyContent: "space-around", alignItems: "center" },
   perfItem: { alignItems: "center", gap: 4, flex: 1 },
   perfDivider: { width: 1, height: 36 },
@@ -4999,6 +5169,11 @@ const styles = StyleSheet.create({
   profilRowLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   profilRowSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   profilDivider: { height: 1, marginVertical: 8, width: "100%" },
+  profilStatsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" },
+  profilStatsItem: { flex: 1, alignItems: "center", gap: 4, paddingVertical: 4 },
+  profilStatsDivider: { width: 1, height: 36 },
+  profilStatsValue: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  profilStatsLabel: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
   profilLogoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 16, paddingVertical: 15, borderWidth: 1.5, borderColor: "#DC2626", backgroundColor: "#FEF2F2", marginTop: 16 },
   inboxCountBadge: { backgroundColor: "#EF1D26", borderRadius: 10, minWidth: 20, height: 20, alignItems: "center" as const, justifyContent: "center" as const, paddingHorizontal: 5, marginRight: 6 },
   inboxCountBadgeText: { color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" },

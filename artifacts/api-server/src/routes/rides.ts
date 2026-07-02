@@ -74,6 +74,10 @@ import {
   getFleetDriverCapability,
   isRideCompatibleWithCapability,
 } from "../db/fleetMatchingData";
+import {
+  evaluateFleetDriverCancellationSuspensionAfterCancel,
+  rideQualifiesAsDriverPostAcceptCancel,
+} from "../lib/fleetDriverCancellationSuspensionPolicy";
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow, getFleetDriverMarketOnline, recordFleetDriverOfferRejectStreak, resetFleetDriverDispatchRejectStreak } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
@@ -3277,6 +3281,24 @@ router.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res,
       res.status(500).json({ error: "update_failed" });
       return;
     }
+    const authCompany = (req as FleetDriverAuthRequest).fleetDriverAuth?.companyId?.trim() ?? "";
+    if (
+      authCompany &&
+      rideQualifiesAsDriverPostAcceptCancel(cur, driverId)
+    ) {
+      await insertSupplementalRideEvent(id, {
+        eventType: "driver_post_accept_cancel",
+        fromStatus: cur.status,
+        toStatus: revertStatus,
+        actorType: "driver",
+        actorId: driverId,
+        payload: { driverId, companyId: authCompany, cancelKind: "soft" },
+      });
+      void evaluateFleetDriverCancellationSuspensionAfterCancel({
+        fleetDriverId: driverId,
+        companyId: authCompany,
+      }).catch(() => undefined);
+    }
     res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
@@ -3323,6 +3345,24 @@ router.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req,
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
       return;
+    }
+    const authCompany = (req as FleetDriverAuthRequest).fleetDriverAuth?.companyId?.trim() ?? "";
+    if (
+      authCompany &&
+      rideQualifiesAsDriverPostAcceptCancel(cur, driverId)
+    ) {
+      await insertSupplementalRideEvent(id, {
+        eventType: "driver_post_accept_cancel",
+        fromStatus: cur.status,
+        toStatus: "cancelled_by_driver",
+        actorType: "driver",
+        actorId: driverId,
+        payload: { driverId, companyId: authCompany, cancelKind: "hard" },
+      });
+      void evaluateFleetDriverCancellationSuspensionAfterCancel({
+        fleetDriverId: driverId,
+        companyId: authCompany,
+      }).catch(() => undefined);
     }
     res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {

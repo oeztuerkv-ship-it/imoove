@@ -4,6 +4,8 @@ import {
   reconcileTaxiFreischaltungForFleetLogin,
   type CompanyGovernanceGate,
 } from "./companyGovernanceData";
+import { findActiveFleetDriverCancellationSuspension } from "./fleetDriverCancellationSuspensionData";
+import { buildFleetDriverCancellationSuspensionMessage } from "../lib/fleetDriverCancellationSuspensionPolicy";
 import { findCompanyById } from "./adminData";
 import {
   findFleetDriverInCompany,
@@ -18,6 +20,7 @@ import { medicalTransportAuthorizationFromRows } from "../lib/medical/medicalTra
 export type DriverReadinessBlockCode =
   | "company_not_ready"
   | "driver_suspended"
+  | "driver_cancellation_suspended"
   | "driver_account_inactive"
   | "driver_rejected"
   | "driver_not_approved"
@@ -44,6 +47,8 @@ export interface DriverReadinessResult {
 const MSG: Record<DriverReadinessBlockCode, string> = {
   company_not_ready: "Unternehmen: Plattform-Zugang oder Konzession fehlen noch (Onroda-Prüfung).",
   driver_suspended: "Fahrerzugang ist gesperrt.",
+  driver_cancellation_suspended:
+    "Temporäre Storno-Sperre: zu viele Stornos nach Fahrtannahme. Kein Dispatch und keine neuen Aufträge.",
   driver_account_inactive: "Fahrerkonto ist deaktiviert.",
   driver_rejected: "Fahrer wurde abgelehnt.",
   driver_not_approved: "Fahrer ist noch nicht freigegeben (Onroda-Prüfung).",
@@ -110,6 +115,14 @@ export function buildFleetDriverMeClientHints(
     return { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" };
   }
   const codes = new Set(readiness.blockReasons.map((b) => b.code));
+  if (codes.has("driver_cancellation_suspended")) {
+    const cancelBlock = readiness.blockReasons.find((b) => b.code === "driver_cancellation_suspended");
+    return {
+      blockBannerTitle: "Storno-Sperre aktiv",
+      notFreigegebenMessage: cancelBlock?.message ?? MSG.driver_cancellation_suspended,
+      driverBlockKind: "access_suspended",
+    };
+  }
   if (codes.has("driver_account_inactive")) {
     return {
       blockBannerTitle: "Konto deaktiviert",
@@ -190,6 +203,7 @@ function pScheinExpiredOnlyWhenDatePresent(isoOrDate: string | null | undefined)
  */
 const READINESS_OVERRIDE_HARD_STOPS: ReadonlySet<DriverReadinessBlockCode> = new Set([
   "driver_suspended",
+  "driver_cancellation_suspended",
   "driver_account_inactive",
   "driver_rejected",
 ]);
@@ -280,7 +294,16 @@ export async function getFleetDriverReadinessById(
     listFleetVehiclesForCompany(companyId),
   ]);
   const av = assignedVehicleForDriver(listRow.id, ass, veh);
-  return computeDriverReadiness(gate, listRow, av != null, av);
+  const base = computeDriverReadiness(gate, listRow, av != null, av);
+  const cancellationSuspension = await findActiveFleetDriverCancellationSuspension(driverId);
+  if (cancellationSuspension) {
+    base.blockReasons.push({
+      code: "driver_cancellation_suspended",
+      message: buildFleetDriverCancellationSuspensionMessage(cancellationSuspension.suspendedUntil),
+    });
+    base.ready = false;
+  }
+  return base;
 }
 
 function assignedVehicleMeta(

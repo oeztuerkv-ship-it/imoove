@@ -78,7 +78,96 @@ function normalizeDriverPlaceholder(value: string | undefined | null): string {
   return trimmed;
 }
 
-/** Antwort `GET /fleet-driver/v1/me` → Profil (Token bleibt aus `prev`). */
+export type DriverOfferStats = {
+  periodDays: number;
+  offersSent: number;
+  offersAccepted: number;
+  offersRejected: number;
+  acceptanceRatePercent: number | null;
+  rejectionRatePercent: number | null;
+  dispatchRejectStreak: number;
+};
+
+export type DriverCancellationSuspension = {
+  active: boolean;
+  suspendedUntil: string | null;
+  message: string | null;
+  cancellationsInWindow: number;
+  windowDays: number;
+  threshold: number;
+};
+
+const DEFAULT_CANCELLATION_SUSPENSION: DriverCancellationSuspension = {
+  active: false,
+  suspendedUntil: null,
+  message: null,
+  cancellationsInWindow: 0,
+  windowDays: 7,
+  threshold: 5,
+};
+
+function normalizeCancellationSuspensionFromMe(raw: unknown): DriverCancellationSuspension {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const threshold =
+    typeof o.threshold === "number" && Number.isFinite(o.threshold) && o.threshold > 0
+      ? Math.round(o.threshold)
+      : DEFAULT_CANCELLATION_SUSPENSION.threshold;
+  const windowDays =
+    typeof o.windowDays === "number" && Number.isFinite(o.windowDays) && o.windowDays > 0
+      ? Math.round(o.windowDays)
+      : DEFAULT_CANCELLATION_SUSPENSION.windowDays;
+  const cancellationsInWindow =
+    typeof o.cancellationsInWindow === "number" && Number.isFinite(o.cancellationsInWindow)
+      ? Math.max(0, Math.round(o.cancellationsInWindow))
+      : 0;
+  const suspendedUntil =
+    typeof o.suspendedUntil === "string" && o.suspendedUntil.trim() ? o.suspendedUntil.trim() : null;
+  const message = typeof o.message === "string" && o.message.trim() ? o.message.trim() : null;
+  return {
+    active: o.active === true,
+    suspendedUntil,
+    message,
+    cancellationsInWindow,
+    windowDays,
+    threshold,
+  };
+}
+
+const DEFAULT_OFFER_STATS: DriverOfferStats = {
+  periodDays: 30,
+  offersSent: 0,
+  offersAccepted: 0,
+  offersRejected: 0,
+  acceptanceRatePercent: null,
+  rejectionRatePercent: null,
+  dispatchRejectStreak: 0,
+};
+
+function normalizeOfferStatsFromMe(raw: unknown): DriverOfferStats {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const periodDays =
+    typeof o.periodDays === "number" && Number.isFinite(o.periodDays) && o.periodDays > 0
+      ? Math.round(o.periodDays)
+      : DEFAULT_OFFER_STATS.periodDays;
+  const num = (key: keyof DriverOfferStats) => {
+    const v = o[key];
+    return typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0;
+  };
+  const nullableRate = (key: "acceptanceRatePercent" | "rejectionRatePercent") => {
+    const v = o[key];
+    return typeof v === "number" && Number.isFinite(v) ? Math.round(v * 10) / 10 : null;
+  };
+  return {
+    periodDays,
+    offersSent: num("offersSent"),
+    offersAccepted: num("offersAccepted"),
+    offersRejected: num("offersRejected"),
+    acceptanceRatePercent: nullableRate("acceptanceRatePercent"),
+    rejectionRatePercent: nullableRate("rejectionRatePercent"),
+    dispatchRejectStreak: num("dispatchRejectStreak"),
+  };
+}
+
 function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, unknown>): DriverProfile {
   const d = (me.driver ?? {}) as Record<string, unknown>;
   const av = (me.assignedVehicle ?? {}) as Record<string, unknown>;
@@ -136,6 +225,12 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     .toUpperCase();
   const dispatchPriority: DriverProfile["dispatchPriority"] =
     dispatchPriorityRaw === "A" || dispatchPriorityRaw === "B" ? dispatchPriorityRaw : "C";
+  const ratingCount =
+    typeof d.ratingCount === "number" && Number.isFinite(d.ratingCount) && d.ratingCount >= 0
+      ? Math.round(d.ratingCount)
+      : prev.ratingCount;
+  const ratingAverage =
+    typeof d.ratingAverage === "number" && Number.isFinite(d.ratingAverage) ? d.ratingAverage : null;
   return {
     ...prev,
     id: String(d.id ?? prev.id ?? ""),
@@ -169,10 +264,10 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     isOwner,
     kkModuleAuthorized,
     dispatchPriority,
-    rating:
-      typeof d.ratingAverage === "number" && Number.isFinite(d.ratingAverage)
-        ? d.ratingAverage
-        : prev.rating,
+    rating: ratingCount > 0 && ratingAverage != null ? ratingAverage : null,
+    ratingCount,
+    offerStats: normalizeOfferStatsFromMe(me.offerStats),
+    cancellationSuspension: normalizeCancellationSuspensionFromMe(me.cancellationSuspension),
   };
 }
 
@@ -192,7 +287,13 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     plate: String(p.plate ?? "—"),
     konzessionNumber: String(p.konzessionNumber ?? "—"),
     car: String(p.car ?? "—"),
-    rating: typeof p.rating === "number" && Number.isFinite(p.rating) ? p.rating : 5,
+    rating: typeof p.rating === "number" && Number.isFinite(p.rating) ? p.rating : null,
+    ratingCount:
+      typeof p.ratingCount === "number" && Number.isFinite(p.ratingCount) && p.ratingCount >= 0
+        ? Math.round(p.ratingCount)
+        : 0,
+    offerStats: normalizeOfferStatsFromMe(p.offerStats),
+    cancellationSuspension: normalizeCancellationSuspensionFromMe(p.cancellationSuspension),
     isAvailable: Boolean(p.isAvailable),
     blockedUntil: typeof p.blockedUntil === "string" || p.blockedUntil === null ? (p.blockedUntil as string | null) : null,
     einsatzbereit: p.einsatzbereit === true,
@@ -248,7 +349,11 @@ export interface DriverProfile {
   /** Freigegebenes Zuweisungs-Fahrzeug, sonst Admin-Mandanten-Konzession (`/fleet-driver/v1/me`). */
   konzessionNumber: string;
   car: string;
-  rating: number;
+  /** Kunden-Sterne-Durchschnitt (1–5); null wenn noch keine Bewertung. */
+  rating: number | null;
+  ratingCount: number;
+  offerStats: DriverOfferStats;
+  cancellationSuspension: DriverCancellationSuspension;
   isAvailable: boolean;
   blockedUntil: string | null;
   /** Wahr, wenn alle Einsatzbereit-Bedingungen erfüllt sind (siehe API `/fleet-driver/v1/me`). */
@@ -280,7 +385,7 @@ interface DriverContextValue {
   isBlocked: boolean;
   blockedUntilDate: Date | null;
   driver: DriverProfile | null;
-  refreshEinsatzbereit: () => Promise<void>;
+  refreshEinsatzbereit: () => Promise<DriverProfile | null>;
   patchAssignedVehicleSnapshot: (snap: {
     plate?: string;
     konzessionNumber?: string;
@@ -300,7 +405,7 @@ const DriverContext = createContext<DriverContextValue>({
   isBlocked: false,
   blockedUntilDate: null,
   driver: null,
-  refreshEinsatzbereit: async () => {},
+  refreshEinsatzbereit: async () => null,
   patchAssignedVehicleSnapshot: () => {},
   login: async () => ({ ok: false, error: "Anmeldung fehlgeschlagen." }),
   changePassword: async () => ({ ok: false, error: "Passwortänderung fehlgeschlagen." }),
@@ -425,7 +530,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         plate: "—",
         konzessionNumber: "—",
         car: "—",
-        rating: 5,
+        rating: null,
+        ratingCount: 0,
+        offerStats: DEFAULT_OFFER_STATS,
+        cancellationSuspension: DEFAULT_CANCELLATION_SUSPENSION,
         isAvailable: false,
         blockedUntil: null,
         einsatzbereit: false,
@@ -552,24 +660,26 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, [driver?.authToken]);
 
-  const refreshEinsatzbereit = useCallback(async () => {
+  const refreshEinsatzbereit = useCallback(async (): Promise<DriverProfile | null> => {
     const token = driver?.authToken;
-    if (!token) return;
+    if (!token) return null;
     try {
       const res = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!data?.ok || !data?.driver) return;
+      if (!data?.ok || !data?.driver) return null;
+      let next: DriverProfile | null = null;
       setDriver((prev) => {
         if (!prev) return prev;
-        const next = mergeFleetDriverMeIntoProfile(prev, data);
+        next = mergeFleetDriverMeIntoProfile(prev, data);
         patchStoredDriver(next);
         return next;
       });
+      return next;
     } catch {
-      /* ignore */
+      return null;
     }
   }, [driver?.authToken]);
 

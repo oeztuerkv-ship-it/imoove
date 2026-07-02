@@ -484,6 +484,23 @@ export const customerCancellationSuspensionTable = pgTable("customer_cancellatio
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Fahrer-Storno-Sperre nach zu vielen Stornos nach Annahme (7-Tage-Fenster). */
+export const fleetDriverCancellationSuspensionTable = pgTable("fleet_driver_cancellation_suspension", {
+  fleet_driver_id: text("fleet_driver_id")
+    .primaryKey()
+    .references(() => fleetDriversTable.id, { onDelete: "cascade" }),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  suspended_until: timestamp("suspended_until", { withTimezone: true }).notNull(),
+  suspended_at: timestamp("suspended_at", { withTimezone: true }).notNull().defaultNow(),
+  reason: text("reason").notNull().default("too_many_post_accept_cancellations"),
+  lifted_at: timestamp("lifted_at", { withTimezone: true }),
+  lifted_by_admin: text("lifted_by_admin"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Kunden-App: Registrierung per E-Mail + Passwort (JWT sub = id). */
 export const customerAccountsTable = pgTable("customer_accounts", {
   id: text("id").primaryKey(),

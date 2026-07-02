@@ -34,6 +34,14 @@ import {
 import { getFleetDriverRideEarnings } from "../lib/fleetDriverRideEarnings.js";
 import { submitDriverPassengerRating } from "../lib/fleetDriverRatings.js";
 import { averageFleetDriverRating } from "../lib/fleetDriverRatings.js";
+import { getFleetDriverOfferStats } from "../db/fleetDriverOfferStatsData.js";
+import {
+  countFleetDriverPostAcceptCancellationsInWindow,
+  findActiveFleetDriverCancellationSuspension,
+  FLEET_DRIVER_CANCELLATION_THRESHOLD,
+  FLEET_DRIVER_CANCELLATION_WINDOW_DAYS,
+} from "../db/fleetDriverCancellationSuspensionData.js";
+import { buildFleetDriverCancellationSuspensionMessage } from "../lib/fleetDriverCancellationSuspensionPolicy.js";
 import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
 import { releaseInstantRideDispatchOffer, syncDispatchTiersForRides } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver, findRide } from "../db/ridesData";
@@ -126,6 +134,12 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     assignedVehicleAny: assignedVehicle,
     companyConcessionNumber,
   });
+  const dispatchRejectStreak = Number((rowFresh as { dispatch_reject_streak?: number }).dispatch_reject_streak ?? 0) || 0;
+  const offerStats = await getFleetDriverOfferStats(a.fleetDriverId, a.companyId, dispatchRejectStreak);
+  const [cancellationSuspensionRow, cancellationsInWindow] = await Promise.all([
+    findActiveFleetDriverCancellationSuspension(a.fleetDriverId),
+    countFleetDriverPostAcceptCancellationsInWindow(a.fleetDriverId, a.companyId),
+  ]);
   res.json({
     ok: true,
     einsatzbereit,
@@ -148,6 +162,18 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
     driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
     driverWorkflow,
+    offerStats,
+    cancellationSuspension: {
+      active: Boolean(cancellationSuspensionRow),
+      suspendedUntil: cancellationSuspensionRow?.suspendedUntil.toISOString() ?? null,
+      message:
+        cancellationSuspensionRow != null
+          ? buildFleetDriverCancellationSuspensionMessage(cancellationSuspensionRow.suspendedUntil)
+          : null,
+      cancellationsInWindow,
+      windowDays: FLEET_DRIVER_CANCELLATION_WINDOW_DAYS,
+      threshold: FLEET_DRIVER_CANCELLATION_THRESHOLD,
+    },
     ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
     driver: {
       id: rowFresh.id,
@@ -162,6 +188,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       vehicleClass: rowFresh.vehicle_class,
       dispatchPriority: listRow.dispatchPriority,
       ratingAverage: averageFleetDriverRating(listRow.ratingSum, listRow.ratingCount),
+      ratingCount: listRow.ratingCount,
     },
     assignedVehicle: assignedVehicleVisible
       ? fleetDriverAssignedVehiclePayload(assignedVehicleVisible, companyConcessionNumber)
