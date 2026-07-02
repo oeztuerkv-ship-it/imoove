@@ -21,14 +21,34 @@ function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
 }
 
-function mapCreateError(res, code) {
+function mapCreateError(res, data) {
+  const code = typeof data?.error === "string" ? data.error : "";
+  const msg = typeof data?.message === "string" ? data.message.trim() : "";
+  const hint = typeof data?.hint === "string" ? data.hint.trim() : "";
+
+  if (msg) return msg;
+  if (code === "partner_address_incomplete") {
+    return "Adresse unvollständig — Straße, Hausnummer und PLZ prüfen.";
+  }
   if (res.status === 403) {
-    return code === "company_kind_not_allowed_for_instant_ride"
-      ? "Sofortfahrten sind für Ihren Mandantentyp nicht freigeschaltet — bitte Reservierung wählen."
-      : "Keine Berechtigung, Fahrten anzulegen.";
+    if (code === "company_kind_not_allowed_for_instant_ride") {
+      return "Sofortfahrten sind für Ihren Mandantentyp nicht freigeschaltet — bitte Reservierung wählen.";
+    }
+    if (code === "route_outside_assigned_area") {
+      return "Route liegt außerhalb Ihrer zugewiesenen Einsatzgebiete.";
+    }
+    if (code === "module_disabled") {
+      return hint ? `Funktion nicht freigeschaltet (${hint}).` : "Funktion für Ihr Konto nicht freigeschaltet.";
+    }
+    return "Keine Berechtigung, Fahrten anzulegen.";
   }
   if (code === "customer_name_required") return "Bitte Fahrgastnamen angeben.";
   if (code === "route_fields_required") return "Route unvollständig.";
+  if (code === "service_area_not_covered") {
+    return "Adresse liegt außerhalb des Servicegebietes.";
+  }
+  if (code === "from_not_found") return "Abholadresse konnte nicht gefunden werden.";
+  if (code === "to_not_found") return "Zieladresse konnte nicht gefunden werden.";
   if (code === "pricing_or_vehicle_invalid" || code === "estimated_fare_mismatch" || code === "estimate_mismatch") {
     return "Preis konnte nicht bestätigt werden — Route neu berechnen und erneut senden.";
   }
@@ -41,6 +61,18 @@ function mapCreateError(res, code) {
   if (code === "ride_kind_invalid" || code === "payer_kind_invalid") {
     return "Fahrttyp oder Zahler ungültig.";
   }
+  if (code === "feature_invoice_disabled") {
+    return "Rechnungszahlung ist derzeit nicht freigeschaltet — Zahlungsart in den Optionen anpassen.";
+  }
+  if (code === "feature_normal_ride_disabled") {
+    return "Normale Fahrten sind derzeit nicht freigeschaltet.";
+  }
+  if (code === "feature_prebooking_disabled") {
+    return "Reservierungen sind derzeit nicht freigeschaltet.";
+  }
+  if (code === "tariffs_inactive") {
+    return "Tarife sind derzeit nicht aktiv — bitte später erneut versuchen.";
+  }
   if (code === "access_code_invalid") return "Zugangscode ungültig oder unbekannt.";
   if (code === "access_code_inactive") return "Zugangscode ist deaktiviert.";
   if (code === "access_code_not_yet_valid") return "Zugangscode ist noch nicht gültig.";
@@ -50,6 +82,8 @@ function mapCreateError(res, code) {
   if (code === "access_code_in_use") {
     return "Zugangscode ist bereits für eine laufende Buchung reserviert.";
   }
+  if (code) return `Fahrt konnte nicht angelegt werden (${code}).`;
+  if (res.status >= 500) return "Serverfehler — bitte kurz warten und erneut versuchen.";
   return "Fahrt konnte nicht angelegt werden.";
 }
 
@@ -76,6 +110,10 @@ export default function RideCreatePage() {
     distanceKm: "",
     durationMinutes: "",
     estimatedFare: "",
+    fromLat: null,
+    fromLon: null,
+    toLat: null,
+    toLon: null,
     paymentMethod: "rechnung",
     vehicle: "standard",
     scheduledAt: defaultPartnerReservationDatetimeLocal(),
@@ -140,44 +178,53 @@ export default function RideCreatePage() {
     }
   }, [scheduleMode, form.scheduledAt]);
 
+  async function applyRouteResult(route) {
+    setForm((f) => ({
+      ...f,
+      distanceKm: String(route.distanceKm),
+      durationMinutes: String(route.durationMinutes),
+      estimatedFare: String(route.estimatedFare),
+      fromLat: route.fromLat ?? null,
+      fromLon: route.fromLon ?? null,
+      toLat: route.toLat ?? null,
+      toLon: route.toLon ?? null,
+    }));
+    return route;
+  }
+
+  async function fetchFreshRoute() {
+    const route = await fetchDistanceMatrixByAddress(fromFull, toFull, token, {
+      vehicle: form.vehicle,
+    });
+    await applyRouteResult(route);
+    return route;
+  }
+
   async function autoFillRoute() {
     if (!hasRouteInputs) return;
     setRouting(true);
     setCreateMsg("");
     try {
-      const route = await fetchDistanceMatrixByAddress(fromFull, toFull, token, {
-        vehicle: form.vehicle,
-      });
-      setForm((f) => ({
-        ...f,
-        distanceKm: String(route.distanceKm),
-        durationMinutes: String(route.durationMinutes),
-        estimatedFare: String(route.estimatedFare),
-      }));
+      await fetchFreshRoute();
     } catch (e) {
       setCreateMsg(e instanceof Error ? e.message : "Route konnte nicht automatisch berechnet werden.");
+      setForm((f) => ({
+        ...f,
+        distanceKm: "",
+        durationMinutes: "",
+        estimatedFare: "",
+        fromLat: null,
+        fromLon: null,
+        toLat: null,
+        toLon: null,
+      }));
     } finally {
       setRouting(false);
     }
   }
 
   async function resolveRouteValues() {
-    const d = Number(String(form.distanceKm).replace(",", "."));
-    const m = Number(String(form.durationMinutes).replace(",", "."));
-    const f = Number(String(form.estimatedFare).replace(",", "."));
-    if (Number.isFinite(d) && Number.isFinite(m) && Number.isFinite(f) && d > 0 && m > 0 && f >= 0) {
-      return { distanceKm: d, durationMinutes: m, estimatedFare: f };
-    }
-    const route = await fetchDistanceMatrixByAddress(fromFull, toFull, token, {
-      vehicle: form.vehicle,
-    });
-    setForm((prev) => ({
-      ...prev,
-      distanceKm: String(route.distanceKm),
-      durationMinutes: String(route.durationMinutes),
-      estimatedFare: String(route.estimatedFare),
-    }));
-    return route;
+    return fetchFreshRoute();
   }
 
   function resolvedCustomerName() {
@@ -230,6 +277,8 @@ export default function RideCreatePage() {
         distanceKm: route.distanceKm,
         durationMinutes: route.durationMinutes,
         estimatedFare: route.estimatedFare,
+        ...(route.fromLat != null && route.fromLon != null ? { fromLat: route.fromLat, fromLon: route.fromLon } : {}),
+        ...(route.toLat != null && route.toLon != null ? { toLat: route.toLat, toLon: route.toLon } : {}),
         paymentMethod: form.paymentMethod.trim() || "rechnung",
         vehicle: form.vehicle.trim() || "standard",
         rideKind: form.rideKind,
@@ -253,8 +302,7 @@ export default function RideCreatePage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        const code = typeof data?.error === "string" ? data.error : "";
-        setCreateMsg(mapCreateError(res, code));
+        setCreateMsg(mapCreateError(res, data));
         return;
       }
       const ride = data.ride ?? {};
@@ -282,6 +330,10 @@ export default function RideCreatePage() {
         distanceKm: "",
         durationMinutes: "",
         estimatedFare: "",
+        fromLat: null,
+        fromLon: null,
+        toLat: null,
+        toLon: null,
         scheduledAt: defaultPartnerReservationDatetimeLocal(),
         driverNote: "",
         rideKind: "standard",
@@ -630,8 +682,8 @@ export default function RideCreatePage() {
               </p>
             ) : null}
 
-            <button type="submit" className="panel-btn-primary partner-booking-submit" disabled={creating || routing}>
-              {creating ? "Wird gebucht …" : scheduleMode === "reservation" ? "Reservierung anlegen" : "Sofort-Taxi bestellen"}
+            <button type="submit" className="panel-btn-primary partner-booking-submit" disabled={creating || routing || !routeReady}>
+              {creating ? "Wird gebucht …" : routing ? "Route wird berechnet …" : scheduleMode === "reservation" ? "Reservierung anlegen" : "Sofort-Taxi bestellen"}
             </button>
           </form>
         </div>

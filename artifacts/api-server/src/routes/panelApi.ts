@@ -866,14 +866,27 @@ router.post("/panel/v1/route-distance", requirePanelAuth, async (req, res, next)
       opPayload,
       regions,
       fromFull,
-      fromLat: optCoord(body.fromLat ?? body.from_lat),
-      fromLon: optCoord(body.fromLon ?? body.from_lon),
+      fromLat: result.from.lat,
+      fromLon: result.from.lon,
       distanceKm: result.route.distanceKm,
       tripMinutes: result.route.durationMinutes,
       waitingMinutes: 0,
       vehicle,
       at: new Date(),
     });
+    const area = await checkCustomerRideServiceArea(fromFull, toFull, {
+      fromLat: result.from.lat,
+      fromLon: result.from.lon,
+      toLat: result.to.lat,
+      toLon: result.to.lon,
+    });
+    if (!area.ok) {
+      res.status(400).json({
+        error: "service_area_not_covered",
+        message: getOutOfServiceAreaMessage(opPayload),
+      });
+      return;
+    }
     res.json({
       ok: true,
       distanceKm: result.route.distanceKm,
@@ -2001,11 +2014,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         vehicle: panelVehicleNorm,
         at: new Date(),
       });
-      const panelFareChk = assertClientEstimatedFareMatchesServer(estimatedFare, panelBookingPricing.finalPrice);
-      if (!panelFareChk.ok) {
-        res.status(400).json({ error: panelFareChk.error });
-        return;
-      }
+      const serverFare = panelBookingPricing.finalPrice;
 
       const newReq: RideRequest = {
         id: reqRideId(),
@@ -2030,7 +2039,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         toLon: optNum("toLon"),
         distanceKm,
         durationMinutes,
-        estimatedFare: panelBookingPricing.finalPrice,
+        estimatedFare: serverFare,
         finalFare: null,
         paymentMethod,
         vehicle,

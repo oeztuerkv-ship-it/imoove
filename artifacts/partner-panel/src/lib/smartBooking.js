@@ -99,6 +99,12 @@ export async function fetchDistanceMatrixByAddress(fromFull, toFull, token, opti
     if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
       throw new Error("matrix_no_route");
     }
+    const fromPt = data.from && typeof data.from === "object" ? data.from : null;
+    const toPt = data.to && typeof data.to === "object" ? data.to : null;
+    const fromLat = fromPt && Number.isFinite(Number(fromPt.lat)) ? Number(fromPt.lat) : null;
+    const fromLon = fromPt && Number.isFinite(Number(fromPt.lon)) ? Number(fromPt.lon) : null;
+    const toLat = toPt && Number.isFinite(Number(toPt.lat)) ? Number(toPt.lat) : null;
+    const toLon = toPt && Number.isFinite(Number(toPt.lon)) ? Number(toPt.lon) : null;
     return {
       distanceKm,
       durationMinutes: Number.isFinite(durationMinutes) ? durationMinutes : 1,
@@ -106,6 +112,10 @@ export async function fetchDistanceMatrixByAddress(fromFull, toFull, token, opti
         Number.isFinite(serverFare) && serverFare >= 0
           ? serverFare
           : estimateSystemFare(distanceKm),
+      fromLat,
+      fromLon,
+      toLat,
+      toLon,
     };
   }
 
