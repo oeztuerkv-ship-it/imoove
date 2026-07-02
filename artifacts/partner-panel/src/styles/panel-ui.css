@@ -296,6 +296,170 @@
   outline-offset: 1px;
 }
 
+.panel-rides-form__field textarea,
+.partner-booking-note {
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid var(--onroda-border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--onroda-text-dark);
+  background: var(--onroda-bg-app);
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
+}
+
+.panel-rides-form__field textarea:focus-visible,
+.partner-booking-note:focus-visible {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 1px;
+}
+
+.partner-booking-page .partner-page-title {
+  margin-bottom: 8px;
+}
+
+.partner-booking-card {
+  margin-top: 16px;
+}
+
+.partner-booking-section {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--onroda-border);
+}
+
+.partner-booking-section:last-of-type {
+  border-bottom: none;
+}
+
+.partner-booking-section__title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+}
+
+.partner-booking-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.partner-booking-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-bottom: 12px;
+}
+
+.partner-booking-schedule {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .partner-booking-schedule {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-booking-schedule__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--onroda-border);
+  border-radius: 12px;
+  background: var(--onroda-bg-app);
+  cursor: pointer;
+  text-align: left;
+}
+
+.partner-booking-schedule__btn strong {
+  font-size: 0.95rem;
+  color: var(--onroda-text-dark);
+}
+
+.partner-booking-schedule__btn span {
+  font-size: 0.8rem;
+  color: var(--onroda-text-muted);
+  font-weight: 500;
+}
+
+.panel-app--workspace .partner-booking-schedule__btn--active {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.partner-booking-schedule__btn--active {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.partner-booking-datetime {
+  max-width: 280px;
+}
+
+.partner-booking-route-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 118, 110, 0.08);
+  color: #115e59;
+  font-size: 0.92rem;
+}
+
+.partner-booking-route-summary__tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.partner-booking-route-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.partner-booking-note-count {
+  font-size: 0.75rem;
+  color: var(--onroda-text-muted);
+  text-align: right;
+  margin-top: 4px;
+}
+
+.partner-booking-advanced-toggle {
+  border: none;
+  background: transparent;
+  color: #0f766e;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.partner-booking-feedback {
+  margin-top: 12px;
+}
+
+.partner-booking-submit {
+  margin-top: 16px;
+  width: 100%;
+  max-width: 360px;
+}
+
 .panel-profile-actions {
   display: flex;
   flex-wrap: wrap;

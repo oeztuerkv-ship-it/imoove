@@ -858,10 +858,27 @@ router.post("/panel/v1/route-distance", requirePanelAuth, async (req, res, next)
       res.status(400).json(result);
       return;
     }
+    const vehicleRaw = typeof body.vehicle === "string" ? body.vehicle.trim().toLowerCase() : "standard";
+    const vehicle = vehicleRaw || "standard";
+    const opPayload = await getOperationalConfigPayload();
+    const regions = await listServiceRegionsForApi();
+    const bookingPricing = computeRideBookingPricing({
+      opPayload,
+      regions,
+      fromFull,
+      fromLat: optCoord(body.fromLat ?? body.from_lat),
+      fromLon: optCoord(body.fromLon ?? body.from_lon),
+      distanceKm: result.route.distanceKm,
+      tripMinutes: result.route.durationMinutes,
+      waitingMinutes: 0,
+      vehicle,
+      at: new Date(),
+    });
     res.json({
       ok: true,
       distanceKm: result.route.distanceKm,
       durationMinutes: result.route.durationMinutes,
+      estimatedFare: bookingPricing.finalPrice,
       routingSource: result.route.routingSource,
       from: result.from,
       to: result.to,

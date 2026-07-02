@@ -38,6 +38,11 @@ const EXTRA_ROUTE_KEYS = new Set([
 const TAXI_NAV_DEFS = [
   { key: "dashboard", label: "Dashboard", show: () => true },
   {
+    key: "ride_neu",
+    label: "Taxi buchen",
+    show: (user) => hasPanelModule(user?.panelModules, "rides_create") && hasPerm(user, "rides.create"),
+  },
+  {
     key: "flotte",
     label: "Flotte",
     show: (user) => hasPanelModule(user?.panelModules, "taxi_fleet") && hasPerm(user, "fleet.read"),

@@ -42,8 +42,33 @@ export function fromIsoToDatetimeLocal(value) {
   return `${y}-${m}-${day}T${hh}:${mm}`;
 }
 
+/** Mindestvorlauf Reservierung (API: dispatchStatus.RESERVATION_LEAD_MS). */
+export const RESERVATION_LEAD_MS = 60 * 60 * 1000;
+
+export function defaultPartnerReservationDatetimeLocal() {
+  const d = new Date(Date.now() + RESERVATION_LEAD_MS + 30 * 60 * 1000);
+  d.setMinutes(0, 0, 0);
+  return fromIsoToDatetimeLocal(d.toISOString());
+}
+
+export function minPartnerReservationDatetimeLocal() {
+  return fromIsoToDatetimeLocal(new Date(Date.now() + RESERVATION_LEAD_MS).toISOString());
+}
+
+export function shortAddressLabel(full) {
+  const first = String(full || "").split(",")[0]?.trim();
+  return first || "—";
+}
+
+export function isReservationDatetimeValid(value) {
+  const iso = toIsoFromDatetimeLocal(value);
+  if (!iso) return false;
+  const at = Date.parse(iso);
+  return Number.isFinite(at) && at >= Date.now() + RESERVATION_LEAD_MS;
+}
+
 /** Partner-Panel: Strecke serverseitig (Google primär, OSRM Fallback) — kein VITE_GOOGLE_MAPS_API_KEY nötig. */
-export async function fetchDistanceMatrixByAddress(fromFull, toFull, token) {
+export async function fetchDistanceMatrixByAddress(fromFull, toFull, token, options = {}) {
   const from = String(fromFull || "").trim();
   const to = String(toFull || "").trim();
   if (!from || !to) {
@@ -55,13 +80,14 @@ export async function fetchDistanceMatrixByAddress(fromFull, toFull, token) {
   }
   const auth = String(token || "").trim();
   if (auth) {
+    const vehicle = typeof options.vehicle === "string" ? options.vehicle : "standard";
     const res = await fetch(`${API_BASE}/panel/v1/route-distance`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${auth}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ fromFull: from, toFull: to }),
+      body: JSON.stringify({ fromFull: from, toFull: to, vehicle }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data?.ok) {
@@ -69,13 +95,17 @@ export async function fetchDistanceMatrixByAddress(fromFull, toFull, token) {
     }
     const distanceKm = Number(data.distanceKm);
     const durationMinutes = Number(data.durationMinutes);
+    const serverFare = Number(data.estimatedFare);
     if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
       throw new Error("matrix_no_route");
     }
     return {
       distanceKm,
       durationMinutes: Number.isFinite(durationMinutes) ? durationMinutes : 1,
-      estimatedFare: estimateSystemFare(distanceKm),
+      estimatedFare:
+        Number.isFinite(serverFare) && serverFare >= 0
+          ? serverFare
+          : estimateSystemFare(distanceKm),
     };
   }
 

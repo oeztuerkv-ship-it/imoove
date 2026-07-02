@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import OnrodaMark from "./OnrodaMark.jsx";
 import FixedPriceVoucherPurchaseSection, { AgCard } from "./FixedPriceVoucherPurchaseSection.jsx";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import { hasPanelModule } from "../lib/panelNavigation.js";
+import RideCreatePage from "../pages/RideCreatePage.jsx";
 import "../styles/agentur-gutscheine.css";
 import {
   downloadPanelInvoicePdf,
@@ -15,8 +17,13 @@ const RED = "#EF1D26";
 const BG = "#F2F2F7";
 const MESSAGES_UNREAD_POLL_MS = 30_000;
 
+function hasPerm(permissions, key) {
+  return Array.isArray(permissions) && permissions.includes(key);
+}
+
 const NAV = [
   { key: "dashboard", label: "Übersicht", icon: "🏨" },
+  { key: "taxi_buchen", label: "Taxi buchen", icon: "🚖", module: "rides_create", permission: "rides.create" },
   { key: "gutscheine", label: "Gutscheine", icon: "🎟️" },
   { key: "fahrten", label: "Fahrten", icon: "🚕" },
   { key: "abrechnung", label: "Abrechnung", icon: "🧾" },
@@ -1150,6 +1157,15 @@ export default function AgenturMasterPanel({ company, onLogout }) {
   const [active, setActive] = useState("dashboard");
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
+  const visibleNav = useMemo(
+    () =>
+      NAV.filter((n) => {
+        if (!n.module) return true;
+        return hasPanelModule(user?.panelModules, n.module) && hasPerm(user?.permissions, n.permission);
+      }),
+    [user],
+  );
+
   const refreshUnreadMessageCount = useCallback(() => {
     if (!token) {
       setUnreadMessageCount(0);
@@ -1182,7 +1198,7 @@ export default function AgenturMasterPanel({ company, onLogout }) {
           {company?.company_kind === "hotel" ? "🏨 Hotel" : company?.company_kind === "travel" ? "✈️ Reisebüro" : "🏢 Agentur"}
         </span>
         <nav style={{ display: "flex", gap: 2, marginLeft: 28 }}>
-          {NAV.map(n => (
+          {visibleNav.map(n => (
             <button key={n.key} onClick={() => setActive(n.key)} style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1236,6 +1252,7 @@ export default function AgenturMasterPanel({ company, onLogout }) {
       </div>
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
         {active === "dashboard" && <DashboardView token={token} company={company} />}
+        {active === "taxi_buchen" && <RideCreatePage />}
         {active === "gutscheine" && <GutscheineView token={token} user={user} company={company} />}
         {active === "fahrten" && <FahrtenView token={token} />}
         {active === "abrechnung" && <AbrechnungView token={token} />}
