@@ -3,8 +3,10 @@ import {
   isBothInMandatoryTaxiArea,
   isFixedPriceReservationRequest,
   isPointInBadenWuerttemberg,
+  isPointInGermany,
+  isStuttgartZonePoint,
   shouldBypassServiceAreaForFixedPriceReservation,
-  validateBwReservationEndpoints,
+  validateFixedPriceReservationEndpoints,
 } from "../lib/reservationFixedPricePolicy";
 
 function assert(cond: boolean, msg: string): void {
@@ -41,6 +43,18 @@ const TUEBINGEN = {
   city: "Tübingen",
   lat: 48.399,
   lon: 9.011,
+};
+const BERLIN = {
+  displayName: "Hauptbahnhof, Berlin",
+  city: "Berlin",
+  lat: 52.525,
+  lon: 13.369,
+};
+const MUNICH = {
+  displayName: "Hauptbahnhof, München",
+  city: "München",
+  lat: 48.14,
+  lon: 11.56,
 };
 
 assert(isBothInMandatoryTaxiArea(STUTTGART, ESSLINGEN), "Stuttgart+Esslingen = Pflichtgebiet");
@@ -82,11 +96,36 @@ const tuebingenStuttgart = evaluateReservationFixedPriceEligibility({
 });
 assert(tuebingenStuttgart.eligible, "Tübingen→Stuttgart Festpreis eligible");
 
+const berlinStuttgart = evaluateReservationFixedPriceEligibility({
+  opPayload,
+  from: BERLIN,
+  to: STUTTGART,
+  distanceKm: 510,
+});
+assert(berlinStuttgart.eligible, "Berlin→Stuttgart Festpreis eligible (Stuttgart-Ausnahme)");
+
 assert(isPointInBadenWuerttemberg(MANNHEIM.lat, MANNHEIM.lon), "Mannheim in BW");
 assert(!isPointInBadenWuerttemberg(50.1, 8.27), "Kassel nicht in BW");
+assert(isPointInGermany(BERLIN.lat, BERLIN.lon), "Berlin in DE");
+assert(!isPointInGermany(48.85, 2.35), "Paris nicht in DE");
+assert(isStuttgartZonePoint(STUTTGART), "Stuttgart Hbf = Stuttgart-Zone");
+assert(!isStuttgartZonePoint(ESSLINGEN), "Esslingen allein ≠ Stuttgart-Zone");
 
-const bwOk = validateBwReservationEndpoints(MANNHEIM, STUTTGART);
+const bwOk = validateFixedPriceReservationEndpoints(MANNHEIM, STUTTGART);
 assert(bwOk.ok, "Mannheim↔Stuttgart BW validation ok");
+
+const berlinStuttgartGeo = validateFixedPriceReservationEndpoints(BERLIN, STUTTGART);
+assert(berlinStuttgartGeo.ok, "Berlin→Stuttgart Geografie ok (bundesweit nach Stuttgart)");
+
+const stuttgartBerlinGeo = validateFixedPriceReservationEndpoints(STUTTGART, BERLIN);
+assert(stuttgartBerlinGeo.ok, "Stuttgart→Berlin Geografie ok (Stuttgart-Ausnahme bidirektional)");
+
+const munichStuttgartGeo = validateFixedPriceReservationEndpoints(MUNICH, STUTTGART);
+assert(munichStuttgartGeo.ok, "München→Stuttgart Geografie ok");
+
+const berlinMunichGeo = validateFixedPriceReservationEndpoints(BERLIN, MUNICH);
+assert(!berlinMunichGeo.ok, "Berlin→München ohne Stuttgart nicht erlaubt");
+assert(berlinMunichGeo.error === "reservation_outside_bw", "Berlin→München error reservation_outside_bw");
 
 const sched = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
 assert(

@@ -58,7 +58,7 @@ import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, compu
 import {
   isFixedPriceReservationRequest,
   shouldBypassServiceAreaForFixedPriceReservation,
-  validateBwReservationEndpoints,
+  validateFixedPriceReservationEndpoints,
 } from "../lib/reservationFixedPricePolicy";
 import { computeFixedPriceRideBookingPricing } from "../lib/fixedPriceBooking";
 import {
@@ -1600,12 +1600,12 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
         return;
       }
     } else {
-      const bw = validateBwReservationEndpoints(
+      const geo = validateFixedPriceReservationEndpoints(
         { displayName: fromFull, city: fromCityB || null, lat: fromLatB, lon: fromLonB },
         { displayName: toFull, city: toCityB || null, lat: toLatB, lon: toLonB },
       );
-      if (!bw.ok) {
-        res.status(400).json({ error: bw.error, message: bw.message });
+      if (!geo.ok) {
+        res.status(400).json({ error: geo.error, message: geo.message });
         return;
       }
     }

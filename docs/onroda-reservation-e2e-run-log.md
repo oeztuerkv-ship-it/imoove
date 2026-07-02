@@ -33,6 +33,15 @@
 | 9 | App-Neustart Kunde/Fahrer | Konsistenter Status nach Refetch | ☐ |
 | 10 | Keine Ghost-Fahrt / kein falsches „Fahrer unterwegs“ | Nur `scheduled` nie Live-Leiste | ☐ |
 
+### Festpreis-Reservierung (überregional / Stuttgart-Ausnahme)
+
+| # | Szenario | Erwartung | Status |
+|---|----------|-----------|--------|
+| 7 | **Berlin Hbf → Stuttgart Hbf**, Reservierung ≥60 min, Festpreis | Preis angezeigt, Buchung ohne `reservation_outside_bw` / `service_area_not_covered` | ☐ |
+| 8 | **München Hbf → Stuttgart Hbf**, Reservierung ≥60 min | wie #7 | ☐ |
+| 9 | **Berlin → München** (ohne Stuttgart), Reservierung Festpreis | abgelehnt (`reservation_outside_bw`) | ☐ |
+| 10 | **Esslingen → Stuttgart** (Pflichtgebiet) | kein Festpreis, Taxameter | ☐ |
+
 ---
 
 ## Deploy-Hinweis
