@@ -249,46 +249,100 @@ function drawSettlementInfoCard(
   return y + boxH + INVOICE_LAYOUT.sectionGap;
 }
 
-function settlementFooterLayout(
+function measureSettlementInfoCard(
   doc: PDFDocument,
   contentWidth: number,
-  disclaimerText: string,
-): {
-  footerBrandY: number;
-  disclaimerY: number;
-  pageLabelY: number;
-  contentMaxBottom: number;
-} {
-  const footerBrandY = INVOICE_PAGE.height - INVOICE_MARGINS.bottom - 28;
-  const pageLabelY = footerBrandY + 12;
-  doc.font("Helvetica").fontSize(9);
-  const disclaimerH = doc.heightOfString(disclaimerText, { width: contentWidth });
-  const disclaimerY = footerBrandY - 10 - disclaimerH;
-  const contentMaxBottom = disclaimerY - INVOICE_LAYOUT.sectionGap;
-  return { footerBrandY, disclaimerY, pageLabelY, contentMaxBottom };
+  title: string,
+  lines: Array<{ text: string; bold?: boolean; muted?: boolean }>,
+): number {
+  const pad = 16;
+  const innerW = contentWidth - pad * 2 - 8;
+  const titleGap = 10;
+  const lineGap = 5;
+  doc.font("Helvetica-Bold").fontSize(10);
+  const titleH = doc.heightOfString(title, { width: innerW });
+  let bodyH = 0;
+  for (const line of lines) {
+    doc.font(line.bold ? "Helvetica-Bold" : "Helvetica").fontSize(line.bold ? 10 : 9);
+    bodyH += doc.heightOfString(line.text, { width: innerW }) + lineGap;
+  }
+  if (lines.length > 0) bodyH -= lineGap;
+  return pad + titleH + titleGap + bodyH + pad + INVOICE_LAYOUT.sectionGap;
 }
 
-function drawSettlementPageFooter(
-  ctx: InvoicePdfContext,
+type SettlementDocumentFooterLayout = {
+  boxTop: number;
+  boxHeight: number;
+  scopeY: number;
+  disclaimerY: number;
+  brandY: number;
+};
+
+const SETTLEMENT_DOC_FOOTER_PAD = 14;
+
+function measureSettlementDocumentFooter(
+  doc: PDFDocument,
+  contentWidth: number,
+  scopeText: string,
   disclaimerText: string,
-  layout: ReturnType<typeof settlementFooterLayout>,
+): SettlementDocumentFooterLayout {
+  const innerW = contentWidth - SETTLEMENT_DOC_FOOTER_PAD * 2;
+  doc.font("Helvetica").fontSize(8.5);
+  const scopeH = doc.heightOfString(scopeText, { width: innerW });
+  doc.font("Helvetica").fontSize(9);
+  const disclaimerH = doc.heightOfString(disclaimerText, { width: innerW });
+  const brandH = 10;
+  const scopeDisclaimerGap = 12;
+  const ruleGap = 10;
+  const bottomPad = SETTLEMENT_DOC_FOOTER_PAD;
+  const boxHeight =
+    SETTLEMENT_DOC_FOOTER_PAD + scopeH + scopeDisclaimerGap + disclaimerH + ruleGap + brandH + bottomPad;
+  const boxTop = INVOICE_PAGE.height - INVOICE_MARGINS.bottom - boxHeight;
+  const scopeY = boxTop + SETTLEMENT_DOC_FOOTER_PAD;
+  const disclaimerY = scopeY + scopeH + scopeDisclaimerGap;
+  const brandY = disclaimerY + disclaimerH + ruleGap;
+  return { boxTop, boxHeight, scopeY, disclaimerY, brandY };
+}
+
+function drawSettlementDocumentFooter(
+  ctx: InvoicePdfContext,
+  scopeText: string,
+  disclaimerText: string,
+  layout: SettlementDocumentFooterLayout,
   pageNum: number,
   pageCount: number,
 ): void {
   const { doc } = ctx;
-  const { footerBrandY, disclaimerY, pageLabelY } = layout;
+  const { boxTop, boxHeight, scopeY, disclaimerY, brandY } = layout;
+  const innerX = ctx.contentLeft + SETTLEMENT_DOC_FOOTER_PAD;
+  const innerW = ctx.contentWidth - SETTLEMENT_DOC_FOOTER_PAD * 2;
+
+  doc
+    .roundedRect(ctx.contentLeft, boxTop, ctx.contentWidth, boxHeight, 8)
+    .fillAndStroke(ONRODA_INVOICE_BRAND.surface, ONRODA_INVOICE_BRAND.border);
+
+  doc.font("Helvetica").fontSize(8.5);
+  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+  doc.text(scopeText, innerX, scopeY, { width: innerW });
 
   doc.font("Helvetica").fontSize(9);
-  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-  doc.text(disclaimerText, ctx.contentLeft, disclaimerY, { width: ctx.contentWidth, align: "center" });
+  doc.text(disclaimerText, innerX, disclaimerY, { width: innerW, align: "center" });
+
+  const ruleY = brandY - 6;
+  doc
+    .moveTo(innerX, ruleY)
+    .lineTo(innerX + innerW, ruleY)
+    .lineWidth(0.5)
+    .strokeColor(ONRODA_INVOICE_BRAND.border)
+    .stroke();
 
   doc.font("Helvetica").fontSize(8);
   hexColor(doc, ONRODA_INVOICE_BRAND.muted);
   const center = `${ONRODA_INVOICE_BRAND.productName} · ${ONRODA_INVOICE_SELLER.tradingName} · ${ONRODA_INVOICE_BRAND.website}`;
-  doc.text(center, ctx.contentLeft, footerBrandY, { width: ctx.contentWidth, align: "center" });
+  doc.text(center, innerX, brandY, { width: innerW, align: "center" });
   const pageLabel =
     pageCount > 0 && pageCount >= pageNum ? `Seite ${pageNum} / ${pageCount}` : `Seite ${pageNum}`;
-  doc.text(pageLabel, ctx.contentLeft, pageLabelY, { width: ctx.contentWidth, align: "right" });
+  doc.text(pageLabel, innerX, brandY, { width: innerW, align: "right" });
 }
 
 function companyRecipientLines(company: PanelSettlementOverviewPdfCompany): string[] {
@@ -399,37 +453,43 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
     }
     ctx.y += INVOICE_LAYOUT.sectionGap;
 
-    ctx.y = drawSettlementInfoCard(ctx, "Trinkgeld (informativ)", [
+    const disclaimerText =
+      "Diese Übersicht dient der Information für Ihren Steuerberater und ersetzt keine steuerliche Beratung.";
+    const scopeText = `Grundlage: abgeschlossene Fahrten mit Finanz-Snapshot zum Abrechnungszeitpunkt. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`;
+    const footerLayout = measureSettlementDocumentFooter(doc, ctx.contentWidth, scopeText, disclaimerText);
+    const contentMaxY = footerLayout.boxTop - 10;
+
+    const tipLines = [
       { text: `Trinkgeld gesamt: ${fmtEuro(ps.tipTotal)}`, bold: true },
       {
         text: "100 % an Fahrerinnen und Fahrer · nicht Teil der ONRODA-Abrechnung.",
         muted: true,
       },
-    ]);
+    ];
+    const tipCardH = measureSettlementInfoCard(doc, ctx.contentWidth, "Trinkgeld (informativ)", tipLines);
+    if (ctx.y + tipCardH <= contentMaxY) {
+      ctx.y = drawSettlementInfoCard(ctx, "Trinkgeld (informativ)", tipLines);
+    } else {
+      const compactTip = `Trinkgeld gesamt: ${fmtEuro(ps.tipTotal)} — 100 % an Fahrer, nicht Teil der ONRODA-Abrechnung.`;
+      doc.font("Helvetica").fontSize(9);
+      hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+      const compactH = doc.heightOfString(compactTip, { width: ctx.contentWidth });
+      doc.text(compactTip, ctx.contentLeft, ctx.y, { width: ctx.contentWidth });
+      ctx.y += compactH + 10;
+    }
 
     if (ps.pendingPaymentCount > 0 || ps.failedPaymentCount > 0) {
       const hints: string[] = [];
       if (ps.pendingPaymentCount > 0) hints.push(`Offen / reserviert: ${ps.pendingPaymentCount}`);
       if (ps.failedPaymentCount > 0) hints.push(`Fehlgeschlagen: ${ps.failedPaymentCount}`);
-      ctx.y = drawSettlementInfoCard(ctx, "Kartenzahlungen — Hinweise", [{ text: hints.join(" · ") }]);
+      const hintLines = [{ text: hints.join(" · ") }];
+      const hintCardH = measureSettlementInfoCard(doc, ctx.contentWidth, "Kartenzahlungen — Hinweise", hintLines);
+      if (ctx.y + hintCardH <= contentMaxY) {
+        ctx.y = drawSettlementInfoCard(ctx, "Kartenzahlungen — Hinweise", hintLines);
+      }
     }
 
-    ctx.y += 4;
-    const disclaimerText =
-      "Diese Übersicht dient der Information für Ihren Steuerberater und ersetzt keine steuerliche Beratung.";
-    const footerLayout = settlementFooterLayout(doc, ctx.contentWidth, disclaimerText);
-    const scopeText = `Grundlage: abgeschlossene Fahrten mit Finanz-Snapshot zum Abrechnungszeitpunkt. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`;
-
-    doc.font("Helvetica").fontSize(9);
-    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-    const scopeH = doc.heightOfString(scopeText, { width: ctx.contentWidth });
-    let scopeY = ctx.y;
-    if (scopeY + scopeH > footerLayout.contentMaxBottom) {
-      scopeY = Math.max(ctx.y, footerLayout.contentMaxBottom - scopeH);
-    }
-    doc.text(scopeText, ctx.contentLeft, scopeY, { width: ctx.contentWidth });
-
-    drawSettlementPageFooter(ctx, disclaimerText, footerLayout, 1, 1);
+    drawSettlementDocumentFooter(ctx, scopeText, disclaimerText, footerLayout, 1, 1);
     doc.end();
   });
 }
