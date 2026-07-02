@@ -317,6 +317,10 @@
   grid-template-columns: minmax(200px, 2.2fr) repeat(auto-fit, minmax(132px, 1fr)) auto;
 }
 
+.admin-filter-toolbar--modern.admin-filter-toolbar--single {
+  grid-template-columns: 1fr;
+}
+
 .admin-filter-toolbar--modern .admin-filter-field,
 .admin-filter-toolbar--modern .admin-filter-field--wide {
   min-width: 0;

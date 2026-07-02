@@ -725,8 +725,8 @@ export default function CompaniesPage({
         </div>
       ) : null}
 
-      <div className="admin-filter-card">
-        <div className="admin-filter-grid admin-filter-grid--companies">
+      <div className="admin-filter-card admin-filter-card--modern">
+        <div className="admin-filter-grid admin-filter-grid--companies admin-filter-grid--modern">
           <div className="admin-filter-item">
             <label className="admin-field-label" htmlFor="admin-companies-search">
               Mandanten durchsuchen
@@ -752,7 +752,7 @@ export default function CompaniesPage({
         </div>
       </div>
 
-      <section className="admin-filter-card" aria-label="Filter und Sortierung">
+      <section className="admin-filter-card admin-filter-card--modern" aria-label="Filter und Sortierung">
         <div className="admin-c-filter-panel__grid">
           <div className="admin-c-filter-panel__block">
             <div className="admin-c-filter-legend" id="companies-type-filter-label">

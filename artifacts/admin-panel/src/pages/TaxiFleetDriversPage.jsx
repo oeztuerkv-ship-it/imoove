@@ -290,13 +290,19 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
         <div className="admin-split-pane">
           <div className="admin-split-pane__head">1. Taxi-Unternehmen</div>
           <div className="admin-split-pane__body">
-            <input
-              className="admin-input"
-              value={cQuery}
-              onChange={(e) => setCQuery(e.target.value)}
-              placeholder="Suche (Name, ID)…"
-              style={{ width: "100%", marginBottom: 10 }}
-            />
+            <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--single">
+              <label className="admin-filter-field">
+                <span className="admin-field-label">Unternehmen suchen</span>
+                <input
+                  className="admin-input"
+                  value={cQuery}
+                  onChange={(e) => setCQuery(e.target.value)}
+                  placeholder="Name oder Mandanten-ID …"
+                  type="search"
+                  autoComplete="off"
+                />
+              </label>
+            </div>
             {cLoading ? <p className="admin-table-sub">Lade …</p> : null}
             <div className="admin-split-pane__list" style={{ maxHeight: 320 }}>
               {filteredCompanies.map((c) => (
@@ -326,13 +332,19 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
             <p className="admin-table-sub">Lade Fahrer …</p>
           ) : (
             <>
-              <input
-                className="admin-input"
-                value={dQuery}
-                onChange={(e) => setDQuery(e.target.value)}
-                placeholder="Fahrer suchen (Name, E-Mail, Telefon)…"
-                style={{ width: "100%", maxWidth: 420, marginBottom: 10 }}
-              />
+              <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--single" style={{ maxWidth: 420, marginBottom: 10 }}>
+                <label className="admin-filter-field">
+                  <span className="admin-field-label">Fahrer suchen</span>
+                  <input
+                    className="admin-input"
+                    value={dQuery}
+                    onChange={(e) => setDQuery(e.target.value)}
+                    placeholder="Name, E-Mail oder Telefon …"
+                    type="search"
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
               <div className="admin-table-card admin-table-card--embedded" style={{ overflow: "auto", maxHeight: 400 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>

@@ -455,14 +455,19 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
       <div className="admin-taxi-fv-workgrid">
         <section className="admin-taxi-fv-side" aria-label="Mandant wählen">
           <div className="admin-taxi-fv-sidelabel">1. Taxi-Unternehmen</div>
-          <input
-            className="admin-m-inp"
-            value={cQuery}
-            onChange={(e) => setCQuery(e.target.value)}
-            placeholder="Suche (Name, ID)…"
-            type="search"
-            style={{ marginBottom: 10 }}
-          />
+          <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--single">
+            <label className="admin-filter-field">
+              <span className="admin-field-label">Unternehmen suchen</span>
+              <input
+                className="admin-input"
+                value={cQuery}
+                onChange={(e) => setCQuery(e.target.value)}
+                placeholder="Name oder Mandanten-ID …"
+                type="search"
+                autoComplete="off"
+              />
+            </label>
+          </div>
           {cLoading ? <p className="admin-table-sub">Lade …</p> : null}
           <div className="admin-taxi-fv-side-scroll" role="list">
             {filteredCompanies.map((c) => (
@@ -523,14 +528,19 @@ export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onIniti
                   {createBusy ? "Speichert …" : "Fahrzeug anlegen"}
                 </button>
               </form>
-              <input
-                className="admin-m-inp"
-                value={dQuery}
-                onChange={(e) => setDQuery(e.target.value)}
-                placeholder="Fahrzeug suchen (Kennzeichen, Modell, Fahrer)…"
-                type="search"
-                style={{ maxWidth: 480, marginBottom: 10 }}
-              />
+              <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--single" style={{ maxWidth: 480, marginBottom: 10 }}>
+                <label className="admin-filter-field">
+                  <span className="admin-field-label">Fahrzeug suchen</span>
+                  <input
+                    className="admin-input"
+                    value={dQuery}
+                    onChange={(e) => setDQuery(e.target.value)}
+                    placeholder="Kennzeichen, Modell oder Fahrer …"
+                    type="search"
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
               <div className="admin-taxi-fv-tablewrap">
                 <table className="admin-taxi-fv-table">
                   <thead>

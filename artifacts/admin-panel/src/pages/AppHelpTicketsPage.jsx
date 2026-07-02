@@ -129,10 +129,10 @@ export default function AppHelpTicketsPage() {
         bearbeitet.
       </p>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="admin-table-sub">Status</span>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="admin-input">
+      <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
+        <label className="admin-filter-field">
+          <span className="admin-field-label">Status</span>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="admin-select">
             {STATUS_OPTS.map((o) => (
               <option key={o.value || "all"} value={o.value}>
                 {o.label}
@@ -140,17 +140,24 @@ export default function AppHelpTicketsPage() {
             ))}
           </select>
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 220 }}>
-          <span className="admin-table-sub">Suche (Ticket / E-Mail / Text)</span>
-          <input className="admin-input" value={filterQ} onChange={(e) => setFilterQ(e.target.value)} />
+        <label className="admin-filter-field admin-filter-field--search">
+          <span className="admin-field-label">Suche</span>
+          <input
+            className="admin-input"
+            value={filterQ}
+            onChange={(e) => setFilterQ(e.target.value)}
+            placeholder="Ticket-ID, E-Mail oder Text …"
+            type="search"
+            autoComplete="off"
+          />
         </label>
-        <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
-          {loading ? "Lade…" : "Aktualisieren"}
+        <button type="button" className="admin-btn-refresh admin-filter-toolbar--modern__refresh" onClick={() => void loadList()} disabled={loading}>
+          {loading ? "Lade …" : "Aktualisieren"}
         </button>
-        <span className="admin-table-sub" style={{ marginLeft: 8 }}>
-          {total} Treffer
-        </span>
       </div>
+      <p className="admin-table-toolbar__info" style={{ margin: "0 0 16px" }}>
+        {total} {total === 1 ? "Treffer" : "Treffer"}
+      </p>
 
       {err ? <div className="admin-error-banner">{err}</div> : null}
 
