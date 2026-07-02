@@ -1,0 +1,9 @@
+Sound effect for driver ONLINE toggle (Pixabay #524745).
+
+Title: UI App Notification
+Author: SoundShelfStudio — https://pixabay.com/users/soundshelfstudio-46480698/
+Source: https://pixabay.com/sound-effects/ui-app-notification-524745/
+License: Pixabay Content License — https://pixabay.com/service/license-summary/
+
+Replace driver_go_online.wav with the official Pixabay download (MP3/WAV) when available.
+Current file in repo is a short placeholder until the licensed asset is committed.

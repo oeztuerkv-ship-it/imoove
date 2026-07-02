@@ -78,6 +78,7 @@ import { DriverCashPaymentWarnModal } from "@/components/DriverCashPaymentWarnMo
 import { driverRidePaymentLooksLikeCash } from "@/utils/driverCashPaymentApi";
 import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
 import { requestNotificationPermissions, stopRideSound } from "@/utils/notifications";
+import { playDriverGoingOnlineSound } from "@/utils/driverOnlineSound";
 import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
 import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
 import { releaseDispatchOffer } from "@/utils/releaseDispatchOffer";
@@ -1047,13 +1048,13 @@ function TabUebersicht({
       <View style={styles.mapStatusChip}>
         <View style={[styles.mapStatusDot, { backgroundColor: isAvailable ? "#22C55E" : "#6B7280" }]} />
         <Text style={styles.mapStatusText}>
-          {isAvailable
-            ? marketLoading
-              ? "Markt wird geladen…"
-              : firstReq
+          {marketLoading
+            ? "Online gehen …"
+            : isAvailable
+              ? firstReq
                 ? `${instantReqs.length} ${instantReqs.length > 1 ? "Aufträge" : "Auftrag"} wartend`
                 : "Online"
-            : "Offline"}
+              : "Offline"}
         </Text>
       </View>
 
@@ -4025,6 +4026,7 @@ export default function DriverDashboard() {
               setMarketRefreshing(true);
               try {
                 if (goingOnline) {
+                  void playDriverGoingOnlineSound();
                   isOnlineFlowRunning.current = true;
                   firstRender.current = true;
                   prevDriverOnline.current = false;
@@ -4079,11 +4081,13 @@ export default function DriverDashboard() {
           accessibilityRole="switch"
           accessibilityState={{ checked: driverToggleOnline }}
           accessibilityLabel={
-            !driver.einsatzbereit
-              ? "Auftragsmarkt gesperrt"
-              : driver.isAvailable
-                ? "Online — tippen für Offline"
-                : "Offline — tippen für Online"
+            marketRefreshing
+              ? "Online gehen …"
+              : !driver.einsatzbereit
+                ? "Auftragsmarkt gesperrt"
+                : driver.isAvailable
+                  ? "Online — tippen für Offline"
+                  : "Offline — tippen für Online"
           }
         >
           <View style={styles.toggleSwitch}>
