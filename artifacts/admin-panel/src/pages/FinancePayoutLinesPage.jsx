@@ -20,18 +20,16 @@ function money(v) {
   return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n);
 }
 
-function formatDt(iso) {
-  if (!iso) return "—";
+function formatDtParts(iso) {
+  if (!iso) return { date: "—", time: "" };
   try {
-    return new Date(iso).toLocaleString("de-DE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const d = new Date(iso);
+    return {
+      date: d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      time: d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+    };
   } catch {
-    return String(iso);
+    return { date: String(iso), time: "" };
   }
 }
 
@@ -181,9 +179,9 @@ export default function FinancePayoutLinesPage() {
         ))}
       </div>
 
-      <AdminCollapsibleSection title="Auszahlungen" subtitle={`${total} Fahrten`} defaultOpen>
-        <div className="admin-filter-toolbar admin-filter-toolbar--wrap">
-          <label className="admin-filter-field">
+      <AdminCollapsibleSection title="Auszahlungen" subtitle={`${total} Fahrten`} defaultOpen flushBody>
+        <div className="admin-finance-payout-toolbar">
+          <label className="admin-filter-field admin-filter-field--search">
             <span className="admin-field-label">Suche</span>
             <input
               className="admin-input"
@@ -242,31 +240,46 @@ export default function FinancePayoutLinesPage() {
               ))}
             </select>
           </label>
-          <button type="button" className="admin-btn-refresh" onClick={() => void loadList()} disabled={loading}>
+          <button
+            type="button"
+            className="admin-btn-refresh admin-finance-payout-toolbar__refresh"
+            onClick={() => void loadList()}
+            disabled={loading}
+          >
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
 
-        <div className="admin-table-wrap admin-table-wrap--card">
-          <table className="admin-table admin-companies-table admin-rides-table">
+        <div className="admin-rides-table-wrap admin-payout-lines-table-wrap">
+          <table className="admin-rides-table admin-payout-lines-table">
+            <colgroup>
+              <col className="col-ride" />
+              <col className="col-company" />
+              <col className="col-route" />
+              <col className="col-money" />
+              <col className="col-money" />
+              <col className="col-money" />
+              <col className="col-net" />
+              <col className="col-status" />
+              <col className="col-action" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Fahrt</th>
-                <th>Datum</th>
                 <th>Unternehmer</th>
                 <th>Route</th>
                 <th className="admin-table__num">Brutto</th>
                 <th className="admin-table__num">Stripe</th>
-                <th className="admin-table__num">Provision</th>
+                <th className="admin-table__num">Prov.</th>
                 <th className="admin-table__num">Netto</th>
                 <th>Status</th>
-                <th />
+                <th className="admin-rides-table__col-actions" aria-label="Aktion" />
               </tr>
             </thead>
             <tbody>
               {items.length === 0 && !loading ? (
                 <tr>
-                  <td colSpan={10} className="admin-table-empty">
+                  <td colSpan={9} className="admin-table-empty">
                     Keine Einträge für die aktuelle Filterung.
                   </td>
                 </tr>
@@ -277,39 +290,60 @@ export default function FinancePayoutLinesPage() {
                 const isOpen = status === "offen";
                 const companyName = row.companyName ?? row.company_name;
                 const companyId = row.companyId ?? row.company_id;
+                const when = formatDtParts(row.calculatedAt ?? row.calculated_at);
+                const routeLabel = row.routeLabel ?? "";
                 return (
-                  <tr key={rideId}>
+                  <tr key={rideId} className="admin-rides-table__row">
                     <td>
-                      <a className="admin-link admin-link--mono" href={`#/ride-detail/${encodeURIComponent(rideId)}`}>
+                      <a
+                        className="admin-link admin-payout-lines-ride__id"
+                        href={`#/ride-detail/${encodeURIComponent(rideId)}`}
+                        title={rideId}
+                      >
                         {rideId}
                       </a>
+                      <div className="admin-payout-lines-ride__date admin-crisp-numeric">
+                        {when.time ? `${when.date}, ${when.time}` : when.date}
+                      </div>
                     </td>
-                    <td className="admin-table-sub">{formatDt(row.calculatedAt ?? row.calculated_at)}</td>
                     <td>
-                      <strong>{companyName || "—"}</strong>
-                      {companyId && !companyName ? (
-                        <div className="admin-table-sub">
-                          <code>{companyId}</code>
+                      {companyName ? (
+                        <div className="admin-payout-lines-company" title={companyName}>
+                          {companyName}
                         </div>
-                      ) : null}
+                      ) : companyId ? (
+                        <div className="admin-payout-lines-company admin-payout-lines-company--empty" title={companyId}>
+                          <code className="admin-mono">{companyId}</code>
+                        </div>
+                      ) : (
+                        <span className="admin-payout-lines-company admin-payout-lines-company--empty">—</span>
+                      )}
                     </td>
-                    <td className="admin-table-sub" title={row.routeLabel ?? ""}>
-                      {row.routeLabel ?? "—"}
+                    <td>
+                      {routeLabel ? (
+                        <div className="admin-payout-lines-route" title={routeLabel}>
+                          {routeLabel}
+                        </div>
+                      ) : (
+                        <span className="admin-table-sub">—</span>
+                      )}
                     </td>
                     <td className="admin-crisp-numeric admin-table__num">{money(row.grossAmount ?? row.gross_amount)}</td>
-                    <td className="admin-crisp-numeric admin-table__num">{money(row.stripeFeeAmount ?? row.stripe_fee_amount)}</td>
+                    <td className="admin-crisp-numeric admin-table__num admin-table-sub">
+                      {money(row.stripeFeeAmount ?? row.stripe_fee_amount)}
+                    </td>
                     <td className="admin-crisp-numeric admin-table__num">{money(row.commissionAmount ?? row.commission_amount)}</td>
-                    <td className="admin-crisp-numeric admin-table__num">
-                      <strong>{money(row.operatorPayoutAmount ?? row.operator_payout_amount)}</strong>
+                    <td className="admin-crisp-numeric admin-table__num admin-payout-lines-net">
+                      {money(row.operatorPayoutAmount ?? row.operator_payout_amount)}
                     </td>
                     <td>
                       <span className={payoutStatusPill(status)}>{payoutStatusLabel(status)}</span>
                     </td>
-                    <td>
+                    <td className="admin-payout-lines-action">
                       {isOpen ? (
                         <button
                           type="button"
-                          className="admin-btn admin-btn--primary admin-btn--sm"
+                          className="admin-btn-payout-mark"
                           disabled={busyRideId === rideId}
                           onClick={() => void markAusgezahlt(rideId)}
                         >
@@ -327,7 +361,7 @@ export default function FinancePayoutLinesPage() {
         </div>
 
         {pages > 1 ? (
-          <div className="admin-pagination" style={{ marginTop: 12 }}>
+          <div className="admin-pagination" style={{ margin: "12px 12px 0" }}>
             <button
               type="button"
               className="admin-btn admin-btn--secondary admin-btn--sm"
