@@ -56,8 +56,13 @@ export default function DriversRevenuePage() {
           <span className="admin-field-label">Tag</span>
           <input className="admin-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
-        <button type="button" className="admin-btn admin-btn--primary" onClick={() => void load()} disabled={loading}>
-          Aktualisieren
+        <button
+          type="button"
+          className="admin-btn-refresh admin-filter-toolbar--modern__refresh"
+          onClick={() => void load()}
+          disabled={loading}
+        >
+          {loading ? "Lade …" : "Aktualisieren"}
         </button>
       </div>
 
@@ -65,25 +70,25 @@ export default function DriversRevenuePage() {
 
       {totals ? (
         <div className="admin-kpi-grid" style={{ marginBottom: 20 }}>
-          <div className="admin-mandate-kpi">
-            <div className="admin-mandate-kpi__lbl">Fahrten (abgeschlossen)</div>
-            <div className="admin-mandate-kpi__val">{totals.rideCount}</div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-card__label">Fahrten (abgeschlossen)</div>
+            <div className="admin-kpi-card__value admin-crisp-numeric">{totals.rideCount}</div>
           </div>
-          <div className="admin-mandate-kpi">
-            <div className="admin-mandate-kpi__lbl">Brutto heute</div>
-            <div className="admin-mandate-kpi__val">{money(totals.grossAmount)}</div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-card__label">Brutto heute</div>
+            <div className="admin-kpi-card__value admin-crisp-numeric">{money(totals.grossAmount)}</div>
           </div>
-          <div className="admin-mandate-kpi">
-            <div className="admin-mandate-kpi__lbl">Provision ONRODA</div>
-            <div className="admin-mandate-kpi__val">{money(totals.commissionAmount)}</div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-card__label">Provision ONRODA</div>
+            <div className="admin-kpi-card__value admin-crisp-numeric">{money(totals.commissionAmount)}</div>
           </div>
-          <div className="admin-mandate-kpi">
-            <div className="admin-mandate-kpi__lbl">Trinkgeld (gesamt)</div>
-            <div className="admin-mandate-kpi__val">{money(totals.tipAmount)}</div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-card__label">Trinkgeld (gesamt)</div>
+            <div className="admin-kpi-card__value admin-crisp-numeric">{money(totals.tipAmount)}</div>
           </div>
-          <div className="admin-mandate-kpi">
-            <div className="admin-mandate-kpi__lbl">Auszahlung Fahrer</div>
-            <div className="admin-mandate-kpi__val">{money(totals.driverPayoutAmount)}</div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-card__label">Auszahlung Fahrer</div>
+            <div className="admin-kpi-card__value admin-crisp-numeric">{money(totals.driverPayoutAmount)}</div>
           </div>
         </div>
       ) : null}

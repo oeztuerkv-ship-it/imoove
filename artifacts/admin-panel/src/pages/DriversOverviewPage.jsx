@@ -413,13 +413,13 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         title="Suche & Filter"
         subtitle="Mind. 2 Zeichen oder ein Filter, dann Suchen"
         defaultOpen
+        flushBody
       >
-        <div className="admin-filter-card admin-filter-card--embedded">
-          <div className="admin-filter-grid">
-          <div className="admin-filter-item admin-filter-item--wide">
-            <label className="admin-field-label">Suche</label>
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
+          <label className="admin-filter-field admin-filter-field--search">
+            <span className="admin-field-label">Suche</span>
             <input
-              type="text"
+              type="search"
               className="admin-input"
               placeholder="Name, E-Mail, Telefon, Unternehmen, Kennzeichen, Fahrer-ID …"
               value={filters.q}
@@ -430,10 +430,11 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                   runSearch();
                 }
               }}
+              autoComplete="off"
             />
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Unternehmen</label>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Unternehmen</span>
             <select
               className="admin-select"
               value={filters.companyId}
@@ -446,9 +447,9 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Freigabe / Status</label>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Freigabe / Status</span>
             <select
               className="admin-select"
               value={filters.workflowKey}
@@ -460,9 +461,9 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Online</label>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Online</span>
             <select
               className="admin-select"
               value={filters.online}
@@ -472,9 +473,9 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               <option value="yes">Nur online</option>
               <option value="no">Nur offline</option>
             </select>
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Sperre</label>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Sperre</span>
             <select
               className="admin-select"
               value={filters.blocked}
@@ -484,9 +485,9 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               <option value="yes">Gesperrt</option>
               <option value="no">Nicht gesperrt</option>
             </select>
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Dokumente</label>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Dokumente</span>
             <select
               className="admin-select"
               value={filters.documents}
@@ -496,9 +497,9 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               <option value="complete">Vollständig</option>
               <option value="incomplete">Fehlen</option>
             </select>
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Aktive Fahrt</label>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Aktive Fahrt</span>
             <select
               className="admin-select"
               value={filters.hasActiveRide}
@@ -508,13 +509,10 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
               <option value="yes">Mit aktiver Fahrt</option>
               <option value="no">Ohne aktive Fahrt</option>
             </select>
-          </div>
-          <div className="admin-filter-item admin-filter-item--action">
-            <button type="button" className="admin-btn-primary" onClick={() => runSearch()}>
-              Suchen
-            </button>
-          </div>
-          </div>
+          </label>
+          <button type="button" className="admin-btn-primary admin-filter-toolbar--modern__refresh" onClick={() => runSearch()}>
+            Suchen
+          </button>
         </div>
       </AdminCollapsibleSection>
 
