@@ -131,6 +131,8 @@ export interface RideRequest {
     label: string;
   } | null;
   createdAt: string;
+  /** Fahrtabschluss (status=completed); Abrechnungszeiträume nach diesem Zeitpunkt. */
+  completedAt?: string | null;
   scheduledAt?: string | null;
   from: string;
   fromFull: string;

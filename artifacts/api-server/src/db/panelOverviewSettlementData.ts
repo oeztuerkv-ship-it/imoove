@@ -162,7 +162,7 @@ export function formatPanelSettlementPeriodLabels(
       year: "numeric",
     });
   const scopeNote =
-    "Zeitzone Europe/Berlin. Abgeschlossene Fahrten nach Erstellungszeitpunkt (nicht Fahrtende).";
+    "Zeitzone Europe/Berlin. Abgeschlossene Fahrten nach Fahrtende (Abschlusszeitpunkt).";
 
   switch (query.period) {
     case "today": {
@@ -324,7 +324,7 @@ export async function getPanelSettlementOverviewExportSnapshot(
   const db = getDb();
   if (!db) return null;
 
-  const createdAtFilter = buildPanelSettlementCreatedAtFilter(query);
+  const createdAtFilter = buildPanelSettlementCompletedAtFilter(query);
   const labels = formatPanelSettlementPeriodLabels(query);
   const generatedAt = new Date();
   const [stats, settlement, paymentStats, commissionRate, invoiceMeta] = await Promise.all([
@@ -391,10 +391,16 @@ export async function getPanelCompanyCommissionRate(companyId: string): Promise<
   return Math.min(1, Math.max(0, r));
 }
 
-export function buildPanelSettlementCreatedAtFilter(
+/** Abrechnungszeitraum: Fahrtende (completed_at), Fallback created_at für Altbestand ohne Event. */
+export function panelSettlementRideCompletedAtExpr(): SQL {
+  return sql`coalesce(${ridesTable.completed_at}, ${ridesTable.created_at})`;
+}
+
+export function buildPanelSettlementCompletedAtFilter(
   query: PanelSettlementPeriodQuery,
   now = new Date(),
 ): SQL | undefined {
+  const settlementAt = panelSettlementRideCompletedAtExpr();
   const year = normalizePanelSettlementYear(query.year, now);
   const berlin = berlinCalendarParts(now);
   const monthYear = query.year != null ? year : berlin.year;
@@ -414,22 +420,25 @@ export function buildPanelSettlementCreatedAtFilter(
 
   switch (query.period) {
     case "today":
-      return and(gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd)) as SQL;
+      return and(gte(settlementAt, berlinTodayStart), lt(settlementAt, berlinTodayEnd)) as SQL;
     case "week":
       if (query.weekMode === "calendar") {
-        return and(gte(ridesTable.created_at, berlinWeekStart), lt(ridesTable.created_at, berlinWeekEnd)) as SQL;
+        return and(gte(settlementAt, berlinWeekStart), lt(settlementAt, berlinWeekEnd)) as SQL;
       }
-      return gte(ridesTable.created_at, weekRollingStart);
+      return gte(settlementAt, weekRollingStart);
     case "weekCalendar":
-      return and(gte(ridesTable.created_at, berlinWeekStart), lt(ridesTable.created_at, berlinWeekEnd)) as SQL;
+      return and(gte(settlementAt, berlinWeekStart), lt(settlementAt, berlinWeekEnd)) as SQL;
     case "month":
-      return and(gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd)) as SQL;
+      return and(gte(settlementAt, berlinMonthStart), lt(settlementAt, berlinMonthEnd)) as SQL;
     case "year":
-      return and(gte(ridesTable.created_at, berlinYearStart), lt(ridesTable.created_at, berlinYearEnd)) as SQL;
+      return and(gte(settlementAt, berlinYearStart), lt(settlementAt, berlinYearEnd)) as SQL;
     default:
       return undefined;
   }
 }
+
+/** @deprecated Alias — filtert nach Fahrtende (`completed_at`), nicht Buchungsdatum. */
+export const buildPanelSettlementCreatedAtFilter = buildPanelSettlementCompletedAtFilter;
 
 export async function queryPanelFinancialSettlement(
   db: NonNullable<ReturnType<typeof getDb>>,
@@ -522,14 +531,15 @@ export async function listPanelSettlementRides(
   const db = getDb();
   if (!db) return { rides: [], period: query };
 
-  const createdAtFilter = buildPanelSettlementCreatedAtFilter(query);
+  const completedAtFilter = buildPanelSettlementCompletedAtFilter(query);
   const conditions: SQL[] = [eq(ridesTable.status, "completed"), companyIdMatchCondition(companyId)];
-  if (createdAtFilter) conditions.push(createdAtFilter);
+  if (completedAtFilter) conditions.push(completedAtFilter);
+  const settlementAt = panelSettlementRideCompletedAtExpr();
 
   const rows = await db
     .select({
       id: ridesTable.id,
-      createdAt: ridesTable.created_at,
+      settlementAt,
       from: ridesTable.from_label,
       to: ridesTable.to_label,
       status: ridesTable.status,
@@ -549,7 +559,7 @@ export async function listPanelSettlementRides(
     .leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
     .leftJoin(fleetDriversTable, eq(fleetDriversTable.id, ridesTable.driver_id))
     .where(and(...conditions))
-    .orderBy(desc(ridesTable.created_at))
+    .orderBy(desc(settlementAt))
     .limit(Math.min(Math.max(limit, 1), 500));
 
   const rides: PanelSettlementRideRow[] = rows.map((r) => {
@@ -557,9 +567,13 @@ export async function listPanelSettlementRides(
     const last = (r.driverLast ?? "").trim();
     const driverName = [first, last].filter(Boolean).join(" ") || null;
     const hasFinancials = Boolean(r.financialId);
+    const settlementAtIso =
+      r.settlementAt instanceof Date
+        ? r.settlementAt.toISOString()
+        : new Date(String(r.settlementAt)).toISOString();
     return {
       id: r.id,
-      createdAt: r.createdAt.toISOString(),
+      createdAt: settlementAtIso,
       from: r.from ?? "",
       to: r.to ?? "",
       status: r.status,

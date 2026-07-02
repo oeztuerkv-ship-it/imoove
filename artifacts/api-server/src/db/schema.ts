@@ -643,6 +643,8 @@ export const ridesTable = pgTable("rides", {
     onDelete: "set null",
   }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
+  /** Fahrtabschluss — Abrechnungszeiträume (Partner) nach Fahrtende, nicht Buchungsdatum. */
+  completed_at: timestamp("completed_at", { withTimezone: true }),
   scheduled_at: timestamp("scheduled_at", { withTimezone: true }),
   status: text("status").notNull(),
   customer_name: text("customer_name").notNull(),

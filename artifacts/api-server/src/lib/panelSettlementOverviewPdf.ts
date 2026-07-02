@@ -104,15 +104,25 @@ function drawSettlementMetaBar(
   const y = ctx.y;
   const colW = ctx.contentWidth / items.length;
   const labelPad = 14;
-  const valuePad = 22;
+  const labelTop = 10;
+  const labelValueGap = 6;
+  const textW = colW - 20;
+
+  doc.font("Helvetica").fontSize(8);
+  const labelHeights = items.map((item) =>
+    doc.heightOfString(item.label.toUpperCase(), { width: textW }),
+  );
+  const maxLabelH = Math.max(...labelHeights);
 
   doc.font("Helvetica-Bold").fontSize(10);
   let maxValueH = 0;
   for (const item of items) {
-    const h = doc.heightOfString(item.value, { width: colW - 20 });
+    const h = doc.heightOfString(item.value, { width: textW });
     maxValueH = Math.max(maxValueH, h);
   }
-  const h = Math.max(INVOICE_LAYOUT.metaBarHeight, valuePad + maxValueH + 12);
+
+  const valueY = y + labelTop + maxLabelH + labelValueGap;
+  const h = Math.max(INVOICE_LAYOUT.metaBarHeight, valueY - y + maxValueH + 12);
 
   doc.roundedRect(ctx.contentLeft, y, ctx.contentWidth, h, 6).fill(ONRODA_INVOICE_BRAND.surface);
 
@@ -120,10 +130,10 @@ function drawSettlementMetaBar(
     const x = ctx.contentLeft + labelPad + i * colW;
     doc.font("Helvetica").fontSize(8);
     hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-    doc.text(item.label.toUpperCase(), x, y + 10, { width: colW - 20 });
+    doc.text(item.label.toUpperCase(), x, y + labelTop, { width: textW });
     doc.font("Helvetica-Bold").fontSize(10);
     hexColor(doc, ONRODA_INVOICE_BRAND.text);
-    doc.text(item.value, x, y + valuePad, { width: colW - 20 });
+    doc.text(item.value, x, valueY, { width: textW });
   });
 
   return y + h + INVOICE_LAYOUT.sectionGap;

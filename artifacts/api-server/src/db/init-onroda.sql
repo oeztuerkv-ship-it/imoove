@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS rides (
   id TEXT PRIMARY KEY,
   company_id TEXT REFERENCES admin_companies (id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL,
+  completed_at TIMESTAMPTZ,
   scheduled_at TIMESTAMPTZ,
   status TEXT NOT NULL,
   customer_name TEXT NOT NULL,

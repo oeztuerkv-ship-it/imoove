@@ -54,6 +54,7 @@ import {
   getPanelCompanyCommissionRate,
   normalizePanelSettlementYear,
   panelSettlementAvailableYears,
+  panelSettlementRideCompletedAtExpr,
   queryPanelCompletedPeriodStats,
   queryPanelFinancialSettlement,
   queryPanelPaymentStatsForPeriod,
@@ -159,6 +160,7 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     accessCodeId: r.access_code_id ?? null,
     accessCodeNormalizedSnapshot: r.access_code_normalized_snapshot ?? null,
     createdAt: new Date(r.created_at).toISOString(),
+    completedAt: r.completed_at ? new Date(r.completed_at).toISOString() : null,
     scheduledAt: r.scheduled_at ? new Date(r.scheduled_at).toISOString() : null,
     status: r.status as RideRequest["status"],
     customerName: r.customer_name,
@@ -265,6 +267,7 @@ function rideToUpdate(r: RideRequest) {
     authorization_source: r.authorizationSource,
     access_code_id: r.accessCodeId ?? null,
     access_code_normalized_snapshot: r.accessCodeNormalizedSnapshot ?? null,
+    completed_at: r.completedAt ? new Date(r.completedAt) : null,
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
     customer_name: r.customerName,
@@ -1347,6 +1350,7 @@ export async function getPanelCompanyOverviewMetrics(
   const berlinWeekEnd = sql`((date_trunc('week', (now() AT TIME ZONE 'Europe/Berlin')) + interval '7 days') AT TIME ZONE 'Europe/Berlin')`;
   const weekRollingStart = sql`(now() - interval '7 days')`;
   const thirtyRollingStart = sql`(now() - interval '30 days')`;
+  const settlementAt = panelSettlementRideCompletedAtExpr();
 
   const [
     today,
@@ -1362,12 +1366,12 @@ export async function getPanelCompanyOverviewMetrics(
     stTomorrow,
     qualRow,
   ] = await Promise.all([
-    buildPeriodSlice(and(gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd))),
-    buildPeriodSlice(gte(ridesTable.created_at, weekRollingStart)),
-    buildPeriodSlice(and(gte(ridesTable.created_at, berlinWeekStart), lt(ridesTable.created_at, berlinWeekEnd))),
-    buildPeriodSlice(gte(ridesTable.created_at, thirtyRollingStart)),
-    buildPeriodSlice(and(gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd))),
-    buildPeriodSlice(and(gte(ridesTable.created_at, berlinYearStart), lt(ridesTable.created_at, berlinYearEnd))),
+    buildPeriodSlice(and(gte(settlementAt, berlinTodayStart), lt(settlementAt, berlinTodayEnd))),
+    buildPeriodSlice(gte(settlementAt, weekRollingStart)),
+    buildPeriodSlice(and(gte(settlementAt, berlinWeekStart), lt(settlementAt, berlinWeekEnd))),
+    buildPeriodSlice(gte(settlementAt, thirtyRollingStart)),
+    buildPeriodSlice(and(gte(settlementAt, berlinMonthStart), lt(settlementAt, berlinMonthEnd))),
+    buildPeriodSlice(and(gte(settlementAt, berlinYearStart), lt(settlementAt, berlinYearEnd))),
     db
       .select({ openRides: sql<number>`count(*)::int` })
       .from(ridesTable)
@@ -1696,6 +1700,9 @@ export async function updateRide(
     tariffSnapshot: cur.tariffSnapshot,
     pricingMode: cur.pricingMode,
   };
+  if (next.status === "completed" && cur.status !== "completed") {
+    next.completedAt = next.completedAt ?? new Date().toISOString();
+  }
   const nextDriverId = (next.driverId ?? "").trim();
   const prevDriverId = (cur.driverId ?? "").trim();
   if (nextDriverId && nextDriverId !== prevDriverId) {

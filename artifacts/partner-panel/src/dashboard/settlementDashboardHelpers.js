@@ -76,17 +76,18 @@ export function statusDe(s) {
  * @param {number | null | undefined} selectedYear
  */
 export function settlementPeriodScopeHint(periodKey, weekMode, selectedYear) {
+  const completionNote = "abgeschlossene Fahrten nach Fahrtende";
   switch (periodKey) {
     case "today":
-      return "Tag = Kalendertag (Europe/Berlin), abgeschlossene Fahrten nach Erstellungszeitpunkt.";
+      return `Tag = Kalendertag (Europe/Berlin), ${completionNote}.`;
     case "week":
       return weekMode === "calendar"
-        ? "Woche = Kalenderwoche Mo–So (Europe/Berlin)."
-        : "Woche = rollierend 7×24 Stunden ab jetzt.";
+        ? `Woche = Kalenderwoche Mo–So (Europe/Berlin), ${completionNote}.`
+        : `Woche = rollierend 7×24 Stunden ab jetzt, ${completionNote}.`;
     case "month":
-      return "Monat = Kalendermonat (Europe/Berlin).";
+      return `Monat = Kalendermonat (Europe/Berlin), ${completionNote}.`;
     case "year":
-      return `Jahr = Kalenderjahr ${selectedYear ?? "…"} (Europe/Berlin).`;
+      return `Jahr = Kalenderjahr ${selectedYear ?? "…"} (Europe/Berlin), ${completionNote}.`;
     default:
       return "Europe/Berlin";
   }
