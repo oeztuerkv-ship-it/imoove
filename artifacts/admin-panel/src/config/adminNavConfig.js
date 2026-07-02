@@ -173,11 +173,11 @@ const ADMIN_NAV_GROUPS_RAW = [
     icon: "wallet",
     roles: ["admin", "service", "taxi", "insurance"],
     items: [
-      { pageKey: "finance-audit", label: "Audit", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
+      { pageKey: "finance-audit", label: "Finanz-Protokoll", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "finance-dashboard", label: "Dashboard", icon: "chart", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "finance-invoices", label: "Invoices", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "finance-kranken-invoices", label: "Krankenfahrten-Rechnungen", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
-      { pageKey: "finance-ride-financials", label: "Ride Financials", icon: "rides", roles: ["admin", "service", "taxi", "insurance"] },
+      { pageKey: "finance-ride-financials", label: "Fahrt-Snapshots", icon: "rides", roles: ["admin", "service", "taxi", "insurance"] },
     ],
   },
   {
@@ -447,11 +447,11 @@ const ADMIN_TOP_NAV = [
       { pageKey: "finance-payout-lines", label: "Unternehmer-Auszahlungen" },
       { pageKey: "billing-hotel", label: "Buchungen (Hotel)" },
       { type: TOP_NAV_DIVIDER },
-      { pageKey: "finance-audit", label: "Finanzen · Audit" },
+      { pageKey: "finance-audit", label: "Finanzen · Protokoll" },
       { pageKey: "finance-dashboard", label: "Finanzen · Dashboard" },
       { pageKey: "finance-invoices", label: "Finanzen · Invoices" },
       { pageKey: "finance-kranken-invoices", label: "Finanzen · Krankenfahrten-Rechnungen" },
-      { pageKey: "finance-ride-financials", label: "Finanzen · Ride Financials" },
+      { pageKey: "finance-ride-financials", label: "Finanzen · Fahrt-Snapshots" },
     ],
   },
   {

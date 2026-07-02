@@ -6,6 +6,55 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 const AUDIT_URL = `${API_BASE}/admin/finance/audit`;
 const PAGE_SIZE = 25;
 
+const ENTITY_TYPE_OPTIONS = [
+  { value: "", label: "Alle" },
+  { value: "ride_financial", label: "Finanz-Snapshot (Fahrt)" },
+  { value: "ride", label: "Fahrt" },
+  { value: "invoice", label: "Rechnung" },
+  { value: "settlement", label: "Unternehmer-Abrechnung" },
+  { value: "payment", label: "Zahlung" },
+];
+
+const ACTION_OPTIONS = [
+  { value: "", label: "Alle" },
+  { value: "snapshot_created", label: "Snapshot angelegt" },
+  { value: "snapshot_updated", label: "Snapshot aktualisiert" },
+  { value: "snapshot_locked", label: "Snapshot gesperrt" },
+  { value: "snapshot_corrected", label: "Snapshot korrigiert" },
+  { value: "correction_started", label: "Korrektur gestartet" },
+  { value: "status_changed", label: "Status geändert" },
+  { value: "payout_line_marked_ausgezahlt", label: "Auszahlung als ausgezahlt markiert" },
+  { value: "invoice_marked_paid", label: "Rechnung als bezahlt markiert" },
+];
+
+const ENTITY_TYPE_LABELS = Object.fromEntries(
+  ENTITY_TYPE_OPTIONS.filter((o) => o.value).map((o) => [o.value, o.label]),
+);
+
+const ACTION_LABELS = Object.fromEntries(ACTION_OPTIONS.filter((o) => o.value).map((o) => [o.value, o.label]));
+
+function entityTypeDe(value) {
+  const k = String(value ?? "").trim();
+  return ENTITY_TYPE_LABELS[k] || k || "—";
+}
+
+function actionDe(value) {
+  const k = String(value ?? "").trim();
+  return ACTION_LABELS[k] || k || "—";
+}
+
+function actorTypeDe(value) {
+  const m = {
+    system: "System",
+    admin: "Plattform-Admin",
+    driver: "Fahrer",
+    partner: "Partner",
+    passenger: "Kunde",
+  };
+  const k = String(value ?? "").trim();
+  return m[k] || k || "—";
+}
+
 export default function FinanceAuditPage() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -33,7 +82,7 @@ export default function FinanceAuditPage() {
     } catch {
       setItems([]);
       setTotal(0);
-      setError("Finance-Audit konnte nicht geladen werden.");
+      setError("Finanz-Protokoll konnte nicht geladen werden.");
     } finally {
       setLoading(false);
     }
@@ -47,7 +96,7 @@ export default function FinanceAuditPage() {
 
   return (
     <div className="admin-page admin-page--loose admin-page--content">
-      <p className="admin-page-lead">Finance-Audit-Log mit Filter und Verlauf (nur Lesen).</p>
+      <p className="admin-page-lead">Finanz-Änderungsprotokoll mit Filter und Verlauf — nur Lesen.</p>
 
       {error ? (
         <section className="admin-section-block">
@@ -57,15 +106,41 @@ export default function FinanceAuditPage() {
         </section>
       ) : null}
 
-      <AdminCollapsibleSection title="Finance Audit" subtitle="read only" defaultOpen>
+      <AdminCollapsibleSection title="Finanz-Protokoll" subtitle="Nur Lesen" defaultOpen>
         <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
           <label className="admin-filter-field">
-            <span className="admin-field-label">Entity-Typ</span>
-            <input className="admin-input" placeholder="z. B. ride_financial" value={entityType} onChange={(e) => { setEntityType(e.target.value); setPage(1); }} />
+            <span className="admin-field-label">Objekttyp</span>
+            <select
+              className="admin-select"
+              value={entityType}
+              onChange={(e) => {
+                setEntityType(e.target.value);
+                setPage(1);
+              }}
+            >
+              {ENTITY_TYPE_OPTIONS.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="admin-filter-field">
-            <span className="admin-field-label">Action</span>
-            <input className="admin-input" placeholder="z. B. snapshot_updated" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} />
+            <span className="admin-field-label">Aktion</span>
+            <select
+              className="admin-select"
+              value={action}
+              onChange={(e) => {
+                setAction(e.target.value);
+                setPage(1);
+              }}
+            >
+              {ACTION_OPTIONS.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </label>
           <button type="button" className="admin-btn-refresh admin-filter-toolbar--modern__refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
@@ -74,24 +149,37 @@ export default function FinanceAuditPage() {
         <div className="admin-table-card admin-table-card--embedded">
           <div className="admin-table-scroll">
             <div className="admin-table-row admin-table-row--head">
-              <div>Zeit</div><div>Entity</div><div>Entity ID</div><div>Action</div><div>Actor</div>
+              <div>Zeit</div>
+              <div>Objekttyp</div>
+              <div>Objekt-ID</div>
+              <div>Aktion</div>
+              <div>Auslöser</div>
             </div>
             {items.map((x) => (
               <div className="admin-table-row" key={x.id}>
                 <div>{x.created_at ? new Date(x.created_at).toLocaleString("de-DE") : "—"}</div>
-                <div>{x.entity_type}</div>
+                <div title={x.entity_type}>{entityTypeDe(x.entity_type)}</div>
                 <div className="admin-mono">{x.entity_id}</div>
-                <div>{x.action}</div>
-                <div>{x.actor_type}{x.actor_id ? ` · ${x.actor_id}` : ""}</div>
+                <div title={x.action}>{actionDe(x.action)}</div>
+                <div>
+                  {actorTypeDe(x.actor_type)}
+                  {x.actor_id ? ` · ${x.actor_id}` : ""}
+                </div>
               </div>
             ))}
-            {!loading && items.length === 0 ? <div className="admin-info-banner">Keine Audit-Einträge gefunden.</div> : null}
+            {!loading && items.length === 0 ? <div className="admin-info-banner">Keine Protokoll-Einträge gefunden.</div> : null}
           </div>
         </div>
         <div className="admin-pagination admin-pagination--inset">
-          <button className="admin-page-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Zurück</button>
-          <span className="admin-page-dots">Seite {page} / {pages}</span>
-          <button className="admin-page-btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Weiter</button>
+          <button className="admin-page-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            Zurück
+          </button>
+          <span className="admin-page-dots">
+            Seite {page} / {pages}
+          </span>
+          <button className="admin-page-btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>
+            Weiter
+          </button>
         </div>
       </AdminCollapsibleSection>
     </div>

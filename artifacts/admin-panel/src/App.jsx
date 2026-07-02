@@ -136,8 +136,8 @@ const PAGE_META = {
     subtitle: "KPI-Summary für Umsatz, Forderungen, Rechnungen und Provision",
   },
   "finance-ride-financials": {
-    title: "Finanzen · Ride Financials",
-    subtitle: "Finanz-Snapshots je Fahrt mit Filter, Pagination und Detail",
+    title: "Finanzen · Fahrt-Snapshots",
+    subtitle: "Finanz-Snapshots je Fahrt mit Filter und Detailansicht",
   },
   "finance-payout-lines": {
     title: "Finanzen · Unternehmer-Auszahlungen",
@@ -148,8 +148,8 @@ const PAGE_META = {
     subtitle: "Rechnungslisten und Rechnungsdetail (read only)",
   },
   "finance-audit": {
-    title: "Finanzen · Audit",
-    subtitle: "Finance-Audit-Log mit Filter und Verlauf",
+    title: "Finanzen · Protokoll",
+    subtitle: "Finanz-Änderungsprotokoll mit Filter und Verlauf",
   },
   "docs-hub": {
     title: "Dokumente / PDF",
