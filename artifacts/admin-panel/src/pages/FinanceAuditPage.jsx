@@ -58,10 +58,16 @@ export default function FinanceAuditPage() {
       ) : null}
 
       <AdminCollapsibleSection title="Finance Audit" subtitle="read only" defaultOpen>
-        <div className="admin-filter-toolbar">
-          <input className="admin-input" placeholder="entity_type (z. B. ride_financial)" value={entityType} onChange={(e) => { setEntityType(e.target.value); setPage(1); }} />
-          <input className="admin-input" placeholder="action (z. B. snapshot_updated)" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} />
-          <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Entity-Typ</span>
+            <input className="admin-input" placeholder="z. B. ride_financial" value={entityType} onChange={(e) => { setEntityType(e.target.value); setPage(1); }} />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Action</span>
+            <input className="admin-input" placeholder="z. B. snapshot_updated" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} />
+          </label>
+          <button type="button" className="admin-btn-refresh admin-filter-toolbar--modern__refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
@@ -82,7 +88,7 @@ export default function FinanceAuditPage() {
             {!loading && items.length === 0 ? <div className="admin-info-banner">Keine Audit-Einträge gefunden.</div> : null}
           </div>
         </div>
-        <div className="admin-pagination">
+        <div className="admin-pagination admin-pagination--inset">
           <button className="admin-page-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Zurück</button>
           <span className="admin-page-dots">Seite {page} / {pages}</span>
           <button className="admin-page-btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Weiter</button>

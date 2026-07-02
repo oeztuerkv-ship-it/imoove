@@ -267,7 +267,7 @@ export default function InsurerRidesPage() {
       ) : null}
 
       <AdminCollapsibleSection title="Filter" subtitle={`Gesamt: ${total}`} defaultOpen>
-        <div className="admin-filter-toolbar">
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern">
           <label className="admin-filter-field">
             <span className="admin-field-label">Fahrt-ID</span>
             <input className="admin-input" value={rideId} onChange={(e) => setRideId(e.target.value)} placeholder="REQ-…" />

@@ -210,7 +210,7 @@ export default function CompanyVehicleRequestsPage({ onOpenCompany }) {
         </section>
       ) : null}
 
-      <div className="admin-filter-toolbar" style={{ marginBottom: 16 }}>
+      <div className="admin-filter-toolbar admin-filter-toolbar--modern">
         <label className="admin-filter-field">
           <span className="admin-field-label">Anzeige</span>
           <select className="admin-input" value={filterMode} onChange={(e) => setFilterMode(e.target.value)}>

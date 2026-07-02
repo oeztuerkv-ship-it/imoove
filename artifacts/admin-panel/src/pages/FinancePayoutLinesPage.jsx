@@ -185,7 +185,7 @@ export default function FinancePayoutLinesPage() {
       </div>
 
       <AdminCollapsibleSection title="Auszahlungen" subtitle={`${total} Fahrten`} defaultOpen flushBody>
-        <div className="admin-finance-payout-toolbar">
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
           <label className="admin-filter-field admin-filter-field--search">
             <span className="admin-field-label">Suche</span>
             <input
@@ -248,7 +248,7 @@ export default function FinancePayoutLinesPage() {
           </label>
           <button
             type="button"
-            className="admin-btn-refresh admin-finance-payout-toolbar__refresh"
+            className="admin-btn-refresh admin-filter-toolbar--modern__refresh"
             onClick={() => void loadList()}
             disabled={loading}
           >
@@ -349,7 +349,7 @@ export default function FinancePayoutLinesPage() {
                       {isOpen ? (
                         <button
                           type="button"
-                          className="admin-btn-payout-mark"
+                          className="admin-btn-table-ghost"
                           disabled={busyRideId === rideId}
                           onClick={() => void markAusgezahlt(rideId)}
                         >
@@ -367,7 +367,7 @@ export default function FinancePayoutLinesPage() {
         </div>
 
         {pages > 1 ? (
-          <div className="admin-pagination" style={{ margin: "12px 12px 0" }}>
+          <div className="admin-pagination admin-pagination--inset">
             <button
               type="button"
               className="admin-btn admin-btn--secondary admin-btn--sm"

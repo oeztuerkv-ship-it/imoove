@@ -29,6 +29,15 @@ export default function FinanceRideFinancialsPage() {
     locked: "",
     hasInvoice: "",
   });
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setFilters((f) => ({ ...f, search: searchInput.trim() }));
+      setPage(1);
+    }, 320);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -93,41 +102,50 @@ export default function FinanceRideFinancialsPage() {
       ) : null}
 
       <AdminCollapsibleSection title="Ride Financials" subtitle={`${total} Einträge`} defaultOpen>
-        <div className="admin-filter-toolbar">
-          <input
-            className="admin-input"
-            placeholder="Suche (ride_id / billing_reference)"
-            value={filters.search}
-            onChange={(e) => {
-              setPage(1);
-              setFilters((f) => ({ ...f, search: e.target.value }));
-            }}
-          />
-          <select className="admin-select" value={filters.billingStatus} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, billingStatus: e.target.value })); }}>
-            <option value="">Billing-Status (alle)</option>
-            <option value="unbilled">unbilled</option>
-            <option value="queued">queued</option>
-            <option value="invoiced">invoiced</option>
-            <option value="partially_paid">partially_paid</option>
-            <option value="paid">paid</option>
-            <option value="cancelled">cancelled</option>
-            <option value="written_off">written_off</option>
-          </select>
-          <select className="admin-select" value={filters.settlementStatus} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, settlementStatus: e.target.value })); }}>
-            <option value="">Settlement-Status (alle)</option>
-            <option value="open">open</option>
-            <option value="calculated">calculated</option>
-            <option value="approved">approved</option>
-            <option value="paid_out">paid_out</option>
-            <option value="held">held</option>
-            <option value="disputed">disputed</option>
-          </select>
-          <select className="admin-select" value={filters.locked} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, locked: e.target.value })); }}>
-            <option value="">Lock (alle)</option>
-            <option value="true">locked</option>
-            <option value="false">unlocked</option>
-          </select>
-          <button type="button" className="admin-btn-refresh" onClick={() => void loadList()} disabled={loading}>
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
+          <label className="admin-filter-field admin-filter-field--wide">
+            <span className="admin-field-label">Suche</span>
+            <input
+              className="admin-input"
+              placeholder="Fahrt-ID, Billing-Referenz …"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Billing</span>
+            <select className="admin-select" value={filters.billingStatus} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, billingStatus: e.target.value })); }}>
+              <option value="">Alle</option>
+              <option value="unbilled">unbilled</option>
+              <option value="queued">queued</option>
+              <option value="invoiced">invoiced</option>
+              <option value="partially_paid">partially_paid</option>
+              <option value="paid">paid</option>
+              <option value="cancelled">cancelled</option>
+              <option value="written_off">written_off</option>
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Settlement</span>
+            <select className="admin-select" value={filters.settlementStatus} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, settlementStatus: e.target.value })); }}>
+              <option value="">Alle</option>
+              <option value="open">open</option>
+              <option value="calculated">calculated</option>
+              <option value="approved">approved</option>
+              <option value="paid_out">paid_out</option>
+              <option value="held">held</option>
+              <option value="disputed">disputed</option>
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Lock</span>
+            <select className="admin-select" value={filters.locked} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, locked: e.target.value })); }}>
+              <option value="">Alle</option>
+              <option value="true">locked</option>
+              <option value="false">unlocked</option>
+            </select>
+          </label>
+          <button type="button" className="admin-btn-refresh admin-filter-toolbar--modern__refresh" onClick={() => void loadList()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
@@ -139,19 +157,19 @@ export default function FinanceRideFinancialsPage() {
             {items.map((x) => (
               <div className="admin-table-row" key={x.id}>
                 <div className="admin-mono">{x.ride_id}</div>
-                <div>{x.partner_company_name || x.partner_company_id || "—"}</div>
-                <div>{x.service_provider_company_name || x.service_provider_company_id || "—"}</div>
-                <div>{money(x.gross_amount)}</div>
-                <div>{money(x.commission_amount)}</div>
+                <div className="admin-text-clamp-2">{x.partner_company_name || x.partner_company_id || "—"}</div>
+                <div className="admin-text-clamp-2">{x.service_provider_company_name || x.service_provider_company_id || "—"}</div>
+                <div className="admin-crisp-numeric">{money(x.gross_amount)}</div>
+                <div className="admin-crisp-numeric">{money(x.commission_amount)}</div>
                 <div>{x.billing_status}</div>
                 <div>{x.settlement_status}</div>
-                <div><button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => void openDetail(x.ride_id)}>Details</button></div>
+                <div><button type="button" className="admin-btn-table-ghost" onClick={() => void openDetail(x.ride_id)}>Details</button></div>
               </div>
             ))}
             {!loading && items.length === 0 ? <div className="admin-info-banner admin-info-banner--inline">Keine Datensätze gefunden.</div> : null}
           </div>
         </div>
-        <div className="admin-pagination">
+        <div className="admin-pagination admin-pagination--inset">
           <button className="admin-page-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Zurück</button>
           <span className="admin-page-dots">Seite {page} / {pages}</span>
           <button className="admin-page-btn" disabled={page >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))}>Weiter</button>

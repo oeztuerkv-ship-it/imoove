@@ -79,7 +79,7 @@ export default function InsurerOverviewPage() {
       ) : null}
 
       <AdminCollapsibleSection title="Zeitraum & Filter" defaultOpen>
-        <div className="admin-filter-toolbar">
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern">
           <label className="admin-filter-field">
             <span className="admin-field-label">Von</span>
             <input className="admin-input" type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} />

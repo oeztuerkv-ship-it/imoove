@@ -604,7 +604,7 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
       ) : null}
 
       <AdminCollapsibleSection title="Liste" defaultOpen>
-        <div className="admin-filter-toolbar admin-section-toolbar--start">
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-section-toolbar--start">
           <label className="admin-filter-field">
             <span className="admin-field-label">Ansicht</span>
             <select

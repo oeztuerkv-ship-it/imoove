@@ -51,7 +51,7 @@ export default function DriversRevenuePage() {
         Fahrer-Auszahlung — pro Fahrer aufgeschlüsselt.
       </p>
 
-      <div className="admin-filter-toolbar" style={{ marginBottom: 16 }}>
+      <div className="admin-filter-toolbar admin-filter-toolbar--modern">
         <label className="admin-filter-field">
           <span className="admin-field-label">Tag</span>
           <input className="admin-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />

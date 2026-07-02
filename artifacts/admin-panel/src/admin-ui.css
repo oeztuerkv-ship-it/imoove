@@ -185,6 +185,10 @@
   padding: 0;
 }
 
+.admin-section-block__body--flush .admin-filter-toolbar--modern {
+  margin: 0 12px 14px;
+}
+
 .admin-section-block__body--stack {
   display: flex;
   flex-direction: column;
@@ -294,6 +298,105 @@
   flex-wrap: wrap;
   gap: var(--onroda-space-4);
   align-items: flex-end;
+}
+
+/** Moderne Filterleiste — Karten-Look in aufklappbaren Sektionen (Referenz: Auszahlungen). */
+.admin-filter-toolbar--modern {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px 12px;
+  align-items: end;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--onroda-border-subtle, #e2e8f0);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.admin-filter-toolbar--modern.admin-filter-toolbar--search-wide {
+  grid-template-columns: minmax(200px, 2.2fr) repeat(auto-fit, minmax(132px, 1fr)) auto;
+}
+
+.admin-filter-toolbar--modern .admin-filter-field,
+.admin-filter-toolbar--modern .admin-filter-field--wide {
+  min-width: 0;
+}
+
+.admin-filter-toolbar--modern__refresh {
+  align-self: end;
+  justify-self: end;
+}
+
+@media (max-width: 960px) {
+  .admin-filter-toolbar--modern,
+  .admin-filter-toolbar--modern.admin-filter-toolbar--search-wide {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-filter-toolbar--modern__refresh {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+}
+
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.admin-kpi-card {
+  border: 1px solid var(--onroda-border-subtle);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--onroda-surface-card, #fff);
+}
+
+.admin-kpi-card__label {
+  color: var(--onroda-text-subtle);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.admin-kpi-card__value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--onroda-text-strong);
+}
+
+.admin-btn-table-ghost {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.admin-btn-table-ghost:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.admin-btn-table-ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-text-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.38;
+}
+
+.admin-pagination--inset {
+  margin: 12px 12px 0;
 }
 
 .admin-filter-field {
@@ -543,7 +646,7 @@
 }
 
 .admin-filter-card {
-  background: var(--onroda-bg-card);
+  background: linear-gradient(180deg, #f8fafc 0%, var(--onroda-bg-card) 100%);
   border: 1px solid var(--onroda-border);
   border-radius: var(--onroda-radius-card);
   padding: var(--onroda-space-8);

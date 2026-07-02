@@ -441,7 +441,7 @@ export default function FinanceInvoicesPage() {
           Verwendungszweck = Rechnungsnummer (z. B. <span className="admin-mono">ONR-HOT-2026-04-001</span>).
         </p>
 
-        <div className="admin-filter-toolbar" style={{ marginBottom: 12 }}>
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern">
           <button
             type="button"
             className="admin-page-btn"

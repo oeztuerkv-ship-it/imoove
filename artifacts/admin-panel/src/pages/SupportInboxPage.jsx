@@ -175,7 +175,7 @@ export default function SupportInboxPage() {
       ) : null}
 
       <AdminCollapsibleSection title="Filter" defaultOpen>
-        <div className="admin-filter-toolbar">
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern">
           <label className="admin-filter-field">
             <span className="admin-field-label">Status</span>
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="admin-input">

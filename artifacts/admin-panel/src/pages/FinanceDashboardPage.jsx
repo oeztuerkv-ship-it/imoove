@@ -74,7 +74,7 @@ export default function FinanceDashboardPage() {
       ) : null}
 
       <AdminCollapsibleSection title="KPI-Summary" subtitle="Abrechnung & Plattform-Provision" defaultOpen>
-        <div className="admin-filter-toolbar">
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern">
           <label className="admin-filter-field">
             <span className="admin-field-label">Von</span>
             <input className="admin-input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
@@ -83,7 +83,7 @@ export default function FinanceDashboardPage() {
             <span className="admin-field-label">Bis</span>
             <input className="admin-input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </label>
-          <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
+          <button type="button" className="admin-btn-refresh admin-filter-toolbar--modern__refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>

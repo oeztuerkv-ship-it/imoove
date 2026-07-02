@@ -192,33 +192,7 @@
   align-items: start;
 }
 
-/* —— Unternehmer-Auszahlungen —— */
-.admin-finance-payout-toolbar {
-  display: grid;
-  grid-template-columns: minmax(200px, 2.2fr) repeat(3, minmax(132px, 1fr)) auto;
-  gap: 10px 12px;
-  align-items: end;
-  margin: 0 12px 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--onroda-border-subtle, #e2e8f0);
-  border-radius: 12px;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-}
-
-.admin-finance-payout-toolbar .admin-filter-field {
-  min-width: 0;
-}
-
-.admin-finance-payout-toolbar .admin-filter-field--search {
-  min-width: 0;
-}
-
-.admin-finance-payout-toolbar__refresh {
-  align-self: end;
-  justify-self: end;
-}
-
-.admin-payout-lines-table-wrap {
+/* —— Unternehmer-Auszahlungen (tabellen-spezifisch; Toolbar → admin-filter-toolbar--modern) —— */
   margin: 0 -2px;
 }
 
@@ -322,38 +296,4 @@
 .admin-payout-lines-action {
   text-align: right;
   white-space: nowrap;
-}
-
-.admin-btn-payout-mark {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
-  font-size: 0.74rem;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-
-.admin-btn-payout-mark:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  color: #0f172a;
-}
-
-.admin-btn-payout-mark:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-@media (max-width: 960px) {
-  .admin-finance-payout-toolbar {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .admin-finance-payout-toolbar__refresh {
-    grid-column: 1 / -1;
-    justify-self: stretch;
-  }
 }
