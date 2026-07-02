@@ -78,6 +78,10 @@ import {
 import { driverLocations } from "./rides";
 import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
+  createPartnerSingleRideInvoice,
+  mapCompanyRideInvoiceSummaries,
+} from "../db/partnerSingleRideInvoiceData";
+import {
   assertCustomerRideOperational,
   assertPlatformNewRideAllowed,
   checkCustomerRideServiceArea,
@@ -1457,7 +1461,12 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
     })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
-    res.json({ ok: true, rides: withTrace });
+    const invoiceSummaries = await mapCompanyRideInvoiceSummaries(withTrace);
+    const ridesWithBilling = withTrace.map((r) => ({
+      ...r,
+      companyInvoice: invoiceSummaries.get(r.id) ?? null,
+    }));
+    res.json({ ok: true, rides: ridesWithBilling });
   } catch (e) {
     next(e);
   }
@@ -1761,8 +1770,6 @@ router.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, 
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
-    if (!denyUnlessPanelModule(res, ctx.profile, "company_rides")) return;
-    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
     const rideId = String(req.params.id ?? "").trim();
     if (!rideId) {
       res.status(400).json({ error: "ride_id_required" });
@@ -1777,80 +1784,136 @@ router.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, 
       ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object"
         ? ({ ...ride.partnerBookingMeta } as Record<string, unknown>)
         : {};
-    if (meta.medical_ride !== true) {
-      res.status(400).json({ error: "ride_not_medical" });
+
+    if (meta.medical_ride === true) {
+      if (!denyUnlessPanelModule(res, ctx.profile, "company_rides")) return;
+      if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+      if (meta.billing_ready !== true) {
+        res.status(409).json({ error: "ride_not_ready_for_billing" });
+        return;
+      }
+      const existingStatus = typeof meta.invoice_status === "string" ? meta.invoice_status : "";
+      if (existingStatus === "created" || existingStatus === "sent" || existingStatus === "paid") {
+        res.status(409).json({ error: "invoice_already_created" });
+        return;
+      }
+      const allCompanyRides = await listRidesForCompany(ctx.claims.companyId);
+      const usedInvoiceNumbers = allCompanyRides
+        .map((r) =>
+          r.partnerBookingMeta && typeof r.partnerBookingMeta === "object"
+            ? (r.partnerBookingMeta as Record<string, unknown>).invoice_number
+            : null,
+        )
+        .filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+      const invoiceNumber = nextInvoiceNumber(usedInvoiceNumbers);
+      const createdAt = new Date().toISOString();
+      const gross = Number(meta.gross_ride_amount ?? ride.finalFare ?? ride.estimatedFare ?? 0);
+      const commissionRate = Number(meta.onroda_commission_rate ?? 0.07);
+      const commissionAmount = Number(
+        meta.onroda_commission_amount ?? Math.round((gross * commissionRate + Number.EPSILON) * 100) / 100,
+      );
+      const payoutAmount = Number(meta.partner_payout_amount ?? Math.max(0, gross - commissionAmount));
+      const insurer = typeof meta.insurance_name === "string" ? meta.insurance_name : "";
+      const costCenter = typeof meta.cost_center === "string" ? meta.cost_center : "";
+      const companyName = ctx.profile.companyName || "Taxiunternehmen";
+      const companyAddress = "siehe Partner-Stammdaten";
+      const pdfLines = [
+        `Rechnung ${invoiceNumber}`,
+        `Unternehmen: ${companyName}`,
+        `Adresse: ${companyAddress || "n. a."}`,
+        `Fahrgast: ${ride.customerName || "n. a."}`,
+        `Datum: ${ride.scheduledAt || ride.createdAt}`,
+        `Strecke: ${ride.from} -> ${ride.to}`,
+        `Preis: ${gross.toFixed(2)} EUR`,
+        `Krankenkasse: ${insurer || "n. a."}`,
+        `Kostenstelle: ${costCenter || "n. a."}`,
+        `Nachweis/Ride-ID: ${ride.id}`,
+        `ONRODA Provision: ${(commissionRate * 100).toFixed(2)} %`,
+        `Provision Betrag: ${commissionAmount.toFixed(2)} EUR`,
+        `Auszahlung: ${payoutAmount.toFixed(2)} EUR`,
+        "Hinweis: Rechnung im Namen des Taxiunternehmens, ohne automatische Kassen-Übermittlung.",
+      ];
+      const companyKey = ctx.claims.companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const relKey = path.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+      const absPath = path.join(INVOICE_UPLOAD_ROOT, relKey);
+      await mkdir(path.dirname(absPath), { recursive: true });
+      await writeFile(absPath, buildSimpleInvoicePdf(pdfLines));
+      const nextMeta: Record<string, unknown> = {
+        ...meta,
+        gross_ride_amount: gross,
+        onroda_commission_rate: commissionRate,
+        onroda_commission_amount: commissionAmount,
+        partner_payout_amount: payoutAmount,
+        invoice_status: "created",
+        invoice_number: invoiceNumber,
+        invoice_created_at: createdAt,
+        invoice_pdf_file_key: relKey,
+        invoice_sent_at: typeof meta.invoice_sent_at === "string" ? meta.invoice_sent_at : "",
+        invoice_paid_at: typeof meta.invoice_paid_at === "string" ? meta.invoice_paid_at : "",
+      };
+      const updated = await updateRide(ride.id, {
+        partnerBookingMeta: nextMeta as RideRequest["partnerBookingMeta"],
+      });
+      if (!updated) {
+        res.status(500).json({ error: "update_failed" });
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId: ctx.claims.companyId,
+        actorPanelUserId: ctx.claims.panelUserId,
+        action: "billing.invoice_created",
+        subjectType: "ride",
+        subjectId: ride.id,
+        meta: { invoiceNumber, flow: "medical_meta_pdf" },
+      });
+      res.json({
+        ok: true,
+        flow: "medical",
+        invoice: {
+          status: "created",
+          number: invoiceNumber,
+          createdAt,
+          pdfFileKey: relKey,
+        },
+      });
       return;
     }
-    if (meta.billing_ready !== true) {
-      res.status(409).json({ error: "ride_not_ready_for_billing" });
-      return;
-    }
-    const existingStatus = typeof meta.invoice_status === "string" ? meta.invoice_status : "";
-    if (existingStatus === "created" || existingStatus === "sent" || existingStatus === "paid") {
-      res.status(409).json({ error: "invoice_already_created" });
-      return;
-    }
-    const allCompanyRides = await listRidesForCompany(ctx.claims.companyId);
-    const usedInvoiceNumbers = allCompanyRides
-      .map((r) =>
-        r.partnerBookingMeta && typeof r.partnerBookingMeta === "object"
-          ? (r.partnerBookingMeta as Record<string, unknown>).invoice_number
-          : null,
-      )
-      .filter((v): v is string => typeof v === "string" && v.trim().length > 0);
-    const invoiceNumber = nextInvoiceNumber(usedInvoiceNumbers);
-    const createdAt = new Date().toISOString();
-    const gross = Number(meta.gross_ride_amount ?? ride.finalFare ?? ride.estimatedFare ?? 0);
-    const commissionRate = Number(meta.onroda_commission_rate ?? 0.07);
-    const commissionAmount = Number(
-      meta.onroda_commission_amount ?? Math.round((gross * commissionRate + Number.EPSILON) * 100) / 100,
-    );
-    const payoutAmount = Number(meta.partner_payout_amount ?? Math.max(0, gross - commissionAmount));
-    const insurer = typeof meta.insurance_name === "string" ? meta.insurance_name : "";
-    const costCenter = typeof meta.cost_center === "string" ? meta.cost_center : "";
-    const companyName = ctx.profile.companyName || "Taxiunternehmen";
-    const companyAddress = "siehe Partner-Stammdaten";
-    const pdfLines = [
-      `Rechnung ${invoiceNumber}`,
-      `Unternehmen: ${companyName}`,
-      `Adresse: ${companyAddress || "n. a."}`,
-      `Fahrgast: ${ride.customerName || "n. a."}`,
-      `Datum: ${ride.scheduledAt || ride.createdAt}`,
-      `Strecke: ${ride.from} -> ${ride.to}`,
-      `Preis: ${gross.toFixed(2)} EUR`,
-      `Krankenkasse: ${insurer || "n. a."}`,
-      `Kostenstelle: ${costCenter || "n. a."}`,
-      `Nachweis/Ride-ID: ${ride.id}`,
-      `ONRODA Provision: ${(commissionRate * 100).toFixed(2)} %`,
-      `Provision Betrag: ${commissionAmount.toFixed(2)} EUR`,
-      `Auszahlung: ${payoutAmount.toFixed(2)} EUR`,
-      "Hinweis: Rechnung im Namen des Taxiunternehmens, ohne automatische Kassen-Übermittlung.",
-    ];
-    const companyKey = ctx.claims.companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const relKey = path.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
-    const absPath = path.join(INVOICE_UPLOAD_ROOT, relKey);
-    await mkdir(path.dirname(absPath), { recursive: true });
-    await writeFile(absPath, buildSimpleInvoicePdf(pdfLines));
-    const nextMeta: Record<string, unknown> = {
-      ...meta,
-      gross_ride_amount: gross,
-      onroda_commission_rate: commissionRate,
-      onroda_commission_amount: commissionAmount,
-      partner_payout_amount: payoutAmount,
-      invoice_status: "created",
-      invoice_number: invoiceNumber,
-      invoice_created_at: createdAt,
-      invoice_pdf_file_key: relKey,
-      invoice_sent_at: typeof meta.invoice_sent_at === "string" ? meta.invoice_sent_at : "",
-      invoice_paid_at: typeof meta.invoice_paid_at === "string" ? meta.invoice_paid_at : "",
-    };
-    const updated = await updateRide(ride.id, {
-      partnerBookingMeta: nextMeta as RideRequest["partnerBookingMeta"],
+
+    if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+
+    const actorLabel = ctx.profile.companyName?.trim() || ctx.claims.companyId;
+    const created = await createPartnerSingleRideInvoice({
+      ride,
+      companyId: ctx.claims.companyId,
+      actorLabel,
+      actorPanelUserId: ctx.claims.panelUserId,
     });
-    if (!updated) {
-      res.status(500).json({ error: "update_failed" });
+    if (!created.ok) {
+      const status =
+        created.error === "invoice_already_created"
+          ? 409
+          : created.error === "ride_not_eligible_for_invoice" || created.error === "missing_financial_snapshot"
+            ? 409
+            : created.error === "forbidden"
+              ? 403
+              : 400;
+      res.status(status).json({
+        error: created.error,
+        blockers: created.blockers ?? [],
+        message:
+          created.error === "invoice_already_created"
+            ? "Für diese Fahrt existiert bereits eine Rechnung."
+            : created.error === "ride_not_eligible_for_invoice"
+              ? "Fahrt ist noch nicht rechnungsbereit."
+              : created.error === "missing_financial_snapshot"
+                ? "Finanzdaten fehlen — bitte kurz warten oder Support kontaktieren."
+                : undefined,
+      });
       return;
     }
+
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId: ctx.claims.companyId,
@@ -1858,15 +1921,22 @@ router.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, 
       action: "billing.invoice_created",
       subjectType: "ride",
       subjectId: ride.id,
-      meta: { invoiceNumber },
+      meta: {
+        invoiceId: created.invoiceId,
+        invoiceNumber: created.invoiceNumber,
+        flow: "company_single_ride",
+      },
     });
+
     res.json({
       ok: true,
+      flow: "company",
       invoice: {
-        status: "created",
-        number: invoiceNumber,
-        createdAt,
-        pdfFileKey: relKey,
+        id: created.invoiceId,
+        number: created.invoiceNumber,
+        paymentReference: created.paymentReference,
+        totalGross: created.totalGross,
+        pdfUrl: `/api/panel/v1/invoices/${encodeURIComponent(created.invoiceId)}/pdf`,
       },
     });
   } catch (e) {
@@ -2041,6 +2111,13 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
       const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
       const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+      if ((payerKind === "company" || payerKind === "insurance") && !billingReference) {
+        res.status(400).json({
+          error: "billing_reference_required",
+          message: "Interne Referenz (Kostenstelle oder Fallnummer) ist bei Rechnungszahlung erforderlich.",
+        });
+        return;
+      }
       const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
       if (isPanelInstantRideBooking(scheduledAtVal) && !panelCompanyKindAllowsInstantRide(ctx.profile.companyKind)) {
         res.status(403).json({
