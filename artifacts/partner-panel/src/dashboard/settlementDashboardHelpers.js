@@ -1,5 +1,7 @@
 /** @typedef {"today" | "week" | "month" | "year"} SettlementUiPeriodKey */
 
+import { isNonBillableRideStatus } from "./dashboardHelpers.js";
+
 export function formatEur(n) {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
@@ -131,6 +133,9 @@ export function buildSettlementExportQueryParams(periodKey, weekMode, selectedYe
 
 /** Abgerechneter Endpreis oder Taxameter-Schätzung klar labeln. */
 export function settlementAmountCell(ride) {
+  if (ride?.status != null && isNonBillableRideStatus(ride.status)) {
+    return { value: "—", label: "" };
+  }
   if (ride?.hasFinancials && ride.grossAmount != null) {
     return { value: formatEur(ride.grossAmount), label: "Abgerechnet" };
   }
@@ -142,6 +147,9 @@ export function settlementAmountCell(ride) {
 }
 
 export function fareCellLabeled(ride) {
+  if (ride?.status != null && isNonBillableRideStatus(ride.status)) {
+    return { value: "—", label: "" };
+  }
   const hasFin = ride?.settlementGross != null || ride?.grossAmount != null;
   if (hasFin) {
     const n = Number(ride.settlementGross ?? ride.grossAmount);

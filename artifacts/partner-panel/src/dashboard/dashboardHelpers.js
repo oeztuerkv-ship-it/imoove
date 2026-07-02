@@ -13,6 +13,19 @@ export function isTerminalRideStatus(status) {
   return terminal.has(s);
 }
 
+/** Keine Abrechnung / kein erwarteter Umsatz — Betrag in Listen ausblenden. */
+export function isNonBillableRideStatus(status) {
+  const s = String(status ?? "").trim().toLowerCase();
+  return (
+    s === "cancelled" ||
+    s === "cancelled_by_customer" ||
+    s === "cancelled_by_driver" ||
+    s === "cancelled_by_system" ||
+    s === "expired" ||
+    s === "storniert"
+  );
+}
+
 export function berlinTodayYmd() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Berlin",

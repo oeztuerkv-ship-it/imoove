@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import { formatRideEstimatedFare, formatRideFinalFare } from "./finance/financeHelpers.js";
 
 function rideKindLabel(k) {
   const m = {
@@ -420,10 +421,8 @@ export default function PartnerRidesListPage({ variant }) {
                     <td className="panel-table__route">
                       {r.from} → {r.to}
                     </td>
-                    <td>{Number(r.estimatedFare).toFixed(2)}</td>
-                    <td className="panel-table__muted">
-                      {r.finalFare != null && r.finalFare !== "" ? Number(r.finalFare).toFixed(2) : "—"}
-                    </td>
+                    <td>{formatRideEstimatedFare(r)}</td>
+                    <td className="panel-table__muted">{formatRideFinalFare(r)}</td>
                     <td className="panel-table__muted">{new Date(r.createdAt).toLocaleString("de-DE")}</td>
                     <td className="panel-table__muted" title={r.createdByPanelUserId ?? ""}>
                       {r.createdByUsername || creatorHint(r.createdByPanelUserId)}

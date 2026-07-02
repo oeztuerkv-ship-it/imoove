@@ -1,4 +1,4 @@
-import { flowLabel, payerKindLabel, rideKindLabel } from "./financeHelpers.js";
+import { flowLabel, formatRideEstimatedFare, formatRideFinalFare, payerKindLabel, rideKindLabel } from "./financeHelpers.js";
 
 /** @param {Record<string, unknown>} props */
 export default function FinanceExportTab({
@@ -159,8 +159,8 @@ export default function FinanceExportTab({
                     <td className="partner-muted" style={{ maxWidth: 220 }}>
                       {r.from} → {r.to}
                     </td>
-                    <td className="partner-muted">{r.estimatedFare}</td>
-                    <td className="partner-muted">{r.finalFare ?? "—"}</td>
+                    <td className="partner-muted">{formatRideEstimatedFare(r)}</td>
+                    <td className="partner-muted">{formatRideFinalFare(r)}</td>
                   </tr>
                 ))}
               </tbody>

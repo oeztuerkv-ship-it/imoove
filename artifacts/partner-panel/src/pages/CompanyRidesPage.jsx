@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
+import { formatRideEstimatedFare, formatRideFinalFare } from "./finance/financeHelpers.js";
 
 function defaultDateTo() {
   const d = new Date();
@@ -412,8 +413,8 @@ export default function CompanyRidesPage() {
                     <td className="panel-table__route">
                       {r.from} → {r.to}
                     </td>
-                    <td>{formatMoney(r.estimatedFare)}</td>
-                    <td className="panel-table__muted">{formatMoney(r.finalFare)}</td>
+                    <td>{formatRideEstimatedFare(r)}</td>
+                    <td className="panel-table__muted">{formatRideFinalFare(r)}</td>
                     <td className="panel-table__muted">{r.billingReference || "—"}</td>
                     <td className="panel-table__muted">{signaturePartnerStatus(r)}</td>
                     <td className="panel-table__muted">

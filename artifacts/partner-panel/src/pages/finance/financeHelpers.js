@@ -1,3 +1,5 @@
+import { isNonBillableRideStatus } from "../../dashboard/dashboardHelpers.js";
+
 /** @param {unknown} v */
 export function formatMoney(v) {
   if (v == null || v === "") return "—";
@@ -8,8 +10,25 @@ export function formatMoney(v) {
 
 /** @param {unknown} ride */
 export function rideFareAmount(ride) {
-  const n = Number(ride?.finalFare ?? ride?.estimatedFare ?? 0);
-  return Number.isNaN(n) ? 0 : n;
+  if (isNonBillableRideStatus(ride?.status)) return null;
+  const raw = ride?.finalFare ?? ride?.estimatedFare;
+  if (raw == null || raw === "") return null;
+  const n = Number(raw);
+  return Number.isNaN(n) ? null : n;
+}
+
+export function formatRideFare(ride) {
+  return formatMoney(rideFareAmount(ride));
+}
+
+export function formatRideEstimatedFare(ride) {
+  if (isNonBillableRideStatus(ride?.status)) return "—";
+  return formatMoney(ride?.estimatedFare);
+}
+
+export function formatRideFinalFare(ride) {
+  if (isNonBillableRideStatus(ride?.status)) return "—";
+  return formatMoney(ride?.finalFare);
 }
 
 /** @param {unknown} ride */
@@ -84,10 +103,10 @@ export function deriveFinanceKpis(rides, snapshotMonthYm) {
 
   for (const r of rides) {
     const fare = rideFareAmount(r);
-    revenueMonth += fare;
+    if (fare != null) revenueMonth += fare;
 
     const created = r?.createdAt ? localYmd(r.createdAt) : null;
-    if (created && created === todayYmd) revenueToday += fare;
+    if (created && created === todayYmd && fare != null) revenueToday += fare;
 
     const meta = getPartnerMeta(r);
     const invStatusRaw = typeof meta?.invoice_status === "string" ? meta.invoice_status : "";
