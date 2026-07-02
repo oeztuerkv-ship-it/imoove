@@ -4,6 +4,7 @@ import { getDb, isPostgresConfigured } from "./client";
 import {
   adminCompaniesTable,
   financialAuditLogTable,
+  fleetDriversTable,
   invoiceItemsTable,
   invoicesTable,
   paymentsTable,
@@ -228,20 +229,25 @@ export type PayoutLineListFilters = {
   sort?: PayoutLineSort;
 };
 
-/** Mandant für Auszahlung: Snapshot → Partner → Fahrt.company_id */
+/** Mandant für Auszahlung: Snapshot → Partner → Fahrt → Fahrer-Mandant */
 function resolvedPayoutCompanyIdSql() {
-  return sql`coalesce(${rideFinancialsTable.service_provider_company_id}, ${rideFinancialsTable.partner_company_id}, ${ridesTable.company_id})`;
+  return sql`coalesce(${rideFinancialsTable.service_provider_company_id}, ${rideFinancialsTable.partner_company_id}, ${ridesTable.company_id}, ${fleetDriversTable.company_id})`;
+}
+
+function payoutEligibleRideCondition(): SQL {
+  return eq(ridesTable.status, "completed");
 }
 
 function payoutLinesBaseJoin() {
   return {
     ridesJoin: eq(rideFinancialsTable.ride_id, ridesTable.id),
+    driverJoin: eq(fleetDriversTable.id, ridesTable.driver_id),
     companyJoin: sql`${adminCompaniesTable.id} = ${resolvedPayoutCompanyIdSql()}`,
   };
 }
 
 function buildPayoutLineWhere(filters: PayoutLineListFilters): SQL[] {
-  const cond: SQL[] = [];
+  const cond: SQL[] = [payoutEligibleRideCondition()];
   if (filters.dateFrom) cond.push(gte(rideFinancialsTable.calculated_at, filters.dateFrom));
   if (filters.dateTo) cond.push(lte(rideFinancialsTable.calculated_at, filters.dateTo));
   if (filters.payoutLineStatus?.trim()) {
@@ -308,7 +314,7 @@ export async function getPayoutLinesSummaryAdmin(filters: PayoutLineListFilters)
     return { totalRows: 0, openCount: 0, openNetTotal: 0, paidOutCount: 0 };
   }
   const cond = buildPayoutLineWhere(filters);
-  const { ridesJoin, companyJoin } = payoutLinesBaseJoin();
+  const { ridesJoin, driverJoin, companyJoin } = payoutLinesBaseJoin();
   const [row] = await db
     .select({
       totalRows: sql<number>`count(*)::int`,
@@ -318,6 +324,7 @@ export async function getPayoutLinesSummaryAdmin(filters: PayoutLineListFilters)
     })
     .from(rideFinancialsTable)
     .leftJoin(ridesTable, ridesJoin)
+    .leftJoin(fleetDriversTable, driverJoin)
     .leftJoin(adminCompaniesTable, companyJoin)
     .where(cond.length ? and(...cond) : undefined);
   return {
@@ -332,11 +339,12 @@ export async function countPayoutLinesAdmin(filters: PayoutLineListFilters): Pro
   const db = getDb();
   if (!db) return 0;
   const cond = buildPayoutLineWhere(filters);
-  const { ridesJoin, companyJoin } = payoutLinesBaseJoin();
+  const { ridesJoin, driverJoin, companyJoin } = payoutLinesBaseJoin();
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(rideFinancialsTable)
     .leftJoin(ridesTable, ridesJoin)
+    .leftJoin(fleetDriversTable, driverJoin)
     .leftJoin(adminCompaniesTable, companyJoin)
     .where(cond.length ? and(...cond) : undefined);
   return n(row?.n);
@@ -350,7 +358,7 @@ export async function listPayoutLinesAdmin(args: {
   const db = getDb();
   if (!db) return [];
   const cond = buildPayoutLineWhere(args.filters);
-  const { ridesJoin, companyJoin } = payoutLinesBaseJoin();
+  const { ridesJoin, driverJoin, companyJoin } = payoutLinesBaseJoin();
   const rows = await db
     .select({
       rideId: rideFinancialsTable.ride_id,
@@ -367,6 +375,7 @@ export async function listPayoutLinesAdmin(args: {
     })
     .from(rideFinancialsTable)
     .leftJoin(ridesTable, ridesJoin)
+    .leftJoin(fleetDriversTable, driverJoin)
     .leftJoin(adminCompaniesTable, companyJoin)
     .where(cond.length ? and(...cond) : undefined)
     .orderBy(...payoutLineOrderBy(args.filters.sort))
