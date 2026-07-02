@@ -345,6 +345,40 @@ function drawSettlementDocumentFooter(
   doc.text(pageLabel, innerX, brandY, { width: innerW, align: "right" });
 }
 
+function withSettlementBlockPadding(
+  ctx: InvoicePdfContext,
+  pad: number,
+  draw: () => void,
+): { blockTop: number; blockHeight: number } {
+  const blockTop = ctx.y;
+  const blockLeft = ctx.contentLeft;
+  const blockWidth = ctx.contentWidth;
+  const saved = {
+    contentLeft: ctx.contentLeft,
+    contentRight: ctx.contentRight,
+    contentWidth: ctx.contentWidth,
+  };
+  ctx.contentLeft += pad;
+  ctx.contentRight -= pad;
+  ctx.contentWidth -= pad * 2;
+  ctx.y += pad;
+  draw();
+  const blockHeight = ctx.y - blockTop + pad;
+  ctx.contentLeft = saved.contentLeft;
+  ctx.contentRight = saved.contentRight;
+  ctx.contentWidth = saved.contentWidth;
+  ctx.y = blockTop + blockHeight;
+
+  const { doc } = ctx;
+  doc
+    .roundedRect(blockLeft, blockTop, blockWidth, blockHeight, 8)
+    .lineWidth(0.5)
+    .strokeColor(ONRODA_INVOICE_BRAND.text)
+    .stroke();
+
+  return { blockTop, blockHeight };
+}
+
 function companyRecipientLines(company: PanelSettlementOverviewPdfCompany): string[] {
   const lines = [...company.addressLines];
   if (company.vatId?.trim()) lines.push(`USt-IdNr.: ${company.vatId.trim()}`);
@@ -413,44 +447,48 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
       },
     );
 
-    doc.font("Helvetica-Bold").fontSize(10);
-    hexColor(doc, ONRODA_INVOICE_BRAND.text);
-    doc.text("ABRECHNUNGSSUMMEN", ctx.contentLeft, ctx.y);
-    ctx.y += 18;
-
     const commissionLabel =
       commissionRate != null
         ? `ONRODA-Provision (${fmtPct(commissionRate)})`
         : "ONRODA-Provision";
 
-    ctx.y = drawInvoiceTotalsCard(ctx, {
-      netLabel: "Brutto (abgerechnet)",
-      net: fmtEuro(settlement.grossAmount),
-      vatLabel: commissionLabel,
-      vat: fmtEuro(settlement.commissionAmount),
-      grossLabel: "Ihr Anteil",
-      gross: fmtEuro(settlement.operatorPayoutAmount),
-      grossUseAccent: false,
+    withSettlementBlockPadding(ctx, 14, () => {
+      const { doc } = ctx;
+      doc.font("Helvetica-Bold").fontSize(10);
+      hexColor(doc, ONRODA_INVOICE_BRAND.text);
+      doc.text("ABRECHNUNGSSUMMEN", ctx.contentLeft, ctx.y);
+      ctx.y += 18;
+
+      ctx.y = drawInvoiceTotalsCard(ctx, {
+        netLabel: "Brutto (abgerechnet)",
+        net: fmtEuro(settlement.grossAmount),
+        vatLabel: commissionLabel,
+        vat: fmtEuro(settlement.commissionAmount),
+        grossLabel: "Ihr Anteil",
+        gross: fmtEuro(settlement.operatorPayoutAmount),
+        grossUseAccent: false,
+      });
+
+      doc.font("Helvetica-Bold").fontSize(10);
+      hexColor(doc, ONRODA_INVOICE_BRAND.text);
+      doc.text("ZAHLUNGSARTEN (ABGERECHNET)", ctx.contentLeft, ctx.y);
+      ctx.y += 12;
+
+      const columns = paymentTableColumns(ctx.contentWidth);
+      ctx.y = drawInvoiceTableHeader(ctx, columns);
+      const paymentRows: InvoiceTableRow[] = [
+        {
+          cells: { type: "Karte", amount: fmtEuro(ps.cardGrossAmount), count: String(ps.cardRideCount) },
+        },
+        {
+          cells: { type: "Bar", amount: fmtEuro(ps.cashGrossAmount), count: String(ps.cashRideCount) },
+        },
+      ];
+      for (const row of paymentRows) {
+        ctx.y = drawInvoiceTableRow(ctx, columns, row);
+      }
+      ctx.y += 4;
     });
-
-    doc.font("Helvetica-Bold").fontSize(10);
-    hexColor(doc, ONRODA_INVOICE_BRAND.text);
-    doc.text("ZAHLUNGSARTEN (ABGERECHNET)", ctx.contentLeft, ctx.y);
-    ctx.y += 12;
-
-    const columns = paymentTableColumns(ctx.contentWidth);
-    ctx.y = drawInvoiceTableHeader(ctx, columns);
-    const paymentRows: InvoiceTableRow[] = [
-      {
-        cells: { type: "Karte", amount: fmtEuro(ps.cardGrossAmount), count: String(ps.cardRideCount) },
-      },
-      {
-        cells: { type: "Bar", amount: fmtEuro(ps.cashGrossAmount), count: String(ps.cashRideCount) },
-      },
-    ];
-    for (const row of paymentRows) {
-      ctx.y = drawInvoiceTableRow(ctx, columns, row);
-    }
     ctx.y += INVOICE_LAYOUT.sectionGap;
 
     const disclaimerText =
