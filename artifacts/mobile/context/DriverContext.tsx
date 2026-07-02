@@ -72,6 +72,85 @@ function fleetLoginUserMessage(errorCode: string): string {
 const DEFAULT_NICHT_FREI_MSG =
   "Sie sind noch nicht freigeschaltet. Bitte wenden Sie sich an Ihren Betrieb. Die Anmeldung ist möglich; Aufträge sind bis zur Freigabe gesperrt.";
 
+const ME_SYNC_FAILED_TITLE = "Profil-Sync fehlgeschlagen";
+
+type FleetMeFetchResult =
+  | { ok: true; data: Record<string, unknown> }
+  | { ok: false; status: number; errorCode: string; message: string };
+
+function fleetMeUserMessage(errorCode: string, status: number, rawText: string): string {
+  switch (errorCode) {
+    case "invalid_token":
+      return "Profil konnte nicht geladen werden: Sitzung wird vom Server nicht akzeptiert (invalid_token). Bitte erneut anmelden. Bleibt das bestehen, Betrieb oder Onroda informieren — kein Freigabe-Problem.";
+    case "token_revoked":
+      return "Ihre Sitzung ist abgelaufen. Bitte erneut anmelden.";
+    case "unauthorized":
+      return "Profil konnte nicht geladen werden: kein gültiger Fahrer-Token.";
+    case "not_found":
+      return "Profil konnte nicht geladen werden: Fahrer auf dem Server nicht gefunden.";
+    case "driver_account_inactive":
+      return "Ihr Fahrerkonto ist deaktiviert.";
+    case "driver_access_suspended":
+      return "Ihr Fahrerzugang ist gesperrt.";
+    default:
+      if (status === 503) {
+        return "Profil konnte nicht geladen werden: Server-Datenbank nicht verfügbar.";
+      }
+      if (rawText.trim().startsWith("<")) {
+        return `Profil konnte nicht geladen werden: Server antwortete mit HTML (HTTP ${status}).`;
+      }
+      return `Profil konnte nicht geladen werden (HTTP ${status}${errorCode ? `, ${errorCode}` : ""}). Das ist kein Freigabe-Hinweis — bitte erneut anmelden.`;
+  }
+}
+
+async function fetchFleetDriverMe(token: string): Promise<FleetMeFetchResult> {
+  try {
+    const res = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const rawText = await res.text();
+    let data: Record<string, unknown> = {};
+    try {
+      data = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : {};
+    } catch {
+      data = {};
+    }
+    if (!res.ok || data.ok !== true || !data.driver) {
+      const errorCode = typeof data.error === "string" ? data.error : "";
+      return {
+        ok: false,
+        status: res.status,
+        errorCode,
+        message: fleetMeUserMessage(errorCode, res.status, rawText),
+      };
+    }
+    return { ok: true, data };
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      status: 0,
+      errorCode: "network_error",
+      message:
+        raw.includes("Network request failed") || raw.includes("NSLocalizedDescription")
+          ? "Profil konnte nicht geladen werden — keine Verbindung zum Server."
+          : `Profil konnte nicht geladen werden: ${raw}`,
+    };
+  }
+}
+
+function applyFleetMeSyncFailure(profile: DriverProfile, message: string): DriverProfile {
+  return {
+    ...profile,
+    einsatzbereit: false,
+    isAvailable: false,
+    meSyncError: message,
+    notFreigegebenMessage: message,
+    blockBannerTitle: ME_SYNC_FAILED_TITLE,
+    driverBlockKind: "other",
+  };
+}
+
 function normalizeDriverPlaceholder(value: string | undefined | null): string {
   const trimmed = (value ?? "").trim();
   if (!trimmed || trimmed === "—" || trimmed === "-") return "";
@@ -268,6 +347,7 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     ratingCount,
     offerStats: normalizeOfferStatsFromMe(me.offerStats),
     cancellationSuspension: normalizeCancellationSuspensionFromMe(me.cancellationSuspension),
+    meSyncError: "",
   };
 }
 
@@ -310,6 +390,7 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
       p.dispatchPriority === "A" || p.dispatchPriority === "B" || p.dispatchPriority === "C"
         ? p.dispatchPriority
         : "C",
+    meSyncError: typeof p.meSyncError === "string" ? p.meSyncError : "",
   };
 }
 
@@ -377,6 +458,8 @@ export interface DriverProfile {
   kkModuleAuthorized: boolean;
   /** Premium-Dispatch A/B/C (Admin). */
   dispatchPriority: "A" | "B" | "C";
+  /** Gesetzt, wenn GET /fleet-driver/v1/me nach Login/Refresh fehlschlägt (≠ Freigabe-Block). */
+  meSyncError: string;
 }
 
 interface DriverContextValue {
@@ -391,7 +474,13 @@ interface DriverContextValue {
     konzessionNumber?: string;
     car?: string;
   }) => void;
-  login: (email: string, password: string) => Promise<{ ok: true; mustChangePassword: boolean } | { ok: false; error: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<
+    | { ok: true; mustChangePassword: boolean; meSyncFailed?: boolean; meSyncError?: string }
+    | { ok: false; error: string }
+  >;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
   setAvailable: (v: boolean) => Promise<void>;
@@ -430,20 +519,18 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
           if (!base.authToken) {
             return;
           }
-          const res = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
-            headers: { Authorization: `Bearer ${base.authToken}` },
-          });
+          const res = await fetchFleetDriverMe(base.authToken);
           if (!res.ok) {
-            await AsyncStorage.removeItem(STORAGE_KEY);
-            return;
-          }
-          const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-          if (!data?.ok || !data?.driver) {
-            await AsyncStorage.removeItem(STORAGE_KEY);
+            const failed = applyFleetMeSyncFailure(base, res.message);
+            if (!cancelled) {
+              setDriver(failed);
+              patchStoredDriver(failed);
+              setLastError(res.message);
+            }
             return;
           }
           if (!cancelled) {
-            const next = mergeFleetDriverMeIntoProfile(base, data);
+            const next = mergeFleetDriverMeIntoProfile(base, res.data);
             setDriver(next);
             patchStoredDriver(next);
           }
@@ -487,7 +574,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     async (
       email: string,
       password: string,
-    ): Promise<{ ok: true; mustChangePassword: boolean } | { ok: false; error: string }> => {
+    ): Promise<
+      | { ok: true; mustChangePassword: boolean; meSyncFailed?: boolean; meSyncError?: string }
+      | { ok: false; error: string }
+    > => {
     setLastError("");
     try {
       const res = await fetch(`${API_BASE}/fleet-auth/login`, {
@@ -540,6 +630,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         notFreigegebenMessage: DEFAULT_NICHT_FREI_MSG,
         blockBannerTitle: "",
         driverBlockKind: "",
+        meSyncError: "",
         companyCommission: { rate: 0.1, ratePercent: 10, minCommissionEur: null },
         medicalTransportAuthorized: false,
         featureKkModule: false,
@@ -550,27 +641,38 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      let meSyncFailed = false;
+      let meSyncError: string | undefined;
       try {
-        const meRes = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (meRes.ok) {
-          const meData = (await meRes.json().catch(() => ({}))) as Record<string, unknown>;
-          if (meData?.ok && meData?.driver) {
-            const enriched = mergeFleetDriverMeIntoProfile(profile, meData);
-            setDriver(enriched);
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(enriched));
-            await syncDriverExpoPushTokenWithRetry({
-              authToken: token,
-              fleetDriverId: enriched.id,
-              companyId: enriched.companyId,
-            });
-          }
+        const meResult = await fetchFleetDriverMe(token);
+        if (meResult.ok) {
+          const enriched = mergeFleetDriverMeIntoProfile(profile, meResult.data);
+          setDriver(enriched);
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(enriched));
+          await syncDriverExpoPushTokenWithRetry({
+            authToken: token,
+            fleetDriverId: enriched.id,
+            companyId: enriched.companyId,
+          });
+        } else {
+          meSyncFailed = true;
+          meSyncError = meResult.message;
+          const failed = applyFleetMeSyncFailure(profile, meResult.message);
+          setDriver(failed);
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(failed));
+          setLastError(meResult.message);
         }
       } catch {
-        /* Offline /v1/me — Profil bleibt ohne Einsatzbereit-Details */
+        const msg =
+          "Profil konnte nicht geladen werden — Netzwerkfehler nach der Anmeldung. Bitte erneut versuchen.";
+        meSyncFailed = true;
+        meSyncError = msg;
+        const failed = applyFleetMeSyncFailure(profile, msg);
+        setDriver(failed);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(failed));
+        setLastError(msg);
       }
-      if (profile.id && profile.companyId) {
+      if (!meSyncFailed && profile.id && profile.companyId) {
         await syncDriverExpoPushTokenWithRetry({
           authToken: token,
           fleetDriverId: profile.id,
@@ -578,7 +680,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         });
       }
       const mustChangePassword = Boolean(data.passwordChangeRequired ?? d.mustChangePassword);
-      return { ok: true, mustChangePassword };
+      return meSyncFailed
+        ? { ok: true, mustChangePassword, meSyncFailed: true, meSyncError }
+        : { ok: true, mustChangePassword };
     } catch (error) {
       const raw = error instanceof Error ? error.message : String(error);
       const msg =
@@ -663,24 +767,26 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const refreshEinsatzbereit = useCallback(async (): Promise<DriverProfile | null> => {
     const token = driver?.authToken;
     if (!token) return null;
-    try {
-      const res = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return null;
-      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!data?.ok || !data?.driver) return null;
+    const meResult = await fetchFleetDriverMe(token);
+    if (!meResult.ok) {
+      setLastError(meResult.message);
       let next: DriverProfile | null = null;
       setDriver((prev) => {
         if (!prev) return prev;
-        next = mergeFleetDriverMeIntoProfile(prev, data);
+        next = applyFleetMeSyncFailure(prev, meResult.message);
         patchStoredDriver(next);
         return next;
       });
       return next;
-    } catch {
-      return null;
     }
+    let next: DriverProfile | null = null;
+    setDriver((prev) => {
+      if (!prev) return prev;
+      next = mergeFleetDriverMeIntoProfile(prev, meResult.data);
+      patchStoredDriver(next);
+      return next;
+    });
+    return next;
   }, [driver?.authToken]);
 
   const patchAssignedVehicleSnapshot = useCallback(

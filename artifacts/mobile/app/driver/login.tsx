@@ -52,6 +52,13 @@ export default function DriverLoginScreen() {
       const result = await login(email, password);
       if (result.ok) {
         safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
+        if (result.meSyncFailed) {
+          Alert.alert(
+            "Profil konnte nicht geladen werden",
+            result.meSyncError ??
+              "Die Anmeldung war erfolgreich, aber der Server hat das Fahrerprofil nicht geliefert. Das ist kein Freigabe-Hinweis — bitte erneut anmelden oder den Support informieren.",
+          );
+        }
         try {
           await refreshDriverMarketHard();
         } catch {
