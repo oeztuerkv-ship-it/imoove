@@ -193,6 +193,7 @@
 }
 
 /* —— Unternehmer-Auszahlungen (tabellen-spezifisch; Toolbar → admin-filter-toolbar--modern) —— */
+.admin-payout-lines-table-wrap {
   margin: 0 -2px;
 }
 
