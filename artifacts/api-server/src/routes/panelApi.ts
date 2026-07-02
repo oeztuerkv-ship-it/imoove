@@ -123,7 +123,11 @@ import {
   PARTNER_COMPANY_PATCH_ADMIN_FIELDS,
   rejectPartnerAdminOnlyBodyFields,
 } from "../lib/fleetAdminOnlyFields";
-import { buildRouteDistanceQuote } from "../lib/fixedPriceRouteQuote";
+import { buildRouteDistanceQuote, resolveRouteGeoPoint } from "../lib/fixedPriceRouteQuote";
+import {
+  notifyEligibleDriversScheduledPoolOffer,
+  notifyMarketOnlineDriversInstantRideOffer,
+} from "../lib/driverRideExpoPush";
 import { validatePartnerRouteAddressPair } from "../lib/partnerRouteAddress";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
@@ -222,6 +226,50 @@ function parsePartnerDriverNote(body: Record<string, unknown>): string | null {
         : "";
   const note = raw.trim().slice(0, 200);
   return note.length > 0 ? note : null;
+}
+
+async function resolvePanelRideCoords(
+  fromFull: string,
+  toFull: string,
+  fromLat?: number | null,
+  fromLon?: number | null,
+  toLat?: number | null,
+  toLon?: number | null,
+): Promise<{
+  fromLat: number | null;
+  fromLon: number | null;
+  toLat: number | null;
+  toLon: number | null;
+}> {
+  let fLat = fromLat ?? null;
+  let fLon = fromLon ?? null;
+  let tLat = toLat ?? null;
+  let tLon = toLon ?? null;
+  if (fLat == null || fLon == null) {
+    const pt = await resolveRouteGeoPoint(fromFull, null, null, null);
+    if (pt) {
+      fLat = pt.lat;
+      fLon = pt.lon;
+    }
+  }
+  if (tLat == null || tLon == null) {
+    const pt = await resolveRouteGeoPoint(toFull, null, null, null);
+    if (pt) {
+      tLat = pt.lat;
+      tLon = pt.lon;
+    }
+  }
+  return { fromLat: fLat, fromLon: fLon, toLat: tLat, toLon: tLon };
+}
+
+function notifyDriversAfterPartnerRideSaved(ride: RideRequest): void {
+  if (ride.status === "scheduled") {
+    void notifyEligibleDriversScheduledPoolOffer(ride);
+    return;
+  }
+  if (["pending", "requested", "searching_driver", "offered"].includes(ride.status)) {
+    void notifyMarketOnlineDriversInstantRideOffer(ride);
+  }
 }
 
 const INVOICE_UPLOAD_ROOT =
@@ -1557,6 +1605,67 @@ router.post("/panel/v1/rides/:rideId/retry-search", requirePanelAuth, async (req
       meta: { fromStatus: ride.status, toStatus: nextStatus },
     });
     const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
+    notifyDriversAfterPartnerRideSaved(updated);
+    res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.patch("/panel/v1/rides/:rideId/driver-note", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+
+    const note = parsePartnerDriverNote(req.body as Record<string, unknown>);
+    const prevMeta =
+      ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" && !Array.isArray(ride.partnerBookingMeta)
+        ? ({ ...ride.partnerBookingMeta } as Record<string, unknown>)
+        : {};
+    const nextMeta: Record<string, unknown> = { ...prevMeta };
+    if (note) {
+      nextMeta.customer_driver_note = note;
+    } else {
+      delete nextMeta.customer_driver_note;
+    }
+
+    const updated = await updateRide(rideId, {
+      partnerBookingMeta: nextMeta as RideRequest["partnerBookingMeta"],
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.driver_note_updated",
+      subjectType: "ride",
+      subjectId: rideId,
+      meta: { hasNote: Boolean(note) },
+    });
+
+    const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
     res.json({ ok: true, ride: rideOut });
   } catch (e) {
     next(e);
@@ -1954,6 +2063,14 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
           : typeof body.passengerPhone === "string"
             ? body.passengerPhone.trim()
             : "";
+      const coords = await resolvePanelRideCoords(
+        fromFull,
+        toFull,
+        optNum("fromLat"),
+        optNum("fromLon"),
+        optNum("toLat"),
+        optNum("toLon"),
+      );
       const rawOperational: Record<string, unknown> = {
         rideKind,
         payerKind,
@@ -1978,10 +2095,10 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
           {
             fromFull,
             toFull,
-            fromLat: optNum("fromLat") ?? null,
-            fromLon: optNum("fromLon") ?? null,
-            toLat: optNum("toLat") ?? null,
-            toLon: optNum("toLon") ?? null,
+            fromLat: coords.fromLat,
+            fromLon: coords.fromLon,
+            toLat: coords.toLat,
+            toLon: coords.toLon,
             raw: rawOperational,
           },
         ]))
@@ -2006,8 +2123,8 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         opPayload: opPayloadPanel,
         regions: regionsPanel,
         fromFull,
-        fromLat: optNum("fromLat") ?? null,
-        fromLon: optNum("fromLon") ?? null,
+        fromLat: coords.fromLat,
+        fromLon: coords.fromLon,
         distanceKm,
         tripMinutes: durationMinutes,
         waitingMinutes: 0,
@@ -2031,12 +2148,12 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         ...(passengerId ? { passengerId } : {}),
         from,
         fromFull,
-        fromLat: optNum("fromLat"),
-        fromLon: optNum("fromLon"),
+        fromLat: coords.fromLat,
+        fromLon: coords.fromLon,
         to,
         toFull,
-        toLat: optNum("toLat"),
-        toLon: optNum("toLon"),
+        toLat: coords.toLat,
+        toLon: coords.toLon,
         distanceKm,
         durationMinutes,
         estimatedFare: serverFare,
@@ -2080,7 +2197,10 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       }
       const saved = await findRide(newReq.id);
       const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]!) : toPartnerRideView(newReq);
-      if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
+      if (saved) {
+        await upsertFinanceAfterPartnerRideCreated(saved);
+        notifyDriversAfterPartnerRideSaved(saved);
+      }
       await insertPanelAuditLog({
         id: randomUUID(),
         companyId: ctx.claims.companyId,

@@ -493,6 +493,195 @@
   max-width: 360px;
 }
 
+.partner-rides-page .partner-page-title {
+  margin-bottom: 8px;
+}
+
+.partner-rides-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.partner-ride-card {
+  border: 1px solid var(--onroda-border);
+  border-radius: 14px;
+  background: var(--onroda-bg-app);
+  overflow: hidden;
+}
+
+.partner-ride-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.partner-ride-card__head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.partner-ride-card__status {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.partner-ride-card__status--pending {
+  background: rgba(234, 179, 8, 0.15);
+  color: #a16207;
+}
+
+.partner-ride-card__status--live {
+  background: rgba(15, 118, 110, 0.12);
+  color: #115e59;
+}
+
+.partner-ride-card__status--scheduled {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+
+.partner-ride-card__status--ok {
+  background: rgba(22, 101, 52, 0.12);
+  color: #166534;
+}
+
+.partner-ride-card__status--err {
+  background: rgba(180, 35, 24, 0.1);
+  color: #b42318;
+}
+
+.partner-ride-card__route {
+  font-size: 0.95rem;
+  color: var(--onroda-text-dark);
+  line-height: 1.4;
+}
+
+.partner-ride-card__meta {
+  font-size: 0.82rem;
+  color: var(--onroda-text-muted);
+}
+
+.partner-ride-card__head-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.partner-ride-card__fare {
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+}
+
+.partner-ride-card__chevron {
+  font-size: 0.75rem;
+  color: var(--onroda-text-muted);
+}
+
+.partner-ride-card__body {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--onroda-border);
+}
+
+.partner-ride-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin: 14px 0;
+}
+
+.partner-ride-detail-grid__full {
+  grid-column: 1 / -1;
+}
+
+.partner-ride-detail-grid dt {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--onroda-text-muted);
+}
+
+.partner-ride-detail-grid dd {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--onroda-text-dark);
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .partner-ride-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-ride-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.partner-ride-card__link-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.partner-ride-card__id {
+  margin: 12px 0 0;
+  font-size: 0.72rem;
+  color: var(--onroda-text-muted);
+}
+
+.partner-ride-note-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.partner-ride-note-modal__panel {
+  width: 100%;
+  max-width: 420px;
+  background: var(--onroda-bg-app);
+  border: 1px solid var(--onroda-border);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.partner-ride-note-modal__title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.partner-ride-note-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .panel-profile-actions {
   display: flex;
   flex-wrap: wrap;

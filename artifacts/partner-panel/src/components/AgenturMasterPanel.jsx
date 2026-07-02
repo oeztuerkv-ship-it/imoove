@@ -5,6 +5,7 @@ import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
 import RideCreatePage from "../pages/RideCreatePage.jsx";
+import PartnerRidesListPage from "../pages/PartnerRidesListPage.jsx";
 import "../styles/agentur-gutscheine.css";
 import {
   downloadPanelInvoicePdf,
@@ -1254,7 +1255,7 @@ export default function AgenturMasterPanel({ company, onLogout }) {
         {active === "dashboard" && <DashboardView token={token} company={company} />}
         {active === "taxi_buchen" && <RideCreatePage />}
         {active === "gutscheine" && <GutscheineView token={token} user={user} company={company} />}
-        {active === "fahrten" && <FahrtenView token={token} />}
+        {active === "fahrten" && <PartnerRidesListPage />}
         {active === "abrechnung" && <AbrechnungView token={token} />}
         {active === "posteingang" && (
           <PosteingangView token={token} onUnreadRefresh={refreshUnreadMessageCount} />
