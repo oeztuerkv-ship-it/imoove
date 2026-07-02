@@ -152,23 +152,24 @@ export default function CustomersPage() {
         erscheinen mit Anmeldetyp Google/Apple.
       </p>
 
-      <div className="admin-filter-card">
-        <div className="admin-filter-grid">
-          <label className="admin-filter-field">
-            <span className="admin-filter-label">Suche (Name / E-Mail)</span>
+      <div className="admin-filter-card admin-filter-card--modern">
+        <div className="admin-filter-grid admin-filter-grid--modern">
+          <label className="admin-filter-field admin-filter-field--search">
+            <span className="admin-field-label">Suche</span>
             <input
               className="admin-input"
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="z. B. muster@mail.de"
+              placeholder="Name oder E-Mail …"
+              autoComplete="off"
             />
           </label>
           <div className="admin-filter-actions">
-            <button type="button" className="admin-m-btn-bearb" onClick={() => void load()} disabled={loading}>
-              Aktualisieren
+            <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
+              {loading ? "Lade …" : "Aktualisieren"}
             </button>
-            <button type="button" className="admin-m-btn-bearb admin-m-btn-bearb--ghost" onClick={() => void exportCsv()}>
+            <button type="button" className="admin-page-btn" onClick={() => void exportCsv()}>
               CSV exportieren
             </button>
           </div>
@@ -248,27 +249,29 @@ export default function CustomersPage() {
         </table>
       </div>
 
-      <div className="admin-filter-actions" style={{ marginTop: 12 }}>
-        <button
-          type="button"
-          className="admin-m-btn-bearb admin-m-btn-bearb--ghost"
-          disabled={page <= 1 || loading}
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-        >
-          Zurück
-        </button>
-        <span className="admin-page-lead" style={{ margin: 0 }}>
+      <div className="admin-table-toolbar">
+        <div className="admin-table-toolbar__info">
           Seite {page} / {totalPages} · {total} Kunde{total === 1 ? "" : "n"}
-          {loading ? " · lädt…" : ""}
-        </span>
-        <button
-          type="button"
-          className="admin-m-btn-bearb admin-m-btn-bearb--ghost"
-          disabled={page >= totalPages || loading}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Weiter
-        </button>
+          {loading ? " · lädt …" : ""}
+        </div>
+        <div className="admin-pagination admin-pagination--inset">
+          <button
+            type="button"
+            className="admin-page-btn"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Zurück
+          </button>
+          <button
+            type="button"
+            className="admin-page-btn"
+            disabled={page >= totalPages || loading}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Weiter
+          </button>
+        </div>
       </div>
     </div>
   );

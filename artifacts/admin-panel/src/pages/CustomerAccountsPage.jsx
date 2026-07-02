@@ -59,23 +59,20 @@ export default function CustomerAccountsPage() {
   }, [load]);
 
   return (
-    <div className="app-news-page">
-      <header className="app-news-hero">
-        <h1 className="app-news-hero__title">Kundenkonten (App)</h1>
-        <p className="app-news-hero__sub">
-          Registrierte Endkunden per E-Mail und Passwort — getrennt von Google-OAuth.
-        </p>
-      </header>
+    <div className="admin-page admin-page--content">
+      <p className="admin-page-lead">
+        Registrierte Endkunden per E-Mail und Passwort — getrennt von Google- und Apple-Anmeldung.
+      </p>
 
-      {error ? (
-        <p className="app-news-cap-banner" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--single" style={{ maxWidth: 220, marginBottom: 16 }}>
+        <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
+          {loading ? "Lade …" : "Aktualisieren"}
+        </button>
+      </div>
 
-      {loading ? <p className="app-news-hero__sub">Lade Konten…</p> : null}
+      {error ? <div className="admin-error-banner">{error}</div> : null}
 
-      <div className="admin-table-wrap" style={{ marginTop: 16 }}>
+      <div className="admin-table-card">
         <table className="admin-table">
           <thead>
             <tr>
@@ -103,7 +100,7 @@ export default function CustomerAccountsPage() {
         </table>
       </div>
 
-      <p className="app-news-hero__sub" style={{ marginTop: 12 }}>
+      <p className="admin-table-toolbar__info" style={{ marginTop: 12 }}>
         {items.length} Konto{items.length === 1 ? "" : "en"} (max. 500 neueste).
       </p>
     </div>

@@ -358,18 +358,37 @@ export default function AppOperationalRegionsPage() {
               <label className="admin-form-label">Längengrad (lng)<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={newLng} onChange={(e) => setNewLng(e.target.value)} placeholder="9.3048" /></label>
               <label className="admin-form-label">Radius (km)<input className="admin-input" style={{ display: "block", marginTop: 4 }} value={newKm} onChange={(e) => setNewKm(e.target.value)} /></label>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "flex-end" }}>
-              <label className="admin-form-label" style={{ flex: 1 }}>
-                Koordinaten per Adresse ermitteln
-                <input className="admin-input" style={{ display: "block", marginTop: 4 }} value={newGeoQ} onChange={(e) => setNewGeoQ(e.target.value)} placeholder="z. B. Esslingen am Neckar" />
+            <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
+              <label className="admin-filter-field admin-filter-field--search">
+                <span className="admin-field-label">Koordinaten per Adresse ermitteln</span>
+                <input
+                  className="admin-input"
+                  value={newGeoQ}
+                  onChange={(e) => setNewGeoQ(e.target.value)}
+                  placeholder="z. B. Esslingen am Neckar"
+                />
               </label>
-              <button type="button" className="admin-c-btn-sec" style={{ marginBottom: 1 }} disabled={newGeoBusy} onClick={async () => {
-                const q = (newGeoQ || newLabel).trim(); if (!q) return;
-                setNewGeoBusy(true);
-                try { const c = await geocodeQuery(q); setNewLat(String(c.lat)); setNewLng(String(c.lng)); }
-                catch { setError("Adresse nicht gefunden — bitte manuell eingeben."); }
-                finally { setNewGeoBusy(false); }
-              }}>{newGeoBusy ? "..." : "Ermitteln"}</button>
+              <button
+                type="button"
+                className="admin-c-btn-sec admin-filter-toolbar--modern__refresh"
+                disabled={newGeoBusy}
+                onClick={async () => {
+                  const q = (newGeoQ || newLabel).trim();
+                  if (!q) return;
+                  setNewGeoBusy(true);
+                  try {
+                    const c = await geocodeQuery(q);
+                    setNewLat(String(c.lat));
+                    setNewLng(String(c.lng));
+                  } catch {
+                    setError("Adresse nicht gefunden — bitte manuell eingeben.");
+                  } finally {
+                    setNewGeoBusy(false);
+                  }
+                }}
+              >
+                {newGeoBusy ? "Ermittle …" : "Ermitteln"}
+              </button>
             </div>
           </div>
         ) : (

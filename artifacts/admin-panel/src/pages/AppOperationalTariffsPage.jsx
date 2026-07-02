@@ -564,12 +564,11 @@ export default function AppOperationalTariffsPage() {
             </li>
           ))}
         </ul>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, maxWidth: 420, alignItems: "flex-end" }}>
-          <label className="admin-form-label" style={{ flex: "1 1 200px" }}>
-            Stadt hinzufügen
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Stadt hinzufügen</span>
             <input
               className="admin-input"
-              style={{ display: "block", marginTop: 4 }}
               value={newMandatoryCity}
               onChange={(e) => setNewMandatoryCity(e.target.value)}
               placeholder="z. B. Waiblingen"
@@ -581,7 +580,7 @@ export default function AppOperationalTariffsPage() {
               }}
             />
           </label>
-          <button type="button" className="admin-c-btn-sec" disabled={busy || !newMandatoryCity.trim()} onClick={addMandatoryCity}>
+          <button type="button" className="admin-c-btn-sec admin-filter-toolbar--modern__refresh" disabled={busy || !newMandatoryCity.trim()} onClick={addMandatoryCity}>
             Hinzufügen
           </button>
         </div>
