@@ -42,6 +42,8 @@ export type InvoiceTotalsBlock = {
   vat: string;
   grossLabel: string;
   gross: string;
+  /** Standard: Markenrot für Gesamtbetrag; Abrechnungs-PDF nutzt neutrales Schwarz. */
+  grossUseAccent?: boolean;
 };
 
 function hexColor(doc: PDFDocument, hex: string) {
@@ -301,7 +303,7 @@ export function drawInvoiceTotalsCard(ctx: InvoicePdfContext, totals: InvoiceTot
   hexColor(doc, ONRODA_INVOICE_BRAND.muted);
   doc.text(totals.grossLabel, cardX + 14, y + 54, { width: cardW - 28, align: "left" });
   doc.font("Helvetica-Bold").fontSize(16);
-  hexColor(doc, ONRODA_INVOICE_BRAND.accent);
+  hexColor(doc, totals.grossUseAccent === false ? ONRODA_INVOICE_BRAND.text : ONRODA_INVOICE_BRAND.accent);
   doc.text(totals.gross, cardX + 14, y + 66, { width: cardW - 28, align: "right" });
 
   return y + cardH + INVOICE_LAYOUT.sectionGap;

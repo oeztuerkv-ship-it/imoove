@@ -6,6 +6,11 @@ import {
   rideFinancialsTable,
   ridesTable,
 } from "./schema";
+import {
+  defaultInvoicePrefixForCompanyKind,
+  normalizeInvoicePrefix,
+  resolveCompanyInvoicePrefix,
+} from "../lib/invoiceNumbering";
 function companyIdMatchCondition(companyId: string): SQL {
   return sql`${ridesTable.company_id}::text = ${companyId}`;
 }
@@ -137,78 +142,175 @@ export function parsePanelSettlementPeriodQuery(
 export function formatPanelSettlementPeriodLabels(
   query: PanelSettlementPeriodQuery,
   now = new Date(),
-): { title: string; description: string } {
+): {
+  kindLabel: string;
+  headline: string;
+  metaZeitraum: string;
+  scopeNote: string;
+  /** Kompatibilität (Partner-API / ältere Clients) */
+  title: string;
+  description: string;
+} {
   const zone = "Europe/Berlin";
   const berlin = berlinCalendarParts(now);
+  const fmtShortDate = (d: Date) =>
+    d.toLocaleDateString("de-DE", { timeZone: zone, day: "2-digit", month: "2-digit", year: "numeric" });
   const fmtMonthLong = (y: number, m: number) =>
     new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("de-DE", {
       timeZone: zone,
       month: "long",
       year: "numeric",
     });
-  const stand = now.toLocaleString("de-DE", {
-    timeZone: zone,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const scopeNote =
+    "Zeitzone Europe/Berlin. Abgeschlossene Fahrten nach Erstellungszeitpunkt (nicht Fahrtende).";
 
   switch (query.period) {
     case "today": {
-      const label = now.toLocaleDateString("de-DE", {
+      const headline = now.toLocaleDateString("de-DE", {
         timeZone: zone,
         weekday: "long",
         day: "2-digit",
         month: "long",
         year: "numeric",
       });
+      const metaZeitraum = fmtShortDate(now);
       return {
-        title: "Kalendertag",
-        description: `${label} · abgeschlossene Fahrten nach Erstellungszeitpunkt (Europe/Berlin)`,
+        kindLabel: "Tagesabrechnung",
+        headline,
+        metaZeitraum,
+        scopeNote,
+        title: "Tagesabrechnung",
+        description: metaZeitraum,
       };
     }
     case "week":
       if (query.weekMode === "calendar") {
+        const headline = `Kalenderwoche · Stand ${fmtShortDate(now)}`;
         return {
-          title: "Kalenderwoche",
-          description: `Montag–Sonntag (Europe/Berlin) · Stand ${stand}`,
+          kindLabel: "Wochenabrechnung",
+          headline,
+          metaZeitraum: "Montag–Sonntag",
+          scopeNote,
+          title: "Wochenabrechnung",
+          description: "Montag–Sonntag",
         };
       }
       return {
-        title: "Rollierende Woche",
-        description: `7×24 Stunden ab jetzt · Stand ${stand}`,
+        kindLabel: "Wochenabrechnung (rollierend)",
+        headline: `Letzte 7 Tage · Stand ${fmtShortDate(now)}`,
+        metaZeitraum: "Rollierend 7×24 h",
+        scopeNote,
+        title: "Wochenabrechnung (rollierend)",
+        description: "Rollierend 7×24 h",
       };
-    case "weekCalendar":
+    case "weekCalendar": {
+      const headline = `Kalenderwoche · Stand ${fmtShortDate(now)}`;
       return {
-        title: "Kalenderwoche",
-        description: `Montag–Sonntag (Europe/Berlin) · Stand ${stand}`,
+        kindLabel: "Wochenabrechnung",
+        headline,
+        metaZeitraum: "Montag–Sonntag",
+        scopeNote,
+        title: "Wochenabrechnung",
+        description: "Montag–Sonntag",
       };
+    }
     case "month": {
       const y = query.year ?? berlin.year;
       const m = query.month ?? berlin.month;
+      const headline = fmtMonthLong(y, m);
+      const metaZeitraum = `${String(m).padStart(2, "0")}/${y}`;
       return {
-        title: "Kalendermonat",
-        description: `${fmtMonthLong(y, m)} · abgeschlossene Fahrten nach Erstellungszeitpunkt`,
+        kindLabel: "Monatsabrechnung",
+        headline,
+        metaZeitraum,
+        scopeNote,
+        title: "Monatsabrechnung",
+        description: metaZeitraum,
       };
     }
     case "year": {
       const y = query.year ?? berlin.year;
       return {
-        title: "Kalenderjahr",
-        description: `Jahr ${y} (Europe/Berlin) · abgeschlossene Fahrten nach Erstellungszeitpunkt`,
+        kindLabel: "Jahresabrechnung",
+        headline: String(y),
+        metaZeitraum: String(y),
+        scopeNote,
+        title: "Jahresabrechnung",
+        description: String(y),
       };
     }
     default:
-      return { title: "Zeitraum", description: "Europe/Berlin" };
+      return {
+        kindLabel: "Abrechnungszeitraum",
+        headline: fmtShortDate(now),
+        metaZeitraum: fmtShortDate(now),
+        scopeNote,
+        title: "Abrechnungszeitraum",
+        description: fmtShortDate(now),
+      };
   }
+}
+
+/** Eindeutige Belegnummer für Steuerberater-PDF (informative Übersicht, kein DB-Settlement). */
+export function formatSettlementDocumentNumber(
+  invoicePrefix: string | null | undefined,
+  companyKind: string,
+  query: PanelSettlementPeriodQuery,
+  now = new Date(),
+): string {
+  const prefix = resolveCompanyInvoicePrefix(
+    invoicePrefix?.trim() ? normalizeInvoicePrefix(invoicePrefix) : "",
+    companyKind,
+  );
+  const berlin = berlinCalendarParts(now);
+  const y = query.year ?? berlin.year;
+  const m = String(query.month ?? berlin.month).padStart(2, "0");
+  const d = String(berlin.day).padStart(2, "0");
+
+  switch (query.period) {
+    case "today":
+      return `ONR-ABR-${prefix}-${y}-${m}-${d}`;
+    case "month":
+      return `ONR-ABR-${prefix}-${y}-${m}`;
+    case "year":
+      return `ONR-ABR-${prefix}-${y}`;
+    case "week":
+    case "weekCalendar":
+      return `ONR-ABR-${prefix}-${y}-${m}-${d}-W`;
+    default:
+      return `ONR-ABR-${prefix}-${y}-${m}-${d}`;
+  }
+}
+
+async function getPanelCompanyInvoiceMeta(
+  companyId: string,
+): Promise<{ invoicePrefix: string; companyKind: string } | null> {
+  const db = getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select({
+      invoice_prefix: adminCompaniesTable.invoice_prefix,
+      company_kind: adminCompaniesTable.company_kind,
+    })
+    .from(adminCompaniesTable)
+    .where(eq(adminCompaniesTable.id, companyId))
+    .limit(1);
+  if (!row) return null;
+  const kind = String(row.company_kind ?? "taxi").trim() || "taxi";
+  return {
+    invoicePrefix: row.invoice_prefix?.trim() ? row.invoice_prefix.trim() : defaultInvoicePrefixForCompanyKind(kind),
+    companyKind: kind,
+  };
 }
 
 export type PanelSettlementOverviewExportSnapshot = {
   period: PanelSettlementPeriodQuery;
   periodTitle: string;
   periodDescription: string;
+  periodHeadline: string;
+  periodKindLabel: string;
+  scopeNote: string;
+  documentNumber: string;
   commissionRate: number | null;
   settlement: PanelFinancialSettlementWindow;
   completedRides: number;
@@ -224,17 +326,30 @@ export async function getPanelSettlementOverviewExportSnapshot(
 
   const createdAtFilter = buildPanelSettlementCreatedAtFilter(query);
   const labels = formatPanelSettlementPeriodLabels(query);
-  const [stats, settlement, paymentStats, commissionRate] = await Promise.all([
+  const generatedAt = new Date();
+  const [stats, settlement, paymentStats, commissionRate, invoiceMeta] = await Promise.all([
     queryPanelCompletedPeriodStats(db, companyId, createdAtFilter),
     queryPanelFinancialSettlement(db, companyId, createdAtFilter),
     queryPanelPaymentStatsForPeriod(db, companyId, createdAtFilter),
     getPanelCompanyCommissionRate(companyId),
+    getPanelCompanyInvoiceMeta(companyId),
   ]);
+
+  const documentNumber = formatSettlementDocumentNumber(
+    invoiceMeta?.invoicePrefix,
+    invoiceMeta?.companyKind ?? "taxi",
+    query,
+    generatedAt,
+  );
 
   return {
     period: query,
     periodTitle: labels.title,
     periodDescription: labels.description,
+    periodHeadline: labels.headline,
+    periodKindLabel: labels.kindLabel,
+    scopeNote: labels.scopeNote,
+    documentNumber,
     commissionRate,
     settlement,
     completedRides: stats.completedRides,
