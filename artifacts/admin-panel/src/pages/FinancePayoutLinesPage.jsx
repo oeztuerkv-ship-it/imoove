@@ -4,7 +4,7 @@ import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const LIST_URL = `${API_BASE}/admin/finance/payout-lines`;
-const COMPANIES_URL = `${API_BASE}/admin/companies`;
+const TAXI_COMPANIES_URL = `${API_BASE}/admin/taxi-fleet-drivers/taxi-companies`;
 const PAGE_SIZE = 25;
 
 const SORT_OPTIONS = [
@@ -48,6 +48,7 @@ export default function FinancePayoutLinesPage() {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState(null);
   const [companies, setCompanies] = useState([]);
+  const [companiesLoading, setCompaniesLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -62,21 +63,25 @@ export default function FinancePayoutLinesPage() {
 
   useEffect(() => {
     void (async () => {
+      setCompaniesLoading(true);
       try {
-        const res = await fetch(COMPANIES_URL, { headers: adminApiHeaders() });
+        const res = await fetch(TAXI_COMPANIES_URL, { headers: adminApiHeaders() });
         const data = await res.json().catch(() => ({}));
-        const list = Array.isArray(data?.companies) ? data.companies : Array.isArray(data) ? data : [];
+        if (!res.ok || !data?.ok) throw new Error("companies_load_failed");
+        const list = Array.isArray(data.items) ? data.items : [];
         setCompanies(
           list
             .map((c) => ({
-              id: String(c.id ?? c.companyId ?? "").trim(),
-              name: String(c.name ?? c.displayName ?? c.id ?? "").trim(),
+              id: String(c.id ?? "").trim(),
+              name: String(c.name ?? c.id ?? "").trim(),
             }))
             .filter((c) => c.id && c.name)
             .sort((a, b) => a.name.localeCompare(b.name, "de")),
         );
       } catch {
         setCompanies([]);
+      } finally {
+        setCompaniesLoading(false);
       }
     })();
   }, []);
@@ -195,12 +200,13 @@ export default function FinancePayoutLinesPage() {
             <select
               className="admin-select"
               value={filters.companyId}
+              disabled={companiesLoading}
               onChange={(e) => {
                 setPage(1);
                 setFilters((f) => ({ ...f, companyId: e.target.value }));
               }}
             >
-              <option value="">Alle</option>
+              <option value="">{companiesLoading ? "Lade Unternehmen …" : "Alle Taxi-Unternehmen"}</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
