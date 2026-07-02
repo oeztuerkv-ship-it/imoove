@@ -50,34 +50,38 @@ export async function countFleetDriverPostAcceptCancellationsInWindow(
   const did = fleetDriverId.trim();
   const cid = companyId.trim();
   if (!did || !cid) return 0;
-  const since = windowSince();
+  try {
+    const since = windowSince();
 
-  const eventRows = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(rideEventsTable)
-    .where(
-      and(
-        eq(rideEventsTable.event_type, "driver_post_accept_cancel"),
-        eq(rideEventsTable.actor_id, did),
-        gte(rideEventsTable.created_at, since),
-        sql`COALESCE(${rideEventsTable.payload}->>'companyId', '') = ${cid}`,
-      ),
-    );
-  const fromEvents = Number(eventRows[0]?.c ?? 0);
-  if (fromEvents > 0) return fromEvents;
+    const eventRows = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(rideEventsTable)
+      .where(
+        and(
+          eq(rideEventsTable.event_type, "driver_post_accept_cancel"),
+          eq(rideEventsTable.actor_id, did),
+          gte(rideEventsTable.created_at, since),
+          eq(sql`COALESCE(${rideEventsTable.payload}->>'companyId', '')`, cid),
+        ),
+      );
+    const fromEvents = Number(eventRows[0]?.c ?? 0);
+    if (fromEvents > 0) return fromEvents;
 
-  const rideRows = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(ridesTable)
-    .where(
-      and(
-        eq(ridesTable.driver_id, did),
-        eq(ridesTable.company_id, cid),
-        eq(ridesTable.status, "cancelled_by_driver"),
-        gte(ridesTable.updated_at, since),
-      ),
-    );
-  return Number(rideRows[0]?.c ?? 0);
+    const rideRows = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(ridesTable)
+      .where(
+        and(
+          eq(ridesTable.driver_id, did),
+          eq(ridesTable.company_id, cid),
+          eq(ridesTable.status, "cancelled_by_driver"),
+          gte(ridesTable.updated_at, since),
+        ),
+      );
+    return Number(rideRows[0]?.c ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 export async function findActiveFleetDriverCancellationSuspension(
@@ -88,20 +92,24 @@ export async function findActiveFleetDriverCancellationSuspension(
   if (!db) return null;
   const did = fleetDriverId.trim();
   if (!did) return null;
-  const now = new Date();
-  const rows = await db
-    .select()
-    .from(fleetDriverCancellationSuspensionTable)
-    .where(
-      and(
-        eq(fleetDriverCancellationSuspensionTable.fleet_driver_id, did),
-        isNull(fleetDriverCancellationSuspensionTable.lifted_at),
-        gte(fleetDriverCancellationSuspensionTable.suspended_until, now),
-      ),
-    )
-    .limit(1);
-  const r = rows[0];
-  return r ? mapRow(r) : null;
+  try {
+    const now = new Date();
+    const rows = await db
+      .select()
+      .from(fleetDriverCancellationSuspensionTable)
+      .where(
+        and(
+          eq(fleetDriverCancellationSuspensionTable.fleet_driver_id, did),
+          isNull(fleetDriverCancellationSuspensionTable.lifted_at),
+          gte(fleetDriverCancellationSuspensionTable.suspended_until, now),
+        ),
+      )
+      .limit(1);
+    const r = rows[0];
+    return r ? mapRow(r) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function upsertFleetDriverCancellationSuspension(input: {

@@ -66,134 +66,148 @@ import { runMedicalTransportDocumentScan, runMedicalTransportDocumentScanTest } 
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { getCompanyFeatureKkModule, resolveKkModuleAccessForFleetDriver } from "../lib/kkModuleAccess.js";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
 router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
   const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
-  if (!a) {
-    res.status(401).json({ error: "unauthorized" });
-    return;
-  }
-  const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
-  if (!row) {
-    res.status(401).json({ error: "not_found" });
-    return;
-  }
-  void syncFleetDriverDispatchPriorityFromAdminEmail(a.fleetDriverId, a.companyId);
-  const rowFresh = (await findFleetDriverInCompany(a.fleetDriverId, a.companyId)) ?? row;
-  const [assignments, vehicles] = await Promise.all([
-    listAssignmentsForCompany(a.companyId),
-    listFleetVehiclesForCompany(a.companyId),
-  ]);
-  const assigned = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
-  const assignedVehicle = assigned ? vehicles.find((v) => v.id === assigned.vehicleId) ?? null : null;
-  const assignedVehicleVisible =
-    assignedVehicle && assignedVehicle.isActive && assignedVehicle.approvalStatus === "approved"
-      ? assignedVehicle
-      : null;
-  const listRow = fleetDriverTableRowToList(rowFresh);
-  const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
-  const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
-  const driverWorkflow = deriveDriverWorkflowLabel(listRow);
-  const hints =
-    "error" in readinessR
-      ? {
-          notFreigegebenMessage: "Einsatzbereitschaft konnte nicht geladen werden.",
-          blockBannerTitle: "Hinweis",
-          driverBlockKind: "other" as const,
-        }
-      : einsatzbereit
-        ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" as const }
-        : buildFleetDriverMeClientHints(readinessR, listRow);
-  const isMarketOnline = Boolean(row.is_market_online);
-  const opPayload = await getOperationalConfigPayload();
-  const regions = await listServiceRegionsForApi();
-  const pricingCtx = await resolveFinancePricingContextForRide(
-    { rideKind: "standard", companyId: a.companyId, driverId: a.fleetDriverId },
-    opPayload,
-    regions,
-  );
-  const effectiveCommissionRate =
-    pricingCtx.commissionType === "percentage" || pricingCtx.commissionType === "hybrid"
-      ? pricingCtx.commissionValue
-      : 0;
-  const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
-    a.companyId,
-    a.fleetDriverId,
-  );
-  const kkAccess = await resolveKkModuleAccessForFleetDriver(a.companyId, a.fleetDriverId);
-  const companyRow = await findCompanyById(a.companyId);
-  const companyConcessionNumber = companyRow?.concession_number ?? "";
-  const konzessionNumber = resolveFleetDriverKonzessionForMe({
-    assignedVehicleApproved: assignedVehicleVisible,
-    assignedVehicleAny: assignedVehicle,
-    companyConcessionNumber,
-  });
-  const dispatchRejectStreak = Number((rowFresh as { dispatch_reject_streak?: number }).dispatch_reject_streak ?? 0) || 0;
-  const offerStats = await getFleetDriverOfferStats(a.fleetDriverId, a.companyId, dispatchRejectStreak);
-  const [cancellationSuspensionRow, cancellationsInWindow] = await Promise.all([
-    findActiveFleetDriverCancellationSuspension(a.fleetDriverId),
-    countFleetDriverPostAcceptCancellationsInWindow(a.fleetDriverId, a.companyId),
-  ]);
-  res.json({
-    ok: true,
-    einsatzbereit,
-    isMarketOnline,
-    konzessionNumber,
-    companyConcessionNumber: companyConcessionNumber.trim() || null,
-    featureKkModule: kkAccess?.companyEnabled ?? false,
-    permissionKkModule: kkAccess?.permissionKkModule ?? false,
-    isOwner: kkAccess?.isOwner ?? false,
-    kkModuleAuthorized: kkAccess?.canAccess ?? false,
-    dispatchPriority: listRow.dispatchPriority,
-    medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
-    medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
-    companyCommission: {
-      rate: effectiveCommissionRate,
-      ratePercent: Math.round(effectiveCommissionRate * 1000) / 10,
-      minCommissionEur: pricingCtx.minCommissionEur ?? null,
-    },
-    notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
-    blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
-    driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
-    driverWorkflow,
-    offerStats,
-    cancellationSuspension: {
-      active: Boolean(cancellationSuspensionRow),
-      suspendedUntil: cancellationSuspensionRow?.suspendedUntil.toISOString() ?? null,
-      message:
-        cancellationSuspensionRow != null
-          ? buildFleetDriverCancellationSuspensionMessage(cancellationSuspensionRow.suspendedUntil)
-          : null,
-      cancellationsInWindow,
-      windowDays: FLEET_DRIVER_CANCELLATION_WINDOW_DAYS,
-      threshold: FLEET_DRIVER_CANCELLATION_THRESHOLD,
-    },
-    ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
-    driver: {
-      id: rowFresh.id,
-      companyId: rowFresh.company_id,
-      email: rowFresh.email,
-      firstName: rowFresh.first_name,
-      lastName: rowFresh.last_name,
-      accessStatus: rowFresh.access_status,
-      approvalStatus: listRow.approvalStatus,
-      mustChangePassword: rowFresh.must_change_password,
-      vehicleLegalType: rowFresh.vehicle_legal_type,
-      vehicleClass: rowFresh.vehicle_class,
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!row) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    void syncFleetDriverDispatchPriorityFromAdminEmail(a.fleetDriverId, a.companyId);
+    const rowFresh = (await findFleetDriverInCompany(a.fleetDriverId, a.companyId)) ?? row;
+    const [assignments, vehicles] = await Promise.all([
+      listAssignmentsForCompany(a.companyId),
+      listFleetVehiclesForCompany(a.companyId),
+    ]);
+    const assigned = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
+    const assignedVehicle = assigned ? vehicles.find((v) => v.id === assigned.vehicleId) ?? null : null;
+    const assignedVehicleVisible =
+      assignedVehicle && assignedVehicle.isActive && assignedVehicle.approvalStatus === "approved"
+        ? assignedVehicle
+        : null;
+    const listRow = fleetDriverTableRowToList(rowFresh);
+    const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
+    const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
+    const driverWorkflow = deriveDriverWorkflowLabel(listRow);
+    const hints =
+      "error" in readinessR
+        ? {
+            notFreigegebenMessage: "Einsatzbereitschaft konnte nicht geladen werden.",
+            blockBannerTitle: "Hinweis",
+            driverBlockKind: "other" as const,
+          }
+        : einsatzbereit
+          ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" as const }
+          : buildFleetDriverMeClientHints(readinessR, listRow);
+    const isMarketOnline = Boolean(rowFresh.is_market_online);
+    const opPayload = await getOperationalConfigPayload();
+    const regions = await listServiceRegionsForApi();
+    const pricingCtx = await resolveFinancePricingContextForRide(
+      { rideKind: "standard", companyId: a.companyId, driverId: a.fleetDriverId },
+      opPayload,
+      regions,
+    );
+    const effectiveCommissionRate =
+      pricingCtx.commissionType === "percentage" || pricingCtx.commissionType === "hybrid"
+        ? pricingCtx.commissionValue
+        : 0;
+    const medicalTransportAuth = await resolveMedicalTransportAuthorizationForFleetDriver(
+      a.companyId,
+      a.fleetDriverId,
+    );
+    const kkAccess = await resolveKkModuleAccessForFleetDriver(a.companyId, a.fleetDriverId);
+    const companyRow = await findCompanyById(a.companyId);
+    const companyConcessionNumber = companyRow?.concession_number ?? "";
+    const konzessionNumber = resolveFleetDriverKonzessionForMe({
+      assignedVehicleApproved: assignedVehicleVisible,
+      assignedVehicleAny: assignedVehicle,
+      companyConcessionNumber,
+    });
+    const dispatchRejectStreak =
+      Number((rowFresh as { dispatch_reject_streak?: number }).dispatch_reject_streak ?? 0) || 0;
+    const offerStats = await getFleetDriverOfferStats(a.fleetDriverId, a.companyId, dispatchRejectStreak);
+    const [cancellationSuspensionRow, cancellationsInWindow] = await Promise.all([
+      findActiveFleetDriverCancellationSuspension(a.fleetDriverId),
+      countFleetDriverPostAcceptCancellationsInWindow(a.fleetDriverId, a.companyId),
+    ]);
+    res.json({
+      ok: true,
+      einsatzbereit,
+      isMarketOnline,
+      konzessionNumber,
+      companyConcessionNumber: companyConcessionNumber.trim() || null,
+      featureKkModule: kkAccess?.companyEnabled ?? false,
+      permissionKkModule: kkAccess?.permissionKkModule ?? false,
+      isOwner: kkAccess?.isOwner ?? false,
+      kkModuleAuthorized: kkAccess?.canAccess ?? false,
       dispatchPriority: listRow.dispatchPriority,
-      ratingAverage: averageFleetDriverRating(listRow.ratingSum, listRow.ratingCount),
-      ratingCount: listRow.ratingCount,
-    },
-    assignedVehicle: assignedVehicleVisible
-      ? fleetDriverAssignedVehiclePayload(assignedVehicleVisible, companyConcessionNumber)
-      : null,
-  });
+      medicalTransportAuthorized: medicalTransportAuth?.authorized ?? false,
+      medicalTransportCompanyEnabled: medicalTransportAuth?.companyEnabled ?? false,
+      companyCommission: {
+        rate: effectiveCommissionRate,
+        ratePercent: Math.round(effectiveCommissionRate * 1000) / 10,
+        minCommissionEur: pricingCtx.minCommissionEur ?? null,
+      },
+      notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
+      blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
+      driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
+      driverWorkflow,
+      offerStats,
+      cancellationSuspension: {
+        active: Boolean(cancellationSuspensionRow),
+        suspendedUntil: cancellationSuspensionRow?.suspendedUntil.toISOString() ?? null,
+        message:
+          cancellationSuspensionRow != null
+            ? buildFleetDriverCancellationSuspensionMessage(cancellationSuspensionRow.suspendedUntil)
+            : null,
+        cancellationsInWindow,
+        windowDays: FLEET_DRIVER_CANCELLATION_WINDOW_DAYS,
+        threshold: FLEET_DRIVER_CANCELLATION_THRESHOLD,
+      },
+      ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
+      driver: {
+        id: rowFresh.id,
+        companyId: rowFresh.company_id,
+        email: rowFresh.email,
+        firstName: rowFresh.first_name,
+        lastName: rowFresh.last_name,
+        accessStatus: rowFresh.access_status,
+        approvalStatus: listRow.approvalStatus,
+        mustChangePassword: rowFresh.must_change_password,
+        vehicleLegalType: rowFresh.vehicle_legal_type,
+        vehicleClass: rowFresh.vehicle_class,
+        dispatchPriority: listRow.dispatchPriority,
+        ratingAverage: averageFleetDriverRating(listRow.ratingSum, listRow.ratingCount),
+        ratingCount: listRow.ratingCount,
+      },
+      assignedVehicle: assignedVehicleVisible
+        ? fleetDriverAssignedVehiclePayload(assignedVehicleVisible, companyConcessionNumber)
+        : null,
+    });
+  } catch (err) {
+    logger.error(
+      {
+        err,
+        fleetDriverId: a?.fleetDriverId,
+        companyId: a?.companyId,
+      },
+      "[fleet-driver/v1/me] unhandled error",
+    );
+    res.status(500).json({ ok: false, error: "me_internal_error" });
+  }
 });
 
 /** Live-Vorschau Fahrer-Anteil (gleiche Logik wie ride_financials bei completed). */

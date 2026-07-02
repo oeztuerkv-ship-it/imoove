@@ -225,6 +225,8 @@ try {
         j.error ?? "unbekannt",
         "— häufig: JWT-Secret/Issuer der laufenden API ≠ mint-Secret (loadEnv/PM2), oder token_revoked.",
       );
+    } else if (meStatus === 500) {
+      console.log("\n→ HTTP 500 — PM2-Log: pm2 logs onroda-api --lines 80 | rg 'fleet-driver/v1/me'");
     } else if (meStatus !== 200) {
       console.log("\n→ /me schlägt fehl — Mobile-Login bleibt bei einsatzbereit:false (DriverContext).");
     }

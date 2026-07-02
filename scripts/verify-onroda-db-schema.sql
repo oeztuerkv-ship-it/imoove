@@ -1388,6 +1388,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'rating_count'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.rating_count (Migration 109)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'passenger_rating'
   ) THEN
     errs := array_append(errs, 'rides.passenger_rating (Migration 109)');

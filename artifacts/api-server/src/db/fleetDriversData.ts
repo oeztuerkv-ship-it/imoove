@@ -217,8 +217,8 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     vehicleClass: r.vehicle_class as FleetVehicleClass,
     lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
     lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString(),
+    createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : "",
+    updatedAt: r.updated_at instanceof Date ? r.updated_at.toISOString() : "",
     approvalStatus: normalizeFleetDriverApproval(
       (r as { approval_status?: string | null }).approval_status ?? "approved",
     ),
