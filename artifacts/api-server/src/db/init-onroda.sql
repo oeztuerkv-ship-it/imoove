@@ -591,6 +591,8 @@ CREATE TABLE IF NOT EXISTS ride_financials (
   commission_value DOUBLE PRECISION NOT NULL DEFAULT 0,
   commission_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
   operator_payout_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+  stripe_fee_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+  payout_line_status TEXT NOT NULL DEFAULT 'offen',
   billing_status TEXT NOT NULL DEFAULT 'unbilled',
   settlement_status TEXT NOT NULL DEFAULT 'open',
   calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -613,8 +615,13 @@ CREATE TABLE IF NOT EXISTS ride_financials (
   CONSTRAINT ride_financials_billing_status_chk
     CHECK (billing_status IN ('unbilled', 'queued', 'invoiced', 'partially_paid', 'paid', 'cancelled', 'written_off')),
   CONSTRAINT ride_financials_settlement_status_chk
-    CHECK (settlement_status IN ('open', 'calculated', 'approved', 'paid_out', 'held', 'disputed'))
+    CHECK (settlement_status IN ('open', 'calculated', 'approved', 'paid_out', 'held', 'disputed')),
+  CONSTRAINT ride_financials_payout_line_status_chk
+    CHECK (payout_line_status IN ('offen', 'ausgezahlt'))
 );
+
+CREATE INDEX IF NOT EXISTS ride_financials_payout_line_status_idx
+  ON ride_financials (payout_line_status, calculated_at DESC);
 
 CREATE INDEX IF NOT EXISTS ride_financials_partner_company_idx
   ON ride_financials (partner_company_id, billing_status, calculated_at DESC);

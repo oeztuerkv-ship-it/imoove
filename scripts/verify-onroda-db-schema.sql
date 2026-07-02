@@ -1458,6 +1458,20 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financials' AND column_name = 'stripe_fee_amount'
+  ) THEN
+    errs := array_append(errs, 'ride_financials.stripe_fee_amount (Migration 123)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financials' AND column_name = 'payout_line_status'
+  ) THEN
+    errs := array_append(errs, 'ride_financials.payout_line_status (Migration 123)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'provision_amount'
   ) THEN
     errs := array_append(errs, 'rides.provision_amount (Migration 113)');

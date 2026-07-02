@@ -37,6 +37,7 @@ import {
   findInvoiceAdmin,
   findInvoiceByPaymentReference,
   findSettlementAdmin,
+  countRideFinancialsAdmin,
   getAdminFinanceSummary,
   getAdminDailyDriverSettlement,
   getFinanceEligibilitySummaryForRide,
@@ -44,6 +45,7 @@ import {
   listFinancialAuditAdmin,
   listInvoicesAdmin,
   listPaymentsAdmin,
+  listPayoutLinesAdmin,
   listRideFinancialsAdmin,
   listSettlementsAdmin,
 } from "../db/adminFinanceData";
@@ -233,6 +235,7 @@ import { listDispatchOffersForRide } from "../db/rideDispatchOfferData";
 import {
   getRideFinancialSnapshotByRideId,
   mapBillingStatusByRideIds,
+  markRideFinancialPayoutAusgezahlt,
 } from "../db/rideFinancialsData";
 import {
   getAdminTaxiFleetVehicleDetail,
@@ -1123,6 +1126,56 @@ adminJson.get("/finance/ride-financials/:rideId", async (req, res, next) => {
       auditEntries: detail.audit_entries,
       eligibility,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Unternehmer-Auszahlungen: schlanke Liste (ride_financials + Stripe-Gebühr). */
+adminJson.get("/finance/payout-lines", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const { page, pageSize, offset } = parsePagination(req);
+    const filters = {
+      dateFrom: parseIsoDateParam(q.date_from, false),
+      dateTo: parseIsoDateParam(q.date_to, true),
+      payoutLineStatus: q.payout_line_status,
+      serviceProviderCompanyId: q.company_id,
+      search: q.search,
+    };
+    const [total, items] = await Promise.all([
+      countRideFinancialsAdmin(filters),
+      listPayoutLinesAdmin({ filters, limit: pageSize, offset }),
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/finance/payout-lines/:rideId/mark-ausgezahlt", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const rideId = String(req.params.rideId ?? "").trim();
+    const out = await markRideFinancialPayoutAusgezahlt({
+      rideId,
+      actorType: "admin",
+      actorId: `admin_console:${role}`,
+    });
+    if (!out.ok) {
+      const status = out.error === "snapshot_not_found" ? 404 : 400;
+      res.status(status).json({ error: out.error });
+      return;
+    }
+    res.json({ ok: true, rideId, idempotent: out.idempotent === true });
   } catch (e) {
     next(e);
   }

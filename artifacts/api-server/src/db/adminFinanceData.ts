@@ -39,6 +39,7 @@ export type RideFinancialListFilters = {
   payerType?: string;
   billingStatus?: string;
   settlementStatus?: string;
+  payoutLineStatus?: string;
   partnerCompanyId?: string;
   serviceProviderCompanyId?: string;
   locked?: boolean;
@@ -72,6 +73,9 @@ function buildRideFinancialWhere(filters: RideFinancialListFilters): SQL[] {
   if (filters.billingStatus?.trim()) cond.push(eq(rideFinancialsTable.billing_status, filters.billingStatus.trim()));
   if (filters.settlementStatus?.trim()) {
     cond.push(eq(rideFinancialsTable.settlement_status, filters.settlementStatus.trim()));
+  }
+  if (filters.payoutLineStatus?.trim()) {
+    cond.push(eq(rideFinancialsTable.payout_line_status, filters.payoutLineStatus.trim()));
   }
   if (filters.partnerCompanyId?.trim()) {
     cond.push(eq(rideFinancialsTable.partner_company_id, filters.partnerCompanyId.trim()));
@@ -207,6 +211,45 @@ export async function listRideFinancialsAdmin(args: {
       ? map.get(row.service_provider_company_id) ?? null
       : null,
   }));
+}
+
+export type PayoutLineAdminRow = {
+  rideId: string;
+  calculatedAt: Date;
+  companyId: string | null;
+  companyName: string | null;
+  grossAmount: number;
+  stripeFeeAmount: number;
+  commissionAmount: number;
+  operatorPayoutAmount: number;
+  payoutLineStatus: string;
+};
+
+export function mapRideFinancialToPayoutLineRow(
+  row: (typeof rideFinancialsTable.$inferSelect) & {
+    service_provider_company_name?: string | null;
+  },
+): PayoutLineAdminRow {
+  return {
+    rideId: row.ride_id,
+    calculatedAt: row.calculated_at,
+    companyId: row.service_provider_company_id ?? null,
+    companyName: row.service_provider_company_name ?? null,
+    grossAmount: n(row.gross_amount),
+    stripeFeeAmount: n(row.stripe_fee_amount),
+    commissionAmount: n(row.commission_amount),
+    operatorPayoutAmount: n(row.operator_payout_amount),
+    payoutLineStatus: String(row.payout_line_status ?? "offen"),
+  };
+}
+
+export async function listPayoutLinesAdmin(args: {
+  filters: RideFinancialListFilters;
+  limit: number;
+  offset: number;
+}): Promise<PayoutLineAdminRow[]> {
+  const rows = await listRideFinancialsAdmin(args);
+  return rows.map((row) => mapRideFinancialToPayoutLineRow(row));
 }
 
 export async function getRideFinancialDetailAdmin(rideId: string) {

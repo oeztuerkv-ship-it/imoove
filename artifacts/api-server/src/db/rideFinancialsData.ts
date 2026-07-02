@@ -161,6 +161,8 @@ function toPublicSnapshot(row: RideFinancialRow) {
     commissionAmount: row.commission_amount,
     operatorPayoutAmount: row.operator_payout_amount,
     tipAmount: row.tip_amount ?? 0,
+    stripeFeeAmount: row.stripe_fee_amount ?? 0,
+    payoutLineStatus: row.payout_line_status ?? "offen",
     billingStatus: row.billing_status as RideFinancialBillingStatus,
     settlementStatus: row.settlement_status as RideFinancialSettlementStatus,
     calculationVersion: row.calculation_version,
@@ -625,6 +627,62 @@ export async function updateRideFinancialStatuses(input: {
     actorType: input.actorType,
     actorId: input.actorId,
   });
+  return { ok: true };
+}
+
+export type PayoutLineStatus = "offen" | "ausgezahlt";
+
+export const PAYOUT_LINE_STATUSES: PayoutLineStatus[] = ["offen", "ausgezahlt"];
+
+/** Manuelle Auszahlung: payout_line_status → ausgezahlt (kein Stripe Connect). */
+export async function markRideFinancialPayoutAusgezahlt(input: {
+  rideId: string;
+  actorType?: string;
+  actorId?: string | null;
+}): Promise<{ ok: true; idempotent?: boolean } | { ok: false; error: string }> {
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const rideId = input.rideId.trim();
+  if (!rideId) return { ok: false, error: "ride_id_required" };
+
+  const rows = await db
+    .select()
+    .from(rideFinancialsTable)
+    .where(eq(rideFinancialsTable.ride_id, rideId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { ok: false, error: "snapshot_not_found" };
+
+  if (row.payout_line_status === "ausgezahlt") {
+    return { ok: true, idempotent: true };
+  }
+
+  const now = new Date();
+  await db
+    .update(rideFinancialsTable)
+    .set({
+      payout_line_status: "ausgezahlt",
+      settlement_status: "paid_out",
+      updated_at: now,
+    })
+    .where(eq(rideFinancialsTable.id, row.id));
+
+  await insertFinancialAuditLog({
+    entityType: "ride_financial",
+    entityId: row.id,
+    action: "payout_line_marked_ausgezahlt",
+    oldValue: {
+      payoutLineStatus: row.payout_line_status,
+      settlementStatus: row.settlement_status,
+    },
+    newValue: {
+      payoutLineStatus: "ausgezahlt",
+      settlementStatus: "paid_out",
+    },
+    actorType: input.actorType ?? "admin",
+    actorId: input.actorId,
+  });
+
   return { ok: true };
 }
 

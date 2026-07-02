@@ -5,6 +5,7 @@ import { logger } from "./logger";
 import { normalizeRidePaymentStatus } from "./ridePaymentStatus";
 import { getStripeClient } from "./stripeClient";
 import { markRidePaymentCaptureFailed, markRidePaymentCaptureSucceeded } from "./ridePaymentCaptureState";
+import { persistStripeFeeForRidePaymentIntentId } from "./stripeRideFinancialFee";
 import { isStripeWalletPaymentMethod } from "./ridePaymentMethod";
 import { resolveStripeConnectPaymentParams } from "./stripeConnect";
 import {
@@ -101,6 +102,7 @@ async function captureLegacyBufferedAuthorization(
       return { ok: false, error: err };
     }
     await markRidePaymentCaptureSucceeded(ride.id.trim(), captured.id);
+    void persistStripeFeeForRidePaymentIntentId(ride.id.trim(), captured.id);
     return { ok: true, capturedAmountCents: captureCents, cappedToAuthorization };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -189,6 +191,7 @@ export async function captureRideStripePaymentIntent(
 
     if (charge.kind === "succeeded") {
       await markRidePaymentCaptureSucceeded(rideId, charge.paymentIntentId);
+      void persistStripeFeeForRidePaymentIntentId(rideId, charge.paymentIntentId);
       return { ok: true, capturedAmountCents: finalCents, cappedToAuthorization: false };
     }
     if (charge.kind === "requires_action") {
@@ -209,6 +212,7 @@ export async function captureRideStripePaymentIntent(
 
   if (isStripePaymentIntentCaptured(paymentIntent.status)) {
     await markRidePaymentCaptureSucceeded(rideId, paymentIntent.id);
+    void persistStripeFeeForRidePaymentIntentId(rideId, paymentIntent.id);
     return {
       ok: true,
       capturedAmountCents: paymentIntent.amount_received ?? paymentIntent.amount,
@@ -265,6 +269,7 @@ export async function captureRideStripePaymentIntent(
 
   if (charge.kind === "succeeded") {
     await markRidePaymentCaptureSucceeded(rideId, charge.paymentIntentId);
+    void persistStripeFeeForRidePaymentIntentId(rideId, charge.paymentIntentId);
     return { ok: true, capturedAmountCents: finalCents, cappedToAuthorization: false };
   }
   if (charge.kind === "requires_action") {

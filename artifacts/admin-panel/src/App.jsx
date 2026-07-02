@@ -28,6 +28,7 @@ import AdminPasswordResetPage from "./pages/AdminPasswordResetPage.jsx";
 import AdminPlaceholderPage from "./pages/AdminPlaceholderPage.jsx";
 import FinanceDashboardPage from "./pages/FinanceDashboardPage.jsx";
 import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
+import FinancePayoutLinesPage from "./pages/FinancePayoutLinesPage.jsx";
 import FailedPaymentsPage from "./pages/FailedPaymentsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceKrankenInvoicesPage from "./pages/FinanceKrankenInvoicesPage.jsx";
@@ -137,6 +138,10 @@ const PAGE_META = {
   "finance-ride-financials": {
     title: "Finanzen · Ride Financials",
     subtitle: "Finanz-Snapshots je Fahrt mit Filter, Pagination und Detail",
+  },
+  "finance-payout-lines": {
+    title: "Finanzen · Unternehmer-Auszahlungen",
+    subtitle: "Brutto, Stripe-Gebühr, Provision und manuelles Markieren als ausgezahlt",
   },
   "finance-invoices": {
     title: "Finanzen · Invoices",
@@ -942,6 +947,8 @@ export default function App() {
         return <FinanceDashboardPage />;
       case "finance-ride-financials":
         return <FinanceRideFinancialsPage />;
+      case "finance-payout-lines":
+        return <FinancePayoutLinesPage />;
       case "billing-open":
         return (
           <FailedPaymentsPage

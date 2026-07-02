@@ -927,6 +927,10 @@ export const rideFinancialsTable = pgTable("ride_financials", {
   commission_amount: doublePrecision("commission_amount").notNull().default(0),
   operator_payout_amount: doublePrecision("operator_payout_amount").notNull().default(0),
   tip_amount: doublePrecision("tip_amount").notNull().default(0),
+  /** Stripe-Gebühr (ONRODA trägt; Unternehmer-Netto unverändert). */
+  stripe_fee_amount: doublePrecision("stripe_fee_amount").notNull().default(0),
+  /** Manuelle Auszahlung: offen | ausgezahlt */
+  payout_line_status: text("payout_line_status").notNull().default("offen"),
   billing_status: text("billing_status").notNull().default("unbilled"),
   settlement_status: text("settlement_status").notNull().default("open"),
   calculated_at: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),

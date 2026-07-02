@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { logger } from "../lib/logger.js";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
+import { persistStripeFeeOnRideFinancials } from "../lib/stripeRideFinancialFee.js";
 import { syncStripeConnectAccountFromStripe } from "../lib/stripeConnect.js";
 import { fulfillFixedPriceVoucherFromCheckoutSession } from "../lib/fixedPriceVoucherFulfillment.js";
 
@@ -52,6 +53,9 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
         const pi = event.data.object;
         const outcome = await applyStripePaymentIntentToRide(pi);
         if (outcome.applied) {
+          if (outcome.paymentStatus === "paid") {
+            await persistStripeFeeOnRideFinancials(outcome.rideId, pi);
+          }
           logger.info(
             { rideId: outcome.rideId, paymentStatus: outcome.paymentStatus, eventType: event.type },
             "[Stripe] ride payment synced from webhook",
