@@ -1286,7 +1286,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       void _unused;
       void _uv;
       const estimatedFareRaw =
-        typeof reqForBody.estimatedFare === "number" && Number.isFinite(reqForBody.estimatedFare)
+        typeof reqForBody.estimatedFare === "number" &&
+        Number.isFinite(reqForBody.estimatedFare) &&
+        reqForBody.estimatedFare > 0
           ? reqForBody.estimatedFare
           : undefined;
       const payload = {

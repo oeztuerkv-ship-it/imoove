@@ -48,7 +48,6 @@ import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleOption, type
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
-import { validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import {
   isGeocodedFixpreisLocation,
   MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE,
@@ -60,6 +59,7 @@ import {
   CUSTOMER_FIXED_PRICE_AGREEMENT_DE,
   fetchFixedPriceEligibilityCheck,
   fetchFixedPriceEstimate,
+  RESERVATION_FIXED_PRICE_HINT_DE,
 } from "@/utils/fixedPriceApi";
 import { selectedAddressToFixedPricePoint } from "@/utils/fixedPriceEligibility";
 import { reverseGeocodeCoords } from "@/utils/reverseGeocode";
@@ -397,18 +397,6 @@ export default function BookingFixedPriceScreen() {
           return;
         }
 
-        const area = await validateServiceAreaForBooking(fromFull, toFull, {
-          fromLat: fromAddr.lat,
-          fromLon: fromAddr.lon,
-          toLat: toAddr.lat,
-          toLon: toAddr.lon,
-        });
-        if (isStale()) return;
-        if (!area.ok) {
-          setEligible(false);
-          setIneligibleMessage(area.message);
-          return;
-        }
         const est = await fetchFixedPriceEstimate({
           fromFull,
           toFull,
@@ -646,6 +634,13 @@ export default function BookingFixedPriceScreen() {
             {MESSAGE_FIXPREIS_ADDRESS_REQUIRED_DE}
           </Text>
         ) : null}
+
+        <View style={[routeStyles.infoBox, { backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM, marginBottom: rs(8) }]}>
+          <Feather name="info" size={15} color={colors.mutedForeground} />
+          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 17 }}>
+            {RESERVATION_FIXED_PRICE_HINT_DE}
+          </Text>
+        </View>
 
         {routeLoading || estimateLoading ? (
           <View style={styles.statusRow}>

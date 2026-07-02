@@ -118,7 +118,7 @@ export function assertClientEstimatedFareMatchesServer(
 ): { ok: true } | { ok: false; error: "estimate_mismatch" } {
   if (clientRaw == null) return { ok: true };
   const c = typeof clientRaw === "number" ? clientRaw : Number(clientRaw);
-  if (!Number.isFinite(c)) return { ok: true };
+  if (!Number.isFinite(c) || c <= 0) return { ok: true };
   const tol = bookingPriceToleranceEur(serverEur);
   if (Math.abs(c - serverEur) > tol) return { ok: false, error: "estimate_mismatch" };
   return { ok: true };

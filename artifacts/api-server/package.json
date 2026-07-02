@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:platform-vehicle-surcharge": "pnpm run build && node --enable-source-maps ./dist/scripts/platformVehicleSurchargeSelftest.mjs",
     "test:fixed-price-eligibility": "pnpm run build && node --enable-source-maps ./dist/scripts/fixedPriceEligibilitySelftest.mjs",
+    "test:reservation-fixed-price-policy": "pnpm run build && node --enable-source-maps ./dist/scripts/reservationFixedPricePolicySelftest.mjs",
     "test:admin-auth": "node ./scripts/test-admin-auth-flow.mjs",
     "test:admin-password-reset": "node ./scripts/test-admin-password-reset-flow.mjs",
     "test:email-verification-unit": "pnpm run build && node ./dist/scripts/emailVerificationSelftest.mjs",

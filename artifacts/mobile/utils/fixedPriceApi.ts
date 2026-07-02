@@ -155,5 +155,8 @@ export async function fetchFixedPriceEstimate(body: {
   };
 }
 
+export const RESERVATION_FIXED_PRICE_HINT_DE =
+  "Bei Fahrten außerhalb des Pflichtfahrgebiets kann ein verbindlicher Festpreis vor Fahrtbeginn vereinbart werden.";
+
 export const CUSTOMER_FIXED_PRICE_AGREEMENT_DE =
   "Mit „Festpreis reservieren“ vereinbarst du verbindlich den angezeigten Gesamtpreis für diese Fahrt (Fahrpreisvereinbarung).";

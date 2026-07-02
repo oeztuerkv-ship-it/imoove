@@ -55,6 +55,11 @@ import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePu
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, computeRideBookingPricing } from "../lib/rideBookingPricing";
+import {
+  isFixedPriceReservationRequest,
+  shouldBypassServiceAreaForFixedPriceReservation,
+  validateBwReservationEndpoints,
+} from "../lib/reservationFixedPricePolicy";
 import { computeFixedPriceRideBookingPricing } from "../lib/fixedPriceBooking";
 import {
   buildFixedPriceQuote,
@@ -1559,20 +1564,6 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
       res.status(400).json({ error: regGate.error, message: regGate.message });
       return;
     }
-    const area = await checkCustomerRideServiceArea(fromFull, toFull, { fromLat: fromLatB, fromLon: fromLonB, toLat: toLatB, toLon: toLonB });
-    if (!area.ok) {
-      res.status(400).json({
-        error: "service_area_not_covered",
-        message: getOutOfServiceAreaMessage(opPayload),
-      });
-      return;
-    }
-    const tBook = opPayload.tariffs as { active?: boolean } | undefined;
-    if (tBook?.active === false) {
-      res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
-      return;
-    }
-    const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
     const fromCityB =
       typeof (raw as { fromCity?: unknown }).fromCity === "string"
         ? String((raw as { fromCity?: unknown }).fromCity).trim()
@@ -1581,6 +1572,49 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
       typeof (raw as { toCity?: unknown }).toCity === "string"
         ? String((raw as { toCity?: unknown }).toCity).trim()
         : "";
+    const scheduledAtForArea = pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>);
+    const fixedPriceReservation = shouldBypassServiceAreaForFixedPriceReservation(
+      rawPricingModeStr,
+      scheduledAtForArea,
+    );
+    if (rawPricingModeStr === "fixed_price" && !isFixedPriceReservationRequest(rawPricingModeStr, scheduledAtForArea)) {
+      res.status(400).json({
+        error: "fixed_price_reservation_only",
+        message:
+          "Festpreis ist nur für Reservierungen (ab 60 Minuten Vorlauf) verfügbar. Bitte einen Termin wählen oder Taxameter-Fahrt buchen.",
+      });
+      return;
+    }
+    if (!fixedPriceReservation) {
+      const area = await checkCustomerRideServiceArea(fromFull, toFull, {
+        fromLat: fromLatB,
+        fromLon: fromLonB,
+        toLat: toLatB,
+        toLon: toLonB,
+      });
+      if (!area.ok) {
+        res.status(400).json({
+          error: "service_area_not_covered",
+          message: getOutOfServiceAreaMessage(opPayload),
+        });
+        return;
+      }
+    } else {
+      const bw = validateBwReservationEndpoints(
+        { displayName: fromFull, city: fromCityB || null, lat: fromLatB, lon: fromLonB },
+        { displayName: toFull, city: toCityB || null, lat: toLatB, lon: toLonB },
+      );
+      if (!bw.ok) {
+        res.status(400).json({ error: bw.error, message: bw.message });
+        return;
+      }
+    }
+    const tBook = opPayload.tariffs as { active?: boolean } | undefined;
+    if (tBook?.active === false) {
+      res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
+      return;
+    }
+    const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
     const routeQuote = await buildRouteDistanceQuote({
       fromFull,
       toFull,

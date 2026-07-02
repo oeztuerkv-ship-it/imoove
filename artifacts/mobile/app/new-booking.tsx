@@ -82,6 +82,13 @@ import {
   vehicleSurchargeFromEstimates,
 } from "@/utils/customerFareDisplay";
 import { fetchFareEstimate, type FareEstimateApiResult } from "@/utils/fareEstimateApi";
+import { formatEuro } from "@/utils/fareCalculator";
+import {
+  CUSTOMER_FIXED_PRICE_AGREEMENT_DE,
+  fetchFixedPriceEligibilityCheck,
+  fetchFixedPriceEstimate,
+  RESERVATION_FIXED_PRICE_HINT_DE,
+} from "@/utils/fixedPriceApi";
 import { fetchWithTimeout, searchLocation, type GeoLocation } from "@/utils/routing";
 import {
   FIXPRICE_DESTINATION_PRESETS,
@@ -479,6 +486,12 @@ export default function NewBookingScreen() {
   const [wheelchairCompanion, setWheelchairCompanion] = useState(false);
   const [vehicleEstimates, setVehicleEstimates] = useState<Record<string, FareEstimateApiResult | null>>({});
   const [standardFareTotal, setStandardFareTotal] = useState<number | null>(null);
+  const [reservationPricingMode, setReservationPricingMode] = useState<"pending" | "taxi_tariff" | "fixed_price">("pending");
+  const [fixedPriceEur, setFixedPriceEur] = useState<number | null>(null);
+  const [fixedPriceDistanceKm, setFixedPriceDistanceKm] = useState<number | null>(null);
+  const [fixedPriceTripMinutes, setFixedPriceTripMinutes] = useState(0);
+  const [fixedPriceLoading, setFixedPriceLoading] = useState(false);
+  const [fixedPriceAgreementAccepted, setFixedPriceAgreementAccepted] = useState(false);
   const [showDriverNoteModal, setShowDriverNoteModal] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -612,6 +625,11 @@ export default function NewBookingScreen() {
     setDriverNote("");
     setVehicleEstimates({});
     setStandardFareTotal(null);
+    setReservationPricingMode("pending");
+    setFixedPriceEur(null);
+    setFixedPriceDistanceKm(null);
+    setFixedPriceTripMinutes(0);
+    setFixedPriceAgreementAccepted(false);
     setPaymentMethod("cash");
     dismissTransportScan();
   }, [dismissTransportScan]);
@@ -628,22 +646,41 @@ export default function NewBookingScreen() {
 
   const canSubmitReservation = useMemo(() => {
     if (!formComplete || submitting) return false;
+    if (!isInstant && reservationPricingMode === "fixed_price") {
+      if (fixedPriceLoading || fixedPriceEur == null || !fixedPriceAgreementAccepted) return false;
+    }
     if (paymentMethod !== "voucher") return true;
     if (!pendingTransportScanId || !transportScanTrafficLight) return false;
     return transportScanTrafficLight === "green" || transportScanTrafficLight === "yellow";
-  }, [formComplete, submitting, paymentMethod, pendingTransportScanId, transportScanTrafficLight]);
+  }, [
+    formComplete,
+    submitting,
+    isInstant,
+    reservationPricingMode,
+    fixedPriceLoading,
+    fixedPriceEur,
+    fixedPriceAgreementAccepted,
+    paymentMethod,
+    pendingTransportScanId,
+    transportScanTrafficLight,
+  ]);
 
   const submitButtonLabel = useMemo(() => {
     if (submitting) return "Wird gesendet…";
     if (paymentMethod === "voucher" && transportScanTrafficLight === "yellow") {
       return isInstant ? "Trotzdem buchen" : "Trotzdem reservieren";
     }
-    return isInstant ? "Jetzt buchen" : "Reservierung absenden";
-  }, [submitting, paymentMethod, transportScanTrafficLight, isInstant]);
+    return isInstant ? "Jetzt buchen" : reservationPricingMode === "fixed_price" ? "Festpreis reservieren" : "Reservierung absenden";
+  }, [submitting, paymentMethod, transportScanTrafficLight, isInstant, reservationPricingMode]);
 
   const resetRouteDependents = useCallback(() => {
     setVehicleEstimates({});
     setStandardFareTotal(null);
+    setReservationPricingMode("pending");
+    setFixedPriceEur(null);
+    setFixedPriceDistanceKm(null);
+    setFixedPriceTripMinutes(0);
+    setFixedPriceAgreementAccepted(false);
     if (!isInstant) {
       setScheduledAt(null);
     }
@@ -662,29 +699,100 @@ export default function NewBookingScreen() {
     if (!routeComplete || !from.lat || !from.lon || !to.lat || !to.lon) {
       setVehicleEstimates({});
       setStandardFareTotal(null);
+      setReservationPricingMode("pending");
+      setFixedPriceEur(null);
+      setFixedPriceDistanceKm(null);
+      setFixedPriceTripMinutes(0);
+      setFixedPriceAgreementAccepted(false);
       return;
     }
 
     let cancelled = false;
+    const fromFull = from.fullName || from.name;
+    const toFull = to.fullName || to.name;
     const routeInput = {
-      fromFull: from.fullName || from.name,
+      fromFull,
       fromLat: from.lat,
       fromLon: from.lon,
-      toFull: to.fullName || to.name,
+      toFull,
       toLat: to.lat,
       toLon: to.lon,
     };
+    const vehicleApi =
+      selectedVehicle === "xl" ? "XL" : selectedVehicle === "wheelchair" ? "Rollstuhl" : "Standard";
+    const fromCity = from.city?.trim() || undefined;
+    const toCity = to.city?.trim() || undefined;
 
     void (async () => {
-      const next: Record<string, FareEstimateApiResult | null> = {};
-      await Promise.all(
-        VEHICLES.map(async (v) => {
-          next[v.id] = await fetchFareEstimate(v.id, routeInput);
-        }),
-      );
-      if (!cancelled) {
-        setVehicleEstimates(next);
-        setStandardFareTotal(next.standard?.total ?? null);
+      if (isInstant) {
+        setReservationPricingMode("taxi_tariff");
+        const next: Record<string, FareEstimateApiResult | null> = {};
+        await Promise.all(
+          VEHICLES.map(async (v) => {
+            next[v.id] = await fetchFareEstimate(v.id, routeInput);
+          }),
+        );
+        if (!cancelled) {
+          setVehicleEstimates(next);
+          setStandardFareTotal(next.standard?.total ?? null);
+        }
+        return;
+      }
+
+      setFixedPriceLoading(true);
+      try {
+        const eligibility = await fetchFixedPriceEligibilityCheck({
+          ...routeInput,
+          fromCity,
+          toCity,
+        });
+        if (cancelled) return;
+
+        if (eligibility.ok && eligibility.eligible) {
+          setReservationPricingMode("fixed_price");
+          const est = await fetchFixedPriceEstimate({
+            ...routeInput,
+            fromCity,
+            toCity,
+            vehicle: vehicleApi,
+          });
+          if (cancelled) return;
+          if (est.ok && est.eligible) {
+            setFixedPriceEur(est.priceEur);
+            setFixedPriceDistanceKm(est.distanceKm);
+            setFixedPriceTripMinutes(est.durationMinutes ?? 0);
+            setVehicleEstimates({});
+            setStandardFareTotal(null);
+          } else {
+            setReservationPricingMode("taxi_tariff");
+            setFixedPriceEur(null);
+            const next: Record<string, FareEstimateApiResult | null> = {};
+            await Promise.all(
+              VEHICLES.map(async (v) => {
+                next[v.id] = await fetchFareEstimate(v.id, routeInput);
+              }),
+            );
+            if (!cancelled) {
+              setVehicleEstimates(next);
+              setStandardFareTotal(next.standard?.total ?? null);
+            }
+          }
+        } else {
+          setReservationPricingMode("taxi_tariff");
+          setFixedPriceEur(null);
+          const next: Record<string, FareEstimateApiResult | null> = {};
+          await Promise.all(
+            VEHICLES.map(async (v) => {
+              next[v.id] = await fetchFareEstimate(v.id, routeInput);
+            }),
+          );
+          if (!cancelled) {
+            setVehicleEstimates(next);
+            setStandardFareTotal(next.standard?.total ?? null);
+          }
+        }
+      } finally {
+        if (!cancelled) setFixedPriceLoading(false);
       }
     })();
 
@@ -697,10 +805,14 @@ export default function NewBookingScreen() {
     from.lon,
     from.fullName,
     from.name,
+    from.city,
     to.lat,
     to.lon,
     to.fullName,
     to.name,
+    to.city,
+    isInstant,
+    selectedVehicle,
   ]);
 
   const validateReservationPick = useCallback(
@@ -974,12 +1086,16 @@ export default function NewBookingScreen() {
       lon: to.lon,
       displayName: to.fullName || to.name,
     };
-    const pricingMode = effectivePricingModeForCustomerRide({
-      selectedServiceClass: "taxi",
-      selectedVehicle,
-      origin: originGeo,
-      destination: destGeo,
-    });
+    const useFixedPriceReservation =
+      !isInstant && reservationPricingMode === "fixed_price" && fixedPriceEur != null;
+    const pricingMode = useFixedPriceReservation
+      ? ("fixed_price" as const)
+      : effectivePricingModeForCustomerRide({
+          selectedServiceClass: "taxi",
+          selectedVehicle,
+          origin: originGeo,
+          destination: destGeo,
+        });
     const fromFull = from.fullName || from.name;
     const toFull = to.fullName || to.name;
     try {
@@ -1034,9 +1150,14 @@ export default function NewBookingScreen() {
         toLat: destinationLat,
         toLon: destinationLon,
       });
-      if (!area.ok) {
+      if (!useFixedPriceReservation && !area.ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Buchung nicht möglich", area.message);
+        return;
+      }
+      if (useFixedPriceReservation && !fixedPriceAgreementAccepted) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Festpreis", "Bitte die Fahrpreisvereinbarung bestätigen.");
         return;
       }
       const bookingRoute = await fetchServerDrivingRoute({
@@ -1068,18 +1189,31 @@ export default function NewBookingScreen() {
                 ? "Gutschein / Freigabe (Code)"
                 : "Krankenkasse";
 
+      const taxiEstimate = vehicleEstimates[selectedVehicle]?.total;
+      const estimatedFareValue = useFixedPriceReservation
+        ? fixedPriceEur!
+        : typeof taxiEstimate === "number" && taxiEstimate > 0
+          ? taxiEstimate
+          : 0;
+
       await addRequest({
         from: from.name,
         fromFull,
         fromLat: originLat ?? undefined,
         fromLon: originLon ?? undefined,
+        fromCity: from.city?.trim() || undefined,
         to: to.name,
         toFull,
         toLat: destinationLat ?? undefined,
         toLon: destinationLon ?? undefined,
-        distanceKm: bookingRoute.distanceKm,
-        durationMinutes: bookingRoute.durationMinutes,
-        estimatedFare: 0,
+        toCity: to.city?.trim() || undefined,
+        distanceKm: useFixedPriceReservation
+          ? (fixedPriceDistanceKm ?? bookingRoute.distanceKm)
+          : bookingRoute.distanceKm,
+        durationMinutes: useFixedPriceReservation
+          ? fixedPriceTripMinutes || bookingRoute.durationMinutes
+          : bookingRoute.durationMinutes,
+        estimatedFare: estimatedFareValue,
         paymentMethod: paymentLabel,
         vehicle: vehicleApiValue,
         customerName,
@@ -1088,6 +1222,7 @@ export default function NewBookingScreen() {
         rideKind: isVoucherPayment ? "medical" : "standard",
         payerKind: isVoucherPayment ? "insurance" : "passenger",
         ...(pricingMode ? { pricingMode } : {}),
+        ...(useFixedPriceReservation ? { fixedPriceAgreementAccepted: true } : {}),
         ...(Object.keys(partnerBookingMeta).length > 0 ? { partnerBookingMeta } : {}),
         ...(isVoucherPayment && pendingTransportScanId
           ? { customerMedicalScanId: pendingTransportScanId }
@@ -1157,6 +1292,53 @@ export default function NewBookingScreen() {
             </Text>
           </View>
         </View>
+
+        {!isInstant && fixedPriceLoading ? (
+          <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 10 }]}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>Preis wird berechnet …</Text>
+          </View>
+        ) : null}
+
+        {!isInstant && reservationPricingMode === "fixed_price" && fixedPriceEur != null ? (
+          <View style={[styles.card, { backgroundColor: "#ECFDF5", borderColor: "#BBF7D0", borderWidth: 1, gap: 12 }]}>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 }}>
+              {RESERVATION_FIXED_PRICE_HINT_DE}
+            </Text>
+            <View style={{ alignItems: "center", gap: 4 }}>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#166534" }}>Verbindlicher Festpreis</Text>
+              <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: "#2563EB" }}>{formatEuro(fixedPriceEur)}</Text>
+              {fixedPriceDistanceKm != null ? (
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                  ca. {fixedPriceDistanceKm.toFixed(1).replace(".", ",")} km
+                </Text>
+              ) : null}
+            </View>
+            <Pressable
+              style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}
+              onPress={() => setFixedPriceAgreementAccepted((v) => !v)}
+            >
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  borderWidth: 1.5,
+                  borderColor: fixedPriceAgreementAccepted ? ONRODA_MARK_RED : colors.border,
+                  backgroundColor: fixedPriceAgreementAccepted ? ONRODA_MARK_RED : "transparent",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 1,
+                }}
+              >
+                {fixedPriceAgreementAccepted ? <Feather name="check" size={12} color="#fff" /> : null}
+              </View>
+              <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: colors.foreground, lineHeight: 17 }}>
+                {CUSTOMER_FIXED_PRICE_AGREEMENT_DE}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={[styles.card, styles.driverNoteCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
           <View style={styles.driverNoteSectionTitleRow}>
