@@ -1,7 +1,7 @@
 import PDFDocument from "pdfkit";
 
 import type { PanelSettlementOverviewExportSnapshot } from "../db/panelOverviewSettlementData";
-import { ONRODA_INVOICE_BRAND, ONRODA_INVOICE_SELLER } from "./invoice/invoiceBrand";
+import { ONRODA_INVOICE_BRAND, ONRODA_INVOICE_SELLER, sellerAddressLines } from "./invoice/invoiceBrand";
 import {
   createPdfContext,
   INVOICE_LAYOUT,
@@ -14,7 +14,6 @@ import {
   drawInvoiceTableRow,
   drawInvoiceTotalsCard,
   drawOnrodaLogoBlock,
-  drawPartyColumns,
   type InvoiceTableColumn,
   type InvoiceTableRow,
 } from "./invoice/invoicePdfComponents";
@@ -139,6 +138,117 @@ function drawSettlementMetaBar(
   return y + h + INVOICE_LAYOUT.sectionGap;
 }
 
+type SettlementPartyCard = {
+  title: string;
+  name: string;
+  lines: string[];
+};
+
+function measureSettlementPartyCard(doc: PDFDocument, block: SettlementPartyCard, colW: number): number {
+  const pad = 16;
+  const innerW = colW - pad * 2;
+  let h = pad;
+  doc.font("Helvetica").fontSize(7.5);
+  h += doc.heightOfString(block.title.toUpperCase(), { width: innerW }) + 8;
+  doc.font("Helvetica-Bold").fontSize(11);
+  h += doc.heightOfString(block.name, { width: innerW }) + 8;
+  doc.font("Helvetica").fontSize(9.5);
+  for (const line of block.lines) {
+    h += doc.heightOfString(line, { width: innerW }) + 3;
+  }
+  return h + pad;
+}
+
+function drawSettlementPartyCards(
+  ctx: InvoicePdfContext,
+  seller: SettlementPartyCard,
+  recipient: SettlementPartyCard,
+): number {
+  const { doc } = ctx;
+  const y = ctx.y;
+  const gap = 12;
+  const colW = (ctx.contentWidth - gap) / 2;
+  const leftH = measureSettlementPartyCard(doc, seller, colW);
+  const rightH = measureSettlementPartyCard(doc, recipient, colW);
+  const boxH = Math.max(leftH, rightH);
+
+  const drawCard = (block: SettlementPartyCard, x: number) => {
+    doc.roundedRect(x, y, colW, boxH, 8).fillAndStroke(ONRODA_INVOICE_BRAND.card, ONRODA_INVOICE_BRAND.border);
+    doc.rect(x, y + 8, 3, boxH - 16).fill(ONRODA_INVOICE_BRAND.accent);
+
+    const innerX = x + 16;
+    const innerW = colW - 28;
+    let ly = y + 16;
+
+    doc.font("Helvetica").fontSize(7.5);
+    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
+    doc.text(block.title.toUpperCase(), innerX, ly, { width: innerW, characterSpacing: 0.6 });
+    ly += doc.heightOfString(block.title.toUpperCase(), { width: innerW }) + 8;
+
+    doc.font("Helvetica-Bold").fontSize(11);
+    hexColor(doc, ONRODA_INVOICE_BRAND.text);
+    doc.text(block.name, innerX, ly, { width: innerW });
+    ly += doc.heightOfString(block.name, { width: innerW }) + 8;
+
+    doc.font("Helvetica").fontSize(9.5);
+    hexColor(doc, "#4B5563");
+    for (const line of block.lines) {
+      doc.text(line, innerX, ly, { width: innerW });
+      ly += doc.heightOfString(line, { width: innerW }) + 3;
+    }
+  };
+
+  drawCard(seller, ctx.contentLeft);
+  drawCard(recipient, ctx.contentLeft + colW + gap);
+
+  return y + boxH + INVOICE_LAYOUT.sectionGap;
+}
+
+function drawSettlementInfoCard(
+  ctx: InvoicePdfContext,
+  title: string,
+  lines: Array<{ text: string; bold?: boolean; muted?: boolean }>,
+): number {
+  const { doc } = ctx;
+  const y = ctx.y;
+  const pad = 16;
+  const innerW = ctx.contentWidth - pad * 2 - 8;
+  const titleGap = 10;
+  const lineGap = 5;
+
+  doc.font("Helvetica-Bold").fontSize(10);
+  const titleH = doc.heightOfString(title, { width: innerW });
+
+  let bodyH = 0;
+  for (const line of lines) {
+    doc.font(line.bold ? "Helvetica-Bold" : "Helvetica").fontSize(line.bold ? 10 : 9);
+    bodyH += doc.heightOfString(line.text, { width: innerW }) + lineGap;
+  }
+  if (lines.length > 0) bodyH -= lineGap;
+
+  const boxH = pad + titleH + titleGap + bodyH + pad;
+
+  doc.roundedRect(ctx.contentLeft, y, ctx.contentWidth, boxH, 8).fillAndStroke(ONRODA_INVOICE_BRAND.surface, ONRODA_INVOICE_BRAND.border);
+  doc.rect(ctx.contentLeft, y + 10, 3, boxH - 20).fill(ONRODA_INVOICE_BRAND.accent);
+
+  const textX = ctx.contentLeft + pad + 4;
+  let ly = y + pad;
+
+  doc.font("Helvetica-Bold").fontSize(10);
+  hexColor(doc, ONRODA_INVOICE_BRAND.text);
+  doc.text(title, textX, ly, { width: innerW });
+  ly += titleH + titleGap;
+
+  for (const line of lines) {
+    doc.font(line.bold ? "Helvetica-Bold" : "Helvetica").fontSize(line.bold ? 10 : 9);
+    hexColor(doc, line.muted ? ONRODA_INVOICE_BRAND.muted : ONRODA_INVOICE_BRAND.text);
+    doc.text(line.text, textX, ly, { width: innerW });
+    ly += doc.heightOfString(line.text, { width: innerW }) + lineGap;
+  }
+
+  return y + boxH + INVOICE_LAYOUT.sectionGap;
+}
+
 function companyRecipientLines(company: PanelSettlementOverviewPdfCompany): string[] {
   const lines = [...company.addressLines];
   if (company.vatId?.trim()) lines.push(`USt-IdNr.: ${company.vatId.trim()}`);
@@ -158,23 +268,6 @@ function paymentTableColumns(contentWidth: number): InvoiceTableColumn[] {
     { key: "amount", title: "Betrag", width: amountW, align: "right" },
     { key: "count", title: "Anzahl", width: countW, align: "right" },
   ];
-}
-
-function drawInfoBox(ctx: InvoicePdfContext, title: string, body: string): number {
-  const { doc } = ctx;
-  const y = ctx.y;
-  const pad = 14;
-  doc.font("Helvetica").fontSize(9);
-  const bodyH = doc.heightOfString(body, { width: ctx.contentWidth - pad * 2 });
-  const boxH = 28 + bodyH;
-  doc.roundedRect(ctx.contentLeft, y, ctx.contentWidth, boxH, 8).fillAndStroke(ONRODA_INVOICE_BRAND.surface, ONRODA_INVOICE_BRAND.border);
-  doc.font("Helvetica-Bold").fontSize(10);
-  hexColor(doc, ONRODA_INVOICE_BRAND.text);
-  doc.text(title, ctx.contentLeft + pad, y + pad, { width: ctx.contentWidth - pad * 2 });
-  doc.font("Helvetica").fontSize(9);
-  hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-  doc.text(body, ctx.contentLeft + pad, y + pad + 16, { width: ctx.contentWidth - pad * 2 });
-  return y + boxH + INVOICE_LAYOUT.sectionGap;
 }
 
 export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPdfInput): Promise<Buffer> {
@@ -210,12 +303,12 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
       { label: "Abgeschlossene Fahrten", value: String(completedRides) },
     ]);
 
-    ctx.y = drawPartyColumns(
+    ctx.y = drawSettlementPartyCards(
       ctx,
       {
         title: "Plattform",
         name: ONRODA_INVOICE_BRAND.productName,
-        lines: [`${ONRODA_INVOICE_SELLER.tradingName}`, ONRODA_INVOICE_BRAND.website],
+        lines: [ONRODA_INVOICE_SELLER.tradingName, ...sellerAddressLines(), ONRODA_INVOICE_BRAND.website],
       },
       {
         title: "Abrechnung für",
@@ -264,17 +357,19 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
     }
     ctx.y += INVOICE_LAYOUT.sectionGap;
 
-    ctx.y = drawInfoBox(
-      ctx,
-      "Trinkgeld (informativ)",
-      `Trinkgeld gesamt: ${fmtEuro(ps.tipTotal)} · 100 % an Fahrerinnen und Fahrer. Trinkgeld ist nicht Teil der ONRODA-Abrechnung.`,
-    );
+    ctx.y = drawSettlementInfoCard(ctx, "Trinkgeld (informativ)", [
+      { text: `Trinkgeld gesamt: ${fmtEuro(ps.tipTotal)}`, bold: true },
+      {
+        text: "100 % an Fahrerinnen und Fahrer · nicht Teil der ONRODA-Abrechnung.",
+        muted: true,
+      },
+    ]);
 
     if (ps.pendingPaymentCount > 0 || ps.failedPaymentCount > 0) {
       const hints: string[] = [];
       if (ps.pendingPaymentCount > 0) hints.push(`Offen / reserviert: ${ps.pendingPaymentCount}`);
       if (ps.failedPaymentCount > 0) hints.push(`Fehlgeschlagen: ${ps.failedPaymentCount}`);
-      ctx.y = drawInfoBox(ctx, "Kartenzahlungen — Hinweise", hints.join(" · "));
+      ctx.y = drawSettlementInfoCard(ctx, "Kartenzahlungen — Hinweise", [{ text: hints.join(" · ") }]);
     }
 
     ctx.y += 4;
