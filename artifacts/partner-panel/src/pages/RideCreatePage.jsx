@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
+import { paymentMethodForPayerMode } from "../lib/partnerRideOps.js";
 import {
   defaultPartnerReservationDatetimeLocal,
-  estimateSystemFare,
   fetchDistanceMatrixByAddress,
   formatPartnerAddressFull,
   isReservationDatetimeValid,
@@ -29,6 +29,9 @@ function mapCreateError(res, data) {
   if (msg) return msg;
   if (code === "partner_address_incomplete") {
     return "Adresse unvollständig — Straße, Hausnummer und PLZ prüfen.";
+  }
+  if (code === "billing_reference_required") {
+    return "Bei Rechnungszahlung bitte interne Referenz (Kostenstelle / Fallnummer) angeben.";
   }
   if (res.status === 403) {
     if (code === "company_kind_not_allowed_for_instant_ride") {
@@ -62,7 +65,7 @@ function mapCreateError(res, data) {
     return "Fahrttyp oder Zahler ungültig.";
   }
   if (code === "feature_invoice_disabled") {
-    return "Rechnungszahlung ist derzeit nicht freigeschaltet — Zahlungsart in den Optionen anpassen.";
+    return "Rechnungszahlung ist derzeit nicht freigeschaltet.";
   }
   if (code === "feature_normal_ride_disabled") {
     return "Normale Fahrten sind derzeit nicht freigeschaltet.";
@@ -83,7 +86,7 @@ function mapCreateError(res, data) {
     return "Zugangscode ist bereits für eine laufende Buchung reserviert.";
   }
   if (code) return `Fahrt konnte nicht angelegt werden (${code}).`;
-  if (res.status >= 500) return "Serverfehler — bitte kurz warten und erneut versuchen.";
+  if (res.status >= 500) return "Serverfehler — bitte kurz warten und erneut senden.";
   return "Fahrt konnte nicht angelegt werden.";
 }
 
@@ -97,6 +100,8 @@ export default function RideCreatePage() {
   const [scheduleMode, setScheduleMode] = useState("now");
   const [forSomeoneElse, setForSomeoneElse] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [payerMode, setPayerMode] = useState("passenger");
+  const [payerConfirmed, setPayerConfirmed] = useState(false);
 
   const [form, setForm] = useState({
     customerName: "",
@@ -114,7 +119,7 @@ export default function RideCreatePage() {
     fromLon: null,
     toLat: null,
     toLon: null,
-    paymentMethod: "rechnung",
+    paymentMethod: "Barzahlung",
     vehicle: "standard",
     scheduledAt: defaultPartnerReservationDatetimeLocal(),
     driverNote: "",
@@ -159,10 +164,31 @@ export default function RideCreatePage() {
     );
   }, [form.distanceKm, form.durationMinutes, form.estimatedFare]);
 
+  const companyPays = payerMode === "company";
+
   useEffect(() => {
     if (!form.accessCode.trim()) return;
-    setForm((f) => (f.payerKind === "company" ? f : { ...f, payerKind: "company" }));
+    setPayerMode("company");
+    setForm((f) => ({
+      ...f,
+      payerKind: "company",
+      paymentMethod: paymentMethodForPayerMode("company"),
+    }));
   }, [form.accessCode]);
+
+  useEffect(() => {
+    setForm((f) => ({
+      ...f,
+      payerKind: payerMode === "company" ? "company" : "passenger",
+      paymentMethod:
+        payerMode === "company"
+          ? paymentMethodForPayerMode("company")
+          : f.paymentMethod === "rechnung"
+            ? "Barzahlung"
+            : f.paymentMethod,
+    }));
+    setPayerConfirmed(false);
+  }, [payerMode]);
 
   useEffect(() => {
     if (!hasRouteInputs) return;
@@ -223,10 +249,6 @@ export default function RideCreatePage() {
     }
   }
 
-  async function resolveRouteValues() {
-    return fetchFreshRoute();
-  }
-
   function resolvedCustomerName() {
     if (forSomeoneElse) return form.customerName.trim();
     return form.customerName.trim() || "Laufkunde";
@@ -254,6 +276,14 @@ export default function RideCreatePage() {
       setCreateMsg(addrCheck.message);
       return;
     }
+    if (companyPays && !form.billingReference.trim()) {
+      setCreateMsg("Bei Rechnungszahlung bitte interne Referenz angeben (Kostenstelle / Fallnummer).");
+      return;
+    }
+    if (!payerConfirmed) {
+      setCreateMsg("Bitte bestätigen Sie die Zahlungsregelung und Disposition.");
+      return;
+    }
     if (scheduleMode === "reservation") {
       if (!form.scheduledAt.trim()) {
         setCreateMsg("Bitte Datum und Uhrzeit für die Reservierung wählen.");
@@ -267,7 +297,7 @@ export default function RideCreatePage() {
 
     setCreating(true);
     try {
-      const route = await resolveRouteValues();
+      const route = await fetchFreshRoute();
       const body = {
         customerName,
         from: shortAddressLabel(fromFull),
@@ -279,7 +309,7 @@ export default function RideCreatePage() {
         estimatedFare: route.estimatedFare,
         ...(route.fromLat != null && route.fromLon != null ? { fromLat: route.fromLat, fromLon: route.fromLon } : {}),
         ...(route.toLat != null && route.toLon != null ? { toLat: route.toLat, toLon: route.toLon } : {}),
-        paymentMethod: form.paymentMethod.trim() || "rechnung",
+        paymentMethod: form.paymentMethod.trim() || paymentMethodForPayerMode(payerMode),
         vehicle: form.vehicle.trim() || "standard",
         rideKind: form.rideKind,
         payerKind: form.payerKind,
@@ -311,11 +341,15 @@ export default function RideCreatePage() {
         scheduleMode === "reservation" || status === "scheduled"
           ? "Reservierung"
           : "Sofort-Taxi";
+      const dispatchHint =
+        scheduleMode === "now"
+          ? " Fahrersuche startet — Status unter „Meine Fahrten“."
+          : " Termin gespeichert — Fahrer-Zuweisung zum Abholzeitpunkt.";
       const id = typeof ride.id === "string" ? ride.id : "";
       setCreateMsg(
         id
-          ? `${kind} angelegt (ID ${id.slice(0, 8)}…). Unter „Meine Fahrten“ sichtbar.`
-          : `${kind} wurde angelegt. Unter „Meine Fahrten“ sichtbar.`,
+          ? `${kind} angelegt (ID ${id.slice(0, 8)}…).${dispatchHint}`
+          : `${kind} wurde angelegt.${dispatchHint}`,
       );
       setForm((f) => ({
         ...f,
@@ -338,10 +372,13 @@ export default function RideCreatePage() {
         driverNote: "",
         rideKind: "standard",
         payerKind: "passenger",
+        paymentMethod: "Barzahlung",
         voucherCode: "",
         billingReference: "",
         accessCode: "",
       }));
+      setPayerMode("passenger");
+      setPayerConfirmed(false);
       setScheduleMode("now");
       setForSomeoneElse(true);
     } catch {
@@ -351,21 +388,31 @@ export default function RideCreatePage() {
     }
   }
 
+  const summaryFare = routeReady ? `${Number(form.estimatedFare).toFixed(2).replace(".", ",")} €` : "—";
+
   return (
-    <div className="panel-page panel-page--rides partner-booking-page">
-      <p className="partner-page-eyebrow">Taxi buchen</p>
-      <h2 className="partner-page-title">Neue Fahrt für Ihr Unternehmen</h2>
-      <p className="partner-page-lead">
-        Straße, Hausnummer und PLZ für Abholung und Ziel — Fahrgast, Zeitpunkt und Notiz wie in der Partner-App.
-      </p>
+    <div className="panel-page panel-page--rides partner-booking-page partner-booking-page--modern">
+      <header className="partner-booking-hero">
+        <p className="partner-page-eyebrow">Taxi buchen</p>
+        <h2 className="partner-page-title">Neue Fahrt für Ihr Unternehmen</h2>
+        <p className="partner-page-lead">
+          Route, Fahrgast, Zahler und Disposition in einem Ablauf — wie in der Partner-App, mit klarer Abrechnung.
+        </p>
+      </header>
 
       {!canCreate ? (
         <p className="panel-page__warn">Sie haben nur Leserechte — neue Fahrten können hier nicht angelegt werden.</p>
       ) : (
-        <div className="panel-card panel-card--wide partner-booking-card">
-          <form className="panel-rides-form partner-booking-form" onSubmit={onCreate}>
-            <section className="partner-booking-section">
-              <h3 className="partner-booking-section__title">Route</h3>
+        <div className="partner-booking-layout">
+          <form className="partner-booking-main" onSubmit={onCreate}>
+            <section className="partner-ops-card">
+              <div className="partner-ops-card__head">
+                <span className="partner-ops-card__step">1</span>
+                <div>
+                  <h3 className="partner-ops-card__title">Route</h3>
+                  <p className="partner-ops-card__lead">Straße, Hausnummer und PLZ — Preis wird automatisch berechnet.</p>
+                </div>
+              </div>
               <div className="panel-rides-form__grid">
                 <div className="partner-booking-address-block">
                   <span>Abholung</span>
@@ -440,12 +487,13 @@ export default function RideCreatePage() {
                 <p className="panel-page__muted partner-booking-hint">{PARTNER_ROUTE_ADDRESS_MESSAGE_DE}</p>
               </div>
               {routeReady ? (
-                <div className="partner-booking-route-summary" aria-live="polite">
-                  <span>{form.distanceKm} km</span>
-                  <span>·</span>
-                  <span>{form.durationMinutes} Min.</span>
-                  <span>·</span>
-                  <strong>{Number(form.estimatedFare).toFixed(2).replace(".", ",")} €</strong>
+                <div className="partner-booking-route-summary partner-booking-route-summary--modern" aria-live="polite">
+                  <div>
+                    <span className="partner-booking-route-summary__km">{form.distanceKm} km</span>
+                    <span className="partner-booking-route-summary__sep">·</span>
+                    <span>{form.durationMinutes} Min.</span>
+                  </div>
+                  <strong className="partner-booking-route-summary__price">{summaryFare}</strong>
                   <span className="partner-booking-route-summary__tag">geschätzt</span>
                 </div>
               ) : (
@@ -458,50 +506,38 @@ export default function RideCreatePage() {
                   >
                     {routing ? "Berechne Route …" : "Route & Preis berechnen"}
                   </button>
-                  {form.distanceKm && !form.estimatedFare ? (
-                    <button
-                      type="button"
-                      className="panel-btn-secondary"
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          estimatedFare: String(
-                            estimateSystemFare(Number(String(f.distanceKm).replace(",", "."))),
-                          ),
-                        }))
-                      }
-                    >
-                      Systempreis aus KM
-                    </button>
-                  ) : null}
                 </div>
               )}
             </section>
 
-            <section className="partner-booking-section">
-              <h3 className="partner-booking-section__title">Fahrgast</h3>
-              <div className="partner-booking-mode-row">
-                <label className="panel-radio-line">
-                  <input
-                    type="radio"
-                    name="passengerMode"
-                    checked={!forSomeoneElse}
-                    onChange={() => setForSomeoneElse(false)}
-                  />
-                  <span>Laufkunde / ohne Namen</span>
-                </label>
-                <label className="panel-radio-line">
-                  <input
-                    type="radio"
-                    name="passengerMode"
-                    checked={forSomeoneElse}
-                    onChange={() => setForSomeoneElse(true)}
-                  />
-                  <span>Für jemand anderen</span>
-                </label>
+            <section className="partner-ops-card">
+              <div className="partner-ops-card__head">
+                <span className="partner-ops-card__step">2</span>
+                <div>
+                  <h3 className="partner-ops-card__title">Fahrgast</h3>
+                  <p className="partner-ops-card__lead">Für wen wird die Fahrt gebucht?</p>
+                </div>
+              </div>
+              <div className="partner-payer-grid partner-payer-grid--2">
+                <button
+                  type="button"
+                  className={!forSomeoneElse ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
+                  onClick={() => setForSomeoneElse(false)}
+                >
+                  <strong>Laufkunde</strong>
+                  <span>Ohne Namen — z. B. Straßenfahrt</span>
+                </button>
+                <button
+                  type="button"
+                  className={forSomeoneElse ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
+                  onClick={() => setForSomeoneElse(true)}
+                >
+                  <strong>Für jemand anderen</strong>
+                  <span>Name und optional Telefon</span>
+                </button>
               </div>
               {forSomeoneElse ? (
-                <div className="panel-rides-form__grid">
+                <div className="panel-rides-form__grid partner-ops-card__body">
                   <label className="panel-rides-form__field">
                     <span>Name des Fahrgasts</span>
                     <input
@@ -522,16 +558,84 @@ export default function RideCreatePage() {
                     />
                   </label>
                 </div>
+              ) : null}
+            </section>
+
+            <section className="partner-ops-card">
+              <div className="partner-ops-card__head">
+                <span className="partner-ops-card__step">3</span>
+                <div>
+                  <h3 className="partner-ops-card__title">Wer zahlt?</h3>
+                  <p className="partner-ops-card__lead">Legt fest, ob der Fahrgast oder Ihr Unternehmen abgerechnet wird.</p>
+                </div>
+              </div>
+              <div className="partner-payer-grid partner-payer-grid--2">
+                <button
+                  type="button"
+                  className={payerMode === "passenger" ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
+                  onClick={() => setPayerMode("passenger")}
+                >
+                  <strong>Fahrgast zahlt</strong>
+                  <span>Bar oder Karte beim Fahrer</span>
+                </button>
+                <button
+                  type="button"
+                  className={payerMode === "company" ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
+                  onClick={() => setPayerMode("company")}
+                >
+                  <strong>Ihr Unternehmen zahlt</strong>
+                  <span>Rechnung nach Fahrtabschluss</span>
+                </button>
+              </div>
+
+              {payerMode === "passenger" ? (
+                <div className="partner-ops-card__body">
+                  <label className="panel-rides-form__field">
+                    <span>Zahlungsart beim Fahrer</span>
+                    <select
+                      value={form.paymentMethod}
+                      onChange={(ev) => setForm((f) => ({ ...f, paymentMethod: ev.target.value }))}
+                    >
+                      <option value="Barzahlung">Barzahlung</option>
+                      <option value="Karte">Karte (beim Fahrer)</option>
+                    </select>
+                  </label>
+                  <p className="partner-ops-hint">
+                    Der Fahrer kassiert direkt beim Fahrgast. Keine Rechnung an Ihr Unternehmen.
+                  </p>
+                </div>
               ) : (
-                <p className="panel-page__muted partner-booking-hint">
-                  Die Fahrt wird als „Laufkunde“ erfasst. Optional können Sie unten eine interne Referenz setzen.
-                </p>
+                <div className="partner-ops-card__body">
+                  <label className="panel-rides-form__field">
+                    <span>Interne Referenz (Pflicht)</span>
+                    <input
+                      value={form.billingReference}
+                      onChange={(ev) => setForm((f) => ({ ...f, billingReference: ev.target.value }))}
+                      placeholder="Kostenstelle, Auftragsnummer, Fall …"
+                      autoComplete="off"
+                      required={companyPays}
+                    />
+                  </label>
+                  <div className="partner-billing-callout">
+                    <strong>So läuft die Rechnung</strong>
+                    <p>
+                      Nach Abschluss der Fahrt erscheint der Betrag in Ihrer Abrechnung (Export oder Monatsrechnung).
+                      Krankenfahrten haben einen separaten Rechnungs-Flow im Bereich Krankenfahrten.
+                    </p>
+                  </div>
+                </div>
               )}
             </section>
 
-            <section className="partner-booking-section">
-              <h3 className="partner-booking-section__title">Zeitpunkt</h3>
-              <div className="partner-booking-schedule">
+            <section className="partner-ops-card">
+              <div className="partner-ops-card__head">
+                <span className="partner-ops-card__step">4</span>
+                <div>
+                  <h3 className="partner-ops-card__title">Zeitpunkt & Disposition</h3>
+                  <p className="partner-ops-card__lead">Sofortfahrt startet die Fahrersuche; Reservierung plant den Termin.</p>
+                </div>
+              </div>
+              <div className="partner-booking-schedule partner-booking-schedule--modern">
                 <button
                   type="button"
                   className={
@@ -542,7 +646,7 @@ export default function RideCreatePage() {
                   onClick={() => setScheduleMode("now")}
                 >
                   <strong>Sofort-Taxi</strong>
-                  <span>Disposition sucht den nächsten freien Fahrer</span>
+                  <span>Online-Fahrer werden benachrichtigt</span>
                 </button>
                 <button
                   type="button"
@@ -567,37 +671,38 @@ export default function RideCreatePage() {
                     onChange={(ev) => setForm((f) => ({ ...f, scheduledAt: ev.target.value }))}
                   />
                 </label>
-              ) : null}
+              ) : (
+                <p className="partner-ops-hint">
+                  Nach dem Buchen: Status „Fahrersuche“ in Meine Fahrten — Annahme und Ablehnungen dort sichtbar.
+                </p>
+              )}
             </section>
 
-            <section className="partner-booking-section">
-              <h3 className="partner-booking-section__title">Notiz für den Fahrer (optional)</h3>
+            <section className="partner-ops-card partner-ops-card--compact">
               <label className="panel-rides-form__field panel-rides-form__field--2">
+                <span>Notiz für den Fahrer (optional)</span>
                 <textarea
                   className="partner-booking-note"
                   value={form.driverNote}
                   onChange={(ev) => setForm((f) => ({ ...f, driverNote: ev.target.value.slice(0, NOTE_MAX) }))}
-                  placeholder="z. B. Eingang Hinterhof, Rollator, Anruf bei Ankunft"
-                  rows={3}
+                  placeholder="z. B. Eingang Hinterhof, Rollator"
+                  rows={2}
                   maxLength={NOTE_MAX}
                 />
                 <span className="partner-booking-note-count">
                   {form.driverNote.length}/{NOTE_MAX}
                 </span>
               </label>
-            </section>
-
-            <section className="partner-booking-section partner-booking-section--advanced">
               <button
                 type="button"
                 className="partner-booking-advanced-toggle"
                 onClick={() => setShowAdvanced((v) => !v)}
                 aria-expanded={showAdvanced}
               >
-                {showAdvanced ? "Weniger Optionen" : "Weitere Optionen (Fahrzeug, Abrechnung)"}
+                {showAdvanced ? "Weniger Optionen" : "Fahrzeug, Gutschein, Freigabe-Code …"}
               </button>
               {showAdvanced ? (
-                <div className="panel-rides-form__grid">
+                <div className="panel-rides-form__grid partner-ops-card__body">
                   <label className="panel-rides-form__field">
                     <span>Fahrzeug</span>
                     <select
@@ -610,38 +715,23 @@ export default function RideCreatePage() {
                     </select>
                   </label>
                   <label className="panel-rides-form__field">
-                    <span>Zahler / Abrechnung</span>
-                    <select
-                      value={form.payerKind}
-                      onChange={(ev) => setForm((f) => ({ ...f, payerKind: ev.target.value }))}
-                    >
-                      <option value="passenger">Fahrgast</option>
-                      <option value="company">Firma (Rechnung)</option>
-                      <option value="insurance">Kostenträger</option>
-                      <option value="voucher">Gutschein</option>
-                      <option value="third_party">Dritter</option>
-                    </select>
-                  </label>
-                  <label className="panel-rides-form__field">
                     <span>Fahrttyp</span>
                     <select
                       value={form.rideKind}
-                      onChange={(ev) => setForm((f) => ({ ...f, rideKind: ev.target.value }))}
+                      onChange={(ev) => {
+                        const rk = ev.target.value;
+                        setForm((f) => ({
+                          ...f,
+                          rideKind: rk,
+                          ...(rk === "medical" ? { payerKind: "insurance", paymentMethod: "rechnung" } : {}),
+                        }));
+                        if (rk === "medical") setPayerMode("company");
+                      }}
                     >
                       <option value="standard">Normale Fahrt</option>
                       <option value="medical">Krankenfahrt</option>
-                      <option value="voucher">Gutschein-Fahrt</option>
                       <option value="company">Firmenfahrt</option>
                     </select>
-                  </label>
-                  <label className="panel-rides-form__field">
-                    <span>Interne Referenz (optional)</span>
-                    <input
-                      value={form.billingReference}
-                      onChange={(ev) => setForm((f) => ({ ...f, billingReference: ev.target.value }))}
-                      placeholder="Kostenstelle, Fallnummer …"
-                      autoComplete="off"
-                    />
                   </label>
                   <label className="panel-rides-form__field">
                     <span>Gutscheincode (optional)</span>
@@ -660,7 +750,9 @@ export default function RideCreatePage() {
                           setForm((f) => ({
                             ...f,
                             accessCode: ev.target.value,
-                            payerKind: ev.target.value.trim() ? "company" : f.payerKind,
+                            ...(ev.target.value.trim()
+                              ? { payerKind: "company", paymentMethod: "rechnung" }
+                              : {}),
                           }))
                         }
                         placeholder="Kostenübernahme durch Auftraggeber"
@@ -672,20 +764,74 @@ export default function RideCreatePage() {
               ) : null}
             </section>
 
+            <section className="partner-ops-card partner-ops-card--confirm">
+              <label className="partner-confirm-line">
+                <input
+                  type="checkbox"
+                  checked={payerConfirmed}
+                  onChange={(ev) => setPayerConfirmed(ev.target.checked)}
+                />
+                <span>
+                  Ich bestätige:{" "}
+                  {companyPays
+                    ? "Mein Unternehmen trägt die Kosten — Rechnung nach Fahrtabschluss."
+                    : "Der Fahrgast zahlt direkt beim Fahrer."}{" "}
+                  {scheduleMode === "now" ? "Die Fahrersuche startet nach dem Buchen." : "Die Reservierung wird geplant."}
+                </span>
+              </label>
+            </section>
+
             {createMsg ? (
               <p
                 className={
-                  createMsg.includes("angelegt") ? "panel-page__ok partner-booking-feedback" : "panel-page__warn partner-booking-feedback"
+                  createMsg.includes("angelegt")
+                    ? "panel-page__ok partner-booking-feedback"
+                    : "panel-page__warn partner-booking-feedback"
                 }
               >
                 {createMsg}
               </p>
             ) : null}
 
-            <button type="submit" className="panel-btn-primary partner-booking-submit" disabled={creating || routing || !routeReady}>
+            <button
+              type="submit"
+              className="panel-btn-primary partner-booking-submit partner-booking-submit--wide"
+              disabled={creating || routing || !routeReady || !payerConfirmed}
+            >
               {creating ? "Wird gebucht …" : routing ? "Route wird berechnet …" : scheduleMode === "reservation" ? "Reservierung anlegen" : "Sofort-Taxi bestellen"}
             </button>
           </form>
+
+          <aside className="partner-booking-aside" aria-label="Buchungsübersicht">
+            <div className="partner-booking-summary">
+              <h3 className="partner-booking-summary__title">Übersicht</h3>
+              <dl className="partner-booking-summary__list">
+                <div>
+                  <dt>Route</dt>
+                  <dd>{hasRouteInputs ? `${fromFull} → ${toFull}` : "Noch offen"}</dd>
+                </div>
+                <div>
+                  <dt>Preis (geschätzt)</dt>
+                  <dd className="partner-booking-summary__price">{summaryFare}</dd>
+                </div>
+                <div>
+                  <dt>Zahler</dt>
+                  <dd>{companyPays ? "Ihr Unternehmen (Rechnung)" : "Fahrgast"}</dd>
+                </div>
+                <div>
+                  <dt>Zahlung</dt>
+                  <dd>{companyPays ? "Rechnung nach Abschluss" : form.paymentMethod}</dd>
+                </div>
+                <div>
+                  <dt>Disposition</dt>
+                  <dd>{scheduleMode === "now" ? "Sofort — Fahrersuche" : "Reservierung"}</dd>
+                </div>
+              </dl>
+              {!payerConfirmed ? (
+                <p className="partner-booking-summary__hint">Bestätigung unten erforderlich zum Buchen.</p>
+              ) : null}
+            </div>
+          </aside>
         </div>
       )}
     </div>

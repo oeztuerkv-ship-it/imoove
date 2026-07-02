@@ -682,6 +682,443 @@
   margin-top: 12px;
 }
 
+/* —— Modern partner booking & rides ops —— */
+
+.partner-booking-page--modern .partner-booking-hero,
+.partner-rides-page--modern .partner-rides-hero {
+  margin-bottom: 20px;
+}
+
+.partner-booking-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .partner-booking-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .partner-booking-aside {
+    order: -1;
+  }
+}
+
+.partner-booking-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.partner-ops-card {
+  border: 1px solid var(--onroda-border);
+  border-radius: 16px;
+  background: var(--onroda-bg-app);
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.partner-ops-card--compact {
+  padding-bottom: 14px;
+}
+
+.partner-ops-card--confirm {
+  background: rgba(15, 118, 110, 0.06);
+  border-color: rgba(15, 118, 110, 0.2);
+}
+
+.partner-ops-card__head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.partner-ops-card__step {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #115e59;
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.partner-ops-card__title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+}
+
+.partner-ops-card__lead {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--onroda-text-muted);
+  line-height: 1.45;
+}
+
+.partner-ops-card__body {
+  margin-top: 12px;
+}
+
+.partner-ops-hint {
+  margin: 10px 0 0;
+  font-size: 0.84rem;
+  color: var(--onroda-text-muted);
+  line-height: 1.45;
+}
+
+.partner-payer-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.partner-payer-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .partner-payer-grid--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-payer-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--onroda-border);
+  border-radius: 14px;
+  background: var(--onroda-bg-app);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.partner-payer-tile strong {
+  font-size: 0.95rem;
+  color: var(--onroda-text-dark);
+}
+
+.partner-payer-tile span {
+  font-size: 0.8rem;
+  color: var(--onroda-text-muted);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.partner-payer-tile--active {
+  border-color: #0f766e;
+  background: rgba(15, 118, 110, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.15);
+}
+
+.partner-billing-callout {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(15, 118, 110, 0.07);
+  border: 1px solid rgba(15, 118, 110, 0.15);
+}
+
+.partner-billing-callout strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.88rem;
+  color: #115e59;
+}
+
+.partner-billing-callout p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--onroda-text-muted);
+  line-height: 1.45;
+}
+
+.partner-confirm-line {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--onroda-text-dark);
+}
+
+.partner-confirm-line input {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: #0f766e;
+}
+
+.partner-booking-summary {
+  position: sticky;
+  top: 16px;
+  border: 1px solid var(--onroda-border);
+  border-radius: 16px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(15, 118, 110, 0.06) 0%, var(--onroda-bg-app) 48%);
+}
+
+.partner-booking-summary__title {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.partner-booking-summary__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.partner-booking-summary__list dt {
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--onroda-text-muted);
+}
+
+.partner-booking-summary__list dd {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--onroda-text-dark);
+  line-height: 1.4;
+}
+
+.partner-booking-summary__price {
+  font-size: 1.15rem !important;
+  font-weight: 800;
+  color: #115e59;
+}
+
+.partner-booking-summary__hint {
+  margin: 14px 0 0;
+  font-size: 0.82rem;
+  color: var(--onroda-text-muted);
+}
+
+.partner-booking-route-summary--modern {
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.partner-booking-route-summary__price {
+  font-size: 1.1rem;
+}
+
+.partner-booking-submit--wide {
+  max-width: none;
+  width: 100%;
+}
+
+.partner-rides-toolbar {
+  align-items: center;
+}
+
+.partner-rides-live-hint {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f766e;
+  margin-left: auto;
+}
+
+.partner-rides-list--modern {
+  gap: 14px;
+}
+
+.partner-ride-card--modern {
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.partner-ride-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.partner-ride-card__pill {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+}
+
+.partner-ride-card__pill--passenger {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+
+.partner-ride-card__pill--company {
+  background: rgba(15, 118, 110, 0.12);
+  color: #115e59;
+}
+
+.partner-ride-card__pill--search {
+  background: rgba(234, 179, 8, 0.18);
+  color: #a16207;
+}
+
+.partner-ride-card__pill--live {
+  background: rgba(22, 101, 52, 0.12);
+  color: #166534;
+}
+
+.partner-ride-card__pill--warn {
+  background: rgba(180, 35, 24, 0.1);
+  color: #b42318;
+}
+
+.partner-ride-card__pill--ok {
+  background: rgba(22, 101, 52, 0.12);
+  color: #166534;
+}
+
+.partner-ride-card__status--search {
+  background: rgba(234, 179, 8, 0.18);
+  color: #a16207;
+}
+
+.partner-ride-card__dispatch {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.partner-ride-ops-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 14px 0;
+}
+
+@media (max-width: 720px) {
+  .partner-ride-ops-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-ride-ops-panel {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(15, 118, 110, 0.04);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+}
+
+.partner-ride-ops-panel__title {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #115e59;
+}
+
+.partner-dispatch-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.partner-dispatch-steps__item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.partner-dispatch-steps__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 5px;
+  flex-shrink: 0;
+  background: #cbd5e1;
+}
+
+.partner-dispatch-steps__item--done .partner-dispatch-steps__dot {
+  background: #0f766e;
+}
+
+.partner-dispatch-steps__item--active .partner-dispatch-steps__dot {
+  background: #eab308;
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.25);
+}
+
+.partner-dispatch-steps__item--err .partner-dispatch-steps__dot {
+  background: #b42318;
+}
+
+.partner-dispatch-steps__item strong {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--onroda-text-dark);
+}
+
+.partner-dispatch-steps__item span {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--onroda-text-muted);
+  line-height: 1.35;
+}
+
+.partner-ride-billing-headline {
+  margin: 0 0 4px;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.partner-ride-mini-dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 12px 0 0;
+}
+
+.partner-ride-mini-dl dt {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--onroda-text-muted);
+}
+
+.partner-ride-mini-dl dd {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.partner-ride-driver-line {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+}
+
+.partner-muted {
+  color: var(--onroda-text-muted);
+}
+
 .panel-profile-actions {
   display: flex;
   flex-wrap: wrap;

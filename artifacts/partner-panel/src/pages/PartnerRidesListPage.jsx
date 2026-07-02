@@ -1,74 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import {
+  billingSummary,
+  dispatchHeadline,
+  dispatchSteps,
+  needsActivePoll,
+  payerKindLabel,
+  rejectionCount,
+  rideKindLabel,
+  statusLabel,
+  statusTone,
+  TERMINAL_STATUSES,
+} from "../lib/partnerRideOps.js";
 import { formatRideEstimatedFare, formatRideFinalFare, getPartnerMeta } from "./finance/financeHelpers.js";
 
 const NOTE_MAX = 200;
 const RETRY_SEARCH_MS = 60_000;
-
-function rideKindLabel(k) {
-  const m = { standard: "Normal", medical: "Krankenfahrt", voucher: "Gutschein", company: "Firmenfahrt" };
-  return m[k] ?? k ?? "—";
-}
-
-function payerKindLabel(k) {
-  const m = {
-    passenger: "Fahrgast",
-    company: "Firma (Rechnung)",
-    insurance: "Kostenträger",
-    voucher: "Gutschein",
-    third_party: "Dritter",
-  };
-  return m[k] ?? k ?? "—";
-}
-
-function statusLabel(status) {
-  const m = {
-    pending: "Sucht Fahrer",
-    requested: "Angefragt",
-    searching_driver: "Sucht Fahrer",
-    offered: "Angeboten",
-    scheduled: "Reservierung",
-    scheduled_assigned: "Reservierung (zugewiesen)",
-    ready_for_dispatch: "Bereit",
-    accepted: "Angenommen",
-    driver_arriving: "Fahrer unterwegs",
-    driver_waiting: "Fahrer wartet",
-    passenger_onboard: "Fahrgast an Bord",
-    arrived: "Vor Ort",
-    in_progress: "Unterwegs",
-    rejected: "Abgelehnt",
-    cancelled: "Storniert",
-    cancelled_by_customer: "Storniert (Kunde)",
-    cancelled_by_driver: "Storniert (Fahrer)",
-    cancelled_by_system: "Storniert (System)",
-    completed: "Abgeschlossen",
-    no_driver: "Kein Fahrer",
-    expired: "Abgelaufen",
-  };
-  return m[status] ?? status ?? "—";
-}
-
-function statusTone(status) {
-  if (status === "completed") return "ok";
-  if (String(status ?? "").startsWith("cancelled") || status === "rejected" || status === "no_driver") return "err";
-  if (status === "scheduled" || status === "scheduled_assigned") return "scheduled";
-  if (status === "accepted" || status === "in_progress" || status === "driver_arriving") return "live";
-  return "pending";
-}
+const POLL_MS = 20_000;
 
 function getDriverNote(ride) {
   const meta = getPartnerMeta(ride);
   const raw = meta?.customer_driver_note;
   return typeof raw === "string" ? raw.trim() : "";
-}
-
-function dispatchSummary(ride) {
-  if (ride.driverId) return "Fahrer zugewiesen";
-  const rej = Array.isArray(ride.rejectedBy) ? ride.rejectedBy.filter(Boolean).length : 0;
-  if (rej > 0) return `${rej} Fahrer-Ablehnung${rej > 1 ? "en" : ""}`;
-  if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return "Reservierung — noch kein Fahrer";
-  return "Wartet auf Fahrer-Annahme";
 }
 
 function fmtDateTime(iso) {
@@ -85,9 +39,7 @@ function fmtDateTime(iso) {
 }
 
 function canCancelRide(ride) {
-  return !["completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "rejected"].includes(
-    ride.status,
-  );
+  return !TERMINAL_STATUSES.has(ride.status);
 }
 
 function canRetrySearch(ride) {
@@ -103,7 +55,24 @@ function csvEscape(v) {
   return s;
 }
 
-const HISTORY_STATUSES = new Set(["completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "rejected"]);
+const HISTORY_STATUSES = TERMINAL_STATUSES;
+
+function DispatchStepper({ ride }) {
+  const steps = dispatchSteps(ride);
+  return (
+    <ol className="partner-dispatch-steps">
+      {steps.map((step) => (
+        <li key={step.key} className={`partner-dispatch-steps__item partner-dispatch-steps__item--${step.state}`}>
+          <span className="partner-dispatch-steps__dot" aria-hidden />
+          <div>
+            <strong>{step.label}</strong>
+            <span>{step.detail}</span>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 export default function PartnerRidesListPage({ variant }) {
   const { token, user } = usePanelAuth();
@@ -115,29 +84,34 @@ export default function PartnerRidesListPage({ variant }) {
   const [noteRideId, setNoteRideId] = useState(null);
   const [actionBusy, setActionBusy] = useState("");
   const [actionMsg, setActionMsg] = useState("");
+  const [trackingByRide, setTrackingByRide] = useState({});
 
   const canCreate = Array.isArray(user?.permissions) && user.permissions.includes("rides.create");
 
-  const loadRides = useCallback(async () => {
+  const loadRides = useCallback(async (silent = false) => {
     if (!token) return;
-    setErr("");
-    setLoading(true);
+    if (!silent) setErr("");
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/panel/v1/rides`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        setErr("Fahrten konnten nicht geladen werden.");
-        setRides([]);
+        if (!silent) {
+          setErr("Fahrten konnten nicht geladen werden.");
+          setRides([]);
+        }
         return;
       }
       setRides(Array.isArray(data.rides) ? data.rides : []);
     } catch {
-      setErr("Fahrten konnten nicht geladen werden.");
-      setRides([]);
+      if (!silent) {
+        setErr("Fahrten konnten nicht geladen werden.");
+        setRides([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [token]);
 
@@ -152,9 +126,49 @@ export default function PartnerRidesListPage({ variant }) {
     return rides;
   }, [rides, variant]);
 
+  const hasActiveRides = useMemo(
+    () => variant !== "history" && rides.some((r) => needsActivePoll(r)),
+    [rides, variant],
+  );
+
+  useEffect(() => {
+    if (!hasActiveRides || !token) return;
+    const id = setInterval(() => void loadRides(true), POLL_MS);
+    return () => clearInterval(id);
+  }, [hasActiveRides, token, loadRides]);
+
+  const fetchTracking = useCallback(
+    async (rideId) => {
+      if (!token || !rideId) return;
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/rides/${encodeURIComponent(rideId)}/tracking`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.ok) {
+          setTrackingByRide((prev) => ({ ...prev, [rideId]: data }));
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    if (!expandedId) return;
+    void fetchTracking(expandedId);
+  }, [expandedId, fetchTracking]);
+
   const replaceRide = useCallback((nextRide) => {
     if (!nextRide?.id) return;
     setRides((prev) => prev.map((r) => (r.id === nextRide.id ? { ...r, ...nextRide } : r)));
+  }, []);
+
+  const patchRideCompanyInvoice = useCallback((rideId, companyInvoice) => {
+    setRides((prev) =>
+      prev.map((r) => (r.id === rideId ? { ...r, companyInvoice: { ...companyInvoice } } : r)),
+    );
   }, []);
 
   const onCancel = useCallback(
@@ -206,14 +220,91 @@ export default function PartnerRidesListPage({ variant }) {
           return;
         }
         if (data.ride) replaceRide(data.ride);
-        setActionMsg("Fahrersuche erneut gestartet — Fahrer-App sollte benachrichtigt werden.");
+        setActionMsg("Fahrersuche erneut gestartet.");
+        void fetchTracking(rideId);
       } catch {
         setActionMsg("Erneut suchen fehlgeschlagen.");
       } finally {
         setActionBusy("");
       }
     },
-    [token, replaceRide],
+    [token, replaceRide, fetchTracking],
+  );
+
+  const onCreateInvoice = useCallback(
+    async (rideId) => {
+      if (!token) return;
+      setActionBusy(`invoice-${rideId}`);
+      setActionMsg("");
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/rides/${encodeURIComponent(rideId)}/create-invoice`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          const msg =
+            typeof data?.message === "string" && data.message.trim()
+              ? data.message.trim()
+              : typeof data?.error === "string"
+                ? `Rechnung fehlgeschlagen (${data.error}).`
+                : "Rechnung konnte nicht erstellt werden.";
+          setActionMsg(msg);
+          return;
+        }
+        const inv = data.invoice ?? {};
+        if (data.flow === "company" && inv.id) {
+          patchRideCompanyInvoice(rideId, {
+            eligible: false,
+            blockers: ["invoice_already_created"],
+            invoiceId: inv.id,
+            invoiceNumber: inv.number ?? null,
+            billingStatus: "invoiced",
+          });
+          setActionMsg(`Rechnung ${inv.number ?? ""} erstellt.`);
+        } else if (inv.number) {
+          setActionMsg(`Rechnung ${inv.number} erstellt.`);
+          void loadRides(true);
+        } else {
+          setActionMsg("Rechnung erstellt.");
+          void loadRides(true);
+        }
+      } catch {
+        setActionMsg("Rechnung konnte nicht erstellt werden.");
+      } finally {
+        setActionBusy("");
+      }
+    },
+    [token, patchRideCompanyInvoice, loadRides],
+  );
+
+  const downloadInvoicePdf = useCallback(
+    async (invoiceId, invoiceNumber) => {
+      if (!token || !invoiceId) return;
+      setActionBusy(`pdf-${invoiceId}`);
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/invoices/${encodeURIComponent(invoiceId)}/pdf`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setActionMsg("PDF konnte nicht geladen werden.");
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ONRODA-Rechnung-${invoiceNumber || invoiceId}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        setActionMsg("PDF konnte nicht geladen werden.");
+      } finally {
+        setActionBusy("");
+      }
+    },
+    [token],
   );
 
   const openNoteEditor = useCallback((ride) => {
@@ -294,20 +385,22 @@ export default function PartnerRidesListPage({ variant }) {
   const lead =
     variant === "history"
       ? "Abgeschlossene, stornierte und abgelehnte Fahrten."
-      : "Alle Fahrten mit Route, Fahrgast, Disposition und Abrechnung.";
+      : "Live-Disposition, Zahler und Abrechnung — aktualisiert sich automatisch bei laufenden Fahrten.";
 
   return (
-    <div className="panel-page panel-page--rides partner-rides-page">
-      <p className="partner-page-eyebrow">Fahrten</p>
-      <h2 className="partner-page-title">{variant === "history" ? "Verlauf" : "Meine Fahrten"}</h2>
-      <p className="partner-page-lead">{lead}</p>
+    <div className="panel-page panel-page--rides partner-rides-page partner-rides-page--modern">
+      <header className="partner-rides-hero">
+        <p className="partner-page-eyebrow">Fahrten</p>
+        <h2 className="partner-page-title">{variant === "history" ? "Verlauf" : "Meine Fahrten"}</h2>
+        <p className="partner-page-lead">{lead}</p>
+      </header>
 
       {err ? <p className="panel-page__warn">{err}</p> : null}
       {actionMsg ? (
         <p className={actionMsg.includes("fehl") ? "panel-page__warn" : "panel-page__ok"}>{actionMsg}</p>
       ) : null}
 
-      <div className="panel-rides-toolbar">
+      <div className="panel-rides-toolbar partner-rides-toolbar">
         <button type="button" className="panel-btn-secondary" disabled={loading} onClick={() => void loadRides()}>
           Aktualisieren
         </button>
@@ -319,6 +412,9 @@ export default function PartnerRidesListPage({ variant }) {
         >
           CSV exportieren
         </button>
+        {hasActiveRides ? (
+          <span className="partner-rides-live-hint">Live · alle {POLL_MS / 1000} s</span>
+        ) : null}
       </div>
 
       {loading ? <p className="panel-page__lead">Lade …</p> : null}
@@ -326,13 +422,21 @@ export default function PartnerRidesListPage({ variant }) {
         <p className="panel-page__lead">Noch keine Fahrten in dieser Ansicht.</p>
       ) : null}
 
-      <div className="partner-rides-list">
+      <div className="partner-rides-list partner-rides-list--modern">
         {displayedRides.map((ride) => {
           const open = expandedId === ride.id;
           const tone = statusTone(ride.status);
           const note = getDriverNote(ride);
+          const bill = billingSummary(ride);
+          const tracking = trackingByRide[ride.id];
+          const driverName = tracking?.driver?.name;
+          const driverPlate = tracking?.driver?.plate;
+          const rej = rejectionCount(ride);
+          const invoiceId = bill.invoiceId || ride.companyInvoice?.invoiceId || null;
+          const invoiceNumber = ride.companyInvoice?.invoiceNumber || null;
+
           return (
-            <article key={ride.id} className={`partner-ride-card partner-ride-card--${tone}`}>
+            <article key={ride.id} className={`partner-ride-card partner-ride-card--modern partner-ride-card--${tone}`}>
               <button
                 type="button"
                 className="partner-ride-card__head"
@@ -340,9 +444,25 @@ export default function PartnerRidesListPage({ variant }) {
                 aria-expanded={open}
               >
                 <div className="partner-ride-card__head-main">
-                  <span className={`partner-ride-card__status partner-ride-card__status--${tone}`}>
-                    {statusLabel(ride.status)}
-                  </span>
+                  <div className="partner-ride-card__badges">
+                    <span className={`partner-ride-card__status partner-ride-card__status--${tone}`}>
+                      {statusLabel(ride.status)}
+                    </span>
+                    <span className={`partner-ride-card__pill partner-ride-card__pill--${bill.tone}`}>
+                      {bill.headline}
+                    </span>
+                    {!ride.driverId && ride.status === "searching_driver" ? (
+                      <span className="partner-ride-card__pill partner-ride-card__pill--search">Suche aktiv</span>
+                    ) : null}
+                    {ride.driverId ? (
+                      <span className="partner-ride-card__pill partner-ride-card__pill--live">Angenommen</span>
+                    ) : null}
+                    {rej > 0 && !ride.driverId ? (
+                      <span className="partner-ride-card__pill partner-ride-card__pill--warn">
+                        {rej} Ablehnung{rej > 1 ? "en" : ""}
+                      </span>
+                    ) : null}
+                  </div>
                   <strong className="partner-ride-card__route">
                     {ride.fromFull || ride.from || "—"} → {ride.toFull || ride.to || "—"}
                   </strong>
@@ -350,6 +470,7 @@ export default function PartnerRidesListPage({ variant }) {
                     {ride.customerName || "—"}
                     {ride.scheduledAt ? ` · ${fmtDateTime(ride.scheduledAt)}` : ` · ${fmtDateTime(ride.createdAt)}`}
                   </span>
+                  <span className="partner-ride-card__dispatch">{dispatchHeadline(ride)}</span>
                 </div>
                 <div className="partner-ride-card__head-side">
                   <span className="partner-ride-card__fare">{formatRideEstimatedFare(ride)}</span>
@@ -359,15 +480,51 @@ export default function PartnerRidesListPage({ variant }) {
 
               {open ? (
                 <div className="partner-ride-card__body">
+                  <div className="partner-ride-ops-grid">
+                    <section className="partner-ride-ops-panel">
+                      <h4 className="partner-ride-ops-panel__title">Disposition</h4>
+                      <DispatchStepper ride={ride} />
+                      {driverName ? (
+                        <p className="partner-ride-driver-line">
+                          <strong>Fahrer:</strong> {driverName}
+                          {driverPlate ? ` · ${driverPlate}` : ""}
+                        </p>
+                      ) : ride.driverId ? (
+                        <p className="partner-ride-driver-line partner-muted">Fahrer zugewiesen — Details werden geladen …</p>
+                      ) : (
+                        <p className="partner-ride-driver-line partner-muted">Noch kein Fahrer angenommen.</p>
+                      )}
+                    </section>
+                    <section className="partner-ride-ops-panel">
+                      <h4 className="partner-ride-ops-panel__title">Abrechnung</h4>
+                      <p className="partner-ride-billing-headline">{bill.headline}</p>
+                      <p className="partner-muted">{bill.detail}</p>
+                      <dl className="partner-ride-mini-dl">
+                        <div>
+                          <dt>Zahler</dt>
+                          <dd>{payerKindLabel(ride.payerKind)}</dd>
+                        </div>
+                        <div>
+                          <dt>Zahlungsart</dt>
+                          <dd>{ride.paymentMethod || "—"}</dd>
+                        </div>
+                        {ride.billingReference ? (
+                          <div>
+                            <dt>Referenz</dt>
+                            <dd>{ride.billingReference}</dd>
+                          </div>
+                        ) : null}
+                        <div>
+                          <dt>Preis</dt>
+                          <dd>
+                            {formatRideEstimatedFare(ride)} / {formatRideFinalFare(ride)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </section>
+                  </div>
+
                   <dl className="partner-ride-detail-grid">
-                    <div>
-                      <dt>Abholung</dt>
-                      <dd>{ride.fromFull || ride.from || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Ziel</dt>
-                      <dd>{ride.toFull || ride.to || "—"}</dd>
-                    </div>
                     <div>
                       <dt>Fahrgast</dt>
                       <dd>
@@ -376,30 +533,11 @@ export default function PartnerRidesListPage({ variant }) {
                       </dd>
                     </div>
                     <div>
-                      <dt>Disposition</dt>
-                      <dd>{dispatchSummary(ride)}</dd>
+                      <dt>Fahrttyp</dt>
+                      <dd>{rideKindLabel(ride.rideKind)}</dd>
                     </div>
                     <div>
-                      <dt>Fahrttyp / Zahler</dt>
-                      <dd>
-                        {rideKindLabel(ride.rideKind)} · {payerKindLabel(ride.payerKind)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Abrechnung</dt>
-                      <dd>
-                        {ride.paymentMethod || "—"}
-                        {ride.billingReference ? ` · Ref. ${ride.billingReference}` : ""}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Geschätzt / Endpreis</dt>
-                      <dd>
-                        {formatRideEstimatedFare(ride)} / {formatRideFinalFare(ride)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Entfernung / Dauer</dt>
+                      <dt>Entfernung</dt>
                       <dd>
                         {ride.distanceKm != null ? `${Number(ride.distanceKm).toFixed(1)} km` : "—"}
                         {ride.durationMinutes != null ? ` · ${ride.durationMinutes} Min.` : ""}
@@ -409,10 +547,6 @@ export default function PartnerRidesListPage({ variant }) {
                       <dt>Termin</dt>
                       <dd>{ride.scheduledAt ? fmtDateTime(ride.scheduledAt) : "Sofortfahrt"}</dd>
                     </div>
-                    <div>
-                      <dt>Angelegt</dt>
-                      <dd>{fmtDateTime(ride.createdAt)}</dd>
-                    </div>
                     <div className="partner-ride-detail-grid__full">
                       <dt>Notiz für Fahrer</dt>
                       <dd>{note || "—"}</dd>
@@ -420,6 +554,26 @@ export default function PartnerRidesListPage({ variant }) {
                   </dl>
 
                   <div className="partner-ride-card__actions">
+                    {canCreate && bill.canCreateInvoice ? (
+                      <button
+                        type="button"
+                        className="panel-btn-primary"
+                        disabled={actionBusy === `invoice-${ride.id}`}
+                        onClick={() => void onCreateInvoice(ride.id)}
+                      >
+                        Rechnung erstellen
+                      </button>
+                    ) : null}
+                    {invoiceId ? (
+                      <button
+                        type="button"
+                        className="panel-btn-secondary"
+                        disabled={actionBusy === `pdf-${invoiceId}`}
+                        onClick={() => void downloadInvoicePdf(invoiceId, invoiceNumber)}
+                      >
+                        Rechnung PDF
+                      </button>
+                    ) : null}
                     {canCreate ? (
                       <button
                         type="button"
@@ -437,7 +591,7 @@ export default function PartnerRidesListPage({ variant }) {
                         disabled={actionBusy === `retry-${ride.id}`}
                         onClick={() => void onRetrySearch(ride.id)}
                       >
-                        Erneut an Fahrer senden
+                        Fahrersuche erneut starten
                       </button>
                     ) : null}
                     {canCreate && canCancelRide(ride) ? (
@@ -450,27 +604,13 @@ export default function PartnerRidesListPage({ variant }) {
                         Stornieren
                       </button>
                     ) : null}
-                    <a
-                      className="panel-btn-secondary partner-ride-card__link-btn"
-                      href={`${API_BASE}/panel/v1/rides/${encodeURIComponent(ride.id)}/tracking`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        void fetch(`${API_BASE}/panel/v1/rides/${encodeURIComponent(ride.id)}/tracking`, {
-                          headers: { Authorization: `Bearer ${token}` },
-                        })
-                          .then((r) => r.json())
-                          .then((j) => {
-                            if (j?.driver?.name) {
-                              setActionMsg(`Live: ${j.driver.name}${j.driver.plate ? ` · ${j.driver.plate}` : ""}`);
-                            } else {
-                              setActionMsg("Noch kein Fahrer zugewiesen.");
-                            }
-                          })
-                          .catch(() => setActionMsg("Tracking nicht verfügbar."));
-                      }}
+                    <button
+                      type="button"
+                      className="panel-btn-secondary"
+                      onClick={() => void fetchTracking(ride.id)}
                     >
-                      Fahrer-Status
-                    </a>
+                      Status aktualisieren
+                    </button>
                   </div>
                   <p className="partner-ride-card__id">ID: {ride.id}</p>
                 </div>
