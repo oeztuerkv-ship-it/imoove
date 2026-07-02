@@ -6,11 +6,12 @@ import {
   defaultPartnerReservationDatetimeLocal,
   estimateSystemFare,
   fetchDistanceMatrixByAddress,
+  formatPartnerAddressFull,
   isReservationDatetimeValid,
   minPartnerReservationDatetimeLocal,
   shortAddressLabel,
   toIsoFromDatetimeLocal,
-  validatePartnerRouteAddresses,
+  validatePartnerRouteAddressParts,
   PARTNER_ROUTE_ADDRESS_MESSAGE_DE,
 } from "../lib/smartBooking.js";
 
@@ -66,8 +67,12 @@ export default function RideCreatePage() {
   const [form, setForm] = useState({
     customerName: "",
     customerPhone: "",
-    fromFull: "",
-    toFull: "",
+    fromStreet: "",
+    fromHouseNo: "",
+    fromPlz: "",
+    toStreet: "",
+    toHouseNo: "",
+    toPlz: "",
     distanceKm: "",
     durationMinutes: "",
     estimatedFare: "",
@@ -82,9 +87,24 @@ export default function RideCreatePage() {
     accessCode: "",
   });
 
+  const fromFull = useMemo(
+    () => formatPartnerAddressFull(form.fromStreet, form.fromHouseNo, form.fromPlz),
+    [form.fromStreet, form.fromHouseNo, form.fromPlz],
+  );
+  const toFull = useMemo(
+    () => formatPartnerAddressFull(form.toStreet, form.toHouseNo, form.toPlz),
+    [form.toStreet, form.toHouseNo, form.toPlz],
+  );
+
   const hasRouteInputs = useMemo(
-    () => form.fromFull.trim().length > 0 && form.toFull.trim().length > 0,
-    [form.fromFull, form.toFull],
+    () =>
+      form.fromStreet.trim().length > 0 &&
+      form.fromHouseNo.trim().length > 0 &&
+      form.fromPlz.trim().length > 0 &&
+      form.toStreet.trim().length > 0 &&
+      form.toHouseNo.trim().length > 0 &&
+      form.toPlz.trim().length > 0,
+    [form.fromStreet, form.fromHouseNo, form.fromPlz, form.toStreet, form.toHouseNo, form.toPlz],
   );
 
   const routeReady = useMemo(() => {
@@ -112,7 +132,7 @@ export default function RideCreatePage() {
       void autoFillRoute();
     }, 400);
     return () => clearTimeout(t);
-  }, [form.fromFull, form.toFull, form.vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fromFull, toFull, form.vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (scheduleMode === "reservation" && !form.scheduledAt.trim()) {
@@ -125,7 +145,7 @@ export default function RideCreatePage() {
     setRouting(true);
     setCreateMsg("");
     try {
-      const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull, token, {
+      const route = await fetchDistanceMatrixByAddress(fromFull, toFull, token, {
         vehicle: form.vehicle,
       });
       setForm((f) => ({
@@ -148,7 +168,7 @@ export default function RideCreatePage() {
     if (Number.isFinite(d) && Number.isFinite(m) && Number.isFinite(f) && d > 0 && m > 0 && f >= 0) {
       return { distanceKm: d, durationMinutes: m, estimatedFare: f };
     }
-    const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull, token, {
+    const route = await fetchDistanceMatrixByAddress(fromFull, toFull, token, {
       vehicle: form.vehicle,
     });
     setForm((prev) => ({
@@ -175,11 +195,14 @@ export default function RideCreatePage() {
       setCreateMsg("Bitte Fahrgastnamen angeben.");
       return;
     }
-    if (!form.fromFull.trim() || !form.toFull.trim()) {
-      setCreateMsg("Bitte Abhol- und Zieladresse angeben.");
+    if (!hasRouteInputs) {
+      setCreateMsg("Bitte Abhol- und Zieladresse vollständig angeben (Straße, Hausnummer, PLZ).");
       return;
     }
-    const addrCheck = validatePartnerRouteAddresses(form.fromFull, form.toFull);
+    const addrCheck = validatePartnerRouteAddressParts(
+      { street: form.fromStreet, houseNumber: form.fromHouseNo, plz: form.fromPlz },
+      { street: form.toStreet, houseNumber: form.toHouseNo, plz: form.toPlz },
+    );
     if (!addrCheck.ok) {
       setCreateMsg(addrCheck.message);
       return;
@@ -200,10 +223,10 @@ export default function RideCreatePage() {
       const route = await resolveRouteValues();
       const body = {
         customerName,
-        from: shortAddressLabel(form.fromFull),
-        fromFull: form.fromFull.trim(),
-        to: shortAddressLabel(form.toFull),
-        toFull: form.toFull.trim(),
+        from: shortAddressLabel(fromFull),
+        fromFull: fromFull.trim(),
+        to: shortAddressLabel(toFull),
+        toFull: toFull.trim(),
         distanceKm: route.distanceKm,
         durationMinutes: route.durationMinutes,
         estimatedFare: route.estimatedFare,
@@ -250,8 +273,12 @@ export default function RideCreatePage() {
         ...f,
         customerName: "",
         customerPhone: "",
-        fromFull: "",
-        toFull: "",
+        fromStreet: "",
+        fromHouseNo: "",
+        fromPlz: "",
+        toStreet: "",
+        toHouseNo: "",
+        toPlz: "",
         distanceKm: "",
         durationMinutes: "",
         estimatedFare: "",
@@ -277,8 +304,7 @@ export default function RideCreatePage() {
       <p className="partner-page-eyebrow">Taxi buchen</p>
       <h2 className="partner-page-title">Neue Fahrt für Ihr Unternehmen</h2>
       <p className="partner-page-lead">
-        Adresse, Fahrgast, Zeitpunkt und Notiz — dieselbe Logik wie in der Partner-App. Die Zuweisung erfolgt über
-        Disposition bzw. Fahrer-App.
+        Straße, Hausnummer und PLZ für Abholung und Ziel — Fahrgast, Zeitpunkt und Notiz wie in der Partner-App.
       </p>
 
       {!canCreate ? (
@@ -289,26 +315,76 @@ export default function RideCreatePage() {
             <section className="partner-booking-section">
               <h3 className="partner-booking-section__title">Route</h3>
               <div className="panel-rides-form__grid">
-                <label className="panel-rides-form__field panel-rides-form__field--2">
-                  <span>Abholadresse</span>
-                  <input
-                    value={form.fromFull}
-                    onChange={(ev) => setForm((f) => ({ ...f, fromFull: ev.target.value }))}
-                    placeholder="Musterstraße 12, 70771 Leinfelden-Echterdingen"
-                    onBlur={() => void autoFillRoute()}
-                    autoComplete="street-address"
-                  />
-                </label>
-                <label className="panel-rides-form__field panel-rides-form__field--2">
-                  <span>Zieladresse</span>
-                  <input
-                    value={form.toFull}
-                    onChange={(ev) => setForm((f) => ({ ...f, toFull: ev.target.value }))}
-                    placeholder="Zielstraße 1, 72072 Tübingen"
-                    onBlur={() => void autoFillRoute()}
-                    autoComplete="street-address"
-                  />
-                </label>
+                <div className="partner-booking-address-block">
+                  <span>Abholung</span>
+                  <div className="partner-booking-address-row">
+                    <label className="panel-rides-form__field partner-booking-address-row__street">
+                      <span>Straße</span>
+                      <input
+                        value={form.fromStreet}
+                        onChange={(ev) => setForm((f) => ({ ...f, fromStreet: ev.target.value }))}
+                        placeholder="Musterstraße"
+                        autoComplete="address-line1"
+                      />
+                    </label>
+                    <label className="panel-rides-form__field">
+                      <span>Nr.</span>
+                      <input
+                        value={form.fromHouseNo}
+                        onChange={(ev) => setForm((f) => ({ ...f, fromHouseNo: ev.target.value }))}
+                        placeholder="12"
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label className="panel-rides-form__field">
+                      <span>PLZ</span>
+                      <input
+                        value={form.fromPlz}
+                        onChange={(ev) =>
+                          setForm((f) => ({ ...f, fromPlz: ev.target.value.replace(/\D/g, "").slice(0, 5) }))
+                        }
+                        placeholder="70771"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="partner-booking-address-block">
+                  <span>Ziel</span>
+                  <div className="partner-booking-address-row">
+                    <label className="panel-rides-form__field partner-booking-address-row__street">
+                      <span>Straße</span>
+                      <input
+                        value={form.toStreet}
+                        onChange={(ev) => setForm((f) => ({ ...f, toStreet: ev.target.value }))}
+                        placeholder="Hauptstraße"
+                        autoComplete="street-address"
+                      />
+                    </label>
+                    <label className="panel-rides-form__field">
+                      <span>Nr.</span>
+                      <input
+                        value={form.toHouseNo}
+                        onChange={(ev) => setForm((f) => ({ ...f, toHouseNo: ev.target.value }))}
+                        placeholder="1"
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label className="panel-rides-form__field">
+                      <span>PLZ</span>
+                      <input
+                        value={form.toPlz}
+                        onChange={(ev) =>
+                          setForm((f) => ({ ...f, toPlz: ev.target.value.replace(/\D/g, "").slice(0, 5) }))
+                        }
+                        placeholder="70173"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                      />
+                    </label>
+                  </div>
+                </div>
                 <p className="panel-page__muted partner-booking-hint">{PARTNER_ROUTE_ADDRESS_MESSAGE_DE}</p>
               </div>
               {routeReady ? (

@@ -1,7 +1,7 @@
 import { API_BASE } from "./apiBase.js";
-import { validatePartnerRouteAddresses, PARTNER_ROUTE_ADDRESS_MESSAGE_DE } from "./partnerAddressValidation.js";
+import { validatePartnerRouteAddresses, validatePartnerRouteAddressParts, formatPartnerAddressFull, PARTNER_ROUTE_ADDRESS_MESSAGE_DE } from "./partnerAddressValidation.js";
 
-export { PARTNER_ROUTE_ADDRESS_MESSAGE_DE, validatePartnerRouteAddresses };
+export { PARTNER_ROUTE_ADDRESS_MESSAGE_DE, validatePartnerRouteAddresses, validatePartnerRouteAddressParts, formatPartnerAddressFull };
 
 const GOOGLE_MATRIX_BASE = "https://maps.googleapis.com/maps/api/distancematrix/json";
 
