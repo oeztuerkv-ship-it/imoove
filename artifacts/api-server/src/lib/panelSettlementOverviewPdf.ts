@@ -6,6 +6,7 @@ import {
   createPdfContext,
   INVOICE_LAYOUT,
   INVOICE_MARGINS,
+  INVOICE_PAGE,
   type InvoicePdfContext,
 } from "./invoice/invoiceLayout";
 import {
@@ -373,24 +374,23 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
     }
 
     ctx.y += 4;
-    doc.font("Helvetica").fontSize(9);
-    hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-    doc.text(
-      `Grundlage: abgeschlossene Fahrten mit Finanz-Snapshot zum Abrechnungszeitpunkt. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`,
-      ctx.contentLeft,
-      ctx.y,
-      { width: ctx.contentWidth },
-    );
-    ctx.y += 36;
+    const footerBrandY = INVOICE_PAGE.height - INVOICE_MARGINS.bottom - 28;
+    const disclaimerGapAboveFooter = 14;
+    const scopeText = `Grundlage: abgeschlossene Fahrten mit Finanz-Snapshot zum Abrechnungszeitpunkt. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`;
+    const disclaimerText =
+      "Diese Übersicht dient der Information für Ihren Steuerberater und ersetzt keine steuerliche Beratung.";
 
     doc.font("Helvetica").fontSize(9);
     hexColor(doc, ONRODA_INVOICE_BRAND.muted);
-    doc.text(
-      "Diese Übersicht dient der Information für Ihren Steuerberater und ersetzt keine steuerliche Beratung.",
-      ctx.contentLeft,
-      ctx.y,
-      { width: ctx.contentWidth, align: "center" },
-    );
+    const scopeH = doc.heightOfString(scopeText, { width: ctx.contentWidth });
+    doc.text(scopeText, ctx.contentLeft, ctx.y, { width: ctx.contentWidth });
+
+    const disclaimerH = doc.heightOfString(disclaimerText, { width: ctx.contentWidth });
+    let disclaimerY = footerBrandY - disclaimerGapAboveFooter - disclaimerH;
+    const minDisclaimerY = ctx.y + scopeH + INVOICE_LAYOUT.sectionGap;
+    if (disclaimerY < minDisclaimerY) disclaimerY = minDisclaimerY;
+
+    doc.text(disclaimerText, ctx.contentLeft, disclaimerY, { width: ctx.contentWidth, align: "center" });
 
     drawInvoiceFooterOnCurrentPage(ctx, 1, 1);
     doc.end();
