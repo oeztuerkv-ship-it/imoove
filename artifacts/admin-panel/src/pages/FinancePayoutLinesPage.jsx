@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const LIST_URL = `${API_BASE}/admin/finance/payout-lines`;
+const COMPANIES_URL = `${API_BASE}/admin/companies`;
 const PAGE_SIZE = 25;
+
+const SORT_OPTIONS = [
+  { value: "calculated_at_desc", label: "Datum · neueste zuerst" },
+  { value: "calculated_at_asc", label: "Datum · älteste zuerst" },
+  { value: "company_asc", label: "Unternehmer A → Z" },
+  { value: "company_desc", label: "Unternehmer Z → A" },
+];
 
 function money(v) {
   const n = Number(v);
@@ -15,23 +23,73 @@ function money(v) {
 function formatDt(iso) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return String(iso);
   }
 }
 
+function payoutStatusPill(status) {
+  const s = String(status ?? "offen");
+  if (s === "ausgezahlt") return "admin-status-pill admin-status-pill--ok";
+  return "admin-status-pill admin-status-pill--pending";
+}
+
+function payoutStatusLabel(status) {
+  return String(status ?? "offen") === "ausgezahlt" ? "Ausgezahlt" : "Offen";
+}
+
 export default function FinancePayoutLinesPage() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState(null);
+  const [companies, setCompanies] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyRideId, setBusyRideId] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [filters, setFilters] = useState({
     payoutLineStatus: "",
+    companyId: "",
+    sort: "calculated_at_desc",
     search: "",
   });
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch(COMPANIES_URL, { headers: adminApiHeaders() });
+        const data = await res.json().catch(() => ({}));
+        const list = Array.isArray(data?.companies) ? data.companies : Array.isArray(data) ? data : [];
+        setCompanies(
+          list
+            .map((c) => ({
+              id: String(c.id ?? c.companyId ?? "").trim(),
+              name: String(c.name ?? c.displayName ?? c.id ?? "").trim(),
+            }))
+            .filter((c) => c.id && c.name)
+            .sort((a, b) => a.name.localeCompare(b.name, "de")),
+        );
+      } catch {
+        setCompanies([]);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setFilters((f) => ({ ...f, search: searchInput.trim() }));
+      setPage(1);
+    }, 320);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -40,7 +98,9 @@ export default function FinancePayoutLinesPage() {
       const q = new URLSearchParams();
       q.set("page", String(page));
       q.set("pageSize", String(PAGE_SIZE));
+      q.set("sort", filters.sort || "calculated_at_desc");
       if (filters.payoutLineStatus.trim()) q.set("payout_line_status", filters.payoutLineStatus.trim());
+      if (filters.companyId.trim()) q.set("company_id", filters.companyId.trim());
       if (filters.search.trim()) q.set("search", filters.search.trim());
       const res = await fetch(`${LIST_URL}?${q.toString()}`, { headers: adminApiHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -48,9 +108,11 @@ export default function FinancePayoutLinesPage() {
       if (!data?.ok) throw new Error("invalid_response");
       setItems(Array.isArray(data.items) ? data.items : []);
       setTotal(Number(data.total ?? 0));
+      setSummary(data.summary && typeof data.summary === "object" ? data.summary : null);
     } catch {
       setItems([]);
       setTotal(0);
+      setSummary(null);
       setError("Auszahlungsliste konnte nicht geladen werden.");
     } finally {
       setLoading(false);
@@ -85,11 +147,21 @@ export default function FinancePayoutLinesPage() {
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const kpiCards = useMemo(
+    () => [
+      { label: "Treffer (Filter)", value: String(summary?.totalRows ?? total) },
+      { label: "Offen", value: String(summary?.openCount ?? "—") },
+      { label: "Offen · Netto gesamt", value: money(summary?.openNetTotal) },
+      { label: "Ausgezahlt", value: String(summary?.paidOutCount ?? "—") },
+    ],
+    [summary, total],
+  );
+
   return (
     <div className="admin-page admin-page--loose admin-page--content">
       <p className="admin-page-lead">
-        Unternehmer-Auszahlungen je Fahrt — Stripe-Gebühr zu Lasten ONRODA, Netto Unternehmer ohne Abzug der
-        Gebühr. Manuelles Markieren, keine automatische Auszahlung.
+        Unternehmer-Auszahlungen je Fahrt — Zuordnung über Finanz-Snapshot, Partner oder Fahrt-Mandant.
+        Stripe-Gebühr zu Lasten ONRODA; Netto Unternehmer ohne Gebührenabzug.
       </p>
 
       {error ? (
@@ -100,45 +172,93 @@ export default function FinancePayoutLinesPage() {
         </section>
       ) : null}
 
+      <div className="finance-kpi-grid" style={{ marginBottom: 16 }}>
+        {kpiCards.map((c) => (
+          <div key={c.label} className="finance-kpi-card">
+            <div className="finance-kpi-card__label">{c.label}</div>
+            <div className="finance-kpi-card__value admin-crisp-numeric">{loading ? "…" : c.value}</div>
+          </div>
+        ))}
+      </div>
+
       <AdminCollapsibleSection title="Auszahlungen" subtitle={`${total} Fahrten`} defaultOpen>
-        <div className="admin-filter-toolbar">
-          <select
-            className="admin-select"
-            value={filters.payoutLineStatus}
-            onChange={(e) => {
-              setPage(1);
-              setFilters((f) => ({ ...f, payoutLineStatus: e.target.value }));
-            }}
-          >
-            <option value="">Status: alle</option>
-            <option value="offen">Offen</option>
-            <option value="ausgezahlt">Ausgezahlt</option>
-          </select>
-          <input
-            className="admin-input"
-            placeholder="Suche Fahrt-ID"
-            value={filters.search}
-            onChange={(e) => {
-              setPage(1);
-              setFilters((f) => ({ ...f, search: e.target.value }));
-            }}
-          />
+        <div className="admin-filter-toolbar admin-filter-toolbar--wrap">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Suche</span>
+            <input
+              className="admin-input"
+              placeholder="Fahrt-ID, Route, Unternehmer …"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Unternehmer</span>
+            <select
+              className="admin-select"
+              value={filters.companyId}
+              onChange={(e) => {
+                setPage(1);
+                setFilters((f) => ({ ...f, companyId: e.target.value }));
+              }}
+            >
+              <option value="">Alle</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Status</span>
+            <select
+              className="admin-select"
+              value={filters.payoutLineStatus}
+              onChange={(e) => {
+                setPage(1);
+                setFilters((f) => ({ ...f, payoutLineStatus: e.target.value }));
+              }}
+            >
+              <option value="">Alle</option>
+              <option value="offen">Offen</option>
+              <option value="ausgezahlt">Ausgezahlt</option>
+            </select>
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Sortierung</span>
+            <select
+              className="admin-select"
+              value={filters.sort}
+              onChange={(e) => {
+                setPage(1);
+                setFilters((f) => ({ ...f, sort: e.target.value }));
+              }}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="button" className="admin-btn-refresh" onClick={() => void loadList()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>
         </div>
 
-        <div className="admin-table-wrap">
-          <table className="admin-table admin-table--compact">
+        <div className="admin-table-wrap admin-table-wrap--card">
+          <table className="admin-table admin-companies-table admin-rides-table">
             <thead>
               <tr>
                 <th>Fahrt</th>
                 <th>Datum</th>
                 <th>Unternehmer</th>
-                <th>Brutto</th>
-                <th>Stripe-Gebühr</th>
-                <th>ONRODA-Provision</th>
-                <th>Netto Unternehmer</th>
+                <th>Route</th>
+                <th className="admin-table__num">Brutto</th>
+                <th className="admin-table__num">Stripe</th>
+                <th className="admin-table__num">Provision</th>
+                <th className="admin-table__num">Netto</th>
                 <th>Status</th>
                 <th />
               </tr>
@@ -146,8 +266,8 @@ export default function FinancePayoutLinesPage() {
             <tbody>
               {items.length === 0 && !loading ? (
                 <tr>
-                  <td colSpan={9} className="admin-table-empty">
-                    Keine Einträge.
+                  <td colSpan={10} className="admin-table-empty">
+                    Keine Einträge für die aktuelle Filterung.
                   </td>
                 </tr>
               ) : null}
@@ -155,29 +275,45 @@ export default function FinancePayoutLinesPage() {
                 const rideId = row.rideId ?? row.ride_id ?? "";
                 const status = row.payoutLineStatus ?? row.payout_line_status ?? "offen";
                 const isOpen = status === "offen";
+                const companyName = row.companyName ?? row.company_name;
+                const companyId = row.companyId ?? row.company_id;
                 return (
                   <tr key={rideId}>
                     <td>
-                      <code>{rideId}</code>
+                      <a className="admin-link admin-link--mono" href={`#/ride-detail/${encodeURIComponent(rideId)}`}>
+                        {rideId}
+                      </a>
                     </td>
-                    <td>{formatDt(row.calculatedAt ?? row.calculated_at)}</td>
-                    <td>{row.companyName ?? row.company_name ?? row.companyId ?? "—"}</td>
-                    <td className="admin-crisp-numeric">{money(row.grossAmount ?? row.gross_amount)}</td>
-                    <td className="admin-crisp-numeric">{money(row.stripeFeeAmount ?? row.stripe_fee_amount)}</td>
-                    <td className="admin-crisp-numeric">{money(row.commissionAmount ?? row.commission_amount)}</td>
-                    <td className="admin-crisp-numeric">
-                      {money(row.operatorPayoutAmount ?? row.operator_payout_amount)}
+                    <td className="admin-table-sub">{formatDt(row.calculatedAt ?? row.calculated_at)}</td>
+                    <td>
+                      <strong>{companyName || "—"}</strong>
+                      {companyId && !companyName ? (
+                        <div className="admin-table-sub">
+                          <code>{companyId}</code>
+                        </div>
+                      ) : null}
                     </td>
-                    <td>{isOpen ? "Offen" : "Ausgezahlt"}</td>
+                    <td className="admin-table-sub" title={row.routeLabel ?? ""}>
+                      {row.routeLabel ?? "—"}
+                    </td>
+                    <td className="admin-crisp-numeric admin-table__num">{money(row.grossAmount ?? row.gross_amount)}</td>
+                    <td className="admin-crisp-numeric admin-table__num">{money(row.stripeFeeAmount ?? row.stripe_fee_amount)}</td>
+                    <td className="admin-crisp-numeric admin-table__num">{money(row.commissionAmount ?? row.commission_amount)}</td>
+                    <td className="admin-crisp-numeric admin-table__num">
+                      <strong>{money(row.operatorPayoutAmount ?? row.operator_payout_amount)}</strong>
+                    </td>
+                    <td>
+                      <span className={payoutStatusPill(status)}>{payoutStatusLabel(status)}</span>
+                    </td>
                     <td>
                       {isOpen ? (
                         <button
                           type="button"
-                          className="admin-btn admin-btn--secondary admin-btn--sm"
+                          className="admin-btn admin-btn--primary admin-btn--sm"
                           disabled={busyRideId === rideId}
                           onClick={() => void markAusgezahlt(rideId)}
                         >
-                          {busyRideId === rideId ? "…" : "Als ausgezahlt markieren"}
+                          {busyRideId === rideId ? "…" : "Ausgezahlt"}
                         </button>
                       ) : (
                         <span className="admin-table-sub">—</span>

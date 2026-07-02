@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
 import {
@@ -213,11 +213,81 @@ export async function listRideFinancialsAdmin(args: {
   }));
 }
 
+export type PayoutLineSort =
+  | "calculated_at_desc"
+  | "calculated_at_asc"
+  | "company_asc"
+  | "company_desc";
+
+export type PayoutLineListFilters = {
+  dateFrom?: Date;
+  dateTo?: Date;
+  payoutLineStatus?: string;
+  companyId?: string;
+  search?: string;
+  sort?: PayoutLineSort;
+};
+
+/** Mandant für Auszahlung: Snapshot → Partner → Fahrt.company_id */
+function resolvedPayoutCompanyIdSql() {
+  return sql`coalesce(${rideFinancialsTable.service_provider_company_id}, ${rideFinancialsTable.partner_company_id}, ${ridesTable.company_id})`;
+}
+
+function payoutLinesBaseJoin() {
+  return {
+    ridesJoin: eq(rideFinancialsTable.ride_id, ridesTable.id),
+    companyJoin: sql`${adminCompaniesTable.id} = ${resolvedPayoutCompanyIdSql()}`,
+  };
+}
+
+function buildPayoutLineWhere(filters: PayoutLineListFilters): SQL[] {
+  const cond: SQL[] = [];
+  if (filters.dateFrom) cond.push(gte(rideFinancialsTable.calculated_at, filters.dateFrom));
+  if (filters.dateTo) cond.push(lte(rideFinancialsTable.calculated_at, filters.dateTo));
+  if (filters.payoutLineStatus?.trim()) {
+    cond.push(eq(rideFinancialsTable.payout_line_status, filters.payoutLineStatus.trim()));
+  }
+  if (filters.companyId?.trim()) {
+    cond.push(sql`${resolvedPayoutCompanyIdSql()} = ${filters.companyId.trim()}`);
+  }
+  if (filters.search?.trim()) {
+    const raw = escapeIlikePattern(filters.search.trim());
+    const p = `%${raw}%`;
+    cond.push(
+      or(
+        ilike(rideFinancialsTable.ride_id, p),
+        ilike(rideFinancialsTable.billing_reference, p),
+        ilike(ridesTable.from_label, p),
+        ilike(ridesTable.to_label, p),
+        ilike(ridesTable.from_full, p),
+        ilike(ridesTable.to_full, p),
+        ilike(adminCompaniesTable.name, p),
+      )!,
+    );
+  }
+  return cond;
+}
+
+function payoutLineOrderBy(sort: PayoutLineSort | undefined) {
+  switch (sort) {
+    case "calculated_at_asc":
+      return [asc(rideFinancialsTable.calculated_at)];
+    case "company_asc":
+      return [asc(adminCompaniesTable.name), desc(rideFinancialsTable.calculated_at)];
+    case "company_desc":
+      return [desc(adminCompaniesTable.name), desc(rideFinancialsTable.calculated_at)];
+    case "calculated_at_desc":
+    default:
+      return [desc(rideFinancialsTable.calculated_at)];
+  }
+}
+
 export type PayoutLineAdminRow = {
   rideId: string;
   calculatedAt: Date;
   companyId: string | null;
   companyName: string | null;
+  routeLabel: string | null;
   grossAmount: number;
   stripeFeeAmount: number;
   commissionAmount: number;
@@ -225,31 +295,101 @@ export type PayoutLineAdminRow = {
   payoutLineStatus: string;
 };
 
-export function mapRideFinancialToPayoutLineRow(
-  row: (typeof rideFinancialsTable.$inferSelect) & {
-    service_provider_company_name?: string | null;
-  },
-): PayoutLineAdminRow {
+export type PayoutLinesSummary = {
+  totalRows: number;
+  openCount: number;
+  openNetTotal: number;
+  paidOutCount: number;
+};
+
+export async function getPayoutLinesSummaryAdmin(filters: PayoutLineListFilters): Promise<PayoutLinesSummary> {
+  const db = getDb();
+  if (!db) {
+    return { totalRows: 0, openCount: 0, openNetTotal: 0, paidOutCount: 0 };
+  }
+  const cond = buildPayoutLineWhere(filters);
+  const { ridesJoin, companyJoin } = payoutLinesBaseJoin();
+  const [row] = await db
+    .select({
+      totalRows: sql<number>`count(*)::int`,
+      openCount: sql<number>`count(*) filter (where ${rideFinancialsTable.payout_line_status} = 'offen')::int`,
+      openNetTotal: sql<string>`coalesce(sum(case when ${rideFinancialsTable.payout_line_status} = 'offen' then ${rideFinancialsTable.operator_payout_amount} else 0 end), 0)`,
+      paidOutCount: sql<number>`count(*) filter (where ${rideFinancialsTable.payout_line_status} = 'ausgezahlt')::int`,
+    })
+    .from(rideFinancialsTable)
+    .leftJoin(ridesTable, ridesJoin)
+    .leftJoin(adminCompaniesTable, companyJoin)
+    .where(cond.length ? and(...cond) : undefined);
   return {
-    rideId: row.ride_id,
-    calculatedAt: row.calculated_at,
-    companyId: row.service_provider_company_id ?? null,
-    companyName: row.service_provider_company_name ?? null,
-    grossAmount: n(row.gross_amount),
-    stripeFeeAmount: n(row.stripe_fee_amount),
-    commissionAmount: n(row.commission_amount),
-    operatorPayoutAmount: n(row.operator_payout_amount),
-    payoutLineStatus: String(row.payout_line_status ?? "offen"),
+    totalRows: n(row?.totalRows),
+    openCount: n(row?.openCount),
+    openNetTotal: n(row?.openNetTotal),
+    paidOutCount: n(row?.paidOutCount),
   };
 }
 
+export async function countPayoutLinesAdmin(filters: PayoutLineListFilters): Promise<number> {
+  const db = getDb();
+  if (!db) return 0;
+  const cond = buildPayoutLineWhere(filters);
+  const { ridesJoin, companyJoin } = payoutLinesBaseJoin();
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(rideFinancialsTable)
+    .leftJoin(ridesTable, ridesJoin)
+    .leftJoin(adminCompaniesTable, companyJoin)
+    .where(cond.length ? and(...cond) : undefined);
+  return n(row?.n);
+}
+
 export async function listPayoutLinesAdmin(args: {
-  filters: RideFinancialListFilters;
+  filters: PayoutLineListFilters;
   limit: number;
   offset: number;
 }): Promise<PayoutLineAdminRow[]> {
-  const rows = await listRideFinancialsAdmin(args);
-  return rows.map((row) => mapRideFinancialToPayoutLineRow(row));
+  const db = getDb();
+  if (!db) return [];
+  const cond = buildPayoutLineWhere(args.filters);
+  const { ridesJoin, companyJoin } = payoutLinesBaseJoin();
+  const rows = await db
+    .select({
+      rideId: rideFinancialsTable.ride_id,
+      calculatedAt: rideFinancialsTable.calculated_at,
+      grossAmount: rideFinancialsTable.gross_amount,
+      stripeFeeAmount: rideFinancialsTable.stripe_fee_amount,
+      commissionAmount: rideFinancialsTable.commission_amount,
+      operatorPayoutAmount: rideFinancialsTable.operator_payout_amount,
+      payoutLineStatus: rideFinancialsTable.payout_line_status,
+      resolvedCompanyId: sql<string | null>`${resolvedPayoutCompanyIdSql()}`,
+      companyName: adminCompaniesTable.name,
+      fromLabel: ridesTable.from_label,
+      toLabel: ridesTable.to_label,
+    })
+    .from(rideFinancialsTable)
+    .leftJoin(ridesTable, ridesJoin)
+    .leftJoin(adminCompaniesTable, companyJoin)
+    .where(cond.length ? and(...cond) : undefined)
+    .orderBy(...payoutLineOrderBy(args.filters.sort))
+    .limit(args.limit)
+    .offset(args.offset);
+
+  return rows.map((row) => {
+    const from = String(row.fromLabel ?? "").trim();
+    const to = String(row.toLabel ?? "").trim();
+    const routeLabel = from || to ? `${from || "—"} → ${to || "—"}` : null;
+    return {
+      rideId: row.rideId,
+      calculatedAt: row.calculatedAt,
+      companyId: row.resolvedCompanyId ?? null,
+      companyName: row.companyName ?? null,
+      routeLabel,
+      grossAmount: n(row.grossAmount),
+      stripeFeeAmount: n(row.stripeFeeAmount),
+      commissionAmount: n(row.commissionAmount),
+      operatorPayoutAmount: n(row.operatorPayoutAmount),
+      payoutLineStatus: String(row.payoutLineStatus ?? "offen"),
+    };
+  });
 }
 
 export async function getRideFinancialDetailAdmin(rideId: string) {

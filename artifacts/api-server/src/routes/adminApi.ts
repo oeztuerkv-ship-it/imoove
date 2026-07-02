@@ -38,9 +38,11 @@ import {
   findInvoiceByPaymentReference,
   findSettlementAdmin,
   countRideFinancialsAdmin,
+  countPayoutLinesAdmin,
   getAdminFinanceSummary,
   getAdminDailyDriverSettlement,
   getFinanceEligibilitySummaryForRide,
+  getPayoutLinesSummaryAdmin,
   getRideFinancialDetailAdmin,
   listFinancialAuditAdmin,
   listInvoicesAdmin,
@@ -1140,18 +1142,29 @@ adminJson.get("/finance/payout-lines", async (req, res, next) => {
     }
     const q = req.query as Record<string, string | undefined>;
     const { page, pageSize, offset } = parsePagination(req);
+    const sortRaw = String(q.sort ?? "calculated_at_desc").trim();
+    const sortAllowed = new Set([
+      "calculated_at_desc",
+      "calculated_at_asc",
+      "company_asc",
+      "company_desc",
+    ]);
     const filters = {
       dateFrom: parseIsoDateParam(q.date_from, false),
       dateTo: parseIsoDateParam(q.date_to, true),
       payoutLineStatus: q.payout_line_status,
-      serviceProviderCompanyId: q.company_id,
+      companyId: q.company_id,
       search: q.search,
+      sort: sortAllowed.has(sortRaw)
+        ? (sortRaw as "calculated_at_desc" | "calculated_at_asc" | "company_asc" | "company_desc")
+        : "calculated_at_desc",
     };
-    const [total, items] = await Promise.all([
-      countRideFinancialsAdmin(filters),
+    const [total, items, summary] = await Promise.all([
+      countPayoutLinesAdmin(filters),
       listPayoutLinesAdmin({ filters, limit: pageSize, offset }),
+      getPayoutLinesSummaryAdmin(filters),
     ]);
-    res.json({ ok: true, total, page, pageSize, items });
+    res.json({ ok: true, total, page, pageSize, items, summary });
   } catch (e) {
     next(e);
   }
