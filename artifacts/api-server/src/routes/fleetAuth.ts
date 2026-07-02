@@ -11,7 +11,12 @@ import {
   FLEET_LOGIN_COMPANY_NOT_READY_MESSAGE_DE,
   PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE,
 } from "../lib/onrodaAccessMessages.js";
-import { isFleetDriverJwtConfigured, signFleetDriverJwt, verifyFleetDriverJwt } from "../lib/fleetDriverJwt";
+import {
+  isFleetDriverJwtConfigured,
+  normalizeFleetDriverSessionVersion,
+  signFleetDriverJwt,
+  verifyFleetDriverJwt,
+} from "../lib/fleetDriverJwt";
 import { rateLimitFleetLogin } from "../lib/fleetLoginRateLimit";
 import { verifyPassword } from "../lib/password";
 
@@ -101,7 +106,7 @@ router.post("/fleet-auth/login", async (req, res) => {
       fleetDriverId: row.id,
       companyId: row.company_id,
       email: row.email,
-      sessionVersion: row.session_version,
+      sessionVersion: normalizeFleetDriverSessionVersion(row.session_version),
     });
   } catch (e) {
     console.error("[fleet-auth/login] signFleetDriverJwt:", e);

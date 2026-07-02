@@ -30,6 +30,20 @@ function issuer(): string {
   return (process.env.FLEET_DRIVER_JWT_ISSUER ?? "onroda-fleet-driver").trim() || "onroda-fleet-driver";
 }
 
+/** DB `session_version` vs JWT-Claim `sv` — tolerant gegen string/number aus pg/drizzle. */
+export function fleetDriverSessionVersionsMatch(dbVersion: unknown, claimVersion: number): boolean {
+  const db = Number(dbVersion);
+  const claim = Number(claimVersion);
+  if (!Number.isFinite(db) || !Number.isFinite(claim)) return false;
+  return Math.floor(db) === Math.floor(claim);
+}
+
+export function normalizeFleetDriverSessionVersion(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.floor(n);
+}
+
 export function isFleetDriverJwtConfigured(): boolean {
   if ((process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim()) return true;
   if ((process.env.PANEL_JWT_SECRET ?? "").trim()) return true;

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { FleetDriverJwtClaims } from "../lib/fleetDriverJwt";
-import { verifyFleetDriverJwt } from "../lib/fleetDriverJwt";
+import { fleetDriverSessionVersionsMatch, verifyFleetDriverJwt } from "../lib/fleetDriverJwt";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
 
 export type FleetDriverAuthRequest = Request & { fleetDriverAuth?: FleetDriverJwtClaims };
@@ -44,7 +44,7 @@ export const requireFleetDriverAuth: RequestHandler = async (
       res.status(403).json({ error: "driver_access_suspended" });
       return;
     }
-    if (row.session_version !== claims.sessionVersion) {
+    if (!fleetDriverSessionVersionsMatch(row.session_version, claims.sessionVersion)) {
       res.status(401).json({ error: "token_revoked" });
       return;
     }

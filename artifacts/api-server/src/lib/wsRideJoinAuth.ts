@@ -1,6 +1,6 @@
 import type { RideRequest } from "../domain/rideRequest";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
-import { verifyFleetDriverJwt } from "./fleetDriverJwt";
+import { fleetDriverSessionVersionsMatch, verifyFleetDriverJwt } from "./fleetDriverJwt";
 import { isPanelJwtConfigured, verifyPanelJwt } from "./panelJwt";
 import { isSessionJwtConfigured, verifySessionJwt } from "./sessionJwt";
 
@@ -30,7 +30,7 @@ export async function resolveWsJoinPrincipal(rawToken: unknown): Promise<WsJoinP
       row.company_id !== claims.companyId ||
       !row.is_active ||
       row.access_status !== "active" ||
-      row.session_version !== claims.sessionVersion
+      !fleetDriverSessionVersionsMatch(row.session_version, claims.sessionVersion)
     ) {
       return { kind: "invalid" };
     }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Simuliert GET /fleet-driver/v1/me für einen Fahrer ohne Klartext-Passwort:
- * lädt session_version aus DB, mintet Fleet-JWT, ruft die API auf.
+ * lädt session_version aus DB, mintet Fleet-JWT, prüft lokal, ruft die API auf.
  *
  * Auf dem Produktionsserver (nach git pull):
  *   cd /root/imoove
@@ -10,7 +10,8 @@
  * Optional: FLEET_ME_API_BASE=https://api.onroda.de/api (Default: http://127.0.0.1:3000/api)
  */
 import pg from "../artifacts/api-server/node_modules/pg/lib/index.js";
-import { SignJWT } from "../artifacts/api-server/node_modules/jose/dist/webapi/index.js";
+import { SignJWT, jwtVerify } from "../artifacts/api-server/node_modules/jose/dist/webapi/index.js";
+import { config as dotenvConfig } from "../artifacts/api-server/node_modules/dotenv/lib/main.js";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,19 +19,21 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
-function loadEnvFromFile(rel) {
-  const p = resolve(root, rel);
-  if (!existsSync(p)) return;
-  for (const line of readFileSync(p, "utf8").split("\n")) {
-    const m = line.match(/^\s*([^#=]+)=(.*)$/);
-    if (!m) continue;
-    const k = m[1].trim();
-    let v = m[2].trim().replace(/^["']|["']$/g, "");
-    if (!process.env[k]) process.env[k] = v;
+/** Gleiche Reihenfolge wie artifacts/api-server/src/loadEnv.ts */
+function loadOnrodaApiEnv() {
+  const apiServerEnv = resolve(root, "artifacts/api-server/.env");
+  const cwdEnv = resolve(process.cwd(), ".env");
+  const loaded = new Set();
+  for (const envPath of [apiServerEnv, cwdEnv]) {
+    if (!existsSync(envPath)) continue;
+    const resolved = resolve(envPath);
+    if (loaded.has(resolved)) continue;
+    loaded.add(resolved);
+    dotenvConfig({ path: resolved, override: false });
   }
 }
 
-loadEnvFromFile("artifacts/api-server/.env");
+loadOnrodaApiEnv();
 
 const driverArg = (process.argv[2] ?? "").trim();
 if (!driverArg) {
@@ -40,21 +43,21 @@ if (!driverArg) {
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
 if (!databaseUrl) {
-  console.error("FEHLT: DATABASE_URL (z. B. artifacts/api-server/.env auf dem Server).");
+  console.error("FEHLT: DATABASE_URL (z. B. in artifacts/api-server/.env auf dem Server).");
   process.exit(2);
 }
 
-function fleetJwtSecret() {
+function resolveFleetJwtSecretMeta() {
   const fleet = (process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim();
-  if (fleet) return fleet;
+  if (fleet) return { secret: fleet, source: "FLEET_DRIVER_JWT_SECRET" };
   const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
-  if (panel) return panel;
+  if (panel) return { secret: panel, source: "PANEL_JWT_SECRET" };
   const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
-  if (auth) return auth;
-  return "";
+  if (auth) return { secret: auth, source: "AUTH_JWT_SECRET" };
+  return { secret: "", source: "" };
 }
 
-const secret = fleetJwtSecret();
+const { secret, source: secretSource } = resolveFleetJwtSecretMeta();
 if (!secret) {
   console.error("FEHLT: FLEET_DRIVER_JWT_SECRET oder PANEL_JWT_SECRET in API-.env.");
   process.exit(2);
@@ -104,11 +107,13 @@ const cancelRes = await client.query(
 
 await client.end();
 
+const sessionVersion = Math.floor(Number(driver.session_version) || 1);
+
 const token = await new SignJWT({
   kind: "fleet_driver",
   companyId: driver.company_id,
   email: driver.email,
-  sv: Number(driver.session_version) || 1,
+  sv: sessionVersion,
 })
   .setProtectedHeader({ alg: "HS256" })
   .setSubject(driver.id)
@@ -117,7 +122,37 @@ const token = await new SignJWT({
   .setExpirationTime("1h")
   .sign(new TextEncoder().encode(secret));
 
-console.log("=== DB snapshot ===");
+console.log("=== JWT mint ===");
+console.log(
+  JSON.stringify(
+    {
+      secretSource,
+      issuer,
+      sessionVersion,
+      sessionVersionDbRaw: driver.session_version,
+      sessionVersionDbType: typeof driver.session_version,
+    },
+    null,
+    2,
+  ),
+);
+
+try {
+  const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+    issuer,
+    algorithms: ["HS256"],
+  });
+  console.log("Lokale jwtVerify: OK", {
+    sub: payload.sub,
+    companyId: payload.companyId,
+    sv: payload.sv,
+    kind: payload.kind,
+  });
+} catch (e) {
+  console.error("Lokale jwtVerify: FEHLGESCHLAGEN", e instanceof Error ? e.message : e);
+}
+
+console.log("\n=== DB snapshot ===");
 console.log(
   JSON.stringify(
     {
@@ -125,7 +160,7 @@ console.log(
         id: driver.id,
         email: driver.email,
         companyId: driver.company_id,
-        sessionVersion: driver.session_version,
+        sessionVersion,
         isActive: driver.is_active,
         accessStatus: driver.access_status,
         approvalStatus: driver.approval_status,
@@ -154,10 +189,13 @@ try {
   console.log("HTTP", meStatus);
   try {
     const j = JSON.parse(meText);
+    console.log("Response body:", JSON.stringify(j, null, 2));
     console.log(
       JSON.stringify(
         {
           ok: j.ok,
+          error: j.error ?? null,
+          hint: j.hint ?? null,
           einsatzbereit: j.einsatzbereit,
           einsatzbereitType: typeof j.einsatzbereit,
           blockBannerTitle: j.blockBannerTitle,
@@ -178,11 +216,17 @@ try {
       ),
     );
     if (meStatus === 200 && j.ok === true && j.einsatzbereit === true) {
-      console.log("\n→ API sagt einsatzbereit. App-Blockade dann eher Client (/me nicht gemerged oder alter Build).");
+      console.log("\n→ API sagt einsatzbereit.");
     } else if (meStatus === 200 && j.ok === true && j.einsatzbereit !== true) {
-      console.log("\n→ API blockiert. blockReasons prüfen (oben unter readiness).");
+      console.log("\n→ API blockiert laut readiness (kein Auth-Problem).");
+    } else if (meStatus === 401) {
+      console.log(
+        "\n→ Auth-Fehler auf /me:",
+        j.error ?? "unbekannt",
+        "— häufig: JWT-Secret/Issuer der laufenden API ≠ mint-Secret (loadEnv/PM2), oder token_revoked.",
+      );
     } else if (meStatus !== 200) {
-      console.log("\n→ /me schlägt fehl — Mobile-Login setzt einsatzbereit:false wenn /me nicht ok (siehe DriverContext).");
+      console.log("\n→ /me schlägt fehl — Mobile-Login bleibt bei einsatzbereit:false (DriverContext).");
     }
   } catch {
     console.log(meText.slice(0, 800));

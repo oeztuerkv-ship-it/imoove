@@ -1,6 +1,6 @@
 import type { Request } from "express";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
-import { verifyFleetDriverJwt } from "./fleetDriverJwt";
+import { fleetDriverSessionVersionsMatch, verifyFleetDriverJwt } from "./fleetDriverJwt";
 import type { FleetDriverJwtClaims } from "./fleetDriverJwt";
 import { isSessionJwtConfigured, verifySessionJwt, type SessionClaims } from "./sessionJwt";
 import type { RideRequest } from "../domain/rideRequest";
@@ -19,7 +19,7 @@ async function normalizeFleetClaims(claims: FleetDriverJwtClaims): Promise<{ fle
   const row = await findFleetDriverAuthRow(claims.fleetDriverId);
   if (!row || row.company_id !== claims.companyId) return null;
   if (!row.is_active) return null;
-  if (row.session_version !== claims.sessionVersion) return null;
+  if (!fleetDriverSessionVersionsMatch(row.session_version, claims.sessionVersion)) return null;
   return { fleetDriverId: claims.fleetDriverId, companyId: claims.companyId };
 }
 
