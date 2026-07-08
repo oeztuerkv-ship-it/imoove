@@ -62,6 +62,20 @@ export function formatPartnerAddressFull(street, houseNumber, plz) {
   return line ? `${line}, ${p}` : p;
 }
 
+/** Volladresse → Straße, Hausnummer, PLZ (für Favoriten / Import). */
+export function parsePartnerAddressFull(full) {
+  const trimmed = String(full ?? "").trim();
+  if (!trimmed) return { street: "", houseNo: "", plz: "" };
+  const plzMatch = trimmed.match(/\b(\d{5})\b/);
+  const plz = plzMatch?.[1] ?? "";
+  const line = trimmed.split(",")[0]?.trim() ?? "";
+  const houseMatch = line.match(/^(.+?)\s+(\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?)$/i);
+  if (houseMatch) {
+    return { street: houseMatch[1].trim(), houseNo: houseMatch[2].trim(), plz };
+  }
+  return { street: line, houseNo: "", plz };
+}
+
 export function validatePartnerAddressParts(street, houseNumber, plz, field) {
   const label = field === "from" ? "Abholung" : "Ziel";
   const s = String(street ?? "").trim();

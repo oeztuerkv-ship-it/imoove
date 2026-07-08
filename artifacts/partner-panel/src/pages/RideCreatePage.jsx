@@ -3,6 +3,13 @@ import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
 import { paymentMethodForPayerMode } from "../lib/partnerRideOps.js";
+import PartnerAddressFavoritesBar from "../components/PartnerAddressFavoritesBar.jsx";
+import {
+  addPartnerAddressFavorite,
+  loadPartnerAddressFavorites,
+  MAX_PARTNER_ADDRESS_FAVORITES,
+  removePartnerAddressFavorite,
+} from "../lib/partnerAddressFavorites.js";
 import {
   defaultPartnerReservationDatetimeLocal,
   fetchDistanceMatrixByAddress,
@@ -15,6 +22,7 @@ import {
   validatePartnerRouteAddressParts,
   PARTNER_ROUTE_ADDRESS_MESSAGE_DE,
 } from "../lib/smartBooking.js";
+import { validatePartnerAddressParts } from "../lib/partnerAddressValidation.js";
 
 const NOTE_MAX = 200;
 
@@ -106,6 +114,10 @@ export default function RideCreatePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [payerMode, setPayerMode] = useState("passenger");
   const [payerConfirmed, setPayerConfirmed] = useState(false);
+  const [addressFavorites, setAddressFavorites] = useState([]);
+  const [favoriteMsg, setFavoriteMsg] = useState("");
+
+  const companyId = typeof user?.companyId === "string" ? user.companyId.trim() : "";
 
   const [form, setForm] = useState({
     customerName: "",
@@ -169,6 +181,83 @@ export default function RideCreatePage() {
   }, [form.distanceKm, form.durationMinutes, form.estimatedFare]);
 
   const companyPays = payerMode === "company";
+
+  useEffect(() => {
+    if (!companyId) {
+      setAddressFavorites([]);
+      return;
+    }
+    setAddressFavorites(loadPartnerAddressFavorites(companyId));
+  }, [companyId]);
+
+  function applyFavoriteToSide(side, fav) {
+    setFavoriteMsg("");
+    setForm((f) => ({
+      ...f,
+      ...(side === "from"
+        ? {
+            fromStreet: fav.street,
+            fromHouseNo: fav.houseNo,
+            fromPlz: fav.plz,
+            fromLat: fav.lat ?? null,
+            fromLon: fav.lon ?? null,
+          }
+        : {
+            toStreet: fav.street,
+            toHouseNo: fav.houseNo,
+            toPlz: fav.plz,
+            toLat: fav.lat ?? null,
+            toLon: fav.lon ?? null,
+          }),
+    }));
+  }
+
+  function saveFavoriteFromSide(side) {
+    setFavoriteMsg("");
+    const parts =
+      side === "from"
+        ? { street: form.fromStreet, houseNo: form.fromHouseNo, plz: form.fromPlz }
+        : { street: form.toStreet, houseNo: form.toHouseNo, plz: form.toPlz };
+    const check = validatePartnerAddressParts(parts.street, parts.houseNo, parts.plz, side);
+    if (!check.ok) {
+      setFavoriteMsg(check.message);
+      return;
+    }
+    if (!companyId) {
+      setFavoriteMsg("Favoriten sind erst nach dem Laden Ihres Unternehmens verfügbar.");
+      return;
+    }
+    const defaultLabel =
+      formatPartnerAddressFull(parts.street, parts.houseNo, parts.plz).split(",")[0]?.trim() || "Favorit";
+    const labelInput = window.prompt("Name für den Favoriten:", defaultLabel);
+    if (labelInput == null) return;
+    const result = addPartnerAddressFavorite(companyId, {
+      label: labelInput,
+      street: parts.street,
+      houseNo: parts.houseNo,
+      plz: parts.plz,
+      lat: side === "from" ? form.fromLat : form.toLat,
+      lon: side === "from" ? form.fromLon : form.toLon,
+    });
+    if (!result.ok) {
+      if (result.error === "duplicate") {
+        setFavoriteMsg("Diese Adresse ist bereits als Favorit gespeichert.");
+      } else if (result.error === "limit_reached") {
+        setFavoriteMsg(`Maximal ${MAX_PARTNER_ADDRESS_FAVORITES} Favoriten möglich.`);
+      } else {
+        setFavoriteMsg("Adresse unvollständig — Straße, Hausnummer und PLZ prüfen.");
+      }
+      return;
+    }
+    setAddressFavorites(result.favorites);
+    setFavoriteMsg(`„${labelInput.trim() || defaultLabel}“ als Favorit gespeichert.`);
+  }
+
+  function removeFavorite(favoriteId) {
+    if (!companyId) return;
+    setAddressFavorites(removePartnerAddressFavorite(companyId, favoriteId));
+    setFavoriteMsg("");
+  }
 
   useEffect(() => {
     if (!form.accessCode.trim()) return;
@@ -417,9 +506,34 @@ export default function RideCreatePage() {
                   <p className="partner-ops-card__lead">Straße, Hausnummer und PLZ — Preis wird automatisch berechnet.</p>
                 </div>
               </div>
+              <PartnerAddressFavoritesBar
+                favorites={addressFavorites}
+                onApply={applyFavoriteToSide}
+                onRemove={removeFavorite}
+              />
+              {favoriteMsg ? (
+                <p
+                  className={
+                    favoriteMsg.includes("gespeichert")
+                      ? "panel-page__ok partner-booking-favorite-msg"
+                      : "panel-page__warn partner-booking-favorite-msg"
+                  }
+                >
+                  {favoriteMsg}
+                </p>
+              ) : null}
               <div className="panel-rides-form__grid">
                 <div className="partner-booking-address-block">
-                  <span>Abholung</span>
+                  <div className="partner-booking-address-block__head">
+                    <span>Abholung</span>
+                    <button
+                      type="button"
+                      className="partner-address-favorite-save"
+                      onClick={() => saveFavoriteFromSide("from")}
+                    >
+                      ★ Favorit
+                    </button>
+                  </div>
                   <div className="partner-booking-address-row">
                     <label className="panel-rides-form__field partner-booking-address-row__street">
                       <span>Straße</span>
@@ -454,7 +568,16 @@ export default function RideCreatePage() {
                   </div>
                 </div>
                 <div className="partner-booking-address-block">
-                  <span>Ziel</span>
+                  <div className="partner-booking-address-block__head">
+                    <span>Ziel</span>
+                    <button
+                      type="button"
+                      className="partner-address-favorite-save"
+                      onClick={() => saveFavoriteFromSide("to")}
+                    >
+                      ★ Favorit
+                    </button>
+                  </div>
                   <div className="partner-booking-address-row">
                     <label className="panel-rides-form__field partner-booking-address-row__street">
                       <span>Straße</span>
