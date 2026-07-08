@@ -11,6 +11,7 @@ import {
   parseRideKind,
 } from "../domain/rideBillingProfile";
 import { isPostgresConfigured } from "../db/client";
+import { logger } from "../lib/logger";
 import { insertPanelAuditLog } from "../db/panelAuditData";
 import { cancelRideStripePaymentAuthorization, shouldReleaseStripeAuthorizationOnRideStatus } from "../lib/stripeRideAuthorization";
 import { findActivePanelUserById, findActivePanelUserProfileById } from "../db/panelAuthData";
@@ -2291,6 +2292,10 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       if (saved) {
         await upsertFinanceAfterPartnerRideCreated(saved);
         notifyDriversAfterPartnerRideSaved(saved);
+        const { promoteReservationIfInActivationWindow } = await import("../jobs/reservationLifecycle.js");
+        void promoteReservationIfInActivationWindow(saved.id).catch((err) => {
+          logger.warn({ err, rideId: saved.id }, "promoteReservationIfInActivationWindow after panel create failed");
+        });
       }
       await insertPanelAuditLog({
         id: randomUUID(),
