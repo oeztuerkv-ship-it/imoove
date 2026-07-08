@@ -122,9 +122,13 @@ export async function listMarketRidesForFleetDriver(
   const driverLoc = await getFleetDriverMarketLocation(fleetDriverId, companyId);
   const marketRows = syncedRows.filter((ride) => {
     if (isOpenInstantRideForDispatch(ride)) {
+      if (ride.fromLat == null || ride.fromLon == null) return false;
       const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
       if (!driverMatchesDispatchTier(driverPriority, rideTier)) return false;
-      if (!driverLoc) return false;
+      if (!driverLoc) {
+        // Fahrer ONLINE ohne GPS-Ping: Mandanten-Fahrten trotzdem anzeigen (sonst leerer Markt).
+        return true;
+      }
       if (!isWithinDispatchRadiusKm(driverLoc.lat, driverLoc.lon, ride.fromLat, ride.fromLon, radiusKm)) {
         return false;
       }

@@ -119,6 +119,24 @@ export async function geocodeAddressPhoton(query: string): Promise<RouteGeoPoint
   };
 }
 
+/** Partner-Panel: Straße + PLZ ohne Ort — mehrstufiges Geocoding (Photon). */
+export async function geocodePartnerPanelAddressFull(full: string): Promise<RouteGeoPoint | null> {
+  const base = String(full ?? "").trim();
+  if (!base) return null;
+  let pt = await geocodeAddressPhoton(base);
+  if (pt) return pt;
+  if (!/deutschland/i.test(base)) {
+    pt = await geocodeAddressPhoton(`${base}, Deutschland`);
+    if (pt) return { ...pt, displayName: base };
+  }
+  const plz = base.match(/\b(\d{5})\b/)?.[1];
+  if (plz) {
+    pt = await geocodeAddressPhoton(`${plz}, Deutschland`);
+    if (pt) return { ...pt, displayName: base };
+  }
+  return null;
+}
+
 export async function resolveRouteGeoPoint(
   full: string,
   lat?: number | null,
@@ -135,7 +153,7 @@ export async function resolveRouteGeoPoint(
     };
   }
   if (!displayName) return null;
-  return geocodeAddressPhoton(displayName);
+  return geocodePartnerPanelAddressFull(displayName);
 }
 
 async function drivingRouteGoogle(from: RouteGeoPoint, to: RouteGeoPoint): Promise<DrivingRouteResult | null> {

@@ -13,7 +13,9 @@ export function isFarFutureReservation(
   return t >= nowMs + RESERVATION_LEAD_MS;
 }
 
-/** Partner-Panel: Sofort-Disposition bleibt `pending`, weit in der Zukunft → stiller Planer-Pool. */
-export function initialPanelRideStatus(scheduledAtIso: string | null | undefined): "scheduled" | "pending" {
-  return isFarFutureReservation(scheduledAtIso) ? "scheduled" : "pending";
+/** Partner-Panel: Sofort-Disposition `searching_driver` (wie Kunden-API), Reservierung → Planer. */
+export function initialPanelRideStatus(
+  scheduledAtIso: string | null | undefined,
+): "scheduled" | "searching_driver" {
+  return isFarFutureReservation(scheduledAtIso) ? "scheduled" : "searching_driver";
 }

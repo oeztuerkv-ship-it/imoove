@@ -72,6 +72,10 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     if (rejected.has(fleetDriverId)) continue;
 
     if (
+      pickupLat != null &&
+      pickupLon != null &&
+      row.lastMarketLat != null &&
+      row.lastMarketLon != null &&
       !isWithinDispatchRadiusKm(row.lastMarketLat, row.lastMarketLon, pickupLat, pickupLon, radiusKm)
     ) {
       continue;

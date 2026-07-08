@@ -127,7 +127,7 @@ import {
   PARTNER_COMPANY_PATCH_ADMIN_FIELDS,
   rejectPartnerAdminOnlyBodyFields,
 } from "../lib/fleetAdminOnlyFields";
-import { buildRouteDistanceQuote, resolveRouteGeoPoint } from "../lib/fixedPriceRouteQuote";
+import { buildRouteDistanceQuote, geocodePartnerPanelAddressFull, resolveRouteGeoPoint } from "../lib/fixedPriceRouteQuote";
 import {
   notifyEligibleDriversScheduledPoolOffer,
   notifyMarketOnlineDriversInstantRideOffer,
@@ -250,14 +250,14 @@ async function resolvePanelRideCoords(
   let tLat = toLat ?? null;
   let tLon = toLon ?? null;
   if (fLat == null || fLon == null) {
-    const pt = await resolveRouteGeoPoint(fromFull, null, null, null);
+    const pt = await geocodePartnerPanelAddressFull(fromFull);
     if (pt) {
       fLat = pt.lat;
       fLon = pt.lon;
     }
   }
   if (tLat == null || tLon == null) {
-    const pt = await resolveRouteGeoPoint(toFull, null, null, null);
+    const pt = await geocodePartnerPanelAddressFull(toFull);
     if (pt) {
       tLat = pt.lat;
       tLon = pt.lon;
@@ -2148,6 +2148,20 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         optNum("toLat"),
         optNum("toLon"),
       );
+      if (coords.fromLat == null || coords.fromLon == null) {
+        res.status(400).json({
+          error: "from_not_found",
+          message: "Abholadresse konnte nicht geortet werden — Straße, Hausnummer und PLZ prüfen.",
+        });
+        return;
+      }
+      if (coords.toLat == null || coords.toLon == null) {
+        res.status(400).json({
+          error: "to_not_found",
+          message: "Zieladresse konnte nicht geortet werden — Straße, Hausnummer und PLZ prüfen.",
+        });
+        return;
+      }
       const rawOperational: Record<string, unknown> = {
         rideKind,
         payerKind,
