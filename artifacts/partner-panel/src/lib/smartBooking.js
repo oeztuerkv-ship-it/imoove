@@ -44,6 +44,8 @@ export function fromIsoToDatetimeLocal(value) {
 
 /** Mindestvorlauf Reservierung (API: dispatchStatus.RESERVATION_LEAD_MS). */
 export const RESERVATION_LEAD_MS = 60 * 60 * 1000;
+/** Reservierung maximal 5 Tage im Voraus (API: dispatchStatus.RESERVATION_MAX_ADVANCE_MS). */
+export const RESERVATION_MAX_ADVANCE_MS = 5 * 24 * 60 * 60 * 1000;
 
 export function defaultPartnerReservationDatetimeLocal() {
   const d = new Date(Date.now() + RESERVATION_LEAD_MS + 30 * 60 * 1000);
@@ -64,7 +66,13 @@ export function isReservationDatetimeValid(value) {
   const iso = toIsoFromDatetimeLocal(value);
   if (!iso) return false;
   const at = Date.parse(iso);
-  return Number.isFinite(at) && at >= Date.now() + RESERVATION_LEAD_MS;
+  if (!Number.isFinite(at)) return false;
+  const now = Date.now();
+  return at >= now + RESERVATION_LEAD_MS && at <= now + RESERVATION_MAX_ADVANCE_MS;
+}
+
+export function maxPartnerReservationDatetimeLocal() {
+  return fromIsoToDatetimeLocal(new Date(Date.now() + RESERVATION_MAX_ADVANCE_MS).toISOString());
 }
 
 /** Partner-Panel: Strecke serverseitig (Google primär, OSRM Fallback) — kein VITE_GOOGLE_MAPS_API_KEY nötig. */

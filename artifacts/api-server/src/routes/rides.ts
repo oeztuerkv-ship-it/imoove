@@ -80,7 +80,11 @@ import {
 } from "../lib/fleetDriverCancellationSuspensionPolicy";
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow, getFleetDriverMarketOnline, recordFleetDriverOfferRejectStreak, resetFleetDriverDispatchRejectStreak } from "../db/fleetDriversData";
-import { isFarFutureReservation } from "../lib/dispatchStatus";
+import {
+  isFarFutureReservation,
+  isReservationWithinAdvanceWindow,
+  RESERVATION_MAX_ADVANCE_MS,
+} from "../lib/dispatchStatus";
 import { DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES } from "../jobs/reservationLifecycle";
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
@@ -1783,6 +1787,13 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
           error: "reservation_lead_time_too_short",
           message:
             "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.",
+        });
+        return;
+      }
+      if (!isReservationWithinAdvanceWindow(scheduledAtNormalized)) {
+        res.status(400).json({
+          error: "reservation_too_far_in_advance",
+          message: `Reservierungen sind maximal ${Math.round(RESERVATION_MAX_ADVANCE_MS / 86_400_000)} Tage im Voraus möglich.`,
         });
         return;
       }

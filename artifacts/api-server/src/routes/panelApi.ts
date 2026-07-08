@@ -92,7 +92,13 @@ import {
   resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
 import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } from "../lib/rideBookingPricing";
-import { initialPanelRideStatus, isFarFutureReservation, RESERVATION_LEAD_MS } from "../lib/dispatchStatus";
+import {
+  initialPanelRideStatus,
+  isFarFutureReservation,
+  isReservationWithinAdvanceWindow,
+  RESERVATION_LEAD_MS,
+  RESERVATION_MAX_ADVANCE_MS,
+} from "../lib/dispatchStatus";
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import { canTransitionRideStatus } from "../lib/rideStatusMachine";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
@@ -2132,6 +2138,14 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
           error: "scheduled_at_too_soon",
           hint: "Reservierung mindestens 60 Minuten im Voraus.",
           minLeadMinutes: Math.round(RESERVATION_LEAD_MS / 60_000),
+        });
+        return;
+      }
+      if (scheduledAtVal && !isReservationWithinAdvanceWindow(scheduledAtVal)) {
+        res.status(400).json({
+          error: "scheduled_at_too_far",
+          hint: "Reservierung maximal 5 Tage im Voraus.",
+          maxAdvanceDays: Math.round(RESERVATION_MAX_ADVANCE_MS / 86_400_000),
         });
         return;
       }

@@ -13,6 +13,7 @@ import { useColors } from "@/hooks/useColors";
 import { rs } from "@/utils/scale";
 
 export const RESERVATION_LEAD_MS = 60 * 60 * 1000;
+export const RESERVATION_MAX_ADVANCE_MS = 5 * 24 * 60 * 60 * 1000;
 
 const WHEEL_ITEM = 44;
 const WHEEL_VISIBLE = 5;
@@ -35,6 +36,10 @@ export function buildScheduledDate(dayOffset: number, hour: number, minuteIndex:
 
 export function isReservationLeadValid(scheduledAt: Date, nowMs = Date.now()): boolean {
   return scheduledAt.getTime() >= nowMs + RESERVATION_LEAD_MS;
+}
+
+export function isReservationAdvanceValid(scheduledAt: Date, nowMs = Date.now()): boolean {
+  return scheduledAt.getTime() <= nowMs + RESERVATION_MAX_ADVANCE_MS;
 }
 
 /** Sinnvoller Default beim Wechsel auf „Termin“ (≥ 60 Min Vorlauf, 5-Min-Raster). */
@@ -177,7 +182,7 @@ export function ReservationSchedulePicker({
 
   const dayChips = useMemo(() => {
     const now = new Date();
-    return Array.from({ length: 7 }, (_, i) => {
+    return Array.from({ length: 6 }, (_, i) => {
       const d = new Date(now);
       d.setDate(d.getDate() + i);
       const label =
@@ -192,6 +197,7 @@ export function ReservationSchedulePicker({
   );
 
   const scheduleLeadOk = isReservationLeadValid(pickedDate);
+  const scheduleAdvanceOk = isReservationAdvanceValid(pickedDate);
   const showScheduleWheels = hideTimingToggle || timing === "scheduled";
 
   const rootStyle = isReservationUi
@@ -344,6 +350,10 @@ export function ReservationSchedulePicker({
               <Text style={styles.leadWarn}>
                 Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen.
               </Text>
+            ) : !scheduleAdvanceOk ? (
+              <Text style={styles.leadWarn}>
+                Reservierung maximal 5 Tage im Voraus.
+              </Text>
             ) : (
               <Text style={[styles.leadHint, { color: colors.mutedForeground }]}>
                 Fahrersuche startet automatisch 30 Minuten vor der Abholzeit.
@@ -352,6 +362,10 @@ export function ReservationSchedulePicker({
           ) : !scheduleLeadOk ? (
             <Text style={styles.leadWarn}>
               Mindestens 60 Minuten Vorlauf. Bitte späteren Zeitpunkt wählen.
+            </Text>
+          ) : !scheduleAdvanceOk ? (
+            <Text style={styles.leadWarn}>
+              Reservierung maximal 5 Tage im Voraus.
             </Text>
           ) : (
             <Text style={[styles.leadHint, { color: colors.mutedForeground }]}>

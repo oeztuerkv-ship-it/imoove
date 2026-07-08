@@ -8,6 +8,7 @@ import {
   fetchDistanceMatrixByAddress,
   formatPartnerAddressFull,
   isReservationDatetimeValid,
+  maxPartnerReservationDatetimeLocal,
   minPartnerReservationDatetimeLocal,
   shortAddressLabel,
   toIsoFromDatetimeLocal,
@@ -57,6 +58,9 @@ function mapCreateError(res, data) {
   }
   if (code === "scheduled_at_too_soon") {
     return "Reservierung mindestens 60 Minuten im Voraus wählen.";
+  }
+  if (code === "scheduled_at_too_far") {
+    return "Reservierung maximal 5 Tage im Voraus möglich.";
   }
   if (code === "open_rides_limit_reached") {
     return "Zu viele offene Fahrten — bitte zuerst abschließen oder stornieren.";
@@ -344,7 +348,7 @@ export default function RideCreatePage() {
       const dispatchHint =
         scheduleMode === "now"
           ? " Fahrersuche startet — Status unter „Meine Fahrten“."
-          : " Termin gespeichert — Fahrer-Zuweisung zum Abholzeitpunkt.";
+          : " Termin gespeichert — im Fahrer-Planer sofort sichtbar.";
       const id = typeof ride.id === "string" ? ride.id : "";
       setCreateMsg(
         id
@@ -658,7 +662,7 @@ export default function RideCreatePage() {
                   onClick={() => setScheduleMode("reservation")}
                 >
                   <strong>Reservierung</strong>
-                  <span>Mindestens 60 Minuten im Voraus</span>
+                  <span>60 Minuten bis max. 5 Tage im Voraus</span>
                 </button>
               </div>
               {scheduleMode === "reservation" ? (
@@ -668,6 +672,7 @@ export default function RideCreatePage() {
                     type="datetime-local"
                     value={form.scheduledAt}
                     min={minPartnerReservationDatetimeLocal()}
+                    max={maxPartnerReservationDatetimeLocal()}
                     onChange={(ev) => setForm((f) => ({ ...f, scheduledAt: ev.target.value }))}
                   />
                 </label>

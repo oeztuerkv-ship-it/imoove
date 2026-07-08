@@ -3,7 +3,10 @@ import { getOperationalConfigPayload, listServiceRegionsForApi } from "../db/app
 import { getFleetDriverCapability } from "../db/fleetMatchingData";
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { insertRide } from "../db/ridesData";
-import { isFarFutureReservation } from "./dispatchStatus";
+import {
+  isFarFutureReservation,
+  isReservationWithinAdvanceWindow,
+} from "./dispatchStatus";
 import { initialDispatchTierFieldsForRide } from "./dispatchPriorityTier";
 import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } from "./rideBookingPricing";
 
@@ -65,6 +68,9 @@ export async function createFleetDriverReservation(
   }
   if (!isFarFutureReservation(scheduledAt)) {
     return { ok: false, error: "scheduled_at_too_soon" };
+  }
+  if (!isReservationWithinAdvanceWindow(scheduledAt)) {
+    return { ok: false, error: "scheduled_at_too_far" };
   }
 
   const distanceKm = Number.isFinite(input.distanceKm) && (input.distanceKm ?? 0) > 0 ? Number(input.distanceKm) : 5;
