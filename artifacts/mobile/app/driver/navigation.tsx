@@ -46,17 +46,24 @@ import {
 } from "@/utils/driverNavigationRoute";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import {
+  apiMessageToRideChatMessage,
+  isRideChatSendAllowed,
   mergeRideChatMessages,
   parseRideChatUpdate,
   rideChatMessageId,
+  rideChatMessagesFromApi,
+  rideChatSenderLabel,
   type RideChatMessage,
   type RideChatSender,
 } from "@/utils/rideChat";
 import {
+  fetchFleetRideChatMessages,
+  sendFleetRideChatMessage,
+} from "@/utils/rideChatApi";
+import {
   connectToRide,
   disconnectSocket,
   sendDriverLocation as socketSendDriver,
-  sendRideChat,
 } from "@/utils/socket";
 import {
   syncDriverPresenceState,
@@ -461,6 +468,7 @@ export default function DriverNavigationScreen() {
 
   // fare modal
   const [rideFleetStatus, setRideFleetStatus] = useState("accepted");
+  const [rideChatEnabledLive, setRideChatEnabledLive] = useState(false);
   const [completingRide, setCompletingRide] = useState(false);
   const [showFareModal, setShowFareModal] = useState(false);
   const [showCashPaymentWarn, setShowCashPaymentWarn] = useState(false);
@@ -486,6 +494,13 @@ export default function DriverNavigationScreen() {
   const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
+
+  const rideChatEnabled = activeRide?.chatEnabled === true || rideChatEnabledLive;
+  const rideChatCanSend = isRideChatSendAllowed(
+    (activeRide?.status ?? rideFleetStatus) as RequestStatus,
+    rideChatEnabled,
+  );
+
   const hadActiveRideInListRef = useRef(false);
   const prevListedRideRef = useRef<RequestStatus | null>(null);
   const exitAfterCustomerCancelRef = useRef<(cancelReason?: string | null) => void>(() => {});
@@ -518,12 +533,15 @@ export default function DriverNavigationScreen() {
     chatOpenRef.current = chatOpen;
   }, [chatOpen]);
 
-  const sendDriverChatMessage = useCallback(() => {
+  const sendDriverChatMessage = useCallback(async () => {
     const msg = chatInput.trim();
-    if (!msg) return;
+    const rideId = params.rideId?.trim() ?? "";
+    if (!msg || !rideId) return;
+    if (!rideChatCanSend) return;
     const reply = chatReplyTo
       ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
       : undefined;
+    const clientMessageId = `dm-${Date.now()}`;
     const pendingId = rideChatMessageId(`pending-${Date.now()}`, "driver", msg);
     setChatMsgs((prev) =>
       mergeRideChatMessages(prev, {
@@ -534,11 +552,19 @@ export default function DriverNavigationScreen() {
         ...(reply ? { replyTo: reply } : {}),
       }),
     );
-    sendRideChat({ text: msg, sender: "driver", replyTo: reply });
     setChatInput("");
     setChatReplyTo(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [chatInput, chatReplyTo]);
+    try {
+      const headers = await fleetAuthHeadersJson();
+      const result = await sendFleetRideChatMessage(rideId, msg, headers, clientMessageId);
+      if (result.ok) {
+        setChatMsgs((prev) => mergeRideChatMessages(prev, apiMessageToRideChatMessage(result.message)));
+      }
+    } catch {
+      /* pending bleibt bis WS/Reload */
+    }
+  }, [chatInput, chatReplyTo, params.rideId, rideChatCanSend]);
 
   useEffect(() => {
     setChatMsgs([]);
@@ -546,6 +572,24 @@ export default function DriverNavigationScreen() {
     setChatUnread(false);
     setChatReplyTo(null);
   }, [params.rideId]);
+
+  useEffect(() => {
+    const rideId = params.rideId?.trim() ?? "";
+    if (!chatOpen || !rideId || !rideChatEnabled) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const headers = await fleetAuthHeadersJson();
+        const items = await fetchFleetRideChatMessages(rideId, headers);
+        if (!cancelled) setChatMsgs(rideChatMessagesFromApi(items));
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatOpen, params.rideId, rideChatEnabled]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const sliderX = useRef(new Animated.Value(0)).current;
@@ -1022,9 +1066,16 @@ export default function DriverNavigationScreen() {
       try {
         const res = await fetch(url, { cache: "no-store", headers });
         if (!res.ok) continue;
-        const payload = (await res.json()) as { status?: string; cancelReason?: string | null };
+        const payload = (await res.json()) as {
+          status?: string;
+          cancelReason?: string | null;
+          chatEnabled?: boolean;
+        };
         if (typeof payload.status === "string" && payload.status) {
           setRideFleetStatus(payload.status);
+        }
+        if (typeof payload.chatEnabled === "boolean") {
+          setRideChatEnabledLive(payload.chatEnabled);
         }
         if (
           typeof payload.status === "string" &&
@@ -1114,7 +1165,7 @@ export default function DriverNavigationScreen() {
       const row = parseRideChatUpdate(msg);
       if (!row) return;
       setChatMsgs((prev) => mergeRideChatMessages(prev, row));
-      if (row.from === "customer" && !chatOpenRef.current) setChatUnread(true);
+      if (row.from !== "driver" && !chatOpenRef.current) setChatUnread(true);
     }
   }, []);
 
@@ -1759,18 +1810,20 @@ export default function DriverNavigationScreen() {
         >
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
-        <Pressable
-          style={styles.navChatBtn}
-          accessibilityLabel="Chat"
-          onPress={() => {
-            setChatUnread(false);
-            setChatOpen(true);
-          }}
-        >
-          <Feather name="message-circle" size={16} color="#1B6B3A" />
-          <Text style={styles.navChatBtnLabel}>Chat</Text>
-          {chatUnread ? <View style={styles.navChatBadge} /> : null}
-        </Pressable>
+        {rideChatEnabled ? (
+          <Pressable
+            style={styles.navChatBtn}
+            accessibilityLabel="Chat"
+            onPress={() => {
+              setChatUnread(false);
+              setChatOpen(true);
+            }}
+          >
+            <Feather name="message-circle" size={16} color="#1B6B3A" />
+            <Text style={styles.navChatBtnLabel}>Chat</Text>
+            {chatUnread ? <View style={styles.navChatBadge} /> : null}
+          </Pressable>
+        ) : null}
       </View>
 
       {isDrivingPhase ? (
@@ -2194,10 +2247,16 @@ export default function DriverNavigationScreen() {
                   chatMsgs.map((m) => (
                     <Pressable
                       key={m.id}
-                      style={m.from === "customer" ? styles.driverChatBubbleIncoming : styles.driverChatBubbleOutgoing}
+                      style={
+                        m.from === "driver"
+                          ? styles.driverChatBubbleOutgoing
+                          : styles.driverChatBubbleIncoming
+                      }
                       onLongPress={() => {
-                        setChatReplyTo(m);
-                        Haptics.selectionAsync();
+                        if (m.from === "driver" || m.from === "customer") {
+                          setChatReplyTo(m);
+                          Haptics.selectionAsync();
+                        }
                       }}
                     >
                       {m.replyTo ? (
@@ -2206,7 +2265,7 @@ export default function DriverNavigationScreen() {
                         </Text>
                       ) : null}
                       <Text style={styles.driverChatBubbleMeta}>
-                        {m.from === "customer" ? "Kunde" : "Sie"}
+                        {rideChatSenderLabel(m.from)}
                         {m.pending ? " · senden…" : ""}
                       </Text>
                       <Text style={styles.driverChatBubbleText}>{m.text}</Text>
@@ -2230,16 +2289,17 @@ export default function DriverNavigationScreen() {
             <View style={styles.driverChatComposerRow}>
               <TextInput
                 style={styles.driverChatComposerInput}
-                placeholder="Nachricht tippen …"
+                placeholder={rideChatCanSend ? "Nachricht tippen …" : "Chat beendet"}
                 placeholderTextColor="#9CA3AF"
                 value={chatInput}
                 onChangeText={setChatInput}
                 multiline
+                editable={rideChatCanSend}
               />
               <Pressable
-                style={[styles.driverChatSendBtn, !chatInput.trim() && styles.driverChatSendBtnDisabled]}
+                style={[styles.driverChatSendBtn, (!chatInput.trim() || !rideChatCanSend) && styles.driverChatSendBtnDisabled]}
                 onPress={sendDriverChatMessage}
-                disabled={!chatInput.trim()}
+                disabled={!chatInput.trim() || !rideChatCanSend}
                 accessibilityLabel="Nachricht senden"
               >
                 <Feather name="send" size={20} color="#fff" style={styles.driverChatSendIcon} />

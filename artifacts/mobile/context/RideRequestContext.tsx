@@ -161,6 +161,8 @@ export interface RideRequest {
   status: RequestStatus;
   /** Premium-Dispatch-Stufe (Sofort/Reservierung am Markt). */
   dispatchTier?: "A" | "B" | "C" | null;
+  /** Zwei-Wege-Chat aktiv (nur A-Fahrer nach Annahme). */
+  chatEnabled?: boolean;
 }
 
 interface RideRequestContextValue {
@@ -617,6 +619,7 @@ function normalizeRequest(r: any): RideRequest {
         .toUpperCase();
       return t === "A" || t === "B" || t === "C" ? t : "A";
     })(),
+    chatEnabled: Boolean(r.chatEnabled ?? r.chat_enabled),
   } as RideRequest;
 }
 

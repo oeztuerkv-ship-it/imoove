@@ -1,5 +1,6 @@
 import WebSocket, { WebSocketServer } from "ws";
 import { persistDriverLocationPing } from "./db/rideDriverLocationData";
+import { postRideChatMessage } from "./db/rideChatMessagesData";
 import { findRide } from "./db/ridesData";
 import { logger } from "./lib/logger";
 import { resolveWsJoinPrincipal, wsJoinPrincipalMatchesRide } from "./lib/wsRideJoinAuth";
@@ -50,6 +51,32 @@ export function broadcastRideStatusChange(
     status,
     ...(previousStatus ? { previousStatus } : {}),
     ts: new Date().toISOString(),
+  });
+}
+
+/** Persistierte Chat-Zeile an alle WS-Teilnehmer der Fahrt (nach REST-POST oder WS-Persist). */
+export function broadcastRideChatMessage(
+  rideId: string,
+  message: {
+    id: string;
+    senderKind: string;
+    senderActorId: string | null;
+    body: string;
+    createdAt: string;
+  },
+): void {
+  const legacySender =
+    message.senderKind === "driver" || message.senderKind === "customer" ? message.senderKind : null;
+  broadcastToRideRoom(rideId.trim(), {
+    type: "chat:ride:update",
+    id: message.id,
+    senderKind: message.senderKind,
+    senderActorId: message.senderActorId,
+    body: message.body,
+    createdAt: message.createdAt,
+    ...(legacySender
+      ? { sender: legacySender, text: message.body, ts: message.createdAt }
+      : {}),
   });
 }
 
@@ -208,35 +235,44 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
 
         if (msgType === "chat:ride") {
           const text = typeof msg.text === "string" ? msg.text.trim() : "";
-          const sender = msg.sender === "driver" ? "driver" : "customer";
           if (!text) return;
-          if (sender !== meta.role) return;
-          const replyToText =
-            typeof msg.replyToText === "string" ? msg.replyToText.trim() : "";
-          const replyToSender =
-            msg.replyToSender === "driver"
-              ? "driver"
-              : msg.replyToSender === "customer"
-                ? "customer"
-                : null;
-          const replyPayload =
-            replyToText && replyToSender
-              ? { replyTo: { sender: replyToSender, text: replyToText } }
-              : {};
-          const ts = new Date().toISOString();
-          rooms.get(boundRideId)?.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(
-                JSON.stringify({
-                  type: "chat:ride:update",
-                  sender,
-                  text,
-                  ts,
-                  ...replyPayload,
-                }),
-              );
-            }
-          });
+          const ride = await findRide(boundRideId);
+          if (!ride) return;
+
+          let posted:
+            | { ok: true; message: { id: string; senderKind: string; senderActorId: string | null; body: string; createdAt: string } }
+            | { ok: false }
+            | null = null;
+
+          if (meta.role === "driver" && meta.fleetDriverId) {
+            const result = await postRideChatMessage({
+              ride,
+              senderKind: "driver",
+              senderActorId: meta.fleetDriverId,
+              body: text,
+            });
+            posted = result.ok ? { ok: true, message: result.message } : { ok: false };
+          } else if (meta.role === "customer") {
+            const passengerId = (ride.passengerId ?? "").trim();
+            if (!passengerId) return;
+            const result = await postRideChatMessage({
+              ride,
+              senderKind: "customer",
+              senderActorId: passengerId,
+              body: text,
+            });
+            posted = result.ok ? { ok: true, message: result.message } : { ok: false };
+          } else {
+            sendWsError(socket, "chat_use_rest");
+            return;
+          }
+
+          if (posted?.ok) {
+            broadcastRideChatMessage(boundRideId, posted.message);
+          } else {
+            sendWsError(socket, "chat_not_available");
+          }
+          return;
         }
       } catch {
         /* ignore malformed */

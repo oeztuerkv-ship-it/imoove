@@ -50,14 +50,22 @@ import {
 } from "@/utils/onrodaRideOpsFlow";
 import { rs, rf } from "@/utils/scale";
 import {
+  apiMessageToRideChatMessage,
+  isRideChatSendAllowed,
   mergeRideChatMessages,
   parseRideChatUpdate,
   rideChatMessageId,
+  rideChatMessagesFromApi,
+  rideChatSenderLabel,
   type RideChatMessage,
   type RideChatSender,
 } from "@/utils/rideChat";
+import {
+  fetchCustomerRideChatMessages,
+  sendCustomerRideChatMessage,
+} from "@/utils/rideChatApi";
 import { estimatePickupEtaMinutes, formatPickupDistanceKm } from "@/utils/ridePickupEta";
-import { connectToRide, disconnectSocket, sendCustomerLocation, sendRideChat } from "@/utils/socket";
+import { connectToRide, disconnectSocket, sendCustomerLocation } from "@/utils/socket";
 import { getDriverLiveNavigationRideId } from "@/utils/driverLiveNavigation";
 import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
 
@@ -340,28 +348,6 @@ export default function StatusScreen() {
     chatOpenRef.current = chatOpen;
   }, [chatOpen]);
 
-  const sendCustomerChatMessage = useCallback(() => {
-    const msg = chatInput.trim();
-    if (!msg) return;
-    const reply = chatReplyTo
-      ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
-      : undefined;
-    const pendingId = rideChatMessageId(`pending-${Date.now()}`, "customer", msg);
-    setChatMsgs((prev) =>
-      mergeRideChatMessages(prev, {
-        id: pendingId,
-        from: "customer",
-        text: msg,
-        pending: true,
-        ...(reply ? { replyTo: reply } : {}),
-      }),
-    );
-    sendRideChat({ text: msg, sender: "customer", replyTo: reply });
-    setChatInput("");
-    setChatReplyTo(null);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [chatInput, chatReplyTo]);
-
   useEffect(() => {
     setChatMsgs([]);
     setChatUnread(false);
@@ -397,6 +383,62 @@ export default function StatusScreen() {
     const sticky = stickyAcceptedRef.current;
     return sticky?.id === currentRideId ? sticky : null;
   }, [acceptedRequest, currentRideId, requests]);
+
+  const rideChatEnabled = effectiveAcceptedRequest?.chatEnabled === true;
+  const rideChatCanSend = effectiveAcceptedRequest
+    ? isRideChatSendAllowed(effectiveAcceptedRequest.status, effectiveAcceptedRequest.chatEnabled)
+    : false;
+
+  const sendCustomerChatMessage = useCallback(async () => {
+    const msg = chatInput.trim();
+    const ride = effectiveAcceptedRequest;
+    if (!msg || !ride?.id) return;
+    if (!isRideChatSendAllowed(ride.status, ride.chatEnabled)) return;
+    const reply = chatReplyTo
+      ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
+      : undefined;
+    const clientMessageId = `cm-${Date.now()}`;
+    const pendingId = rideChatMessageId(`pending-${Date.now()}`, "customer", msg);
+    setChatMsgs((prev) =>
+      mergeRideChatMessages(prev, {
+        id: pendingId,
+        from: "customer",
+        text: msg,
+        pending: true,
+        ...(reply ? { replyTo: reply } : {}),
+      }),
+    );
+    setChatInput("");
+    setChatReplyTo(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const headers = await customerSessionHeadersJson();
+      const result = await sendCustomerRideChatMessage(ride.id, msg, headers, clientMessageId);
+      if (result.ok) {
+        setChatMsgs((prev) => mergeRideChatMessages(prev, apiMessageToRideChatMessage(result.message)));
+      }
+    } catch {
+      /* pending bleibt bis WS/Reload */
+    }
+  }, [chatInput, chatReplyTo, effectiveAcceptedRequest]);
+
+  useEffect(() => {
+    const rideId = effectiveAcceptedRequest?.id;
+    if (!chatOpen || !rideId || !rideChatEnabled) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const headers = await customerSessionHeadersJson();
+        const items = await fetchCustomerRideChatMessages(rideId, headers);
+        if (!cancelled) setChatMsgs(rideChatMessagesFromApi(items));
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatOpen, effectiveAcceptedRequest?.id, rideChatEnabled]);
 
   const assignedDriver = effectiveAcceptedRequest?.assignedDriver ?? null;
   const driverName = assignedDriver?.displayName ?? "Ihr Fahrer";
@@ -580,7 +622,7 @@ export default function StatusScreen() {
           const row = parseRideChatUpdate(msg);
           if (!row) return;
           setChatMsgs((prev) => mergeRideChatMessages(prev, row));
-          if (row.from === "driver" && !chatOpenRef.current) setChatUnread(true);
+          if (row.from !== "customer" && !chatOpenRef.current) setChatUnread(true);
         }
       },
       readCustomerSessionJwtForWsJoin,
@@ -1758,18 +1800,20 @@ export default function StatusScreen() {
               <Text style={styles.trackingChatActionText}>Anrufen</Text>
             </Pressable>
           ) : null}
-          <Pressable
-            style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
-            accessibilityLabel="Chat"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              handleMessage();
-            }}
-          >
-            <Feather name="message-circle" size={rf(20)} color="#111827" />
-            <Text style={styles.trackingChatActionText}>Chat</Text>
-            {chatUnread ? <View style={styles.trackingChatActionBadge} /> : null}
-          </Pressable>
+          {rideChatEnabled ? (
+            <Pressable
+              style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
+              accessibilityLabel="Chat"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                handleMessage();
+              }}
+            >
+              <Feather name="message-circle" size={rf(20)} color="#111827" />
+              <Text style={styles.trackingChatActionText}>Chat</Text>
+              {chatUnread ? <View style={styles.trackingChatActionBadge} /> : null}
+            </Pressable>
+          ) : null}
 
           <Pressable
             style={({ pressed }) => [styles.trackingCancelButton, pressed && { opacity: 0.9 }]}
@@ -1858,10 +1902,16 @@ export default function StatusScreen() {
                   chatMsgs.map((m) => (
                     <Pressable
                       key={m.id}
-                      style={m.from === "driver" ? styles.chatBubbleIncoming : styles.chatBubbleOutgoing}
+                      style={
+                        m.from === "customer"
+                          ? styles.chatBubbleOutgoing
+                          : styles.chatBubbleIncoming
+                      }
                       onLongPress={() => {
-                        setChatReplyTo(m);
-                        Haptics.selectionAsync();
+                        if (m.from === "driver" || m.from === "customer") {
+                          setChatReplyTo(m);
+                          Haptics.selectionAsync();
+                        }
                       }}
                     >
                       {m.replyTo ? (
@@ -1870,7 +1920,7 @@ export default function StatusScreen() {
                         </Text>
                       ) : null}
                       <Text style={styles.chatBubbleMeta}>
-                        {m.from === "driver" ? "Fahrer" : "Sie"}
+                        {rideChatSenderLabel(m.from)}
                         {m.pending ? " · senden…" : ""}
                       </Text>
                       <Text style={styles.chatBubbleText}>{m.text}</Text>
@@ -1897,16 +1947,17 @@ export default function StatusScreen() {
             <View style={styles.chatComposerRow}>
               <TextInput
                 style={styles.chatComposerInput}
-                placeholder="Nachricht tippen …"
+                placeholder={rideChatCanSend ? "Nachricht tippen …" : "Chat beendet"}
                 placeholderTextColor="#9CA3AF"
                 value={chatInput}
                 onChangeText={setChatInput}
                 multiline
+                editable={rideChatCanSend}
               />
               <Pressable
-                style={[styles.chatComposerSendBtn, !chatInput.trim() && styles.chatComposerSendBtnDisabled]}
+                style={[styles.chatComposerSendBtn, (!chatInput.trim() || !rideChatCanSend) && styles.chatComposerSendBtnDisabled]}
                 onPress={sendCustomerChatMessage}
-                disabled={!chatInput.trim()}
+                disabled={!chatInput.trim() || !rideChatCanSend}
                 accessibilityLabel="Nachricht senden"
               >
                 <Feather name="send" size={20} color="#fff" style={styles.chatComposerSendIcon} />

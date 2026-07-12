@@ -8,6 +8,7 @@ import {
   rideChatPostHttpStatus,
   type RideChatSenderKind,
 } from "../db/rideChatMessagesData";
+import { broadcastRideChatMessage } from "../wsRideSocketHub";
 
 export async function sendRideChatMessagesJson(
   res: Response,
@@ -47,4 +48,5 @@ export async function sendRideChatMessageCreated(
     return;
   }
   res.status(result.created ? 201 : 200).json({ ok: true, message: result.message });
+  broadcastRideChatMessage(ride.id, result.message);
 }
