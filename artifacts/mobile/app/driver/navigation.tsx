@@ -330,7 +330,7 @@ export default function DriverNavigationScreen() {
     arrived?: string;
   }>();
 
-  const { driverCancelRequest, requests, driverMarketRequests } = useRideRequests();
+  const { driverCancelRequest, requests, driverMarketRequests, scheduledPoolRequests, driverMarketScheduledPool } = useRideRequests();
   const { driver, refreshEinsatzbereit } = useDriver();
   const driverMarketOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
   const syncNavPresence = useCallback(
@@ -348,9 +348,11 @@ export default function DriverNavigationScreen() {
     return (
       requests.find((r) => r.id === id) ??
       driverMarketRequests.find((r) => r.id === id) ??
+      scheduledPoolRequests.find((r) => r.id === id) ??
+      driverMarketScheduledPool.find((r) => r.id === id) ??
       null
     );
-  }, [requests, driverMarketRequests, params.rideId]);
+  }, [requests, driverMarketRequests, scheduledPoolRequests, driverMarketScheduledPool, params.rideId]);
   const stackCollapsedForRideRef = useRef<string | null>(null);
 
   const phase = params.phase ?? "pickup";

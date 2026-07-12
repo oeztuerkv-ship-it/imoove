@@ -28,6 +28,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
+import { DriverRideChatModal } from "@/components/driver/DriverRideChatModal";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
@@ -730,6 +731,7 @@ function ScheduledCard({
 }) {
   const { t } = useTranslation();
   const isAssignedUpcoming = req.status === "scheduled_assigned";
+  const [chatOpen, setChatOpen] = useState(false);
   const isMedical = isMedicalRideRequest(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const [activationTick, setActivationTick] = useState(0);
@@ -898,6 +900,24 @@ function ScheduledCard({
         </>
       ) : (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
+          {req.chatEnabled ? (
+            <Pressable
+              style={{
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: "#86EFAC",
+                backgroundColor: "#F0FDF4",
+                paddingVertical: 15,
+                paddingHorizontal: 14,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onPress={() => setChatOpen(true)}
+              accessibilityLabel="Chat öffnen"
+            >
+              <Feather name="message-circle" size={18} color="#166534" />
+            </Pressable>
+          ) : null}
           <Pressable
             style={[styles.rejectBtn, { flex: 1, borderColor: "#FEE2E2", backgroundColor: "#FFF1F1", paddingVertical: 15, borderRadius: 14 }]}
             onPress={onCancelAssigned}
@@ -921,6 +941,13 @@ function ScheduledCard({
           )}
         </View>
       )}
+      <DriverRideChatModal
+        visible={chatOpen}
+        onClose={() => setChatOpen(false)}
+        rideId={req.id}
+        rideStatus={req.status}
+        chatEnabled={req.chatEnabled === true}
+      />
     </View>
   );
 }

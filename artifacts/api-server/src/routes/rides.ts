@@ -717,6 +717,7 @@ router.get("/rides/:rideId/fleet-snapshot", requireFleetDriverAuth, async (req, 
     res.json({
       id: ride.id,
       status: ride.status,
+      chatEnabled: Boolean(ride.chatEnabled),
       cancelReason: customerCancelReasons.get(ride.id) ?? null,
     });
   } catch (e) {
