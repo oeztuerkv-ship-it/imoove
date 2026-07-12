@@ -6,11 +6,14 @@ import type { RideChatApiMessage } from "@/utils/rideChatApi";
 export type RideChatSender = "driver" | "customer";
 export type RideChatUiSender = RideChatSender | "partner" | "booking_note";
 
+export type RideChatReplyTarget = { from: RideChatSender; text: string };
+
 export type RideChatMessage = {
   id: string;
   from: RideChatUiSender;
   text: string;
-  replyTo?: { from: RideChatSender; text: string };
+  createdAt?: string;
+  replyTo?: RideChatReplyTarget;
   /** Optimistische Nachricht, bis Echo vom Server kommt. */
   pending?: boolean;
 };
@@ -39,6 +42,7 @@ export function apiMessageToRideChatMessage(m: RideChatApiMessage): RideChatMess
     id: m.id,
     from: m.senderKind,
     text: m.body,
+    createdAt: m.createdAt,
   };
 }
 
@@ -59,7 +63,13 @@ export function parseRideChatUpdate(msg: Record<string, unknown>): RideChatMessa
         ? senderKindRaw
         : null;
     if (!from) return null;
-    return { id, from, text: bodyNew };
+    const createdAt =
+      typeof msg.createdAt === "string"
+        ? msg.createdAt
+        : typeof msg.created_at === "string"
+          ? msg.created_at
+          : undefined;
+    return { id, from, text: bodyNew, ...(createdAt ? { createdAt } : {}) };
   }
 
   const sender = msg.sender === "driver" ? "driver" : msg.sender === "customer" ? "customer" : null;

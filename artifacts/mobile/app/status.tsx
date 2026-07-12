@@ -48,6 +48,8 @@ import {
   customerLivePhaseFromRideStatus,
   isCustomerDriverAssignedStatus,
 } from "@/utils/onrodaRideOpsFlow";
+import { RideChatModal } from "@/components/ride-chat/RideChatModal";
+import { RideChatReplyBanner } from "@/components/ride-chat/RideChatReplyBanner";
 import { rs, rf } from "@/utils/scale";
 import {
   apiMessageToRideChatMessage,
@@ -56,8 +58,8 @@ import {
   parseRideChatUpdate,
   rideChatMessageId,
   rideChatMessagesFromApi,
-  rideChatSenderLabel,
   type RideChatMessage,
+  type RideChatReplyTarget,
   type RideChatSender,
 } from "@/utils/rideChat";
 import {
@@ -304,7 +306,7 @@ export default function StatusScreen() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMsgs, setChatMsgs] = useState<RideChatMessage[]>([]);
-  const [chatReplyTo, setChatReplyTo] = useState<RideChatMessage | null>(null);
+  const [chatReplyTo, setChatReplyTo] = useState<RideChatReplyTarget | null>(null);
   const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
   const stickyAcceptedRef = useRef<RideRequest | null>(null);
@@ -394,9 +396,7 @@ export default function StatusScreen() {
     const ride = effectiveAcceptedRequest;
     if (!msg || !ride?.id) return;
     if (!isRideChatSendAllowed(ride.status, ride.chatEnabled)) return;
-    const reply = chatReplyTo
-      ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
-      : undefined;
+    const reply = chatReplyTo ?? undefined;
     const clientMessageId = `cm-${Date.now()}`;
     const pendingId = rideChatMessageId(`pending-${Date.now()}`, "customer", msg);
     setChatMsgs((prev) =>
@@ -1858,114 +1858,37 @@ export default function StatusScreen() {
         </Pressable>
       </Modal>
 
-      <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
-        <KeyboardAvoidingView
-          style={styles.chatOverlay}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setChatOpen(false)} />
-          <Pressable style={styles.chatCard} onPress={() => {}}>
-            <View style={styles.chatHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.chatTitle}>Chat</Text>
-              </View>
-              <Pressable
-                onPress={() => setChatOpen(false)}
-                hitSlop={12}
-                style={styles.chatCloseBtn}
-                accessibilityLabel="Chat schließen"
-              >
-                <Feather name="x" size={22} color="#374151" />
-              </Pressable>
-            </View>
-            {chatReplyTo ? (
-              <View style={styles.chatReplyBanner}>
-                <Text style={styles.chatReplyBannerLabel} numberOfLines={1}>
-                  Antwort auf {chatReplyTo.from === "driver" ? "Fahrer" : "Sie"}: {chatReplyTo.text}
-                </Text>
-                <Pressable onPress={() => setChatReplyTo(null)} hitSlop={8}>
-                  <Feather name="x" size={16} color="#6B7280" />
-                </Pressable>
-              </View>
-            ) : null}
-            <View style={styles.chatThreadBox}>
-              <ScrollView
-                style={{ maxHeight: 220 }}
-                keyboardShouldPersistTaps="handled"
-                nestedScrollEnabled
-              >
-                {chatMsgs.length === 0 ? (
-                  <Text style={styles.chatEmptyHint}>
-                    Noch keine Nachrichten. Vorlage unten antippen oder selbst tippen.
-                  </Text>
-                ) : (
-                  chatMsgs.map((m) => (
-                    <Pressable
-                      key={m.id}
-                      style={
-                        m.from === "customer"
-                          ? styles.chatBubbleOutgoing
-                          : styles.chatBubbleIncoming
-                      }
-                      onLongPress={() => {
-                        if (m.from === "driver" || m.from === "customer") {
-                          setChatReplyTo(m);
-                          Haptics.selectionAsync();
-                        }
-                      }}
-                    >
-                      {m.replyTo ? (
-                        <Text style={styles.chatReplyQuote} numberOfLines={2}>
-                          {m.replyTo.from === "driver" ? "Fahrer" : "Sie"}: {m.replyTo.text}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.chatBubbleMeta}>
-                        {rideChatSenderLabel(m.from)}
-                        {m.pending ? " · senden…" : ""}
-                      </Text>
-                      <Text style={styles.chatBubbleText}>{m.text}</Text>
-                    </Pressable>
-                  ))
-                )}
-              </ScrollView>
-              <Text style={styles.chatTemplatesLabel}>Vorlagen</Text>
-              <View style={styles.chatTemplatesWrap}>
-                {["Ich bin gleich da", "Bitte kurz warten", "Wo sind Sie gerade?"].map((q) => (
-                  <Pressable
-                    key={q}
-                    style={styles.chatTemplateChip}
-                    onPress={() => {
-                      setChatInput(q);
-                      Haptics.selectionAsync();
-                    }}
-                  >
-                    <Text style={styles.chatTemplateChipText}>{q}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-            <View style={styles.chatComposerRow}>
-              <TextInput
-                style={styles.chatComposerInput}
-                placeholder={rideChatCanSend ? "Nachricht tippen …" : "Chat beendet"}
-                placeholderTextColor="#9CA3AF"
-                value={chatInput}
-                onChangeText={setChatInput}
-                multiline
-                editable={rideChatCanSend}
-              />
-              <Pressable
-                style={[styles.chatComposerSendBtn, (!chatInput.trim() || !rideChatCanSend) && styles.chatComposerSendBtnDisabled]}
-                onPress={sendCustomerChatMessage}
-                disabled={!chatInput.trim() || !rideChatCanSend}
-                accessibilityLabel="Nachricht senden"
-              >
-                <Feather name="send" size={20} color="#fff" style={styles.chatComposerSendIcon} />
-              </Pressable>
-            </View>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
+      <RideChatModal
+        visible={chatOpen}
+        onClose={() => setChatOpen(false)}
+        viewerRole="customer"
+        messages={chatMsgs}
+        canSend={Boolean(rideChatCanSend)}
+        input={chatInput}
+        onInputChange={setChatInput}
+        onSend={sendCustomerChatMessage}
+        quickReplies={["Ich bin gleich da", "Bitte kurz warten", "Wo sind Sie gerade?"]}
+        onQuickReply={(q) => {
+          setChatInput(q);
+          Haptics.selectionAsync();
+        }}
+        onMessageLongPress={(m) => {
+          if (m.from === "driver" || m.from === "customer") {
+            setChatReplyTo({ from: m.from, text: m.text });
+            Haptics.selectionAsync();
+          }
+        }}
+        replyBanner={
+          chatReplyTo ? (
+            <RideChatReplyBanner
+              replyTo={chatReplyTo}
+              viewerRole="customer"
+              onClear={() => setChatReplyTo(null)}
+            />
+          ) : null
+        }
+        emptyHint="Noch keine Nachrichten. Vorlage unten antippen oder selbst tippen."
+      />
     </View>
   );
 }
