@@ -147,6 +147,10 @@ import {
   extractBearerAuthorization,
 } from "../lib/rideRouteAuth";
 import {
+  fleetDriverCompanyIdForRideCapability,
+  getAdminCompanyKind,
+} from "../lib/fleetRideDispatchPool";
+import {
   isReservationCustomerDriverStornoLocked,
   msUntilScheduledPickup,
 } from "../lib/rideReservationStornoDeadline";
@@ -2185,8 +2189,10 @@ export async function patchRideStatusRoute(
         : "Storno durch Kunden-App (kein Grund übermittelt)";
     const bodyDriverIdTrim = typeof driverId === "string" ? driverId.trim() : "";
     const actor = await resolveRideMutateActor(req);
+    const rideOriginKind = await getAdminCompanyKind(cur.companyId);
     const gate = authorizePatchRideStatusForActor(nextStatus, cur, actor, {
       bodyDriverId: bodyDriverIdTrim.length > 0 ? bodyDriverIdTrim : null,
+      rideOriginCompanyKind: rideOriginKind,
     });
     if (!gate.ok) {
       if (gate.status === 401 && nextStatus === "cancelled_by_customer") {
@@ -2318,23 +2324,23 @@ export async function patchRideStatusRoute(
     }
 
     let companyIdOnAccept: string | undefined;
+    let fleetDriverCapabilityCompanyId: string | undefined;
     if (nextStatus === "accepted" && bodyDriverIdTrim) {
       const driverAuth = await findFleetDriverAuthRow(driverId);
-      const capabilityCompanyId = cur.companyId ?? driverAuth?.company_id ?? null;
-      if (!capabilityCompanyId) {
+      const driverCompanyId = (driverAuth?.company_id ?? "").trim();
+      if (!driverCompanyId) {
         res.status(409).json({
           error: "ride_not_assignable",
           message: "Fahrt/Fahrer konnten keinem Unternehmen zugeordnet werden.",
         });
         return;
       }
-      if (cur.companyId && driverAuth?.company_id && cur.companyId !== driverAuth.company_id) {
-        res.status(409).json({
-          error: "ride_company_mismatch",
-          message: "Diese Fahrt gehört zu einem anderen Unternehmen.",
-        });
-        return;
-      }
+      fleetDriverCapabilityCompanyId = fleetDriverCompanyIdForRideCapability({
+        rideCompanyId: cur.companyId,
+        rideOriginCompanyKind: rideOriginKind,
+        driverCompanyId,
+      });
+      const capabilityCompanyId = fleetDriverCapabilityCompanyId;
       const readinessR = await getFleetDriverReadinessById(bodyDriverIdTrim, capabilityCompanyId);
       if (!("error" in readinessR) && !readinessR.ready) {
         res.status(409).json({
@@ -2379,7 +2385,7 @@ export async function patchRideStatusRoute(
           return;
         }
       }
-      companyIdOnAccept = capabilityCompanyId;
+      companyIdOnAccept = (cur.companyId ?? "").trim() || driverCompanyId;
     }
 
     let finalFareForPatch: number | undefined = parsedFinalFare;
@@ -2546,7 +2552,7 @@ export async function patchRideStatusRoute(
       const claimed = await tryFleetAcceptRideAtomic({
         rideId: id,
         driverId: bodyDriverIdTrim,
-        companyId: companyIdOnAccept ?? null,
+        fleetDriverCompanyId: fleetDriverCapabilityCompanyId ?? "",
       });
       if (!claimed.ok) {
         if (claimed.reason === "ride_already_claimed") {

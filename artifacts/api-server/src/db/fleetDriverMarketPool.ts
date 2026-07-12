@@ -12,6 +12,10 @@ import {
   normalizeDispatchPriority,
 } from "../lib/dispatchPriorityTier";
 import { getDispatchRadiusKmFromConfig, isWithinDispatchRadiusKm } from "../lib/dispatchRadius";
+import {
+  filterRidesVisibleToFleetDriver,
+  lookupAdminCompanyKinds,
+} from "../lib/fleetRideDispatchPool";
 
 const TERMINAL_MARKET_STATUSES = new Set([
   "completed",
@@ -89,6 +93,9 @@ export async function listMarketRidesForFleetDriver(
   const medicalTransportAuthorized = medicalTransportAuth?.authorized ?? false;
   const companyKkModuleEnabled = await getCompanyFeatureKkModule(companyId);
   const all = await listRides();
+  const rideOriginKinds = await lookupAdminCompanyKinds(
+    all.map((r) => (r.companyId ?? "").trim()).filter(Boolean),
+  );
 
   const marketRowsRaw = all.filter((ride) => {
     if (TERMINAL_MARKET_STATUSES.has(ride.status)) return false;
@@ -96,7 +103,11 @@ export async function listMarketRidesForFleetDriver(
     const isAssignedToDriver = ride.driverId === fleetDriverId;
     const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;
     if (isAssignedToOtherDriver) return false;
-    if (ride.companyId && ride.companyId !== companyId) return false;
+    if (
+      !filterRidesVisibleToFleetDriver([ride], companyId, rideOriginKinds).length
+    ) {
+      return false;
+    }
     if (isAssignedToDriver) {
       return (
         ride.status === "ready_for_dispatch" ||

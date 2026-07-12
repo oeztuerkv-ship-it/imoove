@@ -6,6 +6,7 @@ import { isSessionJwtConfigured, verifySessionJwt, type SessionClaims } from "./
 import type { RideRequest } from "../domain/rideRequest";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
 import { isPanelJwtConfigured, verifyPanelJwt, type PanelJwtClaims } from "./panelJwt";
+import { fleetDriverCanSeeDispatchRide } from "./fleetRideDispatchPool";
 
 export function extractBearerAuthorization(req: Request): string | null {
   const raw = req.get("authorization")?.trim();
@@ -115,7 +116,7 @@ export function authorizePatchRideStatusForActor(
   nextStatus: RideRequest["status"],
   cur: RideRequest,
   actor: RideMutateActor,
-  opts: { bodyDriverId: string | null },
+  opts: { bodyDriverId: string | null; rideOriginCompanyKind?: string },
 ): PatchStatusAuthDecision {
   if (!actor) return { ok: false, status: 401, code: "unauthorized" };
 
@@ -138,7 +139,14 @@ export function authorizePatchRideStatusForActor(
 
   const a = actor;
 
-  if (cur.companyId && cur.companyId !== a.companyId) {
+  const originKind = (opts.rideOriginCompanyKind ?? "general").trim().toLowerCase() || "general";
+  if (
+    !fleetDriverCanSeeDispatchRide({
+      rideCompanyId: cur.companyId,
+      rideOriginCompanyKind: originKind,
+      driverCompanyId: a.companyId,
+    })
+  ) {
     return { ok: false, status: 403, code: "ride_company_mismatch" };
   }
 

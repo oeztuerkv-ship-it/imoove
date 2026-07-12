@@ -1547,15 +1547,16 @@ function buildRideCorrectionPlan(
 export async function tryFleetAcceptRideAtomic(input: {
   rideId: string;
   driverId: string;
-  companyId?: string | null;
+  /** Unternehmen des Fahrers für Capability-Check (bei Partner-Fahrten ≠ rides.company_id). */
+  fleetDriverCompanyId: string;
 }): Promise<
   | { ok: true; previous: RideRequest; ride: RideRequest }
   | { ok: false; reason: "not_found" | "ride_already_claimed" | "no_matching_vehicle" }
 > {
   const rideId = String(input.rideId ?? "").trim();
   const driverId = String(input.driverId ?? "").trim();
-  const companyIdIn = typeof input.companyId === "string" ? input.companyId.trim() : "";
-  if (!rideId || !driverId) return { ok: false, reason: "not_found" };
+  const fleetDriverCompanyId = String(input.fleetDriverCompanyId ?? "").trim();
+  if (!rideId || !driverId || !fleetDriverCompanyId) return { ok: false, reason: "not_found" };
 
   const db = getDb();
   if (!db) {
@@ -1568,11 +1569,8 @@ export async function tryFleetAcceptRideAtomic(input: {
     }
     const assigned = (cur.driverId ?? "").trim();
     if (assigned && assigned !== driverId) return { ok: false, reason: "ride_already_claimed" };
-    const mergedCompany =
-      companyIdIn || (typeof cur.companyId === "string" ? cur.companyId.trim() : "") || "";
-    if (!mergedCompany) return { ok: false, reason: "not_found" };
     const { assertFleetDriverMatchesRide } = await import("./fleetMatchingData.js");
-    const capMem = await assertFleetDriverMatchesRide(cur, driverId, mergedCompany);
+    const capMem = await assertFleetDriverMatchesRide(cur, driverId, fleetDriverCompanyId);
     if (!capMem.ok) return { ok: false, reason: "no_matching_vehicle" };
     const nextStatus: RideRequest["status"] =
       cur.status === "scheduled" ? "scheduled_assigned" : "accepted";
@@ -1580,35 +1578,29 @@ export async function tryFleetAcceptRideAtomic(input: {
       ...cur,
       status: nextStatus,
       driverId,
-      companyId: mergedCompany || null,
+      companyId: (cur.companyId ?? "").trim() || fleetDriverCompanyId || null,
     };
     memoryRides[idx] = next;
     return { ok: true, previous: cur, ride: next };
   }
 
-  const mergeCompanyExpr =
-    companyIdIn !== ""
-      ? sql<string>`COALESCE(${ridesTable.company_id}, ${companyIdIn})`
-      : undefined;
-
   const prevSnapshot = await findRide(rideId);
   if (!prevSnapshot) return { ok: false, reason: "not_found" };
 
-  const capabilityCompanyId =
-    companyIdIn || (typeof prevSnapshot.companyId === "string" ? prevSnapshot.companyId.trim() : "");
-  if (!capabilityCompanyId) return { ok: false, reason: "not_found" };
-
   const { assertFleetDriverMatchesRide } = await import("./fleetMatchingData.js");
-  const cap = await assertFleetDriverMatchesRide(prevSnapshot, driverId, capabilityCompanyId);
+  const cap = await assertFleetDriverMatchesRide(prevSnapshot, driverId, fleetDriverCompanyId);
   if (!cap.ok) return { ok: false, reason: "no_matching_vehicle" };
 
+  const existingRideCompanyId = (prevSnapshot.companyId ?? "").trim();
   const nextStatusExpr = sql<string>`case when ${ridesTable.status} = 'scheduled' then 'scheduled_assigned' else 'accepted' end`;
   const rows = await db
     .update(ridesTable)
     .set({
       status: nextStatusExpr,
       driver_id: driverId,
-      ...(mergeCompanyExpr ? { company_id: mergeCompanyExpr } : {}),
+      ...(existingRideCompanyId
+        ? {}
+        : { company_id: fleetDriverCompanyId }),
     })
     .where(
       and(

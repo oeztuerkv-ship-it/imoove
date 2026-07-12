@@ -77,6 +77,5 @@ export function wsJoinPrincipalMatchesRide(
   }
   const assigned = (ride.driverId ?? "").trim();
   if (!assigned || assigned !== p.fleetDriverId) return false;
-  if (ride.companyId && ride.companyId !== p.companyId) return false;
   return true;
 }

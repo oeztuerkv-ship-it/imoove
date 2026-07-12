@@ -5,11 +5,15 @@ import { getFleetDriverReadinessById } from "./fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "./fleetMatchingData";
 import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
-import { fleetDriversTable } from "./schema";
+import { adminCompaniesTable, fleetDriversTable } from "./schema";
 import { ensureRideDispatchTierCurrent } from "./rideDispatchTierData";
 import { driverMatchesDispatchTier, normalizeDispatchPriority } from "../lib/dispatchPriorityTier";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { getDispatchRadiusKmFromConfig, isWithinDispatchRadiusKm } from "../lib/dispatchRadius";
+import {
+  getAdminCompanyKind,
+  rideOriginUsesTaxiOnlyDispatch,
+} from "../lib/fleetRideDispatchPool";
 
 export type MarketOnlineDriverRef = { fleetDriverId: string; companyId: string };
 
@@ -42,6 +46,8 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
 
   const rideCompanyId = (ride.companyId ?? "").trim();
   const rejected = new Set((ride.rejectedBy ?? []).map((id) => String(id).trim()).filter(Boolean));
+  const rideOriginKind = await getAdminCompanyKind(rideCompanyId);
+  const taxiOnlyDispatch = rideOriginUsesTaxiOnlyDispatch(rideOriginKind);
 
   const conditions = [
     eq(fleetDriversTable.is_market_online, true),
@@ -49,8 +55,9 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     eq(fleetDriversTable.access_status, "active"),
     eq(fleetDriversTable.approval_status, "approved"),
     eq(fleetDriversTable.dispatch_priority, rideTier),
+    eq(adminCompaniesTable.company_kind, "taxi"),
   ];
-  if (rideCompanyId) {
+  if (taxiOnlyDispatch && rideCompanyId) {
     conditions.push(eq(fleetDriversTable.company_id, rideCompanyId));
   }
 
@@ -62,6 +69,7 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
       lastMarketLon: fleetDriversTable.last_market_lon,
     })
     .from(fleetDriversTable)
+    .innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id))
     .where(and(...conditions));
 
   const out: MarketOnlineDriverRef[] = [];
@@ -117,14 +125,17 @@ export async function listDriversEligibleForScheduledPoolOffer(
 
   const rideCompanyId = (ride.companyId ?? "").trim();
   const rejected = new Set((ride.rejectedBy ?? []).map((id) => String(id).trim()).filter(Boolean));
+  const rideOriginKind = await getAdminCompanyKind(rideCompanyId);
+  const taxiOnlyDispatch = rideOriginUsesTaxiOnlyDispatch(rideOriginKind);
 
   const conditions = [
     eq(fleetDriversTable.is_active, true),
     eq(fleetDriversTable.access_status, "active"),
     eq(fleetDriversTable.approval_status, "approved"),
     eq(fleetDriversTable.dispatch_priority, rideTier),
+    eq(adminCompaniesTable.company_kind, "taxi"),
   ];
-  if (rideCompanyId) {
+  if (taxiOnlyDispatch && rideCompanyId) {
     conditions.push(eq(fleetDriversTable.company_id, rideCompanyId));
   }
 
@@ -135,6 +146,7 @@ export async function listDriversEligibleForScheduledPoolOffer(
       dispatchPriority: fleetDriversTable.dispatch_priority,
     })
     .from(fleetDriversTable)
+    .innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id))
     .where(and(...conditions));
 
   const out: MarketOnlineDriverRef[] = [];

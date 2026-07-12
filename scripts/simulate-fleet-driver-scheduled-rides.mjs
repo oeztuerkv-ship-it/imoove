@@ -84,6 +84,20 @@ function normalizeDispatchPriority(raw) {
   return "C";
 }
 
+function rideOriginUsesTaxiOnlyDispatch(companyKind) {
+  return String(companyKind ?? "").trim().toLowerCase() === "taxi";
+}
+
+function fleetDriverCanSeeDispatchRide({ rideCompanyId, rideOriginCompanyKind, driverCompanyId }) {
+  const rideCo = (rideCompanyId ?? "").trim();
+  const driverCo = driverCompanyId.trim();
+  if (!rideCo) return true;
+  if (rideOriginUsesTaxiOnlyDispatch(rideOriginCompanyKind)) {
+    return rideCo === driverCo;
+  }
+  return true;
+}
+
 function driverMatchesDispatchTier(driverPriority, rideTier) {
   return driverPriority === rideTier;
 }
@@ -139,7 +153,7 @@ const capability = capabilityRow
   : null;
 
 let targetRide = null;
-if (rideId) {
+  if (rideId) {
   const rideRes = await client.query(
     `SELECT id, status, scheduled_at, company_id, driver_id, dispatch_tier, dispatch_tier_started_at,
             pricing_mode, ride_kind, rejected_by, vehicle, payer_kind
@@ -147,6 +161,15 @@ if (rideId) {
     [rideId],
   );
   targetRide = rideRes.rows[0] ?? null;
+}
+
+let rideOriginKind = "general";
+if (targetRide?.company_id) {
+  const kindRes = await client.query(
+    `SELECT company_kind FROM admin_companies WHERE id = $1 LIMIT 1`,
+    [targetRide.company_id],
+  );
+  rideOriginKind = String(kindRes.rows[0]?.company_kind ?? "general").trim().toLowerCase() || "general";
 }
 
 await client.end();
@@ -182,6 +205,7 @@ if (targetRide) {
         scheduledAt: targetRide.scheduled_at,
         minutesUntilPickup: mins,
         companyId: targetRide.company_id,
+        rideOriginCompanyKind: rideOriginKind,
         driverId: targetRide.driver_id,
         dispatchTier: targetRide.dispatch_tier,
         rideKind: targetRide.ride_kind,
@@ -208,7 +232,7 @@ console.log(
 
 const driverPriority = normalizeDispatchPriority(driver.dispatch_priority);
 
-function simulateRideFilter(ride, fleetDriverId, companyId) {
+function simulateRideFilter(ride, fleetDriverId, companyId, originCompanyKind) {
   const steps = [];
   const fail = (step, detail) => {
     steps.push({ step, pass: false, detail });
@@ -230,10 +254,26 @@ function simulateRideFilter(ride, fleetDriverId, companyId) {
   }
   pass("scheduled_future", ride.scheduled_at);
 
-  if (ride.company_id && ride.company_id !== companyId) {
-    return fail("company_id", `ride.company_id=${ride.company_id} ≠ driver ${companyId}`);
+  if (
+    !fleetDriverCanSeeDispatchRide({
+      rideCompanyId: ride.company_id,
+      rideOriginCompanyKind: originCompanyKind,
+      driverCompanyId: companyId,
+    })
+  ) {
+    return fail(
+      "company_id",
+      rideOriginUsesTaxiOnlyDispatch(originCompanyKind)
+        ? `ride.company_id=${ride.company_id} ≠ driver ${companyId} (Taxi-Mandant)`
+        : `company_id-Filter (unerwartet; Partner sollte Taxi-Pool nutzen)`,
+    );
   }
-  pass("company_id", ride.company_id ?? "(leer, ok)");
+  pass(
+    "company_id",
+    rideOriginUsesTaxiOnlyDispatch(originCompanyKind)
+      ? `${ride.company_id} = ${companyId}`
+      : `Partner ${originCompanyKind} → Taxi-Dispatch-Pool (kein exakter Match)`,
+  );
 
   const assignedDriverId = typeof ride.driver_id === "string" ? ride.driver_id.trim() : "";
   const isAssignedToThisDriver = assignedDriverId === fleetDriverId;
@@ -288,7 +328,7 @@ function simulateRideFilter(ride, fleetDriverId, companyId) {
 
 if (targetRide) {
   console.log("\n=== Filter-Simulation (wie fleetDriverApi scheduled-rides) ===");
-  const sim = simulateRideFilter(targetRide, driver.id, driver.company_id);
+  const sim = simulateRideFilter(targetRide, driver.id, driver.company_id, rideOriginKind);
   for (const s of sim.steps) {
     const mark = s.pass === true ? "✓" : s.pass === false ? "✗" : "?";
     console.log(`  ${mark} ${s.step}: ${s.detail}`);

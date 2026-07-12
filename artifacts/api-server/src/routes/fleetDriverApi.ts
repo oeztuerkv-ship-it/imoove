@@ -65,6 +65,11 @@ import { previewDriverSettlementFromGross } from "../lib/financeCalculationServi
 import { runMedicalTransportDocumentScan, runMedicalTransportDocumentScanTest } from "../lib/medical/medicalScanService";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { getCompanyFeatureKkModule, resolveKkModuleAccessForFleetDriver } from "../lib/kkModuleAccess.js";
+import {
+  fleetDriverCanSeeDispatchRide,
+  lookupAdminCompanyKinds,
+  resolveRideOriginCompanyKind,
+} from "../lib/fleetRideDispatchPool.js";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 import { logger } from "../lib/logger";
 
@@ -517,6 +522,9 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
     const companyKkModuleEnabled = await getCompanyFeatureKkModule(a.companyId);
     const driverPriority = await getFleetDriverDispatchPriority(a.fleetDriverId, a.companyId);
     const all = await listRides();
+    const rideOriginKinds = await lookupAdminCompanyKinds(
+      all.map((r) => (r.companyId ?? "").trim()).filter(Boolean),
+    );
     const pool = all.filter((ride) => {
       const isFutureReservationStatus =
         ride.status === "scheduled" || ride.status === "scheduled_assigned";
@@ -527,7 +535,16 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
         if (Number.isFinite(scheduledMs) && scheduledMs < Date.now()) return false;
       }
 
-      if (ride.companyId && ride.companyId !== a.companyId) return false;
+      const originKind = resolveRideOriginCompanyKind(ride.companyId, rideOriginKinds);
+      if (
+        !fleetDriverCanSeeDispatchRide({
+          rideCompanyId: ride.companyId,
+          rideOriginCompanyKind: originKind,
+          driverCompanyId: a.companyId,
+        })
+      ) {
+        return false;
+      }
 
       const assignedDriverId = typeof ride.driverId === "string" ? ride.driverId.trim() : "";
       const isAssignedToThisDriver = assignedDriverId === a.fleetDriverId;
