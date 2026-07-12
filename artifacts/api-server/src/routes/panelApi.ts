@@ -113,6 +113,7 @@ import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBo
 import { isPartnerRideHiddenInMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
 import { toPartnerRideView } from "../domain/ridePublic";
+import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
 import type { PanelModuleId } from "../domain/panelModules";
 import { accessCodeTripOutcomeFromRide, computeAccessCodeDefinitionState } from "../domain/accessCodeTrace";
 import { resolveEffectivePanelModules } from "../domain/panelModules";
@@ -1650,6 +1651,10 @@ router.patch("/panel/v1/rides/:rideId/driver-note", requirePanelAuth, async (req
       res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
       return;
     }
+    if (ride.chatEnabled) {
+      res.status(409).json({ error: "chat_active_use_chat" });
+      return;
+    }
 
     const note = parsePartnerDriverNote(req.body as Record<string, unknown>);
     const prevMeta =
@@ -1683,6 +1688,68 @@ router.patch("/panel/v1/rides/:rideId/driver-note", requirePanelAuth, async (req
 
     const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
     res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/rides/:rideId/chat/messages", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+
+    const after = typeof req.query.after === "string" ? req.query.after : undefined;
+    await sendRideChatMessagesJson(res, ride, after);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/rides/:rideId/chat/messages", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "ride_not_found" });
+      return;
+    }
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    if (!rideCompanyId || rideCompanyId !== ctx.claims.companyId.trim()) {
+      res.status(403).json({ error: "forbidden", hint: "Ride belongs to another company." });
+      return;
+    }
+
+    await sendRideChatMessageCreated(res, ride, req.body, {
+      kind: "partner",
+      actorId: ctx.claims.panelUserId,
+    });
   } catch (e) {
     next(e);
   }

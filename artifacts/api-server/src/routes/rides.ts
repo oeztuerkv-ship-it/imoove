@@ -2094,6 +2094,10 @@ router.patch("/rides/:id/driver-note", requireCustomerSession, async (req, res, 
       res.status(409).json({ error: "driver_note_not_editable_for_status" });
       return;
     }
+    if (cur.chatEnabled) {
+      res.status(409).json({ error: "chat_active_use_chat" });
+      return;
+    }
 
     const rawNote = typeof req.body?.driverNote === "string" ? req.body.driverNote : "";
     const driverNote = rawNote.trim().slice(0, 500);

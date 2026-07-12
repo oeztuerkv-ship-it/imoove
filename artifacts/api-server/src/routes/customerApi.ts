@@ -31,6 +31,7 @@ import { submitPassengerRideTip } from "../lib/rideTipPayment";
 import { respondCustomerPaymentRouteError } from "../lib/stripeHttpError.js";
 import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine.js";
+import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
 
 const router = Router();
 
@@ -194,6 +195,10 @@ router.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (ride.chatEnabled) {
+      res.status(409).json({ error: "chat_active_use_chat" });
+      return;
+    }
     const nextPartnerMeta =
       ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object"
         ? ({ ...ride.partnerBookingMeta } as Record<string, unknown>)
@@ -211,6 +216,58 @@ router.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async
       return;
     }
     res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/customer/v1/rides/:id/chat/messages", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const after = typeof req.query.after === "string" ? req.query.after : undefined;
+    await sendRideChatMessagesJson(res, ride, after);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/customer/v1/rides/:id/chat/messages", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await sendRideChatMessageCreated(res, ride, req.body, {
+      kind: "customer",
+      actorId: passengerId,
+    });
   } catch (e) {
     next(e);
   }

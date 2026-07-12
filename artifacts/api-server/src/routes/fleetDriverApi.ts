@@ -72,6 +72,7 @@ import {
 } from "../lib/fleetRideDispatchPool.js";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 import { logger } from "../lib/logger";
+import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
 
 const router: IRouter = Router();
 
@@ -651,7 +652,68 @@ router.get("/fleet-driver/v1/rides/:rideId/live-status", requireFleetDriverAuth,
       ok: true,
       id: ride.id,
       status: ride.status,
+      chatEnabled: Boolean(ride.chatEnabled),
       cancelReason: getCustomerCancelReasonForRide(ride.id),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/fleet-driver/v1/rides/:rideId/chat/messages", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (assigned !== a.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const after = typeof req.query.after === "string" ? req.query.after : undefined;
+    await sendRideChatMessagesJson(res, ride, after);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/fleet-driver/v1/rides/:rideId/chat/messages", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (assigned !== a.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    await sendRideChatMessageCreated(res, ride, req.body, {
+      kind: "driver",
+      actorId: a.fleetDriverId,
     });
   } catch (e) {
     next(e);
