@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ne } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import { RIDE_TERMINAL_STATUSES } from "../lib/rideStatusMachine";
 import { getDb } from "./client";
@@ -298,4 +298,67 @@ export async function repairRideChatForAssignedRide(rideId: string): Promise<{
   });
   if (updated.chatEnabled) return { ok: true, chatEnabled: true, reason: "enabled" };
   return { ok: false, chatEnabled: false, reason: "priority_not_a_or_failed" };
+}
+
+export type PartnerChatUnreadRow = {
+  rideId: string;
+  unreadCount: number;
+  latestMessageId: string | null;
+  latestMessageAt: string | null;
+  latestPreview: string | null;
+};
+
+/** Partner-Panel: ungelesene Chat-Nachrichten pro Fahrt (ohne eigene Partner-Sends). */
+export async function listPartnerChatUnreadSummary(
+  companyId: string,
+  readCursors: Record<string, string>,
+): Promise<PartnerChatUnreadRow[]> {
+  const co = companyId.trim();
+  if (!co) return [];
+  const db = getDb();
+  if (!db) return [];
+
+  const { listRidesForCompany } = await import("./ridesData.js");
+  const rides = (await listRidesForCompany(co)).filter(
+    (r) => r.chatEnabled && !RIDE_TERMINAL_STATUSES.has(r.status),
+  );
+  if (rides.length === 0) return [];
+
+  const out: PartnerChatUnreadRow[] = [];
+  for (const ride of rides) {
+    const cursorRaw = (readCursors[ride.id] ?? "").trim();
+    let afterDate: Date | null = null;
+    if (cursorRaw) {
+      const d = new Date(cursorRaw);
+      if (!Number.isNaN(d.getTime())) afterDate = d;
+    }
+    if (!afterDate && ride.chatEnabledAt) {
+      const d = new Date(ride.chatEnabledAt);
+      if (!Number.isNaN(d.getTime())) afterDate = d;
+    }
+
+    const unreadWhere = and(
+      eq(rideChatMessagesTable.ride_id, ride.id),
+      ne(rideChatMessagesTable.sender_kind, "partner"),
+      ...(afterDate ? [gt(rideChatMessagesTable.created_at, afterDate)] : []),
+    );
+    const unreadRows = await db.select({ id: rideChatMessagesTable.id }).from(rideChatMessagesTable).where(unreadWhere);
+
+    const latestRows = await db
+      .select()
+      .from(rideChatMessagesTable)
+      .where(eq(rideChatMessagesTable.ride_id, ride.id))
+      .orderBy(desc(rideChatMessagesTable.created_at))
+      .limit(1);
+    const latest = latestRows[0];
+
+    out.push({
+      rideId: ride.id,
+      unreadCount: unreadRows.length,
+      latestMessageId: latest?.id ?? null,
+      latestMessageAt: latest ? new Date(latest.created_at).toISOString() : null,
+      latestPreview: latest?.body?.slice(0, 80) ?? null,
+    });
+  }
+  return out;
 }

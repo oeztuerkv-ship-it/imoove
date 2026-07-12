@@ -114,6 +114,7 @@ import { isPartnerRideHiddenInMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
 import { toPartnerRideView } from "../domain/ridePublic";
 import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
+import { listPartnerChatUnreadSummary } from "../db/rideChatMessagesData";
 import type { PanelModuleId } from "../domain/panelModules";
 import { accessCodeTripOutcomeFromRide, computeAccessCodeDefinitionState } from "../domain/accessCodeTrace";
 import { resolveEffectivePanelModules } from "../domain/panelModules";
@@ -1688,6 +1689,31 @@ router.patch("/panel/v1/rides/:rideId/driver-note", requirePanelAuth, async (req
 
     const rideOut = toPartnerRideView((await enrichPanelRidesForResponse([updated]))[0]!);
     res.json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/rides/chat-unread-summary", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+
+    const body = req.body && typeof req.body === "object" ? (req.body as Record<string, unknown>) : {};
+    const rawCursors = body.readCursors;
+    const readCursors: Record<string, string> = {};
+    if (rawCursors && typeof rawCursors === "object" && !Array.isArray(rawCursors)) {
+      for (const [rideId, val] of Object.entries(rawCursors as Record<string, unknown>)) {
+        const id = String(rideId ?? "").trim();
+        const cursor = typeof val === "string" ? val.trim() : "";
+        if (id && cursor) readCursors[id] = cursor;
+      }
+    }
+
+    const rides = await listPartnerChatUnreadSummary(ctx.claims.companyId, readCursors);
+    res.json({ ok: true, rides });
   } catch (e) {
     next(e);
   }
