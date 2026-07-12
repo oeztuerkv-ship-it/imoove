@@ -2616,20 +2616,20 @@ export async function patchRideStatusRoute(
     }
     const driverAcceptedOpenRide =
       bodyDriverIdTrim &&
-      !(cur.driverId ?? "").trim() &&
       updated &&
-      (updated.status === "accepted" || updated.status === "scheduled_assigned");
+      updated.driverId === bodyDriverIdTrim &&
+      (updated.status === "accepted" || updated.status === "scheduled_assigned") &&
+      (cur.status !== updated.status || (cur.driverId ?? "").trim() !== bodyDriverIdTrim);
     if (driverAcceptedOpenRide) {
-      const resetCo = (companyIdOnAccept ?? updated.companyId ?? "").trim();
+      const resetCo = (fleetDriverCapabilityCompanyId ?? companyIdOnAccept ?? updated.companyId ?? "").trim();
       if (resetCo) {
         void resetFleetDriverDispatchRejectStreak(bodyDriverIdTrim, resetCo).catch(() => undefined);
       }
-      const chatCo = (companyIdOnAccept ?? updated?.companyId ?? fleetDriverCapabilityCompanyId ?? "").trim();
-      if (updated && chatCo) {
+      if (updated) {
         updated = await applyRideChatOnFleetDriverAccept({
           ride: updated,
           driverId: bodyDriverIdTrim,
-          fleetDriverCompanyId: chatCo,
+          fleetDriverCompanyId: fleetDriverCapabilityCompanyId,
           actor: { actorType: mutActor.actorType, actorId: mutActor.actorId },
         });
       }

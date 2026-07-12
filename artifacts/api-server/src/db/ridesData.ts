@@ -1587,7 +1587,15 @@ export async function tryFleetAcceptRideAtomic(input: {
       companyId: (cur.companyId ?? "").trim() || fleetDriverCompanyId || null,
     };
     memoryRides[idx] = next;
-    return { ok: true, previous: cur, ride: next };
+    const { applyRideChatOnFleetDriverAccept } = await import("./rideChatMessagesData.js");
+    const rideWithChat = await applyRideChatOnFleetDriverAccept({
+      ride: next,
+      driverId,
+      fleetDriverCompanyId,
+      actor: { actorType: "driver", actorId: driverId },
+    });
+    memoryRides[idx] = rideWithChat;
+    return { ok: true, previous: cur, ride: rideWithChat };
   }
 
   const prevSnapshot = await findRide(rideId);
@@ -1619,7 +1627,15 @@ export async function tryFleetAcceptRideAtomic(input: {
 
   const row = rows[0];
   if (!row) return { ok: false, reason: "ride_already_claimed" };
-  return { ok: true, previous: prevSnapshot, ride: rowToRide(row) };
+  const acceptedRide = rowToRide(row);
+  const { applyRideChatOnFleetDriverAccept } = await import("./rideChatMessagesData.js");
+  const rideWithChat = await applyRideChatOnFleetDriverAccept({
+    ride: acceptedRide,
+    driverId,
+    fleetDriverCompanyId,
+    actor: { actorType: "driver", actorId: driverId },
+  });
+  return { ok: true, previous: prevSnapshot, ride: rideWithChat };
 }
 
 /** Billing-Korrekturen + Events nach bereits persistiertem rides-Stand (wie updateRide-Ende). */

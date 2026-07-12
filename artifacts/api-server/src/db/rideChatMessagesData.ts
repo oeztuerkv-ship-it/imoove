@@ -3,7 +3,7 @@ import { and, asc, eq, gt } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import { RIDE_TERMINAL_STATUSES } from "../lib/rideStatusMachine";
 import { getDb } from "./client";
-import { getFleetDriverDispatchPriority } from "./fleetDriversData";
+import { getFleetDriverDispatchPriority, findFleetDriverAuthRow, findFleetDriverInCompany } from "./fleetDriversData";
 import { insertSupplementalRideEvent } from "./ridesData";
 import { rideChatMessagesTable, ridesTable } from "./schema";
 
@@ -169,6 +169,20 @@ export function isRideChatWriteAllowed(ride: Pick<RideRequest, "chatEnabled" | "
   return !RIDE_TERMINAL_STATUSES.has(ride.status);
 }
 
+/** Taxi-Mandant des Fahrers — bei Partner-Fahrten ≠ rides.company_id. */
+async function resolveFleetDriverCompanyForChat(
+  driverId: string,
+  hintCompanyId?: string,
+): Promise<string> {
+  const hint = (hintCompanyId ?? "").trim();
+  if (hint) {
+    const inHint = await findFleetDriverInCompany(driverId, hint);
+    if (inHint) return hint;
+  }
+  const auth = await findFleetDriverAuthRow(driverId);
+  return (auth?.company_id ?? "").trim();
+}
+
 /**
  * Nach Fahrer-Annahme: bei Dispatch-Priorität A Chat aktivieren und ggf. Notiz als erste Zeile seeden.
  * Idempotent — wiederholte Aufrufe ändern nichts.
@@ -181,9 +195,14 @@ export async function applyRideChatOnFleetDriverAccept(input: {
 }): Promise<RideRequest> {
   const ride = input.ride;
   const driverId = input.driverId.trim();
-  const fleetDriverCompanyId = input.fleetDriverCompanyId.trim();
-  if (!driverId || !fleetDriverCompanyId) return ride;
+  if (!driverId) return ride;
   if (ride.chatEnabled) return ride;
+
+  const fleetDriverCompanyId = await resolveFleetDriverCompanyForChat(
+    driverId,
+    input.fleetDriverCompanyId,
+  );
+  if (!fleetDriverCompanyId) return ride;
 
   const priority = await getFleetDriverDispatchPriority(driverId, fleetDriverCompanyId);
   if (priority !== "A") return ride;
@@ -243,4 +262,34 @@ export async function applyRideChatOnFleetDriverAccept(input: {
     chatEnabled: true,
     chatEnabledAt: enabledAt.toISOString(),
   };
+}
+
+/** Idempotent: Chat für zugewiesene A-Fahrer-Fahrt nachträglich aktivieren (Repair nach Deploy). */
+export async function repairRideChatForAssignedRide(rideId: string): Promise<{
+  ok: boolean;
+  chatEnabled: boolean;
+  reason: string;
+}> {
+  const id = rideId.trim();
+  if (!id) return { ok: false, chatEnabled: false, reason: "missing_ride_id" };
+
+  const { findRide } = await import("./ridesData.js");
+  const ride = await findRide(id);
+  if (!ride) return { ok: false, chatEnabled: false, reason: "not_found" };
+  if (ride.chatEnabled) return { ok: true, chatEnabled: true, reason: "already_enabled" };
+
+  const driverId = (ride.driverId ?? "").trim();
+  if (!driverId) return { ok: false, chatEnabled: false, reason: "no_driver" };
+  if (ride.status !== "accepted" && ride.status !== "scheduled_assigned") {
+    return { ok: false, chatEnabled: false, reason: "status_not_assigned" };
+  }
+
+  const updated = await applyRideChatOnFleetDriverAccept({
+    ride,
+    driverId,
+    fleetDriverCompanyId: "",
+    actor: { actorType: "system", actorId: null },
+  });
+  if (updated.chatEnabled) return { ok: true, chatEnabled: true, reason: "enabled" };
+  return { ok: false, chatEnabled: false, reason: "priority_not_a_or_failed" };
 }

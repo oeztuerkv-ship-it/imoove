@@ -61,6 +61,7 @@ async function buildAll() {
       path.resolve(artifactDir, "src/scripts/fixedPriceEligibilitySelftest.ts"),
       path.resolve(artifactDir, "src/scripts/reservationFixedPricePolicySelftest.ts"),
       path.resolve(artifactDir, "src/scripts/retryRidePaymentCapture.ts"),
+      path.resolve(artifactDir, "src/scripts/repairRideChatEnabled.ts"),
     ],
     platform: "node",
     bundle: true,

@@ -140,5 +140,12 @@ export async function createFleetDriverReservation(
   };
 
   await insertRide(ride);
-  return { ok: true, ride };
+  const { applyRideChatOnFleetDriverAccept } = await import("../db/rideChatMessagesData.js");
+  const rideWithChat = await applyRideChatOnFleetDriverAccept({
+    ride,
+    driverId: fleetDriverId,
+    fleetDriverCompanyId: companyId,
+    actor: { actorType: "driver", actorId: fleetDriverId },
+  });
+  return { ok: true, ride: rideWithChat };
 }
