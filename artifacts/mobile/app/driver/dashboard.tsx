@@ -29,6 +29,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { DriverRideChatModal } from "@/components/driver/DriverRideChatModal";
+import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
+import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
@@ -732,6 +734,12 @@ function ScheduledCard({
   const { t } = useTranslation();
   const isAssignedUpcoming = req.status === "scheduled_assigned";
   const [chatOpen, setChatOpen] = useState(false);
+  const chatEnabled = req.chatEnabled === true;
+  const { unread: chatUnread, clearUnread: clearChatUnread } = useFleetRideChatUnread(
+    req.id,
+    chatEnabled,
+    chatOpen,
+  );
   const isMedical = isMedicalRideRequest(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const [activationTick, setActivationTick] = useState(0);
@@ -900,22 +908,25 @@ function ScheduledCard({
         </>
       ) : (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
-          {req.chatEnabled ? (
+          {chatEnabled ? (
             <Pressable
               style={{
                 borderRadius: 14,
                 borderWidth: 1.5,
-                borderColor: "#86EFAC",
-                backgroundColor: "#F0FDF4",
+                borderColor: chatUnread ? "#FCA5A5" : "#86EFAC",
+                backgroundColor: chatUnread ? "#FEF2F2" : "#F0FDF4",
                 paddingVertical: 15,
                 paddingHorizontal: 14,
                 alignItems: "center",
                 justifyContent: "center",
               }}
-              onPress={() => setChatOpen(true)}
+              onPress={() => {
+                clearChatUnread();
+                setChatOpen(true);
+              }}
               accessibilityLabel="Chat öffnen"
             >
-              <Feather name="message-circle" size={18} color="#166534" />
+              <DriverChatBlinkIcon unread={chatUnread} size={18} color="#166534" />
             </Pressable>
           ) : null}
           <Pressable
@@ -946,7 +957,7 @@ function ScheduledCard({
         onClose={() => setChatOpen(false)}
         rideId={req.id}
         rideStatus={req.status}
-        chatEnabled={req.chatEnabled === true}
+        chatEnabled={chatEnabled}
       />
     </View>
   );

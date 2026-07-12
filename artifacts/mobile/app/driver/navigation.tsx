@@ -47,6 +47,8 @@ import {
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { RideChatModal } from "@/components/ride-chat/RideChatModal";
 import { RideChatReplyBanner } from "@/components/ride-chat/RideChatReplyBanner";
+import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
+import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
 import {
   apiMessageToRideChatMessage,
   isRideChatSendAllowed,
@@ -496,11 +498,16 @@ export default function DriverNavigationScreen() {
   const [chatInput, setChatInput] = useState("");
   const [chatMsgs, setChatMsgs] = useState<RideChatMessage[]>([]);
   const [chatReplyTo, setChatReplyTo] = useState<RideChatReplyTarget | null>(null);
-  const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
 
   const rideChatEnabled = activeRide?.chatEnabled === true || rideChatEnabledLive;
+  const {
+    unread: chatUnread,
+    clearUnread: clearChatUnread,
+    markReadFromMessages,
+    notifyIncoming: notifyChatIncoming,
+  } = useFleetRideChatUnread(params.rideId?.trim() ?? "", rideChatEnabled, chatOpen);
   const rideChatCanSend = isRideChatSendAllowed(
     (activeRide?.status ?? rideFleetStatus) as RequestStatus,
     rideChatEnabled,
@@ -531,8 +538,8 @@ export default function DriverNavigationScreen() {
     if (!isDrivingPhase) return;
     snapDriveSheet(false);
     setChatOpen(false);
-    setChatUnread(false);
-  }, [isDrivingPhase, snapDriveSheet]);
+    clearChatUnread();
+  }, [clearChatUnread, isDrivingPhase, snapDriveSheet]);
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
@@ -572,9 +579,9 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     setChatMsgs([]);
     setChatInput("");
-    setChatUnread(false);
+    clearChatUnread();
     setChatReplyTo(null);
-  }, [params.rideId]);
+  }, [clearChatUnread, params.rideId]);
 
   useEffect(() => {
     const rideId = params.rideId?.trim() ?? "";
@@ -585,7 +592,9 @@ export default function DriverNavigationScreen() {
         const headers = await fleetAuthHeadersJson();
         const items = await fetchFleetRideChatMessages(rideId, headers);
         if (!cancelled) {
-          setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
+          const mapped = rideChatMessagesFromApi(items);
+          setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, mapped));
+          markReadFromMessages(items);
         }
       } catch {
         /* ignore */
@@ -597,7 +606,9 @@ export default function DriverNavigationScreen() {
           const headers = await fleetAuthHeadersJson();
           const items = await fetchFleetRideChatMessages(rideId, headers);
           if (!cancelled) {
-            setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
+            const mapped = rideChatMessagesFromApi(items);
+            setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, mapped));
+            markReadFromMessages(items);
           }
         } catch {
           /* ignore */
@@ -608,7 +619,7 @@ export default function DriverNavigationScreen() {
       cancelled = true;
       clearInterval(poll);
     };
-  }, [chatOpen, params.rideId, rideChatEnabled]);
+  }, [chatOpen, markReadFromMessages, params.rideId, rideChatEnabled]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const sliderX = useRef(new Animated.Value(0)).current;
@@ -1184,9 +1195,9 @@ export default function DriverNavigationScreen() {
       const row = parseRideChatUpdate(msg);
       if (!row) return;
       setChatMsgs((prev) => mergeRideChatMessages(prev, row));
-      if (row.from !== "driver" && !chatOpenRef.current) setChatUnread(true);
+      if (row.from !== "driver") notifyChatIncoming();
     }
-  }, []);
+  }, [notifyChatIncoming]);
 
   useEffect(() => {
     if (!params.rideId) return;
@@ -1834,13 +1845,12 @@ export default function DriverNavigationScreen() {
             style={styles.navChatBtn}
             accessibilityLabel="Chat"
             onPress={() => {
-              setChatUnread(false);
+              clearChatUnread();
               setChatOpen(true);
             }}
           >
-            <Feather name="message-circle" size={16} color="#1B6B3A" />
+            <DriverChatBlinkIcon unread={chatUnread} size={16} color="#1B6B3A" />
             <Text style={styles.navChatBtnLabel}>Chat</Text>
-            {chatUnread ? <View style={styles.navChatBadge} /> : null}
           </Pressable>
         ) : null}
       </View>
