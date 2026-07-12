@@ -43,7 +43,7 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
     if (!open) return;
     setDraft("");
     void loadMessages();
-    const timer = setInterval(() => void loadMessages(), 8000);
+    const timer = setInterval(() => void loadMessages(), 10_000);
     return () => clearInterval(timer);
   }, [loadMessages, open]);
 

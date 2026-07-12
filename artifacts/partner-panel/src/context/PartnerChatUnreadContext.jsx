@@ -6,7 +6,7 @@ import {
   setPartnerChatReadCursor,
 } from "../lib/partnerRideChat.js";
 
-const CHAT_UNREAD_POLL_MS = 8_000;
+const CHAT_UNREAD_POLL_MS = 10_000;
 
 const PartnerChatUnreadContext = createContext(null);
 

@@ -5,7 +5,6 @@ import {
   billingSummary,
   dispatchHeadline,
   dispatchSteps,
-  needsActivePoll,
   payerKindLabel,
   rejectionCount,
   rideKindLabel,
@@ -19,7 +18,7 @@ import { usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 
 const NOTE_MAX = 200;
 const RETRY_SEARCH_MS = 60_000;
-const POLL_MS = 20_000;
+const POLL_MS = 10_000;
 
 function getDriverNote(ride) {
   const meta = getPartnerMeta(ride);
@@ -138,16 +137,12 @@ export default function PartnerRidesListPage({ variant }) {
     [clearRideUnread],
   );
 
-  const hasActiveRides = useMemo(
-    () => variant !== "history" && rides.some((r) => needsActivePoll(r)),
-    [rides, variant],
-  );
-
   useEffect(() => {
-    if (!hasActiveRides || !token) return;
+    if (!token || variant === "history") return;
+    void loadRides(true);
     const id = setInterval(() => void loadRides(true), POLL_MS);
     return () => clearInterval(id);
-  }, [hasActiveRides, token, loadRides]);
+  }, [loadRides, token, variant]);
 
   const fetchTracking = useCallback(
     async (rideId) => {
@@ -436,7 +431,7 @@ export default function PartnerRidesListPage({ variant }) {
             ungelesene Chat-Nachricht{totalChatUnread === 1 ? "" : "en"}
           </span>
         ) : null}
-        {hasActiveRides ? (
+        {variant !== "history" ? (
           <span className="partner-rides-live-hint">Live · alle {POLL_MS / 1000} s</span>
         ) : null}
       </div>
