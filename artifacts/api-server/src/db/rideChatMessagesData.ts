@@ -275,7 +275,13 @@ export async function repairRideChatForAssignedRide(rideId: string): Promise<{
 
   const { findRide } = await import("./ridesData.js");
   const ride = await findRide(id);
-  if (!ride) return { ok: false, chatEnabled: false, reason: "not_found" };
+  if (!ride) {
+    const { isPostgresConfigured } = await import("./client.js");
+    if (!isPostgresConfigured()) {
+      return { ok: false, chatEnabled: false, reason: "database_not_configured" };
+    }
+    return { ok: false, chatEnabled: false, reason: "not_found" };
+  }
   if (ride.chatEnabled) return { ok: true, chatEnabled: true, reason: "already_enabled" };
 
   const driverId = (ride.driverId ?? "").trim();
