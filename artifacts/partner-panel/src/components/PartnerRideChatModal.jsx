@@ -1,19 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchPartnerRideChatMessages,
+  formatPartnerChatTime,
+  partnerChatBubbleClass,
   partnerChatSenderLabel,
   sendPartnerRideChatMessage,
 } from "../lib/partnerRideChat.js";
 
 const QUICK_REPLIES = ["Wir sind informiert", "Fahrer ist unterwegs", "Bitte kurz warten", "Rückfrage an die Rezeption"];
 
-export default function PartnerRideChatModal({ token, ride, open, onClose, onRidePatch }) {
+export default function PartnerRideChatModal({ token, ride, open, onClose, onRidePatch, onMarkRead }) {
   const rideId = ride?.id ?? "";
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [chatEnabled, setChatEnabled] = useState(Boolean(ride?.chatEnabled));
+
+  const markLatestRead = useCallback(
+    (messages) => {
+      if (!messages?.length) return;
+      const latest = messages[messages.length - 1];
+      if (latest?.createdAt) onMarkRead?.(rideId, latest.createdAt);
+    },
+    [onMarkRead, rideId],
+  );
 
   const loadMessages = useCallback(async () => {
     if (!token || !rideId) return;
@@ -25,7 +36,8 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
     }
     setItems(result.items);
     setChatEnabled(result.chatEnabled);
-  }, [rideId, token]);
+    if (open) markLatestRead(result.items);
+  }, [markLatestRead, open, rideId, token]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,13 +63,10 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
       return;
     }
     setItems((prev) => {
-      const next = [...prev, result.message];
-      const seen = new Set();
-      return next.filter((m) => {
-        if (seen.has(m.id)) return false;
-        seen.add(m.id);
-        return true;
-      });
+      const seen = new Set(prev.map((m) => m.id));
+      const merged = seen.has(result.message.id) ? prev : [...prev, result.message];
+      markLatestRead(merged);
+      return merged;
     });
     setDraft("");
     onRidePatch?.({ ...ride, chatEnabled: true });
@@ -87,15 +96,15 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
 
         <div className="partner-ride-chat-thread" aria-live="polite">
           {items.length === 0 ? (
-            <p className="partner-muted">Noch keine Nachrichten.</p>
+            <p className="partner-ride-chat-empty">Noch keine Nachrichten.</p>
           ) : (
             items.map((m) => (
-              <div
-                key={m.id}
-                className={`partner-ride-chat-bubble partner-ride-chat-bubble--${m.senderKind === "partner" ? "out" : "in"}`}
-              >
-                <span className="partner-ride-chat-bubble__meta">{partnerChatSenderLabel(m.senderKind)}</span>
-                <p>{m.body}</p>
+              <div key={m.id} className={`partner-ride-chat-bubble ${partnerChatBubbleClass(m.senderKind)}`}>
+                {m.senderKind !== "partner" ? (
+                  <span className="partner-ride-chat-bubble__meta">{partnerChatSenderLabel(m.senderKind)}</span>
+                ) : null}
+                <p className="partner-ride-chat-bubble__text">{m.body}</p>
+                <span className="partner-ride-chat-bubble__time">{formatPartnerChatTime(m.createdAt)}</span>
               </div>
             ))
           )}
@@ -103,7 +112,7 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
 
         <div className="partner-ride-chat-quick">
           {QUICK_REPLIES.map((q) => (
-            <button key={q} type="button" className="panel-btn-secondary" onClick={() => setDraft(q)}>
+            <button key={q} type="button" className="panel-btn-secondary partner-ride-chat-quick__chip" onClick={() => setDraft(q)}>
               {q}
             </button>
           ))}

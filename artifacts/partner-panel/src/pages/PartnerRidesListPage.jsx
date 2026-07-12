@@ -15,10 +15,16 @@ import {
 } from "../lib/partnerRideOps.js";
 import { formatRideEstimatedFare, formatRideFinalFare, getPartnerMeta } from "./finance/financeHelpers.js";
 import PartnerRideChatModal from "../components/PartnerRideChatModal.jsx";
+import {
+  buildPartnerChatReadCursors,
+  fetchPartnerChatUnreadSummary,
+  setPartnerChatReadCursor,
+} from "../lib/partnerRideChat.js";
 
 const NOTE_MAX = 200;
 const RETRY_SEARCH_MS = 60_000;
 const POLL_MS = 20_000;
+const CHAT_UNREAD_POLL_MS = 8_000;
 
 function getDriverNote(ride) {
   const meta = getPartnerMeta(ride);
@@ -87,6 +93,7 @@ export default function PartnerRidesListPage({ variant }) {
   const [actionMsg, setActionMsg] = useState("");
   const [trackingByRide, setTrackingByRide] = useState({});
   const [chatRide, setChatRide] = useState(null);
+  const [chatUnreadByRide, setChatUnreadByRide] = useState({});
 
   const canCreate = Array.isArray(user?.permissions) && user.permissions.includes("rides.create");
 
@@ -128,9 +135,74 @@ export default function PartnerRidesListPage({ variant }) {
     return rides;
   }, [rides, variant]);
 
+  const chatEnabledRideIds = useMemo(
+    () => rides.filter((r) => r.chatEnabled && !TERMINAL_STATUSES.has(r.status)).map((r) => r.id),
+    [rides],
+  );
+
+  const refreshChatUnread = useCallback(async () => {
+    if (!token || !user?.id || chatEnabledRideIds.length === 0) {
+      setChatUnreadByRide({});
+      return;
+    }
+    const cursors = buildPartnerChatReadCursors(user.id, chatEnabledRideIds);
+    const result = await fetchPartnerChatUnreadSummary(token, cursors);
+    if (!result.ok) return;
+    const next = {};
+    for (const row of result.rides) {
+      if (row?.rideId && row.unreadCount > 0) next[row.rideId] = row.unreadCount;
+    }
+    setChatUnreadByRide(next);
+  }, [chatEnabledRideIds, token, user?.id]);
+
+  useEffect(() => {
+    void refreshChatUnread();
+  }, [refreshChatUnread]);
+
+  useEffect(() => {
+    if (!token || chatEnabledRideIds.length === 0) return;
+    const id = setInterval(() => void refreshChatUnread(), CHAT_UNREAD_POLL_MS);
+    return () => clearInterval(id);
+  }, [chatEnabledRideIds.length, refreshChatUnread, token]);
+
+  const markChatRead = useCallback(
+    (rideId, isoTimestamp) => {
+      if (!user?.id || !rideId || !isoTimestamp) return;
+      setPartnerChatReadCursor(user.id, rideId, isoTimestamp);
+      setChatUnreadByRide((prev) => {
+        if (!prev[rideId]) return prev;
+        const next = { ...prev };
+        delete next[rideId];
+        return next;
+      });
+      void refreshChatUnread();
+    },
+    [refreshChatUnread, user?.id],
+  );
+
+  const openChat = useCallback(
+    (ride) => {
+      setChatRide(ride);
+      if (user?.id && ride?.id) {
+        setChatUnreadByRide((prev) => {
+          if (!prev[ride.id]) return prev;
+          const next = { ...prev };
+          delete next[ride.id];
+          return next;
+        });
+      }
+    },
+    [user?.id],
+  );
+
   const hasActiveRides = useMemo(
     () => variant !== "history" && rides.some((r) => needsActivePoll(r)),
     [rides, variant],
+  );
+
+  const totalChatUnread = useMemo(
+    () => Object.values(chatUnreadByRide).reduce((sum, n) => sum + (Number(n) || 0), 0),
+    [chatUnreadByRide],
   );
 
   useEffect(() => {
@@ -418,6 +490,12 @@ export default function PartnerRidesListPage({ variant }) {
         >
           CSV exportieren
         </button>
+        {totalChatUnread > 0 ? (
+          <span className="partner-rides-live-hint partner-ride-card__chat-pill">
+            <span className="partner-ride-card__chat-dot" aria-hidden />
+            {totalChatUnread} ungelesene Chat-Nachricht{totalChatUnread === 1 ? "" : "en"}
+          </span>
+        ) : null}
         {hasActiveRides ? (
           <span className="partner-rides-live-hint">Live · alle {POLL_MS / 1000} s</span>
         ) : null}
@@ -440,6 +518,8 @@ export default function PartnerRidesListPage({ variant }) {
           const rej = rejectionCount(ride);
           const invoiceId = bill.invoiceId || ride.companyInvoice?.invoiceId || null;
           const invoiceNumber = ride.companyInvoice?.invoiceNumber || null;
+
+          const chatUnread = chatUnreadByRide[ride.id] ?? 0;
 
           return (
             <article key={ride.id} className={`partner-ride-card partner-ride-card--modern partner-ride-card--${tone}`}>
@@ -468,6 +548,12 @@ export default function PartnerRidesListPage({ variant }) {
                         {rej} Ablehnung{rej > 1 ? "en" : ""}
                       </span>
                     ) : null}
+                    {chatUnread > 0 ? (
+                      <span className="partner-ride-card__pill partner-ride-card__pill--warn partner-ride-card__chat-pill">
+                        <span className="partner-ride-card__chat-dot" aria-hidden />
+                        Chat ({chatUnread})
+                      </span>
+                    ) : null}
                   </div>
                   <strong className="partner-ride-card__route">
                     {ride.fromFull || ride.from || "—"} → {ride.toFull || ride.to || "—"}
@@ -479,6 +565,7 @@ export default function PartnerRidesListPage({ variant }) {
                   <span className="partner-ride-card__dispatch">{dispatchHeadline(ride)}</span>
                 </div>
                 <div className="partner-ride-card__head-side">
+                  {chatUnread > 0 ? <span className="partner-ride-card__chat-badge">{chatUnread}</span> : null}
                   <span className="partner-ride-card__fare">{formatRideEstimatedFare(ride)}</span>
                   <span className="partner-ride-card__chevron">{open ? "▲" : "▼"}</span>
                 </div>
@@ -588,9 +675,12 @@ export default function PartnerRidesListPage({ variant }) {
                     {ride.chatEnabled ? (
                       <button
                         type="button"
-                        className="panel-btn-primary"
-                        onClick={() => setChatRide(ride)}
+                        className="panel-btn-primary partner-ride-card__chat-pill"
+                        onClick={() => openChat(ride)}
                       >
+                        {chatUnread > 0 ? (
+                          <span className="partner-ride-card__chat-badge">{chatUnread}</span>
+                        ) : null}
                         Chat öffnen
                       </button>
                     ) : null}
@@ -647,6 +737,7 @@ export default function PartnerRidesListPage({ variant }) {
           open={Boolean(chatRide)}
           onClose={() => setChatRide(null)}
           onRidePatch={replaceRide}
+          onMarkRead={markChatRead}
         />
       ) : null}
 

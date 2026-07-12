@@ -855,47 +855,82 @@
 }
 
 .partner-ride-chat-thread {
-  max-height: 280px;
+  max-height: 320px;
   overflow: auto;
-  border: 1px solid var(--onroda-border);
-  border-radius: 12px;
-  background: var(--onroda-bg-subtle, #f8fafc);
+  border-radius: 16px;
+  background: #eceff1;
   padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+}
+
+.partner-ride-chat-empty {
+  margin: 0;
+  text-align: center;
+  color: var(--onroda-text-muted);
+  font-size: 0.88rem;
+  padding: 24px 8px;
 }
 
 .partner-ride-chat-bubble {
-  max-width: 88%;
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--onroda-border);
+  max-width: 82%;
+  padding: 8px 12px 6px;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.partner-ride-chat-bubble--in {
+.partner-ride-chat-bubble--in-peer {
   align-self: flex-start;
-  background: #fff;
+  background: #dbeafe;
+  border-color: #93c5fd;
+  border-radius: 18px 18px 18px 4px;
+  color: #1e3a8a;
 }
 
 .partner-ride-chat-bubble--out {
   align-self: flex-end;
-  background: #ecfdf5;
-  border-color: #99f6e4;
+  background: #dcfce7;
+  border-color: #86efac;
+  border-radius: 18px 18px 4px 18px;
+  color: #14532d;
+}
+
+.partner-ride-chat-bubble--system {
+  align-self: center;
+  max-width: 92%;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  border-radius: 12px;
+  color: #4b5563;
+  text-align: center;
 }
 
 .partner-ride-chat-bubble__meta {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: var(--onroda-text-muted);
-  margin-bottom: 4px;
+  color: #1d4ed8;
+  margin-bottom: 2px;
 }
 
-.partner-ride-chat-bubble p {
+.partner-ride-chat-bubble--out .partner-ride-chat-bubble__meta {
+  color: #166534;
+}
+
+.partner-ride-chat-bubble__text {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   line-height: 1.45;
+}
+
+.partner-ride-chat-bubble__time {
+  align-self: flex-end;
+  font-size: 0.68rem;
+  color: #9ca3af;
+  margin-top: 2px;
 }
 
 .partner-ride-chat-quick {
@@ -904,8 +939,43 @@
   gap: 8px;
 }
 
+.partner-ride-chat-quick__chip {
+  font-size: 0.78rem;
+  padding: 6px 10px;
+}
+
 .partner-ride-chat-input {
   width: 100%;
+  border-radius: 14px;
+}
+
+.partner-ride-card__chat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.partner-ride-card__chat-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #dc2626;
+  flex-shrink: 0;
+}
+
+.partner-ride-card__chat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* —— Modern partner booking & rides ops —— */
