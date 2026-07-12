@@ -142,7 +142,7 @@ let targetRide = null;
 if (rideId) {
   const rideRes = await client.query(
     `SELECT id, status, scheduled_at, company_id, driver_id, dispatch_tier, dispatch_tier_started_at,
-            pricing_mode, ride_kind, rejected_by, vehicle_class, payer_kind
+            pricing_mode, ride_kind, rejected_by, vehicle, payer_kind
      FROM rides WHERE id = $1`,
     [rideId],
   );
@@ -186,6 +186,7 @@ if (targetRide) {
         dispatchTier: targetRide.dispatch_tier,
         rideKind: targetRide.ride_kind,
         pricingMode: targetRide.pricing_mode,
+        vehicle: targetRide.vehicle,
         rejectedBy: targetRide.rejected_by,
       },
       null,
