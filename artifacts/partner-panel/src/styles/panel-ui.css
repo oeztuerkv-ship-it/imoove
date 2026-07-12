@@ -829,6 +829,85 @@
   margin-top: 12px;
 }
 
+.partner-ride-chat-modal__panel {
+  width: 100%;
+  max-width: 520px;
+  background: var(--onroda-bg-app);
+  border: 1px solid var(--onroda-border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partner-ride-chat-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.partner-ride-chat-modal__lead {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--onroda-text-muted);
+}
+
+.partner-ride-chat-thread {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--onroda-border);
+  border-radius: 12px;
+  background: var(--onroda-bg-subtle, #f8fafc);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.partner-ride-chat-bubble {
+  max-width: 88%;
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--onroda-border);
+}
+
+.partner-ride-chat-bubble--in {
+  align-self: flex-start;
+  background: #fff;
+}
+
+.partner-ride-chat-bubble--out {
+  align-self: flex-end;
+  background: #ecfdf5;
+  border-color: #99f6e4;
+}
+
+.partner-ride-chat-bubble__meta {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--onroda-text-muted);
+  margin-bottom: 4px;
+}
+
+.partner-ride-chat-bubble p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.partner-ride-chat-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.partner-ride-chat-input {
+  width: 100%;
+}
+
 /* —— Modern partner booking & rides ops —— */
 
 .partner-booking-page--modern .partner-booking-hero,

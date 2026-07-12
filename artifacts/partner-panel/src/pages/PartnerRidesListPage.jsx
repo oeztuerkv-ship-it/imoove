@@ -14,6 +14,7 @@ import {
   TERMINAL_STATUSES,
 } from "../lib/partnerRideOps.js";
 import { formatRideEstimatedFare, formatRideFinalFare, getPartnerMeta } from "./finance/financeHelpers.js";
+import PartnerRideChatModal from "../components/PartnerRideChatModal.jsx";
 
 const NOTE_MAX = 200;
 const RETRY_SEARCH_MS = 60_000;
@@ -85,6 +86,7 @@ export default function PartnerRidesListPage({ variant }) {
   const [actionBusy, setActionBusy] = useState("");
   const [actionMsg, setActionMsg] = useState("");
   const [trackingByRide, setTrackingByRide] = useState({});
+  const [chatRide, setChatRide] = useState(null);
 
   const canCreate = Array.isArray(user?.permissions) && user.permissions.includes("rides.create");
 
@@ -308,6 +310,10 @@ export default function PartnerRidesListPage({ variant }) {
   );
 
   const openNoteEditor = useCallback((ride) => {
+    if (ride.chatEnabled) {
+      setActionMsg("Notiz ist gesperrt — bitte den Fahrt-Chat nutzen.");
+      return;
+    }
     setNoteRideId(ride.id);
     setNoteDraft(getDriverNote(ride));
     setActionMsg("");
@@ -549,7 +555,12 @@ export default function PartnerRidesListPage({ variant }) {
                     </div>
                     <div className="partner-ride-detail-grid__full">
                       <dt>Notiz für Fahrer</dt>
-                      <dd>{note || "—"}</dd>
+                      <dd>
+                        {note || "—"}
+                        {ride.chatEnabled ? (
+                          <span className="partner-muted"> · Chat aktiv — Notiz ist schreibgeschützt.</span>
+                        ) : null}
+                      </dd>
                     </div>
                   </dl>
 
@@ -574,14 +585,23 @@ export default function PartnerRidesListPage({ variant }) {
                         Rechnung PDF
                       </button>
                     ) : null}
+                    {ride.chatEnabled ? (
+                      <button
+                        type="button"
+                        className="panel-btn-primary"
+                        onClick={() => setChatRide(ride)}
+                      >
+                        Chat öffnen
+                      </button>
+                    ) : null}
                     {canCreate ? (
                       <button
                         type="button"
                         className="panel-btn-secondary"
-                        disabled={Boolean(actionBusy)}
+                        disabled={Boolean(actionBusy) || Boolean(ride.chatEnabled)}
                         onClick={() => openNoteEditor(ride)}
                       >
-                        {note ? "Notiz bearbeiten" : "Notiz hinzufügen"}
+                        {ride.chatEnabled ? "Notiz (Chat aktiv)" : note ? "Notiz bearbeiten" : "Notiz hinzufügen"}
                       </button>
                     ) : null}
                     {canCreate && canRetrySearch(ride) ? (
@@ -619,6 +639,16 @@ export default function PartnerRidesListPage({ variant }) {
           );
         })}
       </div>
+
+      {chatRide ? (
+        <PartnerRideChatModal
+          token={token}
+          ride={chatRide}
+          open={Boolean(chatRide)}
+          onClose={() => setChatRide(null)}
+          onRidePatch={replaceRide}
+        />
+      ) : null}
 
       {noteRideId ? (
         <div className="partner-ride-note-modal" role="dialog" aria-modal="true">
