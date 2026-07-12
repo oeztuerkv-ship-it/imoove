@@ -38,6 +38,8 @@ export type ReservationLifecycleCronResult = {
 };
 
 let lastRideLocationHistoryPurgeMs = 0;
+/** Heartbeat alle 15 Ticks (≈30 Min bei 2-Min-Intervall) — Produktion: pm2 logs | rg reservationLifecycle. */
+let lifecycleCronTick = 0;
 
 export async function runReservationLifecycleCron(
   now: Date = new Date(),
@@ -211,6 +213,21 @@ export async function runReservationLifecycleCron(
   if (nowMs - lastRideLocationHistoryPurgeMs >= 24 * 60 * 60 * 1000) {
     lastRideLocationHistoryPurgeMs = nowMs;
     await purgeStaleRideLocationHistory(now);
+  }
+
+  lifecycleCronTick += 1;
+  const hasActivity =
+    result.promoted > 0 ||
+    result.noDriverCancelled > 0 ||
+    result.expiredAssigned > 0 ||
+    result.expiredScheduled > 0 ||
+    result.expiredReadyDispatch > 0 ||
+    result.reminderPushes > 0 ||
+    result.ghostRecovered > 0 ||
+    result.staleExpired > 0 ||
+    result.lateFlagged > 0;
+  if (hasActivity || lifecycleCronTick % 15 === 0) {
+    logger.info({ tick: lifecycleCronTick, ...result }, "[Cron] reservationLifecycle tick");
   }
 
   return result;
