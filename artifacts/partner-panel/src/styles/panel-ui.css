@@ -953,29 +953,32 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 6px;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 5px;
   border-radius: 999px;
-  background: #dc2626;
-  color: #fff;
+  background: #ffffff;
+  color: #dc2626;
+  border: 1.5px solid #dc2626;
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .partner-ride-card__chat-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #dc2626;
-  flex-shrink: 0;
+  display: none;
 }
 
 .partner-ride-card__chat-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.partner-ride-card__pill--chat-notify {
+  background: rgba(13, 148, 136, 0.1);
+  color: #0f766e;
 }
 
 /* —— Modern partner booking & rides ops —— */

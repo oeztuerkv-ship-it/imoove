@@ -492,8 +492,10 @@ export default function PartnerRidesListPage({ variant }) {
         </button>
         {totalChatUnread > 0 ? (
           <span className="partner-rides-live-hint partner-ride-card__chat-pill">
-            <span className="partner-ride-card__chat-dot" aria-hidden />
-            {totalChatUnread} ungelesene Chat-Nachricht{totalChatUnread === 1 ? "" : "en"}
+            <span className="partner-ride-card__chat-badge" aria-hidden>
+              {totalChatUnread}
+            </span>
+            ungelesene Chat-Nachricht{totalChatUnread === 1 ? "" : "en"}
           </span>
         ) : null}
         {hasActiveRides ? (
@@ -549,9 +551,11 @@ export default function PartnerRidesListPage({ variant }) {
                       </span>
                     ) : null}
                     {chatUnread > 0 ? (
-                      <span className="partner-ride-card__pill partner-ride-card__pill--warn partner-ride-card__chat-pill">
-                        <span className="partner-ride-card__chat-dot" aria-hidden />
-                        Chat ({chatUnread})
+                      <span className="partner-ride-card__pill partner-ride-card__pill--chat-notify partner-ride-card__chat-pill">
+                        <span className="partner-ride-card__chat-badge" aria-hidden>
+                          {chatUnread}
+                        </span>
+                        Chat
                       </span>
                     ) : null}
                   </div>
