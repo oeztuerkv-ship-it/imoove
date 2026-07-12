@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { RideChatMessage } from "@/utils/rideChat";
@@ -22,9 +22,19 @@ export function RideChatThread({
   maxHeight = 240,
   onMessageLongPress,
 }: Props) {
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, [messages.length, messages[messages.length - 1]?.id]);
+
   return (
     <View style={[styles.box, { maxHeight }]}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled

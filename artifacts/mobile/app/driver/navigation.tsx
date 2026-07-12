@@ -51,6 +51,7 @@ import {
   apiMessageToRideChatMessage,
   isRideChatSendAllowed,
   mergeRideChatMessages,
+  mergeRideChatMessagesFromApi,
   parseRideChatUpdate,
   rideChatMessageId,
   rideChatMessagesFromApi,
@@ -583,13 +584,29 @@ export default function DriverNavigationScreen() {
       try {
         const headers = await fleetAuthHeadersJson();
         const items = await fetchFleetRideChatMessages(rideId, headers);
-        if (!cancelled) setChatMsgs(rideChatMessagesFromApi(items));
+        if (!cancelled) {
+          setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
+        }
       } catch {
         /* ignore */
       }
     })();
+    const poll = setInterval(() => {
+      void (async () => {
+        try {
+          const headers = await fleetAuthHeadersJson();
+          const items = await fetchFleetRideChatMessages(rideId, headers);
+          if (!cancelled) {
+            setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, 8000);
     return () => {
       cancelled = true;
+      clearInterval(poll);
     };
   }, [chatOpen, params.rideId, rideChatEnabled]);
 

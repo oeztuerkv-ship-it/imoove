@@ -9,6 +9,8 @@ import {
   apiMessageToRideChatMessage,
   isRideChatSendAllowed,
   mergeRideChatMessages,
+  mergeRideChatMessagesFromApi,
+  rideChatMessageId,
   rideChatMessagesFromApi,
   type RideChatMessage,
 } from "@/utils/rideChat";
@@ -54,6 +56,18 @@ export function DriverRideChatModal({ visible, onClose, rideId, rideStatus, chat
     setLiveStatus(rideStatus);
   }, [chatEnabled, rideStatus, rideId]);
 
+  const loadMessages = useCallback(async () => {
+    const id = rideId.trim();
+    if (!id) return;
+    try {
+      const headers = await fleetAuthHeadersJson();
+      const items = await fetchFleetRideChatMessages(id, headers);
+      setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
+    } catch {
+      /* ignore */
+    }
+  }, [rideId]);
+
   useEffect(() => {
     if (!visible) return;
     setChatInput("");
@@ -78,23 +92,35 @@ export function DriverRideChatModal({ visible, onClose, rideId, rideStatus, chat
             setLiveStatus(payload.status as RequestStatus);
           }
         }
-        const items = await fetchFleetRideChatMessages(id, headers);
-        if (!cancelled) setChatMsgs(rideChatMessagesFromApi(items));
+        if (!cancelled) await loadMessages();
       } catch {
         /* ignore */
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
+    const poll = setInterval(() => {
+      if (!cancelled) void loadMessages();
+    }, 8000);
     return () => {
       cancelled = true;
+      clearInterval(poll);
     };
-  }, [visible, rideId]);
+  }, [loadMessages, visible, rideId]);
 
   const sendMessage = useCallback(async () => {
     const msg = chatInput.trim();
     const id = rideId.trim();
     if (!msg || !id || !canSend) return;
+    const pendingId = rideChatMessageId(`pending-${Date.now()}`, "driver", msg);
+    setChatMsgs((prev) =>
+      mergeRideChatMessages(prev, {
+        id: pendingId,
+        from: "driver",
+        text: msg,
+        pending: true,
+      }),
+    );
     setChatInput("");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
@@ -104,7 +130,7 @@ export function DriverRideChatModal({ visible, onClose, rideId, rideStatus, chat
         setChatMsgs((prev) => mergeRideChatMessages(prev, apiMessageToRideChatMessage(result.message)));
       }
     } catch {
-      /* ignore */
+      /* pending bleibt bis Reload */
     }
   }, [canSend, chatInput, rideId]);
 

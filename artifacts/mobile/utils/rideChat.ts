@@ -108,6 +108,17 @@ export function mergeRideChatMessages(prev: RideChatMessage[], incoming: RideCha
   return [...withoutPendingDup, incoming].slice(-100);
 }
 
+export function mergeRideChatMessagesFromApi(
+  prev: RideChatMessage[],
+  items: RideChatMessage[],
+): RideChatMessage[] {
+  let merged = prev;
+  for (const item of items) {
+    merged = mergeRideChatMessages(merged, item);
+  }
+  return merged.slice(-100);
+}
+
 export function rideChatSenderLabel(from: RideChatUiSender): string {
   if (from === "booking_note") return "Buchungshinweis";
   if (from === "partner") return "Partner";
