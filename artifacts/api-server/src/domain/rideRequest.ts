@@ -174,6 +174,9 @@ export interface RideRequest {
   /** Sofortfahrt: aktuelle Dispatch-Stufe (A→B→C). */
   dispatchTier?: "A" | "B" | "C" | null;
   dispatchTierStartedAt?: string | null;
+  /** Zwei-Wege-Chat aktiv (Snapshot bei Annahme durch A-Fahrer); strikt fahrtgebunden. */
+  chatEnabled?: boolean;
+  chatEnabledAt?: string | null;
   status:
     | "draft"
     | "scheduled"

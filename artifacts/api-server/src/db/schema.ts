@@ -13,6 +13,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 const pgBytea = customType<{ data: Buffer; driverData: string }>({
   dataType() {
@@ -746,7 +747,32 @@ export const ridesTable = pgTable("rides", {
   /** Sofortfahrt: aktuelle Angebots-Stufe A→B→C. */
   dispatch_tier: text("dispatch_tier").notNull().default("A"),
   dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),
+  /** Zwei-Wege-Chat (Snapshot bei Annahme durch A-Fahrer); strikt fahrtgebunden. */
+  chat_enabled: boolean("chat_enabled").notNull().default(false),
+  chat_enabled_at: timestamp("chat_enabled_at", { withTimezone: true }),
 });
+
+/** Chat-Nachrichten pro Fahrt — Historie bleibt nach Terminal-Status, Senden gesperrt. */
+export const rideChatMessagesTable = pgTable(
+  "ride_chat_messages",
+  {
+    id: text("id").primaryKey(),
+    ride_id: text("ride_id")
+      .notNull()
+      .references(() => ridesTable.id, { onDelete: "cascade" }),
+    sender_kind: text("sender_kind").notNull(),
+    sender_actor_id: text("sender_actor_id"),
+    body: text("body").notNull(),
+    client_message_id: text("client_message_id"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    rideCreatedIdx: index("ride_chat_messages_ride_created_idx").on(t.ride_id, t.created_at),
+    clientDedupeIdx: uniqueIndex("ride_chat_messages_client_dedupe_idx")
+      .on(t.ride_id, t.sender_actor_id, t.client_message_id)
+      .where(sql`${t.client_message_id} IS NOT NULL`),
+  }),
+);
 
 /** Offene fehlgeschlagene Kartenzahlung — Buchungssperre bis Begleichung. */
 export const customerPaymentSuspensionTable = pgTable("customer_payment_suspension", {

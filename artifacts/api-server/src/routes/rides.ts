@@ -41,6 +41,7 @@ import { evaluateFinalFarePlausibility } from "../lib/driverFinalFarePlausibilit
 import { resolveReceiptDriverInfo, type ReceiptDriverInfo } from "../lib/receiptDriverInfo";
 import { validateRideStatusTransition } from "../lib/rideOpsTransitionGuards";
 import { markDispatchOfferAccepted } from "../db/rideDispatchOfferData";
+import { applyRideChatOnFleetDriverAccept } from "../db/rideChatMessagesData";
 import {
   getRideDriverLocation,
   hydrateRideDriverLocationCache,
@@ -2618,6 +2619,15 @@ export async function patchRideStatusRoute(
       const resetCo = (companyIdOnAccept ?? updated.companyId ?? "").trim();
       if (resetCo) {
         void resetFleetDriverDispatchRejectStreak(bodyDriverIdTrim, resetCo).catch(() => undefined);
+      }
+      const chatCo = (companyIdOnAccept ?? updated?.companyId ?? fleetDriverCapabilityCompanyId ?? "").trim();
+      if (updated && chatCo) {
+        updated = await applyRideChatOnFleetDriverAccept({
+          ride: updated,
+          driverId: bodyDriverIdTrim,
+          fleetDriverCompanyId: chatCo,
+          actor: { actorType: mutActor.actorType, actorId: mutActor.actorId },
+        });
       }
     }
     if (cancelReasonClean) {

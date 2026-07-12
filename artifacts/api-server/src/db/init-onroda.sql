@@ -1317,5 +1317,33 @@ CREATE INDEX IF NOT EXISTS homepage_analytics_events_page_created_idx
 CREATE INDEX IF NOT EXISTS homepage_analytics_events_visitor_created_idx
   ON homepage_analytics_events (anonymous_visitor_id, created_at DESC);
 
+-- Fahrt-Chat (Migration 128): strikt fahrtgebunden, kein dauerhafter Messaging-Kanal.
+ALTER TABLE rides
+  ADD COLUMN IF NOT EXISTS chat_enabled BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE rides
+  ADD COLUMN IF NOT EXISTS chat_enabled_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS ride_chat_messages (
+  id TEXT PRIMARY KEY,
+  ride_id TEXT NOT NULL REFERENCES rides (id) ON DELETE CASCADE,
+  sender_kind TEXT NOT NULL,
+  sender_actor_id TEXT,
+  body TEXT NOT NULL,
+  client_message_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT ride_chat_messages_sender_kind_chk
+    CHECK (sender_kind IN ('booking_note', 'customer', 'partner', 'driver')),
+  CONSTRAINT ride_chat_messages_body_len_chk
+    CHECK (char_length(body) BETWEEN 1 AND 1000)
+);
+
+CREATE INDEX IF NOT EXISTS ride_chat_messages_ride_created_idx
+  ON ride_chat_messages (ride_id, created_at ASC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ride_chat_messages_client_dedupe_idx
+  ON ride_chat_messages (ride_id, sender_actor_id, client_message_id)
+  WHERE client_message_id IS NOT NULL;
+
 -- Ersten Benutzer: company_id = bestehende admin_companies.id; password_hash = Ausgabe von
 -- hashPassword() (artifacts/api-server/src/lib/password.ts), Präfix v1.*.
