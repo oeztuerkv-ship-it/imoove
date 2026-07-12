@@ -64,6 +64,24 @@ export function setPartnerChatReadCursor(panelUserId, rideId, isoTimestamp) {
   }
 }
 
+export function getAllPartnerChatReadCursors(panelUserId) {
+  const cursors = {};
+  if (!panelUserId) return cursors;
+  try {
+    const prefix = `${READ_STORAGE_PREFIX}${panelUserId}_`;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(prefix)) continue;
+      const rideId = key.slice(prefix.length);
+      const val = localStorage.getItem(key);
+      if (rideId && val) cursors[rideId] = val;
+    }
+  } catch {
+    /* ignore */
+  }
+  return cursors;
+}
+
 export function buildPartnerChatReadCursors(panelUserId, rideIds) {
   const cursors = {};
   for (const rideId of rideIds) {

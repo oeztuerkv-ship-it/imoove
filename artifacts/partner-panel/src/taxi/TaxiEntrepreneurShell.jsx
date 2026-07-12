@@ -19,6 +19,7 @@ import { hasPanelModule } from "../lib/panelNavigation.js";
 import GlobalCreateMenu from "./GlobalCreateMenu.jsx";
 import TaxiUserMenu from "./TaxiUserMenu.jsx";
 import { pushPartnerPanelModuleHistory } from "../lib/panelHistoryGuard.js";
+import { PartnerChatUnreadProvider } from "../context/PartnerChatUnreadContext.jsx";
 
 function hasPerm(user, key) {
   return Array.isArray(user?.permissions) && user.permissions.includes(key);
@@ -201,6 +202,7 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
   }, []);
 
   return (
+    <PartnerChatUnreadProvider>
     <div className="partner-shell partner-shell--fleet">
       <header className="partner-shell__header partner-shell__header--fleet">
         <div className="partner-shell__header-inner partner-shell__header-inner--fleet">
@@ -303,5 +305,6 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
         )}
       </div>
     </div>
+    </PartnerChatUnreadProvider>
   );
 }

@@ -966,6 +966,17 @@
   flex-shrink: 0;
 }
 
+.partner-ride-card__chat-btn {
+  position: relative;
+}
+
+.partner-ride-card__chat-badge--overlay {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+}
+
 .partner-ride-card__chat-dot {
   display: none;
 }
@@ -976,9 +987,14 @@
   gap: 6px;
 }
 
-.partner-ride-card__pill--chat-notify {
-  background: rgba(13, 148, 136, 0.1);
-  color: #0f766e;
+.partner-nav-chat-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  font-size: 0.62rem;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
 }
 
 /* —— Modern partner booking & rides ops —— */

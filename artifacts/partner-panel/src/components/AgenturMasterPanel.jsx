@@ -12,6 +12,7 @@ import {
   fetchPanelInvoice,
   fetchPanelInvoices,
 } from "../lib/panelInvoicesApi.js";
+import { PartnerChatUnreadProvider, usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 
 const PANEL = `${API_BASE}/panel/v1`;
 const RED = "#EF1D26";
@@ -1154,7 +1155,16 @@ function EinstellungenView({ company, user }) {
 
 
 export default function AgenturMasterPanel({ company, onLogout }) {
+  return (
+    <PartnerChatUnreadProvider>
+      <AgenturMasterPanelInner company={company} onLogout={onLogout} />
+    </PartnerChatUnreadProvider>
+  );
+}
+
+function AgenturMasterPanelInner({ company, onLogout }) {
   const { token, user } = usePanelAuth();
+  const { totalChatUnread } = usePartnerChatUnread();
   const [active, setActive] = useState("dashboard");
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
@@ -1241,6 +1251,14 @@ export default function AgenturMasterPanel({ company, onLogout }) {
                   aria-label={`${unreadMessageCount} ungelesene Nachrichten`}
                 >
                   {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                </span>
+              ) : null}
+              {n.key === "fahrten" && totalChatUnread > 0 ? (
+                <span
+                  className="partner-ride-card__chat-badge partner-nav-chat-badge"
+                  aria-label={`${totalChatUnread} ungelesene Chat-Nachrichten`}
+                >
+                  {totalChatUnread > 99 ? "99+" : totalChatUnread}
                 </span>
               ) : null}
             </button>
