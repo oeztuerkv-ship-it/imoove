@@ -4,6 +4,9 @@ import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
 import { paymentMethodForPayerMode } from "../lib/partnerRideOps.js";
 import PartnerAddressFavoritesBar from "../components/PartnerAddressFavoritesBar.jsx";
+import PartnerBookingChoiceCard from "../components/PartnerBookingChoiceCard.jsx";
+import PartnerBookingStepper from "../components/PartnerBookingStepper.jsx";
+import PartnerBookingSummaryAside from "../components/PartnerBookingSummaryAside.jsx";
 import {
   addPartnerAddressFavorite,
   loadPartnerAddressFavorites,
@@ -25,6 +28,28 @@ import {
 import { validatePartnerAddressParts } from "../lib/partnerAddressValidation.js";
 
 const NOTE_MAX = 200;
+const BOOKING_FORM_ID = "partner-booking-form";
+
+const ICON = {
+  route: "📍",
+  passenger: "👤",
+  payment: "💳",
+  schedule: "📅",
+  note: "📝",
+  pickup: "🟢",
+  dropoff: "🔴",
+};
+
+function routePreviewMapUrl(fromLat, fromLon, toLat, toLon) {
+  if (!Number.isFinite(fromLat) || !Number.isFinite(fromLon)) return null;
+  if (Number.isFinite(toLat) && Number.isFinite(toLon)) {
+    const centerLat = (fromLat + toLat) / 2;
+    const centerLon = (fromLon + toLon) / 2;
+    const markers = `markers=${fromLat},${fromLon},lightgreen1|${toLat},${toLon},red`;
+    return `https://staticmap.openstreetmap.de/staticmap.php?center=${centerLat},${centerLon}&zoom=12&size=640x180&${markers}`;
+  }
+  return `https://staticmap.openstreetmap.de/staticmap.php?center=${fromLat},${fromLon}&zoom=14&size=640x180&markers=${fromLat},${fromLon},lightgreen1`;
+}
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -483,484 +508,576 @@ export default function RideCreatePage() {
 
   const summaryFare = routeReady ? `${Number(form.estimatedFare).toFixed(2).replace(".", ",")} €` : "—";
 
+  const passengerStepDone = !forSomeoneElse || form.customerName.trim().length > 0;
+  const paymentStepDone = payerMode === "passenger" || form.billingReference.trim().length > 0;
+  const scheduleStepDone =
+    scheduleMode === "now" ||
+    (form.scheduledAt.trim().length > 0 && isReservationDatetimeValid(form.scheduledAt));
+
+  const bookingSteps = {
+    route: { label: "Route", done: routeReady },
+    passenger: { label: "Fahrgast", done: passengerStepDone },
+    payment: { label: "Zahlung", done: paymentStepDone },
+    schedule: { label: "Termin", done: scheduleStepDone },
+  };
+
+  const activeStepKey =
+    !routeReady
+      ? "route"
+      : !passengerStepDone
+        ? "passenger"
+        : !paymentStepDone
+          ? "payment"
+          : !scheduleStepDone
+            ? "schedule"
+            : "schedule";
+
+  const passengerLabel = forSomeoneElse
+    ? form.customerName.trim() || "Name fehlt"
+    : "Laufkunde";
+
+  const scheduleLabel =
+    scheduleMode === "now"
+      ? "Sofort-Taxi"
+      : form.scheduledAt.trim()
+        ? `Reservierung · ${form.scheduledAt.replace("T", " ")}`
+        : "Reservierung";
+
+  const mapPreviewUrl = routePreviewMapUrl(form.fromLat, form.fromLon, form.toLat, form.toLon);
+
+  const submitLabel =
+    scheduleMode === "reservation" ? "Reservierung anlegen" : "Fahrt buchen";
+
+  const companyPaysConfirmText = companyPays
+    ? "Mein Unternehmen trägt die Kosten — Rechnung nach Fahrtabschluss."
+    : "Der Fahrgast zahlt direkt beim Fahrer.";
+
+  const scheduleConfirmText =
+    scheduleMode === "now" ? "Die Fahrersuche startet nach dem Buchen." : "Die Reservierung wird geplant.";
+
   return (
-    <div className="panel-page panel-page--rides partner-booking-page partner-booking-page--modern">
-      <header className="partner-booking-hero">
+    <div className="panel-page panel-page--rides partner-booking-page partner-booking-page--saas">
+      <header className="partner-booking-hero partner-booking-hero--saas">
         <p className="partner-page-eyebrow">Taxi buchen</p>
         <h2 className="partner-page-title">Neue Fahrt für Ihr Unternehmen</h2>
         <p className="partner-page-lead">
-          Route, Fahrgast, Zahler und Disposition in einem Ablauf — wie in der Partner-App, mit klarer Abrechnung.
+          Route, Fahrgast, Zahler und Disposition in einem Ablauf — mit klarer Abrechnung für Ihr Unternehmen.
         </p>
       </header>
 
       {!canCreate ? (
         <p className="panel-page__warn">Sie haben nur Leserechte — neue Fahrten können hier nicht angelegt werden.</p>
       ) : (
-        <div className="partner-booking-layout">
-          <form className="partner-booking-main" onSubmit={onCreate}>
-            <section className="partner-ops-card">
-              <div className="partner-ops-card__head">
-                <span className="partner-ops-card__step">1</span>
-                <div>
-                  <h3 className="partner-ops-card__title">Route</h3>
-                  <p className="partner-ops-card__lead">Straße, Hausnummer und PLZ — Preis wird automatisch berechnet.</p>
-                </div>
-              </div>
-              <PartnerAddressFavoritesBar
-                favorites={addressFavorites}
-                onApply={applyFavoriteToSide}
-                onRemove={removeFavorite}
-              />
-              {favoriteMsg ? (
-                <p
-                  className={
-                    favoriteMsg.includes("gespeichert")
-                      ? "panel-page__ok partner-booking-favorite-msg"
-                      : "panel-page__warn partner-booking-favorite-msg"
-                  }
-                >
-                  {favoriteMsg}
-                </p>
-              ) : null}
-              <div className="panel-rides-form__grid">
-                <div className="partner-booking-address-block">
-                  <div className="partner-booking-address-block__head">
-                    <span>Abholung</span>
-                    <button
-                      type="button"
-                      className="partner-address-favorite-save"
-                      onClick={() => saveFavoriteFromSide("from")}
-                    >
-                      ★ Favorit
-                    </button>
-                  </div>
-                  <div className="partner-booking-address-row">
-                    <label className="panel-rides-form__field partner-booking-address-row__street">
-                      <span>Straße</span>
-                      <input
-                        value={form.fromStreet}
-                        onChange={(ev) => setForm((f) => ({ ...f, fromStreet: ev.target.value }))}
-                        placeholder="Musterstraße"
-                        autoComplete="address-line1"
-                      />
-                    </label>
-                    <label className="panel-rides-form__field">
-                      <span>Nr.</span>
-                      <input
-                        value={form.fromHouseNo}
-                        onChange={(ev) => setForm((f) => ({ ...f, fromHouseNo: ev.target.value }))}
-                        placeholder="12"
-                        autoComplete="off"
-                      />
-                    </label>
-                    <label className="panel-rides-form__field">
-                      <span>PLZ</span>
-                      <input
-                        value={form.fromPlz}
-                        onChange={(ev) =>
-                          setForm((f) => ({ ...f, fromPlz: ev.target.value.replace(/\D/g, "").slice(0, 5) }))
-                        }
-                        placeholder="70771"
-                        inputMode="numeric"
-                        autoComplete="postal-code"
-                      />
-                    </label>
-                  </div>
-                </div>
-                <div className="partner-booking-address-block">
-                  <div className="partner-booking-address-block__head">
-                    <span>Ziel</span>
-                    <button
-                      type="button"
-                      className="partner-address-favorite-save"
-                      onClick={() => saveFavoriteFromSide("to")}
-                    >
-                      ★ Favorit
-                    </button>
-                  </div>
-                  <div className="partner-booking-address-row">
-                    <label className="panel-rides-form__field partner-booking-address-row__street">
-                      <span>Straße</span>
-                      <input
-                        value={form.toStreet}
-                        onChange={(ev) => setForm((f) => ({ ...f, toStreet: ev.target.value }))}
-                        placeholder="Hauptstraße"
-                        autoComplete="street-address"
-                      />
-                    </label>
-                    <label className="panel-rides-form__field">
-                      <span>Nr.</span>
-                      <input
-                        value={form.toHouseNo}
-                        onChange={(ev) => setForm((f) => ({ ...f, toHouseNo: ev.target.value }))}
-                        placeholder="1"
-                        autoComplete="off"
-                      />
-                    </label>
-                    <label className="panel-rides-form__field">
-                      <span>PLZ</span>
-                      <input
-                        value={form.toPlz}
-                        onChange={(ev) =>
-                          setForm((f) => ({ ...f, toPlz: ev.target.value.replace(/\D/g, "").slice(0, 5) }))
-                        }
-                        placeholder="70173"
-                        inputMode="numeric"
-                        autoComplete="postal-code"
-                      />
-                    </label>
-                  </div>
-                </div>
-                <p className="panel-page__muted partner-booking-hint">{PARTNER_ROUTE_ADDRESS_MESSAGE_DE}</p>
-              </div>
-              {routeReady ? (
-                <div className="partner-booking-route-summary partner-booking-route-summary--modern" aria-live="polite">
+        <>
+          <PartnerBookingStepper steps={bookingSteps} activeKey={activeStepKey} />
+
+          <div className="partner-booking-layout partner-booking-layout--saas">
+            <form id={BOOKING_FORM_ID} className="partner-booking-main partner-booking-main--saas" onSubmit={onCreate}>
+              <section className="partner-ops-card partner-ops-card--saas partner-booking-section partner-booking-section--route">
+                <header className="partner-booking-section__head">
+                  <span className="partner-booking-section__icon" aria-hidden>
+                    {ICON.route}
+                  </span>
                   <div>
-                    <span className="partner-booking-route-summary__km">{form.distanceKm} km</span>
-                    <span className="partner-booking-route-summary__sep">·</span>
-                    <span>{form.durationMinutes} Min.</span>
-                  </div>
-                  <strong className="partner-booking-route-summary__price">{summaryFare}</strong>
-                  <span className="partner-booking-route-summary__tag">geschätzt</span>
-                </div>
-              ) : (
-                <div className="partner-booking-route-actions">
-                  <button
-                    type="button"
-                    className="panel-btn-secondary"
-                    onClick={() => void autoFillRoute()}
-                    disabled={routing || !hasRouteInputs}
-                  >
-                    {routing ? "Berechne Route …" : "Route & Preis berechnen"}
-                  </button>
-                </div>
-              )}
-            </section>
-
-            <section className="partner-ops-card">
-              <div className="partner-ops-card__head">
-                <span className="partner-ops-card__step">2</span>
-                <div>
-                  <h3 className="partner-ops-card__title">Fahrgast</h3>
-                  <p className="partner-ops-card__lead">Für wen wird die Fahrt gebucht?</p>
-                </div>
-              </div>
-              <div className="partner-payer-grid partner-payer-grid--2">
-                <button
-                  type="button"
-                  className={!forSomeoneElse ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
-                  onClick={() => setForSomeoneElse(false)}
-                >
-                  <strong>Laufkunde</strong>
-                  <span>Ohne Namen — z. B. Straßenfahrt</span>
-                </button>
-                <button
-                  type="button"
-                  className={forSomeoneElse ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
-                  onClick={() => setForSomeoneElse(true)}
-                >
-                  <strong>Für jemand anderen</strong>
-                  <span>Name und optional Telefon</span>
-                </button>
-              </div>
-              {forSomeoneElse ? (
-                <div className="panel-rides-form__grid partner-ops-card__body">
-                  <label className="panel-rides-form__field">
-                    <span>Name des Fahrgasts</span>
-                    <input
-                      value={form.customerName}
-                      onChange={(ev) => setForm((f) => ({ ...f, customerName: ev.target.value }))}
-                      placeholder="z. B. Max Mustermann"
-                      autoComplete="name"
-                    />
-                  </label>
-                  <label className="panel-rides-form__field">
-                    <span>Telefon (optional)</span>
-                    <input
-                      value={form.customerPhone}
-                      onChange={(ev) => setForm((f) => ({ ...f, customerPhone: ev.target.value }))}
-                      placeholder="+49 …"
-                      inputMode="tel"
-                      autoComplete="tel"
-                    />
-                  </label>
-                </div>
-              ) : null}
-            </section>
-
-            <section className="partner-ops-card">
-              <div className="partner-ops-card__head">
-                <span className="partner-ops-card__step">3</span>
-                <div>
-                  <h3 className="partner-ops-card__title">Wer zahlt?</h3>
-                  <p className="partner-ops-card__lead">Legt fest, ob der Fahrgast oder Ihr Unternehmen abgerechnet wird.</p>
-                </div>
-              </div>
-              <div className="partner-payer-grid partner-payer-grid--2">
-                <button
-                  type="button"
-                  className={payerMode === "passenger" ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
-                  onClick={() => setPayerMode("passenger")}
-                >
-                  <strong>Fahrgast zahlt</strong>
-                  <span>Bar oder Karte beim Fahrer</span>
-                </button>
-                <button
-                  type="button"
-                  className={payerMode === "company" ? "partner-payer-tile partner-payer-tile--active" : "partner-payer-tile"}
-                  onClick={() => setPayerMode("company")}
-                >
-                  <strong>Ihr Unternehmen zahlt</strong>
-                  <span>Rechnung nach Fahrtabschluss</span>
-                </button>
-              </div>
-
-              {payerMode === "passenger" ? (
-                <div className="partner-ops-card__body">
-                  <label className="panel-rides-form__field">
-                    <span>Zahlungsart beim Fahrer</span>
-                    <select
-                      value={form.paymentMethod}
-                      onChange={(ev) => setForm((f) => ({ ...f, paymentMethod: ev.target.value }))}
-                    >
-                      <option value="Barzahlung">Barzahlung</option>
-                      <option value="Karte">Karte (beim Fahrer)</option>
-                    </select>
-                  </label>
-                  <p className="partner-ops-hint">
-                    Der Fahrer kassiert direkt beim Fahrgast. Keine Rechnung an Ihr Unternehmen.
-                  </p>
-                </div>
-              ) : (
-                <div className="partner-ops-card__body">
-                  <label className="panel-rides-form__field">
-                    <span>Interne Referenz (Pflicht)</span>
-                    <input
-                      value={form.billingReference}
-                      onChange={(ev) => setForm((f) => ({ ...f, billingReference: ev.target.value }))}
-                      placeholder="Kostenstelle, Auftragsnummer, Fall …"
-                      autoComplete="off"
-                      required={companyPays}
-                    />
-                  </label>
-                  <div className="partner-billing-callout">
-                    <strong>So läuft die Rechnung</strong>
-                    <p>
-                      Nach Abschluss der Fahrt erscheint der Betrag in Ihrer Abrechnung (Export oder Monatsrechnung).
-                      Krankenfahrten haben einen separaten Rechnungs-Flow im Bereich Krankenfahrten.
+                    <h3 className="partner-booking-section__title">Route</h3>
+                    <p className="partner-booking-section__lead">
+                      Start und Ziel — Preis und Strecke werden automatisch berechnet.
                     </p>
                   </div>
-                </div>
-              )}
-            </section>
+                </header>
 
-            <section className="partner-ops-card">
-              <div className="partner-ops-card__head">
-                <span className="partner-ops-card__step">4</span>
-                <div>
-                  <h3 className="partner-ops-card__title">Zeitpunkt & Disposition</h3>
-                  <p className="partner-ops-card__lead">Sofortfahrt startet die Fahrersuche; Reservierung plant den Termin.</p>
+                {mapPreviewUrl ? (
+                  <div className="partner-booking-map-preview partner-booking-map-preview--fade-in">
+                    <img src={mapPreviewUrl} alt="Routenvorschau" loading="lazy" />
+                    {routing ? <span className="partner-booking-map-preview__loading">Aktualisiere …</span> : null}
+                  </div>
+                ) : hasRouteInputs && routing ? (
+                  <div className="partner-booking-map-preview partner-booking-map-preview--skeleton" aria-hidden>
+                    <span>Route wird berechnet …</span>
+                  </div>
+                ) : null}
+
+                <PartnerAddressFavoritesBar
+                  favorites={addressFavorites}
+                  onApply={applyFavoriteToSide}
+                  onRemove={removeFavorite}
+                />
+                {favoriteMsg ? (
+                  <p
+                    className={
+                      favoriteMsg.includes("gespeichert")
+                        ? "panel-page__ok partner-booking-favorite-msg"
+                        : "panel-page__warn partner-booking-favorite-msg"
+                    }
+                  >
+                    {favoriteMsg}
+                  </p>
+                ) : null}
+
+                <div className="panel-rides-form__grid partner-booking-route-grid">
+                  <div className="partner-booking-address-block partner-booking-address-block--saas">
+                    <div className="partner-booking-address-block__head">
+                      <span>
+                        <span aria-hidden>{ICON.pickup}</span> Abholung
+                      </span>
+                      <button
+                        type="button"
+                        className="partner-address-favorite-save"
+                        onClick={() => saveFavoriteFromSide("from")}
+                      >
+                        ★ Favorit
+                      </button>
+                    </div>
+                    <div className="partner-booking-address-row">
+                      <label className="panel-rides-form__field partner-booking-address-row__street partner-booking-field--icon">
+                        <span>Straße</span>
+                        <span className="partner-booking-field__wrap">
+                          <span className="partner-booking-field__icon" aria-hidden>
+                            {ICON.route}
+                          </span>
+                          <input
+                            className="partner-booking-input"
+                            value={form.fromStreet}
+                            onChange={(ev) => setForm((f) => ({ ...f, fromStreet: ev.target.value }))}
+                            placeholder="Musterstraße"
+                            autoComplete="address-line1"
+                          />
+                        </span>
+                      </label>
+                      <label className="panel-rides-form__field partner-booking-field--icon">
+                        <span>Nr.</span>
+                        <span className="partner-booking-field__wrap">
+                          <input
+                            className="partner-booking-input"
+                            value={form.fromHouseNo}
+                            onChange={(ev) => setForm((f) => ({ ...f, fromHouseNo: ev.target.value }))}
+                            placeholder="12"
+                            autoComplete="off"
+                          />
+                        </span>
+                      </label>
+                      <label className="panel-rides-form__field partner-booking-field--icon">
+                        <span>PLZ</span>
+                        <span className="partner-booking-field__wrap">
+                          <input
+                            className="partner-booking-input"
+                            value={form.fromPlz}
+                            onChange={(ev) =>
+                              setForm((f) => ({ ...f, fromPlz: ev.target.value.replace(/\D/g, "").slice(0, 5) }))
+                            }
+                            placeholder="70771"
+                            inputMode="numeric"
+                            autoComplete="postal-code"
+                          />
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="partner-booking-address-block partner-booking-address-block--saas">
+                    <div className="partner-booking-address-block__head">
+                      <span>
+                        <span aria-hidden>{ICON.dropoff}</span> Ziel
+                      </span>
+                      <button
+                        type="button"
+                        className="partner-address-favorite-save"
+                        onClick={() => saveFavoriteFromSide("to")}
+                      >
+                        ★ Favorit
+                      </button>
+                    </div>
+                    <div className="partner-booking-address-row">
+                      <label className="panel-rides-form__field partner-booking-address-row__street partner-booking-field--icon">
+                        <span>Straße</span>
+                        <span className="partner-booking-field__wrap">
+                          <span className="partner-booking-field__icon" aria-hidden>
+                            {ICON.route}
+                          </span>
+                          <input
+                            className="partner-booking-input"
+                            value={form.toStreet}
+                            onChange={(ev) => setForm((f) => ({ ...f, toStreet: ev.target.value }))}
+                            placeholder="Hauptstraße"
+                            autoComplete="street-address"
+                          />
+                        </span>
+                      </label>
+                      <label className="panel-rides-form__field partner-booking-field--icon">
+                        <span>Nr.</span>
+                        <span className="partner-booking-field__wrap">
+                          <input
+                            className="partner-booking-input"
+                            value={form.toHouseNo}
+                            onChange={(ev) => setForm((f) => ({ ...f, toHouseNo: ev.target.value }))}
+                            placeholder="1"
+                            autoComplete="off"
+                          />
+                        </span>
+                      </label>
+                      <label className="panel-rides-form__field partner-booking-field--icon">
+                        <span>PLZ</span>
+                        <span className="partner-booking-field__wrap">
+                          <input
+                            className="partner-booking-input"
+                            value={form.toPlz}
+                            onChange={(ev) =>
+                              setForm((f) => ({ ...f, toPlz: ev.target.value.replace(/\D/g, "").slice(0, 5) }))
+                            }
+                            placeholder="70173"
+                            inputMode="numeric"
+                            autoComplete="postal-code"
+                          />
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                  <p className="panel-page__muted partner-booking-hint">{PARTNER_ROUTE_ADDRESS_MESSAGE_DE}</p>
                 </div>
-              </div>
-              <div className="partner-booking-schedule partner-booking-schedule--modern">
-                <button
-                  type="button"
-                  className={
-                    scheduleMode === "now"
-                      ? "partner-booking-schedule__btn partner-booking-schedule__btn--active"
-                      : "partner-booking-schedule__btn"
-                  }
-                  onClick={() => setScheduleMode("now")}
-                >
-                  <strong>Sofort-Taxi</strong>
-                  <span>Online-Fahrer werden benachrichtigt</span>
-                </button>
-                <button
-                  type="button"
-                  className={
-                    scheduleMode === "reservation"
-                      ? "partner-booking-schedule__btn partner-booking-schedule__btn--active"
-                      : "partner-booking-schedule__btn"
-                  }
-                  onClick={() => setScheduleMode("reservation")}
-                >
-                  <strong>Reservierung</strong>
-                  <span>60 Minuten bis max. 5 Tage im Voraus</span>
-                </button>
-              </div>
-              {scheduleMode === "reservation" ? (
-                <label className="panel-rides-form__field partner-booking-datetime">
-                  <span>Abholzeit</span>
-                  <input
-                    type="datetime-local"
-                    value={form.scheduledAt}
-                    min={minPartnerReservationDatetimeLocal()}
-                    max={maxPartnerReservationDatetimeLocal()}
-                    onChange={(ev) => setForm((f) => ({ ...f, scheduledAt: ev.target.value }))}
+
+                {routeReady ? (
+                  <div className="partner-booking-route-live partner-booking-route-live--fade-in" aria-live="polite">
+                    <span className="partner-booking-route-live__metric">
+                      <span aria-hidden>📏</span> {form.distanceKm} km
+                    </span>
+                    <span className="partner-booking-route-live__metric">
+                      <span aria-hidden>⏱</span> {form.durationMinutes} Min.
+                    </span>
+                    <strong className="partner-booking-route-live__price">{summaryFare}</strong>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="partner-ops-card partner-ops-card--saas partner-booking-section">
+                <header className="partner-booking-section__head">
+                  <span className="partner-booking-section__icon" aria-hidden>
+                    {ICON.passenger}
+                  </span>
+                  <div>
+                    <h3 className="partner-booking-section__title">Fahrgast</h3>
+                    <p className="partner-booking-section__lead">Für wen wird die Fahrt gebucht?</p>
+                  </div>
+                </header>
+                <div className="partner-payer-grid partner-payer-grid--2">
+                  <PartnerBookingChoiceCard
+                    active={!forSomeoneElse}
+                    icon="🚶"
+                    title="Laufkunde"
+                    description="Ohne Namen — z. B. Straßenfahrt"
+                    onClick={() => setForSomeoneElse(false)}
                   />
-                </label>
-              ) : (
-                <p className="partner-ops-hint">
-                  Nach dem Buchen: Status „Fahrersuche“ in Meine Fahrten — Annahme und Ablehnungen dort sichtbar.
-                </p>
-              )}
-            </section>
-
-            <section className="partner-ops-card partner-ops-card--compact">
-              <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>Notiz für den Fahrer (optional)</span>
-                <textarea
-                  className="partner-booking-note"
-                  value={form.driverNote}
-                  onChange={(ev) => setForm((f) => ({ ...f, driverNote: ev.target.value.slice(0, NOTE_MAX) }))}
-                  placeholder="z. B. Eingang Hinterhof, Rollator"
-                  rows={2}
-                  maxLength={NOTE_MAX}
-                />
-                <span className="partner-booking-note-count">
-                  {form.driverNote.length}/{NOTE_MAX}
-                </span>
-              </label>
-              <button
-                type="button"
-                className="partner-booking-advanced-toggle"
-                onClick={() => setShowAdvanced((v) => !v)}
-                aria-expanded={showAdvanced}
-              >
-                {showAdvanced ? "Weniger Optionen" : "Fahrzeug, Gutschein, Freigabe-Code …"}
-              </button>
-              {showAdvanced ? (
-                <div className="panel-rides-form__grid partner-ops-card__body">
-                  <label className="panel-rides-form__field">
-                    <span>Fahrzeug</span>
-                    <select
-                      value={form.vehicle}
-                      onChange={(ev) => setForm((f) => ({ ...f, vehicle: ev.target.value }))}
-                    >
-                      <option value="standard">Standard</option>
-                      <option value="xl">XL / Van</option>
-                      <option value="wheelchair">Rollstuhl</option>
-                    </select>
-                  </label>
-                  <label className="panel-rides-form__field">
-                    <span>Fahrttyp</span>
-                    <select
-                      value={form.rideKind}
-                      onChange={(ev) => {
-                        const rk = ev.target.value;
-                        setForm((f) => ({
-                          ...f,
-                          rideKind: rk,
-                          ...(rk === "medical" ? { payerKind: "insurance", paymentMethod: "rechnung" } : {}),
-                        }));
-                        if (rk === "medical") setPayerMode("company");
-                      }}
-                    >
-                      <option value="standard">Normale Fahrt</option>
-                      <option value="medical">Krankenfahrt</option>
-                      <option value="company">Firmenfahrt</option>
-                    </select>
-                  </label>
-                  <label className="panel-rides-form__field">
-                    <span>Gutscheincode (optional)</span>
-                    <input
-                      value={form.voucherCode}
-                      onChange={(ev) => setForm((f) => ({ ...f, voucherCode: ev.target.value }))}
-                      autoComplete="off"
-                    />
-                  </label>
-                  {showAccessCode ? (
-                    <label className="panel-rides-form__field panel-rides-form__field--2">
-                      <span>Freigabe-Code (optional)</span>
-                      <input
-                        value={form.accessCode}
-                        onChange={(ev) =>
-                          setForm((f) => ({
-                            ...f,
-                            accessCode: ev.target.value,
-                            ...(ev.target.value.trim()
-                              ? { payerKind: "company", paymentMethod: "rechnung" }
-                              : {}),
-                          }))
-                        }
-                        placeholder="Kostenübernahme durch Auftraggeber"
-                        autoComplete="off"
-                      />
+                  <PartnerBookingChoiceCard
+                    active={forSomeoneElse}
+                    icon="👤"
+                    title="Für jemand anderen"
+                    description="Name und optional Telefon"
+                    onClick={() => setForSomeoneElse(true)}
+                  />
+                </div>
+                {forSomeoneElse ? (
+                  <div className="panel-rides-form__grid partner-ops-card__body partner-booking-fields--fade-in">
+                    <label className="panel-rides-form__field partner-booking-field--icon">
+                      <span>Name des Fahrgasts</span>
+                      <span className="partner-booking-field__wrap">
+                        <span className="partner-booking-field__icon" aria-hidden>
+                          {ICON.passenger}
+                        </span>
+                        <input
+                          className="partner-booking-input"
+                          value={form.customerName}
+                          onChange={(ev) => setForm((f) => ({ ...f, customerName: ev.target.value }))}
+                          placeholder="z. B. Max Mustermann"
+                          autoComplete="name"
+                        />
+                      </span>
                     </label>
-                  ) : null}
+                    <label className="panel-rides-form__field partner-booking-field--icon">
+                      <span>Telefon (optional)</span>
+                      <span className="partner-booking-field__wrap">
+                        <input
+                          className="partner-booking-input"
+                          value={form.customerPhone}
+                          onChange={(ev) => setForm((f) => ({ ...f, customerPhone: ev.target.value }))}
+                          placeholder="+49 …"
+                          inputMode="tel"
+                          autoComplete="tel"
+                        />
+                      </span>
+                    </label>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="partner-ops-card partner-ops-card--saas partner-booking-section">
+                <header className="partner-booking-section__head">
+                  <span className="partner-booking-section__icon" aria-hidden>
+                    {ICON.payment}
+                  </span>
+                  <div>
+                    <h3 className="partner-booking-section__title">Zahlung</h3>
+                    <p className="partner-booking-section__lead">
+                      Legt fest, ob der Fahrgast oder Ihr Unternehmen abgerechnet wird.
+                    </p>
+                  </div>
+                </header>
+                <div className="partner-payer-grid partner-payer-grid--2">
+                  <PartnerBookingChoiceCard
+                    active={payerMode === "passenger"}
+                    icon="💳"
+                    title="Fahrgast zahlt"
+                    description="Bar oder Karte beim Fahrer"
+                    onClick={() => setPayerMode("passenger")}
+                  />
+                  <PartnerBookingChoiceCard
+                    active={payerMode === "company"}
+                    icon="🏢"
+                    title="Ihr Unternehmen zahlt"
+                    description="Rechnung nach Fahrtabschluss"
+                    onClick={() => setPayerMode("company")}
+                  />
                 </div>
+
+                {payerMode === "passenger" ? (
+                  <div className="partner-ops-card__body partner-booking-fields--fade-in">
+                    <label className="panel-rides-form__field partner-booking-field--icon">
+                      <span>Zahlungsart beim Fahrer</span>
+                      <span className="partner-booking-field__wrap">
+                        <select
+                          className="partner-booking-input partner-booking-input--select"
+                          value={form.paymentMethod}
+                          onChange={(ev) => setForm((f) => ({ ...f, paymentMethod: ev.target.value }))}
+                        >
+                          <option value="Barzahlung">Barzahlung</option>
+                          <option value="Karte">Karte (beim Fahrer)</option>
+                        </select>
+                      </span>
+                    </label>
+                    <p className="partner-ops-hint">
+                      Der Fahrer kassiert direkt beim Fahrgast. Keine Rechnung an Ihr Unternehmen.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="partner-ops-card__body partner-booking-fields--fade-in">
+                    <label className="panel-rides-form__field partner-booking-field--icon">
+                      <span>Interne Referenz (Pflicht)</span>
+                      <span className="partner-booking-field__wrap">
+                        <input
+                          className="partner-booking-input"
+                          value={form.billingReference}
+                          onChange={(ev) => setForm((f) => ({ ...f, billingReference: ev.target.value }))}
+                          placeholder="Kostenstelle, Auftragsnummer, Fall …"
+                          autoComplete="off"
+                          required={companyPays}
+                        />
+                      </span>
+                    </label>
+                    <div className="partner-billing-callout partner-billing-callout--saas">
+                      <strong>So läuft die Rechnung</strong>
+                      <p>
+                        Nach Abschluss der Fahrt erscheint der Betrag in Ihrer Abrechnung (Export oder Monatsrechnung).
+                        Krankenfahrten haben einen separaten Rechnungs-Flow im Bereich Krankenfahrten.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="partner-ops-card partner-ops-card--saas partner-booking-section">
+                <header className="partner-booking-section__head">
+                  <span className="partner-booking-section__icon" aria-hidden>
+                    {ICON.schedule}
+                  </span>
+                  <div>
+                    <h3 className="partner-booking-section__title">Zeitpunkt & Disposition</h3>
+                    <p className="partner-booking-section__lead">
+                      Sofortfahrt startet die Fahrersuche; Reservierung plant den Termin.
+                    </p>
+                  </div>
+                </header>
+                <div className="partner-booking-schedule partner-booking-schedule--saas">
+                  <PartnerBookingChoiceCard
+                    active={scheduleMode === "now"}
+                    icon="⚡"
+                    title="Sofort-Taxi"
+                    description="Online-Fahrer werden benachrichtigt"
+                    onClick={() => setScheduleMode("now")}
+                  />
+                  <PartnerBookingChoiceCard
+                    active={scheduleMode === "reservation"}
+                    icon="📅"
+                    title="Reservierung"
+                    description="60 Minuten bis max. 5 Tage im Voraus"
+                    onClick={() => setScheduleMode("reservation")}
+                  />
+                </div>
+                {scheduleMode === "reservation" ? (
+                  <label className="panel-rides-form__field partner-booking-datetime partner-booking-field--icon partner-booking-fields--fade-in">
+                    <span>Abholzeit</span>
+                    <span className="partner-booking-field__wrap">
+                      <span className="partner-booking-field__icon" aria-hidden>
+                        🕐
+                      </span>
+                      <input
+                        className="partner-booking-input"
+                        type="datetime-local"
+                        value={form.scheduledAt}
+                        min={minPartnerReservationDatetimeLocal()}
+                        max={maxPartnerReservationDatetimeLocal()}
+                        onChange={(ev) => setForm((f) => ({ ...f, scheduledAt: ev.target.value }))}
+                      />
+                    </span>
+                  </label>
+                ) : (
+                  <p className="partner-ops-hint">
+                    Nach dem Buchen: Status „Fahrersuche“ in Meine Fahrten — Annahme und Ablehnungen dort sichtbar.
+                  </p>
+                )}
+              </section>
+
+              <section className="partner-ops-card partner-ops-card--saas partner-booking-section partner-booking-section--note">
+                <header className="partner-booking-section__head">
+                  <span className="partner-booking-section__icon" aria-hidden>
+                    {ICON.note}
+                  </span>
+                  <div>
+                    <h3 className="partner-booking-section__title">Fahrernotiz</h3>
+                    <p className="partner-booking-section__lead">Optional — Hinweise für den Fahrer vor Ort.</p>
+                  </div>
+                </header>
+                <label className="panel-rides-form__field panel-rides-form__field--2">
+                  <span className="partner-booking-note-label">Notiz (optional)</span>
+                  <textarea
+                    className="partner-booking-note partner-booking-note--saas"
+                    value={form.driverNote}
+                    onChange={(ev) => setForm((f) => ({ ...f, driverNote: ev.target.value.slice(0, NOTE_MAX) }))}
+                    placeholder="z. B. Eingang Hinterhof, Rollator, Klingel defekt"
+                    rows={4}
+                    maxLength={NOTE_MAX}
+                  />
+                  <span className="partner-booking-note-count">
+                    {form.driverNote.length}/{NOTE_MAX}
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="partner-booking-advanced-toggle"
+                  onClick={() => setShowAdvanced((v) => !v)}
+                  aria-expanded={showAdvanced}
+                >
+                  {showAdvanced ? "Weniger Optionen" : "Fahrzeug, Gutschein, Freigabe-Code …"}
+                </button>
+                {showAdvanced ? (
+                  <div className="panel-rides-form__grid partner-ops-card__body partner-booking-fields--fade-in">
+                    <label className="panel-rides-form__field partner-booking-field--icon">
+                      <span>Fahrzeug</span>
+                      <span className="partner-booking-field__wrap">
+                        <select
+                          className="partner-booking-input partner-booking-input--select"
+                          value={form.vehicle}
+                          onChange={(ev) => setForm((f) => ({ ...f, vehicle: ev.target.value }))}
+                        >
+                          <option value="standard">Standard</option>
+                          <option value="xl">XL / Van</option>
+                          <option value="wheelchair">Rollstuhl</option>
+                        </select>
+                      </span>
+                    </label>
+                    <label className="panel-rides-form__field partner-booking-field--icon">
+                      <span>Fahrttyp</span>
+                      <span className="partner-booking-field__wrap">
+                        <select
+                          className="partner-booking-input partner-booking-input--select"
+                          value={form.rideKind}
+                          onChange={(ev) => {
+                            const rk = ev.target.value;
+                            setForm((f) => ({
+                              ...f,
+                              rideKind: rk,
+                              ...(rk === "medical" ? { payerKind: "insurance", paymentMethod: "rechnung" } : {}),
+                            }));
+                            if (rk === "medical") setPayerMode("company");
+                          }}
+                        >
+                          <option value="standard">Normale Fahrt</option>
+                          <option value="medical">Krankenfahrt</option>
+                          <option value="company">Firmenfahrt</option>
+                        </select>
+                      </span>
+                    </label>
+                    <label className="panel-rides-form__field partner-booking-field--icon">
+                      <span>Gutscheincode (optional)</span>
+                      <span className="partner-booking-field__wrap">
+                        <input
+                          className="partner-booking-input"
+                          value={form.voucherCode}
+                          onChange={(ev) => setForm((f) => ({ ...f, voucherCode: ev.target.value }))}
+                          autoComplete="off"
+                        />
+                      </span>
+                    </label>
+                    {showAccessCode ? (
+                      <label className="panel-rides-form__field panel-rides-form__field--2 partner-booking-field--icon">
+                        <span>Freigabe-Code (optional)</span>
+                        <span className="partner-booking-field__wrap">
+                          <input
+                            className="partner-booking-input"
+                            value={form.accessCode}
+                            onChange={(ev) =>
+                              setForm((f) => ({
+                                ...f,
+                                accessCode: ev.target.value,
+                                ...(ev.target.value.trim()
+                                  ? { payerKind: "company", paymentMethod: "rechnung" }
+                                  : {}),
+                              }))
+                            }
+                            placeholder="Kostenübernahme durch Auftraggeber"
+                            autoComplete="off"
+                          />
+                        </span>
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
+
+              {createMsg ? (
+                <p
+                  className={
+                    createMsg.includes("angelegt")
+                      ? "panel-page__ok partner-booking-feedback"
+                      : "panel-page__warn partner-booking-feedback"
+                  }
+                >
+                  {createMsg}
+                </p>
               ) : null}
-            </section>
+            </form>
 
-            <section className="partner-ops-card partner-ops-card--confirm">
-              <label className="partner-confirm-line">
-                <input
-                  type="checkbox"
-                  checked={payerConfirmed}
-                  onChange={(ev) => setPayerConfirmed(ev.target.checked)}
-                />
-                <span>
-                  Ich bestätige:{" "}
-                  {companyPays
-                    ? "Mein Unternehmen trägt die Kosten — Rechnung nach Fahrtabschluss."
-                    : "Der Fahrgast zahlt direkt beim Fahrer."}{" "}
-                  {scheduleMode === "now" ? "Die Fahrersuche startet nach dem Buchen." : "Die Reservierung wird geplant."}
-                </span>
-              </label>
-            </section>
-
-            {createMsg ? (
-              <p
-                className={
-                  createMsg.includes("angelegt")
-                    ? "panel-page__ok partner-booking-feedback"
-                    : "panel-page__warn partner-booking-feedback"
-                }
-              >
-                {createMsg}
-              </p>
-            ) : null}
-
-            <button
-              type="submit"
-              className="panel-btn-primary partner-booking-submit partner-booking-submit--wide"
-              disabled={creating || routing || !routeReady || !payerConfirmed}
-            >
-              {creating ? "Wird gebucht …" : routing ? "Route wird berechnet …" : scheduleMode === "reservation" ? "Reservierung anlegen" : "Sofort-Taxi bestellen"}
-            </button>
-          </form>
-
-          <aside className="partner-booking-aside" aria-label="Buchungsübersicht">
-            <div className="partner-booking-summary">
-              <h3 className="partner-booking-summary__title">Übersicht</h3>
-              <dl className="partner-booking-summary__list">
-                <div>
-                  <dt>Route</dt>
-                  <dd>{hasRouteInputs ? `${fromFull} → ${toFull}` : "Noch offen"}</dd>
-                </div>
-                <div>
-                  <dt>Preis (geschätzt)</dt>
-                  <dd className="partner-booking-summary__price">{summaryFare}</dd>
-                </div>
-                <div>
-                  <dt>Zahler</dt>
-                  <dd>{companyPays ? "Ihr Unternehmen (Rechnung)" : "Fahrgast"}</dd>
-                </div>
-                <div>
-                  <dt>Zahlung</dt>
-                  <dd>{companyPays ? "Rechnung nach Abschluss" : form.paymentMethod}</dd>
-                </div>
-                <div>
-                  <dt>Disposition</dt>
-                  <dd>{scheduleMode === "now" ? "Sofort — Fahrersuche" : "Reservierung"}</dd>
-                </div>
-              </dl>
-              {!payerConfirmed ? (
-                <p className="partner-booking-summary__hint">Bestätigung unten erforderlich zum Buchen.</p>
-              ) : null}
-            </div>
-          </aside>
-        </div>
+            <PartnerBookingSummaryAside
+              summaryFare={summaryFare}
+              distanceKm={form.distanceKm}
+              durationMinutes={form.durationMinutes}
+              routeReady={routeReady}
+              hasRouteInputs={hasRouteInputs}
+              fromFull={fromFull}
+              toFull={toFull}
+              companyPays={companyPays}
+              paymentMethod={form.paymentMethod}
+              passengerLabel={passengerLabel}
+              scheduleLabel={scheduleLabel}
+              payerConfirmed={payerConfirmed}
+              onPayerConfirmedChange={setPayerConfirmed}
+              companyPaysConfirmText={companyPaysConfirmText}
+              scheduleConfirmText={scheduleConfirmText}
+              creating={creating}
+              routing={routing}
+              canSubmit={routeReady && payerConfirmed}
+              submitLabel={submitLabel}
+              formId={BOOKING_FORM_ID}
+            />
+          </div>
+        </>
       )}
     </div>
   );
