@@ -112,6 +112,8 @@ function SummaryChip({ icon, label, value }) {
  *   onDownloadPdf: () => void;
  *   canRetrySearch: boolean;
  *   canCancel: boolean;
+ *   canArchive?: boolean;
+ *   onArchive?: () => void;
  *   invoiceId: string | null;
  *   bill: ReturnType<typeof billingSummary>;
  * }} props
@@ -135,6 +137,8 @@ export default function PartnerRideCard({
   onDownloadPdf,
   canRetrySearch,
   canCancel,
+  canArchive = false,
+  onArchive,
   invoiceId,
   bill,
 }) {
@@ -366,6 +370,17 @@ export default function PartnerRideCard({
                 onClick={onRetrySearch}
               >
                 Suche
+              </button>
+            ) : null}
+            {canCreate && canArchive && onArchive ? (
+              <button
+                type="button"
+                className="partner-ride-fab"
+                disabled={actionBusy === `archive-${ride.id}`}
+                onClick={onArchive}
+              >
+                <span aria-hidden>🗄</span>
+                Archivieren
               </button>
             ) : null}
             <button type="button" className="partner-ride-fab partner-ride-fab--refresh" onClick={onRefreshTracking}>

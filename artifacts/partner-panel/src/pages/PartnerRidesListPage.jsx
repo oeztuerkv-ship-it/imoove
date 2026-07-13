@@ -7,6 +7,10 @@ import PartnerRideCard from "../components/PartnerRideCard.jsx";
 import { usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 import {
   billingSummary,
+  isPartnerRidePast,
+  partnerRideListDateKey,
+  partnerRideMatchesSearch,
+  partnerRideSegmentOf,
   TERMINAL_STATUSES,
 } from "../lib/partnerRideOps.js";
 
@@ -39,6 +43,28 @@ function csvEscape(v) {
 
 const HISTORY_STATUSES = TERMINAL_STATUSES;
 
+const RIDE_SEGMENTS = [
+  { id: "aktuell", label: "Aktuell / Online" },
+  { id: "zukunft", label: "Zukunft" },
+  { id: "abgelaufen", label: "Abgelaufen" },
+];
+
+function sortRidesForSegment(rides, segment) {
+  const copy = [...rides];
+  if (segment === "zukunft") {
+    return copy.sort((a, b) => {
+      const ta = Date.parse(String(a.scheduledAt ?? a.createdAt ?? "")) || 0;
+      const tb = Date.parse(String(b.scheduledAt ?? b.createdAt ?? "")) || 0;
+      return ta - tb;
+    });
+  }
+  return copy.sort((a, b) => {
+    const ta = Date.parse(String(a.scheduledAt ?? a.createdAt ?? "")) || 0;
+    const tb = Date.parse(String(b.scheduledAt ?? b.createdAt ?? "")) || 0;
+    return tb - ta;
+  });
+}
+
 export default function PartnerRidesListPage({ variant }) {
   const { token, user } = usePanelAuth();
   const [rides, setRides] = useState([]);
@@ -51,6 +77,9 @@ export default function PartnerRidesListPage({ variant }) {
   const [actionMsg, setActionMsg] = useState("");
   const [trackingByRide, setTrackingByRide] = useState({});
   const [chatRide, setChatRide] = useState(null);
+  const [segment, setSegment] = useState(variant === "history" ? "abgelaufen" : "aktuell");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const { chatUnreadByRide, totalChatUnread, markChatRead, clearRideUnread } = usePartnerChatUnread();
 
   const canCreate = Array.isArray(user?.permissions) && user.permissions.includes("rides.create");
@@ -92,6 +121,28 @@ export default function PartnerRidesListPage({ variant }) {
     }
     return rides;
   }, [rides, variant]);
+
+  const segmentCounts = useMemo(() => {
+    const counts = { aktuell: 0, zukunft: 0, abgelaufen: 0 };
+    for (const ride of filteredRides) {
+      const seg = partnerRideSegmentOf(ride);
+      if (seg in counts) counts[seg] += 1;
+    }
+    return counts;
+  }, [displayedRides]);
+
+  const filteredRides = useMemo(() => {
+    const q = searchQuery.trim();
+    const activeSegment = variant === "history" ? "abgelaufen" : segment;
+    let list = displayedRides.filter((ride) => partnerRideSegmentOf(ride) === activeSegment);
+    if (q) {
+      list = list.filter((ride) => partnerRideMatchesSearch(ride, q));
+    }
+    if (dateFilter) {
+      list = list.filter((ride) => partnerRideListDateKey(ride) === dateFilter);
+    }
+    return sortRidesForSegment(list, activeSegment);
+  }, [displayedRides, segment, variant, searchQuery, dateFilter]);
 
   const openChat = useCallback(
     (ride) => {
@@ -314,6 +365,41 @@ export default function PartnerRidesListPage({ variant }) {
     }
   }, [token, noteRideId, noteDraft, replaceRide]);
 
+  const onArchive = useCallback(
+    async (rideId) => {
+      if (!token) return;
+      if (
+        !window.confirm(
+          "Fahrt archivieren? Sie verschwindet aus Ihrer Liste — Details bleiben in der Abrechnung erhalten.",
+        )
+      ) {
+        return;
+      }
+      setActionBusy(`archive-${rideId}`);
+      setActionMsg("");
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/rides/${encodeURIComponent(rideId)}/hide`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          setActionMsg("Archivieren fehlgeschlagen.");
+          return;
+        }
+        setRides((prev) => prev.filter((r) => r.id !== rideId));
+        if (expandedId === rideId) setExpandedId(null);
+        setActionMsg("Fahrt archiviert.");
+      } catch {
+        setActionMsg("Archivieren fehlgeschlagen.");
+      } finally {
+        setActionBusy("");
+      }
+    },
+    [token, expandedId],
+  );
+
   const onExportCsv = useCallback(() => {
     const header = [
       "id",
@@ -355,12 +441,14 @@ export default function PartnerRidesListPage({ variant }) {
     a.download = `onroda-fahrten-${variant === "history" ? "verlauf" : "alle"}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [displayedRides, variant]);
+  }, [filteredRides, variant]);
+
+  const activeSegment = variant === "history" ? "abgelaufen" : segment;
 
   const lead =
     variant === "history"
       ? "Abgeschlossene, stornierte und abgelehnte Fahrten."
-      : "Live-Disposition, Zahler und Abrechnung — aktualisiert sich automatisch bei laufenden Fahrten.";
+      : "Aktuelle Disposition, geplante Termine und abgelaufene Fahrten — mit Suche und Datum.";
 
   return (
     <div className="panel-page panel-page--rides partner-rides-page partner-rides-page--modern">
@@ -382,7 +470,7 @@ export default function PartnerRidesListPage({ variant }) {
         <button
           type="button"
           className="panel-btn-secondary"
-          disabled={displayedRides.length === 0}
+          disabled={filteredRides.length === 0}
           onClick={onExportCsv}
         >
           CSV exportieren
@@ -395,18 +483,107 @@ export default function PartnerRidesListPage({ variant }) {
             ungelesene Chat-Nachricht{totalChatUnread === 1 ? "" : "en"}
           </span>
         ) : null}
-        {variant !== "history" ? (
+        {variant !== "history" && activeSegment === "aktuell" ? (
           <span className="partner-rides-live-hint">Live · alle {POLL_MS / 1000} s</span>
         ) : null}
       </div>
 
+      {variant !== "history" ? (
+        <div className="partner-rides-filters" role="search">
+          <div className="partner-rides-segments" role="tablist" aria-label="Fahrten-Bereiche">
+            {RIDE_SEGMENTS.map((tab) => {
+              const active = segment === tab.id;
+              const count = segmentCounts[tab.id] ?? 0;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={`partner-rides-segment${active ? " partner-rides-segment--active" : ""}`}
+                  onClick={() => setSegment(tab.id)}
+                >
+                  {tab.label}
+                  {count > 0 ? <span className="partner-rides-segment__count">{count}</span> : null}
+                </button>
+              );
+            })}
+          </div>
+          <div className="partner-rides-search-row">
+            <label className="partner-rides-search-field">
+              <span className="partner-rides-search-field__label">Suche</span>
+              <input
+                type="search"
+                className="partner-rides-search-field__input"
+                placeholder="Route, Referenz, Zimmer, ID …"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </label>
+            <label className="partner-rides-search-field partner-rides-search-field--date">
+              <span className="partner-rides-search-field__label">Datum</span>
+              <input
+                type="date"
+                className="partner-rides-search-field__input"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+            </label>
+            {dateFilter ? (
+              <button type="button" className="panel-btn-secondary partner-rides-date-clear" onClick={() => setDateFilter("")}>
+                Datum löschen
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <div className="partner-rides-filters partner-rides-filters--history">
+          <div className="partner-rides-search-row">
+            <label className="partner-rides-search-field">
+              <span className="partner-rides-search-field__label">Suche</span>
+              <input
+                type="search"
+                className="partner-rides-search-field__input"
+                placeholder="Route, Referenz, ID …"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </label>
+            <label className="partner-rides-search-field partner-rides-search-field--date">
+              <span className="partner-rides-search-field__label">Datum</span>
+              <input
+                type="date"
+                className="partner-rides-search-field__input"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+            </label>
+            {dateFilter ? (
+              <button type="button" className="panel-btn-secondary partner-rides-date-clear" onClick={() => setDateFilter("")}>
+                Datum löschen
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
+
       {loading ? <p className="panel-page__lead">Lade …</p> : null}
-      {!loading && displayedRides.length === 0 && !err ? (
-        <p className="panel-page__lead">Noch keine Fahrten in dieser Ansicht.</p>
+      {!loading && filteredRides.length === 0 && !err ? (
+        <p className="panel-page__lead">
+          {displayedRides.length === 0
+            ? "Noch keine Fahrten in dieser Ansicht."
+            : searchQuery.trim() || dateFilter
+              ? "Keine Fahrten für Suche oder Datum."
+              : activeSegment === "aktuell"
+                ? "Keine laufenden Fahrten — geplante Termine unter „Zukunft“."
+                : activeSegment === "zukunft"
+                  ? "Keine geplanten Fahrten."
+                  : "Keine abgelaufenen Fahrten in dieser Ansicht."}
+        </p>
       ) : null}
 
       <div className="partner-rides-list partner-rides-list--modern">
-        {displayedRides.map((ride) => {
+        {filteredRides.map((ride) => {
           const open = expandedId === ride.id;
           const note = getDriverNote(ride);
           const bill = billingSummary(ride);
@@ -431,6 +608,8 @@ export default function PartnerRidesListPage({ variant }) {
               invoiceId={invoiceId}
               canRetrySearch={canRetrySearch(ride)}
               canCancel={canCancelRide(ride)}
+              canArchive={isPartnerRidePast(ride)}
+              onArchive={() => void onArchive(ride.id)}
               onOpenChat={() => openChat(ride)}
               onOpenNote={() => openNoteEditor(ride)}
               onCancel={() => void onCancel(ride.id)}

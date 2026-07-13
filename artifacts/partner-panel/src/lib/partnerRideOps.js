@@ -325,3 +325,114 @@ export function needsActivePoll(ride) {
   if (!ride?.id) return false;
   return !TERMINAL_STATUSES.has(String(ride.status ?? ""));
 }
+
+const RESERVATION_STATUSES = new Set(["scheduled", "scheduled_assigned"]);
+const SEARCH_TIMEOUT_MS = 60_000;
+
+/** @param {Record<string, unknown> | null | undefined} ride */
+export function isPartnerRideOpenStatus(ride) {
+  return !TERMINAL_STATUSES.has(String(ride?.status ?? ""));
+}
+
+/** @param {Record<string, unknown> | null | undefined} ride */
+function partnerSearchAnchorMs(ride) {
+  const meta = getPartnerMeta(ride);
+  const fromMeta = meta?.search_started_at;
+  const raw = typeof fromMeta === "string" && fromMeta.trim() ? fromMeta.trim() : ride?.createdAt;
+  const ms = Date.parse(String(raw ?? ""));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** @param {Record<string, unknown> | null | undefined} ride */
+export function isPartnerSearchTimedOut(ride, nowMs = Date.now()) {
+  const status = String(ride?.status ?? "");
+  if (!SEARCH_POOL_STATUSES.has(status)) return false;
+  const anchor = partnerSearchAnchorMs(ride);
+  if (anchor == null) return false;
+  return nowMs - anchor >= SEARCH_TIMEOUT_MS;
+}
+
+/** Zukünftige Reservierung / geplanter Termin. */
+export function isPartnerRideFuture(ride, nowMs = Date.now()) {
+  if (!ride || !isPartnerRideOpenStatus(ride)) return false;
+  if (isPartnerSearchTimedOut(ride, nowMs)) return false;
+  const status = String(ride.status ?? "");
+  if (RESERVATION_STATUSES.has(status)) {
+    if (ride.scheduledAt) {
+      const t = Date.parse(String(ride.scheduledAt));
+      return !Number.isFinite(t) || t > nowMs;
+    }
+    return true;
+  }
+  if (ride.scheduledAt) {
+    const t = Date.parse(String(ride.scheduledAt));
+    if (Number.isFinite(t) && t > nowMs) return true;
+  }
+  return false;
+}
+
+/** Live / Fahrersuche / laufende Fahrt (nicht Zukunft). */
+export function isPartnerRideActiveNow(ride, nowMs = Date.now()) {
+  if (!ride || !isPartnerRideOpenStatus(ride)) return false;
+  if (isPartnerSearchTimedOut(ride, nowMs)) return false;
+  if (isPartnerRideFuture(ride, nowMs)) return false;
+  return true;
+}
+
+/** Abgeschlossen, storniert, abgelaufen oder Such-Timeout. */
+export function isPartnerRidePast(ride, nowMs = Date.now()) {
+  if (!ride) return false;
+  const status = String(ride.status ?? "");
+  if (TERMINAL_STATUSES.has(status)) return true;
+  if (isPartnerSearchTimedOut(ride, nowMs)) return true;
+  if (RESERVATION_STATUSES.has(status) && ride.scheduledAt) {
+    const t = Date.parse(String(ride.scheduledAt));
+    if (Number.isFinite(t) && t <= nowMs && !LIVE_DRIVER_STATUSES.has(status)) return true;
+  }
+  return false;
+}
+
+/** ISO-Datum (YYYY-MM-DD) für Listenfilter. */
+export function partnerRideListDateKey(ride) {
+  const iso = ride?.scheduledAt || ride?.createdAt;
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** @param {Record<string, unknown> | null | undefined} ride */
+export function partnerRideMatchesSearch(ride, query) {
+  const q = String(query ?? "").trim().toLowerCase();
+  if (!q) return true;
+  const meta = getPartnerMeta(ride);
+  const hotel = meta?.hotel && typeof meta.hotel === "object" ? meta.hotel : null;
+  const parts = [
+    ride?.id,
+    ride?.from,
+    ride?.to,
+    ride?.fromFull,
+    ride?.toFull,
+    ride?.passengerName,
+    ride?.billingReference,
+    meta?.guest_name,
+    meta?.room_number,
+    hotel && typeof hotel.room === "string" ? hotel.room : null,
+    hotel && typeof hotel.guestName === "string" ? hotel.guestName : null,
+  ];
+  const hay = parts
+    .filter((p) => p != null && String(p).trim())
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
+
+export function partnerRideSegmentOf(ride, nowMs = Date.now()) {
+  if (isPartnerRideActiveNow(ride, nowMs)) return "aktuell";
+  if (isPartnerRideFuture(ride, nowMs)) return "zukunft";
+  if (isPartnerRidePast(ride, nowMs)) return "abgelaufen";
+  return "abgelaufen";
+}
