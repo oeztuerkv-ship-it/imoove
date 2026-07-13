@@ -7,6 +7,7 @@ import { useState } from "react";
 export default function AdminCollapsibleSection({
   title,
   subtitle = "",
+  icon = "",
   defaultOpen = true,
   collapsible = true,
   flushBody = false,
@@ -19,9 +20,16 @@ export default function AdminCollapsibleSection({
     return (
       <section className={`admin-section-block ${className}`.trim()}>
         <div className="admin-section-block__head admin-section-block__head--static">
-          <div>
-            <h2 className="admin-section-block__title">{title}</h2>
-            {subtitle ? <p className="admin-section-block__sub">{subtitle}</p> : null}
+          <div className="admin-section-block__title-wrap">
+            {icon ? (
+              <span className="admin-section-block__icon" aria-hidden>
+                {icon}
+              </span>
+            ) : null}
+            <div>
+              <h2 className="admin-section-block__title">{title}</h2>
+              {subtitle ? <p className="admin-section-block__sub">{subtitle}</p> : null}
+            </div>
           </div>
         </div>
         <div
@@ -42,9 +50,16 @@ export default function AdminCollapsibleSection({
         onClick={() => setOpen((v) => !v)}
       >
         <div className="admin-section-block__head">
-          <div>
-            <h2 className="admin-section-block__title">{title}</h2>
-            {subtitle ? <p className="admin-section-block__sub">{subtitle}</p> : null}
+          <div className="admin-section-block__title-wrap">
+            {icon ? (
+              <span className="admin-section-block__icon" aria-hidden>
+                {icon}
+              </span>
+            ) : null}
+            <div>
+              <h2 className="admin-section-block__title">{title}</h2>
+              {subtitle ? <p className="admin-section-block__sub">{subtitle}</p> : null}
+            </div>
           </div>
           <span className="admin-section-block__chevron" aria-hidden>
             {open ? "▾" : "▸"}

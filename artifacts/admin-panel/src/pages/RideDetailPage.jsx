@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
+import {
+  rideCodeChipClass,
+  rideStatusLabelDe,
+  RideStatusPill,
+} from "../lib/adminRideStatusUi.jsx";
 import RideGpsTrackMap from "../components/RideGpsTrackMap.jsx";
 
 const RIDES_LIST_URL = `${API_BASE}/admin/rides`;
@@ -29,35 +34,7 @@ function billingStatusDe(status) {
 }
 
 function rideStatusDe(status) {
-  const s = String(status || "");
-  const m = {
-    pending: "Offen (Suche)",
-    requested: "Angefordert",
-    searching_driver: "Suche Fahrer",
-    offered: "Angeboten",
-    scheduled: "Geplant",
-    accepted: "Angenommen",
-    driver_arriving: "Fahrer unterwegs",
-    driver_waiting: "Fahrer vor Ort",
-    passenger_onboard: "Eingestiegen",
-    arrived: "Vor Ort",
-    in_progress: "Fahrt aktiv",
-    completed: "Abgeschlossen",
-    cancelled: "Storniert",
-    cancelled_by_customer: "Storniert (Kund*in)",
-    cancelled_by_system: "Storniert (System)",
-    cancelled_by_driver: "Storniert (Fahrer*in)",
-    rejected: "Abgelehnt",
-  };
-  return m[s] || s || "—";
-}
-
-function rideStatusToneClass(status) {
-  const s = String(status || "");
-  if (s === "completed") return "admin-status-pill admin-status-pill--ok";
-  if (s === "cancelled" || s === "rejected" || s.startsWith("cancelled_")) return "admin-status-pill admin-status-pill--bad";
-  if (s === "pending" || s === "requested" || s === "searching_driver") return "admin-status-pill admin-status-pill--pending";
-  return "admin-status-pill admin-status-pill--active";
+  return rideStatusLabelDe(status);
 }
 
 function rideKindLabel(k) {
@@ -394,7 +371,7 @@ export default function RideDetailPage({ rideId, onBack }) {
             </button>
             <h1 className="admin-m-hero__title">Fahrtakte</h1>
             <div className="admin-ride-rec-hero-meta">
-              {r?.status ? <span className={rideStatusToneClass(r.status)}>{rideStatusDe(r.status)}</span> : null}
+              {r?.status ? <RideStatusPill status={r.status} /> : null}
               {r?.companyName || r?.companyId ? (
                 <span className="admin-ride-rec-hero-meta__chip">{r.companyName || r.companyId}</span>
               ) : null}
@@ -402,7 +379,7 @@ export default function RideDetailPage({ rideId, onBack }) {
             <p className="admin-taxi-fv-heroline admin-ride-rec-hero-id">
               {r?.id ? (
                 <>
-                  <code>{r.id}</code>
+                  <span className="admin-ride-code-chip admin-ride-code-chip--lg">{r.id}</span>
                   <button type="button" className="admin-ride-rec-copy" onClick={copyRideId}>
                     {idCopied ? "Kopiert ✓" : "ID kopieren"}
                   </button>
@@ -447,7 +424,7 @@ export default function RideDetailPage({ rideId, onBack }) {
             </div>
             <div className="admin-ride-rec-summary__item">
               <span className="admin-ride-rec-summary__k">Fahrer</span>
-              <span className="admin-ride-rec-summary__v">
+              <span className={rideCodeChipClass(r.driverId, "admin-ride-rec-summary__v")}>
                 {r.driverName ? `${r.driverName} · ` : ""}
                 {r.driverId || "offen"}
               </span>
@@ -456,14 +433,18 @@ export default function RideDetailPage({ rideId, onBack }) {
 
           <AdminCollapsibleSection
             title="Stammdaten"
+            icon="👤"
             subtitle={[r.customerName, r.companyName || r.companyId].filter(Boolean).join(" · ") || undefined}
             defaultOpen
             flushBody
+            className="admin-section-block--ride"
           >
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">Status</span>
-                <span className="admin-ride-rec-kv__v">{rideStatusDe(r.status)}</span>
+                <span className="admin-ride-rec-kv__v">
+                  <RideStatusPill status={r.status} />
+                </span>
               </div>
               <div>
                 <span className="admin-ride-rec-kv__k">Kund*in</span>
@@ -471,7 +452,7 @@ export default function RideDetailPage({ rideId, onBack }) {
               </div>
               <div>
                 <span className="admin-ride-rec-kv__k">Mandant</span>
-                <span className="admin-ride-rec-kv__v">
+                <span className={rideCodeChipClass(r.companyId, "admin-ride-rec-kv__v")}>
                   {r.companyName || r.companyId || "—"}
                 </span>
               </div>
@@ -508,9 +489,11 @@ export default function RideDetailPage({ rideId, onBack }) {
 
           <AdminCollapsibleSection
             title="GPS-Route"
+            icon="🗺"
             subtitle={gpsTrack ? `${gpsTrack.pointCount ?? 0} Pings` : "Nachverfolgung"}
             defaultOpen={false}
             flushBody
+            className="admin-section-block--ride"
           >
             <div className="admin-ride-rec-section-pad">
               <div className="admin-ride-rec-section-pad__actions">
@@ -571,13 +554,13 @@ export default function RideDetailPage({ rideId, onBack }) {
           </AdminCollapsibleSection>
 
           {accessibilitySummary ? (
-            <AdminCollapsibleSection title="Barrierefrei / Rollstuhl" defaultOpen={false} flushBody>
+            <AdminCollapsibleSection title="Barrierefrei / Rollstuhl" icon="♿" defaultOpen={false} flushBody className="admin-section-block--ride">
               <p className="admin-ride-rec-muted admin-ride-rec-section-pad">{accessibilitySummary}</p>
             </AdminCollapsibleSection>
           ) : null}
 
           {medicalMeta ? (
-            <AdminCollapsibleSection title="Krankenfahrt-Meta" defaultOpen={false} flushBody>
+            <AdminCollapsibleSection title="Krankenfahrt-Meta" icon="🏥" defaultOpen={false} flushBody className="admin-section-block--ride">
               <div style={{ padding: "0 16px 10px", display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {medicalMeta.ampel.map((item) => (
                   <span
@@ -611,11 +594,11 @@ export default function RideDetailPage({ rideId, onBack }) {
             </AdminCollapsibleSection>
           ) : null}
 
-          <AdminCollapsibleSection title="Fahrer & Fahrzeug" defaultOpen={false} flushBody>
+          <AdminCollapsibleSection title="Fahrer & Fahrzeug" icon="🚗" defaultOpen={false} flushBody className="admin-section-block--ride">
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">Fahrer*in (ID/Name)</span>
-                <span className="admin-ride-rec-kv__v">
+                <span className={rideCodeChipClass(r.driverId, "admin-ride-rec-kv__v")}>
                   {r.driverName ? `${r.driverName} · ` : ""}
                   {r.driverId || "—"}
                 </span>
@@ -627,7 +610,7 @@ export default function RideDetailPage({ rideId, onBack }) {
             </div>
           </AdminCollapsibleSection>
 
-          <AdminCollapsibleSection title="Preis" defaultOpen={false} flushBody>
+          <AdminCollapsibleSection title="Preis" icon="💶" defaultOpen={false} flushBody className="admin-section-block--ride">
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">Geschätzt / final</span>
@@ -647,7 +630,14 @@ export default function RideDetailPage({ rideId, onBack }) {
             </div>
           </AdminCollapsibleSection>
 
-          <AdminCollapsibleSection title="Finanzen" subtitle={billingStatusDe(r.billingStatus)} defaultOpen={false} flushBody>
+          <AdminCollapsibleSection
+            title="Finanzen"
+            icon="📊"
+            subtitle={billingStatusDe(r.billingStatus)}
+            defaultOpen={false}
+            flushBody
+            className="admin-section-block--ride"
+          >
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">billing_status</span>
@@ -660,7 +650,7 @@ export default function RideDetailPage({ rideId, onBack }) {
             </div>
           </AdminCollapsibleSection>
 
-          <AdminCollapsibleSection title="Verknüpfungen" defaultOpen={false} flushBody>
+          <AdminCollapsibleSection title="Verknüpfungen" icon="🔗" defaultOpen={false} flushBody className="admin-section-block--ride">
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">billing_reference</span>
@@ -680,9 +670,11 @@ export default function RideDetailPage({ rideId, onBack }) {
           {dispatchOffers.length > 0 ? (
             <AdminCollapsibleSection
               title="Dispatch-Angebote"
+              icon="📡"
               subtitle={`${dispatchOffers.length} Fahrer`}
               defaultOpen={false}
               flushBody
+              className="admin-section-block--ride"
             >
               <div className="admin-ride-rec-section-pad admin-ride-rec-table-wrap">
                 <table className="admin-rides-table">
@@ -711,9 +703,11 @@ export default function RideDetailPage({ rideId, onBack }) {
 
           <AdminCollapsibleSection
             title="Fahrt-Support"
+            icon="🎧"
             subtitle={`${supportTickets.length} Ticket(s)`}
             defaultOpen={false}
             flushBody
+            className="admin-section-block--ride"
           >
             {supportTickets.length === 0 ? (
               <p className="admin-ride-rec-muted admin-ride-rec-section-pad">Noch kein Kund*innen-Support-Ticket.</p>
@@ -739,9 +733,11 @@ export default function RideDetailPage({ rideId, onBack }) {
 
           <AdminCollapsibleSection
             title="Verlauf — Ereignisse"
+            icon="📋"
             subtitle={`${evs.length} Einträge`}
             defaultOpen
             flushBody
+            className="admin-section-block--ride"
           >
             {evs.length === 0 ? (
               <p className="admin-ride-rec-muted admin-ride-rec-section-pad">Noch keine Ereignisse.</p>
@@ -766,9 +762,11 @@ export default function RideDetailPage({ rideId, onBack }) {
 
           <AdminCollapsibleSection
             title="Mandanten-Audit"
+            icon="📝"
             subtitle={`${audits.length} Einträge`}
             defaultOpen={false}
             flushBody
+            className="admin-section-block--ride"
           >
             {audits.length === 0 ? (
               <p className="admin-ride-rec-muted admin-ride-rec-section-pad">Keine Audit-Einträge für diese Fahrt.</p>

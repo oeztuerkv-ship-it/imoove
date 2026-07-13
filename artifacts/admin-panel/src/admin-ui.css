@@ -177,6 +177,26 @@
   line-height: 1.4;
 }
 
+.admin-section-block__title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-section-block__icon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 8px;
+  background: #f2f2f7;
+}
+
 .admin-section-block__body {
   padding: var(--onroda-padding-card);
 }
@@ -1579,26 +1599,41 @@
 .admin-ride-rec-summary {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 0;
+  padding: 0;
   background: var(--onroda-bg-card);
-  border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-card);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
 }
 
 @media (min-width: 720px) {
   .admin-ride-rec-summary {
-    grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
-    gap: 12px 16px;
+    grid-template-columns: 1.35fr repeat(3, minmax(0, 1fr));
   }
 }
 
 .admin-ride-rec-summary__item {
   min-width: 0;
+  padding: 16px 18px;
+  border-bottom: 1px solid #ececf1;
+}
+
+@media (min-width: 720px) {
+  .admin-ride-rec-summary__item {
+    border-bottom: none;
+    border-right: 1px solid #ececf1;
+  }
+
+  .admin-ride-rec-summary__item:last-child {
+    border-right: none;
+  }
 }
 
 .admin-ride-rec-summary__item--route {
   grid-column: 1 / -1;
+  border-right: none;
 }
 
 @media (min-width: 720px) {
@@ -1609,12 +1644,12 @@
 
 .admin-ride-rec-summary__k {
   display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: #64748b;
-  margin-bottom: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: #6b7280;
+  margin-bottom: 6px;
 }
 
 .admin-ride-rec-summary__v {
@@ -5745,34 +5780,205 @@ ul.admin-mandate-doclist {
 }
 
 /* Fahrtakte (Admin) — Karten + Timeline */
+.admin-rides-page,
+.admin-taxi-fv-page.admin-page {
+  background: #f2f2f7;
+  padding-bottom: 24px;
+}
+
+.admin-taxi-fv-page .admin-m-hero {
+  background: #fff;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08);
+  padding: 18px 20px;
+  margin-bottom: 4px;
+}
+
+.admin-section-block--ride,
+.admin-ride-preview-stack .admin-section-block,
+.admin-ride-rec-stack .admin-section-block {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 20px rgba(15, 23, 42, 0.07);
+}
+
+.admin-ride-preview-stack .admin-section-block--collapsible .admin-section-block__toggle[aria-expanded="false"],
+.admin-ride-rec-stack .admin-section-block--collapsible .admin-section-block__toggle[aria-expanded="false"] {
+  background: #f8f9fb;
+}
+
+.admin-ride-preview-stack .admin-section-block--collapsible .admin-section-block__toggle[aria-expanded="true"],
+.admin-ride-rec-stack .admin-section-block--collapsible .admin-section-block__toggle[aria-expanded="true"] {
+  background: #fff;
+}
+
+.admin-ride-preview-stack .admin-section-block--collapsible .admin-section-block__head,
+.admin-ride-rec-stack .admin-section-block--collapsible .admin-section-block__head {
+  border-bottom-color: #ececf1;
+}
+
+.admin-modal--ride-preview {
+  border: none;
+  border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.admin-modal--ride-preview .admin-modal__header {
+  background: #fff;
+  border-bottom: 1px solid #ececf1;
+}
+
+.admin-modal--ride-preview .admin-modal__body {
+  background: #f2f2f7;
+}
+
+.admin-modal__footer--ride {
+  background: #fff;
+  gap: 10px;
+}
+
+.admin-btn-ride-primary {
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  background: #ef1d26;
+}
+
+.admin-btn-ride-secondary {
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.admin-btn-ride-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.admin-ride-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.admin-ride-status-pill--scheduled {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+
+.admin-ride-status-pill--search {
+  background: rgba(249, 115, 22, 0.14);
+  color: #c2410c;
+}
+
+.admin-ride-status-pill--pending {
+  background: rgba(234, 179, 8, 0.16);
+  color: #a16207;
+}
+
+.admin-ride-status-pill--accepted {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+
+.admin-ride-status-pill--live {
+  background: rgba(15, 118, 110, 0.14);
+  color: #115e59;
+}
+
+.admin-ride-status-pill--ok {
+  background: rgba(22, 101, 52, 0.14);
+  color: #166534;
+}
+
+.admin-ride-status-pill--err {
+  background: rgba(180, 35, 24, 0.12);
+  color: #b42318;
+}
+
+.admin-ride-code-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+  font-weight: 600;
+  color: #1f2937;
+  word-break: break-all;
+}
+
+.admin-ride-code-chip--lg {
+  font-size: 0.95rem;
+  padding: 5px 10px;
+  border-radius: 10px;
+}
+
 .admin-ride-rec-kv {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px 0;
-  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 18px 18px;
   font-size: 0.96rem;
   line-height: 1.45;
 }
 
+.admin-ride-rec-kv > div {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f1f5;
+}
+
+.admin-ride-rec-kv > div:last-child {
+  border-bottom: none;
+}
+
 @media (min-width: 700px) {
-  .admin-ride-rec-kv {
-    grid-template-columns: 180px 1fr;
+  .admin-ride-rec-kv > div {
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 10px 20px;
+    align-items: baseline;
   }
 }
 
 .admin-ride-rec-kv__k {
-  color: #64748b;
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding-top: 2px;
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  padding-top: 0;
 }
 
 .admin-ride-rec-kv__v {
-  color: #0f172a;
+  color: #111827;
   font-weight: 600;
   word-break: break-word;
+  line-height: 1.5;
+}
+
+.admin-ride-rec-kv__v.admin-ride-code-chip {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .admin-ride-rec-muted {

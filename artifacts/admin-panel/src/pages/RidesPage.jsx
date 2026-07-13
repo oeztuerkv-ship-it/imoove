@@ -2,6 +2,11 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import {
+  rideCodeChipClass,
+  rideStatusLabelDe,
+  RideStatusPill,
+} from "../lib/adminRideStatusUi.jsx";
 
 const RIDES_URL = `${API_BASE}/admin/rides`;
 const STATS_URL = `${API_BASE}/admin/stats`;
@@ -63,24 +68,10 @@ function billingStatusToneClass(status) {
   return "admin-status-pill admin-status-pill--pending";
 }
 
-function rideStatusDe(status) {
-  const s = String(status || "");
-  const m = {
-    pending: "Offen",
-    accepted: "Angenommen",
-    arrived: "Vor Ort",
-    in_progress: "Unterwegs",
-    completed: "Abgeschlossen",
-    cancelled: "Storniert",
-    rejected: "Abgelehnt",
-  };
-  return m[s] || (s || "—");
-}
-
 /** Status-Filter: „Alle“ zuerst, danach A–Z nach deutscher Bezeichnung. */
 const RIDE_STATUS_FILTER_OPTIONS = (() => {
   const ids = ["pending", "accepted", "arrived", "in_progress", "completed", "cancelled", "rejected"];
-  const rest = ids.map((value) => ({ value, label: rideStatusDe(value) }));
+  const rest = ids.map((value) => ({ value, label: rideStatusLabelDe(value) }));
   rest.sort((a, b) => a.label.localeCompare(b.label, "de", { sensitivity: "base" }));
   return [{ value: "all", label: "Alle" }, ...rest];
 })();
@@ -89,12 +80,8 @@ function rideTripType(ride) {
   return ride.scheduledAt ? "Termin" : "Sofort";
 }
 
-function rideStatusToneClass(status) {
-  const s = String(status || "");
-  if (s === "completed") return "admin-status-pill admin-status-pill--ok";
-  if (s === "cancelled" || s === "rejected") return "admin-status-pill admin-status-pill--bad";
-  if (s === "pending") return "admin-status-pill admin-status-pill--pending";
-  return "admin-status-pill admin-status-pill--active";
+function rideStatusDe(status) {
+  return rideStatusLabelDe(status);
 }
 
 function csvEscapeCell(v) {
@@ -798,7 +785,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                           )}
                         </td>
                         <td>
-                          <span className={rideStatusToneClass(ride.status)}>{rideStatusDe(ride.status)}</span>
+                          <RideStatusPill status={ride.status} />
                           <div className="admin-table-sub">{formatMoney(ride.estimatedFare)}</div>
                         </td>
                         <td>
@@ -882,12 +869,10 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
               <div className="admin-modal__title-wrap">
                 <p className="admin-modal__eyebrow">Fahrtvorschau</p>
                 <div className="admin-modal__title-row">
-                  <h2 id="admin-ride-detail-title" className="admin-modal__title admin-mono">
-                    {detailId}
+                  <h2 id="admin-ride-detail-title" className="admin-modal__title">
+                    <span className="admin-ride-code-chip admin-ride-code-chip--lg">{detailId}</span>
                   </h2>
-                  {detailRide ? (
-                    <span className={rideStatusToneClass(detailRide.status)}>{rideStatusDe(detailRide.status)}</span>
-                  ) : null}
+                  {detailRide ? <RideStatusPill status={detailRide.status} /> : null}
                 </div>
                 {detailRide ? (
                   <p className="admin-modal__lead admin-ride-preview-route">
@@ -906,9 +891,11 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                 <div className="admin-ride-preview-stack">
                   <AdminCollapsibleSection
                     title="Überblick"
+                    icon="👤"
                     subtitle={`${detailRide.customerName || "—"} · ${detailRide.companyName || detailRide.companyId || "—"}`}
                     defaultOpen
                     flushBody
+                    className="admin-section-block--ride"
                   >
                     <div className="admin-ride-rec-kv">
                       <div>
@@ -917,11 +904,15 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                       </div>
                       <div>
                         <span className="admin-ride-rec-kv__k">Unternehmen</span>
-                        <span className="admin-ride-rec-kv__v">{detailRide.companyName || detailRide.companyId || "—"}</span>
+                        <span className={rideCodeChipClass(detailRide.companyId, "admin-ride-rec-kv__v")}>
+                          {detailRide.companyName || detailRide.companyId || "—"}
+                        </span>
                       </div>
                       <div>
                         <span className="admin-ride-rec-kv__k">Status</span>
-                        <span className="admin-ride-rec-kv__v">{rideStatusDe(detailRide.status)}</span>
+                        <span className="admin-ride-rec-kv__v">
+                          <RideStatusPill status={detailRide.status} />
+                        </span>
                       </div>
                       <div>
                         <span className="admin-ride-rec-kv__k">Fahrtart / Zahlung</span>
@@ -940,7 +931,13 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                     </div>
                   </AdminCollapsibleSection>
 
-                  <AdminCollapsibleSection title="Route & Termin" defaultOpen={false} flushBody>
+                  <AdminCollapsibleSection
+                    title="Route & Termin"
+                    icon="📍"
+                    defaultOpen={false}
+                    flushBody
+                    className="admin-section-block--ride"
+                  >
                     <div className="admin-ride-rec-kv">
                       <div>
                         <span className="admin-ride-rec-kv__k">Abholung</span>
@@ -961,11 +958,19 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                     </div>
                   </AdminCollapsibleSection>
 
-                  <AdminCollapsibleSection title="Fahrer & Preis" defaultOpen={false} flushBody>
+                  <AdminCollapsibleSection
+                    title="Fahrer & Preis"
+                    icon="🚗"
+                    defaultOpen={false}
+                    flushBody
+                    className="admin-section-block--ride"
+                  >
                     <div className="admin-ride-rec-kv">
                       <div>
                         <span className="admin-ride-rec-kv__k">Fahrer</span>
-                        <span className="admin-ride-rec-kv__v admin-mono">{detailRide.driverId || "—"}</span>
+                        <span className={rideCodeChipClass(detailRide.driverId, "admin-ride-rec-kv__v admin-mono")}>
+                          {detailRide.driverId || "—"}
+                        </span>
                       </div>
                       <div>
                         <span className="admin-ride-rec-kv__k">Preis (geschätzt / final)</span>
@@ -981,17 +986,17 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                 </div>
               ) : null}
             </div>
-            <div className="admin-modal__footer">
-              <button type="button" className="admin-c-btn-sec" onClick={() => void copyRideId(detailId)}>
+            <div className="admin-modal__footer admin-modal__footer--ride">
+              <button type="button" className="admin-c-btn-sec admin-btn-ride-secondary" onClick={() => void copyRideId(detailId)}>
                 {previewIdCopied ? "Kopiert ✓" : "ID kopieren"}
               </button>
-              <button type="button" className="admin-c-btn-sec" onClick={closeDetail}>
+              <button type="button" className="admin-c-btn-sec admin-btn-ride-secondary" onClick={closeDetail}>
                 Schließen
               </button>
               {typeof onOpenRideRecord === "function" && detailId ? (
                 <button
                   type="button"
-                  className="admin-btn-primary"
+                  className="admin-btn-primary admin-btn-ride-primary"
                   onClick={() => {
                     onOpenRideRecord(detailId);
                     closeDetail();
