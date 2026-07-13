@@ -62,6 +62,108 @@
   font-size: 0.88rem;
 }
 
+/* Dialog-Standard (Partner) — analog admin-modal, einheitliche Modals */
+.panel-dialog {
+  width: 100%;
+  max-width: min(520px, 100%);
+  max-height: min(85vh, 900px);
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-card);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16);
+}
+
+.panel-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--onroda-border-subtle, var(--onroda-border));
+}
+
+.panel-dialog__eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--onroda-text-muted);
+}
+
+.panel-dialog__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--onroda-text-dark);
+}
+
+.panel-dialog__lead {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--onroda-text-muted);
+}
+
+.panel-dialog__close {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--onroda-text-grey);
+  padding: 0 4px;
+}
+
+.panel-dialog__body {
+  padding: 14px 20px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-dialog__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--onroda-border-subtle, var(--onroda-border));
+}
+
+.panel-detail-kv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+@media (min-width: 560px) {
+  .panel-detail-kv {
+    grid-template-columns: 140px 1fr;
+  }
+}
+
+.panel-detail-kv__k {
+  color: var(--onroda-text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.panel-detail-kv__v {
+  color: var(--onroda-text-dark);
+  font-weight: 600;
+  word-break: break-word;
+}
+
 .panel-card {
   margin-top: var(--onroda-space-8);
   max-width: 480px;
@@ -894,16 +996,18 @@
   margin-top: 12px;
 }
 
-.partner-ride-chat-modal__panel {
-  width: 100%;
-  max-width: 520px;
-  background: var(--onroda-bg-app);
-  border: 1px solid var(--onroda-border);
-  border-radius: 14px;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.partner-ride-chat-modal .panel-dialog {
+  max-width: min(560px, 100%);
+}
+
+.partner-collapsible__body--flush {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.partner-collapsible__head-static {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--onroda-border-subtle, var(--onroda-border));
 }
 
 .partner-ride-chat-modal__head {

@@ -76,62 +76,79 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
   if (!open || !rideId) return null;
 
   return (
-    <div className="partner-ride-note-modal partner-ride-chat-modal" role="dialog" aria-modal="true">
-      <div className="partner-ride-chat-modal__panel">
-        <div className="partner-ride-chat-modal__head">
+    <div
+      className="partner-ride-note-modal partner-ride-chat-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="partner-ride-chat-title"
+      onClick={onClose}
+    >
+      <div className="panel-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="panel-dialog__header">
           <div>
-            <h3 className="partner-ride-note-modal__title">Fahrt-Chat</h3>
-            <p className="partner-ride-chat-modal__lead">
+            <p className="panel-dialog__eyebrow">Fahrt-Chat</p>
+            <h3 id="partner-ride-chat-title" className="panel-dialog__title panel-inline-code">
+              {rideId}
+            </h3>
+            <p className="panel-dialog__lead">
               {chatEnabled
                 ? "Nachrichten mit Fahrer und Kunde — nur für diese Fahrt."
                 : "Chat ist für diese Fahrt noch nicht aktiv."}
             </p>
           </div>
-          <button type="button" className="panel-btn-secondary" onClick={onClose}>
-            Schließen
+          <button type="button" className="panel-dialog__close" onClick={onClose} aria-label="Schließen">
+            ×
           </button>
         </div>
 
-        {err ? <p className="panel-page__warn">{err}</p> : null}
+        <div className="panel-dialog__body">
+          {err ? <p className="panel-page__warn">{err}</p> : null}
 
-        <div className="partner-ride-chat-thread" aria-live="polite">
-          {items.length === 0 ? (
-            <p className="partner-ride-chat-empty">Noch keine Nachrichten.</p>
-          ) : (
-            items.map((m) => (
-              <div key={m.id} className={`partner-ride-chat-bubble ${partnerChatBubbleClass(m.senderKind)}`}>
-                {m.senderKind !== "partner" ? (
-                  <span className="partner-ride-chat-bubble__meta">{partnerChatSenderLabel(m.senderKind)}</span>
-                ) : null}
-                <div className="partner-ride-chat-bubble__body-row">
-                  <p className="partner-ride-chat-bubble__text">{m.body}</p>
-                  <span className="partner-ride-chat-bubble__time">{formatPartnerChatTime(m.createdAt)}</span>
+          <div className="partner-ride-chat-thread" aria-live="polite">
+            {items.length === 0 ? (
+              <p className="partner-ride-chat-empty">Noch keine Nachrichten.</p>
+            ) : (
+              items.map((m) => (
+                <div key={m.id} className={`partner-ride-chat-bubble ${partnerChatBubbleClass(m.senderKind)}`}>
+                  {m.senderKind !== "partner" ? (
+                    <span className="partner-ride-chat-bubble__meta">{partnerChatSenderLabel(m.senderKind)}</span>
+                  ) : null}
+                  <div className="partner-ride-chat-bubble__body-row">
+                    <p className="partner-ride-chat-bubble__text">{m.body}</p>
+                    <span className="partner-ride-chat-bubble__time">{formatPartnerChatTime(m.createdAt)}</span>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
+
+          <div className="partner-ride-chat-quick">
+            {QUICK_REPLIES.map((q) => (
+              <button
+                key={q}
+                type="button"
+                className="panel-btn-secondary partner-ride-chat-quick__chip"
+                onClick={() => setDraft(q)}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            className="partner-booking-note partner-ride-chat-input"
+            value={draft}
+            rows={3}
+            maxLength={1000}
+            disabled={!chatEnabled || busy}
+            placeholder={chatEnabled ? "Nachricht an Fahrer und Kunde …" : "Chat noch nicht aktiv"}
+            onChange={(e) => setDraft(e.target.value.slice(0, 1000))}
+          />
         </div>
 
-        <div className="partner-ride-chat-quick">
-          {QUICK_REPLIES.map((q) => (
-            <button key={q} type="button" className="panel-btn-secondary partner-ride-chat-quick__chip" onClick={() => setDraft(q)}>
-              {q}
-            </button>
-          ))}
-        </div>
-
-        <textarea
-          className="partner-booking-note partner-ride-chat-input"
-          value={draft}
-          rows={3}
-          maxLength={1000}
-          disabled={!chatEnabled || busy}
-          placeholder={chatEnabled ? "Nachricht an Fahrer und Kunde …" : "Chat noch nicht aktiv"}
-          onChange={(e) => setDraft(e.target.value.slice(0, 1000))}
-        />
-        <div className="partner-ride-note-modal__actions">
+        <div className="panel-dialog__footer">
           <button type="button" className="panel-btn-secondary" onClick={onClose}>
-            Abbrechen
+            Schließen
           </button>
           <button
             type="button"

@@ -4,6 +4,8 @@
 
 Ziel: **keine** neuen Fremd- oder Einzellayouts, **keine** isolierten Sonderdesigns — neue und erweiterte Seiten sollen **dieselbe** visuelle und strukturelle Sprache nutzen.
 
+**Querschnitt (Admin + Partner + Mobile Chat):** `.cursor/rules/imoove-modern-ui-design-agreement.mdc`
+
 ## ONRODA Admin-Standard (Leitbild)
 
 1. **Einheitliches helles Layout** — `admin-shell` / helle Inhaltsflächen, keine dunklen Vollbild-„Cockpits“ als neues Standard-Layout; Kontrast über Karten, nicht über Sonderhintergründe pro Seite.

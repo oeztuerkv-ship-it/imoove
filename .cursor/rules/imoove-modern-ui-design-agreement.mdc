@@ -1,0 +1,58 @@
+# ONRODA: Modernes UI — Team-Vereinbarung (einheitliche Linie)
+
+**Ziel:** Über Admin, Partner und Mobile dieselben **Struktur- und Interaktionsmuster** — ohne die **Persona-Trennung** aufzuweichen (Operator vs Unternehmens-Arbeitsplatz vs App).
+
+**Referenzen pro Oberfläche:**
+- Admin: `artifacts/admin-panel/docs/admin-ui-reference.md` + `imoove-admin-panel-ui-reference.mdc`
+- Partner: `artifacts/partner-panel/docs/partner-ui-reference.md`
+- Mobile Fahrt-Chat: `artifacts/mobile/components/ride-chat/*` + `rideChatTheme.ts`
+- Persona/Sprache/Farben getrennt: `imoove-panel-ux-separation.mdc`
+
+## Gemeinsame Muster (verbindlich für neue UI)
+
+| Muster | Admin | Partner | Mobile |
+|--------|-------|---------|--------|
+| Seiten-Stack: grauer App-Hintergrund, weiße Blöcke | `admin-page` + `admin-section-block` | `panel-page` + `panel-card` / `partner-collapsible` | Screen-Background + Karten |
+| Aufklappbare Sektionen | `AdminCollapsibleSection` | `PartnerCollapsibleSection` | Accordion nur wo nötig; Fahrt-Chat kein Accordion |
+| Detail als Schlüssel–Wert | `admin-ride-rec-kv` | `panel-detail-kv` | Labels in Komponenten, kein dl-Grid |
+| Modal: Eyebrow → Titel → Inhalt → Footer | `admin-modal` + `admin-modal__footer` | `panel-dialog` + `panel-dialog__footer` | `RideChatModal` / RN Modal |
+| Chat: Text + Uhrzeit **nebeneinander** | Partner-Panel-Bubbles | `partner-ride-chat-bubble__body-row` | `RideChatBubble` `bodyRow` |
+| Chat-Farben | Grün = eigene Nachricht, Blau = andere Rolle | gleich | `RIDE_CHAT_THEME` (Quelle der Wahrheit) |
+| IDs / REQ | Monospace + Copy-Button | `partner-ride-card__id-copy` | monospace in Meta-Zeilen |
+| Primär-Aktion | `admin-btn-primary` / `admin-m-btn-pri` | `panel-btn-primary` | Brand-Farbe, eine Hauptaktion pro Sheet |
+| Sekundär / Abbrechen | `admin-c-btn-sec` | `panel-btn-secondary` | Outline/Ghost-Button |
+
+**Wichtigste Regel:** Kein neues Einzel-Layout pro Feature. Fehlt eine Variante → **zentrale CSS-Klasse** + Eintrag in der jeweiligen UI-Referenz.
+
+## Default-Verhalten Aufklappbar
+
+- **Überblick / Stammdaten / aktueller Status:** `defaultOpen={true}`
+- **Verlauf, Audit, GPS, Krankenfahrt-Meta, Finanz-Detail:** `defaultOpen={false}`
+- Chevron: `▾` offen / `▸` zu (Admin + Partner identisch)
+
+## Anti-Patterns (nicht wieder einführen)
+
+- `admin-detail-grid` / lose `<dl>`-Raster für neue Detail-Dialoge
+- Chat: Absender, Text, Zeit **untereinander** statt Text+Zeit in einer Zeile
+- Modals ohne Footer (Aktionen schwebend im Body)
+- Inline `style={{ background: … }}` für Seitenflächen
+- Partner-Panel wie Admin aussehen lassen (oder umgekehrt)
+- Mobile-Chat-Farben abweichend von `rideChatTheme.ts`
+
+## Checkliste vor Merge (UI-Änderungen)
+
+1. Welche **Oberfläche** (Admin / Partner / Mobile)?
+2. Welches **Referenz-Muster** aus der Tabelle oben?
+3. **Persona** korrekt (Ihr/Mein vs Plattform vs Du in App)?
+4. **Aufklappbar** sinnvoll eingesetzt?
+5. **Kein** neues CSS-Duplikat — bestehende Klasse erweitern?
+
+## Schrittweise Angleichung (Legacy)
+
+Ältere Screens dürfen abweichen, bis sie angefasst werden. **Neue** und **refaktorierte** Bereiche (Fahrten, Chat, Fahrtakte, Modals) folgen ab sofort dieser Vereinbarung.
+
+## Für Agents
+
+- Bei UI in Fahrten/Chat/Detail/Modal: diese Regel + Oberflächen-Referenz lesen.
+- Partner-Chat und Admin-Fahrtakte-Vorschau als **Referenz-Implementierungen** für Modals + Sektionen.
+- Kein drittes Chat-Layout bauen — Mobile-Theme ist die Farbquelle, Web spiegelt `body-row`-Layout.
