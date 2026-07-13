@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   billingSummary,
   dispatchHeadline,
@@ -7,7 +8,6 @@ import {
   partnerRideShowsFare,
   rejectionCount,
   rideCardPhase,
-  rideKindLabel,
   statusLabel,
   statusTone,
   TERMINAL_STATUSES,
@@ -156,6 +156,16 @@ export default function PartnerRideCard({
     driverLoc && typeof driverLoc.lat === "number" && typeof driverLoc.lon === "number"
       ? staticMapUrl(driverLoc.lat, driverLoc.lon)
       : null;
+  const [idCopied, setIdCopied] = useState(false);
+
+  const copyRideId = () => {
+    const id = String(ride.id ?? "").trim();
+    if (!id || !navigator.clipboard?.writeText) return;
+    void navigator.clipboard.writeText(id).then(() => {
+      setIdCopied(true);
+      window.setTimeout(() => setIdCopied(false), 2000);
+    });
+  };
 
   return (
     <article
@@ -277,39 +287,13 @@ export default function PartnerRideCard({
             </section>
           </div>
 
-          <dl className="partner-ride-detail-grid partner-ride-detail-grid--icons">
-            <div>
-              <dt>{ICON.passenger} Fahrgast</dt>
-              <dd>
-                {ride.customerName || "—"}
-                {ride.customerPhone ? ` · ${ride.customerPhone}` : ""}
-              </dd>
-            </div>
-            <div>
-              <dt>{ICON.distance} Entfernung</dt>
-              <dd>
-                {dist}
-                {ride.durationMinutes != null ? ` · ${dur}` : ""}
-              </dd>
-            </div>
-            <div>
-              <dt>{ICON.schedule} Termin</dt>
-              <dd>{ride.scheduledAt ? fmtDateTime(ride.scheduledAt) : "Sofortfahrt"}</dd>
-            </div>
-            <div>
-              <dt>Fahrttyp</dt>
-              <dd>{rideKindLabel(ride.rideKind)}</dd>
-            </div>
-            <div className="partner-ride-detail-grid__full">
-              <dt>Notiz für Fahrer</dt>
-              <dd>
-                {note || "—"}
-                {ride.chatEnabled ? (
-                  <span className="partner-muted"> · Chat aktiv — Notiz ist schreibgeschützt.</span>
-                ) : null}
-              </dd>
-            </div>
-          </dl>
+          <div className="partner-ride-driver-note-box">
+            <p className="partner-ride-driver-note-box__title">Notiz für Fahrer</p>
+            <p className="partner-ride-driver-note-box__text">{note || "—"}</p>
+            {ride.chatEnabled ? (
+              <p className="partner-ride-driver-note-box__hint">Chat aktiv — Notiz ist schreibgeschützt.</p>
+            ) : null}
+          </div>
 
           <div className="partner-ride-floating-actions" role="toolbar" aria-label="Fahrt-Aktionen">
             {ride.chatEnabled ? (
@@ -389,7 +373,27 @@ export default function PartnerRideCard({
             </button>
           </div>
 
-          <p className="partner-ride-card__id">ID: {ride.id}</p>
+          <div className="partner-ride-card__id-row">
+            <span className="partner-ride-card__id">ID: {ride.id}</span>
+            <button
+              type="button"
+              className={`partner-ride-card__id-copy${idCopied ? " partner-ride-card__id-copy--done" : ""}`}
+              onClick={copyRideId}
+              aria-label="Fahrt-ID kopieren"
+              title={idCopied ? "Kopiert" : "ID kopieren"}
+            >
+              {idCopied ? (
+                <span aria-hidden>✓</span>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden focusable="false">
+                  <path
+                    fill="currentColor"
+                    d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+                  />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
       ) : null}
     </article>

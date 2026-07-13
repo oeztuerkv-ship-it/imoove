@@ -795,7 +795,7 @@ export default function MyRidesScreen() {
 
   const TABS: { id: FilterTab; label: string; count?: number }[] = [
     { id: "aktuell", label: "Aktuell", count: activeNowRequests.length || undefined },
-    { id: "zukunft", label: "Zukunft", count: reservationRequests.length || undefined },
+    { id: "zukunft", label: "Offene", count: reservationRequests.length || undefined },
     { id: "abgelaufen", label: "Abgelaufen", count: pastCount > 0 ? pastCount : undefined },
   ];
 
@@ -1205,7 +1205,7 @@ export default function MyRidesScreen() {
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               {activeTab === "aktuell"
-                ? "Sofort-Taxi und laufende Fahrten erscheinen hier. Geplante Termine unter „Zukunft“."
+                ? "Sofort-Taxi und laufende Fahrten erscheinen hier. Geplante Termine unter „Offene“."
                 : activeTab === "zukunft"
                   ? "Vorbestellungen mit Datum und Uhrzeit findest du hier."
                   : "Abgeschlossene und stornierte Fahrten werden hier gesammelt."}

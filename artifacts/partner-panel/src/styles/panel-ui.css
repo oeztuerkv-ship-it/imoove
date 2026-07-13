@@ -792,8 +792,73 @@
 }
 
 .partner-ride-card__id {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 0.72rem;
+  color: var(--onroda-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  word-break: break-all;
+}
+
+.partner-ride-card__id-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.partner-ride-card__id-copy {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: -2px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.partner-ride-card__id-copy:hover {
+  border-color: rgba(0, 0, 0, 0.28);
+  background: #f9fafb;
+}
+
+.partner-ride-card__id-copy--done {
+  border-color: #16a34a;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+.partner-ride-driver-note-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.partner-ride-driver-note-box__title {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.partner-ride-driver-note-box__text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #1f2937;
+  white-space: pre-wrap;
+}
+
+.partner-ride-driver-note-box__hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
   color: var(--onroda-text-muted);
 }
 

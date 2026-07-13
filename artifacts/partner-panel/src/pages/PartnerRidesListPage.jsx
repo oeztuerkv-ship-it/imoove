@@ -45,7 +45,7 @@ const HISTORY_STATUSES = TERMINAL_STATUSES;
 
 const RIDE_SEGMENTS = [
   { id: "aktuell", label: "Aktuell / Online" },
-  { id: "zukunft", label: "Zukunft" },
+  { id: "zukunft", label: "Offene" },
   { id: "abgelaufen", label: "Abgelaufen" },
 ];
 
@@ -575,7 +575,7 @@ export default function PartnerRidesListPage({ variant }) {
             : searchQuery.trim() || dateFilter
               ? "Keine Fahrten für Suche oder Datum."
               : activeSegment === "aktuell"
-                ? "Keine laufenden Fahrten — geplante Termine unter „Zukunft“."
+                ? "Keine laufenden Fahrten — geplante Termine unter „Offene“."
                 : activeSegment === "zukunft"
                   ? "Keine geplanten Fahrten."
                   : "Keine abgelaufenen Fahrten in dieser Ansicht."}
