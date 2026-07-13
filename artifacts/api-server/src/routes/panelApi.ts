@@ -114,7 +114,7 @@ import { isPartnerRideHiddenInMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
 import { toPartnerRideView } from "../domain/ridePublic";
 import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
-import { listPartnerChatUnreadSummary } from "../db/rideChatMessagesData";
+import { applyRideChatOnPartnerRide, listPartnerChatUnreadSummary } from "../db/rideChatMessagesData";
 import type { PanelModuleId } from "../domain/panelModules";
 import { accessCodeTripOutcomeFromRide, computeAccessCodeDefinitionState } from "../domain/accessCodeTrace";
 import { resolveEffectivePanelModules } from "../domain/panelModules";
@@ -239,6 +239,16 @@ function parsePartnerDriverNote(body: Record<string, unknown>): string | null {
         : "";
   const note = raw.trim().slice(0, 200);
   return note.length > 0 ? note : null;
+}
+
+async function enablePartnerRideChatAfterSave(
+  saved: RideRequest,
+  panelUserId: string,
+): Promise<RideRequest> {
+  return applyRideChatOnPartnerRide({
+    ride: saved,
+    actor: { actorType: "partner", actorId: panelUserId },
+  });
 }
 
 async function resolvePanelRideCoords(
@@ -1772,7 +1782,15 @@ router.post("/panel/v1/rides/:rideId/chat/messages", requirePanelAuth, async (re
       return;
     }
 
-    await sendRideChatMessageCreated(res, ride, req.body, {
+    let rideForChat = ride;
+    if (!ride.chatEnabled) {
+      rideForChat = await applyRideChatOnPartnerRide({
+        ride,
+        actor: { actorType: "partner", actorId: ctx.claims.panelUserId },
+      });
+    }
+
+    await sendRideChatMessageCreated(res, rideForChat, req.body, {
       kind: "partner",
       actorId: ctx.claims.panelUserId,
     });
@@ -2395,15 +2413,19 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         return;
       }
       const saved = await findRide(newReq.id);
-      const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]!) : toPartnerRideView(newReq);
+      let savedForOut = saved;
       if (saved) {
-        await upsertFinanceAfterPartnerRideCreated(saved);
-        notifyDriversAfterPartnerRideSaved(saved);
+        savedForOut = await enablePartnerRideChatAfterSave(saved, ctx.claims.panelUserId);
+        await upsertFinanceAfterPartnerRideCreated(savedForOut);
+        notifyDriversAfterPartnerRideSaved(savedForOut);
         const { promoteReservationIfInActivationWindow } = await import("../jobs/reservationLifecycle.js");
-        void promoteReservationIfInActivationWindow(saved.id).catch((err) => {
-          logger.warn({ err, rideId: saved.id }, "promoteReservationIfInActivationWindow after panel create failed");
+        void promoteReservationIfInActivationWindow(savedForOut.id).catch((err) => {
+          logger.warn({ err, rideId: savedForOut.id }, "promoteReservationIfInActivationWindow after panel create failed");
         });
       }
+      const rideOut = savedForOut
+        ? toPartnerRideView((await enrichPanelRidesForResponse([savedForOut]))[0]!)
+        : toPartnerRideView(newReq);
       await insertPanelAuditLog({
         id: randomUUID(),
         companyId: ctx.claims.companyId,
@@ -2612,8 +2634,14 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       return;
     }
     const saved = await findRide(newReq.id);
-    const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]!) : toPartnerRideView(newReq);
-    if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
+    let savedForOut = saved;
+    if (saved) {
+      savedForOut = await enablePartnerRideChatAfterSave(saved, ctx.claims.panelUserId);
+      await upsertFinanceAfterPartnerRideCreated(savedForOut);
+    }
+    const rideOut = savedForOut
+      ? toPartnerRideView((await enrichPanelRidesForResponse([savedForOut]))[0]!)
+      : toPartnerRideView(newReq);
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId: ctx.claims.companyId,
@@ -2906,11 +2934,14 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     }
 
     const [savedOut, savedRet] = await Promise.all([findRide(idOut), findRide(idRet)]);
-    const enriched = (await enrichPanelRidesForResponse(
-      [savedOut, savedRet].filter((x): x is RideRequest => Boolean(x)),
-    )).map(toPartnerRideView);
-    for (const r of [savedOut, savedRet]) {
-      if (r) await upsertFinanceAfterPartnerRideCreated(r);
+    const savedWithChat = await Promise.all(
+      [savedOut, savedRet]
+        .filter((x): x is RideRequest => Boolean(x))
+        .map((r) => enablePartnerRideChatAfterSave(r, ctx.claims.panelUserId)),
+    );
+    const enriched = (await enrichPanelRidesForResponse(savedWithChat)).map(toPartnerRideView);
+    for (const r of savedWithChat) {
+      await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
       id: randomUUID(),
@@ -3163,11 +3194,12 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
     }
 
     const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
-    const enriched = (await enrichPanelRidesForResponse(loaded.filter((x): x is RideRequest => Boolean(x)))).map(
-      toPartnerRideView,
+    const savedWithChat = await Promise.all(
+      loaded.filter((x): x is RideRequest => Boolean(x)).map((r) => enablePartnerRideChatAfterSave(r, ctx.claims.panelUserId)),
     );
-    for (const r of loaded) {
-      if (r) await upsertFinanceAfterPartnerRideCreated(r);
+    const enriched = (await enrichPanelRidesForResponse(savedWithChat)).map(toPartnerRideView);
+    for (const r of savedWithChat) {
+      await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
       id: randomUUID(),

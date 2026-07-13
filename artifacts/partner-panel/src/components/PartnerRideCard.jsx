@@ -206,11 +206,13 @@ export default function PartnerRideCard({
             </span>
             {ride.chatEnabled ? (
               <span className="partner-ride-card__pill partner-ride-card__pill--chat">
-                {ICON.chat} Chat
+                {ICON.chat} Chat aktiv
                 {chatUnread > 0 ? (
                   <span className="partner-ride-card__chat-badge partner-ride-card__chat-badge--inline">{chatUnread}</span>
                 ) : null}
               </span>
+            ) : !TERMINAL_STATUSES.has(ride.status) ? (
+              <span className="partner-ride-card__pill partner-ride-card__pill--chat">{ICON.chat} Chat</span>
             ) : null}
             {!ride.driverId && ride.status === "searching_driver" ? (
               <span className="partner-ride-card__pill partner-ride-card__pill--search">Suche aktiv</span>
@@ -296,7 +298,7 @@ export default function PartnerRideCard({
           </div>
 
           <div className="partner-ride-floating-actions" role="toolbar" aria-label="Fahrt-Aktionen">
-            {ride.chatEnabled ? (
+            {!TERMINAL_STATUSES.has(ride.status) ? (
               <button
                 type="button"
                 className="partner-ride-fab partner-ride-fab--chat"

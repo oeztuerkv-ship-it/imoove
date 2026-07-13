@@ -300,7 +300,9 @@ function TaxiEntrepreneurShellInner({ user, company, onLogout }) {
             }}
           />
         )}
-        {activeTaxiModule === "ride_neu" && <RideCreatePage />}
+        {activeTaxiModule === "ride_neu" && (
+          <RideCreatePage onRideCreated={() => setActiveTaxiModule("fahrten")} />
+        )}
         {activeTaxiModule === "medical_ride" && <MedicalRoundTripPage />}
         {activeTaxiModule === "access_codes_hub" && <AccessCodesPage />}
         {activeTaxiModule === "anfragen" && (

@@ -26,6 +26,7 @@ import {
   PARTNER_ROUTE_ADDRESS_MESSAGE_DE,
 } from "../lib/smartBooking.js";
 import { validatePartnerAddressParts } from "../lib/partnerAddressValidation.js";
+import { setPartnerOpenChatRideIntent } from "../lib/partnerOpenChatIntent.js";
 
 const NOTE_MAX = 200;
 const BOOKING_FORM_ID = "partner-booking-form";
@@ -127,7 +128,7 @@ function mapCreateError(res, data) {
   return "Fahrt konnte nicht angelegt werden.";
 }
 
-export default function RideCreatePage() {
+export default function RideCreatePage({ onRideCreated }) {
   const { token, user } = usePanelAuth();
   const showAccessCode = hasPanelModule(user?.panelModules, "access_codes");
   const canCreate = hasPerm(user?.permissions, "rides.create");
@@ -464,9 +465,13 @@ export default function RideCreatePage() {
           ? " Fahrersuche startet — Status unter „Meine Fahrten“."
           : " Termin gespeichert — im Fahrer-Planer sofort sichtbar.";
       const id = typeof ride.id === "string" ? ride.id : "";
+      if (id) {
+        setPartnerOpenChatRideIntent(id);
+        onRideCreated?.(ride);
+      }
       setCreateMsg(
         id
-          ? `${kind} angelegt (ID ${id.slice(0, 8)}…).${dispatchHint}`
+          ? `${kind} angelegt (ID ${id.slice(0, 8)}…).${dispatchHint} Fahrt-Chat öffnet sich gleich.`
           : `${kind} wurde angelegt.${dispatchHint}`,
       );
       setForm((f) => ({

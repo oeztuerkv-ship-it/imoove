@@ -7,7 +7,20 @@ import {
   sendPartnerRideChatMessage,
 } from "../lib/partnerRideChat.js";
 
-const QUICK_REPLIES = ["Wir sind informiert", "Fahrer ist unterwegs", "Bitte kurz warten", "Rückfrage an die Rezeption"];
+const QUICK_REPLIES = [
+  "Wir sind informiert",
+  "Fahrer ist unterwegs",
+  "Bitte kurz warten",
+  "Kunde wurde informiert",
+  "Rückfrage an die Rezeption",
+];
+
+function isRideChatWritable(ride) {
+  if (!ride) return false;
+  return !["completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "rejected", "expired"].includes(
+    String(ride.status ?? ""),
+  );
+}
 
 export default function PartnerRideChatModal({ token, ride, open, onClose, onRidePatch, onMarkRead }) {
   const rideId = ride?.id ?? "";
@@ -51,14 +64,20 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
     setChatEnabled(Boolean(ride?.chatEnabled));
   }, [ride?.chatEnabled, rideId]);
 
+  const canWrite = isRideChatWritable(ride);
+
   const onSend = async () => {
     const text = draft.trim();
-    if (!text || !token || !rideId || busy) return;
+    if (!text || !token || !rideId || busy || !canWrite) return;
     setBusy(true);
     setErr("");
     const result = await sendPartnerRideChatMessage(token, rideId, text);
     if (!result.ok) {
-      setErr("Nachricht konnte nicht gesendet werden.");
+      setErr(
+        result.error === "chat_not_enabled"
+          ? "Chat konnte nicht gestartet werden — bitte Seite aktualisieren."
+          : "Nachricht konnte nicht gesendet werden.",
+      );
       setBusy(false);
       return;
     }
@@ -92,8 +111,10 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
             </h3>
             <p className="panel-dialog__lead">
               {chatEnabled
-                ? "Nachrichten mit Fahrer und Kunde — nur für diese Fahrt."
-                : "Chat ist für diese Fahrt noch nicht aktiv."}
+                ? "Live-Fahrt-Chat mit Fahrer und Kunde — Schnellantworten wie im Messenger."
+                : canWrite
+                  ? "Schreiben Sie die erste Nachricht — der Chat startet für diese Fahrt."
+                  : "Chat ist für diese Fahrt beendet."}
             </p>
           </div>
           <button type="button" className="panel-dialog__close" onClick={onClose} aria-label="Schließen">
@@ -128,6 +149,7 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
                 key={q}
                 type="button"
                 className="panel-btn-secondary partner-ride-chat-quick__chip"
+                disabled={!canWrite || busy}
                 onClick={() => setDraft(q)}
               >
                 {q}
@@ -140,8 +162,8 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
             value={draft}
             rows={3}
             maxLength={1000}
-            disabled={!chatEnabled || busy}
-            placeholder={chatEnabled ? "Nachricht an Fahrer und Kunde …" : "Chat noch nicht aktiv"}
+            disabled={!canWrite || busy}
+            placeholder={canWrite ? "Nachricht an Fahrer und Kunde …" : "Chat beendet"}
             onChange={(e) => setDraft(e.target.value.slice(0, 1000))}
           />
         </div>
@@ -153,7 +175,7 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
           <button
             type="button"
             className="panel-btn-primary"
-            disabled={!chatEnabled || busy || !draft.trim()}
+            disabled={!canWrite || busy || !draft.trim()}
             onClick={() => void onSend()}
           >
             Senden

@@ -1249,7 +1249,7 @@ function AgenturMasterPanelInner({ company, onLogout }) {
         }}
       >
         {active === "dashboard" && <DashboardView token={token} company={company} />}
-        {active === "taxi_buchen" && <RideCreatePage />}
+        {active === "taxi_buchen" && <RideCreatePage onRideCreated={() => setActive("fahrten")} />}
         {active === "gutscheine" && <GutscheineView token={token} user={user} company={company} />}
         {active === "fahrten" && <PartnerRidesListPage />}
         {active === "abrechnung" && <AbrechnungView token={token} />}

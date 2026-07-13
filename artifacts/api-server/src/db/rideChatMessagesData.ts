@@ -169,43 +169,18 @@ export function isRideChatWriteAllowed(ride: Pick<RideRequest, "chatEnabled" | "
   return !RIDE_TERMINAL_STATUSES.has(ride.status);
 }
 
-/** Taxi-Mandant des Fahrers — bei Partner-Fahrten ≠ rides.company_id. */
-async function resolveFleetDriverCompanyForChat(
-  driverId: string,
-  hintCompanyId?: string,
-): Promise<string> {
-  const hint = (hintCompanyId ?? "").trim();
-  if (hint) {
-    const inHint = await findFleetDriverInCompany(driverId, hint);
-    if (inHint) return hint;
-  }
-  const auth = await findFleetDriverAuthRow(driverId);
-  return (auth?.company_id ?? "").trim();
+export function isPartnerPanelRide(ride: Pick<RideRequest, "createdByPanelUserId">): boolean {
+  return Boolean(String(ride.createdByPanelUserId ?? "").trim());
 }
 
-/**
- * Nach Fahrer-Annahme: bei Dispatch-Priorität A Chat aktivieren und ggf. Notiz als erste Zeile seeden.
- * Idempotent — wiederholte Aufrufe ändern nichts.
- */
-export async function applyRideChatOnFleetDriverAccept(input: {
+async function persistRideChatEnabled(input: {
   ride: RideRequest;
-  driverId: string;
-  fleetDriverCompanyId: string;
   actor?: { actorType: string; actorId: string | null };
-}): Promise<RideRequest> {
+  eventPayload?: Record<string, unknown>;
+}): Promise<{ enabled: boolean; ride: RideRequest }> {
   const ride = input.ride;
-  const driverId = input.driverId.trim();
-  if (!driverId) return ride;
-  if (ride.chatEnabled) return ride;
-
-  const fleetDriverCompanyId = await resolveFleetDriverCompanyForChat(
-    driverId,
-    input.fleetDriverCompanyId,
-  );
-  if (!fleetDriverCompanyId) return ride;
-
-  const priority = await getFleetDriverDispatchPriority(driverId, fleetDriverCompanyId);
-  if (priority !== "A") return ride;
+  if (ride.chatEnabled) return { enabled: false, ride };
+  if (RIDE_TERMINAL_STATUSES.has(ride.status)) return { enabled: false, ride };
 
   const db = getDb();
   const enabledAt = new Date();
@@ -213,9 +188,12 @@ export async function applyRideChatOnFleetDriverAccept(input: {
 
   if (!db) {
     return {
-      ...ride,
-      chatEnabled: true,
-      chatEnabledAt: enabledAt.toISOString(),
+      enabled: true,
+      ride: {
+        ...ride,
+        chatEnabled: true,
+        chatEnabledAt: enabledAt.toISOString(),
+      },
     };
   }
 
@@ -246,22 +224,96 @@ export async function applyRideChatOnFleetDriverAccept(input: {
     }
   });
 
-  if (!enabled) return ride;
+  if (!enabled) return { enabled: false, ride };
 
   await insertSupplementalRideEvent(ride.id, {
     eventType: "ride_chat_enabled",
     fromStatus: ride.status,
     toStatus: ride.status,
-    actorType: input.actor?.actorType ?? "driver",
-    actorId: input.actor?.actorId ?? driverId,
-    payload: { dispatchPriority: "A", driverId },
+    actorType: input.actor?.actorType ?? "system",
+    actorId: input.actor?.actorId ?? null,
+    payload: input.eventPayload ?? {},
   });
 
   return {
-    ...ride,
-    chatEnabled: true,
-    chatEnabledAt: enabledAt.toISOString(),
+    enabled: true,
+    ride: {
+      ...ride,
+      chatEnabled: true,
+      chatEnabledAt: enabledAt.toISOString(),
+    },
   };
+}
+
+/**
+ * Partner-Portal-Fahrten: Chat sofort aktivieren (ohne Fahrer-Priorität A).
+ * Idempotent — wiederholte Aufrufe ändern nichts.
+ */
+export async function applyRideChatOnPartnerRide(input: {
+  ride: RideRequest;
+  actor?: { actorType: string; actorId: string | null };
+}): Promise<RideRequest> {
+  const ride = input.ride;
+  if (!isPartnerPanelRide(ride)) return ride;
+  const { enabled, ride: updated } = await persistRideChatEnabled({
+    ride,
+    actor: input.actor,
+    eventPayload: { source: "partner_ride" },
+  });
+  return enabled ? updated : ride;
+}
+
+/** Taxi-Mandant des Fahrers — bei Partner-Fahrten ≠ rides.company_id. */
+async function resolveFleetDriverCompanyForChat(
+  driverId: string,
+  hintCompanyId?: string,
+): Promise<string> {
+  const hint = (hintCompanyId ?? "").trim();
+  if (hint) {
+    const inHint = await findFleetDriverInCompany(driverId, hint);
+    if (inHint) return hint;
+  }
+  const auth = await findFleetDriverAuthRow(driverId);
+  return (auth?.company_id ?? "").trim();
+}
+
+/**
+ * Nach Fahrer-Annahme: bei Dispatch-Priorität A Chat aktivieren und ggf. Notiz als erste Zeile seeden.
+ * Idempotent — wiederholte Aufrufe ändern nichts.
+ */
+export async function applyRideChatOnFleetDriverAccept(input: {
+  ride: RideRequest;
+  driverId: string;
+  fleetDriverCompanyId: string;
+  actor?: { actorType: string; actorId: string | null };
+}): Promise<RideRequest> {
+  const ride = input.ride;
+  const driverId = input.driverId.trim();
+  if (!driverId) return ride;
+  if (ride.chatEnabled) return ride;
+
+  if (isPartnerPanelRide(ride)) {
+    return applyRideChatOnPartnerRide({
+      ride,
+      actor: input.actor ?? { actorType: "driver", actorId: driverId },
+    });
+  }
+
+  const fleetDriverCompanyId = await resolveFleetDriverCompanyForChat(
+    driverId,
+    input.fleetDriverCompanyId,
+  );
+  if (!fleetDriverCompanyId) return ride;
+
+  const priority = await getFleetDriverDispatchPriority(driverId, fleetDriverCompanyId);
+  if (priority !== "A") return ride;
+
+  const { enabled, ride: updated } = await persistRideChatEnabled({
+    ride,
+    actor: input.actor ?? { actorType: "driver", actorId: driverId },
+    eventPayload: { dispatchPriority: "A", driverId },
+  });
+  return enabled ? updated : ride;
 }
 
 /** Idempotent: Chat für zugewiesene A-Fahrer-Fahrt nachträglich aktivieren (Repair nach Deploy). */
@@ -283,6 +335,15 @@ export async function repairRideChatForAssignedRide(rideId: string): Promise<{
     return { ok: false, chatEnabled: false, reason: "not_found" };
   }
   if (ride.chatEnabled) return { ok: true, chatEnabled: true, reason: "already_enabled" };
+
+  if (isPartnerPanelRide(ride)) {
+    const partnerUpdated = await applyRideChatOnPartnerRide({
+      ride,
+      actor: { actorType: "system", actorId: null },
+    });
+    if (partnerUpdated.chatEnabled) return { ok: true, chatEnabled: true, reason: "enabled_partner_ride" };
+    return { ok: false, chatEnabled: false, reason: "partner_enable_failed" };
+  }
 
   const driverId = (ride.driverId ?? "").trim();
   if (!driverId) return { ok: false, chatEnabled: false, reason: "no_driver" };
