@@ -12,7 +12,7 @@ const TAB_HREF: Record<BottomTab, Href> = {
 
 /**
  * Haupt-Tab wechseln und überlagerte Buchungs-Screens schließen.
- * Modals/Stack: zuerst dismissAll, dann dismissTo; Fallback replace.
+ * `replace` statt `dismissTo` — vermeidet leeren Stack nach dismissAll (Fahrten/Wallet leer).
  */
 export function navigateToCustomerMainTab(tab: BottomTab): void {
   const href = TAB_HREF[tab];
@@ -24,14 +24,12 @@ export function navigateToCustomerMainTab(tab: BottomTab): void {
     /* Navigator noch nicht bereit */
   }
   try {
-    router.dismissTo(href);
-    return;
-  } catch {
-    /* Route nicht im Stack */
-  }
-  try {
     router.replace(href);
   } catch {
-    /* ignore */
+    try {
+      router.push(href);
+    } catch {
+      /* ignore */
+    }
   }
 }

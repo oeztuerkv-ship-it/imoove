@@ -122,15 +122,6 @@ export default function PartnerRidesListPage({ variant }) {
     return rides;
   }, [rides, variant]);
 
-  const segmentCounts = useMemo(() => {
-    const counts = { aktuell: 0, zukunft: 0, abgelaufen: 0 };
-    for (const ride of filteredRides) {
-      const seg = partnerRideSegmentOf(ride);
-      if (seg in counts) counts[seg] += 1;
-    }
-    return counts;
-  }, [displayedRides]);
-
   const filteredRides = useMemo(() => {
     const q = searchQuery.trim();
     const activeSegment = variant === "history" ? "abgelaufen" : segment;
@@ -143,6 +134,15 @@ export default function PartnerRidesListPage({ variant }) {
     }
     return sortRidesForSegment(list, activeSegment);
   }, [displayedRides, segment, variant, searchQuery, dateFilter]);
+
+  const segmentCounts = useMemo(() => {
+    const counts = { aktuell: 0, zukunft: 0, abgelaufen: 0 };
+    for (const ride of displayedRides) {
+      const seg = partnerRideSegmentOf(ride);
+      if (seg in counts) counts[seg] += 1;
+    }
+    return counts;
+  }, [displayedRides]);
 
   const openChat = useCallback(
     (ride) => {
