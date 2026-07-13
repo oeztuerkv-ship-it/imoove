@@ -1475,7 +1475,180 @@
 }
 
 .admin-modal--ride-preview {
-  max-width: min(640px, 100%);
+  max-width: min(680px, 100%);
+}
+
+.admin-modal__lead {
+  margin: 8px 0 0;
+  font-size: var(--admin-type-footnote);
+  line-height: 1.45;
+  color: var(--onroda-text-muted);
+}
+
+.admin-ride-preview-route {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.admin-rides-page .admin-stat-grid {
+  margin-bottom: 0;
+}
+
+.admin-filter-grid--rides {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.admin-filter-item--wide {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 900px) {
+  .admin-filter-item--wide {
+    grid-column: span 2;
+  }
+  .admin-filter-grid--rides {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.admin-filter-item--actions .admin-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-rides-results-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--onroda-border-subtle);
+}
+
+.admin-rides-results-toolbar--bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--onroda-border-subtle);
+}
+
+.admin-rides-table--modern tbody td {
+  padding: 12px;
+}
+
+.admin-rides-table__action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.admin-ride-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.admin-ride-id-copy {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+}
+
+.admin-ride-id-copy:hover {
+  border-color: rgba(0, 0, 0, 0.28);
+  background: #f8fafc;
+}
+
+.admin-ride-rec-stack {
+  margin-top: 12px;
+}
+
+.admin-ride-rec-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-card);
+}
+
+@media (min-width: 720px) {
+  .admin-ride-rec-summary {
+    grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
+    gap: 12px 16px;
+  }
+}
+
+.admin-ride-rec-summary__item {
+  min-width: 0;
+}
+
+.admin-ride-rec-summary__item--route {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .admin-ride-rec-summary__item--route {
+    grid-column: auto;
+  }
+}
+
+.admin-ride-rec-summary__k {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.admin-ride-rec-summary__v {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.admin-ride-rec-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-ride-rec-hero-meta__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.admin-ride-rec-hero-hint {
+  margin-top: 8px;
+  max-width: 720px;
 }
 
 .admin-modal__eyebrow {

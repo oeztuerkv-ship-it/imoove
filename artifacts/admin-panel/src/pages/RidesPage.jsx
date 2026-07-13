@@ -187,6 +187,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [expandedNoteId, setExpandedNoteId] = useState(null);
+  const [previewIdCopied, setPreviewIdCopied] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(searchInput.trim()), 400);
@@ -472,6 +473,10 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
     if (!id || !navigator?.clipboard?.writeText) return;
     try {
       await navigator.clipboard.writeText(id);
+      if (detailId === id) {
+        setPreviewIdCopied(true);
+        window.setTimeout(() => setPreviewIdCopied(false), 2000);
+      }
     } catch {
       /* noop */
     }
@@ -557,16 +562,26 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
   const s = stats.rides;
 
+  const resultsSubtitle = `${total} Treffer · Seite ${page} von ${totalPages}`;
+
   if (loading && rides.length === 0) {
-    return <div className="admin-info-banner">Fahrten werden geladen …</div>;
+    return (
+      <div className="admin-page admin-page--loose admin-rides-page">
+        <div className="admin-info-banner">Fahrten werden geladen …</div>
+      </div>
+    );
   }
 
   return (
-    <div className="admin-page">
+    <div className="admin-page admin-page--loose admin-rides-page">
+      <p className="admin-page-lead">
+        <strong>Plattform-Fahrten</strong> — REQ-ID, Kunde oder Route suchen.{" "}
+        <strong>Vorschau</strong> für Kurzinfos, <strong>Fahrtakte</strong> für den vollständigen Verlauf.
+      </p>
+
       {userRole === "insurance" ? (
-        <div className="admin-info-banner" style={{ marginBottom: 12 }}>
-          Ansicht eingeschränkt: es werden nur Fahrten mit Kostenträger <strong>Krankenkasse</strong> geladen
-          (Filter wird serverseitig erzwungen).
+        <div className="admin-info-banner admin-info-banner--inline">
+          Ansicht eingeschränkt: nur Fahrten mit Kostenträger <strong>Krankenkasse</strong> (serverseitig).
         </div>
       ) : null}
       <div className="admin-stat-grid">
@@ -592,118 +607,119 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
         </div>
       </div>
 
-      <div className="admin-filter-card admin-filter-card--modern">
-        <div className="admin-filter-grid admin-filter-grid--modern">
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Suche</label>
-            <input
-              type="text"
-              className="admin-input"
-              placeholder="ID, Kunde, Route, Fahrer …"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
+      <AdminCollapsibleSection title="Suche & Filter" subtitle="REQ-ID, Kunde, Route, Fahrer, Datum" defaultOpen flushBody>
+        <div className="admin-section-block__inset">
+          <div className="admin-filter-grid admin-filter-grid--modern admin-filter-grid--rides">
+            <div className="admin-filter-item admin-filter-item--wide">
+              <label className="admin-field-label">Suche</label>
+              <input
+                type="search"
+                className="admin-input"
+                placeholder="REQ-…, Kunde, Route, Fahrer …"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
 
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Status</label>
-            <select className="admin-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              {RIDE_STATUS_FILTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Status</label>
+              <select className="admin-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                {RIDE_STATUS_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Unternehmen (A–Z)</label>
-            <select
-              className="admin-select"
-              value={companyFilter}
-              disabled={userRole === "hotel"}
-              onChange={(e) => setCompanyFilter(e.target.value)}
-              title={userRole === "hotel" ? "Mandant ist für Hotel-Zugänge fest verdrahtet." : undefined}
-            >
-              <option value="all">Alle</option>
-              {companiesAz.map((c) => (
-                <option key={c.id} value={c.id} title={c.id}>
-                  {c.name}
-                  {!c.is_active ? " (inaktiv)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Unternehmen</label>
+              <select
+                className="admin-select"
+                value={companyFilter}
+                disabled={userRole === "hotel"}
+                onChange={(e) => setCompanyFilter(e.target.value)}
+                title={userRole === "hotel" ? "Mandant ist für Hotel-Zugänge fest verdrahtet." : undefined}
+              >
+                <option value="all">Alle (A–Z)</option>
+                {companiesAz.map((c) => (
+                  <option key={c.id} value={c.id} title={c.id}>
+                    {c.name}
+                    {!c.is_active ? " (inaktiv)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Sortierung (Erstellzeit)</label>
-            <select className="admin-select" value={ridesSort} onChange={(e) => setRidesSort(e.target.value)}>
-              <option value="desc">Neueste zuerst</option>
-              <option value="asc">Älteste zuerst</option>
-            </select>
-          </div>
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Sortierung</label>
+              <select className="admin-select" value={ridesSort} onChange={(e) => setRidesSort(e.target.value)}>
+                <option value="desc">Neueste zuerst</option>
+                <option value="asc">Älteste zuerst</option>
+              </select>
+            </div>
 
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Fahrer</label>
-            <input
-              type="text"
-              className="admin-input"
-              placeholder="Kennung des Fahrers"
-              value={driverFilter}
-              onChange={(e) => setDriverFilter(e.target.value)}
-            />
-          </div>
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Fahrer</label>
+              <input
+                type="text"
+                className="admin-input"
+                placeholder="Fahrer-Kennung"
+                value={driverFilter}
+                onChange={(e) => setDriverFilter(e.target.value)}
+              />
+            </div>
 
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Erstellt von</label>
-            <input
-              type="date"
-              className="admin-input"
-              value={createdFrom}
-              onChange={(e) => setCreatedFrom(e.target.value)}
-            />
-          </div>
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Erstellt von</label>
+              <input
+                type="date"
+                className="admin-input"
+                value={createdFrom}
+                onChange={(e) => setCreatedFrom(e.target.value)}
+              />
+            </div>
 
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Erstellt bis</label>
-            <input
-              type="date"
-              className="admin-input"
-              value={createdTo}
-              onChange={(e) => setCreatedTo(e.target.value)}
-            />
-          </div>
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Erstellt bis</label>
+              <input
+                type="date"
+                className="admin-input"
+                value={createdTo}
+                onChange={(e) => setCreatedTo(e.target.value)}
+              />
+            </div>
 
-          <div className="admin-filter-item">
-            <label className="admin-field-label">&nbsp;</label>
-            <div className="admin-filter-actions">
-              <button type="button" className="admin-btn-refresh" onClick={() => void loadRides(true)} disabled={loading}>
-                {loading ? "Lade …" : "Aktualisieren"}
-              </button>
-              <button type="button" className="admin-page-btn" disabled={exportBusy} onClick={() => void exportRidesCsv()}>
-                {exportBusy ? "Export …" : "CSV exportieren"}
-              </button>
+            <div className="admin-filter-item admin-filter-item--actions">
+              <label className="admin-field-label">&nbsp;</label>
+              <div className="admin-filter-actions">
+                <button type="button" className="admin-btn-primary" onClick={() => void loadRides(true)} disabled={loading}>
+                  {loading ? "Lade …" : "Aktualisieren"}
+                </button>
+                <button type="button" className="admin-c-btn-sec" disabled={exportBusy} onClick={() => void exportRidesCsv()}>
+                  {exportBusy ? "Export …" : "CSV"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </AdminCollapsibleSection>
 
       {error ? <div className="admin-error-banner">{error}</div> : null}
 
-      <div className="admin-table-toolbar">
-        <div className="admin-table-toolbar__info">
-          {total} Treffer · Seite {page} von {totalPages} · {PAGE_SIZE} pro Seite
+      <AdminCollapsibleSection title="Ergebnisse" subtitle={resultsSubtitle} defaultOpen flushBody>
+        <div className="admin-rides-results-toolbar">
+          <span className="admin-table-toolbar__info">{PAGE_SIZE} pro Seite · Live-Aktualisierung</span>
+          <div className="admin-pagination admin-pagination--inset">{renderPagination()}</div>
         </div>
 
-        <div className="admin-pagination admin-pagination--inset">{renderPagination()}</div>
-      </div>
-
-      <div className="admin-table-card admin-table-card--flush">
         {rides.length === 0 ? (
-          <div className="admin-info-banner">Keine Fahrten gefunden.</div>
+          <div className="admin-section-block__inset">
+            <div className="admin-info-banner admin-info-banner--inline">Keine Fahrten für die aktuelle Filterung.</div>
+          </div>
         ) : (
           <div className="admin-rides-table-wrap">
-            <table className="admin-rides-table">
+            <table className="admin-rides-table admin-rides-table--modern">
               <thead>
                 <tr>
                   <th>Zeitpunkt</th>
@@ -744,14 +760,30 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                           </div>
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className="admin-link-mono admin-crisp-numeric"
-                            onClick={() => void loadDetail(ride.id)}
-                            title="Details öffnen"
-                          >
-                            {ride.id || "—"}
-                          </button>
+                          <div className="admin-ride-id-row">
+                            <button
+                              type="button"
+                              className="admin-link-mono admin-crisp-numeric"
+                              onClick={() => void loadDetail(ride.id)}
+                              title="Fahrtvorschau"
+                            >
+                              {ride.id || "—"}
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-ride-id-copy"
+                              onClick={() => void copyRideId(ride.id)}
+                              aria-label="Fahrt-ID kopieren"
+                              title="ID kopieren"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden focusable="false">
+                                <path
+                                  fill="currentColor"
+                                  d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                         <td>
                           <div className="admin-ellipsis" title={ride.customerName || ""}>
@@ -775,55 +807,51 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                           </span>
                         </td>
                         <td className="admin-rides-table__actions">
-                          {hasNote ? (
+                          <div className="admin-rides-table__action-group">
                             <button
                               type="button"
-                              className="admin-note-icon-btn"
-                              title="Interne Notiz"
-                              aria-label="Interne Notiz"
-                              onClick={() => setExpandedNoteId((prev) => (prev === ride.id ? null : ride.id))}
+                              className="admin-c-btn-sec admin-btn-compact"
+                              onClick={() => void loadDetail(ride.id)}
                             >
-                              💬
+                              Vorschau
                             </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className={
-                              "admin-btn-action admin-btn-action--table" +
-                              (!releaseAllowed || busyId === ride.id ? " admin-btn-action--disabled" : "")
-                            }
-                            onClick={() => releaseRide(ride.id)}
-                            disabled={!releaseAllowed || busyId === ride.id}
-                          >
-                            {busyId === ride.id ? "…" : "Zuweisen"}
-                          </button>
-                          <details className="admin-overflow-menu">
-                            <summary className="admin-overflow-menu__trigger" aria-label="Weitere Aktionen">
-                              ⋯
-                            </summary>
-                            <div className="admin-overflow-menu__panel">
-                              {typeof onOpenRideRecord === "function" ? (
-                                <button
-                                  type="button"
-                                  className="admin-overflow-menu__item"
-                                  onClick={() => onOpenRideRecord(ride.id)}
-                                >
-                                  Fahrtakte (Ereignisse)
-                                </button>
-                              ) : null}
-                              <button type="button" className="admin-overflow-menu__item" onClick={() => void loadDetail(ride.id)}>
-                                Details
+                            {typeof onOpenRideRecord === "function" ? (
+                              <button
+                                type="button"
+                                className="admin-c-btn-sec admin-btn-compact"
+                                onClick={() => onOpenRideRecord(ride.id)}
+                              >
+                                Fahrtakte
                               </button>
-                              <button type="button" className="admin-overflow-menu__item" onClick={() => void copyRideId(ride.id)}>
-                                ID kopieren
+                            ) : null}
+                            {hasNote ? (
+                              <button
+                                type="button"
+                                className="admin-note-icon-btn"
+                                title="Interne Notiz"
+                                aria-label="Interne Notiz"
+                                onClick={() => setExpandedNoteId((prev) => (prev === ride.id ? null : ride.id))}
+                              >
+                                💬
                               </button>
-                            </div>
-                          </details>
+                            ) : null}
+                            <button
+                              type="button"
+                              className={
+                                "admin-btn-action admin-btn-action--table admin-btn-compact" +
+                                (!releaseAllowed || busyId === ride.id ? " admin-btn-action--disabled" : "")
+                              }
+                              onClick={() => releaseRide(ride.id)}
+                              disabled={!releaseAllowed || busyId === ride.id}
+                            >
+                              {busyId === ride.id ? "…" : "Zuweisen"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {isExpanded ? (
                         <tr className="admin-rides-table__note-row">
-                          <td colSpan={8}>
+                          <td colSpan={9}>
                             <strong>Notiz:</strong> {noteText}
                           </td>
                         </tr>
@@ -835,12 +863,11 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
             </table>
           </div>
         )}
-      </div>
-
-      <div className="admin-table-toolbar">
-        <div className="admin-table-toolbar__info" />
-        <div className="admin-pagination admin-pagination--inset">{renderPagination()}</div>
-      </div>
+        <div className="admin-rides-results-toolbar admin-rides-results-toolbar--bottom">
+          <span className="admin-table-toolbar__info" />
+          <div className="admin-pagination admin-pagination--inset">{renderPagination()}</div>
+        </div>
+      </AdminCollapsibleSection>
 
       {detailId ? (
         <div className="admin-modal-backdrop" role="presentation" onClick={closeDetail}>
@@ -862,6 +889,11 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                     <span className={rideStatusToneClass(detailRide.status)}>{rideStatusDe(detailRide.status)}</span>
                   ) : null}
                 </div>
+                {detailRide ? (
+                  <p className="admin-modal__lead admin-ride-preview-route">
+                    {(detailRide.from || "—") + " → " + (detailRide.to || "—")}
+                  </p>
+                ) : null}
               </div>
               <button type="button" className="admin-modal__close" onClick={closeDetail} aria-label="Schließen">
                 ×
@@ -951,7 +983,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
             </div>
             <div className="admin-modal__footer">
               <button type="button" className="admin-c-btn-sec" onClick={() => void copyRideId(detailId)}>
-                ID kopieren
+                {previewIdCopied ? "Kopiert ✓" : "ID kopieren"}
               </button>
               <button type="button" className="admin-c-btn-sec" onClick={closeDetail}>
                 Schließen

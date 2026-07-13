@@ -52,6 +52,14 @@ function rideStatusDe(status) {
   return m[s] || s || "—";
 }
 
+function rideStatusToneClass(status) {
+  const s = String(status || "");
+  if (s === "completed") return "admin-status-pill admin-status-pill--ok";
+  if (s === "cancelled" || s === "rejected" || s.startsWith("cancelled_")) return "admin-status-pill admin-status-pill--bad";
+  if (s === "pending" || s === "requested" || s === "searching_driver") return "admin-status-pill admin-status-pill--pending";
+  return "admin-status-pill admin-status-pill--active";
+}
+
 function rideKindLabel(k) {
   const m = { standard: "Normal", medical: "Krankenfahrt", voucher: "Gutschein", company: "Firma" };
   return m[k] ?? k ?? "—";
@@ -385,6 +393,12 @@ export default function RideDetailPage({ rideId, onBack }) {
               ← Zur Fahrtenliste
             </button>
             <h1 className="admin-m-hero__title">Fahrtakte</h1>
+            <div className="admin-ride-rec-hero-meta">
+              {r?.status ? <span className={rideStatusToneClass(r.status)}>{rideStatusDe(r.status)}</span> : null}
+              {r?.companyName || r?.companyId ? (
+                <span className="admin-ride-rec-hero-meta__chip">{r.companyName || r.companyId}</span>
+              ) : null}
+            </div>
             <p className="admin-taxi-fv-heroline admin-ride-rec-hero-id">
               {r?.id ? (
                 <>
@@ -397,7 +411,7 @@ export default function RideDetailPage({ rideId, onBack }) {
                 "—"
               )}
             </p>
-            <p className="admin-m-hero__hint" style={{ marginTop: 8, maxWidth: 720 }}>
+            <p className="admin-m-hero__hint admin-ride-rec-hero-hint">
               Vollständiger Verlauf, Stammdaten und Ereignisse — Bereiche unten aufklappbar.
             </p>
             <div className="admin-m-hero__actions" style={{ marginTop: 8 }}>
@@ -413,7 +427,33 @@ export default function RideDetailPage({ rideId, onBack }) {
       {loading && !r ? <p className="admin-table-sub">Lade Fahrtakte …</p> : null}
 
       {r ? (
-        <div className="admin-taxi-fv-cards" style={{ marginTop: 12 }}>
+        <div className="admin-taxi-fv-cards admin-ride-rec-stack">
+          <div className="admin-ride-rec-summary">
+            <div className="admin-ride-rec-summary__item admin-ride-rec-summary__item--route">
+              <span className="admin-ride-rec-summary__k">Route</span>
+              <span className="admin-ride-rec-summary__v">
+                {r.from || "—"} → {r.to || "—"}
+              </span>
+            </div>
+            <div className="admin-ride-rec-summary__item">
+              <span className="admin-ride-rec-summary__k">Kund*in</span>
+              <span className="admin-ride-rec-summary__v">{r.customerName || "—"}</span>
+            </div>
+            <div className="admin-ride-rec-summary__item">
+              <span className="admin-ride-rec-summary__k">Termin</span>
+              <span className="admin-ride-rec-summary__v">
+                {r.scheduledAt ? formatDt(r.scheduledAt) : "Sofortfahrt"}
+              </span>
+            </div>
+            <div className="admin-ride-rec-summary__item">
+              <span className="admin-ride-rec-summary__k">Fahrer</span>
+              <span className="admin-ride-rec-summary__v">
+                {r.driverName ? `${r.driverName} · ` : ""}
+                {r.driverId || "offen"}
+              </span>
+            </div>
+          </div>
+
           <AdminCollapsibleSection
             title="Stammdaten"
             subtitle={[r.customerName, r.companyName || r.companyId].filter(Boolean).join(" · ") || undefined}
@@ -421,6 +461,10 @@ export default function RideDetailPage({ rideId, onBack }) {
             flushBody
           >
             <div className="admin-ride-rec-kv">
+              <div>
+                <span className="admin-ride-rec-kv__k">Status</span>
+                <span className="admin-ride-rec-kv__v">{rideStatusDe(r.status)}</span>
+              </div>
               <div>
                 <span className="admin-ride-rec-kv__k">Kund*in</span>
                 <span className="admin-ride-rec-kv__v">{r.customerName || "—"}</span>
@@ -566,15 +610,6 @@ export default function RideDetailPage({ rideId, onBack }) {
               ) : null}
             </AdminCollapsibleSection>
           ) : null}
-
-          <AdminCollapsibleSection title="Status" subtitle={rideStatusDe(r.status)} defaultOpen flushBody>
-            <div className="admin-ride-rec-kv">
-              <div>
-                <span className="admin-ride-rec-kv__k">Aktueller Status</span>
-                <span className="admin-ride-rec-kv__v">{rideStatusDe(r.status)}</span>
-              </div>
-            </div>
-          </AdminCollapsibleSection>
 
           <AdminCollapsibleSection title="Fahrer & Fahrzeug" defaultOpen={false} flushBody>
             <div className="admin-ride-rec-kv">

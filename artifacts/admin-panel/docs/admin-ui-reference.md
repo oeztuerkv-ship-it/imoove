@@ -23,6 +23,7 @@ Ziel: **keine** neuen Fremd- oder Einzellayouts, **keine** isolierten Sonderdesi
 | Detailseite mit Sektionen, Formular, Lesemodus | `src/pages/CompanyMandateDetailPage.jsx` |
 | Tabellen, Suche, Filter (Badges) | `src/pages/CompaniesPage.jsx` |
 | Listen mit KPI + aufklappbaren Blöcken | `src/pages/DriversOverviewPage.jsx` + `src/components/AdminCollapsibleSection.jsx` |
+| Plattform-Fahrten (Suche, Tabelle, Vorschau, Fahrtakte) | `src/pages/RidesPage.jsx` + `src/pages/RideDetailPage.jsx` |
 | Globale Klassen | `src/admin-ui.css` (u. a. `admin-m-*`, `admin-c-*`, `admin-section-block*`) |
 | App-Shell, Content-Raster | `src/admin-shell.css` |
 
