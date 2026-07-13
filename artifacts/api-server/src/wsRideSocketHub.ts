@@ -200,7 +200,26 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
           if (meta.role !== "driver") return;
           if (msg.lat == null || msg.lon == null) return;
           const updatedAt = new Date().toISOString();
-          driverLocations.set(boundRideId, { lat: msg.lat, lon: msg.lon, updatedAt });
+          const etaMinutes =
+            typeof msg.etaMinutes === "number" && Number.isFinite(msg.etaMinutes)
+              ? Math.max(0, Math.round(msg.etaMinutes))
+              : undefined;
+          const remainingDistM =
+            typeof msg.remainingDistM === "number" && Number.isFinite(msg.remainingDistM)
+              ? Math.max(0, Math.round(msg.remainingDistM))
+              : undefined;
+          const navPhaseRaw = typeof msg.navPhase === "string" ? msg.navPhase.trim() : "";
+          const navPhase =
+            navPhaseRaw === "pickup" || navPhaseRaw === "destination" ? navPhaseRaw : undefined;
+          const loc = {
+            lat: msg.lat,
+            lon: msg.lon,
+            updatedAt,
+            ...(etaMinutes != null ? { etaMinutes } : {}),
+            ...(remainingDistM != null ? { remainingDistM } : {}),
+            ...(navPhase ? { navPhase } : {}),
+          };
+          driverLocations.set(boundRideId, loc);
           if (meta.fleetDriverId) {
             void findRide(boundRideId).then((ride) => {
               if (!ride) return;
@@ -215,7 +234,16 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
           }
           rooms.get(boundRideId)?.forEach((client) => {
             if (client !== socket && client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ type: "location:driver:update", lat: msg.lat, lon: msg.lon }));
+              client.send(
+                JSON.stringify({
+                  type: "location:driver:update",
+                  lat: msg.lat,
+                  lon: msg.lon,
+                  ...(etaMinutes != null ? { etaMinutes } : {}),
+                  ...(remainingDistM != null ? { remainingDistM } : {}),
+                  ...(navPhase ? { navPhase } : {}),
+                }),
+              );
             }
           });
           return;

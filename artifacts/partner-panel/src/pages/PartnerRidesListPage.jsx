@@ -8,6 +8,7 @@ import { usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 import {
   billingSummary,
   isPartnerRidePast,
+  LIVE_DRIVER_STATUSES,
   partnerRideListDateKey,
   partnerRideMatchesSearch,
   partnerRideSegmentOf,
@@ -18,6 +19,7 @@ import { clearPartnerOpenChatRideIntent, peekPartnerOpenChatRideIntent } from ".
 const NOTE_MAX = 200;
 const RETRY_SEARCH_MS = 60_000;
 const POLL_MS = 10_000;
+const TRACKING_POLL_MS = 5_000;
 
 function getDriverNote(ride) {
   const meta = getPartnerMeta(ride);
@@ -81,7 +83,8 @@ export default function PartnerRidesListPage({ variant }) {
   const [segment, setSegment] = useState(variant === "history" ? "abgelaufen" : "aktuell");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const { chatUnreadByRide, totalChatUnread, markChatRead, clearRideUnread } = usePartnerChatUnread();
+  const { chatUnreadByRide, totalChatUnread, markChatRead, clearRideUnread, refreshChatUnread } =
+    usePartnerChatUnread();
 
   const canCreate = Array.isArray(user?.permissions) && user.permissions.includes("rides.create");
 
@@ -102,6 +105,7 @@ export default function PartnerRidesListPage({ variant }) {
         return;
       }
       setRides(Array.isArray(data.rides) ? data.rides : []);
+      if (silent) void refreshChatUnread();
     } catch {
       if (!silent) {
         setErr("Fahrten konnten nicht geladen werden.");
@@ -110,7 +114,7 @@ export default function PartnerRidesListPage({ variant }) {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [token]);
+  }, [token, refreshChatUnread]);
 
   useEffect(() => {
     void loadRides();
@@ -195,6 +199,28 @@ export default function PartnerRidesListPage({ variant }) {
     if (!expandedId) return;
     void fetchTracking(expandedId);
   }, [expandedId, fetchTracking]);
+
+  const liveTrackingRideIds = useMemo(
+    () =>
+      filteredRides
+        .filter((r) => r.driverId && LIVE_DRIVER_STATUSES.has(String(r.status ?? "")))
+        .map((r) => r.id),
+    [filteredRides],
+  );
+
+  useEffect(() => {
+    if (!token || variant === "history" || liveTrackingRideIds.length === 0) return;
+    for (const rideId of liveTrackingRideIds) void fetchTracking(rideId);
+    const id = setInterval(() => {
+      for (const rideId of liveTrackingRideIds) void fetchTracking(rideId);
+    }, TRACKING_POLL_MS);
+    return () => clearInterval(id);
+  }, [token, variant, liveTrackingRideIds, fetchTracking]);
+
+  useEffect(() => {
+    if (!token || variant === "history") return;
+    void refreshChatUnread();
+  }, [token, variant, refreshChatUnread]);
 
   const replaceRide = useCallback((nextRide) => {
     if (!nextRide?.id) return;

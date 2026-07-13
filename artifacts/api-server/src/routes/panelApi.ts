@@ -1407,7 +1407,13 @@ router.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res
 
     let driverName: string | null = null;
     let driverPlate: string | null = null;
-    let driverLocation: { lat: number; lon: number } | null = null;
+    let driverLocation: {
+      lat: number;
+      lon: number;
+      etaMinutes?: number;
+      remainingDistM?: number;
+      navPhase?: string;
+    } | null = null;
 
     const driverId = (ride.driverId ?? "").trim();
     if (driverId) {
@@ -1430,7 +1436,13 @@ router.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res
       const mem = driverLocations.get(rideId);
       const dbLoc = mem ?? (await getRideDriverLocation(rideId));
       if (dbLoc && Number.isFinite(dbLoc.lat) && Number.isFinite(dbLoc.lon)) {
-        driverLocation = { lat: dbLoc.lat, lon: dbLoc.lon };
+        driverLocation = {
+          lat: dbLoc.lat,
+          lon: dbLoc.lon,
+          ...(mem?.etaMinutes != null ? { etaMinutes: mem.etaMinutes } : {}),
+          ...(mem?.remainingDistM != null ? { remainingDistM: mem.remainingDistM } : {}),
+          ...(mem?.navPhase ? { navPhase: mem.navPhase } : {}),
+        };
       }
     }
 
@@ -1439,6 +1451,7 @@ router.get("/panel/v1/rides/:rideId/tracking", requirePanelAuth, async (req, res
       ride: {
         id: ride.id,
         status: ride.status,
+        statusLabel: rideStatusLabelDe(ride.status),
         createdAt: ride.createdAt,
         pickupLabel: String(ride.fromFull || ride.from || "").trim(),
         fromLat: ride.fromLat ?? null,

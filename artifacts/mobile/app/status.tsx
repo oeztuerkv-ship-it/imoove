@@ -297,6 +297,7 @@ export default function StatusScreen() {
 
   const [isCompleted, setIsCompleted] = useState(false);
   const [eta, setEta] = useState(8);
+  const [serverEtaMinutes, setServerEtaMinutes] = useState<number | null>(null);
   const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [customTipInput, setCustomTipInput] = useState("");
   const [tipSubmitting, setTipSubmitting] = useState(false);
@@ -634,6 +635,11 @@ export default function StatusScreen() {
       (msg) => {
         if (msg.type === "location:driver:update") {
           setDriverMarker({ lat: msg.lat as number, lon: msg.lon as number });
+          const etaFromDriver =
+            typeof msg.etaMinutes === "number" && Number.isFinite(msg.etaMinutes)
+              ? Math.max(0, Math.round(msg.etaMinutes))
+              : null;
+          if (etaFromDriver != null && etaFromDriver > 0) setServerEtaMinutes(etaFromDriver);
         }
         if (msg.type === "chat:ride:update") {
           const row = parseRideChatUpdate(msg);
@@ -652,8 +658,15 @@ export default function StatusScreen() {
           headers: await customerSessionHeadersJson(),
         });
         if (res.ok) {
-          const loc = await res.json() as { lat: number; lon: number };
+          const loc = (await res.json()) as {
+            lat: number;
+            lon: number;
+            etaMinutes?: number;
+          };
           setDriverMarker({ lat: loc.lat, lon: loc.lon });
+          if (typeof loc.etaMinutes === "number" && Number.isFinite(loc.etaMinutes) && loc.etaMinutes > 0) {
+            setServerEtaMinutes(Math.round(loc.etaMinutes));
+          }
         }
       } catch { /* ignore */ }
     };
@@ -761,6 +774,10 @@ export default function StatusScreen() {
   }, [customerPhase]);
 
   useEffect(() => {
+    setServerEtaMinutes(null);
+  }, [effectiveAcceptedRequest?.id]);
+
+  useEffect(() => {
     if (prevPhaseRef.current !== rawPhase) {
       if (rawPhase === "driving") setEta(effectiveAcceptedRequest?.durationMinutes ?? 20);
       prevPhaseRef.current = rawPhase;
@@ -799,16 +816,24 @@ export default function StatusScreen() {
   }, [driverMarker, destLat, destLon]);
 
   useEffect(() => {
+    if (serverEtaMinutes != null && serverEtaMinutes > 0) {
+      setEta(serverEtaMinutes);
+      return;
+    }
     if (computedPickupEta != null && customerPhase !== "driving") {
       setEta(computedPickupEta);
     }
-  }, [computedPickupEta, customerPhase]);
+  }, [computedPickupEta, customerPhase, serverEtaMinutes]);
 
   useEffect(() => {
+    if (serverEtaMinutes != null && serverEtaMinutes > 0) {
+      setEta(serverEtaMinutes);
+      return;
+    }
     if (computedDestEta != null && customerPhase === "driving") {
       setEta(computedDestEta);
     }
-  }, [computedDestEta, customerPhase]);
+  }, [computedDestEta, customerPhase, serverEtaMinutes]);
 
   const handleCallDriver = () => {
     const tel = driverPhone.replace(/[^\d+]/g, "");

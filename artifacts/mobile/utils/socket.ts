@@ -153,10 +153,26 @@ export function connectToRide(
   _connect();
 }
 
+export type DriverLocationExtras = {
+  etaMinutes?: number;
+  remainingDistM?: number;
+  navPhase?: "pickup" | "destination";
+};
+
 /** Send driver GPS location via WebSocket (falls back silently if not connected). */
-export function sendDriverLocation(lat: number, lon: number) {
+export function sendDriverLocation(lat: number, lon: number, extras?: DriverLocationExtras) {
   if (_ws?.readyState === WebSocket.OPEN && _rideId) {
-    _ws.send(JSON.stringify({ type: "location:driver", rideId: _rideId, lat, lon }));
+    _ws.send(
+      JSON.stringify({
+        type: "location:driver",
+        rideId: _rideId,
+        lat,
+        lon,
+        ...(extras?.etaMinutes != null ? { etaMinutes: extras.etaMinutes } : {}),
+        ...(extras?.remainingDistM != null ? { remainingDistM: extras.remainingDistM } : {}),
+        ...(extras?.navPhase ? { navPhase: extras.navPhase } : {}),
+      }),
+    );
   }
 }
 

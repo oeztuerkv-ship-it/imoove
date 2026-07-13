@@ -181,10 +181,44 @@ import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middlewa
 
 export type { RideRequest } from "../domain/rideRequest";
 
+export type DriverNavPhase = "pickup" | "destination";
+
 export interface DriverLocation {
   lat: number;
   lon: number;
   updatedAt: string;
+  /** Geschätzte Restzeit aus Fahrer-Navigation (Minuten). */
+  etaMinutes?: number;
+  /** Reststrecke in Metern aus Fahrer-Navigation. */
+  remainingDistM?: number;
+  /** Ziel der Navigation: Abholung oder Fahrtziel. */
+  navPhase?: DriverNavPhase;
+}
+
+function driverNavExtrasFromBody(body: unknown): Pick<DriverLocation, "etaMinutes" | "remainingDistM" | "navPhase"> {
+  const b = body as Record<string, unknown>;
+  const extras: Pick<DriverLocation, "etaMinutes" | "remainingDistM" | "navPhase"> = {};
+  if (typeof b.etaMinutes === "number" && Number.isFinite(b.etaMinutes)) {
+    extras.etaMinutes = Math.max(0, Math.round(b.etaMinutes));
+  }
+  if (typeof b.remainingDistM === "number" && Number.isFinite(b.remainingDistM)) {
+    extras.remainingDistM = Math.max(0, Math.round(b.remainingDistM));
+  }
+  const phase = typeof b.navPhase === "string" ? b.navPhase.trim() : "";
+  if (phase === "pickup" || phase === "destination") extras.navPhase = phase;
+  return extras;
+}
+
+function mergeDriverLocationExtras(
+  base: DriverLocation,
+  extras: Pick<DriverLocation, "etaMinutes" | "remainingDistM" | "navPhase">,
+): DriverLocation {
+  return {
+    ...base,
+    ...(extras.etaMinutes != null ? { etaMinutes: extras.etaMinutes } : {}),
+    ...(extras.remainingDistM != null ? { remainingDistM: extras.remainingDistM } : {}),
+    ...(extras.navPhase ? { navPhase: extras.navPhase } : {}),
+  };
 }
 
 const DEMO: RideRequest[] = [];
@@ -3084,6 +3118,7 @@ router.post("/rides/:id/driver-location", async (req, res, next) => {
       res.status(400).json({ error: "lat and lon required" });
       return;
     }
+    const navExtras = driverNavExtrasFromBody(req.body);
     const persisted = await persistDriverLocationPing({
       rideId: id,
       fleetDriverId: fleet.fleetDriverId,
@@ -3091,11 +3126,14 @@ router.post("/rides/:id/driver-location", async (req, res, next) => {
       lon,
       rideStatus: ride.status,
     });
-    const loc: DriverLocation = persisted ?? {
-      lat,
-      lon,
-      updatedAt: new Date().toISOString(),
-    };
+    const loc: DriverLocation = mergeDriverLocationExtras(
+      persisted ?? {
+        lat,
+        lon,
+        updatedAt: new Date().toISOString(),
+      },
+      navExtras,
+    );
     driverLocations.set(id, loc);
     void maybeNotifyPassengerPickupEtaFromDriverLocation(ride, lat, lon).catch(() => undefined);
     res.json(loc);

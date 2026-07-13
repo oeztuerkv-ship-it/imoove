@@ -4,6 +4,7 @@ import {
   dispatchHeadline,
   dispatchProgressPercent,
   dispatchSteps,
+  LIVE_DRIVER_STATUSES,
   payerKindLabel,
   partnerRideShowsFare,
   rejectionCount,
@@ -41,6 +42,19 @@ function fmtDateTime(iso) {
 
 function isLiveRide(ride) {
   return ride?.id && !TERMINAL_STATUSES.has(String(ride.status ?? ""));
+}
+
+function fmtLiveEta(tracking, ride) {
+  const loc = tracking?.driver?.location;
+  if (!loc || loc.etaMinutes == null || loc.etaMinutes <= 0) return null;
+  if (!LIVE_DRIVER_STATUSES.has(String(ride?.status ?? ""))) return null;
+  const phase =
+    loc.navPhase === "destination"
+      ? " bis Ziel"
+      : loc.navPhase === "pickup"
+        ? " bis Abholung"
+        : "";
+  return `ca. ${loc.etaMinutes} Min.${phase}`;
 }
 
 function staticMapUrl(lat, lon) {
@@ -147,6 +161,8 @@ export default function PartnerRideCard({
   const driverName = tracking?.driver?.name;
   const driverPlate = tracking?.driver?.plate;
   const driverLoc = tracking?.driver?.location;
+  const liveEtaText = fmtLiveEta(tracking, ride);
+  const liveStatusLabel = tracking?.ride?.statusLabel || statusLabel(ride.status);
   const rej = rejectionCount(ride);
   const dist =
     ride.distanceKm != null ? `${Number(ride.distanceKm).toFixed(1)} km` : "—";
@@ -198,11 +214,15 @@ export default function PartnerRideCard({
             {ride.fromFull || ride.from || "—"} → {ride.toFull || ride.to || "—"}
           </strong>
           <span className="partner-ride-card__dispatch">
-            {ICON.dispatch} {dispatchHeadline(ride)}
+            {ICON.dispatch}{" "}
+            {ride.driverId && LIVE_DRIVER_STATUSES.has(String(ride.status ?? ""))
+              ? liveStatusLabel
+              : dispatchHeadline(ride)}
+            {liveEtaText ? ` · ${liveEtaText}` : ""}
           </span>
           <div className="partner-ride-card__badges">
             <span className={`partner-ride-card__status partner-ride-card__status--${tone}`}>
-              {statusLabel(ride.status)}
+              {liveStatusLabel}
             </span>
             {ride.chatEnabled ? (
               <span className="partner-ride-card__pill partner-ride-card__pill--chat">
@@ -225,6 +245,24 @@ export default function PartnerRideCard({
           </div>
         </div>
         <div className="partner-ride-card__head-side">
+          {!TERMINAL_STATUSES.has(ride.status) ? (
+            <button
+              type="button"
+              className="partner-ride-card__head-chat"
+              aria-label="Chat öffnen"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenChat();
+              }}
+            >
+              <span aria-hidden>{ICON.chat}</span>
+              {chatUnread > 0 ? (
+                <span className="partner-ride-card__chat-badge partner-ride-card__chat-badge--head">
+                  {chatUnread}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
           {partnerRideShowsFare(ride) ? (
             <span className="partner-ride-card__fare">{formatRideFinalFare(ride)}</span>
           ) : null}

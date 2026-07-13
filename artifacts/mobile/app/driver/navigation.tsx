@@ -459,12 +459,18 @@ export default function DriverNavigationScreen() {
   const stepIdxRef = useRef(stepIdx);
   const navTargetRef = useRef(navigationTarget);
   const initialRouteMetricsRef = useRef({ distM: initialDistM, etaMin: initialEtaMin });
+  const remainingMinRef = useRef(remainingMin);
+  const remainingDistMRef = useRef(remainingDistM);
+  const isPickupPhaseRef = useRef(isPickupPhase);
   driverLatRef.current = driverLat;
   driverLonRef.current = driverLon;
   stepsRef.current = steps;
   stepIdxRef.current = stepIdx;
   navTargetRef.current = navigationTarget;
   initialRouteMetricsRef.current = { distM: initialDistM, etaMin: initialEtaMin };
+  remainingMinRef.current = remainingMin;
+  remainingDistMRef.current = remainingDistM;
+  isPickupPhaseRef.current = isPickupPhase;
 
   // pickup-phase sequential state
   const [hasArrived, setHasArrived] = useState(params.arrived === "1");
@@ -1514,7 +1520,13 @@ export default function DriverNavigationScreen() {
             }
           }
 
-          socketSendDriver(latitude, longitude);
+          socketSendDriver(latitude, longitude, {
+            ...(remainingMinRef.current > 0 ? { etaMinutes: remainingMinRef.current } : {}),
+            ...(remainingDistMRef.current > 0
+              ? { remainingDistM: Math.round(remainingDistMRef.current) }
+              : {}),
+            navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
+          });
           if (params.rideId) {
             void (async () => {
               try {
@@ -1524,7 +1536,15 @@ export default function DriverNavigationScreen() {
                 await fetch(`${API_BASE}/rides/${params.rideId}/driver-location`, {
                   method: "POST",
                   headers,
-                  body: JSON.stringify({ lat: fix.lat, lon: fix.lon }),
+                  body: JSON.stringify({
+                    lat: fix.lat,
+                    lon: fix.lon,
+                    ...(remainingMinRef.current > 0 ? { etaMinutes: remainingMinRef.current } : {}),
+                    ...(remainingDistMRef.current > 0
+                      ? { remainingDistM: Math.round(remainingDistMRef.current) }
+                      : {}),
+                    navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
+                  }),
                 });
               } catch {
                 /* ignore */
@@ -1591,11 +1611,29 @@ export default function DriverNavigationScreen() {
         : "";
 
   const bottomInset = Math.max(insets.bottom, 16);
+  const PICKUP_BOTTOM_PANEL_EST_H = 380;
   const floatingControlsBottom =
     bottomInset +
     (isDrivingPhase
-      ? (driveSheetOpen ? DRIVE_SHEET_EXPANDED_H : DRIVE_SHEET_COLLAPSED_H) + 16
-      : 230);
+      ? (driveSheetOpen ? DRIVE_SHEET_EXPANDED_H : DRIVE_SHEET_COLLAPSED_H) + 72
+      : PICKUP_BOTTOM_PANEL_EST_H);
+
+  const openRideChat = () => {
+    clearChatUnread();
+    setChatOpen(true);
+  };
+
+  const bottomChatButton = rideChatEnabled ? (
+    <Pressable
+      style={styles.bottomChatRow}
+      accessibilityLabel="Chat mit Kunde"
+      onPress={openRideChat}
+    >
+      <DriverChatBlinkIcon unread={chatUnread} size={20} color="#1B6B3A" />
+      <Text style={styles.bottomChatRowText}>Chat mit Kunde</Text>
+      {chatUnread ? <View style={styles.bottomChatUnreadDot} /> : null}
+    </Pressable>
+  ) : null;
 
   const driveSheetHeight = driveSheetAnim.interpolate({
     inputRange: [0, 1],
@@ -1814,7 +1852,7 @@ export default function DriverNavigationScreen() {
         </View>
       </View>
 
-      {/* Floating button column — right side above bottom panel */}
+      {/* Floating button column — Karte/Navi über dem unteren Panel */}
       <View style={{ position: "absolute", right: 12, bottom: floatingControlsBottom, gap: 10 }}>
         <Pressable
           style={styles.compassBtn}
@@ -1840,19 +1878,6 @@ export default function DriverNavigationScreen() {
         >
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
-        {rideChatEnabled ? (
-          <Pressable
-            style={styles.navChatBtn}
-            accessibilityLabel="Chat"
-            onPress={() => {
-              clearChatUnread();
-              setChatOpen(true);
-            }}
-          >
-            <DriverChatBlinkIcon unread={chatUnread} size={16} color="#1B6B3A" />
-            <Text style={styles.navChatBtnLabel}>Chat</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       {isDrivingPhase ? (
@@ -1880,6 +1905,8 @@ export default function DriverNavigationScreen() {
             <View style={styles.driveDetailsWrap}>{rideDetailsBlock}</View>
           </Animated.View>
 
+          {bottomChatButton}
+
           <View style={styles.driveEndActionWrap}>
             <View style={styles.actionBtnWrapper}>{actionBtn}</View>
           </View>
@@ -1887,6 +1914,7 @@ export default function DriverNavigationScreen() {
       ) : (
         <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
           {rideDetailsBlock}
+          {bottomChatButton}
           <View style={styles.actionBlock}>
             <View style={styles.actionBtnWrapper}>{actionBtn}</View>
             {isPickupPhase && hasArrived ? (
@@ -2323,6 +2351,30 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   navChatBtnLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#1B6B3A", letterSpacing: 0.2 },
+  bottomChatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#ECFDF3",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#86EFAC",
+  },
+  bottomChatRowText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#1B6B3A",
+  },
+  bottomChatUnreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#EF4444",
+    marginLeft: 2,
+  },
   navChatBadge: {
     position: "absolute",
     top: 3,
