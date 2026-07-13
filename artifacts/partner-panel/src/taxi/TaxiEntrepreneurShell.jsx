@@ -19,7 +19,7 @@ import { hasPanelModule } from "../lib/panelNavigation.js";
 import GlobalCreateMenu from "./GlobalCreateMenu.jsx";
 import TaxiUserMenu from "./TaxiUserMenu.jsx";
 import { pushPartnerPanelModuleHistory } from "../lib/panelHistoryGuard.js";
-import { PartnerChatUnreadProvider } from "../context/PartnerChatUnreadContext.jsx";
+import { PartnerChatUnreadProvider, usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 
 function hasPerm(user, key) {
   return Array.isArray(user?.permissions) && user.permissions.includes(key);
@@ -42,6 +42,11 @@ const TAXI_NAV_DEFS = [
     key: "ride_neu",
     label: "Taxi buchen",
     show: (user) => hasPanelModule(user?.panelModules, "rides_create") && hasPerm(user, "rides.create"),
+  },
+  {
+    key: "fahrten",
+    label: "Fahrten",
+    show: (user) => hasPanelModule(user?.panelModules, "rides_list") && hasPerm(user, "rides.read"),
   },
   {
     key: "flotte",
@@ -79,6 +84,15 @@ const TAXI_NAV_DEFS = [
 ];
 
 export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
+  return (
+    <PartnerChatUnreadProvider>
+      <TaxiEntrepreneurShellInner user={user} company={company} onLogout={onLogout} />
+    </PartnerChatUnreadProvider>
+  );
+}
+
+function TaxiEntrepreneurShellInner({ user, company, onLogout }) {
+  const { totalChatUnread } = usePartnerChatUnread();
   const [activeTaxiModule, setActiveTaxiModule] = useState("dashboard");
   const [supportPrefill, setSupportPrefill] = useState(null);
   const [settingsTabIntent, setSettingsTabIntent] = useState(null);
@@ -202,7 +216,6 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
   }, []);
 
   return (
-    <PartnerChatUnreadProvider>
     <div className="partner-shell partner-shell--fleet">
       <header className="partner-shell__header partner-shell__header--fleet">
         <div className="partner-shell__header-inner partner-shell__header-inner--fleet">
@@ -236,6 +249,14 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
                 }
               >
                 {m.label}
+                {m.key === "fahrten" && totalChatUnread > 0 ? (
+                  <span
+                    className="partner-ride-card__chat-badge partner-nav-chat-badge"
+                    aria-label={`${totalChatUnread} ungelesene Chat-Nachrichten`}
+                  >
+                    {totalChatUnread > 99 ? "99+" : totalChatUnread}
+                  </span>
+                ) : null}
               </button>
             ))}
           </nav>
@@ -305,6 +326,5 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
         )}
       </div>
     </div>
-    </PartnerChatUnreadProvider>
   );
 }

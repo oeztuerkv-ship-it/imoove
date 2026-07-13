@@ -6,13 +6,14 @@ import {
   dispatchHeadline,
   dispatchSteps,
   payerKindLabel,
+  partnerRideShowsFare,
   rejectionCount,
   rideKindLabel,
   statusLabel,
   statusTone,
   TERMINAL_STATUSES,
 } from "../lib/partnerRideOps.js";
-import { formatRideEstimatedFare, formatRideFinalFare, getPartnerMeta } from "./finance/financeHelpers.js";
+import { formatRideFinalFare, getPartnerMeta } from "./finance/financeHelpers.js";
 import PartnerRideChatModal from "../components/PartnerRideChatModal.jsx";
 import { usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 
@@ -494,7 +495,9 @@ export default function PartnerRidesListPage({ variant }) {
                   <span className="partner-ride-card__dispatch">{dispatchHeadline(ride)}</span>
                 </div>
                 <div className="partner-ride-card__head-side">
-                  <span className="partner-ride-card__fare">{formatRideEstimatedFare(ride)}</span>
+                  {partnerRideShowsFare(ride) ? (
+                    <span className="partner-ride-card__fare">{formatRideFinalFare(ride)}</span>
+                  ) : null}
                   <span className="partner-ride-card__chevron">{open ? "▲" : "▼"}</span>
                 </div>
               </button>
@@ -535,12 +538,12 @@ export default function PartnerRidesListPage({ variant }) {
                             <dd>{ride.billingReference}</dd>
                           </div>
                         ) : null}
-                        <div>
-                          <dt>Preis</dt>
-                          <dd>
-                            {formatRideEstimatedFare(ride)} / {formatRideFinalFare(ride)}
-                          </dd>
-                        </div>
+                        {partnerRideShowsFare(ride) ? (
+                          <div>
+                            <dt>Preis</dt>
+                            <dd>{formatRideFinalFare(ride)}</dd>
+                          </div>
+                        ) : null}
                       </dl>
                     </section>
                   </div>

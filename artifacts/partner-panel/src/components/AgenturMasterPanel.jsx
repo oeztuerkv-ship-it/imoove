@@ -4,6 +4,7 @@ import FixedPriceVoucherPurchaseSection, { AgCard } from "./FixedPriceVoucherPur
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
+import { partnerRideShowsFare } from "../lib/partnerRideOps.js";
 import RideCreatePage from "../pages/RideCreatePage.jsx";
 import PartnerRidesListPage from "../pages/PartnerRidesListPage.jsx";
 import "../styles/agentur-gutscheine.css";
@@ -472,7 +473,9 @@ function FahrtenView({ token }) {
             <div key={r.id || i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: i % 2 === 0 ? "#fafafa" : "#fff", borderRadius: 8, fontSize: 13 }}>
               <span style={{ color: "rgba(0,0,0,0.35)", fontSize: 11, minWidth: 60 }}>{fmtDate(r.createdAt || r.created_at)}</span>
               <span style={{ flex: 1, color: "#1c1c1e" }}>{String(r.fromFull || r.from || "—").split(",")[0]} → {String(r.toFull || r.to || "—").split(",")[0]}</span>
-              <span style={{ fontWeight: 600, color: "#1c1c1e" }}>{fmtMoney(r.finalFare != null ? r.finalFare : r.status !== "completed" ? r.estimatedFare : null)}</span>
+              <span style={{ fontWeight: 600, color: "#1c1c1e" }}>
+                {partnerRideShowsFare(r) ? fmtMoney(r.finalFare ?? r.estimatedFare) : "—"}
+              </span>
               <Badge tone={r.status === "completed" ? "ok" : r.status === "cancelled" ? "err" : "muted"}>{r.status || "—"}</Badge>
             </div>
           ))}

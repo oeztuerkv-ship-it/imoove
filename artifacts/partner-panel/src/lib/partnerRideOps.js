@@ -30,6 +30,11 @@ export const TERMINAL_STATUSES = new Set([
   "expired",
 ]);
 
+/** Preis auf Karten/Homepage erst nach abgeschlossener Fahrt (keine Schätzung bei Anfrage/Disposition). */
+export function partnerRideShowsFare(ride) {
+  return String(ride?.status ?? "") === "completed";
+}
+
 /** @param {PartnerPayerMode} mode */
 export function paymentMethodForPayerMode(mode) {
   return mode === "company" ? "rechnung" : "Barzahlung";

@@ -5,6 +5,7 @@ import { SettlementKpiPeriodPanel } from "./SettlementKpiBlock.jsx";
 import DashboardQuickActions from "../dashboard/DashboardQuickActions.jsx";
 import DashboardTodaySection from "../dashboard/DashboardTodaySection.jsx";
 import { medicalOpenOperationsCount, isPlannedScheduledRideStatus } from "../dashboard/dashboardHelpers.js";
+import { partnerRideShowsFare } from "../lib/partnerRideOps.js";
 import {
   fareCellLabeled,
   formatEur,
@@ -58,6 +59,9 @@ function KpiCard({ hero, value, label, hint, onClick, active }) {
 }
 
 function AmountTd({ ride }) {
+  if (!partnerRideShowsFare(ride)) {
+    return <td className="panel-dash-table__muted">—</td>;
+  }
   const cell = fareCellLabeled(ride);
   return (
     <td>
