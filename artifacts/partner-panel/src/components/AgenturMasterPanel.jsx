@@ -1241,7 +1241,13 @@ function AgenturMasterPanelInner({ company, onLogout }) {
           {onLogout && <button onClick={onLogout} style={{ border: "0.5px solid rgba(0,0,0,0.2)", borderRadius: 8, padding: "5px 12px", fontSize: 12, cursor: "pointer", background: "transparent" }}>Abmelden</button>}
         </div>
       </div>
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 16px" }}>
+      <div
+        style={{
+          maxWidth: active === "support" ? 1320 : 860,
+          margin: "0 auto",
+          padding: active === "support" ? "24px 20px" : "24px 16px",
+        }}
+      >
         {active === "dashboard" && <DashboardView token={token} company={company} />}
         {active === "taxi_buchen" && <RideCreatePage />}
         {active === "gutscheine" && <GutscheineView token={token} user={user} company={company} />}
