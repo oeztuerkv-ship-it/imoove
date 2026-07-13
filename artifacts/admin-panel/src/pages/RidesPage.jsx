@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -844,98 +845,128 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
       {detailId ? (
         <div className="admin-modal-backdrop" role="presentation" onClick={closeDetail}>
           <div
-            className="admin-modal"
+            className="admin-modal admin-modal--ride-preview"
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-ride-detail-title"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="admin-modal__header">
-              <h2 id="admin-ride-detail-title" className="admin-modal__title">
-                Fahrt {detailId}
-              </h2>
+              <div className="admin-modal__title-wrap">
+                <p className="admin-modal__eyebrow">Fahrtvorschau</p>
+                <div className="admin-modal__title-row">
+                  <h2 id="admin-ride-detail-title" className="admin-modal__title admin-mono">
+                    {detailId}
+                  </h2>
+                  {detailRide ? (
+                    <span className={rideStatusToneClass(detailRide.status)}>{rideStatusDe(detailRide.status)}</span>
+                  ) : null}
+                </div>
+              </div>
               <button type="button" className="admin-modal__close" onClick={closeDetail} aria-label="Schließen">
                 ×
               </button>
             </div>
             <div className="admin-modal__body">
-              {typeof onOpenRideRecord === "function" && detailId ? (
-                <p style={{ margin: "0 0 12px" }}>
-                  <button
-                    type="button"
-                    className="admin-c-btn-sec"
-                    onClick={() => onOpenRideRecord(detailId)}
-                  >
-                    Vollständige Fahrtakte öffnen
-                  </button>
-                </p>
-              ) : null}
-              {detailLoading ? <p>Lade Detail …</p> : null}
+              {detailLoading ? <p className="admin-table-sub">Lade Detail …</p> : null}
               {detailError ? <div className="admin-error-banner">{detailError}</div> : null}
               {!detailLoading && detailRide ? (
-                <dl className="admin-detail-grid">
-                  <div>
-                    <dt>Auftrag</dt>
-                    <dd className="admin-mono">{detailRide.id}</dd>
-                  </div>
-                  <div>
-                    <dt>Kunde</dt>
-                    <dd>{detailRide.customerName || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Status</dt>
-                    <dd>{rideStatusDe(detailRide.status)}</dd>
-                  </div>
-                  <div>
-                    <dt>Unternehmen</dt>
-                    <dd>{detailRide.companyName || detailRide.companyId || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Abholung</dt>
-                    <dd>{detailRide.from || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Ziel</dt>
-                    <dd>{detailRide.to || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Fahrtart</dt>
-                    <dd>{rideKindLabel(detailRide.rideKind)}</dd>
-                  </div>
-                  <div>
-                    <dt>Zahlung</dt>
-                    <dd>{payerKindLabel(detailRide.payerKind)}</dd>
-                  </div>
-                  <div>
-                    <dt>Freigabe</dt>
-                    <dd>{authorizationSummary(detailRide)}</dd>
-                  </div>
-                  <div>
-                    <dt>Fahrer</dt>
-                    <dd className="admin-mono">{detailRide.driverId || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Preis (geschätzt / final)</dt>
-                    <dd>
-                      {formatMoney(detailRide.estimatedFare)}
-                      {detailRide.finalFare != null && detailRide.finalFare !== ""
-                        ? ` / ${formatMoney(detailRide.finalFare)}`
-                        : ""}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Erstellt</dt>
-                    <dd>{formatDate(detailRide.createdAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Geplant</dt>
-                    <dd>{formatDate(detailRide.scheduledAt)}</dd>
-                  </div>
-                  <div>
-                    <dt>Quelle</dt>
-                    <dd>{rideSourceLabel(detailRide)}</dd>
-                  </div>
-                </dl>
+                <div className="admin-ride-preview-stack">
+                  <AdminCollapsibleSection
+                    title="Überblick"
+                    subtitle={`${detailRide.customerName || "—"} · ${detailRide.companyName || detailRide.companyId || "—"}`}
+                    defaultOpen
+                    flushBody
+                  >
+                    <div className="admin-ride-rec-kv">
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Kunde</span>
+                        <span className="admin-ride-rec-kv__v">{detailRide.customerName || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Unternehmen</span>
+                        <span className="admin-ride-rec-kv__v">{detailRide.companyName || detailRide.companyId || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Status</span>
+                        <span className="admin-ride-rec-kv__v">{rideStatusDe(detailRide.status)}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Fahrtart / Zahlung</span>
+                        <span className="admin-ride-rec-kv__v">
+                          {rideKindLabel(detailRide.rideKind)} · {payerKindLabel(detailRide.payerKind)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Freigabe</span>
+                        <span className="admin-ride-rec-kv__v">{authorizationSummary(detailRide)}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Quelle</span>
+                        <span className="admin-ride-rec-kv__v">{rideSourceLabel(detailRide)}</span>
+                      </div>
+                    </div>
+                  </AdminCollapsibleSection>
+
+                  <AdminCollapsibleSection title="Route & Termin" defaultOpen={false} flushBody>
+                    <div className="admin-ride-rec-kv">
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Abholung</span>
+                        <span className="admin-ride-rec-kv__v">{detailRide.from || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Ziel</span>
+                        <span className="admin-ride-rec-kv__v">{detailRide.to || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Erstellt</span>
+                        <span className="admin-ride-rec-kv__v">{formatDate(detailRide.createdAt)}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Geplant</span>
+                        <span className="admin-ride-rec-kv__v">{formatDate(detailRide.scheduledAt)}</span>
+                      </div>
+                    </div>
+                  </AdminCollapsibleSection>
+
+                  <AdminCollapsibleSection title="Fahrer & Preis" defaultOpen={false} flushBody>
+                    <div className="admin-ride-rec-kv">
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Fahrer</span>
+                        <span className="admin-ride-rec-kv__v admin-mono">{detailRide.driverId || "—"}</span>
+                      </div>
+                      <div>
+                        <span className="admin-ride-rec-kv__k">Preis (geschätzt / final)</span>
+                        <span className="admin-ride-rec-kv__v">
+                          {formatMoney(detailRide.estimatedFare)}
+                          {detailRide.finalFare != null && detailRide.finalFare !== ""
+                            ? ` / ${formatMoney(detailRide.finalFare)}`
+                            : ""}
+                        </span>
+                      </div>
+                    </div>
+                  </AdminCollapsibleSection>
+                </div>
+              ) : null}
+            </div>
+            <div className="admin-modal__footer">
+              <button type="button" className="admin-c-btn-sec" onClick={() => void copyRideId(detailId)}>
+                ID kopieren
+              </button>
+              <button type="button" className="admin-c-btn-sec" onClick={closeDetail}>
+                Schließen
+              </button>
+              {typeof onOpenRideRecord === "function" && detailId ? (
+                <button
+                  type="button"
+                  className="admin-btn-primary"
+                  onClick={() => {
+                    onOpenRideRecord(detailId);
+                    closeDetail();
+                  }}
+                >
+                  Fahrtakte öffnen
+                </button>
               ) : null}
             </div>
           </div>

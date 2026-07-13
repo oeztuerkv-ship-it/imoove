@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import AdminCollapsibleSection from "../components/AdminCollapsibleSection.jsx";
 import RideGpsTrackMap from "../components/RideGpsTrackMap.jsx";
 
 const RIDES_LIST_URL = `${API_BASE}/admin/rides`;
@@ -257,6 +258,7 @@ export default function RideDetailPage({ rideId, onBack }) {
   const [gpsTrack, setGpsTrack] = useState(null);
   const [gpsTrackErr, setGpsTrackErr] = useState("");
   const [gpsTrackLoading, setGpsTrackLoading] = useState(false);
+  const [idCopied, setIdCopied] = useState(false);
 
   const load = useCallback(async () => {
     if (!rideId?.trim()) {
@@ -365,6 +367,15 @@ export default function RideDetailPage({ rideId, onBack }) {
   const medicalMeta = medicalMetaViewModel(r?.partnerBookingMeta);
   const partnerDriverNote = partnerCustomerDriverNote(r?.partnerBookingMeta);
 
+  const copyRideId = () => {
+    const id = String(r?.id ?? rideId ?? "").trim();
+    if (!id || !navigator.clipboard?.writeText) return;
+    void navigator.clipboard.writeText(id).then(() => {
+      setIdCopied(true);
+      window.setTimeout(() => setIdCopied(false), 2000);
+    });
+  };
+
   return (
     <div className="admin-page admin-taxi-fv-page">
       <header className="admin-m-hero">
@@ -374,13 +385,20 @@ export default function RideDetailPage({ rideId, onBack }) {
               ← Zur Fahrtenliste
             </button>
             <h1 className="admin-m-hero__title">Fahrtakte</h1>
-            <p className="admin-taxi-fv-heroline">
-              {r?.id ? <code style={{ fontSize: "0.95em" }}>{r.id}</code> : "—"}
+            <p className="admin-taxi-fv-heroline admin-ride-rec-hero-id">
+              {r?.id ? (
+                <>
+                  <code>{r.id}</code>
+                  <button type="button" className="admin-ride-rec-copy" onClick={copyRideId}>
+                    {idCopied ? "Kopiert ✓" : "ID kopieren"}
+                  </button>
+                </>
+              ) : (
+                "—"
+              )}
             </p>
             <p className="admin-m-hero__hint" style={{ marginTop: 8, maxWidth: 720 }}>
-              Vollständiger Verlauf aus <code>ride_events</code> (Status) und Plattform-Audit (Mandant) — nur sichtbar machen,
-              keine Fachlogik-Änderung. Abweichende reine Metadaten-Updates können ohne neues Ereignis erscheinen
-              (bestehende Speicher-Logik).
+              Vollständiger Verlauf, Stammdaten und Ereignisse — Bereiche unten aufklappbar.
             </p>
             <div className="admin-m-hero__actions" style={{ marginTop: 8 }}>
               <button type="button" className="admin-c-btn-sec" onClick={() => void load()}>
@@ -396,12 +414,12 @@ export default function RideDetailPage({ rideId, onBack }) {
 
       {r ? (
         <div className="admin-taxi-fv-cards" style={{ marginTop: 12 }}>
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Stammdaten
-              </span>
-            </div>
+          <AdminCollapsibleSection
+            title="Stammdaten"
+            subtitle={[r.customerName, r.companyName || r.companyId].filter(Boolean).join(" · ") || undefined}
+            defaultOpen
+            flushBody
+          >
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">Kund*in</span>
@@ -442,18 +460,20 @@ export default function RideDetailPage({ rideId, onBack }) {
                 </div>
               ) : null}
             </div>
-          </section>
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                GPS-Route (Nachverfolgung)
-              </span>
-              <button type="button" className="admin-c-btn-sec" onClick={() => void loadGpsTrack()}>
-                Aktualisieren
-              </button>
-            </div>
-            <div style={{ padding: "0 16px 16px" }}>
+          <AdminCollapsibleSection
+            title="GPS-Route"
+            subtitle={gpsTrack ? `${gpsTrack.pointCount ?? 0} Pings` : "Nachverfolgung"}
+            defaultOpen={false}
+            flushBody
+          >
+            <div className="admin-ride-rec-section-pad">
+              <div className="admin-ride-rec-section-pad__actions">
+                <button type="button" className="admin-c-btn-sec" onClick={() => void loadGpsTrack()}>
+                  Aktualisieren
+                </button>
+              </div>
               {gpsTrackLoading && !gpsTrack ? <p className="admin-table-sub">Lade GPS-Pings …</p> : null}
               {gpsTrackErr ? <div className="admin-error-banner">{gpsTrackErr}</div> : null}
               {gpsTrack ? (
@@ -504,28 +524,16 @@ export default function RideDetailPage({ rideId, onBack }) {
                 </>
               ) : null}
             </div>
-          </section>
+          </AdminCollapsibleSection>
 
           {accessibilitySummary ? (
-            <section className="admin-panel-card admin-m-card admin-m-card--unified">
-              <div className="admin-m-card__h">
-                <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                  Barrierefrei / Rollstuhl
-                </span>
-              </div>
-              <p className="admin-ride-rec-muted" style={{ padding: "0 16px 16px", whiteSpace: "pre-wrap" }}>
-                {accessibilitySummary}
-              </p>
-            </section>
+            <AdminCollapsibleSection title="Barrierefrei / Rollstuhl" defaultOpen={false} flushBody>
+              <p className="admin-ride-rec-muted admin-ride-rec-section-pad">{accessibilitySummary}</p>
+            </AdminCollapsibleSection>
           ) : null}
 
           {medicalMeta ? (
-            <section className="admin-panel-card admin-m-card admin-m-card--unified">
-              <div className="admin-m-card__h">
-                <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                  Krankenfahrt-Meta
-                </span>
-              </div>
+            <AdminCollapsibleSection title="Krankenfahrt-Meta" defaultOpen={false} flushBody>
               <div style={{ padding: "0 16px 10px", display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {medicalMeta.ampel.map((item) => (
                   <span
@@ -556,30 +564,19 @@ export default function RideDetailPage({ rideId, onBack }) {
                   />
                 </div>
               ) : null}
-            </section>
+            </AdminCollapsibleSection>
           ) : null}
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Status
-              </span>
-              <span className="admin-c-badge admin-c-badge--ok">{rideStatusDe(r.status)}</span>
-            </div>
+          <AdminCollapsibleSection title="Status" subtitle={rideStatusDe(r.status)} defaultOpen flushBody>
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">Aktueller Status</span>
                 <span className="admin-ride-rec-kv__v">{rideStatusDe(r.status)}</span>
               </div>
             </div>
-          </section>
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Fahrer & Fahrzeug
-              </span>
-            </div>
+          <AdminCollapsibleSection title="Fahrer & Fahrzeug" defaultOpen={false} flushBody>
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">Fahrer*in (ID/Name)</span>
@@ -593,14 +590,9 @@ export default function RideDetailPage({ rideId, onBack }) {
                 <span className="admin-ride-rec-kv__v">{r.vehicle || "—"}</span>
               </div>
             </div>
-          </section>
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Preis
-              </span>
-            </div>
+          <AdminCollapsibleSection title="Preis" defaultOpen={false} flushBody>
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">Geschätzt / final</span>
@@ -618,14 +610,9 @@ export default function RideDetailPage({ rideId, onBack }) {
                 <span className="admin-ride-rec-kv__v">{r.pricingMode || "—"}</span>
               </div>
             </div>
-          </section>
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Finanzen (ride_financials)
-              </span>
-            </div>
+          <AdminCollapsibleSection title="Finanzen" subtitle={billingStatusDe(r.billingStatus)} defaultOpen={false} flushBody>
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">billing_status</span>
@@ -636,14 +623,9 @@ export default function RideDetailPage({ rideId, onBack }) {
                 <span className="admin-ride-rec-kv__v">{r.settlementStatus || "—"}</span>
               </div>
             </div>
-          </section>
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Verknüpfungen
-              </span>
-            </div>
+          <AdminCollapsibleSection title="Verknüpfungen" defaultOpen={false} flushBody>
             <div className="admin-ride-rec-kv">
               <div>
                 <span className="admin-ride-rec-kv__k">billing_reference</span>
@@ -658,19 +640,16 @@ export default function RideDetailPage({ rideId, onBack }) {
                 </span>
               </div>
             </div>
-          </section>
+          </AdminCollapsibleSection>
 
           {dispatchOffers.length > 0 ? (
-            <section className="admin-panel-card admin-m-card admin-m-card--unified">
-              <div className="admin-m-card__h">
-                <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                  Dispatch-Angebote (Fahrer)
-                </span>
-                <span className="admin-table-sub" style={{ margin: 0 }}>
-                  offer_sent / offer_seen / angenommen
-                </span>
-              </div>
-              <div style={{ padding: "0 16px 16px", overflowX: "auto" }}>
+            <AdminCollapsibleSection
+              title="Dispatch-Angebote"
+              subtitle={`${dispatchOffers.length} Fahrer`}
+              defaultOpen={false}
+              flushBody
+            >
+              <div className="admin-ride-rec-section-pad admin-ride-rec-table-wrap">
                 <table className="admin-rides-table">
                   <thead>
                     <tr>
@@ -692,24 +671,19 @@ export default function RideDetailPage({ rideId, onBack }) {
                   </tbody>
                 </table>
               </div>
-            </section>
+            </AdminCollapsibleSection>
           ) : null}
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Fahrt-Support (Kund*innen)
-              </span>
-              <span className="admin-table-sub" style={{ margin: 0 }}>
-                {supportTickets.length} Ticket(s) · mit Snapshot zum Meldezeitpunkt
-              </span>
-            </div>
+          <AdminCollapsibleSection
+            title="Fahrt-Support"
+            subtitle={`${supportTickets.length} Ticket(s)`}
+            defaultOpen={false}
+            flushBody
+          >
             {supportTickets.length === 0 ? (
-              <p className="admin-ride-rec-muted" style={{ padding: "0 16px 16px" }}>
-                Noch kein Kund*innen-Support-Ticket (PostgreSQL, Migration 047).
-              </p>
+              <p className="admin-ride-rec-muted admin-ride-rec-section-pad">Noch kein Kund*innen-Support-Ticket.</p>
             ) : (
-              <ol className="admin-ride-rec-tl" style={{ listStyle: "none", padding: "0 16px 16px" }}>
+              <ol className="admin-ride-rec-tl admin-ride-rec-tl--in-section">
                 {supportTickets.map((t) => (
                   <li key={t.id} className="admin-ride-rec-tl__row" style={{ borderBottom: "1px solid var(--onroda-border-subtle, #e2e8f0)" }}>
                     <div className="admin-ride-rec-tl__time">[{formatDt(t.createdAt)}]</div>
@@ -726,23 +700,18 @@ export default function RideDetailPage({ rideId, onBack }) {
                 ))}
               </ol>
             )}
-          </section>
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Verlauf — ride_events
-              </span>
-              <span className="admin-table-sub" style={{ margin: 0 }}>
-                {evs.length} Einträge, chronologisch
-              </span>
-            </div>
+          <AdminCollapsibleSection
+            title="Verlauf — Ereignisse"
+            subtitle={`${evs.length} Einträge`}
+            defaultOpen
+            flushBody
+          >
             {evs.length === 0 ? (
-              <p className="admin-ride-rec-muted" style={{ padding: "0 16px 16px" }}>
-                Noch keine Ereignisse (nur in-memory-Backend oder vor Migration 024).
-              </p>
+              <p className="admin-ride-rec-muted admin-ride-rec-section-pad">Noch keine Ereignisse.</p>
             ) : (
-              <ol className="admin-ride-rec-tl">
+              <ol className="admin-ride-rec-tl admin-ride-rec-tl--in-section">
                 {evs.map((ev) => (
                   <li key={ev.id} className="admin-ride-rec-tl__row">
                     <div className="admin-ride-rec-tl__time">[{formatDt(ev.createdAt)}]</div>
@@ -758,21 +727,18 @@ export default function RideDetailPage({ rideId, onBack }) {
                 ))}
               </ol>
             )}
-          </section>
+          </AdminCollapsibleSection>
 
-          <section className="admin-panel-card admin-m-card admin-m-card--unified">
-            <div className="admin-m-card__h">
-              <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                Mandanten-Audit (Plattform)
-              </span>
-              <span className="admin-table-sub" style={{ margin: 0 }}>subject_id = Fahrt</span>
-            </div>
+          <AdminCollapsibleSection
+            title="Mandanten-Audit"
+            subtitle={`${audits.length} Einträge`}
+            defaultOpen={false}
+            flushBody
+          >
             {audits.length === 0 ? (
-              <p className="admin-ride-rec-muted" style={{ padding: "0 16px 16px" }}>
-                Keine Einträge (Fahrt ohne zugeordnetes Unternehmen oder kein passender Log).
-              </p>
+              <p className="admin-ride-rec-muted admin-ride-rec-section-pad">Keine Audit-Einträge für diese Fahrt.</p>
             ) : (
-              <ol className="admin-ride-rec-tl">
+              <ol className="admin-ride-rec-tl admin-ride-rec-tl--in-section">
                 {audits.map((a) => (
                   <li key={a.id} className="admin-ride-rec-tl__row">
                     <div className="admin-ride-rec-tl__time">[{formatDt(a.createdAt)}]</div>
@@ -789,7 +755,7 @@ export default function RideDetailPage({ rideId, onBack }) {
                 ))}
               </ol>
             )}
-          </section>
+          </AdminCollapsibleSection>
         </div>
       ) : null}
     </div>
