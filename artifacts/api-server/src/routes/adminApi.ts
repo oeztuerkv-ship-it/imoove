@@ -97,6 +97,7 @@ import {
 import {
   getRideSupportTicketAdmin,
   listRideSupportTicketsAdminPage,
+  listRideSupportTicketsByRideId,
   updateRideSupportTicketAdmin,
   RIDE_SUPPORT_TICKET_STATUSES,
 } from "../db/rideSupportData";
@@ -6057,13 +6058,14 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
       return;
     }
     const [ride] = await attachAccessCodeSummariesToRides([row]);
-    const [events, panelAudit, financial, dispatchOffers] = await Promise.all([
+    const [events, panelAudit, financial, dispatchOffers, supportTickets] = await Promise.all([
       listAdminRideEventsByRideId(id),
       row.companyId
         ? listPanelAuditForCompany(row.companyId, { subjectId: id, limit: 200 })
         : Promise.resolve([]),
       getRideFinancialSnapshotByRideId(id),
       listDispatchOffersForRide(id),
+      listRideSupportTicketsByRideId(id),
     ]);
     const auditAsc = [...panelAudit].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const meta = (row as { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
@@ -6085,6 +6087,7 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
       events,
       panelAudit: auditAsc,
       dispatchOffers,
+      supportTickets,
       links: {
         billingReference: row.billingReference ?? null,
         supportTicketId: supportTicketId || null,

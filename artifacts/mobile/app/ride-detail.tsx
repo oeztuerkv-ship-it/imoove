@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -52,6 +52,7 @@ export default function RideDetailScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const params = useLocalSearchParams();
   const rideId = typeof params.id === "string" ? params.id : "";
+  const focusSupport = params.focus === "support";
 
   const { history } = useRide();
   const { myActiveRequests, myCancelledRequests, requests } = useRideRequests();
@@ -128,6 +129,9 @@ export default function RideDetailScreen() {
   const [category, setCategory] = useState<SupportCategory>("other");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [ticketSent, setTicketSent] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const supportYRef = useRef(0);
 
   const apiBase = getApiBaseUrl();
   const { profile } = useUser();
@@ -235,13 +239,99 @@ export default function RideDetailScreen() {
         return;
       }
       setMessage("");
-      Alert.alert("Gesendet", `Danke! Referenz: ${data.ticketId ?? "—"}`);
+      setTicketSent(data.ticketId ?? "ok");
+      Alert.alert("Gesendet", `Danke! Referenz: ${(data.ticketId ?? "—").slice(0, 12)}…`);
     } catch {
       Alert.alert("Netzwerkfehler", "Bitte später erneut versuchen.");
     } finally {
       setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (!focusSupport || supportYRef.current <= 0) return;
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, supportYRef.current - 12), animated: true });
+    }, 280);
+    return () => clearTimeout(t);
+  }, [focusSupport, activeRide, enrichedHistRide]);
+
+  const supportCard = (
+    <View
+      onLayout={(e) => {
+        supportYRef.current = e.nativeEvent.layout.y;
+      }}
+      style={[
+        styles.card,
+        styles.supportCard,
+        { backgroundColor: colors.card, borderColor: focusSupport ? "#0F766E" : colors.border },
+      ]}
+    >
+      <Text style={[styles.cardTitle, { color: colors.foreground }]}>Support zu dieser Fahrt</Text>
+      <Text style={[styles.hint, { color: colors.mutedForeground, marginBottom: 10 }]}>
+        Ein Klick — Ihr Anliegen landet mit Fahrt-Snapshot im Admin-Postfach.
+      </Text>
+      {sessionToken ? null : (
+        <Text style={[styles.hint, { color: "#B45309", marginBottom: 8 }]}>
+          Bitte anmelden, um Hilfe anzufragen.
+        </Text>
+      )}
+      {ticketSent ? (
+        <View style={[styles.ticketSentBanner, { backgroundColor: "#ECFDF5", borderColor: "#86EFAC" }]}>
+          <Feather name="check-circle" size={16} color="#16A34A" />
+          <Text style={{ color: "#166534", fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1 }}>
+            Ticket {ticketSent.slice(0, 10)}… eingegangen
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.categoryWrap}>
+        {SUPPORT_CATEGORIES.map((c) => {
+          const on = category === c.id;
+          return (
+            <Pressable
+              key={c.id}
+              style={[
+                styles.categoryChip,
+                {
+                  borderColor: on ? "#0F766E" : colors.border,
+                  backgroundColor: on ? "rgba(15,118,110,0.12)" : colors.background,
+                },
+              ]}
+              onPress={() => setCategory(c.id)}
+            >
+              <MaterialCommunityIcons name={c.icon} size={14} color={on ? "#0F766E" : colors.mutedForeground} />
+              <Text style={[styles.chipText, { color: on ? "#0F766E" : colors.mutedForeground }]}>{c.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <TextInput
+        value={message}
+        onChangeText={setMessage}
+        placeholder="Optional: Details (leer = nur Kategorie)"
+        placeholderTextColor={colors.mutedForeground}
+        multiline
+        style={[
+          styles.textArea,
+          {
+            borderColor: colors.border,
+            color: colors.foreground,
+          },
+        ]}
+      />
+
+      <Pressable
+        style={[styles.primaryBtn, styles.supportSubmitBtn, { opacity: submitting || !sessionToken ? 0.5 : 1 }]}
+        disabled={submitting || !sessionToken}
+        onPress={() => void submitSupport()}
+      >
+        <Feather name="send" size={15} color="#fff" />
+        <Text style={styles.primaryBtnText}>{submitting ? "Senden …" : "Problem melden"}</Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -255,7 +345,13 @@ export default function RideDetailScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      >
+        {activeRide ? supportCard : null}
+
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>Übersicht</Text>
 
@@ -366,62 +462,7 @@ export default function RideDetailScreen() {
           </View>
         ) : null}
 
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Hilfe</Text>
-          {sessionToken ? null : (
-            <Text style={[styles.hint, { color: "#B45309", marginBottom: 8 }]}>
-              Bitte anmelden, um Hilfe anzufragen.
-            </Text>
-          )}
-
-          <View style={styles.categoryWrap}>
-            {SUPPORT_CATEGORIES.map((c) => {
-              const on = category === c.id;
-              return (
-                <Pressable
-                  key={c.id}
-                  style={[
-                    styles.categoryChip,
-                    {
-                      borderColor: on ? "#DC2626" : colors.border,
-                      backgroundColor: on ? "#DC262615" : colors.background,
-                    },
-                  ]}
-                  onPress={() => setCategory(c.id)}
-                >
-                  <MaterialCommunityIcons name={c.icon} size={14} color={on ? "#DC2626" : colors.mutedForeground} />
-                  <Text style={[styles.chipText, { color: on ? "#DC2626" : colors.mutedForeground }]}>{c.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <TextInput
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Optional: Was ist passiert? (leer = nur Kategorie)"
-            placeholderTextColor={colors.mutedForeground}
-            multiline
-            style={[
-              styles.textArea,
-              {
-                borderColor: colors.border,
-                color: colors.foreground,
-              },
-            ]}
-          />
-
-          <Pressable
-            style={[styles.secondaryBtn, { opacity: submitting || !sessionToken ? 0.5 : 1 }]}
-            disabled={submitting || !sessionToken}
-            onPress={() => void submitSupport()}
-          >
-            <Feather name="send" size={14} color="#DC2626" />
-            <Text style={[styles.secondaryBtnText, { color: "#DC2626" }]}>
-              {submitting ? "Senden …" : "An Support senden"}
-            </Text>
-          </Pressable>
-        </View>
+        {!activeRide ? supportCard : null}
       </ScrollView>
     </View>
   );
@@ -455,6 +496,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   primaryBtnText: { color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold" },
+  supportCard: { borderWidth: 2 },
+  supportSubmitBtn: {
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#0F766E",
+  },
+  ticketSentBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
   hint: { marginTop: 8, fontSize: 12, fontFamily: "Inter_400Regular" },
   categoryWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   categoryChip: {

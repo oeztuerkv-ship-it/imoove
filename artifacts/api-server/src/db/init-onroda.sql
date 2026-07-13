@@ -778,7 +778,7 @@ CREATE TABLE IF NOT EXISTS support_threads (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT support_threads_category_chk
-    CHECK (category IN ('stammdaten', 'documents', 'billing', 'technical', 'other')),
+    CHECK (category IN ('stammdaten', 'documents', 'billing', 'technical', 'help', 'other')),
   CONSTRAINT support_threads_status_chk
     CHECK (status IN ('open', 'in_progress', 'answered', 'closed'))
 );

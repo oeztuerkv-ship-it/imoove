@@ -163,3 +163,20 @@ export async function listAppHelpTicketsAdminPage(input: {
 
   return { total, items: rows.map(mapRow) };
 }
+
+export async function listAppHelpTicketsForPassenger(
+  passengerId: string,
+  limit = 20,
+): Promise<AppHelpTicketRow[]> {
+  const db = getDb();
+  if (!db) return [];
+  const pid = passengerId.trim();
+  if (!pid) return [];
+  const rows = await db
+    .select()
+    .from(appHelpTicketsTable)
+    .where(eq(appHelpTicketsTable.passenger_id, pid))
+    .orderBy(desc(appHelpTicketsTable.created_at))
+    .limit(Math.min(Math.max(limit, 1), 50));
+  return rows.map(mapRow);
+}

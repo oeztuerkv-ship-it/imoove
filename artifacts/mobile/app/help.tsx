@@ -24,6 +24,7 @@ import {
   BOTTOM_TAB_BAR_INNER_HEIGHT,
   tabMainScreenScrollPaddingBottom,
 } from "@/components/BottomTabBar";
+import CustomerRideSupportQuick from "@/components/CustomerRideSupportQuick";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { accountSheetPrimaryLabel, accountSheetSecondaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
@@ -186,7 +187,14 @@ function SupportContactCard() {
         return;
       }
       if (!res.ok || !data?.ok || !data.ticketId) {
-        Alert.alert("Senden fehlgeschlagen", "Bitte später erneut versuchen.");
+        const err = typeof data?.error === "string" ? data.error : "";
+        const msg =
+          err === "message_too_short"
+            ? "Bitte mindestens 5 Zeichen schreiben."
+            : err === "database_not_configured"
+              ? "Support ist gerade nicht erreichbar — bitte E-Mail nutzen."
+              : "Bitte später erneut versuchen.";
+        Alert.alert("Senden fehlgeschlagen", msg);
         return;
       }
       if (Platform.OS !== "web") {
@@ -211,7 +219,7 @@ function SupportContactCard() {
         <View style={styles.supportHeaderText}>
           <Text style={[styles.supportTitle, { color: colors.foreground }]}>Nachricht an uns</Text>
           <Text style={[styles.supportHint, { color: colors.mutedForeground }]}>
-            Wir antworten per E-Mail — Ihre Anfrage erscheint im Support-Postfach.
+            Direkt an unser Team — erscheint im Admin-Support-Postfach.
           </Text>
         </View>
       </View>
@@ -451,7 +459,7 @@ export default function HelpScreen() {
         ]}
       >
         <View style={{ width: 36 }} />
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Hilfe</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Hilfe & Support</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -467,18 +475,21 @@ export default function HelpScreen() {
           { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) + rs(40) },
         ]}
       >
+        <SupportContactCard />
+
+        <CustomerRideSupportQuick />
+
         <View
           style={[
             styles.faqCard,
             { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 },
           ]}
         >
+          <Text style={[styles.faqSectionTitle, { color: colors.foreground }]}>Häufige Fragen</Text>
           {faqItems.map((item, i) => (
             <FaqItem key={i} q={item.q} a={item.a} isLast={i === faqItems.length - 1} />
           ))}
         </View>
-
-        <SupportContactCard />
       </KeyboardAwareScrollViewCompat>
 
       <BottomTabBar active="orte" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
@@ -522,7 +533,14 @@ const styles = StyleSheet.create({
   accessoryDoneBtn: { paddingHorizontal: rs(8), paddingVertical: rs(4) },
   accessoryDoneText: { fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#007AFF" },
 
-  faqCard: { borderRadius: rs(16), overflow: "hidden" },
+  faqCard: { borderRadius: rs(16), overflow: "hidden", paddingTop: rs(4) },
+  faqSectionTitle: {
+    fontSize: rf(15),
+    fontFamily: "Inter_600SemiBold",
+    paddingHorizontal: rs(16),
+    paddingTop: rs(12),
+    paddingBottom: rs(4),
+  },
   faqItem: { padding: rs(16), gap: rs(8) },
   faqRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: rs(10) },
   faqQ: { flex: 1 },

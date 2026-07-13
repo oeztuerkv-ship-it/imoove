@@ -8,7 +8,7 @@ import {
   buildAssignedDriverMapForCustomerRides,
 } from "../lib/assignedDriverForCustomer.js";
 import { upsertPassengerExpoPushToken } from "../db/passengerExpoPushData";
-import { createAppHelpTicket, parseAppHelpCategory } from "../db/appHelpTicketsData";
+import { createAppHelpTicket, listAppHelpTicketsForPassenger, parseAppHelpCategory } from "../db/appHelpTicketsData";
 import { isPostgresConfigured } from "../db/client";
 import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
 import { parseMedicalScanCopaymentInput } from "../lib/medical/medicalCopayment";
@@ -302,6 +302,34 @@ router.post("/customer/v1/rides/:id/driver-rating", requireCustomerSession, asyn
   }
 });
 
+router.get("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const items = await listAppHelpTicketsForPassenger(passengerId, 15);
+    res.json({
+      ok: true,
+      tickets: items.map((t) => ({
+        id: t.id,
+        category: t.category,
+        message: t.message.slice(0, 200),
+        status: t.status,
+        createdAt: t.createdAt,
+      })),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = (req as CustomerSessionRequest).customerSession;
@@ -333,16 +361,16 @@ router.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res
     const category = parseAppHelpCategory(typeof body.category === "string" ? body.category : "other");
     const subject = typeof body.subject === "string" ? body.subject.trim().slice(0, 200) : null;
     const passengerId = customerPassengerId(sess);
-    const passengerEmail =
+    const passengerEmailRaw =
       typeof body.passengerEmail === "string" && body.passengerEmail.trim()
         ? body.passengerEmail.trim()
         : typeof sess.email === "string" && sess.email.trim()
           ? sess.email.trim()
           : "";
-    if (!passengerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(passengerEmail)) {
-      res.status(400).json({ ok: false, error: "email_required" });
-      return;
-    }
+    const passengerEmail =
+      passengerEmailRaw && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(passengerEmailRaw)
+        ? passengerEmailRaw
+        : `passenger+${passengerId.replace(/[^a-zA-Z0-9_-]/g, "")}@tickets.onroda.app`;
     const passengerName =
       typeof body.passengerName === "string" && body.passengerName.trim()
         ? body.passengerName.trim()

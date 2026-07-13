@@ -1832,6 +1832,22 @@ export default function StatusScreen() {
             </Pressable>
           ) : null}
 
+          {currentRideId ? (
+            <Pressable
+              style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
+              accessibilityLabel="Hilfe zu dieser Fahrt"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push(
+                  `/ride-detail?id=${encodeURIComponent(currentRideId)}&focus=support` as "/ride-detail",
+                );
+              }}
+            >
+              <Feather name="help-circle" size={rf(20)} color="#111827" />
+              <Text style={styles.trackingChatActionText}>Hilfe</Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
             style={({ pressed }) => [styles.trackingCancelButton, pressed && { opacity: 0.9 }]}
             onPress={() => handleCancel()}
