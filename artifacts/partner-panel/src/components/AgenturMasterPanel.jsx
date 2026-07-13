@@ -14,6 +14,7 @@ import {
   fetchPanelInvoices,
 } from "../lib/panelInvoicesApi.js";
 import { PartnerChatUnreadProvider, usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
+import SupportShell from "../support/SupportShell.jsx";
 
 const PANEL = `${API_BASE}/panel/v1`;
 const RED = "#EF1D26";
@@ -1084,38 +1085,6 @@ function PosteingangView({ token, onUnreadRefresh }) {
   );
 }
 
-function SupportView() {
-  return (
-    <div>
-      <Section title="Support & Hilfe">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Card>
-            <p style={{ margin: "0 0 6px", fontWeight: 700 }}>Schnelle Hilfe</p>
-            <p style={{ margin: 0, fontSize: 13, color: "rgba(0,0,0,0.55)", lineHeight: 1.6 }}>
-              Fragen zu Gutscheinen, Fahrten oder Abrechnung können direkt an den ONRODA-Support weitergegeben werden.
-            </p>
-          </Card>
-          <Card>
-            <p style={{ margin: "0 0 6px", fontWeight: 700 }}>Fahrt prüfen lassen</p>
-            <p style={{ margin: 0, fontSize: 13, color: "rgba(0,0,0,0.55)", lineHeight: 1.6 }}>
-              Bei Unklarheiten zu einer Fahrt bitte die Fahrt öffnen und die Referenz angeben.
-            </p>
-          </Card>
-        </div>
-      </Section>
-
-      <Section title="Typische Anliegen" defaultOpen={false}>
-        <div style={{ display: "grid", gap: 10, fontSize: 13, color: "rgba(0,0,0,0.65)" }}>
-          <p style={{ margin: 0 }}>• Gutschein wurde nicht akzeptiert</p>
-          <p style={{ margin: 0 }}>• Gast hat Fahrt nicht gefunden</p>
-          <p style={{ margin: 0 }}>• Rechnung oder Einzelaufstellung benötigt</p>
-          <p style={{ margin: 0 }}>• Fahrt wurde falsch zugeordnet</p>
-        </div>
-      </Section>
-    </div>
-  );
-}
-
 function EinstellungenView({ company, user }) {
   return (
     <div>
@@ -1281,7 +1250,7 @@ function AgenturMasterPanelInner({ company, onLogout }) {
         {active === "posteingang" && (
           <PosteingangView token={token} onUnreadRefresh={refreshUnreadMessageCount} />
         )}
-        {active === "support" && <SupportView />}
+        {active === "support" && <SupportShell />}
         {active === "einstellungen" && <EinstellungenView company={company} user={user} />}
       </div>
     </div>
