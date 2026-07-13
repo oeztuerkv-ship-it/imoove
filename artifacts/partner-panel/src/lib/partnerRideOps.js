@@ -168,6 +168,31 @@ export function dispatchSteps(ride) {
   return steps;
 }
 
+/** Farbleiste oben an der Karte (Reservierung → Abgeschlossen). */
+export function rideCardPhase(ride) {
+  if (!ride) return "search";
+  const status = String(ride.status ?? "");
+  if (status === "completed") return "completed";
+  if (LIVE_DRIVER_STATUSES.has(status)) return "enroute";
+  const driverId = String(ride.driverId ?? "").trim();
+  if (driverId) return "accepted";
+  if (status === "scheduled" || status === "scheduled_assigned") return "reservation";
+  if (status === "searching_driver" || SEARCH_POOL_STATUSES.has(status)) return "search";
+  return "pending";
+}
+
+/** Fortschritt 0–100 für Dispositions-Timeline. */
+export function dispatchProgressPercent(ride) {
+  const steps = dispatchSteps(ride);
+  if (!steps.length) return 0;
+  const status = String(ride?.status ?? "");
+  if (status === "completed") return 100;
+  if (TERMINAL_STATUSES.has(status) && status !== "completed") return 0;
+  const weight = { done: 1, active: 0.55, wait: 0, err: 0 };
+  const sum = steps.reduce((acc, s) => acc + (weight[s.state] ?? 0), 0);
+  return Math.min(100, Math.round((sum / steps.length) * 100));
+}
+
 /** @param {Record<string, unknown> | null | undefined} ride */
 export function dispatchHeadline(ride) {
   if (!ride) return "—";

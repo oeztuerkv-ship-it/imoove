@@ -1,21 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import { getPartnerMeta } from "./finance/financeHelpers.js";
+import PartnerRideChatModal from "../components/PartnerRideChatModal.jsx";
+import PartnerRideCard from "../components/PartnerRideCard.jsx";
+import { usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 import {
   billingSummary,
-  dispatchHeadline,
-  dispatchSteps,
-  payerKindLabel,
-  partnerRideShowsFare,
-  rejectionCount,
-  rideKindLabel,
-  statusLabel,
-  statusTone,
   TERMINAL_STATUSES,
 } from "../lib/partnerRideOps.js";
-import { formatRideFinalFare, getPartnerMeta } from "./finance/financeHelpers.js";
-import PartnerRideChatModal from "../components/PartnerRideChatModal.jsx";
-import { usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
 
 const NOTE_MAX = 200;
 const RETRY_SEARCH_MS = 60_000;
@@ -25,19 +18,6 @@ function getDriverNote(ride) {
   const meta = getPartnerMeta(ride);
   const raw = meta?.customer_driver_note;
   return typeof raw === "string" ? raw.trim() : "";
-}
-
-function fmtDateTime(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function canCancelRide(ride) {
@@ -58,23 +38,6 @@ function csvEscape(v) {
 }
 
 const HISTORY_STATUSES = TERMINAL_STATUSES;
-
-function DispatchStepper({ ride }) {
-  const steps = dispatchSteps(ride);
-  return (
-    <ol className="partner-dispatch-steps">
-      {steps.map((step) => (
-        <li key={step.key} className={`partner-dispatch-steps__item partner-dispatch-steps__item--${step.state}`}>
-          <span className="partner-dispatch-steps__dot" aria-hidden />
-          <div>
-            <strong>{step.label}</strong>
-            <span>{step.detail}</span>
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
 
 export default function PartnerRidesListPage({ variant }) {
   const { token, user } = usePanelAuth();
@@ -413,8 +376,8 @@ export default function PartnerRidesListPage({ variant }) {
       ) : null}
 
       <div className="panel-rides-toolbar partner-rides-toolbar">
-        <button type="button" className="panel-btn-secondary" disabled={loading} onClick={() => void loadRides()}>
-          Aktualisieren
+        <button type="button" className="panel-btn-primary partner-rides-toolbar__refresh" disabled={loading} onClick={() => void loadRides()}>
+          ↻ Aktualisieren
         </button>
         <button
           type="button"
@@ -445,220 +408,37 @@ export default function PartnerRidesListPage({ variant }) {
       <div className="partner-rides-list partner-rides-list--modern">
         {displayedRides.map((ride) => {
           const open = expandedId === ride.id;
-          const tone = statusTone(ride.status);
           const note = getDriverNote(ride);
           const bill = billingSummary(ride);
           const tracking = trackingByRide[ride.id];
-          const driverName = tracking?.driver?.name;
-          const driverPlate = tracking?.driver?.plate;
-          const rej = rejectionCount(ride);
           const invoiceId = bill.invoiceId || ride.companyInvoice?.invoiceId || null;
           const invoiceNumber = ride.companyInvoice?.invoiceNumber || null;
-
           const chatUnread = chatUnreadByRide[ride.id] ?? 0;
 
           return (
-            <article key={ride.id} className={`partner-ride-card partner-ride-card--modern partner-ride-card--${tone}`}>
-              <button
-                type="button"
-                className="partner-ride-card__head"
-                onClick={() => setExpandedId(open ? null : ride.id)}
-                aria-expanded={open}
-              >
-                <div className="partner-ride-card__head-main">
-                  <div className="partner-ride-card__badges">
-                    <span className={`partner-ride-card__status partner-ride-card__status--${tone}`}>
-                      {statusLabel(ride.status)}
-                    </span>
-                    <span className={`partner-ride-card__pill partner-ride-card__pill--${bill.tone}`}>
-                      {bill.headline}
-                    </span>
-                    {!ride.driverId && ride.status === "searching_driver" ? (
-                      <span className="partner-ride-card__pill partner-ride-card__pill--search">Suche aktiv</span>
-                    ) : null}
-                    {ride.driverId ? (
-                      <span className="partner-ride-card__pill partner-ride-card__pill--live">Angenommen</span>
-                    ) : null}
-                    {rej > 0 && !ride.driverId ? (
-                      <span className="partner-ride-card__pill partner-ride-card__pill--warn">
-                        {rej} Ablehnung{rej > 1 ? "en" : ""}
-                      </span>
-                    ) : null}
-                  </div>
-                  <strong className="partner-ride-card__route">
-                    {ride.fromFull || ride.from || "—"} → {ride.toFull || ride.to || "—"}
-                  </strong>
-                  <span className="partner-ride-card__meta">
-                    {ride.customerName || "—"}
-                    {ride.scheduledAt ? ` · ${fmtDateTime(ride.scheduledAt)}` : ` · ${fmtDateTime(ride.createdAt)}`}
-                  </span>
-                  <span className="partner-ride-card__dispatch">{dispatchHeadline(ride)}</span>
-                </div>
-                <div className="partner-ride-card__head-side">
-                  {partnerRideShowsFare(ride) ? (
-                    <span className="partner-ride-card__fare">{formatRideFinalFare(ride)}</span>
-                  ) : null}
-                  <span className="partner-ride-card__chevron">{open ? "▲" : "▼"}</span>
-                </div>
-              </button>
-
-              {open ? (
-                <div className="partner-ride-card__body">
-                  <div className="partner-ride-ops-grid">
-                    <section className="partner-ride-ops-panel">
-                      <h4 className="partner-ride-ops-panel__title">Disposition</h4>
-                      <DispatchStepper ride={ride} />
-                      {driverName ? (
-                        <p className="partner-ride-driver-line">
-                          <strong>Fahrer:</strong> {driverName}
-                          {driverPlate ? ` · ${driverPlate}` : ""}
-                        </p>
-                      ) : ride.driverId ? (
-                        <p className="partner-ride-driver-line partner-muted">Fahrer zugewiesen — Details werden geladen …</p>
-                      ) : (
-                        <p className="partner-ride-driver-line partner-muted">Noch kein Fahrer angenommen.</p>
-                      )}
-                    </section>
-                    <section className="partner-ride-ops-panel">
-                      <h4 className="partner-ride-ops-panel__title">Abrechnung</h4>
-                      <p className="partner-ride-billing-headline">{bill.headline}</p>
-                      <p className="partner-muted">{bill.detail}</p>
-                      <dl className="partner-ride-mini-dl">
-                        <div>
-                          <dt>Zahler</dt>
-                          <dd>{payerKindLabel(ride.payerKind)}</dd>
-                        </div>
-                        <div>
-                          <dt>Zahlungsart</dt>
-                          <dd>{ride.paymentMethod || "—"}</dd>
-                        </div>
-                        {ride.billingReference ? (
-                          <div>
-                            <dt>Referenz</dt>
-                            <dd>{ride.billingReference}</dd>
-                          </div>
-                        ) : null}
-                        {partnerRideShowsFare(ride) ? (
-                          <div>
-                            <dt>Preis</dt>
-                            <dd>{formatRideFinalFare(ride)}</dd>
-                          </div>
-                        ) : null}
-                      </dl>
-                    </section>
-                  </div>
-
-                  <dl className="partner-ride-detail-grid">
-                    <div>
-                      <dt>Fahrgast</dt>
-                      <dd>
-                        {ride.customerName || "—"}
-                        {ride.customerPhone ? ` · ${ride.customerPhone}` : ""}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Fahrttyp</dt>
-                      <dd>{rideKindLabel(ride.rideKind)}</dd>
-                    </div>
-                    <div>
-                      <dt>Entfernung</dt>
-                      <dd>
-                        {ride.distanceKm != null ? `${Number(ride.distanceKm).toFixed(1)} km` : "—"}
-                        {ride.durationMinutes != null ? ` · ${ride.durationMinutes} Min.` : ""}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Termin</dt>
-                      <dd>{ride.scheduledAt ? fmtDateTime(ride.scheduledAt) : "Sofortfahrt"}</dd>
-                    </div>
-                    <div className="partner-ride-detail-grid__full">
-                      <dt>Notiz für Fahrer</dt>
-                      <dd>
-                        {note || "—"}
-                        {ride.chatEnabled ? (
-                          <span className="partner-muted"> · Chat aktiv — Notiz ist schreibgeschützt.</span>
-                        ) : null}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <div className="partner-ride-card__actions">
-                    {canCreate && bill.canCreateInvoice ? (
-                      <button
-                        type="button"
-                        className="panel-btn-primary"
-                        disabled={actionBusy === `invoice-${ride.id}`}
-                        onClick={() => void onCreateInvoice(ride.id)}
-                      >
-                        Rechnung erstellen
-                      </button>
-                    ) : null}
-                    {invoiceId ? (
-                      <button
-                        type="button"
-                        className="panel-btn-secondary"
-                        disabled={actionBusy === `pdf-${invoiceId}`}
-                        onClick={() => void downloadInvoicePdf(invoiceId, invoiceNumber)}
-                      >
-                        Rechnung PDF
-                      </button>
-                    ) : null}
-                    {ride.chatEnabled ? (
-                      <button
-                        type="button"
-                        className="panel-btn-secondary partner-ride-card__chat-btn"
-                        onClick={() => openChat(ride)}
-                      >
-                        Chat öffnen
-                        {chatUnread > 0 ? (
-                          <span className="partner-ride-card__chat-badge partner-ride-card__chat-badge--overlay" aria-hidden>
-                            {chatUnread}
-                          </span>
-                        ) : null}
-                      </button>
-                    ) : null}
-                    {canCreate ? (
-                      <button
-                        type="button"
-                        className="panel-btn-secondary"
-                        disabled={Boolean(actionBusy) || Boolean(ride.chatEnabled)}
-                        onClick={() => openNoteEditor(ride)}
-                      >
-                        {ride.chatEnabled ? "Notiz (Chat aktiv)" : note ? "Notiz bearbeiten" : "Notiz hinzufügen"}
-                      </button>
-                    ) : null}
-                    {canCreate && canRetrySearch(ride) ? (
-                      <button
-                        type="button"
-                        className="panel-btn-secondary"
-                        disabled={actionBusy === `retry-${ride.id}`}
-                        onClick={() => void onRetrySearch(ride.id)}
-                      >
-                        Fahrersuche erneut starten
-                      </button>
-                    ) : null}
-                    {canCreate && canCancelRide(ride) ? (
-                      <button
-                        type="button"
-                        className="panel-btn-secondary"
-                        disabled={actionBusy === `cancel-${ride.id}`}
-                        onClick={() => void onCancel(ride.id)}
-                      >
-                        Stornieren
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="panel-btn-secondary"
-                      onClick={() => void fetchTracking(ride.id)}
-                    >
-                      Status aktualisieren
-                    </button>
-                  </div>
-                  <p className="partner-ride-card__id">ID: {ride.id}</p>
-                </div>
-              ) : null}
-            </article>
+            <PartnerRideCard
+              key={ride.id}
+              ride={ride}
+              open={open}
+              onToggle={() => setExpandedId(open ? null : ride.id)}
+              tracking={tracking}
+              note={note}
+              chatUnread={chatUnread}
+              showLivePill={variant !== "history"}
+              canCreate={canCreate}
+              actionBusy={actionBusy}
+              bill={bill}
+              invoiceId={invoiceId}
+              canRetrySearch={canRetrySearch(ride)}
+              canCancel={canCancelRide(ride)}
+              onOpenChat={() => openChat(ride)}
+              onOpenNote={() => openNoteEditor(ride)}
+              onCancel={() => void onCancel(ride.id)}
+              onRetrySearch={() => void onRetrySearch(ride.id)}
+              onRefreshTracking={() => void fetchTracking(ride.id)}
+              onCreateInvoice={() => void onCreateInvoice(ride.id)}
+              onDownloadPdf={() => void downloadInvoicePdf(invoiceId, invoiceNumber)}
+            />
           );
         })}
       </div>
