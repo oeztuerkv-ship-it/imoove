@@ -235,11 +235,9 @@ export default function PartnerRideCard({
       {open ? (
         <div className="partner-ride-card__body">
           <div className="partner-ride-summary-strip">
-            <SummaryChip
-              icon={ICON.fare}
-              label="Preis"
-              value={partnerRideShowsFare(ride) ? formatRideFinalFare(ride) : "nach Abschluss"}
-            />
+            {partnerRideShowsFare(ride) ? (
+              <SummaryChip icon={ICON.fare} label="Preis" value={formatRideFinalFare(ride)} />
+            ) : null}
             <SummaryChip icon={ICON.distance} label="Strecke" value={`${dist} · ${dur}`} />
             <SummaryChip
               icon={ICON.passenger}

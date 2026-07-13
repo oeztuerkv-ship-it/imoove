@@ -10,7 +10,6 @@ const ICON = {
 
 /**
  * @param {{
- *   summaryFare: string;
  *   distanceKm: string;
  *   durationMinutes: string;
  *   routeReady: boolean;
@@ -33,7 +32,6 @@ const ICON = {
  * }} props
  */
 export default function PartnerBookingSummaryAside({
-  summaryFare,
   distanceKm,
   durationMinutes,
   routeReady,
@@ -60,12 +58,8 @@ export default function PartnerBookingSummaryAside({
         <h3 className="partner-booking-summary__title">Zusammenfassung</h3>
 
         <div className="partner-booking-summary__hero">
-          <div className="partner-booking-summary__price-block">
-            <span className="partner-booking-summary__price-label">Geschätzter Preis</span>
-            <strong className="partner-booking-summary__price-value">{summaryFare}</strong>
-          </div>
           {routeReady ? (
-            <div className="partner-booking-summary__metrics">
+            <div className="partner-booking-summary__metrics partner-booking-summary__metrics--hero">
               <span className="partner-booking-summary__metric">
                 <span aria-hidden>{ICON.distance}</span>
                 {distanceKm} km
@@ -77,7 +71,7 @@ export default function PartnerBookingSummaryAside({
             </div>
           ) : (
             <p className="partner-booking-summary__pending">
-              {routing ? "Route wird berechnet …" : "Route eingeben für Preis"}
+              {routing ? "Route wird berechnet …" : "Route eingeben für Strecke und Dauer"}
             </p>
           )}
         </div>

@@ -511,8 +511,6 @@ export default function RideCreatePage({ onRideCreated }) {
     }
   }
 
-  const summaryFare = routeReady ? `${Number(form.estimatedFare).toFixed(2).replace(".", ",")} €` : "—";
-
   const passengerStepDone = !forSomeoneElse || form.customerName.trim().length > 0;
   const paymentStepDone = payerMode === "passenger" || form.billingReference.trim().length > 0;
   const scheduleStepDone =
@@ -586,7 +584,7 @@ export default function RideCreatePage({ onRideCreated }) {
                   <div>
                     <h3 className="partner-booking-section__title">Route</h3>
                     <p className="partner-booking-section__lead">
-                      Start und Ziel — Preis und Strecke werden automatisch berechnet.
+                      Start und Ziel — Strecke und Dauer werden automatisch berechnet.
                     </p>
                   </div>
                 </header>
@@ -748,7 +746,6 @@ export default function RideCreatePage({ onRideCreated }) {
                     <span className="partner-booking-route-live__metric">
                       <span aria-hidden>⏱</span> {form.durationMinutes} Min.
                     </span>
-                    <strong className="partner-booking-route-live__price">{summaryFare}</strong>
                   </div>
                 ) : null}
               </section>
@@ -1060,7 +1057,6 @@ export default function RideCreatePage({ onRideCreated }) {
             </form>
 
             <PartnerBookingSummaryAside
-              summaryFare={summaryFare}
               distanceKm={form.distanceKm}
               durationMinutes={form.durationMinutes}
               routeReady={routeReady}
