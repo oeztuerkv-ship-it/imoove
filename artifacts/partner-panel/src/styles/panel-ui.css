@@ -985,17 +985,29 @@
   color: #166534;
 }
 
+.partner-ride-chat-bubble__body-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px 8px;
+  width: 100%;
+}
+
 .partner-ride-chat-bubble__text {
   margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.92rem;
   line-height: 1.45;
 }
 
 .partner-ride-chat-bubble__time {
-  align-self: flex-end;
+  flex: 0 0 auto;
   font-size: 0.68rem;
   color: #9ca3af;
-  margin-top: 2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  margin-bottom: 1px;
 }
 
 .partner-ride-chat-quick {

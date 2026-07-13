@@ -47,8 +47,10 @@ export function RideChatBubble({ message, viewerRole, onLongPress }: Props) {
           {message.replyTo.from === viewerRole ? "Sie" : rideChatSenderLabel(message.replyTo.from)}: {message.replyTo.text}
         </Text>
       ) : null}
-      <Text style={[styles.body, { color: theme.text }]}>{message.text}</Text>
-      {time ? <Text style={styles.time}>{time}</Text> : null}
+      <View style={styles.bodyRow}>
+        <Text style={[styles.body, { color: theme.text }]}>{message.text}</Text>
+        {time ? <Text style={styles.time}>{time}</Text> : null}
+      </View>
     </View>
   );
 
@@ -78,12 +80,27 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontStyle: "italic",
   },
-  body: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  bodyRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "flex-end",
+    gap: 4,
+    columnGap: 8,
+    width: "100%",
+  },
+  body: {
+    flexGrow: 1,
+    flexShrink: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
+  },
   time: {
+    flexShrink: 0,
     fontSize: 10,
     fontFamily: "Inter_500Medium",
     color: RIDE_CHAT_THEME.timestamp,
-    marginTop: 4,
-    alignSelf: "flex-end",
+    lineHeight: 14,
+    marginBottom: 2,
   },
 });

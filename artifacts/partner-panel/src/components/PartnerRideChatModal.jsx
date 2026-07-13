@@ -103,8 +103,10 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
                 {m.senderKind !== "partner" ? (
                   <span className="partner-ride-chat-bubble__meta">{partnerChatSenderLabel(m.senderKind)}</span>
                 ) : null}
-                <p className="partner-ride-chat-bubble__text">{m.body}</p>
-                <span className="partner-ride-chat-bubble__time">{formatPartnerChatTime(m.createdAt)}</span>
+                <div className="partner-ride-chat-bubble__body-row">
+                  <p className="partner-ride-chat-bubble__text">{m.body}</p>
+                  <span className="partner-ride-chat-bubble__time">{formatPartnerChatTime(m.createdAt)}</span>
+                </div>
               </div>
             ))
           )}
