@@ -95,3 +95,76 @@ export function isCustomerActiveReservation(r: RideRequest): boolean {
 export function countCustomerReservationBadge(rides: RideRequest[]): number {
   return rides.filter(isCustomerActiveReservation).length;
 }
+
+const TERMINAL_OR_PAST_STATUSES = new Set<RequestStatus>([
+  "completed",
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+  "expired",
+  "rejected",
+]);
+
+/** Laufende Sofortfahrt / Fahrersuche (nicht Reservierung). */
+export function isCustomerRideActiveNow(r: RideRequest): boolean {
+  if (!isCustomerActiveRide(r)) return false;
+  if (isCustomerActiveReservation(r)) return false;
+  return true;
+}
+
+/** Geplante Reservierung — Tab „Zukunft“. */
+export function isCustomerRideFuture(r: RideRequest): boolean {
+  return isCustomerActiveReservation(r);
+}
+
+export function isCustomerRidePastStatus(status: RequestStatus | string): boolean {
+  return TERMINAL_OR_PAST_STATUSES.has(status as RequestStatus);
+}
+
+/** Abgelaufene Sofort-Anfrage (nicht mehr in „Aktuell“). */
+export function isCustomerStaleOpenDispatch(r: RideRequest): boolean {
+  return isCustomerOpenDispatchStatus(r.status) && !isRecentCustomerOpenDispatchRide(r.createdAt);
+}
+
+export function customerRideListDateKey(
+  createdAt: Date | string,
+  scheduledAt?: Date | string | null,
+): string {
+  const raw = scheduledAt ?? createdAt;
+  const d = raw instanceof Date ? raw : new Date(raw);
+  if (!Number.isFinite(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function customerRideRequestMatchesSearch(r: RideRequest, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const hay = [r.id, r.from, r.to, r.fromFull, r.toFull, r.customerName, r.billingReference]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
+
+export function customerPlainRideMatchesSearch(
+  ride: { id: string; from?: string; to?: string; origin?: string; destination?: string },
+  query: string,
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const hay = [ride.id, ride.from, ride.to, ride.origin, ride.destination]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(q);
+}
+
+export function customerRideSegmentOf(r: RideRequest): "aktuell" | "zukunft" | "abgelaufen" {
+  if (isCustomerRideActiveNow(r)) return "aktuell";
+  if (isCustomerRideFuture(r)) return "zukunft";
+  return "abgelaufen";
+}

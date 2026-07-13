@@ -1,7 +1,7 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
@@ -34,6 +34,18 @@ import {
   CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
   customerRideListStatusLabel,
 } from "@/utils/customerRideStatusLabel";
+import {
+  archiveCustomerRide,
+  loadCustomerArchivedRideIds,
+} from "@/utils/customerArchivedRides";
+import {
+  customerPlainRideMatchesSearch,
+  customerRideListDateKey,
+  customerRideRequestMatchesSearch,
+  isCustomerRideActiveNow,
+  isCustomerRideFuture,
+  isCustomerStaleOpenDispatch,
+} from "@/utils/customerRideListFilters";
 import { downloadReceipt } from "@/utils/receipt";
 import { rs, rf } from "@/utils/scale";
 
@@ -81,7 +93,7 @@ const PAYMENT_ICONS: Record<PaymentMethod, string> = {
   access_code: "ticket-confirmation",
 };
 
-type FilterTab = "reservierungen" | "abgeschlossen" | "storniert";
+type FilterTab = "aktuell" | "zukunft" | "abgelaufen";
 
 const ADDRESS_UNKNOWN = "Unbekannt";
 
@@ -479,70 +491,6 @@ function serverCompletedToHistoryEntry(r: RideRequest): RideHistoryEntry {
   };
 }
 
-const COMPLETED_FILTER_ALL = "__all__";
-
-function currentCalendarYearKey(): string {
-  return String(new Date().getFullYear());
-}
-
-function currentCalendarMonthKey(): string {
-  return String(new Date().getMonth() + 1).padStart(2, "0");
-}
-
-function completedMonthKeyFromCreatedAt(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
-
-function completedYearFromCreatedAt(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "";
-  return String(d.getFullYear());
-}
-
-function completedMonthOnlyFromCreatedAt(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "";
-  return String(d.getMonth() + 1).padStart(2, "0");
-}
-
-function completedMonthTabLabel(key: string): string {
-  const [y, m] = key.split("-");
-  const monthIndex = Number(m) - 1;
-  if (!Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return key;
-  const d = new Date(Number(y), monthIndex, 1);
-  return d.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
-}
-
-function completedMonthOnlyTabLabel(monthKey: string): string {
-  const monthIndex = Number(monthKey) - 1;
-  if (!Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return monthKey;
-  return new Date(2000, monthIndex, 1).toLocaleDateString("de-DE", { month: "long" });
-}
-
-type CompletedPickerKind = "year" | "month";
-
-function CompletedFilterDropdownPill({
-  label,
-  onPress,
-}: {
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable style={styles.completedDropdownPill} onPress={onPress}>
-      <MaterialCommunityIcons name="calendar-month-outline" size={rs(14)} color={LIST_TEXT_STRONG} />
-      <Text style={styles.completedDropdownText} numberOfLines={1}>
-        {label}
-      </Text>
-      <Feather name="chevron-down" size={rs(13)} color={LIST_TEXT_STRONG} />
-    </Pressable>
-  );
-}
-
 function cancelledByHintText(ride: {
   status: string;
   cancelledBy: "customer" | "driver" | "system";
@@ -568,125 +516,6 @@ function cancelledByHintText(ride: {
     return "Vom Fahrer storniert";
   }
   return "Von dir storniert";
-}
-
-function monthShortLabel(monthKey: string): string {
-  const monthIndex = Number(monthKey) - 1;
-  if (!Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return monthKey;
-  return new Date(2000, monthIndex, 1).toLocaleDateString("de-DE", { month: "short" });
-}
-
-function CompletedDateFilterSheet({
-  kind,
-  yearOptions,
-  monthOptions,
-  selectedYear,
-  selectedMonth,
-  bottomInset,
-  onClose,
-  onSelectYear,
-  onSelectMonth,
-}: {
-  kind: CompletedPickerKind;
-  yearOptions: string[];
-  monthOptions: string[];
-  selectedYear: string;
-  selectedMonth: string;
-  bottomInset: number;
-  onClose: () => void;
-  onSelectYear: (year: string) => void;
-  onSelectMonth: (monthKey: string) => void;
-}) {
-  const isYear = kind === "year";
-
-  const selectYear = (year: string) => {
-    void Haptics.selectionAsync();
-    onSelectYear(year);
-    onClose();
-  };
-
-  const selectMonth = (monthKey: string) => {
-    void Haptics.selectionAsync();
-    onSelectMonth(monthKey);
-    onClose();
-  };
-
-  return (
-    <Pressable style={styles.pickerBackdrop} onPress={onClose}>
-      <Pressable
-        style={[styles.pickerSheetModern, { paddingBottom: Math.max(bottomInset, rs(16)) + rs(8) }]}
-        onPress={() => {}}
-      >
-        <View style={styles.pickerHandle} />
-        <View style={styles.pickerSheetHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.pickerSheetTitle}>{isYear ? "Jahr wählen" : "Monat wählen"}</Text>
-            <Text style={styles.pickerSheetSub}>
-              {isYear ? "Zeitraum für abgeschlossene Fahrten" : `Fahrten in ${selectedYear}`}
-            </Text>
-          </View>
-          <Pressable style={styles.pickerCloseBtn} onPress={onClose} hitSlop={10}>
-            <Feather name="x" size={rs(20)} color="#6B7280" />
-          </Pressable>
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.pickerChipGrid}
-        >
-          {isYear ? (
-            yearOptions.map((year) => {
-              const active = selectedYear === year;
-              return (
-                <Pressable
-                  key={year}
-                  style={[styles.pickerChip, active && styles.pickerChipActive]}
-                  onPress={() => selectYear(year)}
-                >
-                  <Text style={[styles.pickerChipText, active && styles.pickerChipTextActive]}>{year}</Text>
-                </Pressable>
-              );
-            })
-          ) : (
-            <>
-              <Pressable
-                style={[
-                  styles.pickerChip,
-                  styles.pickerChipWide,
-                  selectedMonth === COMPLETED_FILTER_ALL && styles.pickerChipActive,
-                ]}
-                onPress={() => selectMonth(COMPLETED_FILTER_ALL)}
-              >
-                <Text
-                  style={[
-                    styles.pickerChipText,
-                    selectedMonth === COMPLETED_FILTER_ALL && styles.pickerChipTextActive,
-                  ]}
-                >
-                  Alle Monate
-                </Text>
-              </Pressable>
-              {monthOptions.map((key) => {
-                const active = selectedMonth === key;
-                return (
-                  <Pressable
-                    key={key}
-                    style={[styles.pickerChip, active && styles.pickerChipActive]}
-                    onPress={() => selectMonth(key)}
-                  >
-                    <Text style={[styles.pickerChipText, active && styles.pickerChipTextActive]}>
-                      {monthShortLabel(key)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </>
-          )}
-        </ScrollView>
-      </Pressable>
-    </Pressable>
-  );
 }
 
 /** Notiz bereits serverseitig / in Buchung — für dauerhaften grünen Haken neben „Notiz an Fahrer“. */
@@ -729,19 +558,65 @@ export default function MyRidesScreen() {
     updateRequestPaymentMethod,
     updateRequestDriverNote,
   } = useRideRequests();
-  const [activeTab, setActiveTab] = useState<FilterTab>("reservierungen");
-  const [completedYearKey, setCompletedYearKey] = useState(currentCalendarYearKey);
-  const [completedMonthKey, setCompletedMonthKey] = useState(currentCalendarMonthKey);
-  const [completedPickerOpen, setCompletedPickerOpen] = useState<CompletedPickerKind | null>(null);
-  const completedFilterInitRef = useRef(false);
+  const [activeTab, setActiveTab] = useState<FilterTab>("aktuell");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set());
+  const passengerKey = passengerId?.trim() ?? "";
+
+  useEffect(() => {
+    if (!passengerKey) {
+      setArchivedIds(new Set());
+      return;
+    }
+    void loadCustomerArchivedRideIds(passengerKey).then(setArchivedIds);
+  }, [passengerKey]);
+
+  const isArchived = useCallback((rideId: string) => archivedIds.has(rideId), [archivedIds]);
+
+  const handleArchiveRide = useCallback(
+    (rideId: string) => {
+      if (!passengerKey || !rideId.trim()) return;
+      Alert.alert(
+        "Fahrt archivieren?",
+        "Die Fahrt verschwindet aus Ihrer Liste. Quittungen bleiben in der Geldbörse verfügbar.",
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Archivieren",
+            style: "destructive",
+            onPress: () => {
+              void archiveCustomerRide(passengerKey, rideId).then((next) => {
+                setArchivedIds(new Set(next));
+              });
+            },
+          },
+        ],
+      );
+    },
+    [passengerKey],
+  );
+
+  const activeNowRequests = useMemo(
+    () =>
+      requests.filter(
+        (r) =>
+          r.passengerId === passengerId &&
+          isCustomerRideActiveNow(r) &&
+          !isArchived(r.id),
+      ),
+    [requests, passengerId, isArchived],
+  );
+
   const reservationRequests = useMemo(
     () =>
       requests.filter(
         (r) =>
           r.passengerId === passengerId &&
-          (r.status === "scheduled" || r.status === "scheduled_assigned"),
+          isCustomerRideFuture(r) &&
+          !isArchived(r.id),
       ),
-    [requests, passengerId],
+    [requests, passengerId, isArchived],
   );
 
   const serverCompleted = useMemo(() => {
@@ -772,39 +647,65 @@ export default function MyRidesScreen() {
         byId.set(r.id, serverCompletedToHistoryEntry(r));
       }
     }
-    return [...byId.values()].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-  }, [history, serverCompleted]);
-  const localCancelled = history.filter((r) => r.status === "cancelled");
+    return [...byId.values()]
+      .filter((r) => !isArchived(r.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [history, serverCompleted, isArchived]);
+  const staleDispatch = useMemo(
+    () =>
+      requests.filter(
+        (r) =>
+          r.passengerId === passengerId &&
+          isCustomerStaleOpenDispatch(r) &&
+          !isArchived(r.id),
+      ),
+    [requests, passengerId, isArchived],
+  );
 
-  /* Alle stornierten Fahrten: lokal gespeicherte + vom Server (vom Kunden oder Fahrer storniert) */
-  const allCancelledIds = new Set(localCancelled.map((r) => r.id));
-  const serverCancelled = myCancelledRequests.filter((r) => !allCancelledIds.has(r.id));
-  const cancelled = [...localCancelled.map((r) => ({
-    id: r.id,
-    createdAt: r.createdAt,
-    from: r.origin ?? "Unbekannt",
-    to: r.destination,
-    status: r.status as string,
-    cancelledBy: "customer" as const,
-    distanceKm: r.distanceKm,
-    scheduledAt: null as Date | null,
-  })), ...serverCancelled.map((r) => ({
-    id: r.id,
-    createdAt: r.createdAt,
-    from: r.from,
-    to: r.to,
-    status: r.status as string,
-    cancelledBy:
-      r.status === "rejected"
-        ? ("driver" as const)
-        : r.status === "cancelled_by_system"
-          ? ("system" as const)
-          : ("customer" as const),
-    distanceKm: r.distanceKm,
-    scheduledAt: r.scheduledAt ?? null,
-  }))].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const cancelled = useMemo(() => {
+    const localCancelled = history.filter((r) => r.status === "cancelled");
+    const allCancelledIds = new Set(localCancelled.map((r) => r.id));
+    const serverCancelled = myCancelledRequests.filter((r) => !allCancelledIds.has(r.id));
+    return [
+      ...localCancelled.map((r) => ({
+        id: r.id,
+        createdAt: r.createdAt,
+        from: r.origin ?? "Unbekannt",
+        to: r.destination,
+        status: r.status as string,
+        cancelledBy: "customer" as const,
+        distanceKm: r.distanceKm,
+        scheduledAt: null as Date | null,
+      })),
+      ...serverCancelled.map((r) => ({
+        id: r.id,
+        createdAt: r.createdAt,
+        from: r.from,
+        to: r.to,
+        status: r.status as string,
+        cancelledBy:
+          r.status === "rejected"
+            ? ("driver" as const)
+            : r.status === "cancelled_by_system"
+              ? ("system" as const)
+              : ("customer" as const),
+        distanceKm: r.distanceKm,
+        scheduledAt: r.scheduledAt ?? null,
+      })),
+      ...staleDispatch.map((r) => ({
+        id: r.id,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        from: r.fromFull || r.from,
+        to: r.toFull || r.to,
+        status: r.status as string,
+        cancelledBy: "system" as const,
+        distanceKm: r.distanceKm,
+        scheduledAt: r.scheduledAt ?? null,
+      })),
+    ]
+      .filter((r) => !isArchived(r.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [history, myCancelledRequests, staleDispatch, isArchived]);
 
   const totalKm    = completed.reduce((s, r) => s + r.distanceKm, 0);
   const totalSpent = completed.reduce((s, r) => s + r.totalFare, 0);
@@ -834,55 +735,55 @@ export default function MyRidesScreen() {
     router.push(`/ride-detail?id=${encodeURIComponent(id)}${q}` as any);
   };
 
-  const completedYearOptions = useMemo(() => {
-    const years = new Set<string>();
-    for (const ride of completed) {
-      const y = completedYearFromCreatedAt(ride.createdAt);
-      if (y) years.add(y);
-    }
-    return [...years].sort((a, b) => b.localeCompare(a));
-  }, [completed]);
+  const matchesDate = useCallback(
+    (createdAt: string | Date, scheduledAt?: Date | string | null) => {
+      if (!dateFilter) return true;
+      return customerRideListDateKey(createdAt, scheduledAt) === dateFilter;
+    },
+    [dateFilter],
+  );
 
-  const completedMonthOptions = useMemo(() => {
-    const months = new Set<string>();
-    for (const ride of completed) {
-      if (completedYearFromCreatedAt(ride.createdAt) !== completedYearKey) continue;
-      const m = completedMonthOnlyFromCreatedAt(ride.createdAt);
-      if (m) months.add(m);
-    }
-    return [...months].sort((a, b) => b.localeCompare(a));
-  }, [completed, completedYearKey]);
+  const filteredActiveNow = useMemo(
+    () =>
+      activeNowRequests.filter(
+        (r) =>
+          customerRideRequestMatchesSearch(r, searchQuery) &&
+          matchesDate(r.createdAt, r.scheduledAt),
+      ),
+    [activeNowRequests, searchQuery, matchesDate],
+  );
 
-  const filteredCompleted = useMemo(() => {
-    return completed.filter((r) => {
-      const fullKey = completedMonthKeyFromCreatedAt(r.createdAt);
-      if (!fullKey) return false;
-      const [y, m] = fullKey.split("-");
-      if (y !== completedYearKey) return false;
-      if (completedMonthKey === COMPLETED_FILTER_ALL) return true;
-      return m === completedMonthKey;
-    });
-  }, [completed, completedYearKey, completedMonthKey]);
+  const filteredReservations = useMemo(
+    () =>
+      reservationRequests.filter(
+        (r) =>
+          customerRideRequestMatchesSearch(r, searchQuery) &&
+          matchesDate(r.createdAt, r.scheduledAt),
+      ),
+    [reservationRequests, searchQuery, matchesDate],
+  );
 
-  const pickCompletedYear = (yearKey: string) => {
-    setCompletedYearKey(yearKey);
-    setCompletedMonthKey(COMPLETED_FILTER_ALL);
-  };
+  const filteredCompleted = useMemo(
+    () =>
+      completed.filter(
+        (r) =>
+          customerPlainRideMatchesSearch(
+            { id: r.id, origin: r.origin, destination: r.destination },
+            searchQuery,
+          ) && matchesDate(r.createdAt, r.scheduledTime),
+      ),
+    [completed, searchQuery, matchesDate],
+  );
 
-  const pickCompletedMonth = (key: string) => {
-    if (key === COMPLETED_FILTER_ALL) {
-      setCompletedMonthKey(COMPLETED_FILTER_ALL);
-      return;
-    }
-    setCompletedMonthKey(key);
-  };
-
-  const completedYearLabel = completedYearKey;
-
-  const completedMonthLabel = useMemo(() => {
-    if (completedMonthKey === COMPLETED_FILTER_ALL) return "Alle";
-    return completedMonthOnlyTabLabel(completedMonthKey);
-  }, [completedMonthKey]);
+  const filteredCancelled = useMemo(
+    () =>
+      cancelled.filter(
+        (r) =>
+          customerPlainRideMatchesSearch({ id: r.id, from: r.from, to: r.to }, searchQuery) &&
+          matchesDate(r.createdAt, r.scheduledAt),
+      ),
+    [cancelled, searchQuery, matchesDate],
+  );
 
   React.useEffect(() => {
     return () => {
@@ -890,52 +791,21 @@ export default function MyRidesScreen() {
     };
   }, []);
 
-  React.useEffect(() => {
-    if (completed.length === 0) return;
-    if (!completedFilterInitRef.current) {
-      completedFilterInitRef.current = true;
-      const curY = currentCalendarYearKey();
-      const curM = currentCalendarMonthKey();
-      const year = completedYearOptions.includes(curY) ? curY : (completedYearOptions[0] ?? curY);
-      setCompletedYearKey(year);
-      const hasCurMonth = completed.some((r) => {
-        return (
-          completedYearFromCreatedAt(r.createdAt) === year &&
-          completedMonthOnlyFromCreatedAt(r.createdAt) === curM
-        );
-      });
-      setCompletedMonthKey(hasCurMonth ? curM : COMPLETED_FILTER_ALL);
-      return;
-    }
-    if (!completedYearOptions.includes(completedYearKey)) {
-      const fallback = completedYearOptions.includes(currentCalendarYearKey())
-        ? currentCalendarYearKey()
-        : (completedYearOptions[0] ?? currentCalendarYearKey());
-      setCompletedYearKey(fallback);
-      setCompletedMonthKey(COMPLETED_FILTER_ALL);
-    }
-  }, [completed, completedYearKey, completedYearOptions]);
-
-  React.useEffect(() => {
-    if (completedMonthKey === COMPLETED_FILTER_ALL) return;
-    if (!completedMonthOptions.includes(completedMonthKey)) {
-      setCompletedMonthKey(COMPLETED_FILTER_ALL);
-    }
-  }, [completedMonthKey, completedMonthOptions]);
+  const pastCount = completed.length + cancelled.length;
 
   const TABS: { id: FilterTab; label: string; count?: number }[] = [
-    { id: "reservierungen", label: "Reservierungen", count: reservationRequests.length || undefined },
-    { id: "abgeschlossen", label: "Abgeschlossen" },
-    { id: "storniert", label: "Storniert", count: cancelled.length > 0 ? cancelled.length : undefined },
+    { id: "aktuell", label: "Aktuell", count: activeNowRequests.length || undefined },
+    { id: "zukunft", label: "Zukunft", count: reservationRequests.length || undefined },
+    { id: "abgelaufen", label: "Abgelaufen", count: pastCount > 0 ? pastCount : undefined },
   ];
 
-  const showReservations = activeTab === "reservierungen";
-  const showCompleted = activeTab === "abgeschlossen";
-  const showCancelled = activeTab === "storniert";
+  const showActiveNow = activeTab === "aktuell";
+  const showReservations = activeTab === "zukunft";
+  const showPast = activeTab === "abgelaufen";
   const isEmpty =
-    (showReservations && reservationRequests.length === 0) ||
-    (showCompleted && completed.length === 0) ||
-    (showCancelled && cancelled.length === 0);
+    (showActiveNow && filteredActiveNow.length === 0) ||
+    (showReservations && filteredReservations.length === 0) ||
+    (showPast && filteredCompleted.length === 0 && filteredCancelled.length === 0);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -964,10 +834,10 @@ export default function MyRidesScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
-            const storniertBadge = tab.id === "storniert";
-            const reservierungenBadge = tab.id === "reservierungen";
-            const activeBorderColor = reservierungenBadge ? "#16A34A" : "#DC2626";
-            const badgeColor = storniertBadge ? "#EF4444" : reservierungenBadge ? "#16A34A" : "#000000";
+            const zukunftBadge = tab.id === "zukunft";
+            const aktuellBadge = tab.id === "aktuell";
+            const activeBorderColor = zukunftBadge ? "#16A34A" : aktuellBadge ? "#2563EB" : "#DC2626";
+            const badgeColor = tab.id === "abgelaufen" ? "#6B7280" : zukunftBadge ? "#16A34A" : "#2563EB";
             return (
               <Pressable
                 key={tab.id}
@@ -984,7 +854,15 @@ export default function MyRidesScreen() {
                 <Text
                   style={[
                     styles.tabText,
-                    { color: isActive && reservierungenBadge ? "#16A34A" : "#000000" },
+                    {
+                      color: isActive
+                        ? aktuellBadge
+                          ? "#2563EB"
+                          : zukunftBadge
+                            ? "#16A34A"
+                            : "#000000"
+                        : "#000000",
+                    },
                   ]}
                 >
                   {tab.label}
@@ -999,12 +877,96 @@ export default function MyRidesScreen() {
           })}
         </ScrollView>
 
+        <View style={styles.filtersRow}>
+          <View style={[styles.searchField, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Suchen: Route, Referenz, ID …"
+              placeholderTextColor={colors.mutedForeground}
+              style={[styles.searchInput, { color: colors.foreground }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+          </View>
+          <TextInput
+            value={dateFilter}
+            onChangeText={setDateFilter}
+            placeholder="Datum (JJJJ-MM-TT)"
+            placeholderTextColor={colors.mutedForeground}
+            style={[styles.dateField, { borderColor: HOME_SHEET_RIM, color: colors.foreground, backgroundColor: HOME_SHEET_PANEL }]}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {dateFilter ? (
+            <Pressable onPress={() => setDateFilter("")} style={styles.dateClearBtn} hitSlop={8}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          ) : null}
+        </View>
 
-
-        {/* ── Aktive Reservierungen ── */}
-        {showReservations && reservationRequests.length > 0 && (
+        {/* ── Aktuelle Fahrten (Live / Fahrersuche) ── */}
+        {showActiveNow && filteredActiveNow.length > 0 && (
           <>
-            {reservationRequests.map((req) => {
+            {filteredActiveNow.map((req) => {
+              const fromAddr = formatRideAddress(req.fromFull, req.from);
+              const toAddr = formatRideAddress(req.toFull, req.to);
+              const when = new Date(req.createdAt as Date);
+              const timeStr = when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+              const liveStatuses = new Set([
+                "pending",
+                "requested",
+                "searching_driver",
+                "offered",
+                "accepted",
+                "ready_for_dispatch",
+                "driver_arriving",
+                "driver_waiting",
+                "passenger_onboard",
+                "arrived",
+                "in_progress",
+              ]);
+              return (
+                <View key={req.id} style={[styles.activeCard, { backgroundColor: "#EFF6FF", borderColor: "#2563EB44" }]}>
+                  <View style={styles.rideHeader}>
+                    <StatusBadge status={req.status} scheduledAt={req.scheduledAt} />
+                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]}>{timeStr} Uhr</Text>
+                  </View>
+                  <RideRouteStops from={fromAddr} to={toAddr} />
+                  <RideMetaStrip
+                    items={[
+                      { value: `${req.distanceKm.toFixed(1)} km` },
+                      { value: req.vehicle },
+                      {
+                        value: isRideFixedPrice(req.pricingMode)
+                          ? `${formatEuro(req.estimatedFare)} · ${customerFareModeLabel(req.pricingMode)}`
+                          : CUSTOMER_TAXAMETER_LABEL,
+                        valueColor: "#2563EB",
+                      },
+                    ]}
+                  />
+                  {liveStatuses.has(req.status) ? (
+                    <Pressable
+                      style={[styles.liveMapRow, { borderColor: LIST_FRAME_BORDER, backgroundColor: HOME_SHEET_PANEL }]}
+                      onPress={() => router.push("/status")}
+                    >
+                      <Feather name="map" size={16} color="#DC2626" />
+                      <Text style={[styles.actionBtnText, { color: colors.foreground, flex: 1 }]}>Live-Karte & Status</Text>
+                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              );
+            })}
+          </>
+        )}
+
+        {/* ── Geplante Reservierungen (Zukunft) ── */}
+        {showReservations && filteredReservations.length > 0 && (
+          <>
+            {filteredReservations.map((req) => {
               const fromAddr = formatRideAddress(req.fromFull, req.from);
               const toAddr = formatRideAddress(req.toFull, req.to);
               const when = new Date(req.scheduledAt as Date);
@@ -1097,22 +1059,10 @@ export default function MyRidesScreen() {
           </>
         )}
 
-        {/* ── Abgeschlossene Fahrten: Jahr + Monat (Dropdown) ── */}
-        {showCompleted && completed.length > 0 && (
-          <View style={styles.completedDropdownRow}>
-            <CompletedFilterDropdownPill
-              label={completedYearLabel}
-              onPress={() => setCompletedPickerOpen("year")}
-            />
-            <CompletedFilterDropdownPill
-              label={completedMonthLabel}
-              onPress={() => setCompletedPickerOpen("month")}
-            />
-          </View>
-        )}
-
-        {showCompleted &&
-          filteredCompleted.map((ride) => {
+        {/* ── Abgelaufene Fahrten (abgeschlossen + storniert) ── */}
+        {showPast && filteredCompleted.length > 0 && (
+          <>
+            {filteredCompleted.map((ride) => {
               const date    = new Date(ride.createdAt);
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -1163,8 +1113,7 @@ export default function MyRidesScreen() {
                     ]}
                   />
 
-                  {/* Aktionen: Quittung + Hilfe */}
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
                     <Pressable
                       style={[styles.pdfBtn, { flex: 1 }]}
                       onPress={(ev) => {
@@ -1172,7 +1121,7 @@ export default function MyRidesScreen() {
                         handleDownloadReceipt(ride);
                       }}
                     >
-                      <Feather name='file-text' size={15} color='#fff' />
+                      <Feather name="file-text" size={15} color="#fff" />
                       <Text style={styles.pdfBtnText}>Quittung</Text>
                     </Pressable>
                     <Pressable
@@ -1182,24 +1131,28 @@ export default function MyRidesScreen() {
                         openRideDetail(ride.id, { focusSupport: true });
                       }}
                     >
-                      <Feather name='help-circle' size={15} color={colors.primary} />
+                      <Feather name="help-circle" size={15} color={colors.primary} />
                       <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Hilfe</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.archiveBtn]}
+                      onPress={(ev) => {
+                        ev?.stopPropagation?.();
+                        handleArchiveRide(ride.id);
+                      }}
+                    >
+                      <Feather name="archive" size={15} color={colors.mutedForeground} />
                     </Pressable>
                   </View>
                 </Pressable>
               );
-          })}
-
-        {showCompleted && completed.length > 0 && filteredCompleted.length === 0 && (
-          <Text style={[styles.monthFilterEmpty, { color: colors.mutedForeground }]}>
-            Keine Fahrten für diese Auswahl.
-          </Text>
+            })}
+          </>
         )}
 
-        {/* ── Stornierte Fahrten ── */}
-        {showCancelled && cancelled.length > 0 && (
+        {showPast && filteredCancelled.length > 0 && (
           <>
-            {cancelled.map((ride) => {
+            {filteredCancelled.map((ride) => {
               const date = new Date(ride.createdAt);
               const dateStr = date.toLocaleDateString("de-DE", {
                 day: "2-digit",
@@ -1225,6 +1178,10 @@ export default function MyRidesScreen() {
                       {cancelledHint}
                     </Text>
                   </View>
+                  <Pressable style={styles.archiveRowBtn} onPress={() => handleArchiveRide(ride.id)}>
+                    <Feather name="archive" size={15} color={colors.mutedForeground} />
+                    <Text style={[styles.archiveRowBtnText, { color: colors.mutedForeground }]}>Archivieren</Text>
+                  </Pressable>
                 </View>
               );
             })}
@@ -1238,20 +1195,22 @@ export default function MyRidesScreen() {
               <Feather name="navigation" size={36} color="#DC2626" />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeTab === "reservierungen"
-                ? "Keine Reservierungen"
-                : activeTab === "abgeschlossen"
-                  ? "Noch keine Fahrten"
-                  : activeTab === "storniert"
-                    ? "Keine stornierten Fahrten"
-                    : "Noch keine Fahrten"}
+              {activeTab === "aktuell"
+                ? "Keine laufende Fahrt"
+                : activeTab === "zukunft"
+                  ? "Keine geplanten Fahrten"
+                  : searchQuery.trim() || dateFilter
+                    ? "Keine Treffer"
+                    : "Noch keine abgelaufenen Fahrten"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              {activeTab === "reservierungen"
-                ? "Vorbestellungen mit Datum und Uhrzeit findest du hier. Sofort-Taxi läuft über die Startseite."
-                : "Plane deine nächste Fahrt direkt hier."}
+              {activeTab === "aktuell"
+                ? "Sofort-Taxi und laufende Fahrten erscheinen hier. Geplante Termine unter „Zukunft“."
+                : activeTab === "zukunft"
+                  ? "Vorbestellungen mit Datum und Uhrzeit findest du hier."
+                  : "Abgeschlossene und stornierte Fahrten werden hier gesammelt."}
             </Text>
-            {(activeTab === "reservierungen" || activeTab === "abgeschlossen") && (
+            {(activeTab === "zukunft" || activeTab === "aktuell") && (
               <Pressable style={styles.newBookingBtn} onPress={() => router.replace("/booking-center")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
@@ -1261,27 +1220,6 @@ export default function MyRidesScreen() {
         )}
 
       </ScrollView>
-
-      <Modal
-        visible={completedPickerOpen !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCompletedPickerOpen(null)}
-      >
-        {completedPickerOpen ? (
-          <CompletedDateFilterSheet
-            kind={completedPickerOpen}
-            yearOptions={completedYearOptions}
-            monthOptions={completedMonthOptions}
-            selectedYear={completedYearKey}
-            selectedMonth={completedMonthKey}
-            bottomInset={insets.bottom}
-            onClose={() => setCompletedPickerOpen(null)}
-            onSelectYear={pickCompletedYear}
-            onSelectMonth={pickCompletedMonth}
-          />
-        ) : null}
-      </Modal>
 
       <Modal visible={driverNoteModal} transparent animationType="fade" onRequestClose={() => setDriverNoteModal(false)}>
         <KeyboardAvoidingView
@@ -1420,6 +1358,65 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   tabBadgeText:    { fontSize: rf(10), fontFamily: "Inter_700Bold", lineHeight: rf(13) },
+
+  filtersRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(8),
+    marginBottom: rs(4),
+  },
+  searchField: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(8),
+    minHeight: rs(40),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: rf(14),
+    fontFamily: "Inter_400Regular",
+    paddingVertical: rs(8),
+  },
+  dateField: {
+    width: rs(128),
+    minHeight: rs(40),
+    paddingHorizontal: rs(10),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    fontSize: rf(13),
+    fontFamily: "Inter_400Regular",
+    paddingVertical: rs(8),
+  },
+  dateClearBtn: {
+    width: rs(32),
+    height: rs(32),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  archiveBtn: {
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F9FAFB",
+  },
+  archiveRowBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(6),
+    marginTop: rs(10),
+    alignSelf: "flex-start",
+    paddingVertical: rs(6),
+    paddingHorizontal: rs(4),
+  },
+  archiveRowBtnText: { fontSize: rf(13), fontFamily: "Inter_500Medium" },
 
   completedDropdownRow: {
     flexDirection: "row",
