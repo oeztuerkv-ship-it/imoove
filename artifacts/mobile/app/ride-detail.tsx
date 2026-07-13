@@ -240,7 +240,11 @@ export default function RideDetailScreen() {
       }
       setMessage("");
       setTicketSent(data.ticketId ?? "ok");
-      Alert.alert("Gesendet", `Danke! Referenz: ${(data.ticketId ?? "—").slice(0, 12)}…`);
+      if (data.ticketId) {
+        router.push(`/support-ticket?id=${encodeURIComponent(data.ticketId)}`);
+      } else {
+        Alert.alert("Gesendet", "Danke! Wir melden uns.");
+      }
     } catch {
       Alert.alert("Netzwerkfehler", "Bitte später erneut versuchen.");
     } finally {

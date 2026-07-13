@@ -378,7 +378,7 @@ export default function HomeScreen() {
 
   const openAppNewsItem = useCallback((item: AppNewsItem) => {
     const internalRe =
-      /^\/(help|wallet|my-rides|profile|booking-center|status|ride-detail|personal-info|google-auth|login-success)(\/|$)/;
+      /^\/(help|wallet|my-rides|profile|booking-center|status|ride-detail|support-ticket|personal-info|google-auth|login-success)(\/|$)/;
     const tt = String(item.targetType ?? "").trim();
     const tv = String(item.targetValue ?? "").trim();
     if (tt === "internal_screen" && tv === "/sponsors") {

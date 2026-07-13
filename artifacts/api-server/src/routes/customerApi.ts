@@ -8,7 +8,18 @@ import {
   buildAssignedDriverMapForCustomerRides,
 } from "../lib/assignedDriverForCustomer.js";
 import { upsertPassengerExpoPushToken } from "../db/passengerExpoPushData";
-import { createAppHelpTicket, listAppHelpTicketsForPassenger, parseAppHelpCategory } from "../db/appHelpTicketsData";
+import {
+  appendAppHelpTicketMessageForPassenger,
+  createAppHelpTicket,
+  getAppHelpTicketForPassenger,
+  listAppHelpTicketsForPassenger,
+  parseAppHelpCategory,
+} from "../db/appHelpTicketsData";
+import {
+  appendRideSupportTicketMessageForPassenger,
+  getRideSupportTicketForPassenger,
+  listRideSupportTicketsForPassenger,
+} from "../db/rideSupportTicketsData";
 import { isPostgresConfigured } from "../db/client";
 import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
 import { parseMedicalScanCopaymentInput } from "../lib/medical/medicalCopayment";
@@ -319,12 +330,169 @@ router.get("/customer/v1/help-tickets", requireCustomerSession, async (req, res,
       ok: true,
       tickets: items.map((t) => ({
         id: t.id,
+        kind: "app",
         category: t.category,
         message: t.message.slice(0, 200),
         status: t.status,
         createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
       })),
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/customer/v1/support/inbox", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const [appTickets, rideTickets] = await Promise.all([
+      listAppHelpTicketsForPassenger(passengerId, 20),
+      listRideSupportTicketsForPassenger(passengerId, 20),
+    ]);
+    const merged = [
+      ...appTickets.map((t) => ({
+        id: t.id,
+        kind: "app" as const,
+        category: t.category,
+        status: t.status,
+        preview: t.message.slice(0, 160),
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        rideId: null as string | null,
+      })),
+      ...rideTickets.map((t) => ({
+        id: t.id,
+        kind: "ride" as const,
+        category: t.category,
+        status: t.status,
+        preview: t.messageSnippet || t.category,
+        createdAt: t.createdAtIso,
+        updatedAt: t.createdAtIso,
+        rideId: t.rideId,
+      })),
+    ].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+    res.json({ ok: true, items: merged.slice(0, 30) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/customer/v1/support/tickets/:ticketId", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ticketId = String(req.params.ticketId ?? "").trim();
+    if (!ticketId) {
+      res.status(400).json({ ok: false, error: "ticket_id_required" });
+      return;
+    }
+    if (ticketId.startsWith("aht-")) {
+      const t = await getAppHelpTicketForPassenger(ticketId, passengerId);
+      if (!t) {
+        res.status(404).json({ ok: false, error: "not_found" });
+        return;
+      }
+      res.json({
+        ok: true,
+        ticket: {
+          id: t.id,
+          kind: "app",
+          category: t.category,
+          status: t.status,
+          message: t.message,
+          subject: t.subject,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+          rideId: null,
+          canReply: t.status !== "resolved",
+        },
+      });
+      return;
+    }
+    if (ticketId.startsWith("rst-")) {
+      const t = await getRideSupportTicketForPassenger(ticketId, passengerId);
+      if (!t) {
+        res.status(404).json({ ok: false, error: "not_found" });
+        return;
+      }
+      res.json({
+        ok: true,
+        ticket: {
+          id: t.id,
+          kind: "ride",
+          category: t.category,
+          status: t.status,
+          message: t.message ?? "",
+          subject: null,
+          createdAt: t.createdAtIso,
+          updatedAt: t.updatedAtIso,
+          rideId: t.rideId,
+          canReply: t.status !== "resolved",
+        },
+      });
+      return;
+    }
+    res.status(404).json({ ok: false, error: "not_found" });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/customer/v1/support/tickets/:ticketId/messages", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ticketId = String(req.params.ticketId ?? "").trim();
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!ticketId || message.length < 2) {
+      res.status(400).json({ ok: false, error: "message_required" });
+      return;
+    }
+    if (ticketId.startsWith("aht-")) {
+      const updated = await appendAppHelpTicketMessageForPassenger(ticketId, passengerId, message);
+      if (!updated) {
+        res.status(400).json({ ok: false, error: "cannot_reply" });
+        return;
+      }
+      res.json({ ok: true, ticketId: updated.id });
+      return;
+    }
+    if (ticketId.startsWith("rst-")) {
+      const updated = await appendRideSupportTicketMessageForPassenger(ticketId, passengerId, message);
+      if (!updated) {
+        res.status(400).json({ ok: false, error: "cannot_reply" });
+        return;
+      }
+      res.json({ ok: true, ticketId: updated.id });
+      return;
+    }
+    res.status(404).json({ ok: false, error: "not_found" });
   } catch (e) {
     next(e);
   }

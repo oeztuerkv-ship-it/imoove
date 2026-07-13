@@ -180,3 +180,37 @@ export async function listAppHelpTicketsForPassenger(
     .limit(Math.min(Math.max(limit, 1), 50));
   return rows.map(mapRow);
 }
+
+export async function getAppHelpTicketForPassenger(
+  id: string,
+  passengerId: string,
+): Promise<AppHelpTicketRow | null> {
+  const db = getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select()
+    .from(appHelpTicketsTable)
+    .where(and(eq(appHelpTicketsTable.id, id.trim()), eq(appHelpTicketsTable.passenger_id, passengerId.trim())))
+    .limit(1);
+  return row ? mapRow(row) : null;
+}
+
+export async function appendAppHelpTicketMessageForPassenger(
+  id: string,
+  passengerId: string,
+  text: string,
+): Promise<AppHelpTicketRow | null> {
+  const db = getDb();
+  if (!db) return null;
+  const cur = await getAppHelpTicketForPassenger(id, passengerId);
+  if (!cur || cur.status === "resolved") return null;
+  const addition = text.trim().slice(0, 2000);
+  if (addition.length < 2) return null;
+  const stamp = new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+  const merged = `${cur.message.trim()}\n\n— ${stamp} —\n${addition}`.slice(0, 8000);
+  await db
+    .update(appHelpTicketsTable)
+    .set({ message: merged, updated_at: new Date(), status: "open" })
+    .where(eq(appHelpTicketsTable.id, id.trim()));
+  return getAppHelpTicketForPassenger(id, passengerId);
+}

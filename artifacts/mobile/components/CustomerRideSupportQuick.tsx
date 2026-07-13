@@ -49,7 +49,7 @@ function formatRideSub(from: string, to: string) {
   return `${f} → ${t}`;
 }
 
-export default function CustomerRideSupportQuick() {
+export default function CustomerRideSupportQuick({ onTicketCreated }: { onTicketCreated?: () => void }) {
   const colors = useColors();
   const { profile } = useUser();
   const { history } = useRide();
@@ -130,6 +130,10 @@ export default function CustomerRideSupportQuick() {
       }
       setSentId(data.ticketId ?? "ok");
       setMessage("");
+      onTicketCreated?.();
+      if (data.ticketId) {
+        router.push(`/support-ticket?id=${encodeURIComponent(data.ticketId)}`);
+      }
     } catch {
       Alert.alert("Netzwerk", "Verbindung fehlgeschlagen.");
     } finally {
@@ -137,7 +141,19 @@ export default function CustomerRideSupportQuick() {
     }
   }
 
-  if (!isLoggedIn) return null;
+  if (!isLoggedIn) {
+    return (
+      <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
+        <Text style={[styles.title, { color: colors.foreground }]}>Problem mit einer Fahrt?</Text>
+        <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+          Bitte anmelden, um fahrtbezogenen Support zu nutzen.
+        </Text>
+        <Pressable onPress={() => router.replace("/profile")} style={styles.loginBtn}>
+          <Text style={styles.loginBtnText}>Zum Konto / Anmelden</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
@@ -297,4 +313,12 @@ const styles = StyleSheet.create({
     borderRadius: rs(14),
   },
   sendBtnText: { color: "#fff", fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
+  loginBtn: {
+    marginTop: rs(4),
+    paddingVertical: rs(12),
+    borderRadius: rs(12),
+    backgroundColor: "#0F766E",
+    alignItems: "center",
+  },
+  loginBtnText: { color: "#fff", fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
 });

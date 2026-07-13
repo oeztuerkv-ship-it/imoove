@@ -25,6 +25,7 @@ import {
   tabMainScreenScrollPaddingBottom,
 } from "@/components/BottomTabBar";
 import CustomerRideSupportQuick from "@/components/CustomerRideSupportQuick";
+import CustomerSupportInbox from "@/components/CustomerSupportInbox";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { accountSheetPrimaryLabel, accountSheetSecondaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
@@ -106,7 +107,7 @@ function FaqItem({ q, a, isLast }: { q: string; a: string; isLast?: boolean }) {
   );
 }
 
-function SupportContactCard() {
+function SupportContactCard({ onTicketCreated }: { onTicketCreated?: () => void }) {
   const colors = useColors();
   const { profile } = useUser();
   const sessionToken = profile.sessionToken?.trim() || "";
@@ -203,6 +204,8 @@ function SupportContactCard() {
       setTicketSentId(data.ticketId);
       setMessage("");
       dismissCompose();
+      onTicketCreated?.();
+      router.push(`/support-ticket?id=${encodeURIComponent(data.ticketId)}`);
     } catch {
       Alert.alert("Netzwerk", "Verbindung fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
@@ -424,6 +427,7 @@ export default function HelpScreen() {
   const topPad = isWeb ? 44 : insets.top;
   const keyboardBottomOffset = BOTTOM_TAB_BAR_INNER_HEIGHT + insets.bottom + rs(12);
   const [faqItems, setFaqItems] = useState<{ q: string; a: string }[]>(FAQ_FALLBACK);
+  const [inboxRefreshKey, setInboxRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -475,9 +479,11 @@ export default function HelpScreen() {
           { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) + rs(40) },
         ]}
       >
-        <SupportContactCard />
+        <CustomerSupportInbox refreshKey={inboxRefreshKey} />
 
-        <CustomerRideSupportQuick />
+        <SupportContactCard onTicketCreated={() => setInboxRefreshKey((k) => k + 1)} />
+
+        <CustomerRideSupportQuick onTicketCreated={() => setInboxRefreshKey((k) => k + 1)} />
 
         <View
           style={[
@@ -492,7 +498,7 @@ export default function HelpScreen() {
         </View>
       </KeyboardAwareScrollViewCompat>
 
-      <BottomTabBar active="orte" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
+      <BottomTabBar active="account" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }

@@ -104,3 +104,97 @@ export async function listRideSupportTicketsForPassengerRide(
     };
   });
 }
+
+export async function listRideSupportTicketsForPassenger(
+  passengerId: string,
+  limit = 20,
+): Promise<
+  Array<{
+    id: string;
+    rideId: string;
+    category: string;
+    status: string;
+    createdAtIso: string;
+    messageSnippet: string;
+  }>
+> {
+  const db = getDb();
+  if (!db) return [];
+  const pid = passengerId.trim();
+  if (!pid) return [];
+  const rows = await db
+    .select()
+    .from(rideSupportTicketsTable)
+    .where(eq(rideSupportTicketsTable.passenger_id, pid))
+    .orderBy(desc(rideSupportTicketsTable.created_at))
+    .limit(Math.min(Math.max(limit, 1), 50));
+
+  return rows.map((r) => {
+    const msg = r.message ?? "";
+    return {
+      id: r.id,
+      rideId: r.ride_id,
+      category: r.category,
+      status: r.status,
+      createdAtIso: r.created_at.toISOString(),
+      messageSnippet: msg.length > 120 ? `${msg.slice(0, 117)}…` : msg,
+    };
+  });
+}
+
+export async function getRideSupportTicketForPassenger(
+  ticketId: string,
+  passengerId: string,
+): Promise<{
+  id: string;
+  rideId: string;
+  category: string;
+  status: string;
+  message: string | null;
+  createdAtIso: string;
+  updatedAtIso: string;
+} | null> {
+  const db = getDb();
+  if (!db) return null;
+  const [r] = await db
+    .select()
+    .from(rideSupportTicketsTable)
+    .where(
+      and(
+        eq(rideSupportTicketsTable.id, ticketId.trim()),
+        eq(rideSupportTicketsTable.passenger_id, passengerId.trim()),
+      ),
+    )
+    .limit(1);
+  if (!r) return null;
+  return {
+    id: r.id,
+    rideId: r.ride_id,
+    category: r.category,
+    status: r.status,
+    message: r.message,
+    createdAtIso: r.created_at.toISOString(),
+    updatedAtIso: r.updated_at.toISOString(),
+  };
+}
+
+export async function appendRideSupportTicketMessageForPassenger(
+  ticketId: string,
+  passengerId: string,
+  text: string,
+): Promise<{ id: string } | null> {
+  const db = getDb();
+  if (!db) return null;
+  const cur = await getRideSupportTicketForPassenger(ticketId, passengerId);
+  if (!cur || cur.status === "resolved") return null;
+  const addition = text.trim().slice(0, 2000);
+  if (addition.length < 2) return null;
+  const stamp = new Date().toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+  const base = (cur.message ?? "").trim();
+  const merged = (base ? `${base}\n\n— ${stamp} —\n${addition}` : addition).slice(0, 4000);
+  await db
+    .update(rideSupportTicketsTable)
+    .set({ message: merged, updated_at: new Date(), status: "open" })
+    .where(eq(rideSupportTicketsTable.id, ticketId.trim()));
+  return { id: ticketId };
+}
