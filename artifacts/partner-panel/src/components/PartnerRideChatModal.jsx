@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import {
   fetchPartnerRideChatMessages,
   formatPartnerChatTime,
@@ -23,6 +24,8 @@ function isRideChatWritable(ride) {
 }
 
 export default function PartnerRideChatModal({ token, ride, open, onClose, onRidePatch, onMarkRead }) {
+  const { user } = usePanelAuth();
+  const companyDisplayName = user?.companyName?.trim() || null;
   const rideId = ride?.id ?? "";
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState("");
@@ -132,7 +135,9 @@ export default function PartnerRideChatModal({ token, ride, open, onClose, onRid
               items.map((m) => (
                 <div key={m.id} className={`partner-ride-chat-bubble ${partnerChatBubbleClass(m.senderKind)}`}>
                   {m.senderKind !== "partner" ? (
-                    <span className="partner-ride-chat-bubble__meta">{partnerChatSenderLabel(m.senderKind)}</span>
+                    <span className="partner-ride-chat-bubble__meta">
+                      {partnerChatSenderLabel(m.senderKind, companyDisplayName)}
+                    </span>
                   ) : null}
                   <div className="partner-ride-chat-bubble__body-row">
                     <p className="partner-ride-chat-bubble__text">{m.body}</p>

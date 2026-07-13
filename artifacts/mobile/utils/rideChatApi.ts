@@ -11,6 +11,12 @@ export type RideChatApiMessage = {
 type ChatListResponse = {
   ok?: boolean;
   items?: RideChatApiMessage[];
+  partnerDisplayName?: string | null;
+};
+
+export type RideChatMessagesFetchResult = {
+  items: RideChatApiMessage[];
+  partnerDisplayName: string | null;
 };
 
 type ChatPostResponse = {
@@ -54,18 +60,25 @@ export async function fetchCustomerRideChatMessages(
   rideId: string,
   headers: Record<string, string>,
   after?: string,
-): Promise<RideChatApiMessage[]> {
+): Promise<RideChatMessagesFetchResult> {
   const rid = rideId.trim();
-  if (!rid) return [];
+  if (!rid) return { items: [], partnerDisplayName: null };
   const qs = after?.trim() ? `?after=${encodeURIComponent(after.trim())}` : "";
   const res = await fetch(`${getApiBaseUrl()}/customer/v1/rides/${encodeURIComponent(rid)}/chat/messages${qs}`, {
     cache: "no-store",
     headers,
   });
-  if (!res.ok) return [];
+  if (!res.ok) return { items: [], partnerDisplayName: null };
   const data = (await res.json()) as ChatListResponse;
-  if (!Array.isArray(data.items)) return [];
-  return data.items.map(normalizeApiMessage).filter((m): m is RideChatApiMessage => m != null);
+  if (!Array.isArray(data.items)) return { items: [], partnerDisplayName: null };
+  const partnerDisplayName =
+    typeof data.partnerDisplayName === "string" && data.partnerDisplayName.trim()
+      ? data.partnerDisplayName.trim()
+      : null;
+  return {
+    items: data.items.map(normalizeApiMessage).filter((m): m is RideChatApiMessage => m != null),
+    partnerDisplayName,
+  };
 }
 
 export async function sendCustomerRideChatMessage(
@@ -97,18 +110,25 @@ export async function fetchFleetRideChatMessages(
   rideId: string,
   headers: Record<string, string>,
   after?: string,
-): Promise<RideChatApiMessage[]> {
+): Promise<RideChatMessagesFetchResult> {
   const rid = rideId.trim();
-  if (!rid) return [];
+  if (!rid) return { items: [], partnerDisplayName: null };
   const qs = after?.trim() ? `?after=${encodeURIComponent(after.trim())}` : "";
   const res = await fetch(
     `${getApiBaseUrl()}/fleet-driver/v1/rides/${encodeURIComponent(rid)}/chat/messages${qs}`,
     { cache: "no-store", headers },
   );
-  if (!res.ok) return [];
+  if (!res.ok) return { items: [], partnerDisplayName: null };
   const data = (await res.json()) as ChatListResponse;
-  if (!Array.isArray(data.items)) return [];
-  return data.items.map(normalizeApiMessage).filter((m): m is RideChatApiMessage => m != null);
+  if (!Array.isArray(data.items)) return { items: [], partnerDisplayName: null };
+  const partnerDisplayName =
+    typeof data.partnerDisplayName === "string" && data.partnerDisplayName.trim()
+      ? data.partnerDisplayName.trim()
+      : null;
+  return {
+    items: data.items.map(normalizeApiMessage).filter((m): m is RideChatApiMessage => m != null),
+    partnerDisplayName,
+  };
 }
 
 export async function sendFleetRideChatMessage(

@@ -119,9 +119,13 @@ export function mergeRideChatMessagesFromApi(
   return merged.slice(-100);
 }
 
-export function rideChatSenderLabel(from: RideChatUiSender): string {
-  if (from === "booking_note") return "Buchungshinweis";
-  if (from === "partner") return "Partner";
+export function rideChatSenderLabel(
+  from: RideChatUiSender,
+  opts?: { partnerDisplayName?: string | null },
+): string {
+  const partnerName = opts?.partnerDisplayName?.trim();
+  if (from === "booking_note") return partnerName || "Buchungshinweis";
+  if (from === "partner") return partnerName || "Partner";
   if (from === "driver") return "Fahrer";
   return "Kunde";
 }

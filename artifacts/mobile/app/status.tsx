@@ -308,6 +308,7 @@ export default function StatusScreen() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMsgs, setChatMsgs] = useState<RideChatMessage[]>([]);
+  const [chatPartnerDisplayName, setChatPartnerDisplayName] = useState<string | null>(null);
   const [chatReplyTo, setChatReplyTo] = useState<RideChatReplyTarget | null>(null);
   const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
@@ -431,8 +432,9 @@ export default function StatusScreen() {
     void (async () => {
       try {
         const headers = await customerSessionHeadersJson();
-        const items = await fetchCustomerRideChatMessages(rideId, headers);
+        const { items, partnerDisplayName } = await fetchCustomerRideChatMessages(rideId, headers);
         if (!cancelled) {
+          if (partnerDisplayName) setChatPartnerDisplayName(partnerDisplayName);
           setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
         }
       } catch {
@@ -443,8 +445,9 @@ export default function StatusScreen() {
       void (async () => {
         try {
           const headers = await customerSessionHeadersJson();
-          const items = await fetchCustomerRideChatMessages(rideId, headers);
+          const { items, partnerDisplayName } = await fetchCustomerRideChatMessages(rideId, headers);
           if (!cancelled) {
+            if (partnerDisplayName) setChatPartnerDisplayName(partnerDisplayName);
             setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
           }
         } catch {
@@ -1920,6 +1923,7 @@ export default function StatusScreen() {
         visible={chatOpen}
         onClose={() => setChatOpen(false)}
         viewerRole="customer"
+        partnerDisplayName={chatPartnerDisplayName}
         messages={chatMsgs}
         canSend={Boolean(rideChatCanSend)}
         input={chatInput}

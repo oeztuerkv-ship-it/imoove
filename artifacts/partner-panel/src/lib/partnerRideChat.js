@@ -18,16 +18,17 @@ function normalizeMessage(raw) {
   return { id, senderKind, body, createdAt };
 }
 
-export function partnerChatSenderLabel(kind) {
+export function partnerChatSenderLabel(kind, companyName) {
+  const name = typeof companyName === "string" ? companyName.trim() : "";
   switch (kind) {
     case "partner":
-      return "Ihr Team";
+      return name || "Ihr Team";
     case "driver":
       return "Fahrer";
     case "customer":
       return "Kunde";
     case "booking_note":
-      return "Buchungsnotiz";
+      return name || "Buchungsnotiz";
     default:
       return "System";
   }
@@ -101,7 +102,7 @@ export async function fetchPartnerRideChatMessages(token, rideId) {
   const items = Array.isArray(data.items)
     ? data.items.map(normalizeMessage).filter(Boolean)
     : [];
-  return { ok: true, items, chatEnabled: Boolean(data.chatEnabled) };
+  return { ok: true, items, chatEnabled: Boolean(data.chatEnabled), partnerDisplayName: data.partnerDisplayName ?? null };
 }
 
 export async function fetchPartnerChatUnreadSummary(token, readCursors) {

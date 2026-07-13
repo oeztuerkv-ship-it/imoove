@@ -26,7 +26,6 @@ import {
   PARTNER_ROUTE_ADDRESS_MESSAGE_DE,
 } from "../lib/smartBooking.js";
 import { validatePartnerAddressParts } from "../lib/partnerAddressValidation.js";
-import { setPartnerOpenChatRideIntent } from "../lib/partnerOpenChatIntent.js";
 
 const NOTE_MAX = 200;
 const BOOKING_FORM_ID = "partner-booking-form";
@@ -466,12 +465,11 @@ export default function RideCreatePage({ onRideCreated }) {
           : " Termin gespeichert — im Fahrer-Planer sofort sichtbar.";
       const id = typeof ride.id === "string" ? ride.id : "";
       if (id) {
-        setPartnerOpenChatRideIntent(id);
         onRideCreated?.(ride);
       }
       setCreateMsg(
         id
-          ? `${kind} angelegt (ID ${id.slice(0, 8)}…).${dispatchHint} Fahrt-Chat öffnet sich gleich.`
+          ? `${kind} angelegt (ID ${id.slice(0, 8)}…).${dispatchHint}`
           : `${kind} wurde angelegt.${dispatchHint}`,
       );
       setForm((f) => ({

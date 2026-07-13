@@ -1,5 +1,6 @@
 import type { Response } from "express";
 import type { RideRequest } from "../domain/rideRequest";
+import { findCompanyById } from "../db/adminData";
 import {
   listRideChatMessages,
   parseRideChatClientMessageId,
@@ -10,16 +11,26 @@ import {
 } from "../db/rideChatMessagesData";
 import { broadcastRideChatMessage } from "../wsRideSocketHub";
 
+async function resolveRidePartnerDisplayName(ride: RideRequest): Promise<string | null> {
+  const companyId = (ride.companyId ?? "").trim();
+  if (!companyId) return null;
+  const company = await findCompanyById(companyId);
+  const name = (company?.name ?? "").trim() || (company?.billing_name ?? "").trim();
+  return name || null;
+}
+
 export async function sendRideChatMessagesJson(
   res: Response,
   ride: RideRequest,
   queryAfter?: string,
 ): Promise<void> {
   const items = await listRideChatMessages(ride.id, { after: queryAfter });
+  const partnerDisplayName = await resolveRidePartnerDisplayName(ride);
   res.json({
     ok: true,
     rideId: ride.id,
     chatEnabled: Boolean(ride.chatEnabled),
+    partnerDisplayName,
     items,
   });
 }

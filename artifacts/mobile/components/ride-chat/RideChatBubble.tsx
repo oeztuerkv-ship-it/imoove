@@ -13,10 +13,11 @@ import {
 type Props = {
   message: RideChatMessage;
   viewerRole: RideChatViewerRole;
+  partnerDisplayName?: string | null;
   onLongPress?: () => void;
 };
 
-export function RideChatBubble({ message, viewerRole, onLongPress }: Props) {
+export function RideChatBubble({ message, viewerRole, partnerDisplayName, onLongPress }: Props) {
   const variant = rideChatBubbleVariant(viewerRole, message.from);
   const theme =
     variant === "out" ? RIDE_CHAT_THEME.out : variant === "system" ? RIDE_CHAT_THEME.system : RIDE_CHAT_THEME.inPeer;
@@ -38,13 +39,13 @@ export function RideChatBubble({ message, viewerRole, onLongPress }: Props) {
     >
       {!isOwn ? (
         <Text style={[styles.meta, { color: theme.meta }]}>
-          {rideChatSenderLabel(message.from)}
+          {rideChatSenderLabel(message.from, { partnerDisplayName })}
           {message.pending ? " · senden…" : ""}
         </Text>
       ) : null}
       {message.replyTo ? (
         <Text style={styles.replyQuote} numberOfLines={2}>
-          {message.replyTo.from === viewerRole ? "Sie" : rideChatSenderLabel(message.replyTo.from)}: {message.replyTo.text}
+          {message.replyTo.from === viewerRole ? "Sie" : rideChatSenderLabel(message.replyTo.from, { partnerDisplayName })}: {message.replyTo.text}
         </Text>
       ) : null}
       <View style={styles.bodyRow}>

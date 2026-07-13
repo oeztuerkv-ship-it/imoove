@@ -19,6 +19,7 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   viewerRole: RideChatViewerRole;
+  partnerDisplayName?: string | null;
   messages: RideChatMessage[];
   loading?: boolean;
   canSend: boolean;
@@ -37,6 +38,7 @@ export function RideChatModal({
   visible,
   onClose,
   viewerRole,
+  partnerDisplayName,
   messages,
   loading,
   canSend,
@@ -68,6 +70,7 @@ export function RideChatModal({
           <RideChatThread
             messages={messages}
             viewerRole={viewerRole}
+            partnerDisplayName={partnerDisplayName}
             loading={loading}
             emptyHint={emptyHint}
             onMessageLongPress={onMessageLongPress}

@@ -503,6 +503,7 @@ export default function DriverNavigationScreen() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatMsgs, setChatMsgs] = useState<RideChatMessage[]>([]);
+  const [chatPartnerDisplayName, setChatPartnerDisplayName] = useState<string | null>(null);
   const [chatReplyTo, setChatReplyTo] = useState<RideChatReplyTarget | null>(null);
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
@@ -596,8 +597,9 @@ export default function DriverNavigationScreen() {
     void (async () => {
       try {
         const headers = await fleetAuthHeadersJson();
-        const items = await fetchFleetRideChatMessages(rideId, headers);
+        const { items, partnerDisplayName } = await fetchFleetRideChatMessages(rideId, headers);
         if (!cancelled) {
+          if (partnerDisplayName) setChatPartnerDisplayName(partnerDisplayName);
           const mapped = rideChatMessagesFromApi(items);
           setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, mapped));
           markReadFromMessages(items);
@@ -610,8 +612,9 @@ export default function DriverNavigationScreen() {
       void (async () => {
         try {
           const headers = await fleetAuthHeadersJson();
-          const items = await fetchFleetRideChatMessages(rideId, headers);
+          const { items, partnerDisplayName } = await fetchFleetRideChatMessages(rideId, headers);
           if (!cancelled) {
+            if (partnerDisplayName) setChatPartnerDisplayName(partnerDisplayName);
             const mapped = rideChatMessagesFromApi(items);
             setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, mapped));
             markReadFromMessages(items);
@@ -2268,6 +2271,7 @@ export default function DriverNavigationScreen() {
         visible={chatOpen}
         onClose={() => setChatOpen(false)}
         viewerRole="driver"
+        partnerDisplayName={chatPartnerDisplayName}
         messages={chatMsgs}
         canSend={rideChatCanSend}
         input={chatInput}

@@ -74,7 +74,7 @@ export function useFleetRideChatUnread(rideId: string, chatEnabled: boolean, cha
     const poll = async () => {
       try {
         const headers = await fleetAuthHeadersJson();
-        const items = await fetchFleetRideChatMessages(id, headers);
+        const { items } = await fetchFleetRideChatMessages(id, headers);
         if (!cancelled) evaluateUnread(items);
       } catch {
         /* ignore */

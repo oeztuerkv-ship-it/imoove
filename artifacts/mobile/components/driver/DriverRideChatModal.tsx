@@ -47,6 +47,7 @@ export function DriverRideChatModal({ visible, onClose, rideId, rideStatus, chat
   const [liveStatus, setLiveStatus] = useState<RequestStatus>(rideStatus);
   const [chatInput, setChatInput] = useState("");
   const [chatMsgs, setChatMsgs] = useState<RideChatMessage[]>([]);
+  const [partnerDisplayName, setPartnerDisplayName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const canSend = isRideChatSendAllowed(liveStatus, liveChatEnabled);
@@ -61,7 +62,8 @@ export function DriverRideChatModal({ visible, onClose, rideId, rideStatus, chat
     if (!id) return;
     try {
       const headers = await fleetAuthHeadersJson();
-      const items = await fetchFleetRideChatMessages(id, headers);
+      const { items, partnerDisplayName } = await fetchFleetRideChatMessages(id, headers);
+      if (partnerDisplayName) setPartnerDisplayName(partnerDisplayName);
       setChatMsgs((prev) => mergeRideChatMessagesFromApi(prev, rideChatMessagesFromApi(items)));
     } catch {
       /* ignore */
@@ -141,6 +143,7 @@ export function DriverRideChatModal({ visible, onClose, rideId, rideStatus, chat
       visible={visible}
       onClose={onClose}
       viewerRole="driver"
+      partnerDisplayName={partnerDisplayName}
       messages={chatMsgs}
       loading={loading}
       canSend={canSend}

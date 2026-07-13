@@ -19,7 +19,7 @@ export const RIDE_CHAT_THEME = {
   out: {
     bg: "#DCFCE7",
     border: "#86EFAC",
-    text: "#14532D",
+    text: "#111827",
     meta: "#166534",
     align: "flex-end" as const,
     radius: { borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 4 },
@@ -27,7 +27,7 @@ export const RIDE_CHAT_THEME = {
   inPeer: {
     bg: "#DBEAFE",
     border: "#93C5FD",
-    text: "#1E3A8A",
+    text: "#111827",
     meta: "#1D4ED8",
     align: "flex-start" as const,
     radius: { borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 4, borderBottomRightRadius: 18 },
@@ -35,7 +35,7 @@ export const RIDE_CHAT_THEME = {
   system: {
     bg: "#F3F4F6",
     border: "#E5E7EB",
-    text: "#4B5563",
+    text: "#111827",
     meta: "#6B7280",
     align: "center" as const,
     radius: { borderRadius: 12 },

@@ -14,7 +14,6 @@ import {
   partnerRideSegmentOf,
   TERMINAL_STATUSES,
 } from "../lib/partnerRideOps.js";
-import { clearPartnerOpenChatRideIntent, peekPartnerOpenChatRideIntent } from "../lib/partnerOpenChatIntent.js";
 
 const NOTE_MAX = 200;
 const RETRY_SEARCH_MS = 60_000;
@@ -159,16 +158,6 @@ export default function PartnerRidesListPage({ variant }) {
     },
     [clearRideUnread],
   );
-
-  useEffect(() => {
-    if (loading) return;
-    const rideId = peekPartnerOpenChatRideIntent();
-    if (!rideId) return;
-    const ride = rides.find((r) => r.id === rideId);
-    if (!ride) return;
-    clearPartnerOpenChatRideIntent();
-    openChat(ride);
-  }, [loading, rides, openChat]);
 
   useEffect(() => {
     if (!token || variant === "history") return;

@@ -8,6 +8,7 @@ import { RIDE_CHAT_THEME, type RideChatViewerRole } from "./rideChatTheme";
 type Props = {
   messages: RideChatMessage[];
   viewerRole: RideChatViewerRole;
+  partnerDisplayName?: string | null;
   loading?: boolean;
   emptyHint?: string;
   maxHeight?: number;
@@ -17,6 +18,7 @@ type Props = {
 export function RideChatThread({
   messages,
   viewerRole,
+  partnerDisplayName,
   loading,
   emptyHint = "Noch keine Nachrichten.",
   maxHeight = 240,
@@ -50,6 +52,7 @@ export function RideChatThread({
               key={m.id}
               message={m}
               viewerRole={viewerRole}
+              partnerDisplayName={partnerDisplayName}
               onLongPress={
                 onMessageLongPress && (m.from === "driver" || m.from === "customer")
                   ? () => onMessageLongPress(m)
