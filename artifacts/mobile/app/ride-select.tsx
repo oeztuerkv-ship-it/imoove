@@ -225,7 +225,7 @@ export default function RideSelectScreen() {
                 <CustomerFarePriceBlock
                   vehicle={v.id}
                   surchargeEur={surcharge}
-                  primaryStyle={[styles.vehiclePrice, { color: "#2563EB" }]}
+                  primaryStyle={styles.vehiclePrice}
                   secondaryStyle={styles.vehicleSurcharge}
                 />
               </Pressable>
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   },
   vehicleLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  vehiclePrice: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  vehiclePrice: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#111827" },
   vehicleSurcharge: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB" },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 12 },
