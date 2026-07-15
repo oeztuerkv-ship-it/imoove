@@ -140,7 +140,14 @@ export default function BookingCenterScreen() {
                 <Feather name={c.icon} size={16} color={colors.foreground} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitle, { color: colors.foreground }]}>{c.title}</Text>
+                {c.key === "fixed" ? (
+                  <View style={styles.cardTitleRow}>
+                    <Text style={[styles.cardTitle, { color: colors.foreground }]}>Festpreis </Text>
+                    <Text style={styles.cardTitleBeliebt}>(beliebt)</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.cardTitle, { color: colors.foreground }]}>{c.title}</Text>
+                )}
                 <Text
                   style={[
                     styles.cardSub,
@@ -207,6 +214,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardTitle: accountSheetPrimaryLabel,
+  cardTitleRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  cardTitleBeliebt: { ...accountSheetPrimaryLabel, color: "#F87171" },
   cardSub: { ...accountSheetSecondaryLabel, marginTop: rs(2) },
   cardSubFixed: { color: "#111827", fontFamily: "Inter_400Regular" },
   notice: {
