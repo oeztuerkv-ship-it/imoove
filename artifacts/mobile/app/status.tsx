@@ -1773,13 +1773,16 @@ export default function StatusScreen() {
             ) : (
               <>
                 <Text style={styles.trackingEtaLabel}>{isDriving ? "Ziel in" : "Ankunft in"}</Text>
-                <Text style={styles.trackingEtaNumber}>{eta}</Text>
-                <Text style={styles.trackingEtaMin}>min</Text>
+                <View style={styles.trackingEtaValueRow}>
+                  <Text style={styles.trackingEtaNumber}>{eta}</Text>
+                  <Text style={styles.trackingEtaMin}>min</Text>
+                </View>
+                {etaDistanceText ? (
+                  <Text style={styles.trackingEtaDistance}>{etaDistanceText}</Text>
+                ) : null}
               </>
             )}
-            {etaDistanceText && !isArrived ? (
-              <Text style={styles.trackingEtaDistance}>{etaDistanceText}</Text>
-            ) : isArrived ? (
+            {isArrived ? (
               <Text style={styles.trackingEtaDistance}>Am Abholort</Text>
             ) : null}
           </View>
@@ -1825,10 +1828,12 @@ export default function StatusScreen() {
         </View>
 
         {effectiveAcceptedRequest ? (
-          <Text style={styles.trackingPayerLine} numberOfLines={2}>
-            {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).title}:{" "}
-            {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).subtitle}
-          </Text>
+          <View style={styles.trackingPayerBox}>
+            <Text style={styles.trackingPayerLine} numberOfLines={2}>
+              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).title}:{" "}
+              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).subtitle}
+            </Text>
+          </View>
         ) : null}
 
         <View style={styles.trackingActionRow}>
@@ -1864,13 +1869,13 @@ export default function StatusScreen() {
           ) : null}
 
           <Pressable
-            style={({ pressed }) => [styles.trackingCancelButton, pressed && { opacity: 0.9 }]}
+            style={({ pressed }) => [styles.trackingCancelButton, pressed && { opacity: 0.88 }]}
             onPress={() => handleCancel()}
           >
-            <View style={styles.trackingCancelIconCircle}>
-              <Feather name="x" size={rf(18)} color="#FFFFFF" />
-            </View>
-            <Text style={styles.trackingCancelText}>Stornieren</Text>
+            <Feather name="x-circle" size={rf(20)} color={TRACKING_ACCENT} />
+            <Text style={styles.trackingCancelText} numberOfLines={1}>
+              Stornieren
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -2049,23 +2054,29 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   trackingEtaNumber: {
-    marginTop: rs(4),
     fontSize: rf(34),
     lineHeight: rf(36),
     fontFamily: "Inter_700Bold",
     color: "#111827",
   },
+  trackingEtaValueRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: rs(2),
+    marginTop: rs(2),
+  },
   trackingEtaMin: {
-    marginTop: -rs(2),
+    marginBottom: rs(4),
     fontSize: rf(16),
     fontFamily: "Inter_700Bold",
     color: "#111827",
   },
   trackingEtaDistance: {
-    marginTop: rs(8),
-    fontSize: rf(12),
-    fontFamily: "Inter_400Regular",
+    marginTop: rs(2),
+    fontSize: rf(11),
+    fontFamily: "Inter_500Medium",
     color: "#6B7280",
+    lineHeight: rf(14),
   },
   trackingDivider: {
     width: 1,
@@ -2176,12 +2187,20 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     marginHorizontal: rs(1),
   },
-  trackingPayerLine: {
+  trackingPayerBox: {
     marginTop: rs(10),
-    fontSize: rf(12),
-    fontFamily: "Inter_400Regular",
-    color: "#6B7280",
-    lineHeight: rf(16),
+    borderRadius: rs(14),
+    borderWidth: 2,
+    borderColor: "#000000",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+  },
+  trackingPayerLine: {
+    fontSize: rf(13),
+    fontFamily: "Inter_500Medium",
+    color: "#374151",
+    lineHeight: rf(18),
   },
   trackingActionRow: {
     marginTop: rs(10),
@@ -2218,28 +2237,23 @@ const styles = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   trackingCancelButton: {
-    flex: 1.2,
+    flex: 1,
     height: rs(48),
     borderRadius: rs(14),
-    backgroundColor: TRACKING_ACCENT,
+    borderWidth: 2,
+    borderColor: "#000000",
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: rs(10),
-  },
-  trackingCancelIconCircle: {
-    width: rs(28),
-    height: rs(28),
-    borderRadius: rs(14),
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
+    gap: rs(6),
+    paddingHorizontal: rs(4),
   },
   trackingCancelText: {
+    flexShrink: 1,
     fontSize: rf(15),
     fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
+    color: TRACKING_ACCENT,
   },
 
   /* Arrived banner */
