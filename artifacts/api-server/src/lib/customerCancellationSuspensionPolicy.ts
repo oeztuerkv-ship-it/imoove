@@ -3,6 +3,7 @@ import {
   findActiveCustomerCancellationSuspension,
   upsertCustomerCancellationSuspension,
 } from "../db/customerCancellationSuspensionData";
+import { findPassengerProfile } from "../db/passengerProfileDeletionData";
 import { findActiveCustomerPaymentSuspension } from "../db/customerPaymentSuspensionData";
 import { notifyPassengerCancellationSuspended } from "./passengerRideExpoPush";
 import {
@@ -17,6 +18,26 @@ export const CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE =
 export const CUSTOMER_CANCELLATION_THRESHOLD = 4;
 export const CUSTOMER_CANCELLATION_WINDOW_HOURS = 24;
 export const CUSTOMER_CANCELLATION_SUSPENSION_HOURS = 24;
+
+/** Team-Testkonten: keine automatische Storno-Sperre (kommagetrennt, lowercase). */
+function customerCancellationSuspensionBypassEmails(): Set<string> {
+  const raw =
+    process.env.CUSTOMER_CANCELLATION_SUSPENSION_BYPASS_EMAILS ?? "onroda2026@gmail.com";
+  return new Set(
+    raw
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+async function isCustomerCancellationSuspensionBypassed(passengerId: string): Promise<boolean> {
+  const allow = customerCancellationSuspensionBypassEmails();
+  if (allow.size === 0) return false;
+  const profile = await findPassengerProfile(passengerId);
+  const email = profile?.email?.trim().toLowerCase() ?? "";
+  return Boolean(email && allow.has(email));
+}
 
 export type PassengerBookingGateResult =
   | { ok: true }
@@ -39,6 +60,9 @@ export async function assertPassengerCanBook(passengerId: string): Promise<Passe
 
   const cancellationSuspension = await findActiveCustomerCancellationSuspension(pax);
   if (cancellationSuspension) {
+    if (await isCustomerCancellationSuspensionBypassed(pax)) {
+      return { ok: true };
+    }
     return {
       ok: false,
       error: CUSTOMER_CANCELLATION_SUSPENSION_ERROR,
@@ -53,6 +77,7 @@ export async function assertPassengerCanBook(passengerId: string): Promise<Passe
 export async function evaluateCustomerCancellationSuspensionAfterCancel(passengerId: string): Promise<void> {
   const pax = passengerId.trim();
   if (!pax) return;
+  if (await isCustomerCancellationSuspensionBypassed(pax)) return;
 
   const count = await countPassengerCancellationsInLast24Hours(pax);
   if (count < CUSTOMER_CANCELLATION_THRESHOLD) return;
