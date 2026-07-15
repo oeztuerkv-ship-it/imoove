@@ -44,7 +44,8 @@ import {
   replaceDriverStackExclusive,
   setDriverNavigationPhaseParams,
 } from "@/utils/driverNavigationRoute";
-import { passengerWithPartnerLabel } from "@/utils/passengerDisplayLabel";
+import { driverScheduledPassengerLines } from "@/utils/passengerDisplayLabel";
+import { driverPaymentMethodLabelDe } from "@/utils/driverPaymentMethodLabel";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { RideChatModal } from "@/components/ride-chat/RideChatModal";
 import { RideChatReplyBanner } from "@/components/ride-chat/RideChatReplyBanner";
@@ -116,7 +117,7 @@ const PICKUP_AUX_ICON_RED = "#FF3B30";
 const PICKUP_AUX_BORDER_LIGHT_RED = "#FECACA";
 const PICKUP_AUX_PRESSED_BG = "#FFF1F2";
 const DRIVE_SHEET_GRAB_H = 32;
-const DRIVE_SHEET_DETAILS_H = 144;
+const DRIVE_SHEET_DETAILS_H = 220;
 const DRIVE_SHEET_ACTIONS_H = 56;
 const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_ACTIONS_H + 12;
 const DRIVE_SHEET_EXPANDED_H = DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_H + 8;
@@ -150,6 +151,17 @@ function resolveNavPaymentUi(paymentMethod: string): NavPaymentUi {
     };
   }
   return { icon: "cash", label: pm || "Bar", iconColor: "#34C759", chipBg: "#E8F8EC" };
+}
+
+function splitRideAddress(value?: string | null) {
+  const parts = String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return {
+    place: parts[0] || "",
+    address: parts.slice(1).join(", ") || "",
+  };
 }
 
 function navAppleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
@@ -1625,33 +1637,21 @@ export default function DriverNavigationScreen() {
     setChatOpen(true);
   };
 
-  const bottomChatButton = rideChatEnabled ? (
-    <Pressable
-      style={styles.bottomChatRow}
-      accessibilityLabel="Chat mit Kunde"
-      onPress={openRideChat}
-    >
-      <DriverChatBlinkIcon unread={chatUnread} size={20} color="#1B6B3A" />
-      <Text style={styles.bottomChatRowText}>Chat mit Kunde</Text>
-      {chatUnread ? <View style={styles.bottomChatUnreadDot} /> : null}
-    </Pressable>
-  ) : null;
+  const resolvedPaymentMethod =
+    (params.paymentMethod ?? "").trim() || (activeRide?.paymentMethod ?? "").trim();
+  const resolvedDestRaw =
+    destName || activeRide?.toFull?.trim() || activeRide?.to?.trim() || "Ziel";
+  const resolvedPickupRaw =
+    pickupName || activeRide?.fromFull?.trim() || activeRide?.from?.trim() || "Abholort";
+  const routeAddress = splitRideAddress(isPickupPhase ? resolvedPickupRaw : resolvedDestRaw);
+  const routeHeaderLabel = isPickupPhase ? "Abholung" : "Ziel";
+  const routeIconName = isPickupPhase ? "map-pin" : "flag";
+  const routeIconColor = isPickupPhase ? "#16A34A" : "#DC2626";
 
-  const driveSheetHeight = driveSheetAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [DRIVE_SHEET_COLLAPSED_H, DRIVE_SHEET_EXPANDED_H],
-  });
-  const driveDetailsHeight = driveSheetAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, DRIVE_SHEET_DETAILS_H],
-  });
-
-  const paymentUi = resolveNavPaymentUi(params.paymentMethod ?? "");
-  const isCashPayment = driverRidePaymentLooksLikeCash(params.paymentMethod);
-  const payIconName = isCashPayment
-    ? ("currency-eur" as const)
-    : paymentUi.icon;
-  const payDisplayLabel = isCashPayment ? "BAR" : null;
+  const paymentUi = resolveNavPaymentUi(resolvedPaymentMethod);
+  const isCashPayment = driverRidePaymentLooksLikeCash(resolvedPaymentMethod);
+  const paymentLabel = driverPaymentMethodLabelDe(resolvedPaymentMethod);
+  const payIconName = isCashPayment ? ("currency-eur" as const) : paymentUi.icon;
   const payAccentColor = isCashPayment ? "#34C759" : paymentUi.iconColor;
   const payIconSize = isCashPayment ? 20 : 18;
 
@@ -1660,21 +1660,48 @@ export default function DriverNavigationScreen() {
   const resolvedBookingPartnerName =
     params.bookingPartnerName?.trim() || activeRide?.bookingPartnerName?.trim() || "";
 
-  const rideCustomerLabel =
-    resolvedCustomerName || resolvedBookingPartnerName
-      ? passengerWithPartnerLabel(resolvedCustomerName, resolvedBookingPartnerName)
-      : isPickupPhase
-        ? pickupName
-        : destName;
+  const { partnerName, passengerName } = driverScheduledPassengerLines(
+    resolvedCustomerName,
+    resolvedBookingPartnerName,
+  );
 
   const rideDetailsBlock = (
     <View style={styles.rideInfoCard}>
-      <View style={styles.rideInfoNameRow}>
-        <Feather name="user" size={17} color="#111827" />
-        <Text style={[styles.rideInfoName, navAppleFont("semibold")]} numberOfLines={1}>
-          {rideCustomerLabel}
-        </Text>
+      <View style={styles.rideInfoRouteRow}>
+        <Feather name={routeIconName} size={20} color={routeIconColor} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.rideInfoRouteLabel, navAppleFont("medium")]}>{routeHeaderLabel}</Text>
+          <Text style={[styles.rideInfoRoutePlace, navAppleFont("semibold")]} numberOfLines={2}>
+            {routeAddress.place || (isPickupPhase ? resolvedPickupRaw : resolvedDestRaw)}
+          </Text>
+          {routeAddress.address ? (
+            <Text style={[styles.rideInfoRouteAddress, navAppleFont("regular")]} numberOfLines={2}>
+              {routeAddress.address}
+            </Text>
+          ) : null}
+        </View>
       </View>
+
+      {partnerName ? (
+        <View style={styles.rideInfoPartnerFrame}>
+          <View style={styles.rideInfoPartnerHead}>
+            <MaterialCommunityIcons name="domain" size={15} color="#374151" />
+            <Text style={[styles.rideInfoPartnerLabel, navAppleFont("semibold")]}>Auftraggeber</Text>
+          </View>
+          <Text style={[styles.rideInfoPartnerName, navAppleFont("bold")]} numberOfLines={2}>
+            {partnerName}
+          </Text>
+        </View>
+      ) : null}
+
+      {passengerName ? (
+        <View style={styles.rideInfoCustomerRow}>
+          <Feather name="user" size={15} color="#6B7280" />
+          <Text style={[styles.rideInfoCustomerName, navAppleFont("medium")]} numberOfLines={1}>
+            {passengerName}
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.rideInfoStatsBlock}>
         <View style={styles.rideInfoMetric}>
@@ -1713,19 +1740,30 @@ export default function DriverNavigationScreen() {
             ]}
           >
             <MaterialCommunityIcons name={payIconName} size={payIconSize} color={payAccentColor} />
-            {payDisplayLabel ? (
-              <Text
-                style={[styles.rideInfoPayPillTextCash, navAppleFont("semibold"), { color: payAccentColor }]}
-                numberOfLines={1}
-              >
-                {payDisplayLabel}
-              </Text>
-            ) : null}
+            <Text
+              style={[
+                isCashPayment ? styles.rideInfoPayPillTextCash : styles.rideInfoPayPillText,
+                navAppleFont("semibold"),
+                { color: payAccentColor },
+              ]}
+              numberOfLines={1}
+            >
+              {isCashPayment ? "BAR" : paymentLabel}
+            </Text>
           </View>
         </View>
       </View>
     </View>
   );
+
+  const driveSheetHeight = driveSheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [DRIVE_SHEET_COLLAPSED_H, DRIVE_SHEET_EXPANDED_H],
+  });
+  const driveDetailsHeight = driveSheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, DRIVE_SHEET_DETAILS_H],
+  });
 
   // ─── Bottom action button ───────────────────────────────────────────────────
   let actionBtn: React.ReactNode;
@@ -1886,6 +1924,16 @@ export default function DriverNavigationScreen() {
         >
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
+        {rideChatEnabled ? (
+          <Pressable
+            style={styles.compassBtn}
+            accessibilityLabel="Chat mit Kunde"
+            onPress={openRideChat}
+          >
+            <DriverChatBlinkIcon unread={chatUnread} size={20} color="#1B6B3A" />
+            {chatUnread ? <View style={styles.navChatBadge} /> : null}
+          </Pressable>
+        ) : null}
       </View>
 
       {isDrivingPhase ? (
@@ -1913,8 +1961,6 @@ export default function DriverNavigationScreen() {
             <View style={styles.driveDetailsWrap}>{rideDetailsBlock}</View>
           </Animated.View>
 
-          {bottomChatButton}
-
           <View style={styles.driveEndActionWrap}>
             <View style={styles.actionBtnWrapper}>{actionBtn}</View>
           </View>
@@ -1922,7 +1968,6 @@ export default function DriverNavigationScreen() {
       ) : (
         <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
           {rideDetailsBlock}
-          {bottomChatButton}
           <View style={styles.actionBlock}>
             <View style={styles.actionBtnWrapper}>{actionBtn}</View>
             {isPickupPhase && hasArrived ? (
@@ -2514,6 +2559,71 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     gap: 0,
   },
+  rideInfoRouteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 2,
+    paddingBottom: 8,
+  },
+  rideInfoRouteLabel: {
+    fontSize: 11,
+    color: "#8E8E93",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  rideInfoRoutePlace: {
+    fontSize: 17,
+    color: "#111827",
+    letterSpacing: Platform.OS === "ios" ? -0.35 : -0.2,
+  },
+  rideInfoRouteAddress: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  rideInfoPartnerFrame: {
+    marginTop: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#000000",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  rideInfoPartnerHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  rideInfoPartnerLabel: {
+    fontSize: 11,
+    color: "#6B7280",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  rideInfoPartnerName: {
+    fontSize: 15,
+    color: "#111827",
+    lineHeight: 20,
+  },
+  rideInfoCustomerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 2,
+    paddingBottom: 8,
+  },
+  rideInfoCustomerName: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
+    color: "#374151",
+  },
   rideInfoNameRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2558,8 +2668,12 @@ const styles = StyleSheet.create({
     minWidth: 58,
   },
   rideInfoPayPillTextCash: {
-    fontSize: 16,
+    fontSize: 14,
     letterSpacing: Platform.OS === "ios" ? 0.4 : 0.6,
+  },
+  rideInfoPayPillText: {
+    fontSize: 11,
+    maxWidth: 72,
   },
   rideInfoMetric: {
     flex: 1,

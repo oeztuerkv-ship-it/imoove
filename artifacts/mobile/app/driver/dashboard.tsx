@@ -29,6 +29,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { DriverRideChatModal } from "@/components/driver/DriverRideChatModal";
+import { DriverPrebookGuidelinesModal } from "@/components/driver/DriverPrebookGuidelinesModal";
+import { DriverAssignedPrebookTabHint } from "@/components/driver/DriverAssignedPrebookTabHint";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
 import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
@@ -70,6 +72,7 @@ import {
   replaceDriverStackExclusive,
 } from "@/utils/driverNavigationRoute";
 import {
+  driverScheduledPassengerLines,
   passengerLabelInitial,
   passengerWithPartnerLabel,
 } from "@/utils/passengerDisplayLabel";
@@ -305,10 +308,13 @@ function minutesUntil(d: Date) {
   return Math.round((d.getTime() - Date.now()) / 60000);
 }
 
-/** Aktivierung nur im Fenster 0–45 Minuten vor Abholzeit (nicht nach Abholzeit). */
+/** Aktivierung 45–25 Min. vor Abholung (20 Min. Fenster). */
+const PREBOOK_ACTIVATION_OPENS_MIN = 45;
+const PREBOOK_ACTIVATION_DEADLINE_MIN = 25;
+
 function canActivate(scheduledAt: Date) {
   const m = minutesUntil(scheduledAt);
-  return m >= 0 && m <= 45;
+  return m >= PREBOOK_ACTIVATION_DEADLINE_MIN && m <= PREBOOK_ACTIVATION_OPENS_MIN;
 }
 
 /* ─── Pulsing dot ─── */
@@ -355,6 +361,29 @@ const INSTANT_OFFER_COUNTDOWN_SEC = 10;
 const DRIVER_KONZESSION_BORDER = "#B45309";
 const DRIVER_KONZESSION_BG = "#FEF3C7";
 const DRIVER_KONZESSION_TEXT = "#78350F";
+/** Schwarzer Block-Rahmen (Partner-Firma, Aktivierungshinweis — Angenommen-Tab). */
+const DRIVER_CARD_BLACK_FRAME = {
+  borderWidth: 1,
+  borderColor: "#000000",
+  borderRadius: 10,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  backgroundColor: "#FFFFFF",
+} as const;
+/** Kompakter Rahmen in der Button-Zeile (Chat / Storno / Aktivierung). */
+const DRIVER_ACTION_HINT_FRAME = {
+  borderWidth: 1,
+  borderColor: "#000000",
+  borderRadius: 8,
+  paddingHorizontal: 8,
+  paddingVertical: 7,
+  backgroundColor: "#FFFFFF",
+} as const;
+const SCHEDULED_ASSIGNED_ACTION = {
+  paddingVertical: 10,
+  borderRadius: 11,
+  minHeight: 42,
+} as const;
 
 function formatReachLabels(km: number, minutes: number): { minLabel: string; kmLabel: string } {
   const kmLabel = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace(".", ",")} km`;
@@ -773,7 +802,15 @@ function ScheduledCard({
   const toAddress = splitRideAddress(req.toFull || req.to);
   const premiumRoute = hasDriverPremiumRouteDetails(req);
   const customerNoteLine = customerDriverNoteLine(req);
-  const passengerLabel = passengerWithPartnerLabel(req.customerName, req.bookingPartnerName);
+  const { partnerName, passengerName } = driverScheduledPassengerLines(req.customerName, req.bookingPartnerName);
+  const activationHintText =
+    minsLeft > PREBOOK_ACTIVATION_OPENS_MIN
+      ? "Aktivierung ab 45 Min. vor Abholung"
+      : minsLeft >= PREBOOK_ACTIVATION_DEADLINE_MIN
+        ? "Bitte jetzt aktivieren — spätestens bis 25 Min. vor Abholung"
+        : minsLeft >= 0
+          ? "Aktivierungsfrist verpasst — Fahrt wird freigegeben"
+          : "Abholzeit liegt in der Vergangenheit — bitte bei der Zentrale nachfragen.";
 
   return (
     <View style={[styles.reqCard, styles.reqCardScheduled, { borderRadius: 22, padding: 18 }]}>
@@ -813,13 +850,31 @@ function ScheduledCard({
                 </View>
               </View>
 
-              <View style={{ marginTop: 38 }}>
-                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
-                  {toAddress.place || "Ziel"}
-                </Text>
-                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
-                  {toAddress.address}
-                </Text>
+              <View style={{ marginTop: 38, flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
+                    {toAddress.place || "Ziel"}
+                  </Text>
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
+                    {toAddress.address}
+                  </Text>
+                </View>
+                {req.distanceKm > 0 ? (
+                  <View
+                    style={{
+                      backgroundColor: "#F3F4F6",
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      marginTop: 2,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
+                      {req.distanceKm.toFixed(1)} km
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </>
           ) : (
@@ -835,17 +890,138 @@ function ScheduledCard({
         </View>
       </View>
 
-      <Text
-        style={{
-          fontSize: 14,
-          fontFamily: "Inter_700Bold",
-          color: "#111827",
-          marginTop: 14,
-        }}
-        numberOfLines={2}
-      >
-        {passengerLabel}
-      </Text>
+      {partnerName ? (
+        <View style={{ marginTop: 14, ...DRIVER_CARD_BLACK_FRAME }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <MaterialCommunityIcons name="domain" size={15} color="#374151" />
+            <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#6B7280", letterSpacing: 0.3 }}>
+              Auftraggeber
+            </Text>
+          </View>
+          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#111827", lineHeight: 20 }} numberOfLines={3}>
+            {partnerName}
+          </Text>
+        </View>
+      ) : null}
+
+      {isAssignedUpcoming ? (
+        <View style={{ marginTop: 12, gap: 8 }}>
+          {activatable ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: "#FEF2F2",
+                borderWidth: 1,
+                borderColor: "#FECACA",
+              }}
+            >
+              <Feather name="navigation" size={16} color="#E11D2E" style={{ marginTop: 1 }} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#E11D2E" }}>
+                  Jetzt aktivieren
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "Inter_500Medium",
+                    color: "#B91C1C",
+                    marginTop: 2,
+                    lineHeight: 17,
+                  }}
+                >
+                  Bitte rechtzeitig losfahren — nach dem Aktivieren zum Abholpunkt navigieren.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: "row", alignItems: "stretch", gap: 6 }}>
+          {chatEnabled ? (
+            <Pressable
+              style={{
+                ...SCHEDULED_ASSIGNED_ACTION,
+                borderWidth: 1,
+                borderColor: chatUnread ? "#FCA5A5" : "#86EFAC",
+                backgroundColor: chatUnread ? "#FEF2F2" : "#F0FDF4",
+                paddingHorizontal: 11,
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+              onPress={() => {
+                clearChatUnread();
+                setChatOpen(true);
+              }}
+              accessibilityLabel="Chat öffnen"
+            >
+              <DriverChatBlinkIcon unread={chatUnread} size={17} color="#166534" />
+            </Pressable>
+          ) : null}
+          <Pressable
+            style={[
+              styles.rejectBtn,
+              SCHEDULED_ASSIGNED_ACTION,
+              { flex: 1, borderColor: "#FEE2E2", backgroundColor: "#FFF1F1", minWidth: 0 },
+            ]}
+            onPress={onCancelAssigned}
+          >
+            <Text style={[styles.rejectText, { color: "#E11D2E", fontSize: 13 }]} numberOfLines={1}>
+              {t("driver.scheduled.cancel")}
+            </Text>
+          </Pressable>
+          {activatable ? (
+            <Pressable
+              style={[
+                styles.acceptBtn,
+                SCHEDULED_ASSIGNED_ACTION,
+                { flex: 1, backgroundColor: "#16A34A", minWidth: 0, paddingVertical: 10 },
+              ]}
+              onPress={onActivate}
+            >
+              <Text style={[styles.acceptText, { fontSize: 13 }]} numberOfLines={1}>
+                {t("driver.scheduled.activate")}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={{ flex: 1, justifyContent: "center", minWidth: 0 }}>
+              <View style={DRIVER_ACTION_HINT_FRAME}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontFamily: "Inter_600SemiBold",
+                    color: "#111827",
+                    textAlign: "center",
+                    lineHeight: 15,
+                  }}
+                  numberOfLines={3}
+                >
+                  {activationHintText}
+                </Text>
+              </View>
+            </View>
+          )}
+          </View>
+        </View>
+      ) : null}
+
+      {passengerName ? (
+        <Text
+          style={{
+            fontSize: 14,
+            fontFamily: "Inter_700Bold",
+            color: "#111827",
+            marginTop: isAssignedUpcoming || partnerName ? 10 : 14,
+          }}
+          numberOfLines={2}
+        >
+          {passengerName}
+        </Text>
+      ) : null}
 
       {customerNoteLine ? (
         <View style={{
@@ -871,23 +1047,15 @@ function ScheduledCard({
         </View>
       ) : null}
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-        {premiumRoute && req.distanceKm > 0 ? (
-          <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
-              {req.distanceKm.toFixed(1)} km
-            </Text>
-          </View>
-        ) : null}
-
-        {premiumRoute && req.estimatedFare > 0 ? (
+      {premiumRoute && req.estimatedFare > 0 ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
           <View style={{ backgroundColor: "#FFF1F1", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
             <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#E11D2E" }}>
               ca. {req.estimatedFare.toFixed(2)} €
             </Text>
           </View>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       {isMedical && fleetAuthToken?.trim() ? (
         <MedicalRideProofActions
@@ -936,52 +1104,7 @@ function ScheduledCard({
             </Pressable>
           </View>
         </>
-      ) : (
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
-          {chatEnabled ? (
-            <Pressable
-              style={{
-                borderRadius: 14,
-                borderWidth: 1.5,
-                borderColor: chatUnread ? "#FCA5A5" : "#86EFAC",
-                backgroundColor: chatUnread ? "#FEF2F2" : "#F0FDF4",
-                paddingVertical: 15,
-                paddingHorizontal: 14,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              onPress={() => {
-                clearChatUnread();
-                setChatOpen(true);
-              }}
-              accessibilityLabel="Chat öffnen"
-            >
-              <DriverChatBlinkIcon unread={chatUnread} size={18} color="#166534" />
-            </Pressable>
-          ) : null}
-          <Pressable
-            style={[styles.rejectBtn, { flex: 1, borderColor: "#FEE2E2", backgroundColor: "#FFF1F1", paddingVertical: 15, borderRadius: 14 }]}
-            onPress={onCancelAssigned}
-          >
-            <Text style={[styles.rejectText, { color: "#E11D2E", fontSize: 17 }]}>{t("driver.scheduled.cancel")}</Text>
-          </Pressable>
-          {activatable ? (
-            <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#16A34A", paddingVertical: 15, borderRadius: 14 }]} onPress={onActivate}>
-              <Text style={styles.acceptText}>{t("driver.scheduled.activate")}</Text>
-            </Pressable>
-          ) : (
-            <View style={{ flex: 2, justifyContent: "center", paddingHorizontal: 8 }}>
-              <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#6B7280", textAlign: "center" }}>
-                {minsLeft > 45
-                  ? "Aktivierung ab 45 Min. vor Abholung"
-                  : minsLeft < 0
-                    ? "Abholzeit liegt in der Vergangenheit — bitte bei der Zentrale nachfragen."
-                    : "Aktivierung derzeit nicht möglich."}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
+      ) : null}
       <DriverRideChatModal
         visible={chatOpen}
         onClose={() => setChatOpen(false)}
@@ -3174,6 +3297,7 @@ export default function DriverDashboard() {
   const [adminMessage, setAdminMessage] = useState<DriverAdminMessage | null>(null);
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
+  const [showPrebookGuidelines, setShowPrebookGuidelines] = useState(false);
   const [releaseBusyId, setReleaseBusyId] = useState<string | null>(null);
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
@@ -4179,6 +4303,13 @@ export default function DriverDashboard() {
 
   const scheduledOpenRequests = scheduledPool.filter((r) => r.status === "scheduled");
   const scheduledAssignedRequests = scheduledPool.filter((r) => r.status === "scheduled_assigned");
+  const nextAssignedPrebook =
+    scheduledAssignedRequests.length > 0
+      ? [...scheduledAssignedRequests].sort(
+          (a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime(),
+        )[0]
+      : null;
+  const showAssignedPrebookTabHint = Boolean(nextAssignedPrebook && !activeDriverRequest);
   const sofortCount = pendingRequests.length;
   const vorbestellungCount = scheduledPool.length;
   const totalPending = sofortCount + vorbestellungCount;
@@ -4555,7 +4686,51 @@ export default function DriverDashboard() {
                     </>
                   )
                 ) : (
-                  scheduledAssignedRequests.length === 0 ? (
+                  <>
+                    <Pressable
+                      onPress={() => setShowPrebookGuidelines(true)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                        marginBottom: 14,
+                        paddingVertical: 14,
+                        paddingHorizontal: 14,
+                        borderRadius: 14,
+                        borderWidth: 1,
+                        borderColor: "#E5E7EB",
+                        backgroundColor: "#FAFAFA",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: "#FFFFFF",
+                          borderWidth: 1,
+                          borderColor: "#E5E7EB",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Feather name="book-open" size={17} color="#111827" />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#111827" }}>
+                          Richtlinien
+                        </Text>
+                        <Text
+                          style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: "#6B7280", marginTop: 2 }}
+                          numberOfLines={2}
+                        >
+                          Vorbestellungen — so vermeidest du eine Sperre
+                        </Text>
+                      </View>
+                      <Feather name="chevron-right" size={18} color="#9CA3AF" />
+                    </Pressable>
+
+                    {scheduledAssignedRequests.length === 0 ? (
                     <View style={styles.emptyCenter}>
                       <MaterialCommunityIcons name="calendar-check" size={56} color="#9CA3AF" />
                       <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine angenommenen Fahrten</Text>
@@ -4565,9 +4740,6 @@ export default function DriverDashboard() {
                     </View>
                   ) : (
                     <>
-                      <Text style={{ color: "#6B7280", fontSize: 12, marginBottom: 10 }}>
-                        Meine angenommenen Fahrten
-                      </Text>
                       {[...scheduledAssignedRequests]
                         .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
                         .map((req) => (
@@ -4586,7 +4758,8 @@ export default function DriverDashboard() {
                           />
                         ))}
                     </>
-                  )
+                  )}
+                  </>
                 )}
               </ScrollView>
             )}
@@ -4660,6 +4833,18 @@ export default function DriverDashboard() {
         </Animated.View>
       )}
 
+      {showAssignedPrebookTabHint && nextAssignedPrebook ? (
+        <DriverAssignedPrebookTabHint
+          ride={nextAssignedPrebook}
+          extraCount={Math.max(0, scheduledAssignedRequests.length - 1)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setActiveTab("auftraege");
+            setOrdersView("angenommen");
+          }}
+        />
+      ) : null}
+
       {/* Bottom Tab Bar */}
       <View style={[styles.tabBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad }]}>
         {tabs.map((tab) => {
@@ -4686,6 +4871,11 @@ export default function DriverDashboard() {
           );
         })}
       </View>
+
+      <DriverPrebookGuidelinesModal
+        visible={showPrebookGuidelines}
+        onClose={() => setShowPrebookGuidelines(false)}
+      />
 
       <Modal
         visible={showCodeRideModal}
