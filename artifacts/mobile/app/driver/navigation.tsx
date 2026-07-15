@@ -2563,10 +2563,10 @@ const styles = StyleSheet.create({
   sheetChevronBtn: { paddingVertical: 4, paddingHorizontal: 4 },
   driveStartedBanner: {
     marginBottom: 6,
-    borderWidth: 1,
-    borderColor: "#000000",
+    borderWidth: 1.5,
+    borderColor: "#16A34A",
     borderRadius: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F0FDF4",
     paddingHorizontal: 12,
     paddingVertical: 10,
     minHeight: DRIVE_SHEET_STATUS_H - 12,
