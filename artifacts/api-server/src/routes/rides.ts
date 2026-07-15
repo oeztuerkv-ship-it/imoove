@@ -85,7 +85,14 @@ import {
   rideQualifiesAsDriverPostAcceptCancel,
 } from "../lib/fleetDriverCancellationSuspensionPolicy";
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
-import { findFleetDriverAuthRow, getFleetDriverMarketOnline, recordFleetDriverOfferRejectStreak, resetFleetDriverDispatchRejectStreak } from "../db/fleetDriversData";
+import {
+  findFleetDriverAuthRow,
+  getFleetDriverMarketOnline,
+  setFleetDriverMarketOnline,
+  recordFleetDriverOfferRejectStreak,
+  resetFleetDriverDispatchRejectStreak,
+  setReservationSuspension,
+} from "../db/fleetDriversData";
 import {
   isFarFutureReservation,
   isReservationWithinAdvanceWindow,
@@ -162,7 +169,10 @@ import {
 } from "../lib/fleetRideDispatchPool";
 import {
   isReservationCustomerDriverStornoLocked,
+  isReservationDriverLateCancelSanctionWindow,
   msUntilScheduledPickup,
+  reservationDriverLateCancelSuspensionUntil,
+  RESERVATION_DRIVER_LATE_CANCEL_SUSPENSION_HOURS,
 } from "../lib/rideReservationStornoDeadline";
 import {
   notifyPassengerDriverAccepted,
@@ -2322,8 +2332,10 @@ export async function patchRideStatusRoute(
       return;
     }
 
+    // Nur Kunden-Storno im Kurzfrist-Fenster sperren. Fahrer dürfen immer stornieren
+    // (bei Spät-Storno: 24h-Sperre über driver-cancel / hard-cancel).
     if (
-      (nextStatus === "cancelled_by_customer" || nextStatus === "cancelled_by_driver") &&
+      nextStatus === "cancelled_by_customer" &&
       actor &&
       actor.kind !== "admin" &&
       isReservationCustomerDriverStornoLocked(cur.scheduledAt)
@@ -2332,7 +2344,7 @@ export async function patchRideStatusRoute(
       res.status(403).json({
         error: "reservation_storno_locked",
         message:
-          "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
+          "Bei Vorbestellungen ist ein Storno durch den Kunden nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
         minutesUntilPickupApprox: ms == null ? null : Math.round(ms / 60000),
       });
       return;
@@ -3049,7 +3061,7 @@ export async function cancelRideForVerifiedCustomerSession(
       status: 403,
       error: "reservation_storno_locked",
       message:
-        "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
+        "Bei Vorbestellungen ist ein Storno durch den Kunden nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
     };
   }
 
@@ -3357,14 +3369,6 @@ router.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res,
       res.json(stripPartnerOnlyRideFields(cur));
       return;
     }
-    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
-      res.status(403).json({
-        error: "reservation_storno_locked",
-        message:
-          "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
-      });
-      return;
-    }
     const existing = cur.rejectedBy ?? [];
     const rejectedBy = driverId
       ? (existing.includes(driverId) ? existing : [...existing, driverId])
@@ -3402,7 +3406,47 @@ router.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res,
         companyId: authCompany,
       }).catch(() => undefined);
     }
-    res.json(stripPartnerOnlyRideFields(updated));
+    let reservationCancelSanction: {
+      suspendedUntil: string;
+      hours: number;
+      message: string;
+    } | null = null;
+    if (
+      authCompany &&
+      cur.scheduledAt &&
+      isReservationDriverLateCancelSanctionWindow(cur.scheduledAt)
+    ) {
+      const until = reservationDriverLateCancelSuspensionUntil();
+      await setReservationSuspension(driverId, authCompany, until);
+      await setFleetDriverMarketOnline(driverId, authCompany, false).catch(() => undefined);
+      reservationCancelSanction = {
+        suspendedUntil: until.toISOString(),
+        hours: RESERVATION_DRIVER_LATE_CANCEL_SUSPENSION_HOURS,
+        message:
+          "Storno möglich, aber du wirst für 24 Stunden gesperrt und erhältst in dieser Zeit keine neuen Aufträge.",
+      };
+      logger.warn(
+        { driverId, rideId: id, companyId: authCompany, suspendedUntil: until.toISOString() },
+        "[rides] reservation late driver-cancel → 24h reservation suspension",
+      );
+      await insertSupplementalRideEvent(id, {
+        eventType: "reservation_late_driver_cancel_suspension",
+        fromStatus: cur.status,
+        toStatus: revertStatus,
+        actorType: "driver",
+        actorId: driverId,
+        payload: {
+          driverId,
+          companyId: authCompany,
+          suspendedUntil: until.toISOString(),
+          hours: RESERVATION_DRIVER_LATE_CANCEL_SUSPENSION_HOURS,
+        },
+      });
+    }
+    res.json({
+      ...stripPartnerOnlyRideFields(updated),
+      ...(reservationCancelSanction ? { reservationCancelSanction } : {}),
+    });
   } catch (e) {
     next(e);
   }
@@ -3426,14 +3470,6 @@ router.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req,
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
-      return;
-    }
-    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
-      res.status(403).json({
-        error: "reservation_storno_locked",
-        message:
-          "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
-      });
       return;
     }
     const updated = await updateRide(
@@ -3467,7 +3503,47 @@ router.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req,
         companyId: authCompany,
       }).catch(() => undefined);
     }
-    res.json(stripPartnerOnlyRideFields(updated));
+    let reservationCancelSanction: {
+      suspendedUntil: string;
+      hours: number;
+      message: string;
+    } | null = null;
+    if (
+      authCompany &&
+      cur.scheduledAt &&
+      isReservationDriverLateCancelSanctionWindow(cur.scheduledAt)
+    ) {
+      const until = reservationDriverLateCancelSuspensionUntil();
+      await setReservationSuspension(driverId, authCompany, until);
+      await setFleetDriverMarketOnline(driverId, authCompany, false).catch(() => undefined);
+      reservationCancelSanction = {
+        suspendedUntil: until.toISOString(),
+        hours: RESERVATION_DRIVER_LATE_CANCEL_SUSPENSION_HOURS,
+        message:
+          "Storno möglich, aber du wirst für 24 Stunden gesperrt und erhältst in dieser Zeit keine neuen Aufträge.",
+      };
+      logger.warn(
+        { driverId, rideId: id, companyId: authCompany, suspendedUntil: until.toISOString() },
+        "[rides] reservation late driver-hard-cancel → 24h reservation suspension",
+      );
+      await insertSupplementalRideEvent(id, {
+        eventType: "reservation_late_driver_cancel_suspension",
+        fromStatus: cur.status,
+        toStatus: "cancelled_by_driver",
+        actorType: "driver",
+        actorId: driverId,
+        payload: {
+          driverId,
+          companyId: authCompany,
+          suspendedUntil: until.toISOString(),
+          hours: RESERVATION_DRIVER_LATE_CANCEL_SUSPENSION_HOURS,
+        },
+      });
+    }
+    res.json({
+      ...stripPartnerOnlyRideFields(updated),
+      ...(reservationCancelSanction ? { reservationCancelSanction } : {}),
+    });
   } catch (e) {
     next(e);
   }

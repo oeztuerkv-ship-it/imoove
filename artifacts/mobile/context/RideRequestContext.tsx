@@ -228,7 +228,16 @@ interface RideRequestContextValue {
   rejectRequest: (id: string) => Promise<void>;
   rejectByDriver: (id: string, driverId: string) => Promise<void>;
   cancelRequest: (id: string, finalFare?: number, cancelReason?: string) => Promise<void>;
-  driverCancelRequest: (id: string, driverId: string) => Promise<void>;
+  driverCancelRequest: (
+    id: string,
+    driverId: string,
+  ) => Promise<{
+    reservationCancelSanction?: {
+      suspendedUntil: string;
+      hours: number;
+      message: string;
+    } | null;
+  } | void>;
   arriveAtCustomer: (id: string, driverCoords?: { lat: number; lon: number }) => Promise<void>;
   startDriving: (id: string, driverCoords?: { lat: number; lon: number }) => Promise<void>;
   completeRequest: (id: string, finalFare?: number) => Promise<void>;
@@ -722,7 +731,7 @@ function stornoErrorUserMessage(code: string): string | undefined {
     return "Storno ist nur mit Kunden-Anmeldung möglich, nicht im Fahrer-Modus.";
   }
   if (code === "reservation_storno_locked") {
-    return "Bei Vorbestellungen ist Storno nur bis 60 Minuten vor Abholung möglich.";
+    return "Bei Vorbestellungen ist ein Kunden-Storno nur bis 60 Minuten vor Abholung möglich.";
   }
   if (code === "status_transition_invalid") {
     return "Diese Fahrt kann im aktuellen Status nicht mehr storniert werden.";
@@ -1569,11 +1578,41 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         await fetchDriverMarket({ hardReset: true });
         throw new Error(code);
       }
+      let reservationCancelSanction: {
+        suspendedUntil: string;
+        hours: number;
+        message: string;
+      } | null = null;
+      try {
+        const body = (await res.json()) as {
+          reservationCancelSanction?: {
+            suspendedUntil?: string;
+            hours?: number;
+            message?: string;
+          };
+        };
+        const s = body.reservationCancelSanction;
+        if (
+          s &&
+          typeof s.message === "string" &&
+          typeof s.suspendedUntil === "string" &&
+          typeof s.hours === "number"
+        ) {
+          reservationCancelSanction = {
+            message: s.message,
+            suspendedUntil: s.suspendedUntil,
+            hours: s.hours,
+          };
+        }
+      } catch {
+        /* ignore */
+      }
       if (isDriverSurfaceRef.current) {
         await fetchDriverMarket({ hardReset: true });
       } else {
         await fetchAll();
       }
+      return { reservationCancelSanction };
     },
     [fetchAll, fetchDriverMarket, suppressDriverInstantOffer],
   );

@@ -2387,16 +2387,12 @@ export default function DriverNavigationScreen() {
                     const rideId = params.rideId?.trim() ?? "";
                     const driverId = (params.driverId ?? "").trim();
                     if (!rideId || !driverId) throw new Error("driver_cancel_failed");
-                    await driverCancelRequest(rideId, driverId);
+                    const outcome = await driverCancelRequest(rideId, driverId);
+                    if (outcome?.reservationCancelSanction) {
+                      Alert.alert("24h-Sperre aktiv", outcome.reservationCancelSanction.message);
+                    }
                   } catch (e) {
                     const code = e instanceof Error ? e.message : "driver_cancel_failed";
-                    if (code === "reservation_storno_locked") {
-                      Alert.alert(
-                        "Storno nicht möglich",
-                        "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
-                      );
-                      return;
-                    }
                     Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
                     return;
                   }

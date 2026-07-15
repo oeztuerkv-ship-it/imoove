@@ -237,7 +237,10 @@ export function computeDriverReadiness(
   }
   if (d.reservationSuspendedUntil && new Date(d.reservationSuspendedUntil) > new Date()) {
     const until = new Date(d.reservationSuspendedUntil).toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
-    blockReasons.push({ code: "driver_suspended", message: `Temporäre Sperre bis ${until}: Reservierung nicht rechtzeitig aktiviert.` });
+    blockReasons.push({
+      code: "driver_suspended",
+      message: `Temporäre 24h-Sperre bis ${until} (Vorbestellung: Aktivierung verpasst oder Spät-Storno).`,
+    });
   }
   if (d.approvalStatus === "rejected") {
     blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });

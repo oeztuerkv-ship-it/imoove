@@ -4079,9 +4079,11 @@ export default function DriverDashboard() {
     stopRideSound().catch(() => {});
     setBannerRide(null);
     try {
-      await driverCancelRequest(id, driverId);
+      const outcome = await driverCancelRequest(id, driverId);
       const refreshed = await refreshEinsatzbereit?.();
-      if (refreshed?.cancellationSuspension.active) {
+      if (outcome?.reservationCancelSanction) {
+        Alert.alert("24h-Sperre aktiv", outcome.reservationCancelSanction.message);
+      } else if (refreshed?.cancellationSuspension.active) {
         Alert.alert(
           "Storno-Sperre aktiv",
           refreshed.cancellationSuspension.message ??
@@ -4092,25 +4094,18 @@ export default function DriverDashboard() {
       await refreshRequests();
     } catch (e) {
       const code = e instanceof Error ? e.message.trim() : "";
-      if (code === "reservation_storno_locked") {
-        Alert.alert(
-          "Storno nicht möglich",
-          "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
-        );
-        return;
-      }
       Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
     }
   };
 
   const handleCancelScheduled = async (req: RideRequest) => {
     const diffMin = req.scheduledAt ? (new Date(req.scheduledAt).getTime() - Date.now()) / 60000 : null;
-    const nearPickup = diffMin != null && diffMin >= 0 && diffMin < 60;
+    const nearPickup = diffMin != null && diffMin < 60;
 
     Alert.alert(
       "Reservierung stornieren?",
       nearPickup
-        ? "Diese Fahrt beginnt in weniger als 60 Minuten. Das kann zu einer vorübergehenden Einschränkung führen. Möchtest du wirklich stornieren?"
+        ? "Storno ist möglich. Innerhalb von 60 Minuten vor Abholung wirst du dafür 24 Stunden gesperrt und erhältst in dieser Zeit keine neuen Aufträge. Wirklich stornieren?"
         : "Möchtest du diese angenommene Reservierung wirklich stornieren?",
       [
         { text: "Abbrechen", style: "cancel" },
@@ -4125,9 +4120,11 @@ export default function DriverDashboard() {
               if (bannerTimer.current) clearTimeout(bannerTimer.current);
               stopRideSound().catch(() => {});
               setBannerRide(null);
-              await driverCancelRequest(req.id, driverId);
+              const outcome = await driverCancelRequest(req.id, driverId);
               const refreshed = await refreshEinsatzbereit?.();
-              if (refreshed?.cancellationSuspension.active) {
+              if (outcome?.reservationCancelSanction) {
+                Alert.alert("24h-Sperre aktiv", outcome.reservationCancelSanction.message);
+              } else if (refreshed?.cancellationSuspension.active) {
                 Alert.alert(
                   "Storno-Sperre aktiv",
                   refreshed.cancellationSuspension.message ??
@@ -4137,13 +4134,6 @@ export default function DriverDashboard() {
               await refreshRequests?.();
             } catch (e) {
               const code = e instanceof Error ? e.message.trim() : "";
-              if (code === "reservation_storno_locked") {
-                Alert.alert(
-                  "Storno nicht möglich",
-                  "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
-                );
-                return;
-              }
               Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
             }
           },
@@ -4320,7 +4310,7 @@ export default function DriverDashboard() {
           Account gesperrt
         </Text>
         <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
-          Du hast eine Vorbestellungsfahrt weniger als 60 Minuten vor der Abholzeit storniert.{"\n\n"}Dein Account ist für 48 Stunden für neue Aufträge gesperrt.
+          Du hast eine Vorbestellungsfahrt weniger als 60 Minuten vor der Abholzeit storniert oder nicht rechtzeitig aktiviert.{"\n\n"}Dein Account ist für 24 Stunden für neue Aufträge gesperrt.
         </Text>
         <View style={{ backgroundColor: "#FEF2F2", borderRadius: 14, borderWidth: 1.5, borderColor: "#FECACA", padding: 16, width: "100%", alignItems: "center", marginBottom: 28 }}>
           <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#DC2626", marginBottom: 4 }}>Sperre endet am</Text>
