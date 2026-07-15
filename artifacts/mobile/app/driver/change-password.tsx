@@ -11,11 +11,25 @@ import { useColors } from "@/hooks/useColors";
 export default function DriverChangePasswordScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { changePassword } = useDriver();
+  const { changePassword, driver } = useDriver();
+  const forcedChange = Boolean(driver?.mustChangePassword);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/driver/dashboard");
+  };
+
+  const onCancel = () => {
+    Haptics.selectionAsync();
+    goBack();
+  };
 
   const onSubmit = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -42,15 +56,38 @@ export default function DriverChangePasswordScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={[styles.root, { backgroundColor: colors.background, paddingTop: insets.top + 24 }]}
+      style={[
+        styles.root,
+        { backgroundColor: colors.background, paddingTop: insets.top + 8 },
+        forcedChange ? styles.rootForced : null,
+      ]}
     >
+      {!forcedChange ? (
+        <View style={styles.header}>
+          <Pressable
+            onPress={onCancel}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Zurück"
+            style={[styles.backBtn, { backgroundColor: colors.muted }]}
+          >
+            <Feather name="arrow-left" size={20} color={colors.foreground} />
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Passwort ändern</Text>
+        </View>
+      ) : null}
+
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.iconWrap}>
           <Feather name="lock" size={24} color="#fff" />
         </View>
-        <Text style={[styles.title, { color: colors.foreground }]}>Passwort ändern</Text>
+        {forcedChange ? (
+          <Text style={[styles.title, { color: colors.foreground }]}>Passwort ändern</Text>
+        ) : null}
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Beim ersten Login musst du dein Initialpasswort ändern.
+          {forcedChange
+            ? "Beim ersten Login musst du dein Initialpasswort ändern."
+            : "Gib dein aktuelles Passwort ein und wähle ein neues."}
         </Text>
 
         <TextInput
@@ -88,14 +125,39 @@ export default function DriverChangePasswordScreen() {
         >
           <Text style={styles.submitText}>{saving ? "Speichern..." : "Passwort speichern"}</Text>
         </Pressable>
+
+        {!forcedChange ? (
+          <Pressable
+            onPress={onCancel}
+            disabled={saving}
+            style={[styles.cancelBtn, { borderColor: colors.border, opacity: saving ? 0.7 : 1 }]}
+          >
+            <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>Abbrechen</Text>
+          </Pressable>
+        ) : null}
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: 20, justifyContent: "center" },
-  card: { borderRadius: 16, borderWidth: 1, padding: 20, gap: 12 },
+  root: { flex: 1, paddingHorizontal: 20 },
+  rootForced: { justifyContent: "center" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold", flex: 1 },
+  card: { borderRadius: 16, borderWidth: 1, padding: 20, gap: 12, marginTop: 8 },
   iconWrap: {
     width: 44,
     height: 44,
@@ -124,4 +186,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   submitText: { color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 14 },
+  cancelBtn: {
+    marginTop: 4,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  cancelBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 14 },
 });
