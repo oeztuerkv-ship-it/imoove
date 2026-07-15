@@ -11,8 +11,22 @@ import {
 
 export const DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
 
-/** Manuelles „Aktivieren“ in der Fahrer-App: 0–45 Minuten vor Abholzeit. */
-export const DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES = 45;
+/** Ab wann Fahrer manuell aktivieren darf (Minuten vor Abholung). */
+export const DEFAULT_RESERVATION_MANUAL_ACTIVATION_OPENS_MINUTES = 45;
+
+/** Spätestens bis zu so vielen Minuten vor Abholung muss aktiviert sein — sonst Freigabe + Sperre. */
+export const DEFAULT_RESERVATION_MANUAL_ACTIVATION_DEADLINE_MINUTES_REMAINING = 25;
+
+/** @deprecated Alias — Fenster endet bei {@link DEFAULT_RESERVATION_MANUAL_ACTIVATION_DEADLINE_MINUTES_REMAINING}. */
+export const DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES =
+  DEFAULT_RESERVATION_MANUAL_ACTIVATION_OPENS_MINUTES;
+
+export function isWithinManualReservationActivationWindow(minsUntilPickup: number): boolean {
+  return (
+    minsUntilPickup >= DEFAULT_RESERVATION_MANUAL_ACTIVATION_DEADLINE_MINUTES_REMAINING &&
+    minsUntilPickup <= DEFAULT_RESERVATION_MANUAL_ACTIVATION_OPENS_MINUTES
+  );
+}
 
 /** Abholzeit + Puffer ohne Fahrtbeginn → `expired` (aktivierte Reservierung ohne Annahme/Fahrtstart). */
 export const DEFAULT_RESERVATION_NO_START_EXPIRE_BUFFER_MINUTES = 45;
@@ -197,13 +211,34 @@ export type ReactivatedScheduledRow = {
   company_id: string | null;
 };
 
-/** @deprecated Job 3a/3c ersetzen diesen Pfad — nur noch für Tests/Migration behalten. */
+/** @deprecated Nutze {@link releaseMissedManualActivationReservations}. */
 export async function releaseMissedActivationReservations(
   activationDeadline: Date,
 ): Promise<ReactivatedScheduledRow[]> {
+  return releaseMissedManualActivationReservations(activationDeadline);
+}
+
+export type ReleasedMissedActivationRow = {
+  id: string;
+  passenger_id: string | null;
+  driver_id: string | null;
+  company_id: string | null;
+};
+
+/**
+ * Fahrer hat nicht rechtzeitig aktiviert (Fenster 45–25 Min. vor Abholung verstrichen):
+ * `scheduled_assigned` mit ≤25 Min. bis Abholung → Markt (`searching_driver`), Fahrer-Zuweisung weg.
+ */
+export async function releaseMissedManualActivationReservations(
+  now: Date = new Date(),
+): Promise<ReleasedMissedActivationRow[]> {
   if (!isPostgresConfigured()) return [];
   const db = getDb();
   if (!db) return [];
+
+  const releaseThreshold = new Date(
+    now.getTime() + DEFAULT_RESERVATION_MANUAL_ACTIVATION_DEADLINE_MINUTES_REMAINING * 60 * 1000,
+  );
 
   const missed = await db
     .select({
@@ -217,7 +252,7 @@ export async function releaseMissedActivationReservations(
       and(
         eq(ridesTable.status, "scheduled_assigned"),
         isNotNull(ridesTable.scheduled_at),
-        lte(ridesTable.scheduled_at, activationDeadline),
+        lte(ridesTable.scheduled_at, releaseThreshold),
       ),
     );
 
@@ -227,8 +262,10 @@ export async function releaseMissedActivationReservations(
   await db
     .update(ridesTable)
     .set({
-      status: "scheduled",
+      status: "searching_driver",
       driver_id: null,
+      dispatch_tier: "A",
+      dispatch_tier_started_at: now,
       push_driver_activation_reminder_at: null,
       push_customer_reservation_assigned_at: null,
     })
@@ -238,9 +275,11 @@ export async function releaseMissedActivationReservations(
     notifyCronRideStatusChange({
       rideId: row.id,
       fromStatus: "scheduled_assigned",
-      toStatus: "scheduled",
+      toStatus: "searching_driver",
       passengerId: row.passenger_id,
     });
+    const released = await findRide(row.id);
+    if (released) void notifyMarketOnlineDriversInstantRideOffer(released);
   }
 
   return missed;
@@ -329,6 +368,7 @@ export async function activateUnassignedReservationsToSearchingDriver(
 
 /**
  * Zugewiesene Reservierung → `ready_for_dispatch` (Fahrer bleibt zugewiesen).
+ * Nur über manuelles Fahrer-„Aktivieren“ (PATCH /rides/:id) — nicht per Cron.
  */
 export async function activateAssignedReservationsToReadyForDispatch(
   rideIds: string[],
@@ -414,7 +454,7 @@ export async function activateReservationsForPremiumDispatch(
 /**
  * Aktiver Cron Job 4: Reservierung im 30-Min-Fenster vor Abholung dispatch-bereit machen.
  * - `scheduled` (offen) → `searching_driver` + Markt-Push
- * - `scheduled_assigned` → `ready_for_dispatch` + Erinnerung an zugewiesenen Fahrer
+ * Zugewiesene Reservierungen (`scheduled_assigned`) nur per manuellem Fahrer-„Aktivieren“ (PATCH).
  */
 export async function promoteReservationsToReadyForDispatch(
   now: Date = new Date(),
@@ -438,25 +478,9 @@ export async function promoteReservationsToReadyForDispatch(
       ),
     );
 
-  const assigned = await db
-    .select({ id: ridesTable.id })
-    .from(ridesTable)
-    .where(
-      and(
-        eq(ridesTable.status, "scheduled_assigned"),
-        isNotNull(ridesTable.driver_id),
-        isNotNull(ridesTable.scheduled_at),
-        lte(ridesTable.scheduled_at, threshold),
-        gt(ridesTable.scheduled_at, now),
-      ),
-    );
-
   const unassignedIds = unassigned.map((r) => r.id).filter(Boolean);
-  const assignedIds = assigned.map((r) => r.id).filter(Boolean);
 
-  const promotedSearching = await activateUnassignedReservationsToSearchingDriver(unassignedIds, now);
-  const promotedReady = await activateAssignedReservationsToReadyForDispatch(assignedIds, now);
-  return [...promotedSearching, ...promotedReady];
+  return activateUnassignedReservationsToSearchingDriver(unassignedIds, now);
 }
 
 /** Sofort prüfen, ob eine frisch angelegte Reservierung schon im 30-Min-Fenster liegt. */
@@ -478,9 +502,6 @@ export async function promoteReservationIfInActivationWindow(
 
   if (ride.status === "scheduled" && !ride.driverId) {
     return activateUnassignedReservationsToSearchingDriver([id], now);
-  }
-  if (ride.status === "scheduled_assigned" && ride.driverId) {
-    return activateAssignedReservationsToReadyForDispatch([id], now);
   }
   return [];
 }

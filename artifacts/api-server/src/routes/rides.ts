@@ -90,7 +90,11 @@ import {
   isReservationWithinAdvanceWindow,
   RESERVATION_MAX_ADVANCE_MS,
 } from "../lib/dispatchStatus";
-import { DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES } from "../jobs/reservationLifecycle";
+import {
+  DEFAULT_RESERVATION_MANUAL_ACTIVATION_DEADLINE_MINUTES_REMAINING,
+  DEFAULT_RESERVATION_MANUAL_ACTIVATION_OPENS_MINUTES,
+  isWithinManualReservationActivationWindow,
+} from "../jobs/reservationLifecycle";
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
   notifyDriverFollowUpOffer,
@@ -2331,10 +2335,10 @@ export async function patchRideStatusRoute(
           return;
         }
         const minsUntil = (pickupMs - Date.now()) / 60000;
-        if (minsUntil < 0 || minsUntil > DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES) {
+        if (!isWithinManualReservationActivationWindow(minsUntil)) {
           res.status(409).json({
             error: "reservation_activation_window",
-            message: `Aktivierung nur zwischen 0 und ${DEFAULT_RESERVATION_MANUAL_ACTIVATION_WINDOW_MINUTES} Minuten vor Abholzeit möglich.`,
+            message: `Aktivierung nur zwischen ${DEFAULT_RESERVATION_MANUAL_ACTIVATION_DEADLINE_MINUTES_REMAINING} und ${DEFAULT_RESERVATION_MANUAL_ACTIVATION_OPENS_MINUTES} Minuten vor Abholzeit möglich (20 Min. Fenster).`,
             minutesUntilPickupApprox: Math.round(minsUntil),
           });
           return;

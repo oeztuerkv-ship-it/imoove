@@ -23,11 +23,13 @@ import {
   expirePastScheduledReservations,
   expireReadyForDispatchWithoutTripStart,
   promoteReservationsToReadyForDispatch,
+  releaseMissedManualActivationReservations,
 } from "./reservationLifecycle";
 
 export type ReservationLifecycleCronResult = {
   noDriverCancelled: number;
   reminderPushes: number;
+  missedActivationReleased: number;
   expiredAssigned: number;
   expiredScheduled: number;
   expiredReadyDispatch: number;
@@ -52,6 +54,7 @@ export async function runReservationLifecycleCron(
   const result: ReservationLifecycleCronResult = {
     noDriverCancelled: 0,
     reminderPushes: 0,
+    missedActivationReleased: 0,
     expiredAssigned: 0,
     expiredScheduled: 0,
     expiredReadyDispatch: 0,
@@ -133,10 +136,25 @@ export async function runReservationLifecycleCron(
       const cid = typeof row.company_id === "string" ? row.company_id.trim() : "";
       if (!did || !cid) continue;
       await setReservationSuspension(did, cid, new Date(nowMs + 24 * 60 * 60 * 1000));
-      logger.warn({ driverId: did, rideId: row.id }, "[Cron] Aktivierung verpasst → 24h Sperre (expired)");
+      logger.warn({ driverId: did, rideId: row.id }, "[Cron] Aktivierung verpasst → 24h Sperre");
       void notifyDriverMissedActivationReservation(did, cid, row.id);
     }
   };
+
+  const missedActivationReleased = await releaseMissedManualActivationReservations(now);
+  result.missedActivationReleased = missedActivationReleased.length;
+  if (missedActivationReleased.length > 0) {
+    logger.info(
+      {
+        count: missedActivationReleased.length,
+        rideIds: missedActivationReleased.map((r) => r.id),
+        fromStatus: "scheduled_assigned",
+        toStatus: "searching_driver",
+      },
+      "[Cron Job 3] Verpasste Aktivierung (≤25 Min. vor Abholung) → Markt freigegeben + 24h Fahrer-Sperre",
+    );
+    await applyMissedActivationSanctions(missedActivationReleased);
+  }
 
   const expiredAssigned = await expirePastAssignedReservations(now);
   result.expiredAssigned = expiredAssigned.length;
@@ -150,7 +168,6 @@ export async function runReservationLifecycleCron(
       },
       "[Cron Job 3a] scheduled_assigned → expired (Abholzeit + Puffer ohne Start)",
     );
-    await applyMissedActivationSanctions(expiredAssigned);
   }
 
   const expiredScheduled = await expirePastScheduledReservations(now);
@@ -219,6 +236,7 @@ export async function runReservationLifecycleCron(
   const hasActivity =
     result.promoted > 0 ||
     result.noDriverCancelled > 0 ||
+    result.missedActivationReleased > 0 ||
     result.expiredAssigned > 0 ||
     result.expiredScheduled > 0 ||
     result.expiredReadyDispatch > 0 ||

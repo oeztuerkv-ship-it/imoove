@@ -36,7 +36,7 @@ httpServer.listen(port, () => {
   });
 
   // ── Hintergrund-Jobs: Reservierungs-Lifecycle alle 2 Minuten ──
-  // Job 4: scheduled/scheduled_assigned → searching_driver/ready_for_dispatch im T−30-Fenster.
+  // Job 4: nur offene `scheduled` → `searching_driver` (T−30). Zugewiesene nur per Fahrer-Tap.
   // Siehe jobs/reservationLifecycleCron.ts (Job 1–4, 6–10).
   const runReservationLifecycleTick = async () => {
     try {
@@ -50,7 +50,7 @@ httpServer.listen(port, () => {
 
   logger.info(
     { intervalMs: 2 * 60 * 1000 },
-    "[Cron] reservationLifecycle armed (Job 4: T−30 promotion scheduled→searching_driver, scheduled_assigned→ready_for_dispatch)",
+    "[Cron] reservationLifecycle armed (Job 4: T−30 nur scheduled→searching_driver; assigned nur manuell)",
   );
   void runReservationLifecycleTick();
   setInterval(() => {
