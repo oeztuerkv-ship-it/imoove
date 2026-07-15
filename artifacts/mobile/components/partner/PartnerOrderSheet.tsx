@@ -23,13 +23,14 @@ const NOTE_MAX = 200;
 
 type Props = {
   visible: boolean;
-  pickupLabel: string;
+  fromLabel: string;
+  toLabel: string;
   submitting: boolean;
   onClose: () => void;
   onConfirm: (mode: PartnerBookMode, note: string, scheduledAt: string | null) => void;
 };
 
-export function PartnerOrderSheet({ visible, pickupLabel, submitting, onClose, onConfirm }: Props) {
+export function PartnerOrderSheet({ visible, fromLabel, toLabel, submitting, onClose, onConfirm }: Props) {
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<PartnerBookMode>("now");
   const [note, setNote] = useState("");
@@ -72,7 +73,10 @@ export function PartnerOrderSheet({ visible, pickupLabel, submitting, onClose, o
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={styles.title}>Jetzt bestellen?</Text>
-            <Text style={styles.pickup}>{pickupLabel}</Text>
+            <Text style={styles.routeLabel}>Start</Text>
+            <Text style={styles.routeValue}>{fromLabel}</Text>
+            <Text style={styles.routeLabel}>Ziel</Text>
+            <Text style={[styles.routeValue, { marginBottom: 16 }]}>{toLabel}</Text>
 
             <Text style={styles.fieldLabel}>Notiz (optional)</Text>
             <TextInput
@@ -163,7 +167,15 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   title: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#111", marginBottom: 8 },
-  pickup: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 16, lineHeight: 22 },
+  routeLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  routeValue: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 10, lineHeight: 22 },
   fieldLabel: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",

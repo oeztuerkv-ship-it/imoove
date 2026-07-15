@@ -4,7 +4,7 @@ import FixedPriceVoucherPurchaseSection, { AgCard } from "./FixedPriceVoucherPur
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
-import { partnerRideShowsFare } from "../lib/partnerRideOps.js";
+import { partnerRideCountsAsPartnerCost, partnerRideShowsFare } from "../lib/partnerRideOps.js";
 import RideCreatePage from "../pages/RideCreatePage.jsx";
 import PartnerRidesListPage from "../pages/PartnerRidesListPage.jsx";
 import "../styles/agentur-gutscheine.css";
@@ -109,7 +109,9 @@ function DashboardView({ token, company }) {
   }, [token]);
 
   const activeCodes = codes.filter(c => c.isActive).length;
-  const totalSpent = rides.reduce((s, r) => s + (Number(r.finalFare) || Number(r.estimatedFare) || 0), 0);
+  const totalSpent = rides
+    .filter(partnerRideCountsAsPartnerCost)
+    .reduce((s, r) => s + (Number(r.finalFare) || Number(r.estimatedFare) || 0), 0);
   const ridesThisMonth = rides.filter(r => {
     const d = new Date(r.createdAt || r.created_at || "");
     const now = new Date();

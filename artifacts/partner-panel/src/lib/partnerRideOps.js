@@ -35,6 +35,12 @@ export function partnerRideShowsFare(ride) {
   return String(ride?.status ?? "") === "completed";
 }
 
+/** Partner trägt Kosten / Rechnung — nicht bei „Fahrgast zahlt“ (Bar/Karte beim Fahrer). */
+export function partnerRideCountsAsPartnerCost(ride) {
+  const pk = String(ride?.payerKind ?? "passenger").trim();
+  return pk === "company" || pk === "insurance" || pk === "voucher" || pk === "third_party";
+}
+
 /** @param {PartnerPayerMode} mode */
 export function paymentMethodForPayerMode(mode) {
   return mode === "company" ? "rechnung" : "Barzahlung";

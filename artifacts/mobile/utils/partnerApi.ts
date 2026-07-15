@@ -143,6 +143,7 @@ export async function partnerCreateRide(
     ok?: boolean;
     ride?: PartnerRideRow;
     error?: string;
+    message?: string;
     maxOpen?: number;
   };
   if (!res.ok) {
@@ -159,16 +160,25 @@ export async function partnerCreateRide(
         message: "Reservierung mindestens 60 Minuten im Voraus wählen.",
       };
     }
+    const apiMessage = typeof data.message === "string" ? data.message.trim() : "";
     const hint =
-      data.error === "route_fields_required"
-        ? "Route unvollständig."
-        : data.error === "customer_name_required"
-          ? "Kundenname fehlt."
-          : data.error === "pricing_or_vehicle_invalid"
-            ? "Preis oder Fahrzeug ungültig."
-            : data.error === "estimated_fare_mismatch"
-              ? "Preisabweichung — bitte erneut versuchen."
-              : null;
+      apiMessage
+        ? apiMessage
+        : data.error === "partner_address_incomplete"
+          ? "Adresse unvollständig — Straße, Hausnummer und PLZ prüfen."
+          : data.error === "billing_reference_required"
+            ? "Interne Referenz (Kostenstelle/Fallnummer) nur bei Rechnungszahlung durch Ihr Unternehmen nötig."
+            : data.error === "route_fields_required"
+            ? "Route unvollständig."
+            : data.error === "customer_name_required"
+              ? "Kundenname fehlt."
+              : data.error === "service_area_not_covered"
+                ? "Adresse liegt außerhalb des Servicegebietes."
+                : data.error === "pricing_or_vehicle_invalid"
+                  ? "Preis oder Fahrzeug ungültig."
+                  : data.error === "estimated_fare_mismatch"
+                    ? "Preisabweichung — bitte erneut versuchen."
+                    : null;
     return {
       ok: false,
       message: hint ?? (typeof data.error === "string" ? data.error : await fetchErrorMessage(res, "Buchung fehlgeschlagen.")),

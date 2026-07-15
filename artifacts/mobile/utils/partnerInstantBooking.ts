@@ -1,24 +1,22 @@
 import * as Location from "expo-location";
 
-import { fetchFareEstimate } from "@/utils/fareEstimateApi";
+import { getApiBaseUrl, fetchErrorMessage } from "@/utils/apiBase";
 import { partnerCreateRide } from "@/utils/partnerApi";
 import type { PartnerMeUser } from "@/utils/partnerMobileAccess";
+import { validatePartnerRouteAddresses } from "@/utils/partnerRouteAddress";
+import {
+  geoLocationToPartnerRoutePlace,
+  type PartnerRoutePlace,
+} from "@/utils/partnerRoutePlace";
 import { RESERVATION_LEAD_MS } from "@/utils/partnerScheduling";
+import { reverseGeocodeCoords } from "@/utils/reverseGeocode";
 
-const OPEN_DEST_SHORT = "Ziel nach Absprache";
-const OPEN_DEST_FULL = "Ziel nach Absprache (Partner)";
-const MIN_DISTANCE_KM = 1;
-const MIN_DURATION_MIN = 4;
+export type { PartnerRoutePlace };
 
-export type PartnerPickupPlace = {
-  label: string;
-  full: string;
-  lat: number;
-  lon: number;
-};
+export type PartnerPickupPlace = PartnerRoutePlace;
 
 export type PartnerPickupResult =
-  | { ok: true; place: PartnerPickupPlace }
+  | { ok: true; place: PartnerRoutePlace }
   | { ok: false; code: "permission_denied" | "location_unavailable"; message: string };
 
 export type PartnerBookMode = "now" | "reservation";
@@ -29,10 +27,15 @@ export type PartnerBookParams = {
   scheduledAt?: string | null;
 };
 
-function formatReverseGeocode(row: Location.LocationGeocodedAddress): string {
-  const parts = [row.street, row.streetNumber, row.postalCode, row.city].filter(Boolean);
-  return parts.join(" ").trim() || row.name || row.district || "Standort";
-}
+export type PartnerRouteQuote = {
+  distanceKm: number;
+  durationMinutes: number;
+  estimatedFare: number;
+  fromLat: number;
+  fromLon: number;
+  toLat: number;
+  toLon: number;
+};
 
 export async function resolvePartnerPickupFromGps(): Promise<PartnerPickupResult> {
   const { status } = await Location.requestForegroundPermissionsAsync();
@@ -48,22 +51,9 @@ export async function resolvePartnerPickupFromGps(): Promise<PartnerPickupResult
     const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-    let full = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-    let label = "Aktueller Standort";
-
-    try {
-      const rows = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lon });
-      if (rows[0]) {
-        full = formatReverseGeocode(rows[0]);
-        label = rows[0].street
-          ? `${rows[0].street}${rows[0].streetNumber ? ` ${rows[0].streetNumber}` : ""}`
-          : full;
-      }
-    } catch {
-      /* Koordinaten reichen als Fallback */
-    }
-
-    return { ok: true, place: { label: label.trim() || full, full, lat, lon } };
+    const geo = await reverseGeocodeCoords(lat, lon);
+    const place = geoLocationToPartnerRoutePlace(geo);
+    return { ok: true, place };
   } catch {
     return {
       ok: false,
@@ -73,20 +63,110 @@ export async function resolvePartnerPickupFromGps(): Promise<PartnerPickupResult
   }
 }
 
-function openDestinationCoords(fromLat: number, fromLon: number): { toLat: number; toLon: number } {
-  return { toLat: fromLat + 0.007, toLon: fromLon };
-}
-
 export function defaultPartnerReservationTime(): Date {
   const d = new Date(Date.now() + RESERVATION_LEAD_MS + 30 * 60 * 1000);
   d.setMinutes(0, 0, 0);
   return d;
 }
 
+export async function fetchPartnerRouteQuote(
+  token: string,
+  from: PartnerRoutePlace,
+  to: PartnerRoutePlace,
+): Promise<
+  | { ok: true; quote: PartnerRouteQuote }
+  | { ok: false; message: string; unauthorized?: boolean }
+> {
+  const addrCheck = validatePartnerRouteAddresses(from.full, to.full);
+  if (!addrCheck.ok) {
+    return { ok: false, message: addrCheck.message };
+  }
+
+  const base = getApiBaseUrl();
+  if (!base) return { ok: false, message: "API-URL fehlt." };
+
+  const res = await fetch(`${base}/panel/v1/route-distance`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fromFull: from.full,
+      toFull: to.full,
+      fromLat: from.lat,
+      fromLon: from.lon,
+      toLat: to.lat,
+      toLon: to.lon,
+      vehicle: "standard",
+    }),
+  });
+
+  if (res.status === 401) {
+    return { ok: false, unauthorized: true, message: "Sitzung abgelaufen." };
+  }
+
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    distanceKm?: number;
+    durationMinutes?: number;
+    estimatedFare?: number;
+    from?: { lat?: number; lon?: number };
+    to?: { lat?: number; lon?: number };
+    error?: string;
+    message?: string;
+  };
+
+  if (!res.ok || !data.ok) {
+    const msg =
+      typeof data.message === "string" && data.message.trim()
+        ? data.message.trim()
+        : data.error === "service_area_not_covered"
+          ? "Adresse liegt außerhalb des Servicegebietes."
+          : data.error === "from_not_found"
+            ? "Startadresse konnte nicht gefunden werden."
+            : data.error === "to_not_found"
+              ? "Zieladresse konnte nicht gefunden werden."
+              : typeof data.error === "string"
+                ? data.error
+                : await fetchErrorMessage(res, "Route konnte nicht berechnet werden.");
+    return { ok: false, message: msg };
+  }
+
+  const distanceKm = Number(data.distanceKm);
+  const durationMinutes = Number(data.durationMinutes);
+  const estimatedFare = Number(data.estimatedFare);
+  const fromLat = Number(data.from?.lat ?? from.lat);
+  const fromLon = Number(data.from?.lon ?? from.lon);
+  const toLat = Number(data.to?.lat ?? to.lat);
+  const toLon = Number(data.to?.lon ?? to.lon);
+
+  if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
+    return { ok: false, message: "Keine Route zwischen Start und Ziel gefunden." };
+  }
+  if (!Number.isFinite(estimatedFare) || estimatedFare <= 0) {
+    return { ok: false, message: "Tarif konnte nicht berechnet werden." };
+  }
+
+  return {
+    ok: true,
+    quote: {
+      distanceKm,
+      durationMinutes: Number.isFinite(durationMinutes) ? Math.max(1, durationMinutes) : 1,
+      estimatedFare,
+      fromLat,
+      fromLon,
+      toLat,
+      toLon,
+    },
+  };
+}
+
 export async function createPartnerTaxiRide(
   token: string,
   user: PartnerMeUser,
-  pickup: PartnerPickupPlace,
+  from: PartnerRoutePlace,
+  to: PartnerRoutePlace,
   params: PartnerBookParams,
 ): Promise<
   | { ok: true; rideId: string }
@@ -102,39 +182,35 @@ export async function createPartnerTaxiRide(
     }
   }
 
-  const { toLat, toLon } = openDestinationCoords(pickup.lat, pickup.lon);
-  const fare = await fetchFareEstimate("standard", {
-    fromFull: pickup.full,
-    fromLat: pickup.lat,
-    fromLon: pickup.lon,
-    toFull: OPEN_DEST_FULL,
-    toLat,
-    toLon,
-  });
-  const estimatedFare = fare?.total ?? 0;
-  if (!Number.isFinite(estimatedFare) || estimatedFare <= 0) {
-    return { ok: false, message: "Tarif konnte nicht berechnet werden." };
+  const quoteResult = await fetchPartnerRouteQuote(token, from, to);
+  if (!quoteResult.ok) {
+    return {
+      ok: false,
+      message: quoteResult.message,
+      ...(quoteResult.unauthorized ? { unauthorized: true } : {}),
+    };
   }
+  const quote = quoteResult.quote;
 
   const customerName = (user.companyName?.trim() || user.username?.trim() || "Partner").slice(0, 120);
   const note = params.note?.trim().slice(0, 200);
   const body: Record<string, unknown> = {
     customerName,
-    from: pickup.label,
-    fromFull: pickup.full,
-    to: OPEN_DEST_SHORT,
-    toFull: OPEN_DEST_FULL,
-    fromLat: pickup.lat,
-    fromLon: pickup.lon,
-    toLat,
-    toLon,
-    distanceKm: MIN_DISTANCE_KM,
-    durationMinutes: MIN_DURATION_MIN,
-    estimatedFare,
+    from: from.label,
+    fromFull: from.full,
+    to: to.label,
+    toFull: to.full,
+    fromLat: quote.fromLat,
+    fromLon: quote.fromLon,
+    toLat: quote.toLat,
+    toLon: quote.toLon,
+    distanceKm: quote.distanceKm,
+    durationMinutes: quote.durationMinutes,
+    estimatedFare: quote.estimatedFare,
     paymentMethod: "Barzahlung",
     vehicle: "standard",
     rideKind: "standard",
-    payerKind: "company",
+    payerKind: "passenger",
     ...(params.mode === "reservation" && params.scheduledAt ? { scheduledAt: params.scheduledAt } : {}),
     ...(note ? { driverNote: note } : {}),
   };

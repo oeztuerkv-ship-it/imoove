@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -18,14 +19,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PartnerOrderSheet } from "@/components/partner/PartnerOrderSheet";
 import { PartnerRideCard } from "@/components/partner/PartnerRideCard";
+import { LiveSearchResultGroup } from "@/components/booking/LiveSearchResultGroup";
+import { LiveSearchRouteCard } from "@/components/booking/LiveSearchRouteCard";
 import { HOME_SHEET_BG, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { usePartner } from "@/context/PartnerContext";
 import { loginActionButtonStyle, loginActionLabelStyle, LOGIN_ACTION_ICON_SIZE } from "@/src/screens/LoginScreen";
 import {
   createPartnerTaxiRide,
   resolvePartnerPickupFromGps,
-  type PartnerPickupPlace,
+  type PartnerRoutePlace,
 } from "@/utils/partnerInstantBooking";
+import {
+  geoLocationToPartnerRoutePlace,
+  validatePartnerRoutePlace,
+} from "@/utils/partnerRoutePlace";
+import { searchLocation, type GeoLocation } from "@/utils/routing";
 import {
   partnerCancelRide,
   partnerFetchRides,
@@ -101,8 +109,21 @@ function RideListSectionHeader({
 export default function PartnerHomeScreen() {
   const insets = useSafeAreaInsets();
   const { user, token, booting, logout, handleUnauthorized, unreadMessageCount } = usePartner();
-  const [pickup, setPickup] = useState<PartnerPickupPlace | null>(null);
-  const [loadingLocation, setLoadingLocation] = useState(true);
+  const [fromPlace, setFromPlace] = useState<PartnerRoutePlace | null>(null);
+  const [toPlace, setToPlace] = useState<PartnerRoutePlace | null>(null);
+  const [originQuery, setOriginQuery] = useState("");
+  const [destQuery, setDestQuery] = useState("");
+  const [isEditingOrigin, setIsEditingOrigin] = useState(true);
+  const [originResults, setOriginResults] = useState<GeoLocation[]>([]);
+  const [destResults, setDestResults] = useState<GeoLocation[]>([]);
+  const [isSearchingOrigin, setIsSearchingOrigin] = useState(false);
+  const [isSearchingDest, setIsSearchingDest] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [searchUserGps, setSearchUserGps] = useState<{ lat: number; lon: number } | null>(null);
+  const originInputRef = useRef<TextInput | null>(null);
+  const destInputRef = useRef<TextInput | null>(null);
+  const originDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const destDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [rides, setRides] = useState<PartnerRideRow[]>([]);
   const [loadingRides, setLoadingRides] = useState(true);
   const [orderSheetOpen, setOrderSheetOpen] = useState(false);
@@ -122,11 +143,106 @@ export default function PartnerHomeScreen() {
     return filterPartnerVisibleRides(list).filter((r) => !dismissedRideIdsRef.current.has(r.id));
   }, []);
 
-  const refreshPickup = useCallback(async () => {
-    setLoadingLocation(true);
+  const refreshGpsStart = useCallback(async () => {
+    setGpsLoading(true);
     const result = await resolvePartnerPickupFromGps();
-    setPickup(result.ok ? result.place : null);
-    setLoadingLocation(false);
+    setGpsLoading(false);
+    if (!result.ok) {
+      Alert.alert("Standort", result.message);
+      return;
+    }
+    setSearchUserGps({ lat: result.place.lat, lon: result.place.lon });
+    setFromPlace(result.place);
+    setOriginQuery(result.place.label);
+    setOriginResults([]);
+    setIsEditingOrigin(false);
+    setTimeout(() => destInputRef.current?.focus(), 100);
+  }, []);
+
+  const handleOriginQueryChange = useCallback(
+    (text: string) => {
+      setOriginQuery(text);
+      if (fromPlace) setFromPlace(null);
+      if (originDebounceRef.current) clearTimeout(originDebounceRef.current);
+      if (text.length < 2) {
+        setOriginResults([]);
+        setIsSearchingOrigin(false);
+        return;
+      }
+      setIsSearchingOrigin(true);
+      originDebounceRef.current = setTimeout(async () => {
+        try {
+          const locs = await searchLocation(text, searchUserGps ?? undefined);
+          setOriginResults(locs.slice(0, 5));
+        } catch {
+          setOriginResults([]);
+        } finally {
+          setIsSearchingOrigin(false);
+        }
+      }, 300);
+    },
+    [fromPlace, searchUserGps],
+  );
+
+  const handleDestQueryChange = useCallback(
+    (text: string) => {
+      setDestQuery(text);
+      if (toPlace) setToPlace(null);
+      if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+      if (text.length < 2) {
+        setDestResults([]);
+        setIsSearchingDest(false);
+        return;
+      }
+      setIsSearchingDest(true);
+      destDebounceRef.current = setTimeout(async () => {
+        try {
+          const locs = await searchLocation(text, searchUserGps ?? undefined);
+          setDestResults(locs.slice(0, 6));
+        } catch {
+          setDestResults([]);
+        } finally {
+          setIsSearchingDest(false);
+        }
+      }, 300);
+    },
+    [searchUserGps, toPlace],
+  );
+
+  const pickFromLive = useCallback((loc: GeoLocation) => {
+    const place = geoLocationToPartnerRoutePlace(loc);
+    const check = validatePartnerRoutePlace(place, "from");
+    if (!check.ok) {
+      Alert.alert("Adresse unvollständig", check.message);
+      return;
+    }
+    setFromPlace(place);
+    setOriginQuery(place.label);
+    setOriginResults([]);
+    setIsEditingOrigin(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTimeout(() => destInputRef.current?.focus(), 100);
+  }, []);
+
+  const pickToLive = useCallback((loc: GeoLocation) => {
+    const place = geoLocationToPartnerRoutePlace(loc);
+    const check = validatePartnerRoutePlace(place, "to");
+    if (!check.ok) {
+      Alert.alert("Adresse unvollständig", check.message);
+      return;
+    }
+    setToPlace(place);
+    setDestQuery(place.label);
+    setDestResults([]);
+    setIsEditingOrigin(false);
+    Keyboard.dismiss();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
+
+  const clearDestQuery = useCallback(() => {
+    setDestQuery("");
+    setDestResults([]);
+    setToPlace(null);
   }, []);
 
   const refreshAcceptedTrackingInfo = useCallback(
@@ -208,11 +324,12 @@ export default function PartnerHomeScreen() {
     }, [booting, token, loadRides]),
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      void refreshPickup();
-    }, [refreshPickup]),
-  );
+  useEffect(() => {
+    return () => {
+      if (originDebounceRef.current) clearTimeout(originDebounceRef.current);
+      if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+    };
+  }, []);
 
   const visibleRides = useMemo(() => toUiRideList(rides), [rides, toUiRideList]);
 
@@ -267,16 +384,20 @@ export default function PartnerHomeScreen() {
     router.replace("/");
   };
 
+  const routeReady = Boolean(fromPlace && toPlace);
+  const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
+  const showDestResults = !isEditingOrigin && destResults.length > 0;
+
   const handleOpenOrder = () => {
-    if (!pickup || atOpenLimit) return;
+    if (!fromPlace || !toPlace || atOpenLimit) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setOrderSheetOpen(true);
   };
 
   const handleConfirmOrder = async (mode: "now" | "reservation", note: string, scheduledAt: string | null) => {
-    if (!token || !user || !pickup) return;
+    if (!token || !user || !fromPlace || !toPlace) return;
     setOrdering(true);
-    const result = await createPartnerTaxiRide(token, user, pickup, { mode, note, scheduledAt });
+    const result = await createPartnerTaxiRide(token, user, fromPlace, toPlace, { mode, note, scheduledAt });
     setOrdering(false);
     if (!result.ok) {
       if (result.unauthorized) {
@@ -404,29 +525,36 @@ export default function PartnerHomeScreen() {
         contentContainerStyle={{ paddingBottom: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.pickupCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
-          <View style={styles.pickupMainRow}>
-            <View style={styles.iconCircle}>
-              <Feather name="map-pin" size={14} color={PARTNER_GREEN} />
-            </View>
-            <View style={styles.pickupBody}>
-              <View style={styles.pickupHeaderRow}>
-                <Text style={styles.pickupLabel}>Abholadresse</Text>
-                <Pressable onPress={() => void refreshPickup()} disabled={loadingLocation}>
-                  <Text style={styles.refreshLink}>{loadingLocation ? "…" : "Standort aktualisieren"}</Text>
-                </Pressable>
-              </View>
-              {loadingLocation ? (
-                <ActivityIndicator color={PARTNER_GREEN} style={styles.pickupLoader} />
-              ) : pickup ? (
-                <Text style={styles.pickupValue}>{pickup.full}</Text>
-              ) : (
-                <Text style={styles.pickupValue}>
-                  Standort nicht verfügbar. Bitte GPS erlauben und „Standort aktualisieren“ tippen.
-                </Text>
-              )}
-            </View>
-          </View>
+        <View style={styles.routeBlock}>
+          <LiveSearchRouteCard
+            isEditingOrigin={isEditingOrigin}
+            originQuery={originQuery}
+            destQuery={destQuery}
+            onOriginQueryChange={handleOriginQueryChange}
+            onDestQueryChange={handleDestQueryChange}
+            onFocusOrigin={() => setIsEditingOrigin(true)}
+            onFocusDest={() => setIsEditingOrigin(false)}
+            originInputRef={originInputRef}
+            destInputRef={destInputRef}
+            gpsLoading={gpsLoading}
+            onGpsPress={() => void refreshGpsStart()}
+            isSearchingDest={isSearchingDest}
+            onClearDest={clearDestQuery}
+          />
+          {showOriginResults ? (
+            <LiveSearchResultGroup
+              locations={originResults}
+              loading={isSearchingOrigin}
+              onPick={pickFromLive}
+            />
+          ) : null}
+          {showDestResults ? (
+            <LiveSearchResultGroup
+              locations={destResults}
+              isDestination
+              onPick={pickToLive}
+            />
+          ) : null}
         </View>
 
         <View style={styles.statsGrid}>
@@ -522,11 +650,11 @@ export default function PartnerHomeScreen() {
               backgroundColor: PARTNER_GREEN,
               paddingVertical: 18,
               borderRadius: 14,
-              opacity: pressed || !pickup || loadingLocation || atOpenLimit ? 0.85 : 1,
+              opacity: pressed || !routeReady || atOpenLimit ? 0.85 : 1,
             })
           }
           onPress={handleOpenOrder}
-          disabled={!pickup || loadingLocation || atOpenLimit}
+          disabled={!routeReady || atOpenLimit}
         >
           <Feather name="navigation" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
           <Text style={loginActionLabelStyle({ color: "#fff" })}>Taxi bestellen</Text>
@@ -535,7 +663,8 @@ export default function PartnerHomeScreen() {
 
       <PartnerOrderSheet
         visible={orderSheetOpen}
-        pickupLabel={pickup?.full ?? ""}
+        fromLabel={fromPlace?.full ?? ""}
+        toLabel={toPlace?.full ?? ""}
         submitting={ordering}
         onClose={() => setOrderSheetOpen(false)}
         onConfirm={(mode, note, scheduledAt) => void handleConfirmOrder(mode, note, scheduledAt)}
@@ -642,36 +771,7 @@ const styles = StyleSheet.create({
   },
   inboxBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" },
   logoutBtn: { width: 40, height: PARTNER_HEADER_H, alignItems: "center", justifyContent: "center" },
-  pickupCard: {
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 8,
-    paddingHorizontal: 9,
-    marginBottom: 18,
-  },
-  pickupMainRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  pickupBody: { flex: 1, minWidth: 0, gap: 4 },
-  pickupHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  pickupLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    flexShrink: 1,
-  },
-  refreshLink: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: PARTNER_GREEN, flexShrink: 0 },
-  pickupLoader: { alignSelf: "flex-start", marginVertical: 4 },
-  pickupValue: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#111", lineHeight: 21 },
+  routeBlock: { marginBottom: 18, gap: 8 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
   statTile: {
     width: "48%",
