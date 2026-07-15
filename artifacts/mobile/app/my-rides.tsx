@@ -1115,7 +1115,7 @@ export default function MyRidesScreen() {
 
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
                     <Pressable
-                      style={[styles.pdfBtn, { flex: 1 }]}
+                      style={[styles.pdfBtn, styles.pastRideActionBorder, { flex: 1 }]}
                       onPress={(ev) => {
                         ev?.stopPropagation?.();
                         handleDownloadReceipt(ride);
@@ -1125,7 +1125,7 @@ export default function MyRidesScreen() {
                       <Text style={styles.pdfBtnText}>Quittung</Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1 }]}
+                      style={[styles.rideSupportRowCompact, styles.pastRideActionBorder, { flex: 1 }]}
                       onPress={(ev) => {
                         ev?.stopPropagation?.();
                         openRideDetail(ride.id, { focusSupport: true });
@@ -1685,7 +1685,12 @@ const styles = StyleSheet.create({
     paddingVertical: rs(8),
     paddingHorizontal: rs(6),
     borderRadius: rs(8),
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  /** Abgelaufen: Quittung/Hilfe — schwarzer, feiner Rahmen. */
+  pastRideActionBorder: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#111827",
   },
   rideSupportText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
   actionRow:       { flexDirection: "row", gap: rs(6), marginTop: rs(0) },
