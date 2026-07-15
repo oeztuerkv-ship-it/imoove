@@ -56,6 +56,7 @@ import AppOperationalBookingRulesPage from "./pages/AppOperationalBookingRulesPa
 import AppOperationalSystemPage from "./pages/AppOperationalSystemPage.jsx";
 import CustomerAccountsPage from "./pages/CustomerAccountsPage.jsx";
 import CustomersPage from "./pages/CustomersPage.jsx";
+import CancellationSuspensionsPage from "./pages/CancellationSuspensionsPage.jsx";
 import AppNewsPage from "./pages/AppNewsPage.jsx";
 import AppFaqPage from "./pages/AppFaqPage.jsx";
 import AppSponsorsPage from "./pages/AppSponsorsPage.jsx";
@@ -338,6 +339,10 @@ const PAGE_META = {
   "customer-accounts": {
     title: "Kundenkonten (App)",
     subtitle: "Registrierte Endkunden per E-Mail und Passwort",
+  },
+  "cancellation-suspensions": {
+    title: "Storno-Sperren",
+    subtitle: "Aktive System-Sperren (Kunde/Fahrer) wegen zu vieler Stornos — manuell entsperren",
   },
   "app-news": {
     title: "App-Neuigkeiten",
@@ -917,6 +922,8 @@ export default function App() {
         return <CustomerAccountsPage />;
       case "customers":
         return <CustomersPage />;
+      case "cancellation-suspensions":
+        return <CancellationSuspensionsPage />;
       case "app-news":
         return <AppNewsPage />;
       case "app-faq":

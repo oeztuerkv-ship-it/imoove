@@ -157,3 +157,31 @@ export async function upsertFleetDriverCancellationSuspension(input: {
   if (!row) throw new Error("suspension_upsert_failed");
   return row;
 }
+
+export async function liftFleetDriverCancellationSuspension(
+  fleetDriverId: string,
+  liftedByAdmin: string,
+): Promise<boolean> {
+  if (!isPostgresConfigured()) return false;
+  const db = getDb();
+  if (!db) return false;
+  const did = fleetDriverId.trim();
+  const admin = liftedByAdmin.trim();
+  if (!did) return false;
+  const now = new Date();
+  const rows = await db
+    .update(fleetDriverCancellationSuspensionTable)
+    .set({
+      lifted_at: now,
+      lifted_by_admin: admin || null,
+      updated_at: now,
+    })
+    .where(
+      and(
+        eq(fleetDriverCancellationSuspensionTable.fleet_driver_id, did),
+        isNull(fleetDriverCancellationSuspensionTable.lifted_at),
+      ),
+    )
+    .returning({ fleet_driver_id: fleetDriverCancellationSuspensionTable.fleet_driver_id });
+  return rows.length > 0;
+}
