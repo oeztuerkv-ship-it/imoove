@@ -66,9 +66,41 @@ const BY_KIND = {
     "company_rides",
     "recurring_rides",
   ],
+  travel: [
+    "overview",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides",
+  ],
+  agency: [
+    "overview",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides",
+  ],
   voucher_client: ["overview", "support", "help", "rides_list", "rides_create", "company_profile", "team", "access_codes", "billing"],
   general: GENERAL_LIKE,
 };
+
+/** Katalog-Reihenfolge — alle für `companyKind` erlaubten Module (Default bei panel_modules = null). */
+export function defaultPanelModuleIdsForCompanyKind(companyKind) {
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind);
+  return ALL.filter((id) => allowed.has(id));
+}
 
 export function allowedPanelModuleIdsForCompanyKind(companyKind) {
   const k = String(companyKind || "general").trim();

@@ -1885,7 +1885,7 @@ adminJson.get("/companies/:companyId/mandate-read", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    res.json({ ok: true, ...data });
+    res.json({ ok: true, ...data, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
   } catch (e) {
     next(e);
   }

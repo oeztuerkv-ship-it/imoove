@@ -551,6 +551,7 @@ export default function CompanyMandateDetailPage({
             company={c}
             billingAccount={data.billingAccount}
             billingAccountEmail={data.billingAccountEmail}
+            panelModuleCatalog={data.panelModuleCatalog}
             onSaved={loadMandate}
           />
 

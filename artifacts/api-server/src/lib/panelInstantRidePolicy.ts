@@ -1,7 +1,15 @@
 import type { PanelCompanyKind } from "../db/panelCompanyData";
 
 /** Mandanten-Typen, die Sofortfahrten über POST /panel/v1/rides buchen dürfen. */
-const INSTANT_RIDE_PANEL_COMPANY_KINDS = new Set<PanelCompanyKind>(["hotel", "corporate", "taxi"]);
+const INSTANT_RIDE_PANEL_COMPANY_KINDS = new Set<string>([
+  "hotel",
+  "corporate",
+  "taxi",
+  "travel",
+  "agency",
+  "voucher_client",
+  "general",
+]);
 
 export function panelCompanyKindAllowsInstantRide(companyKind: PanelCompanyKind | string | null | undefined): boolean {
   const k = String(companyKind ?? "").trim() as PanelCompanyKind;

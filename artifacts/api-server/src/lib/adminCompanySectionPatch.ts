@@ -1,3 +1,4 @@
+import { forbiddenPanelModulesForCompanyKind } from "../domain/adminCompanyKindPanelModules";
 import type { AdminCompanyUpdateBody } from "../db/adminData";
 import { findCompanyById, updateAdminCompany } from "../db/adminData";
 import { patchCompanyOnboardingStatus } from "../db/companyOnboardingData";
@@ -135,6 +136,19 @@ export async function patchAdminCompanySection(
   const fieldErrors = validateAdminCompanyPatchBody(body);
   if (Object.keys(fieldErrors).length > 0) {
     return { ok: false, error: "validation_failed", fieldErrors };
+  }
+
+  if (section === "status" && Array.isArray(body.panel_modules) && body.panel_modules.length > 0) {
+    const bad = forbiddenPanelModulesForCompanyKind(before.company_kind, body.panel_modules);
+    if (bad.length > 0) {
+      return {
+        ok: false,
+        error: "panel_modules_forbidden_for_company_kind",
+        fieldErrors: {
+          panel_modules: `Für Mandanten-Typ „${before.company_kind}“ nicht erlaubt: ${bad.join(", ")}`,
+        },
+      };
+    }
   }
 
   const billingExtra = {

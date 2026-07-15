@@ -136,16 +136,28 @@ export async function partnerCreateRide(
   if (res.status === 401) {
     return { ok: false, unauthorized: true, message: "Sitzung abgelaufen." };
   }
-  if (res.status === 403) {
-    return { ok: false, message: "Keine Berechtigung für diese Aktion." };
-  }
   const data = (await res.json().catch(() => ({}))) as {
     ok?: boolean;
     ride?: PartnerRideRow;
     error?: string;
     message?: string;
+    hint?: string;
     maxOpen?: number;
   };
+  if (res.status === 403) {
+    const err = data.error;
+    const hint = data.hint;
+    if (err === "module_disabled" && hint === "rides_create") {
+      return { ok: false, message: "Taxi buchen ist für Ihr Unternehmen nicht freigeschaltet — bitte Plattform-Admin kontaktieren." };
+    }
+    if (err === "company_kind_not_allowed_for_instant_ride") {
+      return { ok: false, message: "Sofortfahrten sind für Ihren Mandantentyp nicht freigeschaltet — Reservierung wählen." };
+    }
+    if (err === "forbidden" && hint === "rides.create") {
+      return { ok: false, message: "Ihr Panel-Zugang darf keine Fahrten anlegen (Rolle prüfen)." };
+    }
+    return { ok: false, message: "Keine Berechtigung für diese Aktion." };
+  }
   if (!res.ok) {
     if (data.error === "open_rides_limit_reached") {
       return {

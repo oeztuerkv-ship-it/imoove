@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminOnboardingBlockFooter from "./AdminOnboardingBlockFooter";
+import CompanyPanelModulesSection from "./CompanyPanelModulesSection.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminFetch, getAdminSessionToken, isAdminSessionConfigured } from "../lib/adminApiHeaders.js";
 import {
@@ -81,6 +82,9 @@ function formatPatchError(res, json) {
     return "Rechnungs-Prefix: mindestens 2 Zeichen — leer lassen, wenn unverändert.";
   }
   if (code === "invoice_prefix_too_long") return "Rechnungs-Prefix: maximal 8 Zeichen.";
+  if (code === "panel_modules_forbidden_for_company_kind") {
+    return String(json?.fieldErrors?.panel_modules || json?.hint || "Modul-Auswahl passt nicht zum Mandantentyp.");
+  }
   return code || `Speichern fehlgeschlagen (HTTP ${res.status})`;
 }
 
@@ -107,6 +111,7 @@ export default function CompanyMandateEditBlocks({
   company,
   billingAccount,
   billingAccountEmail,
+  panelModuleCatalog,
   onSaved,
 }) {
   const c = company;
@@ -651,6 +656,17 @@ export default function CompanyMandateEditBlocks({
           }}
         />
       </section>
+
+      <CompanyPanelModulesSection
+        companyKind={c.company_kind}
+        storedModules={c.panel_modules}
+        moduleCatalog={panelModuleCatalog}
+        busy={busy === "panel_modules"}
+        fieldError={fieldErrors.panel_modules}
+        onSave={(panel_modules) =>
+          saveSection("status", { panel_modules }, null, "panel_modules")
+        }
+      />
 
       <section className="admin-section-block admin-onb-block">
         <div className="admin-m-card__h">
