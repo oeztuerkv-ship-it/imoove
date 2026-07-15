@@ -54,7 +54,12 @@ router.get("/", async (req: Request, res: Response, next) => {
       })),
     });
   } catch (e) {
-    next(e);
+    const msg = e instanceof Error ? e.message : String(e ?? "");
+    req.log?.error?.({ err: e, route: "admin.cancellation-suspensions.list" }, "cancellation_suspensions_list_failed");
+    res.status(500).json({
+      error: "cancellation_suspensions_list_failed",
+      message: msg.slice(0, 300) || "Interner Fehler beim Laden der Storno-Sperren.",
+    });
   }
 });
 

@@ -62,7 +62,13 @@ export default function CancellationSuspensionsPage() {
       const res = await adminFetch(u.toString());
       const { data } = await readJson(res);
       if (!res.ok || !data?.ok) {
-        throw new Error(typeof data?.error === "string" ? data.error : `HTTP ${res.status}`);
+        const detail =
+          typeof data?.message === "string"
+            ? data.message
+            : typeof data?.error === "string"
+              ? data.error
+              : `HTTP ${res.status}`;
+        throw new Error(detail);
       }
       setCustomers(Array.isArray(data.customers) ? data.customers : []);
       setDrivers(Array.isArray(data.drivers) ? data.drivers : []);

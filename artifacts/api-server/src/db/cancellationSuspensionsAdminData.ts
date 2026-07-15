@@ -1,13 +1,15 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "./client";
+import { countPassengerCancellationsInLast24Hours } from "./customerCancellationSuspensionData";
 import {
-  CUSTOMER_CANCELLATION_WINDOW_HOURS,
-  CUSTOMER_CANCELLATION_THRESHOLD,
-} from "../lib/customerCancellationSuspensionPolicy";
-import {
+  countFleetDriverPostAcceptCancellationsInWindow,
   FLEET_DRIVER_CANCELLATION_THRESHOLD,
   FLEET_DRIVER_CANCELLATION_WINDOW_DAYS,
 } from "./fleetDriverCancellationSuspensionData";
+import {
+  CUSTOMER_CANCELLATION_THRESHOLD,
+  CUSTOMER_CANCELLATION_WINDOW_HOURS,
+} from "../lib/customerCancellationSuspensionPolicy";
 
 export type CustomerCancellationSuspensionAdminItem = {
   passengerId: string;
@@ -51,7 +53,6 @@ type CustomerSuspensionRow = {
   suspended_at: Date | string;
   suspended_until: Date | string;
   reason: string | null;
-  cancellation_count_in_window: number | string | null;
 };
 
 type DriverSuspensionRow = {
@@ -65,7 +66,6 @@ type DriverSuspensionRow = {
   suspended_at: Date | string;
   suspended_until: Date | string;
   reason: string | null;
-  cancellation_count_in_window: number | string | null;
 };
 
 function iso(v: Date | string | null | undefined): string {
@@ -73,30 +73,42 @@ function iso(v: Date | string | null | undefined): string {
   return v instanceof Date ? v.toISOString() : String(v);
 }
 
-function suspensionSearchSql(q: string, columns: ReturnType<typeof sql>[]) {
+function customerSearchSql(q: string) {
   const needle = q.trim();
   if (!needle) return sql``;
   const pattern = `%${needle.replace(/[%_\\]/g, "\\$&")}%`;
-  return sql`AND (${sql.join(
-    columns.map((col) => sql`${col} ILIKE ${pattern}`),
-    sql` OR `,
-  )})`;
+  return sql`AND (
+    COALESCE(pp.name, '') ILIKE ${pattern}
+    OR COALESCE(pp.email, '') ILIKE ${pattern}
+    OR s.passenger_id ILIKE ${pattern}
+  )`;
 }
 
-export async function listActiveCancellationSuspensionsAdmin(input?: {
-  q?: string;
-}): Promise<CancellationSuspensionsAdminListResult> {
+function driverSearchSql(q: string) {
+  const needle = q.trim();
+  if (!needle) return sql``;
+  const pattern = `%${needle.replace(/[%_\\]/g, "\\$&")}%`;
+  return sql`AND (
+    COALESCE(fd.first_name, '') ILIKE ${pattern}
+    OR COALESCE(fd.last_name, '') ILIKE ${pattern}
+    OR COALESCE(fd.email, '') ILIKE ${pattern}
+    OR COALESCE(ac.name, '') ILIKE ${pattern}
+    OR s.fleet_driver_id ILIKE ${pattern}
+  )`;
+}
+
+function isMissingRelationError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  return /relation .* does not exist|42P01/i.test(msg);
+}
+
+async function listActiveCustomerCancellationSuspensionsAdmin(
+  q: string,
+): Promise<CustomerCancellationSuspensionAdminItem[]> {
   const db = getDb();
   if (!db) throw new Error("database_not_configured");
-  const q = typeof input?.q === "string" ? input.q.trim() : "";
 
-  const customerSearch = suspensionSearchSql(q, [
-    sql`COALESCE(pp.name, '')`,
-    sql`COALESCE(pp.email, '')`,
-    sql`s.passenger_id`,
-  ]);
-
-  const customerRows = await db.execute(sql`
+  const result = await db.execute(sql`
     SELECT
       s.passenger_id,
       COALESCE(pp.name, '') AS name,
@@ -104,43 +116,39 @@ export async function listActiveCancellationSuspensionsAdmin(input?: {
       COALESCE(pp.auth_provider, '') AS auth_provider,
       s.suspended_at,
       s.suspended_until,
-      s.reason,
-      (
-        COALESCE(
-          NULLIF((
-            SELECT COUNT(*)::int
-            FROM ride_events re
-            WHERE re.event_type = 'cancel_reason'
-              AND re.actor_type = 'passenger'
-              AND re.actor_id = s.passenger_id
-              AND re.created_at >= NOW() - (${CUSTOMER_CANCELLATION_WINDOW_HOURS}::int * INTERVAL '1 hour')
-          ), 0),
-          (
-            SELECT COUNT(*)::int
-            FROM rides r
-            WHERE r.passenger_id = s.passenger_id
-              AND r.status = 'cancelled_by_customer'
-              AND r.updated_at >= NOW() - (${CUSTOMER_CANCELLATION_WINDOW_HOURS}::int * INTERVAL '1 hour')
-          )
-        )
-      ) AS cancellation_count_in_window
+      s.reason
     FROM customer_cancellation_suspension s
     LEFT JOIN passenger_profiles pp ON pp.passenger_id = s.passenger_id
     WHERE s.lifted_at IS NULL
       AND s.suspended_until >= NOW()
-      ${customerSearch}
+      ${customerSearchSql(q)}
     ORDER BY s.suspended_until DESC
   `);
 
-  const driverSearch = suspensionSearchSql(q, [
-    sql`COALESCE(fd.first_name, '')`,
-    sql`COALESCE(fd.last_name, '')`,
-    sql`COALESCE(fd.email, '')`,
-    sql`COALESCE(ac.name, '')`,
-    sql`s.fleet_driver_id`,
-  ]);
+  const rows = result.rows as CustomerSuspensionRow[];
+  return Promise.all(
+    rows.map(async (row) => ({
+      passengerId: row.passenger_id,
+      name: row.name ?? "",
+      email: row.email ?? "",
+      authProvider: row.auth_provider ?? "",
+      suspendedAt: iso(row.suspended_at),
+      suspendedUntil: iso(row.suspended_until),
+      reason: row.reason ?? "",
+      cancellationCountInWindow: await countPassengerCancellationsInLast24Hours(row.passenger_id),
+      cancellationThreshold: CUSTOMER_CANCELLATION_THRESHOLD,
+      windowHours: CUSTOMER_CANCELLATION_WINDOW_HOURS,
+    })),
+  );
+}
 
-  const driverRows = await db.execute(sql`
+async function listActiveFleetDriverCancellationSuspensionsAdmin(
+  q: string,
+): Promise<FleetDriverCancellationSuspensionAdminItem[]> {
+  const db = getDb();
+  if (!db) throw new Error("database_not_configured");
+
+  const result = await db.execute(sql`
     SELECT
       s.fleet_driver_id,
       s.company_id,
@@ -151,64 +159,60 @@ export async function listActiveCancellationSuspensionsAdmin(input?: {
       COALESCE(fd.phone, '') AS phone,
       s.suspended_at,
       s.suspended_until,
-      s.reason,
-      (
-        COALESCE(
-          NULLIF((
-            SELECT COUNT(*)::int
-            FROM ride_events re
-            WHERE re.event_type = 'driver_post_accept_cancel'
-              AND re.actor_id = s.fleet_driver_id
-              AND re.created_at >= NOW() - (${FLEET_DRIVER_CANCELLATION_WINDOW_DAYS}::int * INTERVAL '1 day')
-              AND COALESCE(re.payload->>'companyId', '') = s.company_id
-          ), 0),
-          (
-            SELECT COUNT(*)::int
-            FROM rides r
-            WHERE r.driver_id = s.fleet_driver_id
-              AND r.company_id = s.company_id
-              AND r.status = 'cancelled_by_driver'
-              AND r.updated_at >= NOW() - (${FLEET_DRIVER_CANCELLATION_WINDOW_DAYS}::int * INTERVAL '1 day')
-          )
-        )
-      ) AS cancellation_count_in_window
+      s.reason
     FROM fleet_driver_cancellation_suspension s
     JOIN fleet_drivers fd ON fd.id = s.fleet_driver_id
     LEFT JOIN admin_companies ac ON ac.id = s.company_id
     WHERE s.lifted_at IS NULL
       AND s.suspended_until >= NOW()
-      ${driverSearch}
+      ${driverSearchSql(q)}
     ORDER BY s.suspended_until DESC
   `);
 
-  const customers = (customerRows.rows as CustomerSuspensionRow[]).map((row) => ({
-    passengerId: row.passenger_id,
-    name: row.name ?? "",
-    email: row.email ?? "",
-    authProvider: row.auth_provider ?? "",
-    suspendedAt: iso(row.suspended_at),
-    suspendedUntil: iso(row.suspended_until),
-    reason: row.reason ?? "",
-    cancellationCountInWindow: Number(row.cancellation_count_in_window ?? 0),
-    cancellationThreshold: CUSTOMER_CANCELLATION_THRESHOLD,
-    windowHours: CUSTOMER_CANCELLATION_WINDOW_HOURS,
-  }));
+  const rows = result.rows as DriverSuspensionRow[];
+  return Promise.all(
+    rows.map(async (row) => ({
+      fleetDriverId: row.fleet_driver_id,
+      companyId: row.company_id,
+      companyName: row.company_name ?? row.company_id,
+      firstName: row.first_name ?? "",
+      lastName: row.last_name ?? "",
+      email: row.email ?? "",
+      phone: row.phone ?? "",
+      suspendedAt: iso(row.suspended_at),
+      suspendedUntil: iso(row.suspended_until),
+      reason: row.reason ?? "",
+      cancellationCountInWindow: await countFleetDriverPostAcceptCancellationsInWindow(
+        row.fleet_driver_id,
+        row.company_id,
+      ),
+      cancellationThreshold: FLEET_DRIVER_CANCELLATION_THRESHOLD,
+      windowDays: FLEET_DRIVER_CANCELLATION_WINDOW_DAYS,
+    })),
+  );
+}
 
-  const drivers = (driverRows.rows as DriverSuspensionRow[]).map((row) => ({
-    fleetDriverId: row.fleet_driver_id,
-    companyId: row.company_id,
-    companyName: row.company_name ?? row.company_id,
-    firstName: row.first_name ?? "",
-    lastName: row.last_name ?? "",
-    email: row.email ?? "",
-    phone: row.phone ?? "",
-    suspendedAt: iso(row.suspended_at),
-    suspendedUntil: iso(row.suspended_until),
-    reason: row.reason ?? "",
-    cancellationCountInWindow: Number(row.cancellation_count_in_window ?? 0),
-    cancellationThreshold: FLEET_DRIVER_CANCELLATION_THRESHOLD,
-    windowDays: FLEET_DRIVER_CANCELLATION_WINDOW_DAYS,
-  }));
+export async function listActiveCancellationSuspensionsAdmin(input?: {
+  q?: string;
+}): Promise<CancellationSuspensionsAdminListResult> {
+  const q = typeof input?.q === "string" ? input.q.trim() : "";
+
+  let customers: CustomerCancellationSuspensionAdminItem[] = [];
+  let drivers: FleetDriverCancellationSuspensionAdminItem[] = [];
+
+  try {
+    customers = await listActiveCustomerCancellationSuspensionsAdmin(q);
+  } catch (e) {
+    if (!isMissingRelationError(e)) throw e;
+    customers = [];
+  }
+
+  try {
+    drivers = await listActiveFleetDriverCancellationSuspensionsAdmin(q);
+  } catch (e) {
+    if (!isMissingRelationError(e)) throw e;
+    drivers = [];
+  }
 
   return { customers, drivers };
 }
