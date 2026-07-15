@@ -1832,19 +1832,6 @@ export default function StatusScreen() {
         ) : null}
 
         <View style={styles.trackingActionRow}>
-          {driverPhone ? (
-            <Pressable
-              style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
-              accessibilityLabel="Anrufen"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                handleCallDriver();
-              }}
-            >
-              <Feather name="phone" size={rf(20)} color="#111827" />
-              <Text style={styles.trackingChatActionText}>Anrufen</Text>
-            </Pressable>
-          ) : null}
           {rideChatEnabled ? (
             <Pressable
               style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
@@ -1883,7 +1870,7 @@ export default function StatusScreen() {
             <View style={styles.trackingCancelIconCircle}>
               <Feather name="x" size={rf(18)} color="#FFFFFF" />
             </View>
-            <Text style={styles.trackingCancelText}>Fahrt stornieren</Text>
+            <Text style={styles.trackingCancelText}>Stornieren</Text>
           </Pressable>
         </View>
       </View>
@@ -2205,8 +2192,8 @@ const styles = StyleSheet.create({
     flex: 1,
     height: rs(48),
     borderRadius: rs(14),
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderWidth: 2,
+    borderColor: "#000000",
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
