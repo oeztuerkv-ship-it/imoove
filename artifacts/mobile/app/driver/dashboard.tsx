@@ -2497,6 +2497,13 @@ function ActiveRideScreen({
       setShowPriceModal(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await onComplete(fare);
+    } catch (e) {
+      const err = e as Error & { userMessage?: string };
+      Alert.alert(
+        "Abschluss fehlgeschlagen",
+        err.userMessage ?? err.message ?? "Endpreis konnte nicht gespeichert werden.",
+      );
+      setShowPriceModal(true);
     } finally {
       setCompletingRide(false);
     }
@@ -3898,13 +3905,10 @@ export default function DriverDashboard() {
     }
   };
   const handleComplete = async (id: string, finalFare: number) => {
-    try {
-      await completeRequest(id, finalFare);
-    } finally {
-      disconnectSocket();
-      await refreshRequests();
-      setActiveTab("fahrten");
-    }
+    await completeRequest(id, finalFare);
+    disconnectSocket();
+    await refreshRequests();
+    setActiveTab("fahrten");
   };
   const handleCancel = async (id: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);

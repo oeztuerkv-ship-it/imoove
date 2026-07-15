@@ -38,6 +38,10 @@ import {
 import { logger } from "../lib/logger";
 import { logRideAntiFraudAttempt } from "../lib/rideAntiFraud";
 import { evaluateFinalFarePlausibility } from "../lib/driverFinalFarePlausibility";
+import {
+  computeRideCompletionGpsMetrics,
+  evaluateMinimumTransportForPositiveFare,
+} from "../lib/rideMinimumTransportGuard";
 import { resolveReceiptDriverInfo, type ReceiptDriverInfo } from "../lib/receiptDriverInfo";
 import { validateRideStatusTransition } from "../lib/rideOpsTransitionGuards";
 import { markDispatchOfferAccepted } from "../db/rideDispatchOfferData";
@@ -2538,25 +2542,33 @@ export async function patchRideStatusRoute(
 
     let gpsActualPatch: Partial<Pick<RideRequest, "actualDistanceKm" | "actualDurationMinutes">> = {};
     if (nextStatus === "completed") {
-      const completedAt = new Date();
-      const tripStartedAtSource =
-        cur.driverTripStartedAt ??
-        (tripStartWaitingPatch.driverTripStartedAt as string | undefined) ??
-        null;
-      const tripStartedAt = tripStartedAtSource ? new Date(tripStartedAtSource) : null;
-      const { listRideLocationHistory } = await import("../db/rideLocationHistoryData.js");
-      const { computeRideGpsTrackMetrics } = await import("../lib/rideGpsTrackMetrics.js");
-      const historyPoints = await listRideLocationHistory(id);
-      const metrics = computeRideGpsTrackMetrics(
-        historyPoints.map((p) => ({ lat: p.lat, lon: p.lon, recordedAt: p.recordedAt })),
-        tripStartedAt,
-        completedAt,
-      );
-      if (metrics) {
+      const completionGpsMetrics = await computeRideCompletionGpsMetrics(id, cur, tripStartWaitingPatch);
+      if (completionGpsMetrics) {
         gpsActualPatch = {
-          actualDistanceKm: metrics.distanceKm,
-          actualDurationMinutes: metrics.durationMinutes,
+          actualDistanceKm: completionGpsMetrics.distanceKm,
+          actualDurationMinutes: completionGpsMetrics.durationMinutes,
         };
+      }
+
+      if (
+        cur.status === "in_progress" &&
+        finalFareForPatch != null &&
+        Number.isFinite(finalFareForPatch) &&
+        finalFareForPatch > 0.009
+      ) {
+        const transportGuard = evaluateMinimumTransportForPositiveFare(
+          completionGpsMetrics,
+          finalFareForPatch,
+        );
+        if (!transportGuard.ok) {
+          res.status(400).json({
+            error: transportGuard.error,
+            message: transportGuard.message,
+            actualDistanceKm: transportGuard.actualDistanceKm,
+            actualDurationMinutes: transportGuard.actualDurationMinutes,
+          });
+          return;
+        }
       }
     }
 

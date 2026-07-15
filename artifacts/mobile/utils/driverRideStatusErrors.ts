@@ -21,6 +21,8 @@ export function driverRideStatusUserMessage(
     trip_start_geofence_failed: "Fahrtbeginn nur in der Nähe des Abholorts möglich.",
     complete_without_trip_start: "Ohne Fahrtbeginn ist nur 0,00 € oder Storno möglich.",
     complete_trip_not_started: "Bitte Fahrt zum Ziel starten, bevor ein Preis abgerechnet wird.",
+    insufficient_transport_for_fare:
+      "Keine ausreichende Beförderung (unter 0,5 km oder 2 Min.). Bitte mit 0,00 € abschließen — keine Beförderung — oder stornieren.",
     status_transition_invalid: "Dieser Statuswechsel ist gerade nicht erlaubt.",
     no_show_wait_too_short: "Bitte noch etwas am Abholort warten, bevor No-Show gestartet wird.",
     no_show_countdown_not_started: "Bitte zuerst „Kunde nicht da“ starten.",
