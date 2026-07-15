@@ -20,6 +20,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,7 +32,7 @@ import { type RideRequest, useRideRequests } from "@/context/RideRequestContext"
 import type { GeoLocation } from "@/utils/routing";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
+import { customerPayerBlockFromRideRequest, formatCustomerPaymentMethodLabel } from "@/utils/customerBillingCopy";
 import {
   CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
   customerReservationFlowHeadline,
@@ -182,6 +183,38 @@ function geoFromRideRequest(
 }
 
 const TRACKING_ACCENT = "#EF233C";
+const TRACKING_LABEL = "#1C1C1E";
+const TRACKING_SECONDARY = "#8E8E93";
+const TRACKING_BORDER = "#AEAEB2";
+const TRACKING_APPLE_BLUE = "#007AFF";
+
+function statusAppleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
+  if (Platform.OS === "ios") {
+    const map = { regular: "400", medium: "500", semibold: "600", bold: "700" } as const;
+    return { fontWeight: map[weight] };
+  }
+  const inter = {
+    regular: "Inter_400Regular",
+    medium: "Inter_500Medium",
+    semibold: "Inter_600SemiBold",
+    bold: "Inter_700Bold",
+  };
+  return { fontFamily: inter[weight] };
+}
+
+function trackingPaymentPillText(req: RideRequest): string {
+  const block = customerPayerBlockFromRideRequest(req);
+  if (block.title === "Zahlung") {
+    const pm = formatCustomerPaymentMethodLabel(req.paymentMethod);
+    const label = pm === "Bar" ? "Barzahlung" : pm;
+    return `Zahlung: ${label}`;
+  }
+  if (block.title === "Kostenübernahme") {
+    const who = req.accessCodeSummary?.label?.trim();
+    return who ? `Kostenübernahme: ${who}` : "Kostenübernahme";
+  }
+  return block.title;
+}
 
 function splitDestinationLines(displayName: string | undefined): { title: string; sub: string } {
   const raw = (displayName ?? "Ziel").trim();
@@ -211,7 +244,7 @@ function TrackingProgressStep({
   active: boolean;
   iconSet?: "feather" | "mci";
 }) {
-  const color = active ? "#2563EB" : "#9CA3AF";
+  const color = active ? TRACKING_APPLE_BLUE : TRACKING_SECONDARY;
   const size = rf(15);
   return (
     <View
@@ -1772,13 +1805,13 @@ export default function StatusScreen() {
               <MaterialCommunityIcons name="map-marker-check" size={rf(28)} color="#22C55E" />
             ) : (
               <>
-                <Text style={styles.trackingEtaLabel}>{isDriving ? "Ziel in" : "Ankunft in"}</Text>
+                <Text style={[styles.trackingEtaLabel, statusAppleFont("medium")]}>{isDriving ? "Ziel in" : "Ankunft in"}</Text>
                 <View style={styles.trackingEtaValueRow}>
-                  <Text style={styles.trackingEtaNumber}>{eta}</Text>
-                  <Text style={styles.trackingEtaMin}>min</Text>
+                  <Text style={[styles.trackingEtaNumber, statusAppleFont("bold")]}>{eta}</Text>
+                  <Text style={[styles.trackingEtaMin, statusAppleFont("bold")]}>min</Text>
                 </View>
                 {etaDistanceText ? (
-                  <Text style={styles.trackingEtaDistance}>{etaDistanceText}</Text>
+                  <Text style={[styles.trackingEtaDistance, statusAppleFont("regular")]}>{etaDistanceText}</Text>
                 ) : null}
               </>
             )}
@@ -1794,10 +1827,10 @@ export default function StatusScreen() {
               <Text style={styles.trackingDriverAvatarText}>{driverInitials}</Text>
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.trackingDriverName} numberOfLines={1}>
+              <Text style={[styles.trackingDriverName, statusAppleFont("semibold")]} numberOfLines={1}>
                 {driverName}
               </Text>
-              <Text style={styles.trackingDriverStatus} numberOfLines={2}>
+              <Text style={[styles.trackingDriverStatus, statusAppleFont("regular")]} numberOfLines={2}>
                 {driverStatusLabel}
               </Text>
               {driverRating != null ? (
@@ -1827,53 +1860,40 @@ export default function StatusScreen() {
           <TrackingProgressStep icon="flag" label={progressThirdLabel} active={progressActive === 2} />
         </View>
 
-        {effectiveAcceptedRequest ? (
-          <View style={styles.trackingPayerBox}>
-            <Text style={styles.trackingPayerLine} numberOfLines={2}>
-              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).title}:{" "}
-              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).subtitle}
-            </Text>
-          </View>
-        ) : null}
-
         <View style={styles.trackingActionRow}>
+          {effectiveAcceptedRequest ? (
+            <View style={styles.trackingOutlinePill}>
+              <Text style={[styles.trackingPillText, statusAppleFont("regular")]} numberOfLines={1}>
+                {trackingPaymentPillText(effectiveAcceptedRequest)}
+              </Text>
+            </View>
+          ) : null}
+
           {rideChatEnabled ? (
             <Pressable
-              style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
+              style={({ pressed }) => [styles.trackingOutlinePill, pressed && { opacity: 0.88 }]}
               accessibilityLabel="Chat"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleMessage();
               }}
             >
-              <Feather name="message-circle" size={rf(20)} color="#111827" />
-              <Text style={styles.trackingChatActionText}>Chat</Text>
+              <Feather name="message-circle" size={rf(18)} color={TRACKING_LABEL} />
+              <Text style={[styles.trackingPillText, statusAppleFont("semibold")]}>Chat</Text>
               {chatUnread ? <View style={styles.trackingChatActionBadge} /> : null}
             </Pressable>
           ) : null}
 
-          {currentRideId ? (
-            <Pressable
-              style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
-              accessibilityLabel="Hilfe zu dieser Fahrt"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push(
-                  `/ride-detail?id=${encodeURIComponent(currentRideId)}&focus=support` as "/ride-detail",
-                );
-              }}
-            >
-              <Feather name="help-circle" size={rf(20)} color="#111827" />
-              <Text style={styles.trackingChatActionText}>Hilfe</Text>
-            </Pressable>
-          ) : null}
-
           <Pressable
-            style={({ pressed }) => [styles.trackingCancelButton, pressed && { opacity: 0.88 }]}
+            style={({ pressed }) => [
+              styles.trackingOutlinePill,
+              styles.trackingCancelPill,
+              pressed && { opacity: 0.88 },
+            ]}
             onPress={() => handleCancel()}
           >
-            <Feather name="x-circle" size={rf(20)} color={TRACKING_ACCENT} />
-            <Text style={styles.trackingCancelText} numberOfLines={1}>
+            <Feather name="x-circle" size={rf(18)} color={TRACKING_ACCENT} />
+            <Text style={[styles.trackingPillText, styles.trackingCancelPillText, statusAppleFont("semibold")]} numberOfLines={1}>
               Stornieren
             </Text>
           </Pressable>
@@ -2050,14 +2070,14 @@ const styles = StyleSheet.create({
   },
   trackingEtaLabel: {
     fontSize: rf(13),
-    fontFamily: "Inter_500Medium",
-    color: "#6B7280",
+    color: TRACKING_SECONDARY,
+    letterSpacing: Platform.OS === "ios" ? 0.1 : 0.2,
   },
   trackingEtaNumber: {
     fontSize: rf(34),
     lineHeight: rf(36),
-    fontFamily: "Inter_700Bold",
-    color: "#111827",
+    color: TRACKING_LABEL,
+    letterSpacing: Platform.OS === "ios" ? -0.4 : -0.25,
   },
   trackingEtaValueRow: {
     flexDirection: "row",
@@ -2068,14 +2088,13 @@ const styles = StyleSheet.create({
   trackingEtaMin: {
     marginBottom: rs(4),
     fontSize: rf(16),
-    fontFamily: "Inter_700Bold",
-    color: "#111827",
+    color: TRACKING_LABEL,
+    letterSpacing: Platform.OS === "ios" ? -0.25 : 0,
   },
   trackingEtaDistance: {
     marginTop: rs(2),
     fontSize: rf(11),
-    fontFamily: "Inter_500Medium",
-    color: "#6B7280",
+    color: TRACKING_SECONDARY,
     lineHeight: rf(14),
   },
   trackingDivider: {
@@ -2120,24 +2139,23 @@ const styles = StyleSheet.create({
   trackingDriverRatingText: {
     fontSize: rf(12),
     fontFamily: "Inter_600SemiBold",
-    color: "#6B7280",
+    color: TRACKING_SECONDARY,
   },
   trackingDriverName: {
     fontSize: rf(16),
-    fontFamily: "Inter_700Bold",
-    color: "#111827",
+    color: TRACKING_LABEL,
+    letterSpacing: Platform.OS === "ios" ? -0.4 : -0.25,
   },
   trackingDriverStatus: {
     marginTop: rs(1),
     fontSize: rf(12),
-    fontFamily: "Inter_400Regular",
-    color: "#6B7280",
+    color: TRACKING_SECONDARY,
   },
   trackingPlateLine: {
     marginTop: rs(2),
     fontSize: rf(12),
     fontFamily: "Inter_600SemiBold",
-    color: "#374151",
+    color: TRACKING_LABEL,
   },
   trackingEstimate: {
     marginTop: rs(2),
@@ -2172,13 +2190,13 @@ const styles = StyleSheet.create({
   trackingProgressActiveText: {
     fontSize: rf(11),
     fontFamily: "Inter_700Bold",
-    color: "#2563EB",
+    color: TRACKING_APPLE_BLUE,
     textAlign: "center",
   },
   trackingProgressText: {
     fontSize: rf(11),
     fontFamily: "Inter_600SemiBold",
-    color: "#6B7280",
+    color: TRACKING_SECONDARY,
     textAlign: "center",
   },
   trackingProgressDash: {
@@ -2187,48 +2205,38 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     marginHorizontal: rs(1),
   },
-  trackingPayerBox: {
-    marginTop: rs(10),
-    borderRadius: rs(14),
-    borderWidth: 2,
-    borderColor: "#000000",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: rs(10),
+  trackingOutlinePill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(6),
+    paddingVertical: rs(9),
     paddingHorizontal: rs(12),
+    borderRadius: rs(12),
+    borderWidth: 1,
+    borderColor: TRACKING_BORDER,
+    backgroundColor: "#FFFFFF",
+    position: "relative",
+    flexShrink: 1,
+    maxWidth: "100%",
   },
-  trackingPayerLine: {
-    fontSize: rf(13),
-    fontFamily: "Inter_500Medium",
-    color: "#374151",
-    lineHeight: rf(18),
+  trackingPillText: {
+    fontSize: rf(14),
+    color: TRACKING_LABEL,
+    letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
+    flexShrink: 1,
   },
   trackingActionRow: {
     marginTop: rs(10),
     flexDirection: "row",
-    gap: rs(10),
-  },
-  trackingChatActionButton: {
-    flex: 1,
-    height: rs(48),
-    borderRadius: rs(14),
-    borderWidth: 2,
-    borderColor: "#000000",
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexWrap: "nowrap",
     gap: rs(8),
-    position: "relative",
-  },
-  trackingChatActionText: {
-    fontSize: rf(15),
-    fontFamily: "Inter_700Bold",
-    color: "#111827",
+    alignItems: "center",
   },
   trackingChatActionBadge: {
     position: "absolute",
-    top: rs(10),
-    right: rs(14),
+    top: rs(8),
+    right: rs(10),
     width: rs(8),
     height: rs(8),
     borderRadius: rs(4),
@@ -2236,23 +2244,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#FFFFFF",
   },
-  trackingCancelButton: {
-    flex: 1,
-    height: rs(48),
-    borderRadius: rs(14),
-    borderWidth: 2,
-    borderColor: "#000000",
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rs(6),
-    paddingHorizontal: rs(4),
+  trackingCancelPill: {
+    borderColor: TRACKING_ACCENT,
+    borderWidth: 1,
   },
-  trackingCancelText: {
-    flexShrink: 1,
-    fontSize: rf(15),
-    fontFamily: "Inter_700Bold",
+  trackingCancelPillText: {
     color: TRACKING_ACCENT,
   },
 
