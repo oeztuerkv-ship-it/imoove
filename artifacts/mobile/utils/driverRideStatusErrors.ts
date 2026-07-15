@@ -23,6 +23,10 @@ export function driverRideStatusUserMessage(
     complete_trip_not_started: "Bitte Fahrt zum Ziel starten, bevor ein Preis abgerechnet wird.",
     insufficient_transport_for_fare:
       "Keine ausreichende Beförderung (unter 0,5 km oder 2 Min.). Bitte mit 0,00 € abschließen — keine Beförderung — oder stornieren.",
+    passenger_pin_required:
+      "Bitte zuerst den 4-stelligen Code vom Fahrgast eingeben — erst dann kann die Fahrt starten.",
+    passenger_pin_invalid: "Falscher Code. Bitte erneut beim Fahrgast nachfragen.",
+    passenger_pin_rate_limited: "Zu viele Fehlversuche. Bitte kurz warten und erneut versuchen.",
     status_transition_invalid: "Dieser Statuswechsel ist gerade nicht erlaubt.",
     no_show_wait_too_short: "Bitte noch etwas am Abholort warten, bevor No-Show gestartet wird.",
     no_show_countdown_not_started: "Bitte zuerst „Kunde nicht da“ starten.",

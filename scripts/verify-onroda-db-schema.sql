@@ -1430,6 +1430,27 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'passenger_profiles' AND column_name = 'ride_verify_pin_hash'
+  ) THEN
+    errs := array_append(errs, 'passenger_profiles.ride_verify_pin_hash (Migration 130)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'passenger_profiles' AND column_name = 'ride_verify_pin_enc'
+  ) THEN
+    errs := array_append(errs, 'passenger_profiles.ride_verify_pin_enc (Migration 130)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'passenger_pin_verified_at'
+  ) THEN
+    errs := array_append(errs, 'rides.passenger_pin_verified_at (Migration 130)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'payment_capture_attempt_count'
   ) THEN
     errs := array_append(errs, 'rides.payment_capture_attempt_count (Migration 111)');

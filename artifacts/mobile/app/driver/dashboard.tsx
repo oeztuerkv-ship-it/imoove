@@ -31,6 +31,9 @@ import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHint
 import { DriverRideChatModal } from "@/components/driver/DriverRideChatModal";
 import { DriverPrebookGuidelinesModal } from "@/components/driver/DriverPrebookGuidelinesModal";
 import { DriverAssignedPrebookTabHint } from "@/components/driver/DriverAssignedPrebookTabHint";
+import { DriverPassengerPinModal } from "@/components/driver/DriverPassengerPinModal";
+import { fetchRidePassengerPinStatus } from "@/utils/driverVerifyPassengerPinApi";
+import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
 import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
@@ -2359,6 +2362,8 @@ function ActiveRideScreen({
   const [startTripBusy, setStartTripBusy] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showCashPaymentWarn, setShowCashPaymentWarn] = useState(false);
+  const [showPassengerPinModal, setShowPassengerPinModal] = useState(false);
+  const [pinVerified, setPinVerified] = useState(Boolean(req.passengerPinVerifiedAt));
   const mayBillPositive = driverMayBillPositiveFare(req.status);
   const [finalPriceInput, setFinalPriceInput] = useState(
     defaultDriverFareInputForCompletion(req.status, req.estimatedFare, req.pricingMode),
@@ -2487,7 +2492,7 @@ function ActiveRideScreen({
   // Open in-app navigation screen manually
   // Phase "pickup": Fahrerstandort → Abholort des Kunden
   // Phase "driving": Abholort → Zieladresse
-  const handleStartTrip = useCallback(async () => {
+  const runStartTrip = useCallback(async () => {
     if (req.toLat == null || req.toLon == null || startTripBusy) return;
     setStartTripBusy(true);
     try {
@@ -2507,6 +2512,26 @@ function ActiveRideScreen({
       setStartTripBusy(false);
     }
   }, [req, driverCoords, driverId, startDriving, startTripBusy]);
+
+  const handleStartTrip = useCallback(async () => {
+    if (req.toLat == null || req.toLon == null || startTripBusy) return;
+    if (req.status === "in_progress") {
+      await runStartTrip();
+      return;
+    }
+    if (pinVerified) {
+      await runStartTrip();
+      return;
+    }
+    const status = await fetchRidePassengerPinStatus(req.id);
+    const required = status.required || rideRequiresPassengerPinClient(req);
+    if (required && !status.verified) {
+      setShowPassengerPinModal(true);
+      return;
+    }
+    if (status.verified) setPinVerified(true);
+    await runStartTrip();
+  }, [req, startTripBusy, pinVerified, runStartTrip]);
 
   const openNavigation = useCallback(() => {
     if (phase === "pickup") {
@@ -3033,6 +3058,17 @@ function ActiveRideScreen({
           </Pressable>
         ) : null}
       </View>
+
+      <DriverPassengerPinModal
+        visible={showPassengerPinModal}
+        rideId={req.id}
+        onClose={() => setShowPassengerPinModal(false)}
+        onVerified={() => {
+          setPinVerified(true);
+          setShowPassengerPinModal(false);
+          void runStartTrip();
+        }}
+      />
 
       <DriverCashPaymentWarnModal
         visible={showCashPaymentWarn}

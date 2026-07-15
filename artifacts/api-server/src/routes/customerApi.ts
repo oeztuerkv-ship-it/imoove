@@ -44,6 +44,11 @@ import { respondCustomerPaymentRouteError } from "../lib/stripeHttpError.js";
 import { submitPassengerDriverRating } from "../lib/fleetDriverRatings.js";
 import { isPaymentAllowedForRideStatus } from "../lib/rideStatusMachine.js";
 import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
+import {
+  ensurePassengerRideVerifyPin,
+  setPassengerRideVerifyPin,
+} from "../lib/customerRideVerifyPin";
+import { upsertPassengerProfile, inferPassengerAuthProvider } from "../db/passengerProfilesData";
 
 const router = Router();
 
@@ -1009,6 +1014,69 @@ router.post("/customer/v1/rides/:rideId/tip", requireCustomerSession, async (req
     });
   } catch (e) {
     if (respondCustomerPaymentRouteError(res, e, "rides/tip")) return;
+    next(e);
+  }
+});
+
+/** Abhol-PIN anzeigen (Auto-Vergabe falls noch keiner gesetzt). */
+router.get("/customer/v1/profile/ride-pin", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    const passengerId = customerPassengerId(sess);
+    if (!passengerId) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    await upsertPassengerProfile({
+      passengerId,
+      name: sess.name ?? "",
+      email: sess.email ?? "",
+      authProvider: inferPassengerAuthProvider(passengerId),
+    });
+    const ensured = await ensurePassengerRideVerifyPin(passengerId);
+    if (!ensured) {
+      res.status(503).json({
+        ok: false,
+        error: "ride_pin_unavailable",
+        message: "Abhol-Code konnte nicht geladen werden.",
+      });
+      return;
+    }
+    res.json({
+      ok: true,
+      pin: ensured.pin,
+      autoAssigned: ensured.created,
+      setAt: ensured.setAt,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Abhol-PIN ändern (4 Ziffern). */
+router.patch("/customer/v1/profile/ride-pin", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    const passengerId = customerPassengerId(sess);
+    if (!passengerId) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = (req.body ?? {}) as { pin?: unknown };
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+    await upsertPassengerProfile({
+      passengerId,
+      name: sess.name ?? "",
+      email: sess.email ?? "",
+      authProvider: inferPassengerAuthProvider(passengerId),
+    });
+    const result = await setPassengerRideVerifyPin(passengerId, pin);
+    if (!result.ok) {
+      res.status(400).json(result);
+      return;
+    }
+    res.json({ ok: true, pin, setAt: result.setAt });
+  } catch (e) {
     next(e);
   }
 });

@@ -50,6 +50,10 @@ export async function upsertPassengerProfile(input: {
         updated_at: now,
       },
     });
+
+  // Jeder App-Kunde hat immer einen Abhol-PIN (Auto-Vergabe falls fehlend).
+  const { ensurePassengerRideVerifyPin } = await import("../lib/customerRideVerifyPin");
+  void ensurePassengerRideVerifyPin(passengerId);
 }
 
 export async function touchPassengerProfileFromEmailAccount(input: {

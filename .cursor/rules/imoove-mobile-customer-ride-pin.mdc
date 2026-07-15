@@ -1,0 +1,25 @@
+---
+description: Kunden-Abhol-PIN — Auto-Vergabe, Verify vor Fahrtstart (App-Direktfahrten)
+alwaysApply: false
+---
+
+# Kunden-PIN bei Ankunft
+
+## Regeln (Produkt)
+
+1. **Immer ein PIN** — Auto-Vergabe beim Profil-Zugriff/`upsertPassengerProfile`, nie „ohne PIN“.
+2. **Nur App-Direktfahrten:** `authorizationSource=passenger_direct`, `rideKind=standard`, `payerKind=passenger`, kein Panel/`access_code`/Voucher — siehe `rideRequiresPassengerPin`.
+3. **Nur Fahrtstart gesperrt** (`in_progress`); Chat/Kontakt bleiben offen.
+4. **Hart ab Deploy** — kein Feature-Flag.
+
+## Speicher / API
+
+| Was | Wo |
+|-----|-----|
+| Hash + Enc | `passenger_profiles.ride_verify_pin_*` (Migration 130) |
+| Verify-Zeit | `rides.passenger_pin_verified_at` |
+| Kunde GET/PATCH | `/customer/v1/profile/ride-pin` |
+| Fahrer Verify | `POST /fleet-driver/v1/rides/:id/verify-passenger-pin` |
+| Gate | `PATCH …/status` → `in_progress` ohne Verify → `passenger_pin_required` |
+
+Lib: `artifacts/api-server/src/lib/customerRideVerifyPin.ts`.

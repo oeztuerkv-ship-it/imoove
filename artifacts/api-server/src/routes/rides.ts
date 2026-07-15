@@ -42,6 +42,7 @@ import {
   computeRideCompletionGpsMetrics,
   evaluateMinimumTransportForPositiveFare,
 } from "../lib/rideMinimumTransportGuard";
+import { rideRequiresPassengerPin } from "../lib/customerRideVerifyPin";
 import { resolveReceiptDriverInfo, type ReceiptDriverInfo } from "../lib/receiptDriverInfo";
 import { validateRideStatusTransition } from "../lib/rideOpsTransitionGuards";
 import { markDispatchOfferAccepted } from "../db/rideDispatchOfferData";
@@ -2301,6 +2302,22 @@ export async function patchRideStatusRoute(
         error: opsGuard.error,
         message: opsGuard.message,
         ...(opsGuard.details ?? {}),
+      });
+      return;
+    }
+
+    if (
+      nextStatus === "in_progress" &&
+      cur.status !== "in_progress" &&
+      rideRequiresPassengerPin(cur) &&
+      !cur.passengerPinVerifiedAt
+    ) {
+      res.status(403).json({
+        error: "passenger_pin_required",
+        message:
+          "Bitte zuerst den 4-stelligen Code vom Fahrgast eingeben. Ohne Bestätigung kann die Fahrt nicht gestartet werden.",
+        passengerPinRequired: true,
+        passengerPinVerified: false,
       });
       return;
     }

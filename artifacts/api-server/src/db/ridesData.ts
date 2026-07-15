@@ -168,6 +168,9 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     passengerRating: r.passenger_rating ?? null,
     driverPassengerRating: r.driver_passenger_rating ?? null,
     passengerId: r.passenger_id ?? undefined,
+    passengerPinVerifiedAt: r.passenger_pin_verified_at
+      ? new Date(r.passenger_pin_verified_at).toISOString()
+      : null,
     driverId: r.driver_id,
     from: r.from_label,
     fromFull: r.from_full,
@@ -275,6 +278,7 @@ function rideToUpdate(r: RideRequest) {
     customer_name: r.customerName,
     customer_phone: r.customerPhone ?? null,
     passenger_id: r.passengerId ?? null,
+    passenger_pin_verified_at: r.passengerPinVerifiedAt ? new Date(r.passengerPinVerifiedAt) : null,
     driver_id: r.driverId ?? null,
     from_label: r.from,
     from_full: r.fromFull,
@@ -352,6 +356,7 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     customer_name: r.customerName,
     customer_phone: r.customerPhone ?? null,
     passenger_id: r.passengerId ?? null,
+    passenger_pin_verified_at: r.passengerPinVerifiedAt ? new Date(r.passengerPinVerifiedAt) : null,
     driver_id: r.driverId ?? null,
     from_label: r.from,
     from_full: r.fromFull,

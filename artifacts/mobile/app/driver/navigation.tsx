@@ -50,6 +50,9 @@ import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { RideChatModal } from "@/components/ride-chat/RideChatModal";
 import { RideChatReplyBanner } from "@/components/ride-chat/RideChatReplyBanner";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
+import { DriverPassengerPinModal } from "@/components/driver/DriverPassengerPinModal";
+import { fetchRidePassengerPinStatus } from "@/utils/driverVerifyPassengerPinApi";
+import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
 import {
   apiMessageToRideChatMessage,
@@ -492,6 +495,9 @@ export default function DriverNavigationScreen() {
 
   // pickup-phase sequential state
   const [hasArrived, setHasArrived] = useState(params.arrived === "1");
+  const [pinRequired, setPinRequired] = useState(false);
+  const [pinVerified, setPinVerified] = useState(false);
+  const [showPassengerPinModal, setShowPassengerPinModal] = useState(false);
 
   // Ton Ein/Aus
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -1052,15 +1058,36 @@ export default function DriverNavigationScreen() {
     Animated.spring(sliderX, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
   }, [sliderX]);
 
+  useEffect(() => {
+    if (!hasArrived || !params.rideId) return;
+    let cancelled = false;
+    void fetchRidePassengerPinStatus(params.rideId).then((s) => {
+      if (cancelled) return;
+      const required =
+        s.required ||
+        (activeRide ? rideRequiresPassengerPinClient(activeRide) : false);
+      setPinRequired(required);
+      setPinVerified(s.verified || Boolean(activeRide?.passengerPinVerifiedAt));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasArrived, params.rideId, activeRide]);
+
   const startRideBySlide = useCallback(async () => {
     if (hasTriggeredSlide.current) return;
+    if (pinRequired && !pinVerified) {
+      resetSlide();
+      setShowPassengerPinModal(true);
+      return;
+    }
     hasTriggeredSlide.current = true;
     try {
       await handleFahrtBeginnen();
     } finally {
       resetSlide();
     }
-  }, [handleFahrtBeginnen, resetSlide]);
+  }, [handleFahrtBeginnen, resetSlide, pinRequired, pinVerified]);
 
   const driveSheetPan = useMemo(
     () =>
@@ -1831,7 +1858,11 @@ export default function DriverNavigationScreen() {
             onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
             {...sliderResponder.panHandlers}
           >
-            <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
+            <Text style={styles.slideStartHint}>
+              {pinRequired && !pinVerified
+                ? "Code vom Fahrgast bestätigen (ziehen)"
+                : "Nach rechts ziehen, um Fahrt zu beginnen"}
+            </Text>
             <Animated.View
               style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
             >
@@ -2068,6 +2099,25 @@ export default function DriverNavigationScreen() {
           </View>
         </View>
       )}
+
+      <DriverPassengerPinModal
+        visible={showPassengerPinModal}
+        rideId={params.rideId}
+        onClose={() => setShowPassengerPinModal(false)}
+        onVerified={() => {
+          setPinVerified(true);
+          setShowPassengerPinModal(false);
+          if (hasTriggeredSlide.current) return;
+          hasTriggeredSlide.current = true;
+          void (async () => {
+            try {
+              await handleFahrtBeginnen();
+            } finally {
+              resetSlide();
+            }
+          })();
+        }}
+      />
 
       <DriverCashPaymentWarnModal
         visible={showCashPaymentWarn}

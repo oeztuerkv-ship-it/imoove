@@ -471,6 +471,11 @@ export const passengerProfilesTable = pgTable("passenger_profiles", {
   terms_version: text("terms_version").notNull().default(""),
   privacy_version: text("privacy_version").notNull().default(""),
   deleted_at: timestamp("deleted_at", { withTimezone: true }),
+  /** scrypt-Hash 4-stelliger Abhol-PIN (Fahrer-Verify). */
+  ride_verify_pin_hash: text("ride_verify_pin_hash"),
+  /** AES-GCM Cipher nur für Anzeige an den Kontoinhaber. */
+  ride_verify_pin_enc: text("ride_verify_pin_enc"),
+  ride_verify_pin_set_at: timestamp("ride_verify_pin_set_at", { withTimezone: true }),
 });
 
 /** Kunden-Storno-Sperre (passenger_id = JWT sub / customer_accounts.id / OAuth sub). */
@@ -667,6 +672,8 @@ export const ridesTable = pgTable("rides", {
   status: text("status").notNull(),
   customer_name: text("customer_name").notNull(),
   passenger_id: text("passenger_id"),
+  /** Fahrer hat Kunden-PIN bei Ankunft bestätigt (nur App-Direktfahrten). */
+  passenger_pin_verified_at: timestamp("passenger_pin_verified_at", { withTimezone: true }),
   driver_id: text("driver_id"),
   from_label: text("from_label").notNull(),
   from_full: text("from_full").notNull(),

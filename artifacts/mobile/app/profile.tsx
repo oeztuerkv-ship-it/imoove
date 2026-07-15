@@ -30,7 +30,18 @@ import {
   CustomerLegalLinksFooter,
 } from "@/components/CustomerLegalConsent";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
-import { accountSheetPrimaryLabel, accountSheetInputText, ACCOUNT_SHEET_FIELD_BORDER, ACCOUNT_SHEET_FIELD_BORDER_FOCUS, ACCOUNT_SHEET_FIELD_BORDER_WIDTH, ACCOUNT_SHEET_FIELD_BORDER_WIDTH_FOCUS } from "@/constants/accountSheetTypography";
+import {
+  accountSheetPrimaryLabel,
+  accountSheetInputText,
+  accountSheetCardTitle,
+  accountSheetModalHint,
+  accountSheetToolbarAction,
+  accountSheetButtonLabel,
+  ACCOUNT_SHEET_FIELD_BORDER,
+  ACCOUNT_SHEET_FIELD_BORDER_FOCUS,
+  ACCOUNT_SHEET_FIELD_BORDER_WIDTH,
+  ACCOUNT_SHEET_FIELD_BORDER_WIDTH_FOCUS,
+} from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import {
   LOGIN_ACTION_ICON_SIZE,
@@ -68,6 +79,7 @@ import {
   type PendingOAuthSession,
 } from "@/utils/completeCustomerOAuthSession";
 import { deleteCustomerAccount } from "@/utils/customerAccountApi";
+import { fetchCustomerRidePin, updateCustomerRidePin } from "@/utils/customerRidePinApi";
 import { mapCustomerLegalError, openOnrodaLegalPage } from "@/utils/customerLegalConsent";
 import {
   prepareGoogleOAuthLogin,
@@ -1072,6 +1084,65 @@ export default function ProfileScreen() {
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [ridePinOpen, setRidePinOpen] = useState(false);
+  const [ridePin, setRidePin] = useState<string | null>(null);
+  const [ridePinLoading, setRidePinLoading] = useState(false);
+  const [ridePinEditing, setRidePinEditing] = useState(false);
+  const [ridePinDraft, setRidePinDraft] = useState("");
+  const [ridePinConfirm, setRidePinConfirm] = useState("");
+  const [ridePinSaving, setRidePinSaving] = useState(false);
+
+  const openRidePinSheet = useCallback(async () => {
+    const token = profile.sessionToken?.trim();
+    if (!token) {
+      Alert.alert("Hinweis", "Bitte erneut anmelden.");
+      return;
+    }
+    Haptics.selectionAsync();
+    setRidePinOpen(true);
+    setRidePinEditing(false);
+    setRidePinDraft("");
+    setRidePinConfirm("");
+    setRidePinLoading(true);
+    try {
+      const res = await fetchCustomerRidePin(token);
+      setRidePin(res.pin);
+    } catch (e) {
+      Alert.alert("Abhol-Code", e instanceof Error ? e.message : "Code konnte nicht geladen werden.");
+      setRidePinOpen(false);
+    } finally {
+      setRidePinLoading(false);
+    }
+  }, [profile.sessionToken]);
+
+  const saveRidePin = useCallback(async () => {
+    const token = profile.sessionToken?.trim();
+    if (!token) return;
+    const a = ridePinDraft.replace(/\D/g, "").slice(0, 4);
+    const b = ridePinConfirm.replace(/\D/g, "").slice(0, 4);
+    if (a.length !== 4 || b.length !== 4) {
+      Alert.alert("Hinweis", "Bitte einen 4-stelligen Code eingeben.");
+      return;
+    }
+    if (a !== b) {
+      Alert.alert("Hinweis", "Die Codes stimmen nicht überein.");
+      return;
+    }
+    setRidePinSaving(true);
+    try {
+      const res = await updateCustomerRidePin(token, a);
+      setRidePin(res.pin);
+      setRidePinEditing(false);
+      setRidePinDraft("");
+      setRidePinConfirm("");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Gespeichert", "Dein Abhol-Code wurde aktualisiert.");
+    } catch (e) {
+      Alert.alert("Fehler", e instanceof Error ? e.message : "Speichern fehlgeschlagen.");
+    } finally {
+      setRidePinSaving(false);
+    }
+  }, [profile.sessionToken, ridePinDraft, ridePinConfirm]);
 
   const handleGoogleLogin = async () => {
     if (googleOAuthAttemptRef.current || googleLoading) return;
@@ -1728,6 +1799,12 @@ export default function ProfileScreen() {
                       icon={<MaterialCommunityIcons name="hospital-box" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                       label={t("profile.patientProfile")}
                       onPress={() => setPatientProfileOpen(true)}
+                    />
+                    <AccountRow
+                      icon={<MaterialCommunityIcons name="shield-key-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                      label="Abhol-Code"
+                      valueText={ridePin ? "••••" : undefined}
+                      onPress={() => void openRidePinSheet()}
                       isLast
                     />
                   </SectionCard>
@@ -1890,6 +1967,157 @@ export default function ProfileScreen() {
                 setPatientProfileOpen(false);
               }}
             />
+
+            <Modal
+              visible={ridePinOpen}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={() => setRidePinOpen(false)}
+            >
+              <KeyboardAvoidingView
+                style={{ flex: 1, backgroundColor: colors.background }}
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+              >
+                <View
+                  style={{
+                    paddingTop: topPad + 8,
+                    paddingHorizontal: rs(16),
+                    paddingBottom: rs(12),
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    backgroundColor: HOME_SHEET_PANEL,
+                    borderBottomWidth: StyleSheet.hairlineWidth,
+                    borderBottomColor: HOME_SHEET_RIM,
+                  }}
+                >
+                  <Pressable onPress={() => setRidePinOpen(false)} hitSlop={12}>
+                    <Text style={[accountSheetToolbarAction, { color: colors.foreground }]}>Fertig</Text>
+                  </Pressable>
+                  <Text style={[accountSheetCardTitle, { color: colors.foreground }]}>Abhol-Code</Text>
+                  <View style={{ width: rs(48) }} />
+                </View>
+                <ScrollView contentContainerStyle={{ padding: rs(16), gap: rs(14) }}>
+                  <Text style={[accountSheetModalHint, { color: colors.mutedForeground }]}>
+                    Nenne diesen 4-stelligen Code dem Fahrer erst, wenn er bei dir angekommen ist. So
+                    startet niemand fälschlich deine Fahrt.
+                  </Text>
+                  {ridePinLoading ? (
+                    <ActivityIndicator color={colors.foreground} />
+                  ) : ridePinEditing ? (
+                    <>
+                      <Text style={[accountSheetPrimaryLabel, { color: colors.foreground }]}>Neuer Code</Text>
+                      <TextInput
+                        value={ridePinDraft}
+                        onChangeText={(t) => setRidePinDraft(t.replace(/\D/g, "").slice(0, 4))}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        style={[
+                          accountSheetInputText,
+                          {
+                            borderWidth: ACCOUNT_SHEET_FIELD_BORDER_WIDTH,
+                            borderColor: ACCOUNT_SHEET_FIELD_BORDER,
+                            borderRadius: rs(12),
+                            padding: rs(14),
+                            backgroundColor: HOME_SHEET_PANEL,
+                            letterSpacing: 8,
+                            textAlign: "center",
+                            fontSize: rf(22),
+                          },
+                        ]}
+                        placeholder="••••"
+                        placeholderTextColor={colors.mutedForeground}
+                      />
+                      <Text style={[accountSheetPrimaryLabel, { color: colors.foreground }]}>Wiederholen</Text>
+                      <TextInput
+                        value={ridePinConfirm}
+                        onChangeText={(t) => setRidePinConfirm(t.replace(/\D/g, "").slice(0, 4))}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        style={[
+                          accountSheetInputText,
+                          {
+                            borderWidth: ACCOUNT_SHEET_FIELD_BORDER_WIDTH,
+                            borderColor: ACCOUNT_SHEET_FIELD_BORDER,
+                            borderRadius: rs(12),
+                            padding: rs(14),
+                            backgroundColor: HOME_SHEET_PANEL,
+                            letterSpacing: 8,
+                            textAlign: "center",
+                            fontSize: rf(22),
+                          },
+                        ]}
+                        placeholder="••••"
+                        placeholderTextColor={colors.mutedForeground}
+                      />
+                      <Pressable
+                        onPress={() => void saveRidePin()}
+                        disabled={ridePinSaving}
+                        style={{
+                          backgroundColor: "#111111",
+                          borderRadius: rs(12),
+                          paddingVertical: rs(14),
+                          alignItems: "center",
+                          opacity: ridePinSaving ? 0.6 : 1,
+                        }}
+                      >
+                        {ridePinSaving ? (
+                          <ActivityIndicator color="#fff" />
+                        ) : (
+                          <Text style={[accountSheetButtonLabel, { color: "#fff" }]}>Speichern</Text>
+                        )}
+                      </Pressable>
+                      <Pressable onPress={() => setRidePinEditing(false)}>
+                        <Text style={[accountSheetToolbarAction, { color: colors.mutedForeground, textAlign: "center" }]}>
+                          Abbrechen
+                        </Text>
+                      </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <View
+                        style={{
+                          backgroundColor: HOME_SHEET_PANEL,
+                          borderRadius: rs(14),
+                          borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: HOME_SHEET_RIM,
+                          paddingVertical: rs(20),
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: "Inter_700Bold",
+                            fontSize: rf(36),
+                            letterSpacing: 10,
+                            color: colors.foreground,
+                          }}
+                        >
+                          {ridePin ?? "————"}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => {
+                          setRidePinEditing(true);
+                          setRidePinDraft("");
+                          setRidePinConfirm("");
+                        }}
+                        style={{
+                          borderWidth: 1,
+                          borderColor: ACCOUNT_SHEET_FIELD_BORDER,
+                          borderRadius: rs(12),
+                          paddingVertical: rs(14),
+                          alignItems: "center",
+                          backgroundColor: HOME_SHEET_PANEL,
+                        }}
+                      >
+                        <Text style={[accountSheetButtonLabel, { color: colors.foreground }]}>Code ändern</Text>
+                      </Pressable>
+                    </>
+                  )}
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </Modal>
           </>
         ) : (
           /* ══ NOT LOGGED IN ══ */

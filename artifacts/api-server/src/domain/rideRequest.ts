@@ -171,6 +171,8 @@ export interface RideRequest {
   /** Fahrer → Kunde (1–5). */
   driverPassengerRating?: number | null;
   passengerId?: string;
+  /** ISO — Fahrer hat Abhol-PIN verifiziert (nur App-Direktfahrten relevant). */
+  passengerPinVerifiedAt?: string | null;
   driverId?: string | null;
   rejectedBy: string[];
   /** Sofortfahrt: aktuelle Dispatch-Stufe (A→B→C). */

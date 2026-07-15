@@ -157,6 +157,10 @@ export interface RideRequest {
   driverPlate?: string | null;
   accessibilityOptions?: RideAccessibilityOptions | null;
   passengerId?: string;
+  /** Server: Fahrer hat Abhol-PIN verifiziert (App-Direktfahrten). */
+  passengerPinVerifiedAt?: string | null;
+  passengerPinRequired?: boolean;
+  passengerPinVerified?: boolean;
   driverId?: string | null;
   cancelReason?: string | null;
   rejectedBy: string[];
@@ -608,6 +612,22 @@ function normalizeRequest(r: any): RideRequest {
         ? Math.min(5, Math.max(1, Math.round(passengerRatingRaw)))
         : null,
     passengerId: r.passengerId ?? r.passenger_id,
+    passengerPinVerifiedAt: (() => {
+      const raw = r.passengerPinVerifiedAt ?? r.passenger_pin_verified_at;
+      return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    })(),
+    passengerPinRequired:
+      typeof r.passengerPinRequired === "boolean"
+        ? r.passengerPinRequired
+        : typeof r.passenger_pin_required === "boolean"
+          ? r.passenger_pin_required
+          : undefined,
+    passengerPinVerified:
+      typeof r.passengerPinVerified === "boolean"
+        ? r.passengerPinVerified
+        : typeof r.passenger_pin_verified === "boolean"
+          ? r.passenger_pin_verified
+          : undefined,
     driverId: r.driverId ?? r.driver_id ?? null,
     cancelReason:
       (r.cancelReason ?? r.cancel_reason) != null

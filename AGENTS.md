@@ -42,6 +42,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-mobile-destination-navigation.mdc` — **Mobile:** Orte → Ziel → `/ride-select` (keine URL-Params auf `/`)
 - `.cursor/rules/imoove-mobile-live-ride-flows.mdc` — **Mobile:** Live-Fahrt Kunde (`/status`) + Fahrer-Navi (Stack `dismissTo`, Session-Restore, Debug-Tabelle)
 - `.cursor/rules/imoove-mobile-driver-nav-routing.mdc` — **Fahrer-Navi:** km/ETA via Server (`nav-route`, Google Matrix → OSRM), Rest entlang Polyline, keine Directions-API
+- `.cursor/rules/imoove-mobile-customer-ride-pin.mdc` — **Abhol-PIN:** Auto-Vergabe, nur App-Direktfahrten, Verify vor `in_progress`
 - `.cursor/rules/imoove-invoice-billing-architecture.mdc` — **Rechnungen/Abrechnung:** `invoices`/`invoice_items` (028), Panel-PDF-API, kein `onroda_invoices`-WIP; **`docs/onroda-invoice-billing-architecture.md`**
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds
 - `.cursor/rules/imoove-git-commit-atomic-scope.mdc` — **keine gemischten Commits** (Admin ≠ E-Mail ≠ API ≠ Mobile; gezieltes `git add`)

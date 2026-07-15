@@ -44,7 +44,7 @@ import {
 import { buildFleetDriverCancellationSuspensionMessage } from "../lib/fleetDriverCancellationSuspensionPolicy.js";
 import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
 import { releaseInstantRideDispatchOffer, syncDispatchTiersForRides } from "../db/rideDispatchTierData";
-import { listRides, listRidesForDriver, findRide } from "../db/ridesData";
+import { listRides, listRidesForDriver, findRide, updateRide } from "../db/ridesData";
 import { getCustomerCancelReasonForRide } from "./rides";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { toDriverOpenMarketOfferView, toDriverOpenReservationView } from "../lib/driverMarketOfferView.js";
@@ -75,6 +75,10 @@ import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middlewa
 import { logger } from "../lib/logger";
 import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
 import { buildDriverNavRouteQuote } from "../lib/driverNavRouteQuote";
+import {
+  rideRequiresPassengerPin,
+  verifyPassengerRidePinForRide,
+} from "../lib/customerRideVerifyPin";
 
 const router: IRouter = Router();
 
@@ -652,12 +656,89 @@ router.get("/fleet-driver/v1/rides/:rideId/live-status", requireFleetDriverAuth,
       res.status(403).json({ error: "forbidden" });
       return;
     }
+    const pinRequired = rideRequiresPassengerPin(ride);
     res.json({
       ok: true,
       id: ride.id,
       status: ride.status,
       chatEnabled: Boolean(ride.chatEnabled),
       cancelReason: getCustomerCancelReasonForRide(ride.id),
+      passengerPinRequired: pinRequired,
+      passengerPinVerified: Boolean(ride.passengerPinVerifiedAt),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Kunden-PIN bei Ankunft prüfen — Pflicht vor Fahrtstart bei App-Direktfahrten. */
+router.post("/fleet-driver/v1/rides/:rideId/verify-passenger-pin", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if ((ride.driverId ?? "").trim() !== a.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const allowedStatus =
+      ride.status === "driver_waiting" ||
+      ride.status === "driver_arriving" ||
+      ride.status === "accepted" ||
+      ride.status === "passenger_onboard";
+    if (!allowedStatus) {
+      res.status(409).json({
+        ok: false,
+        error: "pin_verify_invalid_status",
+        message: "PIN-Prüfung ist in diesem Fahrtstatus nicht möglich.",
+      });
+      return;
+    }
+    if (ride.passengerPinVerifiedAt) {
+      res.json({
+        ok: true,
+        alreadyVerified: true,
+        verifiedAt: ride.passengerPinVerifiedAt,
+        passengerPinRequired: true,
+        passengerPinVerified: true,
+      });
+      return;
+    }
+    const body = (req.body ?? {}) as { pin?: unknown };
+    const pin = typeof body.pin === "string" ? body.pin.trim() : "";
+    const outcome = await verifyPassengerRidePinForRide(ride, pin);
+    if (!outcome.ok) {
+      res.status(outcome.status).json({
+        ok: false,
+        error: outcome.error,
+        message: outcome.message,
+        ...(outcome.retryAfterSec != null ? { retryAfterSec: outcome.retryAfterSec } : {}),
+      });
+      return;
+    }
+    const updated = await updateRide(
+      rideId,
+      { passengerPinVerifiedAt: outcome.verifiedAt },
+      { mutationActor: { actorType: "fleet_driver", actorId: a.fleetDriverId } },
+    );
+    res.json({
+      ok: true,
+      verifiedAt: outcome.verifiedAt,
+      passengerPinRequired: true,
+      passengerPinVerified: true,
+      status: updated?.status ?? ride.status,
     });
   } catch (e) {
     next(e);
