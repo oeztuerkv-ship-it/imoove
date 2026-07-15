@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
-import { paymentMethodForPayerMode } from "../lib/partnerRideOps.js";
+import { partnerPassengerDisplayLabel, paymentMethodForPayerMode } from "../lib/partnerRideOps.js";
 import PartnerAddressFavoritesBar from "../components/PartnerAddressFavoritesBar.jsx";
 import PartnerBookingChoiceCard from "../components/PartnerBookingChoiceCard.jsx";
 import PartnerBookingStepper from "../components/PartnerBookingStepper.jsx";
@@ -533,9 +533,10 @@ export default function RideCreatePage({ onRideCreated }) {
             ? "schedule"
             : "schedule";
 
-  const passengerLabel = forSomeoneElse
-    ? form.customerName.trim() || "Name fehlt"
-    : "Laufkunde";
+  const passengerLabel = partnerPassengerDisplayLabel(
+    forSomeoneElse ? form.customerName.trim() || "Name fehlt" : "Laufkunde",
+    user?.companyName,
+  );
 
   const scheduleLabel =
     scheduleMode === "now"

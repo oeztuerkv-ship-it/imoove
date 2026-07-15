@@ -6,6 +6,7 @@ import {
   dispatchSteps,
   LIVE_DRIVER_STATUSES,
   payerKindLabel,
+  partnerPassengerDisplayLabel,
   partnerRideShowsFare,
   rejectionCount,
   rideCardPhase,
@@ -130,10 +131,12 @@ function SummaryChip({ icon, label, value }) {
  *   onArchive?: () => void;
  *   invoiceId: string | null;
  *   bill: ReturnType<typeof billingSummary>;
+ *   companyName?: string;
  * }} props
  */
 export default function PartnerRideCard({
   ride,
+  companyName = "",
   open,
   onToggle,
   tracking,
@@ -167,6 +170,7 @@ export default function PartnerRideCard({
   const dist =
     ride.distanceKm != null ? `${Number(ride.distanceKm).toFixed(1)} km` : "—";
   const dur = ride.durationMinutes != null ? `${ride.durationMinutes} Min.` : "—";
+  const passengerLabel = partnerPassengerDisplayLabel(ride.customerName, companyName);
 
   const mapUrl =
     driverLoc && typeof driverLoc.lat === "number" && typeof driverLoc.lon === "number"
@@ -199,7 +203,7 @@ export default function PartnerRideCard({
         <div className="partner-ride-card__head-main">
           <div className="partner-ride-card__icon-row">
             <span className="partner-ride-meta-icon">
-              {ICON.passenger} {ride.customerName || "—"}
+              {ICON.passenger} {passengerLabel}
             </span>
             <span className="partner-ride-meta-icon">
               {ICON.schedule} {ride.scheduledAt ? fmtDateTime(ride.scheduledAt) : fmtDateTime(ride.createdAt)}
@@ -280,7 +284,7 @@ export default function PartnerRideCard({
             <SummaryChip
               icon={ICON.passenger}
               label="Fahrgast"
-              value={ride.customerName || "—"}
+              value={passengerLabel}
             />
             <SummaryChip
               icon={ICON.driver}

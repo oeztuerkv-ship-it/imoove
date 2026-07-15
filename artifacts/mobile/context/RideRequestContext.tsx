@@ -150,6 +150,8 @@ export interface RideRequest {
   vehicle: string;
   customerName: string;
   customerPhone?: string | null;
+  /** Partner-Mandant bei Panel-Buchung (Hotel/Firma). */
+  bookingPartnerName?: string | null;
   assignedDriver?: CustomerAssignedDriver | null;
   passengerRating?: number | null;
   driverPlate?: string | null;
@@ -593,6 +595,10 @@ function normalizeRequest(r: any): RideRequest {
     paymentMethod,
     vehicle,
     customerName: String(customerName),
+    bookingPartnerName: (() => {
+      const raw = r.bookingPartnerName ?? r.booking_partner_name;
+      return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+    })(),
     customerPhone:
       typeof customerPhoneRaw === "string" && customerPhoneRaw.trim() ? customerPhoneRaw.trim() : null,
     assignedDriver,

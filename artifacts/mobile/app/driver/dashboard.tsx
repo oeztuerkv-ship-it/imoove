@@ -70,6 +70,10 @@ import {
   replaceDriverStackExclusive,
 } from "@/utils/driverNavigationRoute";
 import {
+  passengerLabelInitial,
+  passengerWithPartnerLabel,
+} from "@/utils/passengerDisplayLabel";
+import {
   defaultDriverFareInputForCompletion,
   driverAgreedFixedPriceEur,
   driverMayBillPositiveFare,
@@ -423,6 +427,7 @@ function InstantCard({
   const { t } = useTranslation();
   const reach = resolveInstantOfferReach(req, driverPos);
   const reachPendingLabel = instantOfferReachPlaceholder(driverPos);
+  const passengerLabel = passengerWithPartnerLabel(req.customerName, req.bookingPartnerName);
   const premiumRoute = hasDriverPremiumRouteDetails(req);
   const fromAddress = splitRideAddress(req.fromFull || req.from);
   const toAddress = splitRideAddress(req.toFull || req.to);
@@ -545,6 +550,18 @@ function InstantCard({
                 }}
               >
                 {reach ? `${reach.kmLabel} entfernt` : reachPendingLabel}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontFamily: "Inter_600SemiBold",
+                  color: "#0F172A",
+                  marginTop: 14,
+                  textAlign: "center",
+                }}
+                numberOfLines={2}
+              >
+                {passengerLabel}
               </Text>
             </View>
 
@@ -756,6 +773,7 @@ function ScheduledCard({
   const toAddress = splitRideAddress(req.toFull || req.to);
   const premiumRoute = hasDriverPremiumRouteDetails(req);
   const customerNoteLine = customerDriverNoteLine(req);
+  const passengerLabel = passengerWithPartnerLabel(req.customerName, req.bookingPartnerName);
 
   return (
     <View style={[styles.reqCard, styles.reqCardScheduled, { borderRadius: 22, padding: 18 }]}>
@@ -816,6 +834,18 @@ function ScheduledCard({
           )}
         </View>
       </View>
+
+      <Text
+        style={{
+          fontSize: 14,
+          fontFamily: "Inter_700Bold",
+          color: "#111827",
+          marginTop: 14,
+        }}
+        numberOfLines={2}
+      >
+        {passengerLabel}
+      </Text>
 
       {customerNoteLine ? (
         <View style={{
@@ -2228,6 +2258,7 @@ function ActiveRideScreen({
   const wheelchairLine = wheelchairInfoLine(req);
   const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
+  const passengerLabel = passengerWithPartnerLabel(req.customerName, req.bookingPartnerName);
   const [kkEigenOpen, setKkEigenOpen] = useState(false);
   const [driverEigenanteil, setDriverEigenanteil] = useState(() =>
     req.estimatedFare.toFixed(2).replace(".", ","),
@@ -2515,10 +2546,12 @@ function ActiveRideScreen({
         {/* Customer row */}
         <View style={activeStyles.customerRow}>
           <View style={activeStyles.customerAvatar}>
-            <Text style={activeStyles.customerAvatarText}>{req.customerName[0]}</Text>
+            <Text style={activeStyles.customerAvatarText}>{passengerLabelInitial(passengerLabel)}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[activeStyles.customerName, { color: colors.foreground }]}>{req.customerName}</Text>
+            <Text style={[activeStyles.customerName, { color: colors.foreground }]} numberOfLines={2}>
+              {passengerLabel}
+            </Text>
             <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]} numberOfLines={4}>
               {codeLine ? `${codeLine}\n` : ""}
               {wheelchairLine ? `${wheelchairLine}\n` : ""}

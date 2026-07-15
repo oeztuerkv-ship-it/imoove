@@ -44,6 +44,7 @@ import {
   replaceDriverStackExclusive,
   setDriverNavigationPhaseParams,
 } from "@/utils/driverNavigationRoute";
+import { passengerWithPartnerLabel } from "@/utils/passengerDisplayLabel";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { RideChatModal } from "@/components/ride-chat/RideChatModal";
 import { RideChatReplyBanner } from "@/components/ride-chat/RideChatReplyBanner";
@@ -221,11 +222,6 @@ function fmtDist(m: number): string {
   return `${(m / 1000).toFixed(1)} km`;
 }
 
-function passengerFirstNameOnly(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  return parts[0] ?? fullName.trim();
-}
-
 const NAV_CAMERA_ZOOM = 18;
 const NAV_CAMERA_PITCH = 58;
 /** Unteres Padding → Puck sitzt im unteren Drittel, Kamera bleibt auf Fahrerposition. */
@@ -324,6 +320,7 @@ export default function DriverNavigationScreen() {
     fromLat: string; fromLon: string; fromName: string;
     toLat: string; toLon: string; toName: string;
     customerName: string;
+    bookingPartnerName?: string;
     pickupLat: string; pickupLon: string; pickupName: string;
     destLat: string; destLon: string; destName: string;
     estimatedFare: string;
@@ -977,6 +974,7 @@ export default function DriverNavigationScreen() {
         toLon: String(destLon),
         toName: destName,
         customerName: params.customerName ?? "",
+        bookingPartnerName: params.bookingPartnerName ?? activeRide?.bookingPartnerName ?? "",
         pickupLat: String(pickupLat),
         pickupLon: String(pickupLon),
         pickupName,
@@ -1249,6 +1247,7 @@ export default function DriverNavigationScreen() {
         toLon: params.toLon ?? "0",
         toName: params.toName ?? "",
         customerName: params.customerName ?? "",
+        bookingPartnerName: params.bookingPartnerName ?? "",
         pickupLat: params.pickupLat ?? params.toLat ?? "0",
         pickupLon: params.pickupLon ?? params.toLon ?? "0",
         pickupName: params.pickupName ?? params.toName ?? "Abholort",
@@ -1656,11 +1655,17 @@ export default function DriverNavigationScreen() {
   const payAccentColor = isCashPayment ? "#34C759" : paymentUi.iconColor;
   const payIconSize = isCashPayment ? 20 : 18;
 
-  const rideCustomerLabel = params.customerName?.trim()
-    ? passengerFirstNameOnly(params.customerName)
-    : isPickupPhase
-      ? pickupName
-      : destName;
+  const resolvedCustomerName =
+    params.customerName?.trim() || activeRide?.customerName?.trim() || "";
+  const resolvedBookingPartnerName =
+    params.bookingPartnerName?.trim() || activeRide?.bookingPartnerName?.trim() || "";
+
+  const rideCustomerLabel =
+    resolvedCustomerName || resolvedBookingPartnerName
+      ? passengerWithPartnerLabel(resolvedCustomerName, resolvedBookingPartnerName)
+      : isPickupPhase
+        ? pickupName
+        : destName;
 
   const rideDetailsBlock = (
     <View style={styles.rideInfoCard}>

@@ -91,6 +91,8 @@ export interface RideRequest {
   companyId?: string | null;
   /** Gesetzt, wenn die Fahrt über das Partner-Panel angelegt wurde. */
   createdByPanelUserId?: string | null;
+  /** Anzeigename des Partner-Mandanten (Hotel/Firma) bei Panel-Buchung. */
+  bookingPartnerName?: string | null;
   /**
    * Produktlinie: normal, Krankenfahrt, Gutschein, Firmenfahrt.
    * @default standard

@@ -22,6 +22,7 @@ import {
 } from "../db/rideSupportTicketsData";
 import { isPostgresConfigured } from "../db/client";
 import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
+import { attachBookingPartnerNamesToRides } from "../lib/rideBookingPartnerName.js";
 import { parseMedicalScanCopaymentInput } from "../lib/medical/medicalCopayment";
 import {
   runMedicalTransportDocumentScanTestForCustomer,
@@ -55,7 +56,8 @@ router.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) 
     }
     const passengerId = customerPassengerId(sess);
     const rides = await listRidesForPassenger(passengerId);
-    const views = rides.map(toCustomerRideView);
+    const withPartners = await attachBookingPartnerNamesToRides(rides);
+    const views = withPartners.map(toCustomerRideView);
     const assignedByRideId = await buildAssignedDriverMapForCustomerRides(rides);
     res.json({
       ok: true,

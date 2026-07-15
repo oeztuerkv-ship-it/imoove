@@ -47,6 +47,14 @@ export function payerModeFromKind(payerKind) {
   return "passenger";
 }
 
+/** Fahrgast + Partner-Mandant, z. B. „Laufkunde · Hotel XY“. */
+export function partnerPassengerDisplayLabel(customerName, companyName) {
+  const name = String(customerName ?? "").trim() || "—";
+  const company = String(companyName ?? "").trim();
+  if (company) return `${name} · ${company}`;
+  return name;
+}
+
 export function payerKindLabel(k) {
   const m = {
     passenger: "Fahrgast",

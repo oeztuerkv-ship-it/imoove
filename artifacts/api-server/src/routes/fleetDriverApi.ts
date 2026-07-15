@@ -48,6 +48,7 @@ import { listRides, listRidesForDriver, findRide } from "../db/ridesData";
 import { getCustomerCancelReasonForRide } from "./rides";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { toDriverOpenMarketOfferView, toDriverOpenReservationView } from "../lib/driverMarketOfferView.js";
+import { attachBookingPartnerNamesToRides } from "../lib/rideBookingPartnerName.js";
 import { driverMatchesDispatchTier, normalizeDispatchPriority } from "../lib/dispatchPriorityTier.js";
 import {
   fleetDriverAssignedVehiclePayload,
@@ -391,6 +392,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
 
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    const withPartners = await attachBookingPartnerNamesToRides(withCodes);
     let driverLat = hasPos ? latRaw : null;
     let driverLon = hasPos ? lonRaw : null;
     if (driverLat == null || driverLon == null) {
@@ -401,7 +403,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       }
     }
     const driverPriority = await getFleetDriverDispatchPriority(a.fleetDriverId, a.companyId);
-    const driverOffers = withCodes.map((row) =>
+    const driverOffers = withPartners.map((row) =>
       toDriverOpenMarketOfferView(row, { driverLat, driverLon, driverDispatchPriority: driverPriority }),
     );
     const openInstantIds = pool.rides
@@ -455,9 +457,9 @@ router.get("/fleet-driver/v1/follow-up-offer", requireFleetDriverAuth, async (re
     }
 
     const driverPriority = await getFleetDriverDispatchPriority(a.fleetDriverId, a.companyId);
-    const [publicRide] = await attachAccessCodeSummariesToRides([
-      stripPartnerOnlyRideFields(offer.ride),
-    ]);
+    const [publicRide] = await attachBookingPartnerNamesToRides(
+      await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(offer.ride)]),
+    );
     const driverOfferRide = toDriverOpenMarketOfferView(publicRide, {
       driverLat: lat,
       driverLon: lon,
@@ -573,11 +575,12 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       }),
     );
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    const withPartners = await attachBookingPartnerNamesToRides(withCodes);
     res.json({
       ok: true,
       einsatzbereit: true,
-      rides: withCodes,
-      message: withCodes.length === 0 ? "Keine Vorbestellungen im Planer" : null,
+      rides: withPartners,
+      message: withPartners.length === 0 ? "Keine Vorbestellungen im Planer" : null,
     });
   } catch (e) {
     next(e);

@@ -625,6 +625,7 @@ export default function PartnerRidesListPage({ variant }) {
             <PartnerRideCard
               key={ride.id}
               ride={ride}
+              companyName={user?.companyName ?? ""}
               open={open}
               onToggle={() => setExpandedId(open ? null : ride.id)}
               tracking={tracking}
