@@ -74,6 +74,7 @@ import {
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 import { logger } from "../lib/logger";
 import { sendRideChatMessageCreated, sendRideChatMessagesJson } from "../lib/rideChatRouteHelpers";
+import { buildDriverNavRouteQuote } from "../lib/driverNavRouteQuote";
 
 const router: IRouter = Router();
 
@@ -935,6 +936,60 @@ router.post("/fleet-driver/v1/reservations", requireFleetDriverAuth, async (req,
       return;
     }
     res.status(201).json({ ok: true, ride: stripPartnerOnlyRideFields(result.ride) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Fahrer-Navi-Route: km/ETA wie Preis (Google Distance Matrix → OSRM),
+ * Polyline/Steps von OSRM. Keine Google Directions (Kosten).
+ */
+router.post("/fleet-driver/v1/nav-route", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const body = (req.body ?? {}) as {
+      fromLat?: unknown;
+      fromLon?: unknown;
+      toLat?: unknown;
+      toLon?: unknown;
+      fromName?: unknown;
+      toName?: unknown;
+    };
+    const fromLat = typeof body.fromLat === "number" ? body.fromLat : Number(body.fromLat);
+    const fromLon = typeof body.fromLon === "number" ? body.fromLon : Number(body.fromLon);
+    const toLat = typeof body.toLat === "number" ? body.toLat : Number(body.toLat);
+    const toLon = typeof body.toLon === "number" ? body.toLon : Number(body.toLon);
+    if (
+      !Number.isFinite(fromLat) ||
+      !Number.isFinite(fromLon) ||
+      !Number.isFinite(toLat) ||
+      !Number.isFinite(toLon)
+    ) {
+      res.status(400).json({
+        ok: false,
+        error: "coordinates_required",
+        message: "Start- und Zielkoordinaten sind erforderlich.",
+        routingSource: "error",
+      });
+      return;
+    }
+    const fromName =
+      typeof body.fromName === "string" && body.fromName.trim() ? body.fromName.trim() : "Start";
+    const toName = typeof body.toName === "string" && body.toName.trim() ? body.toName.trim() : "Ziel";
+    const quote = await buildDriverNavRouteQuote(
+      { displayName: fromName, lat: fromLat, lon: fromLon },
+      { displayName: toName, lat: toLat, lon: toLon },
+    );
+    if (!quote.ok) {
+      res.status(400).json(quote);
+      return;
+    }
+    res.json(quote);
   } catch (e) {
     next(e);
   }

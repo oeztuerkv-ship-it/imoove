@@ -89,9 +89,10 @@ export function logDriverNavigationOpen(input: DriverNavigationOpenLogInput): vo
       length: keyProbe.keyLength,
     },
     routing: {
-      method: input.routingMethod ?? "routing-osrm-public",
-      url: input.routingUrl ?? "https://router.project-osrm.org/route/v1/driving/…",
-      note: "Fahrer-Navi nutzt OSRM, nicht Google Directions API",
+      method: input.routingMethod ?? "POST /fleet-driver/v1/nav-route",
+      url: input.routingUrl ?? "api.onroda.de/api/fleet-driver/v1/nav-route",
+      note:
+        "km/ETA: Google Distance Matrix → OSRM (wie Preis). Geometrie/Steps: OSRM. Keine Directions-API. Restdistanz entlang Polyline.",
     },
     map: {
       method: "react-native-maps",
@@ -109,7 +110,7 @@ export function logDriverNavigationOpen(input: DriverNavigationOpenLogInput): vo
 
 export function logDriverNavigationRouteResult(input: {
   ok: boolean;
-  source: "osrm" | "fallback";
+  source: "google" | "osrm" | "fallback" | "error";
   distanceKm?: number;
   durationMinutes?: number;
   stepCount?: number;

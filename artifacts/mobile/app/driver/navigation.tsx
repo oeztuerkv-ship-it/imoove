@@ -82,7 +82,12 @@ import {
   logDriverNavigationOpen,
   logDriverNavigationRouteResult,
 } from "@/utils/driverNavigationDiagnostics";
-import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
+import type { RouteStep } from "@/utils/routing";
+import { fetchDriverNavRoute } from "@/utils/driverNavRouteApi";
+import {
+  remainingAlongPolyline,
+  scaleRemainingToAuthoritative,
+} from "@/utils/routeRemainingAlongPolyline";
 import {
   defaultDriverFareInputForCompletion,
   defaultFinalFareForDriverCompletion,
@@ -455,6 +460,7 @@ export default function DriverNavigationScreen() {
   const [steps, setSteps]       = useState<RouteStep[]>([]);
   const [stepIdx, setStepIdx]   = useState(0);
   const prevStepIdx = useRef(-1);
+  const polylineLatLonRef = useRef<{ lat: number; lon: number }[]>([]);
 
   const [initialDistM, setInitialDistM] = useState(0);
   const [initialEtaMin, setInitialEtaMin] = useState(0);
@@ -741,47 +747,53 @@ export default function DriverNavigationScreen() {
     focusNavigationCamera({ animated: true, force: true });
   }, [phase, navigationTarget.lat, navigationTarget.lon, focusNavigationCamera]);
 
-  // Load route once per ride/phase — never on every GPS tick.
+  // Load route once per ride/phase via API (Google Matrix → OSRM) — never on every GPS tick.
   useEffect(() => {
     if (Platform.OS === "web") return;
 
-    let fLat = isPickupPhase ? fromLat : pickupLat || fromLat;
-    let fLon = isPickupPhase ? fromLon : pickupLon || fromLon;
+    let fLat = driverLatRef.current;
+    let fLon = driverLonRef.current;
     if (!isValidMapCoord(fLat, fLon)) {
-      fLat = driverLatRef.current;
-      fLon = driverLonRef.current;
+      fLat = isPickupPhase ? fromLat : pickupLat || fromLat;
+      fLon = isPickupPhase ? fromLon : pickupLon || fromLon;
     }
     const tLat = navigationTarget.lat;
     const tLon = navigationTarget.lon;
     if (!isValidMapCoord(fLat, fLon) || !isValidMapCoord(tLat, tLon)) return;
 
     const destLabel = isPickupPhase ? pickupName : destName;
-    const osrmPath = `${fLon},${fLat};${tLon},${tLat}`;
-    getRouteWithSteps(
+    let cancelled = false;
+    fetchDriverNavRoute(
       { lat: fLat, lon: fLon, displayName: params.fromName ?? "Start" },
       { lat: tLat, lon: tLon, displayName: destLabel },
     )
       .then((result) => {
+        if (cancelled) return;
         const coords = (result.polyline ?? []).map(([lat, lon]) => ({ latitude: lat, longitude: lon }));
-        const usedFallback =
-          result.steps.length <= 2 &&
-          (result.steps[0]?.instruction === "Fahrt beginnen" || result.steps[1]?.instruction === "Ziel erreicht") &&
-          coords.length <= 2;
+        const latLon = coords.map((c) => ({ lat: c.latitude, lon: c.longitude }));
         logDriverNavigationRouteResult({
           ok: true,
-          source: usedFallback ? "fallback" : "osrm",
+          source: result.routingSource,
           distanceKm: result.distanceKm,
           durationMinutes: result.durationMinutes,
           stepCount: result.steps.length,
           polylinePoints: coords.length,
         });
-        if (__DEV__ && usedFallback) {
-          console.warn("[DriverNav] routing_using_haversine_fallback", { osrmPath });
-        }
-        setPolyline(coords.length >= 2 ? coords : [
-          { latitude: fLat, longitude: fLon },
-          { latitude: tLat, longitude: tLon },
-        ]);
+        const appliedCoords =
+          coords.length >= 2
+            ? coords
+            : [
+                { latitude: fLat, longitude: fLon },
+                { latitude: tLat, longitude: tLon },
+              ];
+        polylineLatLonRef.current =
+          latLon.length >= 2
+            ? latLon
+            : [
+                { lat: fLat, lon: fLon },
+                { lat: tLat, lon: tLon },
+              ];
+        setPolyline(appliedCoords);
         setSteps(result.steps);
         setStepIdx(0);
         prevStepIdx.current = -1;
@@ -795,25 +807,37 @@ export default function DriverNavigationScreen() {
         const lon = isValidMapCoord(driverLatRef.current, driverLonRef.current)
           ? driverLonRef.current
           : fLon;
-        const remDist = haversine(lat, lon, tLat, tLon);
-        setRemainingDistM(remDist);
-        setRemainingMin(
-          distM > 0 ? Math.max(1, Math.round(etaMin * Math.min(remDist / distM, 1))) : etaMin,
-        );
+        const along = remainingAlongPolyline(polylineLatLonRef.current, { lat, lon });
+        if (along && distM > 0) {
+          const scaled = scaleRemainingToAuthoritative(along, distM, etaMin);
+          setRemainingDistM(scaled.remainingDistM);
+          setRemainingMin(scaled.remainingMin);
+        } else {
+          setRemainingDistM(distM);
+          setRemainingMin(Math.max(1, etaMin));
+        }
         focusNavigationCamera({ lat, lon, animated: false, force: true });
       })
       .catch((e) => {
+        if (cancelled) return;
         logDriverNavigationRouteResult({
           ok: false,
-          source: "fallback",
+          source: "error",
           error: e instanceof Error ? e.message : String(e),
         });
         const fallbackCoords = [
           { latitude: fLat, longitude: fLon },
           { latitude: tLat, longitude: tLon },
         ];
+        polylineLatLonRef.current = [
+          { lat: fLat, lon: fLon },
+          { lat: tLat, lon: tLon },
+        ];
         setPolyline(fallbackCoords);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [
     params.rideId,
     phase,
@@ -1510,13 +1534,22 @@ export default function DriverNavigationScreen() {
           setDriverLat(latitude);
           setDriverLon(longitude);
 
-          const target = navTargetRef.current;
-          const remDist = haversine(latitude, longitude, target.lat, target.lon);
-          setRemainingDistM(remDist);
           const { distM, etaMin } = initialRouteMetricsRef.current;
-          if (distM > 0) {
-            const frac = Math.min(remDist / distM, 1);
-            setRemainingMin(Math.max(1, Math.round(etaMin * frac)));
+          const along = remainingAlongPolyline(polylineLatLonRef.current, {
+            lat: latitude,
+            lon: longitude,
+          });
+          if (along && distM > 0 && etaMin > 0) {
+            const scaled = scaleRemainingToAuthoritative(along, distM, etaMin);
+            setRemainingDistM(scaled.remainingDistM);
+            setRemainingMin(scaled.remainingMin);
+          } else {
+            const target = navTargetRef.current;
+            const remDist = haversine(latitude, longitude, target.lat, target.lon);
+            setRemainingDistM(remDist);
+            if (distM > 0) {
+              setRemainingMin(Math.max(1, Math.round(etaMin * Math.min(remDist / distM, 1))));
+            }
           }
 
           const routeSteps = stepsRef.current;

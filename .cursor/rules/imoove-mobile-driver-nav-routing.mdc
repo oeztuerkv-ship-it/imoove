@@ -1,0 +1,28 @@
+---
+description: Fahrer-Navi — Server-Routing (Google Matrix / OSRM), Rest entlang Polyline
+alwaysApply: false
+---
+
+# Mobile Fahrer-Navigation: Routing-Quelle
+
+## Quelle (verbindlich)
+
+- **km / ETA:** Server `POST /api/fleet-driver/v1/nav-route` → dieselbe Kette wie Preis (`drivingRouteBetween` in `fixedPriceRouteQuote.ts`): **Google Distance Matrix primär**, **OSRM Fallback**. Feld `routingSource`: `google` | `osrm` | `error`.
+- **Polyline / Abbiege-Hinweise:** OSRM (`geometrySource: "osrm"`). Distance Matrix liefert keine Geometrie — **keine Google Directions API** (Kosten).
+- **Mobile Aufruf:** `artifacts/mobile/utils/driverNavRouteApi.ts` → `fetchDriverNavRoute`.
+- **Anzeige Rest:** `routeRemainingAlongPolyline.ts` — Fortschritt entlang der Polyline, skaliert auf Matrix-/OSRM-Gesamtwerte. **Kein** Luftlinie × Anteils-Hack.
+
+## Was nicht tun
+
+- Kein direktes Client-OSRM für Fahrer-Navi-Metriken (Preis und Navi würden wieder auseinanderlaufen).
+- Kein Re-Call der Matrix bei jedem GPS-Tick — nur bei Ride/Phase-Wechsel (ggf. später Off-Route mit Throttle).
+- Keine Directions-API „nebenbei“ ohne explizite Kostenfreigabe.
+
+## Dateien
+
+| Layer | Pfad |
+|-------|------|
+| API Quote | `artifacts/api-server/src/lib/driverNavRouteQuote.ts` |
+| API Route | `POST /fleet-driver/v1/nav-route` in `fleetDriverApi.ts` |
+| Metrics shared | `fixedPriceRouteQuote.ts` → `drivingRouteBetween` |
+| Mobile Navi | `artifacts/mobile/app/driver/navigation.tsx` |
