@@ -117,10 +117,13 @@ const PICKUP_AUX_ICON_RED = "#FF3B30";
 const PICKUP_AUX_BORDER_LIGHT_RED = "#FECACA";
 const PICKUP_AUX_PRESSED_BG = "#FFF1F2";
 const DRIVE_SHEET_GRAB_H = 32;
-const DRIVE_SHEET_DETAILS_H = 220;
+const DRIVE_SHEET_STATUS_H = 76;
+const DRIVE_SHEET_DETAILS_CONTENT_H = 220;
 const DRIVE_SHEET_ACTIONS_H = 56;
-const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_ACTIONS_H + 12;
-const DRIVE_SHEET_EXPANDED_H = DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_H + 8;
+const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_STATUS_H + 12;
+const DRIVE_SHEET_EXPANDED_H =
+  DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
+const DRIVE_SHEET_DETAILS_H = DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
 
 type NavPaymentUi = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -1806,26 +1809,28 @@ export default function DriverNavigationScreen() {
       );
     }
   } else {
-    actionBtn = (
-      <View style={styles.actionRow}>
-        <Pressable
-          style={[styles.actionBtn, styles.actionBtnGreen, styles.actionBtnFlex]}
-          onPress={handleFahrtBeenden}
-        >
-          <Feather name="flag" size={20} color="#fff" />
-          <Text style={styles.actionBtnText}>Fahrt beenden</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setShowCancelReasonModal(true)}
-          style={({ pressed }) => [styles.actionCancelSide, pressed && { opacity: 0.9 }]}
-          accessibilityLabel="Fahrt stornieren"
-        >
-          <Feather name="x" size={22} color="#fff" />
-          <Text style={styles.actionCancelSideText}>Storno</Text>
-        </Pressable>
-      </View>
-    );
+    actionBtn = null;
   }
+
+  const drivePhaseEndActions = (
+    <View style={styles.actionRow}>
+      <Pressable
+        style={[styles.actionBtn, styles.actionBtnGreen, styles.actionBtnFlex]}
+        onPress={handleFahrtBeenden}
+      >
+        <Feather name="flag" size={20} color="#fff" />
+        <Text style={styles.actionBtnText}>Fahrt beenden</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => setShowCancelReasonModal(true)}
+        style={({ pressed }) => [styles.actionCancelSide, pressed && { opacity: 0.9 }]}
+        accessibilityLabel="Fahrt stornieren"
+      >
+        <Feather name="x" size={22} color="#fff" />
+        <Text style={styles.actionCancelSideText}>Storno</Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -1957,13 +1962,22 @@ export default function DriverNavigationScreen() {
             </Pressable>
           </View>
 
-          <Animated.View style={{ maxHeight: driveDetailsHeight, opacity: driveSheetAnim, overflow: "hidden" }}>
-            <View style={styles.driveDetailsWrap}>{rideDetailsBlock}</View>
-          </Animated.View>
-
-          <View style={styles.driveEndActionWrap}>
-            <View style={styles.actionBtnWrapper}>{actionBtn}</View>
+          <View style={styles.driveStartedBanner}>
+            <View style={styles.driveStartedBannerInner}>
+              <MaterialCommunityIcons name="car-arrow-right" size={20} color="#16A34A" />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[styles.driveStartedTitle, navAppleFont("semibold")]}>Die Fahrt hat begonnen</Text>
+                <Text style={[styles.driveStartedSub, navAppleFont("regular")]}>Kunde wird abgesetzt</Text>
+              </View>
+            </View>
           </View>
+
+          <Animated.View style={{ maxHeight: driveDetailsHeight, opacity: driveSheetAnim, overflow: "hidden" }}>
+            <View style={styles.driveDetailsWrap}>
+              {rideDetailsBlock}
+              <View style={styles.driveEndActionWrap}>{drivePhaseEndActions}</View>
+            </View>
+          </Animated.View>
         </Animated.View>
       ) : (
         <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
@@ -2547,8 +2561,35 @@ const styles = StyleSheet.create({
     backgroundColor: "#C7C7CC",
   },
   sheetChevronBtn: { paddingVertical: 4, paddingHorizontal: 4 },
+  driveStartedBanner: {
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "#000000",
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: DRIVE_SHEET_STATUS_H - 12,
+    justifyContent: "center",
+  },
+  driveStartedBannerInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  driveStartedTitle: {
+    fontSize: 16,
+    color: "#111827",
+    letterSpacing: Platform.OS === "ios" ? -0.3 : -0.15,
+  },
+  driveStartedSub: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 2,
+    letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
+  },
   driveDetailsWrap: { paddingTop: 2, paddingBottom: 10 },
-  driveEndActionWrap: { marginTop: 2, marginBottom: 4 },
+  driveEndActionWrap: { marginTop: 12, marginBottom: 4 },
   rideInfoCard: {
     borderRadius: 14,
     backgroundColor: "#FFFFFF",
