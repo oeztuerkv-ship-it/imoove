@@ -2474,11 +2474,13 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   trackingDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: rs(68),
-    backgroundColor: "#E5E7EB",
-    marginHorizontal: rs(8),
+    width: rs(2),
+    height: rs(56),
+    borderRadius: rs(1),
+    backgroundColor: "#D1D5DB",
+    marginHorizontal: rs(4),
     flexShrink: 0,
+    alignSelf: "center",
   },
   trackingDriverInfo: {
     flex: 1,
