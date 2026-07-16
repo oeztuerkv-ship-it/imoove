@@ -530,7 +530,14 @@ function splitDestinationLines(displayName: string | undefined): { title: string
   if (!raw) return { title: "Ziel", sub: "" };
   const comma = raw.indexOf(",");
   if (comma > 0) {
-    return { title: raw.slice(0, comma).trim(), sub: raw.slice(comma + 1).trim() };
+    const street = raw.slice(0, comma).trim();
+    const rest = raw.slice(comma + 1).trim();
+    // Typisch „73728 Esslingen am Neckar“ → Stadt ohne PLZ neben der Straße
+    const city = rest.replace(/^\d{4,5}\s+/, "").trim() || rest;
+    return {
+      title: city ? `${street}, ${city}` : street,
+      sub: "",
+    };
   }
   return { title: raw, sub: "" };
 }
@@ -2103,9 +2110,9 @@ export default function StatusScreen() {
   const isDriving = customerPhase === "driving";
   const isArrived = customerPhase === "arrived";
   const destLabel =
-    displayDestination?.displayName ??
-    serverRideForUi?.toFull ??
-    serverRideForUi?.to ??
+    serverRideForUi?.toFull?.trim() ||
+    displayDestination?.displayName?.trim() ||
+    serverRideForUi?.to?.trim() ||
     "Ziel";
   const destLines = splitDestinationLines(destLabel);
   const rideStatus = effectiveAcceptedRequest?.status;
