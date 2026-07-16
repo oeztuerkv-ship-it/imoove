@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, type Href } from "expo-router";
+import React, { useCallback, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +13,15 @@ export default function BookingQrScreen() {
   const insets = useSafeAreaInsets();
   const topPad = (typeof window !== "undefined" ? 67 : insets.top) + 10;
   const [code, setCode] = useState("");
+
+  /** Buchungszentrale nutzt `replace` → oft kein Stack; `back()` wirft sonst GO_BACK. */
+  const exit = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/booking-center" as Href);
+  }, []);
 
   const runCode = () => {
     const c = code.trim();
@@ -29,7 +38,7 @@ export default function BookingQrScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={exit} style={styles.backBtn} hitSlop={10}>
           <Feather name="arrow-left" size={20} color={colors.foreground} />
         </Pressable>
         <View style={{ flex: 1 }}>

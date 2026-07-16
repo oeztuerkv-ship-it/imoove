@@ -148,14 +148,7 @@ export default function BookingCenterScreen() {
                 ) : (
                   <Text style={[styles.cardTitle, { color: colors.foreground }]}>{c.title}</Text>
                 )}
-                <Text
-                  style={[
-                    styles.cardSub,
-                    c.key === "fixed" ? styles.cardSubFixed : { color: colors.mutedForeground },
-                  ]}
-                >
-                  {c.subtitle}
-                </Text>
+                <Text style={styles.cardSub}>{c.subtitle}</Text>
               </View>
               <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
             </Pressable>
@@ -216,8 +209,13 @@ const styles = StyleSheet.create({
   cardTitle: accountSheetPrimaryLabel,
   cardTitleRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
   cardTitleBeliebt: { ...accountSheetPrimaryLabel, color: "#F87171" },
-  cardSub: { ...accountSheetSecondaryLabel, marginTop: rs(2) },
-  cardSubFixed: { color: "#111827", fontFamily: "Inter_400Regular" },
+  /** Wie Festpreis-Untertitel — einheitlich für alle Karten. */
+  cardSub: {
+    ...accountSheetSecondaryLabel,
+    marginTop: rs(2),
+    color: "#111827",
+    fontFamily: "Inter_400Regular",
+  },
   notice: {
     borderRadius: rs(16),
     borderWidth: StyleSheet.hairlineWidth,
