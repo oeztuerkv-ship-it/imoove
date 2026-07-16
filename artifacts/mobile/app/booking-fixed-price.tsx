@@ -73,7 +73,7 @@ import {
   type SearchFavorite,
 } from "@/utils/searchFavorites";
 import { getCurrentPositionSafe, requestForegroundPermissionsSafe } from "@/utils/safeExpoLocation";
-import { rs } from "@/utils/scale";
+import { rf, rs } from "@/utils/scale";
 
 const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
@@ -636,8 +636,8 @@ export default function BookingFixedPriceScreen() {
         ) : null}
 
         <View style={[routeStyles.infoBox, { backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM, marginBottom: rs(8) }]}>
-          <Feather name="info" size={15} color={colors.mutedForeground} />
-          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 17 }}>
+          <Feather name="info" size={15} color={colors.foreground} />
+          <Text style={{ flex: 1, fontSize: rf(11), fontFamily: "Inter_400Regular", color: colors.foreground, lineHeight: rf(16) }}>
             {RESERVATION_FIXED_PRICE_HINT_DE}
           </Text>
         </View>
