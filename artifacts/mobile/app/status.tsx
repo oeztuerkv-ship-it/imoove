@@ -2069,46 +2069,6 @@ export default function StatusScreen() {
         ) : null}
 
         <View style={styles.trackingDriverRow}>
-          <View style={styles.trackingEtaBox}>
-            {isArrived ? (
-              <MaterialCommunityIcons name="map-marker-check" size={rf(28)} color="#22C55E" />
-            ) : (
-              <>
-                <Text
-                  style={[styles.trackingEtaLabel, statusAppleFont("medium")]}
-                  allowFontScaling={false}
-                  numberOfLines={1}
-                >
-                  {isDriving ? "Ziel in" : "Ankunft in"}
-                </Text>
-                <View style={styles.trackingEtaValueRow}>
-                  <Text style={[styles.trackingEtaNumber, statusAppleFont("bold")]} allowFontScaling={false}>
-                    {eta != null ? eta : "—"}
-                  </Text>
-                  <Text style={[styles.trackingEtaMin, statusAppleFont("bold")]} allowFontScaling={false}>
-                    min
-                  </Text>
-                </View>
-                {etaDistanceText ? (
-                  <Text
-                    style={[styles.trackingEtaDistance, statusAppleFont("regular")]}
-                    allowFontScaling={false}
-                    numberOfLines={2}
-                  >
-                    {etaDistanceText}
-                  </Text>
-                ) : null}
-              </>
-            )}
-            {isArrived ? (
-              <Text style={styles.trackingEtaDistance} allowFontScaling={false}>
-                Am Abholort
-              </Text>
-            ) : null}
-          </View>
-
-          <View style={styles.trackingDivider} />
-
           <View style={styles.trackingDriverInfo}>
             <View style={styles.trackingDriverAvatarWrap}>
               <View style={styles.trackingDriverAvatar}>
@@ -2149,6 +2109,46 @@ export default function StatusScreen() {
                 {driverCar ? ` · ${driverCar}` : ""}
               </Text>
             </View>
+          </View>
+
+          <View style={styles.trackingDivider} />
+
+          <View style={styles.trackingEtaBox}>
+            {isArrived ? (
+              <MaterialCommunityIcons name="map-marker-check" size={rf(28)} color="#22C55E" />
+            ) : (
+              <>
+                <Text
+                  style={[styles.trackingEtaLabel, statusAppleFont("medium")]}
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                >
+                  {isDriving ? "Ziel in" : "Ankunft in"}
+                </Text>
+                <View style={styles.trackingEtaValueRow}>
+                  <Text style={[styles.trackingEtaNumber, statusAppleFont("bold")]} allowFontScaling={false}>
+                    {eta != null ? eta : "—"}
+                  </Text>
+                  <Text style={[styles.trackingEtaMin, statusAppleFont("bold")]} allowFontScaling={false}>
+                    min
+                  </Text>
+                </View>
+                {etaDistanceText ? (
+                  <Text
+                    style={[styles.trackingEtaDistance, statusAppleFont("regular")]}
+                    allowFontScaling={false}
+                    numberOfLines={2}
+                  >
+                    {etaDistanceText}
+                  </Text>
+                ) : null}
+              </>
+            )}
+            {isArrived ? (
+              <Text style={styles.trackingEtaDistance} allowFontScaling={false}>
+                Am Abholort
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -2459,13 +2459,15 @@ const styles = StyleSheet.create({
   },
   trackingEtaBox: {
     width: rs(92),
-    maxWidth: "28%",
+    maxWidth: "30%",
     flexShrink: 0,
+    alignItems: "flex-end",
   },
   trackingEtaLabel: {
     fontSize: rf(12),
     color: TRACKING_SECONDARY,
     letterSpacing: Platform.OS === "ios" ? 0.1 : 0.2,
+    textAlign: "right",
   },
   trackingEtaNumber: {
     fontSize: rf(32),
@@ -2476,6 +2478,7 @@ const styles = StyleSheet.create({
   trackingEtaValueRow: {
     flexDirection: "row",
     alignItems: "flex-end",
+    justifyContent: "flex-end",
     gap: rs(2),
     marginTop: rs(2),
   },
@@ -2490,6 +2493,7 @@ const styles = StyleSheet.create({
     fontSize: rf(10),
     color: TRACKING_SECONDARY,
     lineHeight: rf(13),
+    textAlign: "right",
   },
   trackingDivider: {
     width: StyleSheet.hairlineWidth,
