@@ -44,7 +44,6 @@ import {
   loadCustomerArchivedRideIds,
 } from "@/utils/customerArchivedRides";
 import {
-  isCustomerRideActiveNow,
   isCustomerRideFuture,
   isCustomerStaleOpenDispatch,
 } from "@/utils/customerRideListFilters";
@@ -95,154 +94,7 @@ const PAYMENT_ICONS: Record<PaymentMethod, string> = {
   access_code: "ticket-confirmation",
 };
 
-type FilterTab = "aktuell" | "zukunft" | "abgelaufen";
-
-const ADDRESS_UNKNOWN = "Unbekannt";
-
-function trimAddressInput(raw: string | null | undefined): string {
-  const text = String(raw ?? "").trim();
-  if (!text || text === "—" || text === "-") return "";
-  if (text.toLowerCase() === ADDRESS_UNKNOWN.toLowerCase()) return "";
-  return text;
-}
-
-function normalizeAddressDisplay(raw: string): string {
-  const parts = raw
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length >= 2 && /^\d{1,5}[a-zA-Z]?$/.test(parts[0]) && /[A-Za-zÄÖÜäöüß]/.test(parts[1])) {
-    const number = parts.shift() as string;
-    parts[0] = `${parts[0]} ${number}`.trim();
-    return parts.join(", ");
-  }
-  return raw;
-}
-
-function isAdminAddressPart(part: string): boolean {
-  const s = part.trim().toLowerCase();
-  return (
-    s.includes("landkreis") ||
-    s.includes("region") ||
-    s.includes("regierungsbezirk") ||
-    s.includes("baden-württemberg") ||
-    s.includes("deutschland")
-  );
-}
-
-function mergeAddressSources(
-  primary: string | null | undefined,
-  secondary?: string | null | undefined,
-): string {
-  const p = trimAddressInput(primary);
-  const s = trimAddressInput(secondary);
-  if (!p && !s) return "";
-  if (!p) return s;
-  if (!s || p === s) return p;
-  if (p.includes(s) || s.includes(p)) return p.length >= s.length ? p : s;
-
-  const pHasPlz = /\b\d{5}\b/.test(p);
-  const sHasPlz = /\b\d{5}\b/.test(s);
-  if (!pHasPlz && sHasPlz) return `${p}, ${s}`;
-  if (pHasPlz && !sHasPlz) return p;
-
-  return pickBestAddressString(p, s);
-}
-
-function pickBestAddressString(...sources: string[]): string {
-  const uniq = [...new Set(sources.filter(Boolean))];
-  if (uniq.length === 0) return "";
-  if (uniq.length === 1) return uniq[0];
-  const withPlz = uniq.filter((s) => /\b\d{5}\b/.test(s));
-  if (withPlz.length === 1) return withPlz[0];
-  if (withPlz.length > 1) {
-    return withPlz.sort((a, b) => b.length - a.length)[0];
-  }
-  return uniq.sort((a, b) => b.length - a.length)[0];
-}
-
-function looksLikeStreetPart(part: string): boolean {
-  return /\b\d{1,5}[a-zA-Z]?\b/.test(part) && !/\b\d{5}\b/.test(part);
-}
-
-function splitSingleAddress(full: string): { line1: string; line2: string } {
-  const parts = normalizeAddressDisplay(full)
-    .split(",")
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0 && p.toLowerCase() !== ADDRESS_UNKNOWN.toLowerCase());
-
-  if (parts.length === 0) return { line1: ADDRESS_UNKNOWN, line2: "" };
-
-  let plz = "";
-  let city = "";
-  let plzIdx = -1;
-
-  for (let i = 0; i < parts.length; i++) {
-    const match = parts[i].match(/\b(\d{5})\b(?:\s*(.*))?$/);
-    if (!match) continue;
-    plzIdx = i;
-    plz = match[1];
-    const inlineCity = String(match[2] ?? "").trim();
-    if (inlineCity && !isAdminAddressPart(inlineCity)) {
-      city = inlineCity;
-      break;
-    }
-    for (let j = i + 1; j < parts.length; j++) {
-      const next = parts[j];
-      if (isAdminAddressPart(next) || /\b\d{5}\b/.test(next)) continue;
-      city = next;
-      break;
-    }
-    break;
-  }
-
-  const usable = parts.filter((p) => !isAdminAddressPart(p));
-  const beforePlz = plzIdx >= 0 ? parts.slice(0, plzIdx).filter((p) => !isAdminAddressPart(p)) : usable;
-  const streetLine = beforePlz.find((p) => looksLikeStreetPart(p));
-  const poiOrNameLine = beforePlz.find((p) => !/\b\d{5}\b/.test(p));
-  let line1 = streetLine ?? poiOrNameLine ?? "";
-
-  if (!city && plzIdx < 0 && usable.length >= 2) {
-    const localityCandidates = usable.filter(
-      (p) => p !== line1 && !looksLikeStreetPart(p) && !/\b\d{5}\b/.test(p),
-    );
-    if (localityCandidates.length > 0) {
-      city = localityCandidates[localityCandidates.length - 1];
-    }
-  }
-
-  if (!line1) {
-    line1 = usable.find((p) => looksLikeStreetPart(p) || !/\b\d{5}\b/.test(p)) ?? usable[0];
-  }
-
-  if (city && line1.toLowerCase() === city.toLowerCase()) {
-    line1 =
-      streetLine ??
-      beforePlz.find((p) => p.toLowerCase() !== city.toLowerCase()) ??
-      usable.find((p) => looksLikeStreetPart(p)) ??
-      line1;
-  }
-
-  const line2 = [plz, city].filter(Boolean).join(" ").trim();
-
-  return {
-    line1: line1 || ADDRESS_UNKNOWN,
-    line2,
-  };
-}
-
-function splitAddressLines(
-  primary: string | null | undefined,
-  secondary?: string | null | undefined,
-): { line1: string; line2: string } {
-  const full = mergeAddressSources(primary, secondary);
-  if (!full) return { line1: ADDRESS_UNKNOWN, line2: "" };
-  return splitSingleAddress(full);
-}
-
-function formatRideAddress(full: string | null | undefined, alt?: string | null): { line1: string; line2: string } {
-  return splitAddressLines(full, alt);
-}
+type FilterTab = "zukunft" | "abgelaufen";
 
 const SEARCHING_SPINNER_MS = 1500;
 
@@ -330,60 +182,6 @@ function StatusBadge({ status, scheduledAt }: { status: string; scheduledAt?: Da
         <ActivityIndicator size={10} color={config.fg} style={{ marginRight: 5 }} />
       )}
       <Text style={[styles.statusText, { color: config.fg }]}>{config.label}</Text>
-    </View>
-  );
-}
-
-function StatCard({ icon, value, label, color }: { icon: string; value: string; label: string; color: string }) {
-  const colors = useColors();
-  return (
-    <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}>
-      <View style={[styles.statIcon, { backgroundColor: color + "18" }]}>
-        <Feather name={icon as any} size={16} color={color} />
-      </View>
-      <Text style={[styles.statValue, { color: colors.foreground }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: LIST_TEXT_STRONG }]}>{label}</Text>
-    </View>
-  );
-}
-
-type AddressLines = { line1: string; line2: string };
-
-function RideRouteStops({ from, to }: { from: AddressLines; to: AddressLines }) {
-  const colors = useColors();
-  return (
-    <View style={styles.routeStops}>
-      <View style={styles.routeStopRow}>
-        <View style={styles.routeStopRailCol}>
-          <View style={styles.routeDotStart} />
-          <View style={[styles.routeRailLine, { backgroundColor: LIST_FRAME_BORDER }]} />
-        </View>
-        <View style={styles.routeStopContent}>
-          <Text style={[styles.routeStopPlace, { color: colors.foreground }]} numberOfLines={2}>
-            {from.line1}
-          </Text>
-          {from.line2 ? (
-            <Text style={[styles.routeStopMeta, { color: colors.mutedForeground }]} numberOfLines={2}>
-              {from.line2}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-      <View style={styles.routeStopRow}>
-        <View style={styles.routeStopRailCol}>
-          <View style={[styles.routeDotEnd, { borderColor: "#DC2626" }]} />
-        </View>
-        <View style={[styles.routeStopContent, styles.routeStopContentLast]}>
-          <Text style={[styles.routeStopPlace, { color: colors.foreground }]} numberOfLines={2}>
-            {to.line1}
-          </Text>
-          {to.line2 ? (
-            <Text style={[styles.routeStopMeta, { color: colors.mutedForeground }]} numberOfLines={2}>
-              {to.line2}
-            </Text>
-          ) : null}
-        </View>
-      </View>
     </View>
   );
 }
@@ -560,7 +358,7 @@ export default function MyRidesScreen() {
     updateRequestPaymentMethod,
     updateRequestDriverNote,
   } = useRideRequests();
-  const [activeTab, setActiveTab] = useState<FilterTab>("aktuell");
+  const [activeTab, setActiveTab] = useState<FilterTab>("zukunft");
   const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set());
   const passengerKey = passengerId?.trim() ?? "";
 
@@ -595,17 +393,6 @@ export default function MyRidesScreen() {
       );
     },
     [passengerKey],
-  );
-
-  const activeNowRequests = useMemo(
-    () =>
-      requests.filter(
-        (r) =>
-          r.passengerId === passengerId &&
-          isCustomerRideActiveNow(r) &&
-          !isArchived(r.id),
-      ),
-    [requests, passengerId, isArchived],
   );
 
   const reservationRequests = useMemo(
@@ -744,16 +531,13 @@ export default function MyRidesScreen() {
   const pastCount = completed.length + cancelled.length;
 
   const TABS: { id: FilterTab; label: string; count?: number }[] = [
-    { id: "aktuell", label: "Aktuell", count: activeNowRequests.length || undefined },
     { id: "zukunft", label: "Offene", count: reservationRequests.length || undefined },
     { id: "abgelaufen", label: "Abgelaufen", count: pastCount > 0 ? pastCount : undefined },
   ];
 
-  const showActiveNow = activeTab === "aktuell";
   const showReservations = activeTab === "zukunft";
   const showPast = activeTab === "abgelaufen";
   const isEmpty =
-    (showActiveNow && activeNowRequests.length === 0) ||
     (showReservations && reservationRequests.length === 0) ||
     (showPast && completed.length === 0 && cancelled.length === 0);
 
@@ -785,9 +569,8 @@ export default function MyRidesScreen() {
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const zukunftBadge = tab.id === "zukunft";
-            const aktuellBadge = tab.id === "aktuell";
-            const activeBorderColor = zukunftBadge ? "#16A34A" : aktuellBadge ? "#2563EB" : "#DC2626";
-            const badgeColor = tab.id === "abgelaufen" ? "#6B7280" : zukunftBadge ? "#16A34A" : "#2563EB";
+            const activeBorderColor = zukunftBadge ? "#16A34A" : "#DC2626";
+            const badgeColor = tab.id === "abgelaufen" ? "#6B7280" : "#16A34A";
             return (
               <Pressable
                 key={tab.id}
@@ -805,13 +588,7 @@ export default function MyRidesScreen() {
                   style={[
                     styles.tabText,
                     {
-                      color: isActive
-                        ? aktuellBadge
-                          ? "#2563EB"
-                          : zukunftBadge
-                            ? "#16A34A"
-                            : "#000000"
-                        : "#000000",
+                      color: isActive ? (zukunftBadge ? "#16A34A" : "#000000") : "#000000",
                     },
                   ]}
                 >
@@ -826,62 +603,6 @@ export default function MyRidesScreen() {
             );
           })}
         </ScrollView>
-
-        {/* ── Aktuelle Fahrten (Live / Fahrersuche) ── */}
-        {showActiveNow && activeNowRequests.length > 0 && (
-          <>
-            {activeNowRequests.map((req) => {
-              const fromAddr = formatRideAddress(req.fromFull, req.from);
-              const toAddr = formatRideAddress(req.toFull, req.to);
-              const when = new Date(req.createdAt as Date);
-              const timeStr = when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-              const liveStatuses = new Set([
-                "pending",
-                "requested",
-                "searching_driver",
-                "offered",
-                "accepted",
-                "ready_for_dispatch",
-                "driver_arriving",
-                "driver_waiting",
-                "passenger_onboard",
-                "arrived",
-                "in_progress",
-              ]);
-              return (
-                <View key={req.id} style={[styles.activeCard, { backgroundColor: "#EFF6FF", borderColor: "#2563EB44" }]}>
-                  <View style={styles.rideHeader}>
-                    <StatusBadge status={req.status} scheduledAt={req.scheduledAt} />
-                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]}>{timeStr} Uhr</Text>
-                  </View>
-                  <RideRouteStops from={fromAddr} to={toAddr} />
-                  <RideMetaStrip
-                    items={[
-                      { value: `${req.distanceKm.toFixed(1)} km` },
-                      { value: req.vehicle },
-                      {
-                        value: isRideFixedPrice(req.pricingMode)
-                          ? `${formatEuro(req.estimatedFare)} · ${customerFareModeLabel(req.pricingMode)}`
-                          : CUSTOMER_TAXAMETER_LABEL,
-                        valueColor: "#2563EB",
-                      },
-                    ]}
-                  />
-                  {liveStatuses.has(req.status) ? (
-                    <Pressable
-                      style={[styles.liveMapRow, { borderColor: LIST_FRAME_BORDER, backgroundColor: HOME_SHEET_PANEL }]}
-                      onPress={() => router.push("/status")}
-                    >
-                      <Feather name="map" size={16} color="#DC2626" />
-                      <Text style={[styles.actionBtnText, { color: colors.foreground, flex: 1 }]}>Live-Karte & Status</Text>
-                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                    </Pressable>
-                  ) : null}
-                </View>
-              );
-            })}
-          </>
-        )}
 
         {/* ── Geplante Reservierungen (Zukunft) ── */}
         {showReservations && reservationRequests.length > 0 && (
@@ -1138,20 +859,14 @@ export default function MyRidesScreen() {
               <Feather name="navigation" size={36} color="#DC2626" />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeTab === "aktuell"
-                ? "Keine laufende Fahrt"
-                : activeTab === "zukunft"
-                  ? "Keine geplanten Fahrten"
-                  : "Noch keine abgelaufenen Fahrten"}
+              {activeTab === "zukunft" ? "Keine geplanten Fahrten" : "Noch keine abgelaufenen Fahrten"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              {activeTab === "aktuell"
-                ? "Sofort-Taxi und laufende Fahrten erscheinen hier. Geplante Termine unter „Offene“."
-                : activeTab === "zukunft"
-                  ? "Vorbestellungen mit Datum und Uhrzeit findest du hier."
-                  : "Abgeschlossene und stornierte Fahrten werden hier gesammelt."}
+              {activeTab === "zukunft"
+                ? "Vorbestellungen mit Datum und Uhrzeit findest du hier."
+                : "Abgeschlossene und stornierte Fahrten werden hier gesammelt."}
             </Text>
-            {(activeTab === "zukunft" || activeTab === "aktuell") && (
+            {activeTab === "zukunft" && (
               <Pressable style={styles.newBookingBtn} onPress={() => router.replace("/booking-center")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
@@ -1271,12 +986,6 @@ const styles = StyleSheet.create({
   },
   noteSavedBannerTitle: { fontSize: rf(14), fontFamily: "Inter_600SemiBold", color: "#166534" },
   noteSavedBannerSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", lineHeight: rf(17), marginTop: rs(2), color: "#15803D" },
-
-  statsRow:        { flexDirection: "row", gap: rs(10) },
-  statCard:        { flex: 1, borderRadius: rs(14), borderWidth: 2, padding: rs(12), alignItems: "center", gap: rs(6) },
-  statIcon:        { width: rs(36), height: rs(36), borderRadius: rs(10), alignItems: "center", justifyContent: "center" },
-  statValue:       { fontSize: rf(16), fontFamily: "Inter_700Bold" },
-  statLabel:       { fontSize: rf(11), fontFamily: "Inter_600SemiBold" },
 
   tabsRow:         { flexDirection: "row", gap: rs(8), paddingBottom: rs(12), paddingTop: rs(4), alignItems: "center" },
   tab: {
@@ -1467,31 +1176,6 @@ const styles = StyleSheet.create({
     borderLeftColor: "transparent",
   },
   statusText:      { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
-  rideDate:        accountSheetSecondaryLabel,
-
-  routeStops: { gap: 0 },
-  routeStopRow: { flexDirection: "row", gap: rs(12) },
-  routeStopRailCol: { width: rs(18), alignItems: "center" },
-  routeDotStart: {
-    width: rs(10),
-    height: rs(10),
-    borderRadius: rs(5),
-    backgroundColor: "#111827",
-    marginTop: rs(3),
-  },
-  routeDotEnd: {
-    width: rs(10),
-    height: rs(10),
-    borderRadius: rs(5),
-    borderWidth: 2,
-    backgroundColor: "transparent",
-    marginTop: rs(3),
-  },
-  routeRailLine: { width: 2, flex: 1, minHeight: rs(24), marginVertical: rs(4) },
-  routeStopContent: { flex: 1, gap: rs(2), paddingBottom: rs(12) },
-  routeStopContentLast: { paddingBottom: 0 },
-  routeStopPlace: accountSheetPrimaryLabel,
-  routeStopMeta: accountSheetSecondaryLabel,
 
   metaStrip: {
     flexDirection: "row",
@@ -1604,8 +1288,6 @@ const styles = StyleSheet.create({
 
   driverHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 1 },
   driverHintText:  { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
-  liveMapRow:      { flexDirection: "row", alignItems: "center", gap: rs(10), paddingVertical: rs(12), paddingHorizontal: rs(12), borderRadius: rs(12), borderWidth: 1, marginTop: rs(2) },
-  liveMapText:     { flex: 1, fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   rideSupportRow: {
     flexDirection: "row",
     alignItems: "center",
