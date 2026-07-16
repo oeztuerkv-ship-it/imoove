@@ -987,6 +987,9 @@ export default function MyRidesScreen() {
               const date    = new Date(ride.createdAt);
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+              const originName = (ride.origin ?? "–").trim() || "–";
+              const destName = (ride.destination ?? "–").trim() || "–";
+              const whenLabel = `${dateStr} · ${timeStr} Uhr`;
               return (
                 <Pressable
                   key={ride.id}
@@ -997,12 +1000,17 @@ export default function MyRidesScreen() {
 
                   <View style={[styles.rideHeader, { marginTop: 12 }]}>
                     <StatusBadge status="completed" />
-                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]}>{dateStr} · {timeStr}</Text>
+                    <View style={styles.pastRideWhenFrame}>
+                      <Text style={styles.pastRideWhenText} numberOfLines={2}>
+                        {whenLabel}
+                      </Text>
+                    </View>
                   </View>
 
-                  <RideRouteStops
-                    from={formatRideAddress(ride.origin)}
-                    to={formatRideAddress(ride.destination)}
+                  <CustomerRouteStopsPanel
+                    originName={originName}
+                    destName={destName}
+                    destinationBackgroundColor={CUSTOMER_ROUTE_MUTED_BG}
                   />
 
                   <RideMetaStrip
@@ -1034,35 +1042,35 @@ export default function MyRidesScreen() {
                     ]}
                   />
 
-                  <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+                  <View style={styles.pastRideActionsRow}>
                     <Pressable
-                      style={[styles.pdfBtn, styles.pastRideActionBorder, { flex: 1 }]}
+                      style={[styles.pastRideActionBtn, styles.pastRideQuittungBtn, { flex: 1 }]}
                       onPress={(ev) => {
                         ev?.stopPropagation?.();
                         handleDownloadReceipt(ride);
                       }}
                     >
-                      <Feather name="file-text" size={15} color="#fff" />
-                      <Text style={styles.pdfBtnText}>Quittung</Text>
+                      <Feather name="file-text" size={14} color="#fff" />
+                      <Text style={styles.pastRideQuittungBtnText}>Quittung</Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.rideSupportRowCompact, styles.pastRideActionBorder, { flex: 1 }]}
+                      style={[styles.pastRideActionBtn, styles.pastRideHelpBtn, { flex: 1 }]}
                       onPress={(ev) => {
                         ev?.stopPropagation?.();
                         openRideDetail(ride.id, { focusSupport: true });
                       }}
                     >
-                      <Feather name="help-circle" size={15} color={colors.primary} />
-                      <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Hilfe</Text>
+                      <Feather name="help-circle" size={14} color={colors.primary} />
+                      <Text style={styles.pastRideHelpBtnText}>Hilfe</Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.archiveBtn]}
+                      style={[styles.pastRideActionBtn, styles.pastRideArchiveBtn]}
                       onPress={(ev) => {
                         ev?.stopPropagation?.();
                         handleArchiveRide(ride.id);
                       }}
                     >
-                      <Feather name="archive" size={15} color={colors.mutedForeground} />
+                      <Feather name="archive" size={14} color={colors.mutedForeground} />
                     </Pressable>
                   </View>
                 </Pressable>
@@ -1081,28 +1089,42 @@ export default function MyRidesScreen() {
                 year: "numeric",
               });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-              const fromAddr = formatRideAddress(ride.from);
-              const toAddr = formatRideAddress(ride.to);
+              const originName = (ride.from ?? "–").trim() || "–";
+              const destName = (ride.to ?? "–").trim() || "–";
+              const whenLabel = `${dateStr} · ${timeStr} Uhr`;
               const cancelledHint = cancelledByHintText(ride);
               return (
                 <View
                   key={ride.id}
                   style={[styles.cancelledRideCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}
                 >
-                  <Text style={[styles.cancelledWhenText, { color: colors.mutedForeground }]}>
-                    {dateStr} · {timeStr} Uhr
-                  </Text>
-                  <RideRouteStops from={fromAddr} to={toAddr} />
+                  <View style={styles.cancelledRideHeader}>
+                    <View style={styles.pastRideWhenFrame}>
+                      <Text style={styles.pastRideWhenText} numberOfLines={2}>
+                        {whenLabel}
+                      </Text>
+                    </View>
+                  </View>
+                  <CustomerRouteStopsPanel
+                    originName={originName}
+                    destName={destName}
+                    destinationBackgroundColor={CUSTOMER_ROUTE_MUTED_BG}
+                  />
                   <View style={styles.cancelledByHintRow}>
                     <Feather name="info" size={rs(14)} color="#DC2626" />
                     <Text style={styles.cancelledByHint} numberOfLines={2}>
                       {cancelledHint}
                     </Text>
                   </View>
-                  <Pressable style={styles.archiveRowBtn} onPress={() => handleArchiveRide(ride.id)}>
-                    <Feather name="archive" size={15} color={colors.mutedForeground} />
-                    <Text style={[styles.archiveRowBtnText, { color: colors.mutedForeground }]}>Archivieren</Text>
-                  </Pressable>
+                  <View style={styles.pastRideActionsRow}>
+                    <Pressable
+                      style={[styles.pastRideActionBtn, styles.pastRideArchiveBtn, styles.pastRideArchiveBtnWide]}
+                      onPress={() => handleArchiveRide(ride.id)}
+                    >
+                      <Feather name="archive" size={14} color={colors.mutedForeground} />
+                      <Text style={styles.pastRideHelpBtnText}>Archivieren</Text>
+                    </Pressable>
+                  </View>
                 </View>
               );
             })}
@@ -1511,6 +1533,26 @@ const styles = StyleSheet.create({
     gap: rs(10),
     marginBottom: rs(4),
   },
+  cancelledRideHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  pastRideWhenFrame: {
+    alignItems: "flex-end",
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(8),
+    borderRadius: rs(8),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#111111",
+    maxWidth: "72%",
+  },
+  pastRideWhenText: {
+    fontSize: rf(13),
+    lineHeight: rf(18),
+    fontFamily: "Inter_400Regular",
+    color: "#111111",
+    textAlign: "right",
+  },
   cancelledWhenText: accountSheetSecondaryLabel,
   cancelledByHintRow: {
     flexDirection: "row",
@@ -1584,10 +1626,48 @@ const styles = StyleSheet.create({
     borderRadius: rs(8),
     borderWidth: StyleSheet.hairlineWidth,
   },
-  /** Abgelaufen: Quittung/Hilfe — schwarzer, feiner Rahmen. */
-  pastRideActionBorder: {
+  pastRideActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(8),
+    marginTop: rs(10),
+  },
+  pastRideActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(5),
+    height: rs(32),
+    paddingHorizontal: rs(8),
+    borderRadius: rs(8),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#111827",
+    borderColor: "#111111",
+  },
+  pastRideQuittungBtn: {
+    backgroundColor: "#DC2626",
+  },
+  pastRideQuittungBtnText: {
+    fontSize: rf(12),
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFFFFF",
+  },
+  pastRideHelpBtn: {
+    backgroundColor: "#F9FAFB",
+  },
+  pastRideHelpBtnText: {
+    fontSize: rf(12),
+    fontFamily: "Inter_600SemiBold",
+    color: "#111111",
+  },
+  pastRideArchiveBtn: {
+    width: rs(40),
+    flexShrink: 0,
+    backgroundColor: "#F9FAFB",
+  },
+  pastRideArchiveBtnWide: {
+    width: undefined,
+    flex: 1,
+    alignSelf: "stretch",
   },
   rideSupportText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
   actionRow:       { flexDirection: "row", gap: rs(6), marginTop: rs(0) },
