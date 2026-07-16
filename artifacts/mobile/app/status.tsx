@@ -205,6 +205,8 @@ const TRACKING_LABEL = "#1C1C1E";
 const TRACKING_SECONDARY = "#8E8E93";
 const TRACKING_BORDER = "#AEAEB2";
 const TRACKING_APPLE_BLUE = "#007AFF";
+/** WhatsApp-Grün — Chat-Pill während laufender Fahrt (`in_progress`). */
+const TRACKING_CHAT_WHATSAPP = "#25D366";
 
 function statusAppleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
   if (Platform.OS === "ios") {
@@ -2086,8 +2088,14 @@ export default function StatusScreen() {
           <View style={styles.trackingDivider} />
 
           <View style={styles.trackingDriverInfo}>
-            <View style={styles.trackingDriverAvatar}>
-              <Text style={styles.trackingDriverAvatarText}>{driverInitials}</Text>
+            <View style={styles.trackingDriverAvatarWrap}>
+              <View style={styles.trackingDriverAvatar}>
+                <Text style={styles.trackingDriverAvatarText}>{driverInitials}</Text>
+              </View>
+              <View
+                style={styles.trackingDriverOnlineDot}
+                accessibilityLabel="Fahrer online"
+              />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={[styles.trackingDriverName, statusAppleFont("semibold")]} numberOfLines={1}>
@@ -2134,16 +2142,39 @@ export default function StatusScreen() {
 
           {rideChatEnabled ? (
             <Pressable
-              style={({ pressed }) => [styles.trackingOutlinePill, pressed && { opacity: 0.88 }]}
+              style={({ pressed }) => [
+                styles.trackingOutlinePill,
+                isDriving && styles.trackingChatPillLive,
+                pressed && { opacity: 0.88 },
+              ]}
               accessibilityLabel="Chat"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 handleMessage();
               }}
             >
-              <Feather name="message-circle" size={rf(18)} color={TRACKING_LABEL} />
-              <Text style={[styles.trackingPillText, statusAppleFont("semibold")]}>Chat</Text>
-              {chatUnread ? <View style={styles.trackingChatActionBadge} /> : null}
+              <Feather
+                name="message-circle"
+                size={rf(18)}
+                color={isDriving ? TRACKING_CHAT_WHATSAPP : TRACKING_LABEL}
+              />
+              <Text
+                style={[
+                  styles.trackingPillText,
+                  statusAppleFont("semibold"),
+                  isDriving && styles.trackingChatPillLiveText,
+                ]}
+              >
+                Chat
+              </Text>
+              {chatUnread ? (
+                <View
+                  style={[
+                    styles.trackingChatActionBadge,
+                    isDriving && styles.trackingChatActionBadgeLive,
+                  ]}
+                />
+              ) : null}
             </Pressable>
           ) : null}
 
@@ -2443,6 +2474,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  trackingDriverAvatarWrap: {
+    width: rs(44),
+    height: rs(44),
+    position: "relative",
+  },
+  trackingDriverOnlineDot: {
+    position: "absolute",
+    right: rs(0),
+    bottom: rs(0),
+    width: rs(12),
+    height: rs(12),
+    borderRadius: rs(6),
+    backgroundColor: TRACKING_CHAT_WHATSAPP,
+    borderWidth: rs(2),
+    borderColor: "#FFFFFF",
+  },
   trackingDriverAvatarText: {
     fontSize: rf(15),
     fontFamily: "Inter_700Bold",
@@ -2532,6 +2579,13 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     maxWidth: "100%",
   },
+  trackingChatPillLive: {
+    borderColor: TRACKING_CHAT_WHATSAPP,
+    backgroundColor: "#F0FFF4",
+  },
+  trackingChatPillLiveText: {
+    color: TRACKING_CHAT_WHATSAPP,
+  },
   trackingPillText: {
     fontSize: rf(14),
     color: TRACKING_LABEL,
@@ -2555,6 +2609,9 @@ const styles = StyleSheet.create({
     backgroundColor: TRACKING_ACCENT,
     borderWidth: 1.5,
     borderColor: "#FFFFFF",
+  },
+  trackingChatActionBadgeLive: {
+    backgroundColor: TRACKING_CHAT_WHATSAPP,
   },
   trackingCancelPill: {
     borderColor: TRACKING_ACCENT,
