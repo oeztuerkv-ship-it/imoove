@@ -341,8 +341,9 @@ const PAGE_META = {
     subtitle: "Registrierte Endkunden per E-Mail und Passwort",
   },
   "cancellation-suspensions": {
-    title: "Storno-Sperren",
-    subtitle: "Aktive System-Sperren (Kunde/Fahrer) wegen zu vieler Stornos — manuell entsperren",
+    title: "Storno- & Zugangssperren",
+    subtitle:
+      "Storno-System, 24h-Vorbestellung (mit Grund) und manuelle Fahrer-Suche zum Sperren/Entsperren",
   },
   "app-news": {
     title: "App-Neuigkeiten",

@@ -40,9 +40,25 @@ export type FleetDriverCancellationSuspensionAdminItem = {
   windowDays: number;
 };
 
+/** 24h-Sperre nach verpasster Aktivierung oder Spät-Storno (Feld `reservation_suspended_until`). */
+export type FleetDriverReservationSuspensionAdminItem = {
+  fleetDriverId: string;
+  companyId: string;
+  companyName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  suspendedUntil: string;
+  reason: string;
+  reasonLabel: string;
+  accessStatus: string;
+};
+
 export type CancellationSuspensionsAdminListResult = {
   customers: CustomerCancellationSuspensionAdminItem[];
   drivers: FleetDriverCancellationSuspensionAdminItem[];
+  reservationSuspensions: FleetDriverReservationSuspensionAdminItem[];
 };
 
 type CustomerSuspensionRow = {
@@ -94,6 +110,19 @@ function driverSearchSql(q: string) {
     OR COALESCE(fd.email, '') ILIKE ${pattern}
     OR COALESCE(ac.name, '') ILIKE ${pattern}
     OR s.fleet_driver_id ILIKE ${pattern}
+  )`;
+}
+
+function reservationDriverSearchSql(q: string) {
+  const needle = q.trim();
+  if (!needle) return sql``;
+  const pattern = `%${needle.replace(/[%_\\]/g, "\\$&")}%`;
+  return sql`AND (
+    COALESCE(fd.first_name, '') ILIKE ${pattern}
+    OR COALESCE(fd.last_name, '') ILIKE ${pattern}
+    OR COALESCE(fd.email, '') ILIKE ${pattern}
+    OR COALESCE(ac.name, '') ILIKE ${pattern}
+    OR fd.id ILIKE ${pattern}
   )`;
 }
 
@@ -192,6 +221,63 @@ async function listActiveFleetDriverCancellationSuspensionsAdmin(
   );
 }
 
+const RESERVATION_SUSPENSION_REASON = "reservation_activation_or_late_cancel";
+const RESERVATION_SUSPENSION_REASON_LABEL_DE =
+  "Vorbestellung: Aktivierung verpasst oder Spät-Storno (24h)";
+
+type ReservationSuspensionRow = {
+  fleet_driver_id: string;
+  company_id: string;
+  company_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  reservation_suspended_until: Date | string;
+  access_status: string | null;
+};
+
+async function listActiveFleetDriverReservationSuspensionsAdmin(
+  q: string,
+): Promise<FleetDriverReservationSuspensionAdminItem[]> {
+  const db = getDb();
+  if (!db) throw new Error("database_not_configured");
+
+  const result = await db.execute(sql`
+    SELECT
+      fd.id AS fleet_driver_id,
+      fd.company_id,
+      COALESCE(ac.name, fd.company_id) AS company_name,
+      COALESCE(fd.first_name, '') AS first_name,
+      COALESCE(fd.last_name, '') AS last_name,
+      COALESCE(fd.email, '') AS email,
+      COALESCE(fd.phone, '') AS phone,
+      fd.reservation_suspended_until,
+      COALESCE(fd.access_status, 'active') AS access_status
+    FROM fleet_drivers fd
+    LEFT JOIN admin_companies ac ON ac.id = fd.company_id
+    WHERE fd.reservation_suspended_until IS NOT NULL
+      AND fd.reservation_suspended_until > NOW()
+      ${reservationDriverSearchSql(q)}
+    ORDER BY fd.reservation_suspended_until DESC
+  `);
+
+  const rows = result.rows as ReservationSuspensionRow[];
+  return rows.map((row) => ({
+    fleetDriverId: row.fleet_driver_id,
+    companyId: row.company_id,
+    companyName: row.company_name ?? row.company_id,
+    firstName: row.first_name ?? "",
+    lastName: row.last_name ?? "",
+    email: row.email ?? "",
+    phone: row.phone ?? "",
+    suspendedUntil: iso(row.reservation_suspended_until),
+    reason: RESERVATION_SUSPENSION_REASON,
+    reasonLabel: RESERVATION_SUSPENSION_REASON_LABEL_DE,
+    accessStatus: row.access_status ?? "active",
+  }));
+}
+
 export async function listActiveCancellationSuspensionsAdmin(input?: {
   q?: string;
 }): Promise<CancellationSuspensionsAdminListResult> {
@@ -199,6 +285,7 @@ export async function listActiveCancellationSuspensionsAdmin(input?: {
 
   let customers: CustomerCancellationSuspensionAdminItem[] = [];
   let drivers: FleetDriverCancellationSuspensionAdminItem[] = [];
+  let reservationSuspensions: FleetDriverReservationSuspensionAdminItem[] = [];
 
   try {
     customers = await listActiveCustomerCancellationSuspensionsAdmin(q);
@@ -214,5 +301,12 @@ export async function listActiveCancellationSuspensionsAdmin(input?: {
     drivers = [];
   }
 
-  return { customers, drivers };
+  try {
+    reservationSuspensions = await listActiveFleetDriverReservationSuspensionsAdmin(q);
+  } catch (e) {
+    if (!isMissingRelationError(e)) throw e;
+    reservationSuspensions = [];
+  }
+
+  return { customers, drivers, reservationSuspensions };
 }

@@ -3,6 +3,7 @@ import { isPostgresConfigured } from "../db/client";
 import { listActiveCancellationSuspensionsAdmin } from "../db/cancellationSuspensionsAdminData";
 import { liftCustomerCancellationSuspension, SUSPENSION_REASON_AUTO } from "../db/customerCancellationSuspensionData";
 import { liftFleetDriverCancellationSuspension } from "../db/fleetDriverCancellationSuspensionData";
+import { findFleetDriverGlobal, setReservationSuspension } from "../db/fleetDriversData";
 import { insertAdminAuthAuditLog } from "../db/adminAuthData";
 import { canMutateAdminCompanies, type AdminRole } from "../lib/adminConsoleRoles";
 
@@ -26,6 +27,9 @@ export function cancellationSuspensionReasonLabelDe(reason: string): string {
   }
   if (r === "admin_manual") {
     return "Manuell (Admin)";
+  }
+  if (r === "reservation_activation_or_late_cancel") {
+    return "Vorbestellung: Aktivierung verpasst oder Spät-Storno (24h)";
   }
   return r || "—";
 }
@@ -51,6 +55,10 @@ router.get("/", async (req: Request, res: Response, next) => {
       drivers: result.drivers.map((row) => ({
         ...row,
         reasonLabel: cancellationSuspensionReasonLabelDe(row.reason),
+      })),
+      reservationSuspensions: result.reservationSuspensions.map((row) => ({
+        ...row,
+        reasonLabel: row.reasonLabel || cancellationSuspensionReasonLabelDe(row.reason),
       })),
     });
   } catch (e) {
@@ -118,6 +126,51 @@ router.post("/drivers/:fleetDriverId/lift", async (req: Request, res: Response, 
       username: adminUsername(req),
       action: "admin.fleet_driver.cancellation_suspension_lifted",
       meta: { fleetDriverId, source: "cancellation-suspensions" },
+    });
+    res.json({ ok: true, fleetDriverId });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** 24h-Vorbestellungs-Sperre (`reservation_suspended_until`) manuell aufheben. */
+router.post("/drivers/:fleetDriverId/lift-reservation", async (req: Request, res: Response, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const fleetDriverId = String(req.params.fleetDriverId ?? "").trim();
+    if (!fleetDriverId) {
+      res.status(400).json({ error: "fleet_driver_id_required" });
+      return;
+    }
+    const row = await findFleetDriverGlobal(fleetDriverId);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const until = row.reservation_suspended_until;
+    if (!until || new Date(until) <= new Date()) {
+      res.status(404).json({
+        error: "not_reservation_suspended",
+        message: "Keine aktive Vorbestellungs-Sperre für diesen Fahrer.",
+      });
+      return;
+    }
+    const ok = await setReservationSuspension(fleetDriverId, row.company_id, null);
+    if (!ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertAdminAuthAuditLog({
+      username: adminUsername(req),
+      action: "admin.fleet_driver.reservation_suspension_lifted",
+      meta: { fleetDriverId, companyId: row.company_id, source: "cancellation-suspensions" },
     });
     res.json({ ok: true, fleetDriverId });
   } catch (e) {

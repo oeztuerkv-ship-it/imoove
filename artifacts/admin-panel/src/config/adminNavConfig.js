@@ -117,7 +117,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     roles: R.adminSvc,
     items: [
       { pageKey: "customers", label: "Kunden", icon: "users", navOrder: 0, roles: R.adminSvc },
-      { pageKey: "cancellation-suspensions", label: "Storno-Sperren", icon: "shield", navOrder: 0.25, roles: R.adminSvc },
+      { pageKey: "cancellation-suspensions", label: "Storno- & Sperren", icon: "shield", navOrder: 0.25, roles: R.adminSvc },
       { pageKey: "customer-accounts", label: "Kundenkonten (App)", icon: "users", navOrder: 0.5, roles: R.adminSvc },
       { pageKey: "app-news", label: "App-Neuigkeiten", icon: "document", navOrder: 1, roles: R.adminSvc },
       { pageKey: "app-faq", label: "App-FAQ", icon: "document", navOrder: 2, roles: R.adminSvc },
@@ -365,7 +365,7 @@ const ADMIN_TOP_NAV = [
     defaultTarget: { pageKey: "app-op-tariffs" },
     children: [
       { pageKey: "customers", label: "Kunden" },
-      { pageKey: "cancellation-suspensions", label: "Storno-Sperren" },
+      { pageKey: "cancellation-suspensions", label: "Storno- & Sperren" },
       { pageKey: "customer-accounts", label: "Kundenkonten (App)" },
       { pageKey: "app-news", label: "App-Neuigkeiten" },
       { pageKey: "app-faq", label: "App-FAQ" },
