@@ -1996,6 +1996,10 @@ export default function StatusScreen() {
               </Text>
             ) : null}
           </View>
+          <View style={styles.targetChipInline} accessibilityLabel="Ziel">
+            <Feather name="crosshair" size={rf(14)} color={TRACKING_ACCENT} />
+            <Text style={styles.targetChipText}>Ziel</Text>
+          </View>
           {liveRidePin ? (
             <View
               style={styles.livePinChip}
@@ -2009,14 +2013,9 @@ export default function StatusScreen() {
         </View>
       </View>
 
-      <View style={[styles.targetChip, { top: topPad + rs(58) }]}>
-        <Feather name="crosshair" size={rf(15)} color={TRACKING_ACCENT} />
-        <Text style={styles.targetChipText}>Ziel</Text>
-      </View>
-
       {isArrived ? (
         <Animated.View
-          style={[styles.arrivedBanner, { top: topPad + rs(118) }, { transform: [{ scale: pulseAnim }] }]}
+          style={[styles.arrivedBanner, { top: topPad + rs(58) }, { transform: [{ scale: pulseAnim }] }]}
         >
           <MaterialCommunityIcons name="car-emergency" size={rf(18)} color="#fff" />
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -2027,7 +2026,7 @@ export default function StatusScreen() {
           </View>
         </Animated.View>
       ) : isDriving ? (
-        <View style={[styles.drivingBanner, { top: topPad + rs(118) }]}>
+        <View style={[styles.drivingBanner, { top: topPad + rs(58) }]}>
           <MaterialCommunityIcons name="navigation" size={rf(18)} color="#fff" />
           <View>
             <Text style={styles.arrivedBannerTitle}>Fahrt gestartet</Text>
@@ -2411,27 +2410,22 @@ const styles = StyleSheet.create({
     color: "#111827",
     letterSpacing: 2,
   },
-  targetChip: {
-    position: "absolute",
-    alignSelf: "center",
-    zIndex: 20,
-    height: rs(36),
-    borderRadius: rs(18),
-    paddingHorizontal: rs(16),
-    backgroundColor: "#FFFFFF",
+  targetChipInline: {
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(6),
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: rs(10),
-    shadowOffset: { width: 0, height: rs(4) },
-    elevation: 4,
+    gap: rs(4),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(6),
+    borderRadius: rs(12),
+    backgroundColor: "#FEF2F2",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FECACA",
+    flexShrink: 0,
   },
   targetChipText: {
-    fontSize: rf(14),
+    fontSize: rf(13),
     fontFamily: "Inter_700Bold",
-    color: "#111827",
+    color: TRACKING_ACCENT,
   },
   trackingBottomSheet: {
     position: "absolute",
