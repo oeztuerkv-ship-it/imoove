@@ -119,14 +119,23 @@ export const AppNewsDetailModal = memo(function AppNewsDetailModal({
               </Pressable>
             ) : null}
           </ScrollView>
-          <Pressable style={[styles.close, { borderTopColor: colors.border }]} onPress={onClose}>
-            <Text style={[styles.closeText, { color: colors.primary }]}>Schließen</Text>
+          <Pressable
+            style={({ pressed }) => [styles.close, pressed && styles.closePressed]}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Schließen"
+          >
+            <Text style={styles.closeText}>Schließen</Text>
           </Pressable>
         </View>
       </View>
     </Modal>
   );
 });
+
+const NEWS_CLOSE_RED = "#EF233C";
+const NEWS_CLOSE_BORDER = "#FECACA";
+const NEWS_CLOSE_FILL = "#FEF2F2";
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -157,10 +166,23 @@ const styles = StyleSheet.create({
   },
   btnText: { color: "#fff", fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
   close: {
-    paddingTop: rs(12),
-    paddingBottom: rs(4),
+    marginTop: rs(8),
+    minHeight: rs(44),
+    paddingVertical: rs(11),
+    paddingHorizontal: rs(16),
     alignItems: "center",
-    borderTopWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
+    borderRadius: rs(12),
+    borderWidth: 1.5,
+    borderColor: NEWS_CLOSE_BORDER,
+    backgroundColor: NEWS_CLOSE_FILL,
   },
-  closeText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
+  closePressed: {
+    opacity: 0.88,
+  },
+  closeText: {
+    fontSize: rf(15),
+    fontFamily: "Inter_600SemiBold",
+    color: NEWS_CLOSE_RED,
+  },
 });
