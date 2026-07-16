@@ -2028,10 +2028,15 @@ export default function StatusScreen() {
       ) : isDriving ? (
         <View style={[styles.drivingBanner, { top: topPad + rs(58) }]}>
           <View style={styles.drivingBannerIconCircle}>
-            <MaterialCommunityIcons name="navigation" size={rf(18)} color={TRACKING_ACCENT} />
+            <MaterialCommunityIcons
+              name="navigation"
+              size={rf(18)}
+              color={TRACKING_ACCENT}
+              style={styles.drivingBannerNavIcon}
+            />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.arrivedBannerTitle}>Fahrt gestartet</Text>
+            <Text style={styles.drivingBannerTitle}>Fahrt gestartet</Text>
             <Text style={styles.drivingBannerSub}>Unterwegs zu Ihrem Ziel</Text>
           </View>
         </View>
@@ -2727,7 +2732,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: rs(16),
     right: rs(16),
-    backgroundColor: "#2563EB",
+    backgroundColor: "#4B5563",
     borderRadius: rs(16),
     flexDirection: "row",
     alignItems: "center",
@@ -2736,7 +2741,7 @@ const styles = StyleSheet.create({
     paddingVertical: rs(14),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.22,
     shadowRadius: 10,
     elevation: 10,
   },
@@ -2749,10 +2754,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
+  /** Navi-Pfeil Richtung ~1 Uhr (ca. 30°). */
+  drivingBannerNavIcon: {
+    transform: [{ rotate: "30deg" }],
+  },
+  drivingBannerTitle: {
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+  },
   drivingBannerSub: {
     fontSize: rf(13),
     fontFamily: "Inter_400Regular",
-    color: "#BFDBFE",
+    color: "#E5E7EB",
     marginTop: 2,
   },
 
