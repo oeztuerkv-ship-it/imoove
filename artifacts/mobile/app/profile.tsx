@@ -2012,19 +2012,7 @@ export default function ProfileScreen() {
                         onChangeText={(t) => setRidePinDraft(t.replace(/\D/g, "").slice(0, 4))}
                         keyboardType="number-pad"
                         maxLength={4}
-                        style={[
-                          accountSheetInputText,
-                          {
-                            borderWidth: ACCOUNT_SHEET_FIELD_BORDER_WIDTH,
-                            borderColor: ACCOUNT_SHEET_FIELD_BORDER,
-                            borderRadius: rs(12),
-                            padding: rs(14),
-                            backgroundColor: HOME_SHEET_PANEL,
-                            letterSpacing: 8,
-                            textAlign: "center",
-                            fontSize: rf(22),
-                          },
-                        ]}
+                        style={[styles.ridePinEditInput, { color: colors.foreground }]}
                         placeholder="••••"
                         placeholderTextColor={colors.mutedForeground}
                       />
@@ -2034,19 +2022,7 @@ export default function ProfileScreen() {
                         onChangeText={(t) => setRidePinConfirm(t.replace(/\D/g, "").slice(0, 4))}
                         keyboardType="number-pad"
                         maxLength={4}
-                        style={[
-                          accountSheetInputText,
-                          {
-                            borderWidth: ACCOUNT_SHEET_FIELD_BORDER_WIDTH,
-                            borderColor: ACCOUNT_SHEET_FIELD_BORDER,
-                            borderRadius: rs(12),
-                            padding: rs(14),
-                            backgroundColor: HOME_SHEET_PANEL,
-                            letterSpacing: 8,
-                            textAlign: "center",
-                            fontSize: rf(22),
-                          },
-                        ]}
+                        style={[styles.ridePinEditInput, { color: colors.foreground }]}
                         placeholder="••••"
                         placeholderTextColor={colors.mutedForeground}
                       />
@@ -2792,6 +2768,24 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  /** Abhol-Code bearbeiten: kleinere Ziffern + genug Zeilenhöhe (sonst iOS-Clipping). */
+  ridePinEditInput: {
+    borderWidth: ACCOUNT_SHEET_FIELD_BORDER_WIDTH,
+    borderColor: ACCOUNT_SHEET_FIELD_BORDER,
+    borderRadius: rs(12),
+    backgroundColor: HOME_SHEET_PANEL,
+    textAlign: "center",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: rf(18),
+    lineHeight: rf(26),
+    letterSpacing: 6,
+    paddingTop: rs(14),
+    paddingBottom: rs(12),
+    paddingHorizontal: rs(12),
+    minHeight: rs(48),
+    ...(Platform.OS === "android" ? { includeFontPadding: false, textAlignVertical: "center" as const } : null),
+  },
 
   /* Header */
   header: {
