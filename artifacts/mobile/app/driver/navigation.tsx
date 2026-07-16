@@ -1731,21 +1731,6 @@ export default function DriverNavigationScreen() {
 
   const rideDetailsBlock = (
     <View style={styles.rideInfoCard}>
-      <View style={styles.rideInfoRouteRow}>
-        <Feather name={routeIconName} size={20} color={routeIconColor} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[styles.rideInfoRouteLabel, navAppleFont("medium")]}>{routeHeaderLabel}</Text>
-          <Text style={[styles.rideInfoRoutePlace, navAppleFont("semibold")]} numberOfLines={2}>
-            {routeAddress.place || (isPickupPhase ? resolvedPickupRaw : resolvedDestRaw)}
-          </Text>
-          {routeAddress.address ? (
-            <Text style={[styles.rideInfoRouteAddress, navAppleFont("regular")]} numberOfLines={2}>
-              {routeAddress.address}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-
       {partnerName ? (
         <View style={styles.rideInfoPartnerFrame}>
           <View style={styles.rideInfoPartnerHead}>
@@ -1767,15 +1752,28 @@ export default function DriverNavigationScreen() {
         </View>
       ) : null}
 
-      <View style={styles.rideInfoStatsBlock}>
-        <View style={styles.rideInfoMetric}>
-          <Feather name="navigation" size={15} color="#8E8E93" />
-          <Text style={[styles.rideInfoMetricLabel, navAppleFont("medium")]}>Entfernung</Text>
-          <Text style={[styles.rideInfoMetricValue, navAppleFont("semibold")]} numberOfLines={1}>
+      <View style={styles.rideInfoRouteRow}>
+        <Feather name={routeIconName} size={20} color={routeIconColor} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.rideInfoRouteLabel, navAppleFont("medium")]}>{routeHeaderLabel}</Text>
+          <Text style={[styles.rideInfoRoutePlace, navAppleFont("semibold")]} numberOfLines={2}>
+            {routeAddress.place || (isPickupPhase ? resolvedPickupRaw : resolvedDestRaw)}
+          </Text>
+          {routeAddress.address ? (
+            <Text style={[styles.rideInfoRouteAddress, navAppleFont("regular")]} numberOfLines={2}>
+              {routeAddress.address}
+            </Text>
+          ) : null}
+        </View>
+        <View style={styles.rideInfoRouteDist}>
+          <Text style={[styles.rideInfoRouteDistValue, navAppleFont("semibold")]} numberOfLines={1}>
             {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
           </Text>
+          <Text style={[styles.rideInfoRouteDistLabel, navAppleFont("medium")]}>Entfernung</Text>
         </View>
-        <View style={styles.rideInfoMetricSep} />
+      </View>
+
+      <View style={styles.rideInfoStatsBlock}>
         <View style={styles.rideInfoMetric}>
           <Feather name="clock" size={15} color="#8E8E93" />
           <Text style={[styles.rideInfoMetricLabel, navAppleFont("medium")]}>Ankunft</Text>
@@ -2704,6 +2702,22 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 2,
     lineHeight: 18,
+  },
+  rideInfoRouteDist: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+    minWidth: 72,
+    paddingLeft: 6,
+  },
+  rideInfoRouteDistValue: {
+    fontSize: 15,
+    color: "#111827",
+    letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
+  },
+  rideInfoRouteDistLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    color: "#8E8E93",
   },
   rideInfoPartnerFrame: {
     marginTop: 8,
