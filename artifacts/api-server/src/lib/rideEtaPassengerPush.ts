@@ -19,11 +19,13 @@ function clearEtaPushStateForRide(rideId: string): void {
 
 /**
  * Bei Fahrer-GPS-Update: Push „Dein Fahrer ist in ca. X Min entfernt“ (Schwellen, je einmal pro Fahrt).
+ * Bevorzugt Straßen-ETA aus dem Navi (`etaMinutes`), sonst Luftlinien-Fallback.
  */
 export async function maybeNotifyPassengerPickupEtaFromDriverLocation(
   ride: RideRequest,
   driverLat: number,
   driverLon: number,
+  navEtaMinutes?: number | null,
 ): Promise<void> {
   const rideId = ride.id.trim();
   const passengerId = (ride.passengerId ?? "").trim();
@@ -38,7 +40,10 @@ export async function maybeNotifyPassengerPickupEtaFromDriverLocation(
   if (pickupLat == null || pickupLon == null) return;
   if (!Number.isFinite(driverLat) || !Number.isFinite(driverLon)) return;
 
-  const etaMin = estimatePickupEtaMinutes(driverLat, driverLon, pickupLat, pickupLon);
+  const etaMin =
+    typeof navEtaMinutes === "number" && Number.isFinite(navEtaMinutes) && navEtaMinutes >= 0
+      ? Math.max(1, Math.round(navEtaMinutes) || 1)
+      : estimatePickupEtaMinutes(driverLat, driverLon, pickupLat, pickupLon);
   let sent = pushedEtaThresholds.get(rideId);
   if (!sent) {
     sent = new Set();

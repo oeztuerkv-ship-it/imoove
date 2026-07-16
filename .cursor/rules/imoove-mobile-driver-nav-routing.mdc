@@ -11,12 +11,14 @@ alwaysApply: false
 - **Polyline / Abbiege-Hinweise:** OSRM (`geometrySource: "osrm"`). Distance Matrix liefert keine Geometrie — **keine Google Directions API** (Kosten).
 - **Mobile Aufruf:** `artifacts/mobile/utils/driverNavRouteApi.ts` → `fetchDriverNavRoute`.
 - **Anzeige Rest:** `routeRemainingAlongPolyline.ts` — Fortschritt entlang der Polyline, skaliert auf Matrix-/OSRM-Gesamtwerte. **Kein** Luftlinie × Anteils-Hack.
+- **Kunde (`status.tsx`):** Anzeige **nur** `etaMinutes` + `remainingDistM` vom Fahrer (WS `location:driver:update` / `GET …/driver-location`). **Kein** Haversine-Fallback für Minuten/km — sonst weichen Kunden- und Fahrer-Sicht ab. Bis die erste Navi-ETA da ist: „—“.
 
 ## Was nicht tun
 
 - Kein direktes Client-OSRM für Fahrer-Navi-Metriken (Preis und Navi würden wieder auseinanderlaufen).
 - Kein Re-Call der Matrix bei jedem GPS-Tick — nur bei Ride/Phase-Wechsel (ggf. später Off-Route mit Throttle).
 - Keine Directions-API „nebenbei“ ohne explizite Kostenfreigabe.
+- Kunden-Live-ETA **nicht** aus Luftlinie (`estimatePickupEtaMinutes` / `formatPickupDistanceKm`) berechnen.
 
 ## Dateien
 

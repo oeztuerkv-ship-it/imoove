@@ -3180,7 +3180,9 @@ router.post("/rides/:id/driver-location", async (req, res, next) => {
       navExtras,
     );
     driverLocations.set(id, loc);
-    void maybeNotifyPassengerPickupEtaFromDriverLocation(ride, lat, lon).catch(() => undefined);
+    void maybeNotifyPassengerPickupEtaFromDriverLocation(ride, lat, lon, navExtras.etaMinutes).catch(
+      () => undefined,
+    );
     res.json(loc);
   } catch (e) {
     next(e);

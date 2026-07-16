@@ -1,4 +1,4 @@
-/** Grobe Ankunftszeit Fahrer → Abholort (km → Min, Stadt-Taxi). */
+/** @deprecated Nur noch für Server-Push-Fallback — Kunden-UI nutzt Fahrer-Navi-ETA. */
 const DEFAULT_AVG_SPEED_KMH = 32;
 
 export function estimatePickupEtaMinutes(
@@ -21,6 +21,17 @@ export function estimatePickupEtaMinutes(
   return Math.max(1, Math.min(120, minutes));
 }
 
+/** Straßen-Restmeter vom Fahrer-Navi → gleiche km-Anzeige wie Fahrer. */
+export function formatDriverNavDistanceKm(remainingDistM: number, opts?: { toDestination?: boolean }): string {
+  const m = Number(remainingDistM);
+  if (!Number.isFinite(m) || m < 0) return "";
+  const km = m / 1000;
+  const label = opts?.toDestination ? "zum Ziel" : "entfernt";
+  if (km < 0.1) return `ca. ${Math.round(m)} m ${label}`;
+  return `ca. ${km.toFixed(1).replace(".", ",")} km ${label}`;
+}
+
+/** @deprecated Luftlinie — nicht für Live-ETA/km gegenüber Fahrer-Navi verwenden. */
 export function formatPickupDistanceKm(
   driverLat: number,
   driverLon: number,

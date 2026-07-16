@@ -73,7 +73,7 @@ import {
   fetchCustomerRideChatMessages,
   sendCustomerRideChatMessage,
 } from "@/utils/rideChatApi";
-import { estimatePickupEtaMinutes, formatPickupDistanceKm } from "@/utils/ridePickupEta";
+import { formatDriverNavDistanceKm } from "@/utils/ridePickupEta";
 import { connectToRide, disconnectSocket, sendCustomerLocation } from "@/utils/socket";
 import { getDriverLiveNavigationRideId } from "@/utils/driverLiveNavigation";
 import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
@@ -636,8 +636,10 @@ export default function StatusScreen() {
   }, [requests, currentRideId]);
 
   const [isCompleted, setIsCompleted] = useState(false);
-  const [eta, setEta] = useState(8);
+  const [eta, setEta] = useState<number | null>(null);
   const [serverEtaMinutes, setServerEtaMinutes] = useState<number | null>(null);
+  /** Straßen-Restmeter vom Fahrer-Navi (gleiche Quelle wie Fahrer-Anzeige). */
+  const [serverRemainingDistM, setServerRemainingDistM] = useState<number | null>(null);
   const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [customTipInput, setCustomTipInput] = useState("");
   const [tipSubmitting, setTipSubmitting] = useState(false);
@@ -1016,7 +1018,12 @@ export default function StatusScreen() {
             typeof msg.etaMinutes === "number" && Number.isFinite(msg.etaMinutes)
               ? Math.max(0, Math.round(msg.etaMinutes))
               : null;
-          if (etaFromDriver != null && etaFromDriver > 0) setServerEtaMinutes(etaFromDriver);
+          if (etaFromDriver != null) setServerEtaMinutes(etaFromDriver);
+          const distFromDriver =
+            typeof msg.remainingDistM === "number" && Number.isFinite(msg.remainingDistM)
+              ? Math.max(0, Math.round(msg.remainingDistM))
+              : null;
+          if (distFromDriver != null) setServerRemainingDistM(distFromDriver);
         }
         if (msg.type === "chat:ride:update") {
           const row = parseRideChatUpdate(msg);
@@ -1039,10 +1046,14 @@ export default function StatusScreen() {
             lat: number;
             lon: number;
             etaMinutes?: number;
+            remainingDistM?: number;
           };
           setDriverMarker({ lat: loc.lat, lon: loc.lon });
-          if (typeof loc.etaMinutes === "number" && Number.isFinite(loc.etaMinutes) && loc.etaMinutes > 0) {
-            setServerEtaMinutes(Math.round(loc.etaMinutes));
+          if (typeof loc.etaMinutes === "number" && Number.isFinite(loc.etaMinutes)) {
+            setServerEtaMinutes(Math.max(0, Math.round(loc.etaMinutes)));
+          }
+          if (typeof loc.remainingDistM === "number" && Number.isFinite(loc.remainingDistM)) {
+            setServerRemainingDistM(Math.max(0, Math.round(loc.remainingDistM)));
           }
         }
       } catch { /* ignore */ }
@@ -1152,6 +1163,8 @@ export default function StatusScreen() {
 
   useEffect(() => {
     setServerEtaMinutes(null);
+    setServerRemainingDistM(null);
+    setEta(null);
   }, [effectiveAcceptedRequest?.id]);
 
   /** Abhol-Code auf Live-Status laden — Profil/Menü ist während Tracking nicht erreichbar. */
@@ -1183,61 +1196,21 @@ export default function StatusScreen() {
 
   useEffect(() => {
     if (prevPhaseRef.current !== rawPhase) {
-      if (rawPhase === "driving") setEta(effectiveAcceptedRequest?.durationMinutes ?? 20);
+      if (rawPhase === "driving") {
+        setServerEtaMinutes(null);
+        setServerRemainingDistM(null);
+        setEta(null);
+      }
       prevPhaseRef.current = rawPhase;
     }
-  }, [rawPhase, effectiveAcceptedRequest?.durationMinutes]);
+  }, [rawPhase]);
 
-  const pickupLat = effectiveAcceptedRequest?.fromLat;
-  const pickupLon = effectiveAcceptedRequest?.fromLon;
-  const destLat = effectiveAcceptedRequest?.toLat;
-  const destLon = effectiveAcceptedRequest?.toLon;
-
-  const computedPickupEta = useMemo(() => {
-    if (
-      driverMarker &&
-      pickupLat != null &&
-      pickupLon != null &&
-      Number.isFinite(pickupLat) &&
-      Number.isFinite(pickupLon)
-    ) {
-      return estimatePickupEtaMinutes(driverMarker.lat, driverMarker.lon, pickupLat, pickupLon);
-    }
-    return null;
-  }, [driverMarker, pickupLat, pickupLon]);
-
-  const computedDestEta = useMemo(() => {
-    if (
-      driverMarker &&
-      destLat != null &&
-      destLon != null &&
-      Number.isFinite(destLat) &&
-      Number.isFinite(destLon)
-    ) {
-      return estimatePickupEtaMinutes(driverMarker.lat, driverMarker.lon, destLat, destLon);
-    }
-    return null;
-  }, [driverMarker, destLat, destLon]);
-
+  /** Nur Fahrer-Navi-ETA (Matrix/OSRM) — kein Luftlinien-Fallback (sonst Abweichung zur Fahrer-Sicht). */
   useEffect(() => {
-    if (serverEtaMinutes != null && serverEtaMinutes > 0) {
+    if (serverEtaMinutes != null) {
       setEta(serverEtaMinutes);
-      return;
     }
-    if (computedPickupEta != null && customerPhase !== "driving") {
-      setEta(computedPickupEta);
-    }
-  }, [computedPickupEta, customerPhase, serverEtaMinutes]);
-
-  useEffect(() => {
-    if (serverEtaMinutes != null && serverEtaMinutes > 0) {
-      setEta(serverEtaMinutes);
-      return;
-    }
-    if (computedDestEta != null && customerPhase === "driving") {
-      setEta(computedDestEta);
-    }
-  }, [computedDestEta, customerPhase, serverEtaMinutes]);
+  }, [serverEtaMinutes]);
 
   const handleCallDriver = () => {
     const tel = driverPhone.replace(/[^\d+]/g, "");
@@ -1994,24 +1967,13 @@ export default function StatusScreen() {
             ? `${driverFirstName} ist unterwegs`
             : "Fahrer gefunden";
   const distanceKm = route?.distanceKm;
-  const etaDistanceText = isDriving
-    ? driverMarker &&
-      destLat != null &&
-      destLon != null &&
-      Number.isFinite(destLat) &&
-      Number.isFinite(destLon)
-      ? formatPickupDistanceKm(driverMarker.lat, driverMarker.lon, destLat, destLon)
+  const etaDistanceText =
+    serverRemainingDistM != null
+      ? formatDriverNavDistanceKm(serverRemainingDistM, { toDestination: isDriving })
       : distanceKm != null && Number.isFinite(Number(distanceKm))
-        ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km zum Ziel`
-        : null
-    : driverMarker &&
-        pickupLat != null &&
-        pickupLon != null &&
-        Number.isFinite(pickupLat) &&
-        Number.isFinite(pickupLon)
-      ? formatPickupDistanceKm(driverMarker.lat, driverMarker.lon, pickupLat, pickupLon)
-      : distanceKm != null && Number.isFinite(Number(distanceKm))
-        ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km entfernt`
+        ? isDriving
+          ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km zum Ziel`
+          : `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km entfernt`
         : null;
 
   return (
@@ -2106,7 +2068,9 @@ export default function StatusScreen() {
               <>
                 <Text style={[styles.trackingEtaLabel, statusAppleFont("medium")]}>{isDriving ? "Ziel in" : "Ankunft in"}</Text>
                 <View style={styles.trackingEtaValueRow}>
-                  <Text style={[styles.trackingEtaNumber, statusAppleFont("bold")]}>{eta}</Text>
+                  <Text style={[styles.trackingEtaNumber, statusAppleFont("bold")]}>
+                    {eta != null ? eta : "—"}
+                  </Text>
                   <Text style={[styles.trackingEtaMin, statusAppleFont("bold")]}>min</Text>
                 </View>
                 {etaDistanceText ? (

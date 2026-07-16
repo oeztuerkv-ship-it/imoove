@@ -1597,10 +1597,11 @@ export default function DriverNavigationScreen() {
             }
           }
 
+          const navRouteReady = initialRouteMetricsRef.current.distM > 0;
           socketSendDriver(latitude, longitude, {
-            ...(remainingMinRef.current > 0 ? { etaMinutes: remainingMinRef.current } : {}),
-            ...(remainingDistMRef.current > 0
-              ? { remainingDistM: Math.round(remainingDistMRef.current) }
+            ...(navRouteReady ? { etaMinutes: Math.max(0, remainingMinRef.current) } : {}),
+            ...(navRouteReady
+              ? { remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)) }
               : {}),
             navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
           });
@@ -1616,9 +1617,9 @@ export default function DriverNavigationScreen() {
                   body: JSON.stringify({
                     lat: fix.lat,
                     lon: fix.lon,
-                    ...(remainingMinRef.current > 0 ? { etaMinutes: remainingMinRef.current } : {}),
-                    ...(remainingDistMRef.current > 0
-                      ? { remainingDistM: Math.round(remainingDistMRef.current) }
+                    ...(navRouteReady ? { etaMinutes: Math.max(0, remainingMinRef.current) } : {}),
+                    ...(navRouteReady
+                      ? { remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)) }
                       : {}),
                     navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
                   }),
