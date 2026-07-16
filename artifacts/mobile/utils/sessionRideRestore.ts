@@ -2,10 +2,16 @@ import type { RequestStatus, RideRequest } from "@/context/RideRequestContext";
 
 /** Kunde: nach App-Start direkt auf Status-Screen (vom Server). */
 export const CUSTOMER_SESSION_RESTORE_STATUSES = new Set<RequestStatus>([
+  "pending",
+  "requested",
   "searching_driver",
+  "offered",
   "accepted",
   "driver_arriving",
   "driver_waiting",
+  "ready_for_dispatch",
+  "passenger_onboard",
+  "arrived",
   "in_progress",
 ]);
 
@@ -39,17 +45,24 @@ export function pickNewestRideForSessionRestore(
   return [...matching].sort((a, b) => rideCreatedAtMs(b.createdAt) - rideCreatedAtMs(a.createdAt))[0] ?? null;
 }
 
+/**
+ * GET /customer/v1/rides ist bereits passagier-gebunden.
+ * passengerId-Filter bevorzugt; Fallback ohne Filter falls ID lokal noch nicht gesetzt.
+ */
 export function pickCustomerSessionRestoreRide(
   rides: RideRequest[],
   passengerId: string,
 ): RideRequest | null {
   const pid = passengerId.trim();
-  if (!pid) return null;
-  return pickNewestRideForSessionRestore(
-    rides,
-    CUSTOMER_SESSION_RESTORE_STATUSES,
-    (r) => (typeof r.passengerId === "string" ? r.passengerId.trim() : "") === pid,
-  );
+  if (pid) {
+    const matched = pickNewestRideForSessionRestore(
+      rides,
+      CUSTOMER_SESSION_RESTORE_STATUSES,
+      (r) => (typeof r.passengerId === "string" ? r.passengerId.trim() : "") === pid,
+    );
+    if (matched) return matched;
+  }
+  return pickNewestRideForSessionRestore(rides, CUSTOMER_SESSION_RESTORE_STATUSES);
 }
 
 export function pickDriverSessionRestoreRide(

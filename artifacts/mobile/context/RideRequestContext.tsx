@@ -743,7 +743,7 @@ function stornoErrorUserMessage(code: string): string | undefined {
 }
 
 export function RideRequestProvider({ children }: { children: React.ReactNode }) {
-  const { profile } = useUser();
+  const { profile, profileHydrated } = useUser();
   const { driver: fleetDriver } = useDriver();
   const customerSessionTokenLive =
     profile.isLoggedIn && typeof profile.sessionToken === "string" && profile.sessionToken.trim().length > 0
@@ -793,8 +793,11 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const driverMarketScheduledNotifyBootstrappedRef = useRef(false);
 
   useEffect(() => {
+    if (!profileHydrated) return;
     if (profile.isLoggedIn && profile.googleId?.trim()) {
       setPassengerId(profile.googleId.trim());
+      // Nach Profil-Load: Restore erst nach erfolgreichem GET /customer/v1/rides.
+      setCustomerRidesHydrated(false);
       return;
     }
     if (!profile.isLoggedIn) {
@@ -804,7 +807,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       setCustomerRidesHydrated(true);
       void AsyncStorage.removeItem(PASSENGER_ID_KEY);
     }
-  }, [profile.isLoggedIn, profile.googleId]);
+  }, [profileHydrated, profile.isLoggedIn, profile.googleId]);
 
   useEffect(() => {
     (async () => {
@@ -1014,11 +1017,15 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       }
       const sessionTok = (await resolveCustomerBearerToken(customerSessionTokenLive)) ?? customerSessionToken;
       if (!sessionTok) {
-        // Kein Kunden-Token: keine customer-gebundenen Fahrten laden.
+        // Kein Token: Liste leeren, aber Restore-Hydration erst wenn Profil wirklich geladen
+        // und kein Session-JWT in Storage — sonst Race (DEFAULT-Profil vor AsyncStorage).
         setRequests([]);
         setScheduledPoolRequests([]);
         setIsConnected(true);
         lastCountRef.current = 0;
+        if (profileHydrated && !customerSessionTokenLive && !customerSessionToken) {
+          setCustomerRidesHydrated(true);
+        }
         return;
       }
       const res = await fetch(`${API_BASE}/customer/v1/rides`, {
@@ -1030,6 +1037,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         setScheduledPoolRequests([]);
         setIsConnected(false);
         lastCountRef.current = 0;
+        if (!isDriverSurfaceRef.current) setCustomerRidesHydrated(true);
         return;
       }
       if (!res.ok) throw new Error("fetch failed");
@@ -1052,12 +1060,26 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         }
       }
       lastCountRef.current = normalized.length;
+      if (!isDriverSurfaceRef.current) setCustomerRidesHydrated(true);
     } catch {
       setIsConnected(false);
-    } finally {
-      if (!isDriverSurfaceRef.current) setCustomerRidesHydrated(true);
     }
-  }, [customerSessionTokenLive, fetchDriverMarket, readFleetAuthToken, ridesFromPayload]);
+  }, [customerSessionTokenLive, fetchDriverMarket, profileHydrated, readFleetAuthToken, ridesFromPayload]);
+
+  /**
+   * Offline / langsames Netz: sonst bleibt Restore/Status ewig auf „nicht hydrated“.
+   * Erfolgreicher GET setzt hydrated früher; dieses Soft-Deadline entblockt nach max. 10s.
+   */
+  useEffect(() => {
+    if (!profileHydrated) return;
+    if (!customerSessionTokenLive) return;
+    if (customerRidesHydrated) return;
+    if (isDriverSurface) return;
+    const timer = setTimeout(() => {
+      setCustomerRidesHydrated(true);
+    }, 10_000);
+    return () => clearTimeout(timer);
+  }, [profileHydrated, customerSessionTokenLive, customerRidesHydrated, isDriverSurface]);
 
   useEffect(() => {
     fetchAll();

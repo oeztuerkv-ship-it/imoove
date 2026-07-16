@@ -877,10 +877,36 @@ export default function StatusScreen() {
     setDestination,
   ]);
 
+  /**
+   * App-Kill → OS stellt oft `/status?rideId=` wieder her, bevor GET /rides fertig ist.
+   * Sofortiges `replace("/")` würde die Live-Fahrt verlieren — kurz warten + Refresh.
+   * Offline / Fahrt weg (Storno/Ende): nach Grace zur Startseite, kein Dauer-Spinner.
+   */
   useEffect(() => {
     if (!customerRidesHydrated || !currentRideId) return;
     if (rideMatchingCurrentId) return;
-    router.replace("/");
+    let cancelled = false;
+    const rideId = currentRideId;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          await refreshRequestsRef.current();
+        } catch {
+          /* offline — trotzdem entscheiden */
+        }
+        if (cancelled) return;
+        const found = requestsRef.current.find((r) => r.id === rideId);
+        if (!found) {
+          router.replace("/");
+          return;
+        }
+        // Terminal: Status-Screen erkennt cancelled/completed selbst; hier nichts erzwingen.
+      })();
+    }, 2800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [customerRidesHydrated, currentRideId, rideMatchingCurrentId]);
 
   useEffect(() => {

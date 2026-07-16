@@ -85,10 +85,27 @@ flowchart TD
 
 | Wer | Bedingung | Ziel |
 |-----|-----------|------|
-| Kunde | eingeloggt, Hydration, nur von `/` | `router.replace(/status?rideId=…)` wenn offene Fahrt |
+| Kunde | `profileHydrated`, eingeloggt, `customerRidesHydrated` nach **GET /customer/v1/rides** mit Token, nur von `/` | `router.replace(/status?rideId=…)` wenn offene Live-Fahrt |
 | Fahrer | eingeloggt, Markt hydr., **nicht** auf Kunden-Flow-Prefix | `replaceDriverStackExclusive` → Navi oder Dashboard |
 
 **Kunden-Flow-Prefixe (Fahrer-Restore blockiert):** `/status`, `/ride`, `/ride-select`.
+
+**Kaltstart-Fallen (nicht wiederholen):**
+
+1. **Profil-DEFAULT vor AsyncStorage:** `isLoggedIn=false` kurzzeitig → darf **nicht** `customerRidesHydrated=true` setzen und PASSENGER_ID löschen. Gate: `profileHydrated` in `UserContext`.
+2. **`customerRidesHydrated` ohne Token:** Restore markiert sonst „fertig“ mit leerer Liste. Erst nach Auth-GET (oder bestätigt kein Token nach Profil-Load).
+3. **`/status?rideId=` nach App-Kill:** OS stellt Route wieder her, Liste noch leer → **nicht** sofort `replace("/")` (Grace ~2,8s + Refresh). Sonst ist die Live-Fahrt „weg“.
+4. Restore-Statuses: Suche + Tracking inkl. `pending`/`requested`/`offered`/`ready_for_dispatch` (siehe `sessionRideRestore.ts`).
+
+**Abnahme App-Kill:** Kunde in `accepted`/`driver_waiting`/`in_progress` → App hart beenden → neu öffnen → wieder `/status` mit gleicher Fahrt (DB), nicht leere Startseite.
+
+**Weitere Abnahme:**
+
+| Szenario | Erwartung |
+|----------|-----------|
+| Hart schließen bei Live-Fahrt | Restore → `/status?rideId=` |
+| Offline beim Neustart | Max. ~10s Soft-Hydration, kein ewiger Spinner; ohne Fahrt in Liste → Startseite |
+| Fahrt während Kill storniert/beendet | Kein Restore auf Live; falls Route `/status` → Cancel-/Completed-UI bzw. Startseite |
 
 ---
 

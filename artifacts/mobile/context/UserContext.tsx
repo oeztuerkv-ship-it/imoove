@@ -103,6 +103,8 @@ const DEFAULT_PROFILE: UserProfile = {
 
 interface UserContextValue {
   profile: UserProfile;
+  /** true nach erstem AsyncStorage-Lesen — vor dem nicht als „ausgeloggt“ behandeln. */
+  profileHydrated: boolean;
   updateProfile: (updates: Partial<UserProfile>) => void;
   logout: () => Promise<void>;
   loginWithGoogle: (data: Partial<UserProfile> | Record<string, unknown>) => Promise<void>;
@@ -209,18 +211,23 @@ function mergeCustomerAuthSession(
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [profileHydrated, setProfileHydrated] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(PROFILE_KEY)
       .then((raw) => {
-        if (!raw?.trim()) return;
-        try {
-          setProfile(JSON.parse(raw) as UserProfile);
-        } catch {
-          void AsyncStorage.removeItem(PROFILE_KEY);
+        if (raw?.trim()) {
+          try {
+            setProfile(JSON.parse(raw) as UserProfile);
+          } catch {
+            void AsyncStorage.removeItem(PROFILE_KEY);
+          }
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        setProfileHydrated(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -370,6 +377,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     <UserContext.Provider
       value={{
         profile,
+        profileHydrated,
         updateProfile,
         logout,
         loginWithGoogle,

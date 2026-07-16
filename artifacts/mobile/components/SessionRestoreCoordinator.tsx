@@ -40,7 +40,7 @@ export function SessionRestoreCoordinator() {
 
   const pathname = usePathname();
   const segments = useSegments();
-  const { profile } = useUser();
+  const { profile, profileHydrated } = useUser();
   const { isLoggedIn: isDriverLoggedIn, driver, loading: driverLoading } = useDriver();
   const {
     requests,
@@ -74,7 +74,9 @@ export function SessionRestoreCoordinator() {
 
   useEffect(() => {
     if (customerRestoreDone.current) return;
-    if (!customerLoggedIn || isDriverLoggedIn || onDriverSurface) return;
+    if (!profileHydrated) return;
+    if (!customerLoggedIn || onDriverSurface) return;
+    // Dual-Login: Fahrer-Session blockiert Kunden-Restore nicht auf der Kunden-Startseite.
     if (!customerRidesHydrated) return;
     if (pathname !== "/" && pathname !== "/index") {
       return;
@@ -85,12 +87,16 @@ export function SessionRestoreCoordinator() {
     }
 
     const ride = pickCustomerSessionRestoreRide(requests, passengerId || profile.googleId || "");
+    if (!ride) {
+      // Hydrated + keine Live-Fahrt → fertig. (Leere Liste vor Auth wird durch Hydration-Gate vermieden.)
+      customerRestoreDone.current = true;
+      return;
+    }
     customerRestoreDone.current = true;
-    if (!ride) return;
     router.replace({ pathname: "/status", params: { rideId: ride.id } } as never);
   }, [
+    profileHydrated,
     customerLoggedIn,
-    isDriverLoggedIn,
     onDriverSurface,
     customerRidesHydrated,
     pathname,
