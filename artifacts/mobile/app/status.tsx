@@ -77,6 +77,8 @@ import { estimatePickupEtaMinutes, formatPickupDistanceKm } from "@/utils/ridePi
 import { connectToRide, disconnectSocket, sendCustomerLocation } from "@/utils/socket";
 import { getDriverLiveNavigationRideId } from "@/utils/driverLiveNavigation";
 import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
+import { fetchCustomerRidePin } from "@/utils/customerRidePinApi";
+import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Barzahlung",
@@ -160,6 +162,17 @@ async function customerSessionHeadersJson(): Promise<Record<string, string>> {
     /* ignore */
   }
   return headers;
+}
+
+async function readCustomerSessionToken(): Promise<string> {
+  try {
+    const raw = await AsyncStorage.getItem(USER_PROFILE_KEY);
+    if (!raw) return "";
+    const parsed = JSON.parse(raw) as { sessionToken?: string };
+    return typeof parsed.sessionToken === "string" ? parsed.sessionToken.trim() : "";
+  } catch {
+    return "";
+  }
 }
 
 /** Fahrer-Suche: eine volle Umdrehung, linear (Netflix-ähnlich). */
@@ -657,6 +670,8 @@ export default function StatusScreen() {
   /** War diese rideId schon in Fahrer-/Live-Phase (vor Rückkehr in Suche). */
   const hadDriverPhaseForRideRef = useRef<string | null>(null);
   const [driverReassignedBanner, setDriverReassignedBanner] = useState(false);
+  /** Abhol-Code auf Live-Status (Profil ist während Tracking nicht erreichbar). */
+  const [liveRidePin, setLiveRidePin] = useState<string | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -1112,6 +1127,33 @@ export default function StatusScreen() {
   useEffect(() => {
     setServerEtaMinutes(null);
   }, [effectiveAcceptedRequest?.id]);
+
+  /** Abhol-Code auf Live-Status laden — Profil/Menü ist während Tracking nicht erreichbar. */
+  useEffect(() => {
+    const ride = effectiveAcceptedRequest;
+    const pinPhases =
+      customerPhase === "accepted" ||
+      customerPhase === "preparing" ||
+      customerPhase === "arrived";
+    if (!ride || !pinPhases || !rideRequiresPassengerPinClient(ride)) {
+      setLiveRidePin(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await readCustomerSessionToken();
+        if (!token || cancelled) return;
+        const res = await fetchCustomerRidePin(token);
+        if (!cancelled) setLiveRidePin(res.pin);
+      } catch {
+        if (!cancelled) setLiveRidePin(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveAcceptedRequest?.id, customerPhase, effectiveAcceptedRequest]);
 
   useEffect(() => {
     if (prevPhaseRef.current !== rawPhase) {
@@ -1970,6 +2012,16 @@ export default function StatusScreen() {
               </Text>
             ) : null}
           </View>
+          {liveRidePin ? (
+            <View
+              style={styles.livePinChip}
+              accessibilityRole="text"
+              accessibilityLabel={`Abhol-Code ${liveRidePin}`}
+            >
+              <Text style={styles.livePinChipLabel}>Code</Text>
+              <Text style={styles.livePinChipValue}>{liveRidePin}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -1983,9 +2035,11 @@ export default function StatusScreen() {
           style={[styles.arrivedBanner, { top: topPad + rs(118) }, { transform: [{ scale: pulseAnim }] }]}
         >
           <MaterialCommunityIcons name="car-emergency" size={rf(18)} color="#fff" />
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.arrivedBannerTitle}>Ihr Fahrer ist da!</Text>
-            <Text style={styles.arrivedBannerSub}>Bitte zum Fahrzeug kommen</Text>
+            <Text style={styles.arrivedBannerSub}>
+              {liveRidePin ? `Code dem Fahrer nennen: ${liveRidePin}` : "Bitte zum Fahrzeug kommen"}
+            </Text>
           </View>
         </Animated.View>
       ) : isDriving ? (
@@ -2000,6 +2054,23 @@ export default function StatusScreen() {
 
       <View style={[styles.trackingBottomSheet, { paddingBottom: bottomPad + rs(6) }]}>
         <View style={styles.sheetHandle} />
+
+        {liveRidePin && !isDriving ? (
+          <View
+            style={styles.livePinSheetRow}
+            accessibilityRole="text"
+            accessibilityLabel={`Abhol-Code ${liveRidePin}`}
+          >
+            <MaterialCommunityIcons name="shield-key-outline" size={rf(20)} color={TRACKING_ACCENT} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[styles.livePinSheetLabel, statusAppleFont("medium")]}>Abhol-Code</Text>
+              <Text style={[styles.livePinSheetHint, statusAppleFont("regular")]}>
+                Dem Fahrer vor Fahrtstart nennen
+              </Text>
+            </View>
+            <Text style={[styles.livePinSheetValue, statusAppleFont("bold")]}>{liveRidePin}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.trackingDriverRow}>
           <View style={styles.trackingEtaBox}>
@@ -2215,6 +2286,55 @@ const styles = StyleSheet.create({
     fontSize: rf(13),
     fontFamily: "Inter_500Medium",
     color: "#6B7280",
+  },
+  livePinChip: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(6),
+    borderRadius: rs(12),
+    backgroundColor: "#EEF2FF",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#C7D2FE",
+  },
+  livePinChipLabel: {
+    fontSize: rf(10),
+    fontFamily: "Inter_600SemiBold",
+    color: "#6366F1",
+    letterSpacing: 0.3,
+  },
+  livePinChipValue: {
+    marginTop: rs(1),
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: "#312E81",
+    letterSpacing: 1.5,
+  },
+  livePinSheetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    marginBottom: rs(10),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
+    borderRadius: rs(14),
+    backgroundColor: "#F8FAFC",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E2E8F0",
+  },
+  livePinSheetLabel: {
+    fontSize: rf(13),
+    color: "#111827",
+  },
+  livePinSheetHint: {
+    marginTop: rs(1),
+    fontSize: rf(11),
+    color: "#6B7280",
+  },
+  livePinSheetValue: {
+    fontSize: rf(22),
+    color: "#111827",
+    letterSpacing: 2,
   },
   targetChip: {
     position: "absolute",

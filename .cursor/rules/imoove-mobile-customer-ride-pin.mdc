@@ -11,6 +11,7 @@ alwaysApply: false
 2. **Nur App-Direktfahrten:** `authorizationSource=passenger_direct`, `rideKind=standard`, `payerKind=passenger`, kein Panel/`access_code`/Voucher — siehe `rideRequiresPassengerPin`.
 3. **Nur Fahrtstart gesperrt** (`in_progress`); Chat/Kontakt bleiben offen.
 4. **Hart ab Deploy** — kein Feature-Flag.
+5. **Live-Status zeigt den Code** — während Tracking (`/status`) ist Profil/Menü nicht erreichbar; PIN daher in `status.tsx` (Ziel-Chip oben rechts + Sheet-Zeile, bei Ankunft im Banner), nicht nur unter Profil → Abhol-Code.
 
 ## Speicher / API
 

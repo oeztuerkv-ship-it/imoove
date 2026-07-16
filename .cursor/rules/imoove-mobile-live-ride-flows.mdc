@@ -33,8 +33,8 @@ flowchart LR
 | Phase (`customerPhase`) | UI (Stand) | API-Status (typ.) |
 |-------------------------|------------|-------------------|
 | `searching` | Suche-Fahrer (rot, Spinner) | `searching_driver`, … |
-| `accepted` / `preparing` | Karte + **helles Bottom-Sheet** (Ziel oben, ETA, Fahrer, Fortschritt) — **kein** ☰-Menü; Aktionen: **Chat** + Storno | `accepted`, `driver_arriving`, … |
-| `arrived` | wie oben + grünes „Fahrer ist da“ | `driver_waiting` |
+| `accepted` / `preparing` | Karte + **helles Bottom-Sheet** (Ziel oben, ETA, Fahrer, Fortschritt) — **kein** ☰-Menü; Aktionen: **Chat** + Storno; bei PIN-pflichtiger Direktfahrt: **Abhol-Code** oben rechts im Ziel-Chip + Sheet-Zeile | `accepted`, `driver_arriving`, … |
+| `arrived` | wie oben + grünes „Fahrer ist da“ (mit Code-Hinweis) | `driver_waiting` |
 | `driving` | wie oben | `in_progress` |
 
 **Fortschritt (genau ein Schritt aktiv):** `trackingProgressActiveStep` in `status.tsx` — (0) `accepted`/`driver_arriving` → „Fahrer unterwegs“; (1) `driver_waiting`/`in_progress` → „Ankunft“; (2) nur `completed` → „Ziel erreicht“.
