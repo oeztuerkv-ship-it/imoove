@@ -681,6 +681,8 @@ export default function StatusScreen() {
   const [driverReassignedBanner, setDriverReassignedBanner] = useState(false);
   /** Abhol-Code auf Live-Status (Profil ist während Tracking nicht erreichbar). */
   const [liveRidePin, setLiveRidePin] = useState<string | null>(null);
+  /** Tracking-Details (Bewertung, km, Fortschritt) — eingeklappt: Name, KZ, ETA. */
+  const [trackingDetailsOpen, setTrackingDetailsOpen] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -1231,6 +1233,7 @@ export default function StatusScreen() {
   useEffect(() => {
     setIsCompleted(false);
     setDriverReassignedBanner(false);
+    setTrackingDetailsOpen(false);
     if (handledDriverReassignedRef.current && handledDriverReassignedRef.current !== currentRideId) {
       handledDriverReassignedRef.current = null;
     }
@@ -2053,7 +2056,18 @@ export default function StatusScreen() {
           </View>
         ) : null}
 
-        <View style={styles.trackingDriverRow}>
+        <Pressable
+          style={({ pressed }) => [styles.trackingDriverRow, pressed && { opacity: 0.92 }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setTrackingDetailsOpen((o) => !o);
+          }}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: trackingDetailsOpen }}
+          accessibilityLabel={
+            trackingDetailsOpen ? "Fahrtdetails einklappen" : "Fahrtdetails ausklappen"
+          }
+        >
           <View style={styles.trackingDriverInfo}>
             <View style={styles.trackingDriverAvatarWrap}>
               <View style={styles.trackingDriverAvatar}>
@@ -2074,7 +2088,10 @@ export default function StatusScreen() {
               >
                 {driverName}
               </Text>
-              {driverRating != null ? (
+              <Text style={styles.trackingPlateLine} numberOfLines={1} allowFontScaling={false}>
+                {driverPlate || "—"}
+              </Text>
+              {trackingDetailsOpen && driverRating != null ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
                   <StarRating stars={driverRating} size={14} />
                   <Text style={styles.trackingDriverRatingText} allowFontScaling={false}>
@@ -2082,10 +2099,11 @@ export default function StatusScreen() {
                   </Text>
                 </View>
               ) : null}
-              <Text style={styles.trackingPlateLine} numberOfLines={1} allowFontScaling={false}>
-                {driverPlate}
-                {driverCar ? ` · ${driverCar}` : ""}
-              </Text>
+              {trackingDetailsOpen && driverCar ? (
+                <Text style={styles.trackingPlateDetail} numberOfLines={1} allowFontScaling={false}>
+                  {driverCar}
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -2111,7 +2129,7 @@ export default function StatusScreen() {
                     min
                   </Text>
                 </View>
-                {etaDistanceText ? (
+                {trackingDetailsOpen && etaDistanceText ? (
                   <Text
                     style={[styles.trackingEtaDistance, statusAppleFont("regular")]}
                     allowFontScaling={false}
@@ -2128,20 +2146,29 @@ export default function StatusScreen() {
               </Text>
             ) : null}
           </View>
-        </View>
 
-        <View style={styles.trackingProgressCard} pointerEvents="none" accessibilityRole="summary">
-          <TrackingProgressStep
-            icon="taxi"
-            iconSet="mci"
-            label="Fahrer unterwegs"
-            active={progressActive === 0}
+          <Feather
+            name={trackingDetailsOpen ? "chevron-up" : "chevron-down"}
+            size={rf(18)}
+            color={TRACKING_SECONDARY}
+            style={styles.trackingExpandChevron}
           />
-          <Text style={styles.trackingProgressDash}>---</Text>
-          <TrackingProgressStep icon="map-pin" label="Ankunft" active={progressActive === 1} />
-          <Text style={styles.trackingProgressDash}>---</Text>
-          <TrackingProgressStep icon="flag" label={progressThirdLabel} active={progressActive === 2} />
-        </View>
+        </Pressable>
+
+        {trackingDetailsOpen ? (
+          <View style={styles.trackingProgressCard} pointerEvents="none" accessibilityRole="summary">
+            <TrackingProgressStep
+              icon="taxi"
+              iconSet="mci"
+              label="Fahrer unterwegs"
+              active={progressActive === 0}
+            />
+            <Text style={styles.trackingProgressDash}>---</Text>
+            <TrackingProgressStep icon="map-pin" label="Ankunft" active={progressActive === 1} />
+            <Text style={styles.trackingProgressDash}>---</Text>
+            <TrackingProgressStep icon="flag" label={progressThirdLabel} active={progressActive === 2} />
+          </View>
+        ) : null}
 
         <View style={styles.trackingActionRow}>
           {effectiveAcceptedRequest ? (
@@ -2435,6 +2462,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  trackingExpandChevron: {
+    marginLeft: rs(2),
+    flexShrink: 0,
+  },
   trackingEtaBox: {
     width: rs(92),
     maxWidth: "30%",
@@ -2475,7 +2506,7 @@ const styles = StyleSheet.create({
   },
   trackingDivider: {
     width: rs(2),
-    height: rs(56),
+    height: rs(48),
     borderRadius: rs(1),
     backgroundColor: "#D1D5DB",
     marginHorizontal: rs(4),
@@ -2551,6 +2582,12 @@ const styles = StyleSheet.create({
     fontSize: rf(12),
     fontFamily: "Inter_600SemiBold",
     color: TRACKING_LABEL,
+  },
+  trackingPlateDetail: {
+    marginTop: rs(2),
+    fontSize: rf(11),
+    fontFamily: "Inter_500Medium",
+    color: TRACKING_SECONDARY,
   },
   trackingEstimate: {
     marginTop: rs(2),
