@@ -26,7 +26,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RealMapView } from "@/components/RealMapView";
-import { CustomerRouteStopsPanel } from "@/components/booking/CustomerRouteStopsPanel";
+import {
+  CUSTOMER_ROUTE_MUTED_BG,
+  CustomerRouteStopsPanel,
+  formatCustomerReservationPickupInRahmen,
+} from "@/components/booking/CustomerRouteStopsPanel";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
@@ -287,37 +291,76 @@ function SearchMetaChip({
   );
 }
 
+function formatReservationPickupInRahmen(st: Date | string | null | undefined): string | null {
+  return formatCustomerReservationPickupInRahmen(st);
+}
+
+function reservationPickupSubline(
+  scheduledAt: Date | string | null | undefined,
+  pickupDiffMs: number | null,
+): string {
+  if (pickupDiffMs !== null && pickupDiffMs <= 0) {
+    return "Kein Fahrer gefunden – wird automatisch storniert";
+  }
+  if (pickupDiffMs !== null && pickupDiffMs > 0 && pickupDiffMs < 60 * 60 * 1000) {
+    return `Noch ${Math.ceil(pickupDiffMs / 60000)} Min. bis Abholung`;
+  }
+  const pickupLabel = formatReservationPickupInRahmen(scheduledAt);
+  if (pickupLabel) {
+    return `Abholung im Rahmen von ${pickupLabel}`;
+  }
+  if (pickupDiffMs !== null && pickupDiffMs > 0) {
+    return `Abholung in ${Math.floor(pickupDiffMs / 3600000)}h ${Math.ceil((pickupDiffMs % 3600000) / 60000)}min`;
+  }
+  return "Fahrer sehen den Auftrag im Planer.";
+}
+
 function SearchTripMetaRow({
   distanceKm,
   billingRequest,
+  pickupInRahmen,
 }: {
   distanceKm?: number | null;
   billingRequest: RideRequest | null;
+  pickupInRahmen?: string | null;
 }) {
   const block = billingRequest ? customerPayerBlockFromRideRequest(billingRequest) : null;
   const simplePayment = block?.title === "Zahlung";
   const iconKind = billingRequest ? receiptPaymentIconKind(billingRequest, null) : "cash";
 
-  if (distanceKm == null && !billingRequest) return null;
+  if (distanceKm == null && !billingRequest && !pickupInRahmen) return null;
+
+  const pickupRow = pickupInRahmen ? (
+    <View style={styles.searchMetaRow}>
+      <SearchMetaChip
+        icon={<Feather name="calendar" size={16} color="#D97706" />}
+        label={`Abholung im Rahmen von ${pickupInRahmen}`}
+      />
+    </View>
+  ) : null;
 
   if (simplePayment && billingRequest && distanceKm != null) {
     return (
-      <View style={styles.searchMetaRow}>
-        <SearchMetaChip
-          icon={<Feather name="map" size={16} color="#6B7280" />}
-          valuePill={`${Number(distanceKm).toFixed(1)} km`}
-          iconOnly
-        />
-        <SearchMetaChip
-          icon={<SearchPaymentIcon kind={iconKind} size={16} />}
-          label={searchPaymentDisplayLabel(billingRequest)}
-        />
-      </View>
+      <>
+        {pickupRow}
+        <View style={styles.searchMetaRow}>
+          <SearchMetaChip
+            icon={<Feather name="map" size={16} color="#6B7280" />}
+            valuePill={`${Number(distanceKm).toFixed(1)} km`}
+            iconOnly
+          />
+          <SearchMetaChip
+            icon={<SearchPaymentIcon kind={iconKind} size={16} />}
+            label={searchPaymentDisplayLabel(billingRequest)}
+          />
+        </View>
+      </>
     );
   }
 
   return (
     <>
+      {pickupRow}
       {distanceKm != null ? (
         <View style={styles.searchMetaRow}>
           <SearchMetaChip
@@ -360,16 +403,104 @@ function SearchTripSummary({
   destName,
   distanceKm,
   billingRequest,
+  pickupInRahmen,
 }: {
   originName: string;
   destName: string;
   distanceKm?: number | null;
   billingRequest: RideRequest | null;
+  pickupInRahmen?: string | null;
 }) {
   return (
     <View style={styles.searchTripSummary}>
-      <CustomerRouteStopsPanel originName={originName} destName={destName} />
-      <SearchTripMetaRow distanceKm={distanceKm} billingRequest={billingRequest} />
+      <CustomerRouteStopsPanel
+        originName={originName}
+        destName={destName}
+        destinationBackgroundColor={CUSTOMER_ROUTE_MUTED_BG}
+      />
+      <SearchTripMetaRow
+        distanceKm={distanceKm}
+        billingRequest={billingRequest}
+        pickupInRahmen={pickupInRahmen}
+      />
+    </View>
+  );
+}
+
+function ReservationPendingCard({
+  headline,
+  subText,
+  bottomPad,
+  displayOrigin,
+  displayDestination,
+  routePolyline,
+  routeDistanceKm,
+  billingRequest,
+  pickupInRahmen,
+  onCancel,
+}: {
+  headline: string;
+  subText: string;
+  bottomPad: number;
+  displayOrigin: GeoLocation | null;
+  displayDestination: GeoLocation | null;
+  routePolyline?: [number, number][] | undefined;
+  routeDistanceKm?: number | null;
+  billingRequest: RideRequest | null;
+  pickupInRahmen?: string | null;
+  onCancel: () => void;
+}) {
+  return (
+    <View style={styles.container}>
+      <RealMapView
+        origin={displayOrigin}
+        destination={displayDestination}
+        polyline={routePolyline}
+        style={styles.map}
+      />
+
+      <View style={[styles.searchBottomCard, { paddingBottom: bottomPad + 16 }]}>
+        <View style={styles.searchCardInnerBorder}>
+          <View style={styles.searchAnimRow}>
+            <View style={styles.searchLoaderWrap}>
+              <View
+                style={[styles.searchLoaderIconCenter, { justifyContent: "center", alignItems: "center" }]}
+                pointerEvents="none"
+              >
+                <MaterialCommunityIcons name="calendar-clock" size={28} color="#D97706" />
+              </View>
+            </View>
+            <View style={styles.searchAnimTextCol}>
+              <Text style={styles.searchCardTitle}>{headline}</Text>
+              <Text
+                style={[
+                  styles.searchCardSub,
+                  subText.includes("Kein Fahrer gefunden")
+                    ? { color: "#DC2626" }
+                    : subText.includes("Noch ") && subText.includes("Min.")
+                      ? { color: "#D97706" }
+                      : subText.includes("Abholung im Rahmen von")
+                        ? { color: "#D97706" }
+                        : null,
+                ]}
+              >
+                {subText}
+              </Text>
+            </View>
+            <SearchCancelButton onPress={onCancel} />
+          </View>
+
+          <View style={styles.searchCardDivider} />
+
+          <SearchTripSummary
+            originName={displayOrigin?.displayName ?? "Esslingen am Neckar"}
+            destName={displayDestination?.displayName ?? "–"}
+            distanceKm={routeDistanceKm}
+            billingRequest={billingRequest}
+            pickupInRahmen={pickupInRahmen}
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -475,6 +606,11 @@ export default function StatusScreen() {
   const rideMatchingCurrentId = useMemo(
     () => (currentRideId ? requests.find((r) => r.id === currentRideId) ?? null : null),
     [requests, currentRideId],
+  );
+
+  const pendingBillingRequest = useMemo(
+    () => myActiveRequests.find((r) => r.id === lastAddedRequestId) ?? null,
+    [myActiveRequests, lastAddedRequestId],
   );
 
   /**
@@ -739,9 +875,15 @@ export default function StatusScreen() {
     return () => sub.remove();
   }, [refreshRequests]);
 
-  const pickupDiffMs = effectiveAcceptedRequest?.scheduledAt
-    ? new Date(effectiveAcceptedRequest.scheduledAt).getTime() - now
-    : null;
+  const reservationScheduledAt =
+    rideMatchingCurrentId?.scheduledAt ??
+    pendingBillingRequest?.scheduledAt ??
+    effectiveAcceptedRequest?.scheduledAt ??
+    null;
+  const pickupDiffMs =
+    reservationScheduledAt != null
+      ? new Date(reservationScheduledAt).getTime() - now
+      : null;
 
   const withinPickupHour =
     pickupDiffMs !== null &&
@@ -1394,10 +1536,11 @@ export default function StatusScreen() {
     }
   };
 
-  const pendingBillingRequest = useMemo(
-    () => myActiveRequests.find((r) => r.id === lastAddedRequestId) ?? null,
-    [myActiveRequests, lastAddedRequestId],
-  );
+  const hasFutureReservationOutsidePickupHour =
+    pickupDiffMs !== null &&
+    pickupDiffMs > 60 * 60 * 1000 &&
+    rideMatchingCurrentId != null &&
+    !isCustomerDriverAssignedStatus(rideMatchingCurrentId.status);
 
   const searchSpinDegrees = searchSpinAnim.interpolate({
     inputRange: [0, 1],
@@ -1651,6 +1794,23 @@ export default function StatusScreen() {
   }
 
   if (customerPhase === "searching") {
+    if (hasFutureReservationOutsidePickupHour) {
+      const pickupInRahmen = formatReservationPickupInRahmen(reservationScheduledAt);
+      return (
+        <ReservationPendingCard
+          headline="Reservierung"
+          subText={reservationPickupSubline(reservationScheduledAt, pickupDiffMs)}
+          bottomPad={bottomPad}
+          displayOrigin={displayOrigin}
+          displayDestination={displayDestination}
+          routePolyline={route?.polyline}
+          routeDistanceKm={route?.distanceKm}
+          billingRequest={pendingBillingRequest}
+          pickupInRahmen={pickupInRahmen}
+          onCancel={handleCancel}
+        />
+      );
+    }
     return (
       <View style={styles.container}>
         {/* Karte im Hintergrund */}
@@ -1706,69 +1866,27 @@ export default function StatusScreen() {
   }
 
   if (customerPhase === "reserved") {
-    const st = rideMatchingCurrentId?.scheduledAt;
-    const schedLabel =
-      st instanceof Date && Number.isFinite(st.getTime())
-        ? `${st.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "short" })} · ${st.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
-        : "";
+    const pickupInRahmen = formatReservationPickupInRahmen(reservationScheduledAt);
     const rsSt = rideMatchingCurrentId?.status;
     const headline =
-      rsSt === "scheduled" || rsSt === "scheduled_assigned"
-        ? customerReservationFlowHeadline(rsSt)
+      rsSt === "scheduled_assigned"
+        ? "Fahrer gefunden"
         : "Reservierung";
-    const subLines: string[] = [];
-    if (pickupDiffMs !== null && pickupDiffMs > 0) {
-      if (pickupDiffMs < 60 * 60 * 1000) {
-        subLines.push(`Noch ${Math.ceil(pickupDiffMs / 60000)} Min. bis Abholung`);
-      } else {
-        subLines.push(`Abholung in ${Math.floor(pickupDiffMs / 3600000)}h ${Math.ceil((pickupDiffMs % 3600000) / 60000)}min`);
-      }
-    } else if (pickupDiffMs !== null && pickupDiffMs <= 0) {
-      subLines.push("Kein Fahrer gefunden – wird automatisch storniert");
-    } else {
-      subLines.push("Fahrer sehen den Auftrag im Planer.");
-      if (schedLabel) subLines.push(`Abholung: ${schedLabel}`);
-    }
-    const subText = subLines.join("\n");
+    const subText = reservationPickupSubline(reservationScheduledAt, pickupDiffMs);
 
     return (
-      <View style={styles.container}>
-        <RealMapView
-          origin={displayOrigin}
-          destination={displayDestination}
-          polyline={route?.polyline}
-          style={styles.map}
-          driverMarker={driverMarker}
-        />
-
-        <View style={[styles.searchBottomCard, { paddingBottom: bottomPad + 16 }]}>
-          <View style={styles.searchCardInnerBorder}>
-            <View style={styles.searchAnimRow}>
-              <View style={styles.searchLoaderWrap}>
-                <View style={[styles.searchLoaderIconCenter, { justifyContent: "center", alignItems: "center" }]} pointerEvents="none">
-                  <MaterialCommunityIcons name="calendar-clock" size={28} color="#D97706" />
-                </View>
-              </View>
-              <View style={styles.searchAnimTextCol}>
-                <Text style={styles.searchCardTitle}>{headline}</Text>
-                <Text style={[styles.searchCardSub, pickupDiffMs !== null && pickupDiffMs <= 0 ? { color: "#DC2626" } : pickupDiffMs !== null && pickupDiffMs < 15 * 60 * 1000 ? { color: "#D97706" } : {}]}>
-                  {subText}
-                </Text>
-              </View>
-              <SearchCancelButton onPress={() => handleCancel()} />
-            </View>
-
-            <View style={styles.searchCardDivider} />
-
-            <SearchTripSummary
-              originName={displayOrigin?.displayName ?? "Esslingen am Neckar"}
-              destName={displayDestination?.displayName ?? "–"}
-              distanceKm={route?.distanceKm}
-              billingRequest={pendingBillingRequest}
-            />
-          </View>
-        </View>
-      </View>
+      <ReservationPendingCard
+        headline={headline}
+        subText={subText}
+        bottomPad={bottomPad}
+        displayOrigin={displayOrigin}
+        displayDestination={displayDestination}
+        routePolyline={route?.polyline}
+        routeDistanceKm={route?.distanceKm}
+        billingRequest={pendingBillingRequest}
+        pickupInRahmen={pickupInRahmen}
+        onCancel={handleCancel}
+      />
     );
   }
 

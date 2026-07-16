@@ -22,7 +22,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
 import { CustomerTaxameterBillingNotice } from "@/components/CustomerTaxameterBillingNotice";
-import { CustomerRouteStopsPanel } from "@/components/booking/CustomerRouteStopsPanel";
+import {
+  CUSTOMER_ROUTE_MUTED_BG,
+  CustomerRouteStopsPanel,
+  formatCustomerReservationPickupInRahmen,
+} from "@/components/booking/CustomerRouteStopsPanel";
 import {
   calculateCopayment,
   effectivePricingModeForCustomerRide,
@@ -855,10 +859,7 @@ export default function RideScreen() {
   };
 
   const schedDateStr = scheduledTime
-    ? scheduledTime.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) +
-      " · " +
-      scheduledTime.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) +
-      " Uhr"
+    ? formatCustomerReservationPickupInRahmen(scheduledTime)
     : null;
 
   if (!selectedVehicle || !fareBreakdown || !destination) {
@@ -953,7 +954,16 @@ export default function RideScreen() {
         <CustomerRouteStopsPanel
           originName={origin?.displayName ?? "Esslingen am Neckar"}
           destName={destination?.displayName ?? "–"}
+          destinationBackgroundColor={scheduledTime ? CUSTOMER_ROUTE_MUTED_BG : undefined}
         />
+        {schedDateStr ? (
+          <View style={styles.reservationPickupChip}>
+            <Feather name="calendar" size={16} color="#D97706" />
+            <Text style={styles.reservationPickupChipText} numberOfLines={2}>
+              Abholung im Rahmen von {schedDateStr}
+            </Text>
+          </View>
+        ) : null}
         {selectedVehicle === "wheelchair" ? (
           <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#86EFAC", backgroundColor: "#F0FDF4", padding: 14, gap: 8 }}>
             <Pressable
@@ -1193,16 +1203,6 @@ export default function RideScreen() {
         ) : null}
 
         {paymentMethod !== "access_code" ? renderBrokerNotice() : null}
-
-        {schedDateStr && (
-          <View style={[styles.card, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
-            <Text style={[styles.cardLabel, { color: "#D97706" }]}>VORBESTELLUNG</Text>
-            <View style={styles.paymentChip}>
-              <Feather name="calendar" size={18} color="#D97706" />
-              <Text style={[styles.paymentChipText, { color: colors.foreground }]}>{schedDateStr}</Text>
-            </View>
-          </View>
-        )}
       </ScrollView>
 
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 10 }]}>
@@ -1446,6 +1446,25 @@ const styles = StyleSheet.create({
   vehicleDesc: { fontSize: rf(13), fontFamily: "Inter_400Regular" },
   paymentChip: { flexDirection: "row", alignItems: "center", gap: rs(10) },
   paymentChipText: { fontSize: rf(15), fontFamily: "Inter_500Medium" },
+  reservationPickupChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    minHeight: rs(52),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    backgroundColor: CUSTOMER_ROUTE_MUTED_BG,
+    borderRadius: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(26, 26, 26, 0.14)",
+  },
+  reservationPickupChipText: {
+    flex: 1,
+    fontSize: rf(13),
+    lineHeight: rf(18),
+    fontFamily: "Inter_600SemiBold",
+    color: "#111111",
+  },
   platformPaySection: { marginTop: rs(8), gap: rs(8) },
   platformPayTagline: {
     fontSize: rf(13),

@@ -4,6 +4,11 @@ import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
+  CUSTOMER_ROUTE_MUTED_BG,
+  CustomerRouteStopsPanel,
+  formatCustomerReservationPickupInRahmen,
+} from "@/components/booking/CustomerRouteStopsPanel";
+import {
   ActivityIndicator,
   Alert,
   Animated,
@@ -39,9 +44,6 @@ import {
   loadCustomerArchivedRideIds,
 } from "@/utils/customerArchivedRides";
 import {
-  customerPlainRideMatchesSearch,
-  customerRideListDateKey,
-  customerRideRequestMatchesSearch,
   isCustomerRideActiveNow,
   isCustomerRideFuture,
   isCustomerStaleOpenDispatch,
@@ -559,8 +561,6 @@ export default function MyRidesScreen() {
     updateRequestDriverNote,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<FilterTab>("aktuell");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
   const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set());
   const passengerKey = passengerId?.trim() ?? "";
 
@@ -735,56 +735,6 @@ export default function MyRidesScreen() {
     router.push(`/ride-detail?id=${encodeURIComponent(id)}${q}` as any);
   };
 
-  const matchesDate = useCallback(
-    (createdAt: string | Date, scheduledAt?: Date | string | null) => {
-      if (!dateFilter) return true;
-      return customerRideListDateKey(createdAt, scheduledAt) === dateFilter;
-    },
-    [dateFilter],
-  );
-
-  const filteredActiveNow = useMemo(
-    () =>
-      activeNowRequests.filter(
-        (r) =>
-          customerRideRequestMatchesSearch(r, searchQuery) &&
-          matchesDate(r.createdAt, r.scheduledAt),
-      ),
-    [activeNowRequests, searchQuery, matchesDate],
-  );
-
-  const filteredReservations = useMemo(
-    () =>
-      reservationRequests.filter(
-        (r) =>
-          customerRideRequestMatchesSearch(r, searchQuery) &&
-          matchesDate(r.createdAt, r.scheduledAt),
-      ),
-    [reservationRequests, searchQuery, matchesDate],
-  );
-
-  const filteredCompleted = useMemo(
-    () =>
-      completed.filter(
-        (r) =>
-          customerPlainRideMatchesSearch(
-            { id: r.id, origin: r.origin, destination: r.destination },
-            searchQuery,
-          ) && matchesDate(r.createdAt, r.scheduledTime),
-      ),
-    [completed, searchQuery, matchesDate],
-  );
-
-  const filteredCancelled = useMemo(
-    () =>
-      cancelled.filter(
-        (r) =>
-          customerPlainRideMatchesSearch({ id: r.id, from: r.from, to: r.to }, searchQuery) &&
-          matchesDate(r.createdAt, r.scheduledAt),
-      ),
-    [cancelled, searchQuery, matchesDate],
-  );
-
   React.useEffect(() => {
     return () => {
       if (driverNoteSaveBannerTimerRef.current) clearTimeout(driverNoteSaveBannerTimerRef.current);
@@ -803,9 +753,9 @@ export default function MyRidesScreen() {
   const showReservations = activeTab === "zukunft";
   const showPast = activeTab === "abgelaufen";
   const isEmpty =
-    (showActiveNow && filteredActiveNow.length === 0) ||
-    (showReservations && filteredReservations.length === 0) ||
-    (showPast && filteredCompleted.length === 0 && filteredCancelled.length === 0);
+    (showActiveNow && activeNowRequests.length === 0) ||
+    (showReservations && reservationRequests.length === 0) ||
+    (showPast && completed.length === 0 && cancelled.length === 0);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -877,40 +827,10 @@ export default function MyRidesScreen() {
           })}
         </ScrollView>
 
-        <View style={styles.filtersRow}>
-          <View style={[styles.searchField, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
-            <Feather name="search" size={16} color={colors.mutedForeground} />
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Suchen: Route, Referenz, ID …"
-              placeholderTextColor={colors.mutedForeground}
-              style={[styles.searchInput, { color: colors.foreground }]}
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-            />
-          </View>
-          <TextInput
-            value={dateFilter}
-            onChangeText={setDateFilter}
-            placeholder="Datum (JJJJ-MM-TT)"
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.dateField, { borderColor: HOME_SHEET_RIM, color: colors.foreground, backgroundColor: HOME_SHEET_PANEL }]}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {dateFilter ? (
-            <Pressable onPress={() => setDateFilter("")} style={styles.dateClearBtn} hitSlop={8}>
-              <Feather name="x" size={18} color={colors.mutedForeground} />
-            </Pressable>
-          ) : null}
-        </View>
-
         {/* ── Aktuelle Fahrten (Live / Fahrersuche) ── */}
-        {showActiveNow && filteredActiveNow.length > 0 && (
+        {showActiveNow && activeNowRequests.length > 0 && (
           <>
-            {filteredActiveNow.map((req) => {
+            {activeNowRequests.map((req) => {
               const fromAddr = formatRideAddress(req.fromFull, req.from);
               const toAddr = formatRideAddress(req.toFull, req.to);
               const when = new Date(req.createdAt as Date);
@@ -964,27 +884,28 @@ export default function MyRidesScreen() {
         )}
 
         {/* ── Geplante Reservierungen (Zukunft) ── */}
-        {showReservations && filteredReservations.length > 0 && (
+        {showReservations && reservationRequests.length > 0 && (
           <>
-            {filteredReservations.map((req) => {
-              const fromAddr = formatRideAddress(req.fromFull, req.from);
-              const toAddr = formatRideAddress(req.toFull, req.to);
-              const when = new Date(req.scheduledAt as Date);
-              const dateStr = when.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-              const timeStr = when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-              const whenLabel = `${dateStr} · ${timeStr} Uhr`;
+            {reservationRequests.map((req) => {
+              const pickupWhen = formatCustomerReservationPickupInRahmen(req.scheduledAt);
+              const originName = (req.fromFull ?? req.from ?? "–").trim() || "–";
+              const destName = (req.toFull ?? req.to ?? "–").trim() || "–";
               return (
                 <View key={req.id} style={[styles.activeCard, { backgroundColor: "#FFFFFF", borderColor: LIST_FRAME_BORDER }]}>
                   <View style={styles.rideHeader}>
                     <StatusBadge status={req.status} scheduledAt={req.scheduledAt} />
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={[styles.rideAddressSub, { color: colors.mutedForeground, marginBottom: 2 }]}>Abholung</Text>
-                      <Text style={[styles.rideDate, { color: colors.mutedForeground }]} numberOfLines={2}>
-                        {whenLabel}
+                    <View style={styles.reservationPickupMetaWrap}>
+                      <Text style={styles.reservationPickupMeta}>Abholung</Text>
+                      <Text style={styles.reservationPickupMeta} numberOfLines={2}>
+                        {pickupWhen ?? "–"}
                       </Text>
                     </View>
                   </View>
-                  <RideRouteStops from={fromAddr} to={toAddr} />
+                  <CustomerRouteStopsPanel
+                    originName={originName}
+                    destName={destName}
+                    destinationBackgroundColor={CUSTOMER_ROUTE_MUTED_BG}
+                  />
                   <RideMetaStrip
                     items={[
                       { value: `${req.distanceKm.toFixed(1)} km` },
@@ -1060,9 +981,9 @@ export default function MyRidesScreen() {
         )}
 
         {/* ── Abgelaufene Fahrten (abgeschlossen + storniert) ── */}
-        {showPast && filteredCompleted.length > 0 && (
+        {showPast && completed.length > 0 && (
           <>
-            {filteredCompleted.map((ride) => {
+            {completed.map((ride) => {
               const date    = new Date(ride.createdAt);
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -1150,9 +1071,9 @@ export default function MyRidesScreen() {
           </>
         )}
 
-        {showPast && filteredCancelled.length > 0 && (
+        {showPast && cancelled.length > 0 && (
           <>
-            {filteredCancelled.map((ride) => {
+            {cancelled.map((ride) => {
               const date = new Date(ride.createdAt);
               const dateStr = date.toLocaleDateString("de-DE", {
                 day: "2-digit",
@@ -1199,9 +1120,7 @@ export default function MyRidesScreen() {
                 ? "Keine laufende Fahrt"
                 : activeTab === "zukunft"
                   ? "Keine geplanten Fahrten"
-                  : searchQuery.trim() || dateFilter
-                    ? "Keine Treffer"
-                    : "Noch keine abgelaufenen Fahrten"}
+                  : "Noch keine abgelaufenen Fahrten"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               {activeTab === "aktuell"
@@ -1359,44 +1278,6 @@ const styles = StyleSheet.create({
   },
   tabBadgeText:    { fontSize: rf(10), fontFamily: "Inter_700Bold", lineHeight: rf(13) },
 
-  filtersRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    marginBottom: rs(4),
-  },
-  searchField: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(8),
-    minHeight: rs(40),
-    paddingHorizontal: rs(12),
-    borderRadius: rs(12),
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: rf(14),
-    fontFamily: "Inter_400Regular",
-    paddingVertical: rs(8),
-  },
-  dateField: {
-    width: rs(128),
-    minHeight: rs(40),
-    paddingHorizontal: rs(10),
-    borderRadius: rs(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    fontSize: rf(13),
-    fontFamily: "Inter_400Regular",
-    paddingVertical: rs(8),
-  },
-  dateClearBtn: {
-    width: rs(32),
-    height: rs(32),
-    alignItems: "center",
-    justifyContent: "center",
-  },
   archiveBtn: {
     width: rs(44),
     height: rs(44),
@@ -1643,6 +1524,22 @@ const styles = StyleSheet.create({
     color: "#DC2626",
   },
   rideAddressSub: accountSheetSecondaryLabel,
+  reservationPickupMetaWrap: {
+    alignItems: "flex-end",
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(8),
+    borderRadius: rs(8),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#111111",
+    maxWidth: "62%",
+  },
+  reservationPickupMeta: {
+    fontSize: rf(13),
+    lineHeight: rf(18),
+    fontFamily: "Inter_400Regular",
+    color: "#111111",
+    textAlign: "right",
+  },
 
   payerLine: {
     flexDirection: "row",
