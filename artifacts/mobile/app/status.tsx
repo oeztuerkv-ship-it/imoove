@@ -2027,10 +2027,12 @@ export default function StatusScreen() {
         </Animated.View>
       ) : isDriving ? (
         <View style={[styles.drivingBanner, { top: topPad + rs(58) }]}>
-          <MaterialCommunityIcons name="navigation" size={rf(18)} color="#fff" />
-          <View>
+          <View style={styles.drivingBannerIconCircle}>
+            <MaterialCommunityIcons name="navigation" size={rf(18)} color={TRACKING_ACCENT} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.arrivedBannerTitle}>Fahrt gestartet</Text>
-            <Text style={styles.arrivedBannerSub}>Unterwegs zu Ihrem Ziel</Text>
+            <Text style={styles.drivingBannerSub}>Unterwegs zu Ihrem Ziel</Text>
           </View>
         </View>
       ) : null}
@@ -2723,7 +2725,8 @@ const styles = StyleSheet.create({
   },
   drivingBanner: {
     position: "absolute",
-    left: rs(16), right: rs(16),
+    left: rs(16),
+    right: rs(16),
     backgroundColor: "#2563EB",
     borderRadius: rs(16),
     flexDirection: "row",
@@ -2731,8 +2734,26 @@ const styles = StyleSheet.create({
     gap: rs(12),
     paddingHorizontal: rs(16),
     paddingVertical: rs(14),
-    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, shadowRadius: 10, elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  drivingBannerIconCircle: {
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  drivingBannerSub: {
+    fontSize: rf(13),
+    fontFamily: "Inter_400Regular",
+    color: "#BFDBFE",
+    marginTop: 2,
   },
 
   logoRow: { flexDirection: "row", alignItems: "center", gap: rs(8), marginBottom: rs(10) },
