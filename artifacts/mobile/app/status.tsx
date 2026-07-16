@@ -2097,6 +2097,11 @@ export default function StatusScreen() {
               <Text style={styles.trackingPlateLine} numberOfLines={1} allowFontScaling={false}>
                 {driverPlate || "—"}
               </Text>
+              {trackingDetailsOpen && driverCar ? (
+                <Text style={styles.trackingPlateDetail} numberOfLines={1} allowFontScaling={false}>
+                  {driverCar}
+                </Text>
+              ) : null}
               {trackingDetailsOpen && driverRating != null ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
                   <StarRating stars={driverRating} size={14} />
@@ -2104,11 +2109,6 @@ export default function StatusScreen() {
                     {driverRating.toFixed(1)}
                   </Text>
                 </View>
-              ) : null}
-              {trackingDetailsOpen && driverCar ? (
-                <Text style={styles.trackingPlateDetail} numberOfLines={1} allowFontScaling={false}>
-                  {driverCar}
-                </Text>
               ) : null}
             </View>
           </View>
