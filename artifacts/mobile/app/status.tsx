@@ -40,7 +40,6 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { customerPayerBlockFromRideRequest, formatCustomerPaymentMethodLabel } from "@/utils/customerBillingCopy";
 import {
   CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
-  customerReservationFlowHeadline,
 } from "@/utils/customerRideStatusLabel";
 import {
   isCustomerFinalCancelledStatus,
@@ -1949,10 +1948,7 @@ export default function StatusScreen() {
   }
 
   const isDriving = customerPhase === "driving";
-  const isPreparing = customerPhase === "preparing";
   const isArrived = customerPhase === "arrived";
-  const readyForDispatch = effectiveAcceptedRequest?.status === "ready_for_dispatch";
-  const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
   const destLabel =
     displayDestination?.displayName ??
     serverRideForUi?.toFull ??
@@ -1963,17 +1959,6 @@ export default function StatusScreen() {
   const progressActive = trackingProgressActiveStep(rideStatus);
   const progressThirdLabel =
     rideStatus === "completed" ? "Ziel erreicht" : rideStatus === "in_progress" ? "Fahrt läuft" : "Ziel erreicht";
-  const driverStatusLabel = isDriving
-    ? `${driverFirstName} fährt zum Ziel`
-    : isArrived
-      ? "Fahrer wartet auf Sie"
-      : readyForDispatch
-        ? readyDispatchHeadline
-        : isPreparing
-          ? `${driverFirstName} bereitet sich vor`
-          : rideStatus === "driver_arriving"
-            ? `${driverFirstName} ist unterwegs`
-            : "Fahrer gefunden";
   const distanceKm = route?.distanceKm;
   const etaDistanceText =
     serverRemainingDistM != null
@@ -2088,13 +2073,6 @@ export default function StatusScreen() {
                 allowFontScaling={false}
               >
                 {driverName}
-              </Text>
-              <Text
-                style={[styles.trackingDriverStatus, statusAppleFont("regular")]}
-                numberOfLines={2}
-                allowFontScaling={false}
-              >
-                {driverStatusLabel}
               </Text>
               {driverRating != null ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
