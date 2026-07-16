@@ -216,8 +216,11 @@ export default function HomeScreen() {
     route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
     selectedServiceClass,
     setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod,
-    setScheduledTime, fetchRoute, resetRide, consumePendingDestination, history, setWheelchairSelectCompleted,
+    setScheduledTime, fetchRoute, refreshFareBreakdown, resetRide, consumePendingDestination, history, setWheelchairSelectCompleted,
   } = useRide();
+
+  /** Nur Fahrzeugwechsel — Route/Tarif nach Ziel kommt aus fetchRoute. */
+  const prevFareVehicleRef = useRef<VehicleType | null | undefined>(undefined);
 
   useEffect(() => {
     if (selectedVehicle !== "wheelchair") setWheelchairSelectCompleted(false);
@@ -1208,10 +1211,10 @@ export default function HomeScreen() {
     resetPasswordConfirm,
   ]);
 
-  /* ── Route fetch: nach Ziel- und Fahrzeugwahl Preis live neu berechnen ── */
+  /* ── Route fetch: nur bei Strecke neu berechnen (nicht bei Fahrzeug-Tap) ── */
   useEffect(() => {
     if (destination) void fetchRoute();
-  }, [destination, fetchRoute]);
+  }, [destination, origin, viaStops, fetchRoute]);
 
   useEffect(() => {
     if (destination && !selectedVehicle) {
@@ -1220,10 +1223,23 @@ export default function HomeScreen() {
   }, [destination, selectedVehicle, setSelectedVehicle]);
 
   useEffect(() => {
-    if (destination && selectedVehicle) {
-      void fetchRoute();
+    if (!destination) {
+      prevFareVehicleRef.current = undefined;
+      return;
     }
-  }, [destination, selectedVehicle, fetchRoute]);
+    prevFareVehicleRef.current = undefined;
+  }, [destination]);
+
+  useEffect(() => {
+    if (!destination || !selectedVehicle || !route) return;
+    if (prevFareVehicleRef.current === undefined) {
+      prevFareVehicleRef.current = selectedVehicle;
+      return;
+    }
+    if (prevFareVehicleRef.current === selectedVehicle) return;
+    prevFareVehicleRef.current = selectedVehicle;
+    void refreshFareBreakdown();
+  }, [selectedVehicle, destination, route, refreshFareBreakdown]);
 
   useEffect(() => {
     if (!destination) setBookingMode("immediate");

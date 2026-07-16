@@ -9,7 +9,7 @@ import React, {
 } from "react";
 
 import { useUser } from "@/context/UserContext";
-import { fetchFareEstimate } from "@/utils/fareEstimateApi";
+import { fetchFareEstimate, type FareEstimateApiResult } from "@/utils/fareEstimateApi";
 import { vehicleSurchargeFromEstimates } from "@/utils/customerFareDisplay";
 import { type FareBreakdown } from "@/utils/fareCalculator";
 import { type GeoLocation, getRouteThrough, type RouteResult } from "@/utils/routing";
@@ -163,6 +163,14 @@ interface RideContextValue extends RideState {
   setScheduledTime: (t: Date | null) => void;
   setCustomerDriverNote: (note: string) => void;
   fetchRoute: () => Promise<void>;
+  /** Nur Tarif neu laden (ohne Route/Karte) — z. B. nach Fahrzeugwechsel. */
+  refreshFareBreakdown: () => Promise<void>;
+  /** Bereits geladene Schätzung aus ride-select — ohne API. */
+  applyVehicleFareEstimate: (
+    vehicle: VehicleType,
+    estimate: FareEstimateApiResult,
+    standardTotal: number | null,
+  ) => void;
   startRide: () => void;
   cancelRide: () => void;
   completeRide: (opts?: CompleteRideOptions) => void;
@@ -283,6 +291,77 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
     try { await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(entries)); } catch {}
   }, []);
 
+  const fareBreakdownFromEstimate = useCallback(
+    (
+      vehicle: VehicleType,
+      est: FareEstimateApiResult,
+      distanceKm: number,
+      standardTotal: number | null,
+    ): FareBreakdown => {
+      let vehicleSurchargeEur: number | null = null;
+      if (vehicle === "xl" || vehicle === "wheelchair") {
+        vehicleSurchargeEur = vehicleSurchargeFromEstimates(vehicle, est, standardTotal);
+      }
+      const base = Number(est.profile?.baseFareEur ?? est.breakdown?.baseFare ?? 0);
+      return {
+        baseFare: base,
+        distanceCharge: Math.max(0, est.total - base),
+        waitingCharge: 0,
+        total: est.total,
+        distanceKm: Math.round(distanceKm * 100) / 100,
+        fareKind: "taxameter",
+        vehicleSurchargeEur,
+      };
+    },
+    [],
+  );
+
+  const syncFareForVehicle = useCallback(
+    async (vehicle: VehicleType, routeResult: RouteResult) => {
+      if (!destination) return;
+      const routeInput = {
+        fromFull: String(origin.displayName ?? ""),
+        fromLat: origin.lat,
+        fromLon: origin.lon,
+        toFull: String(destination.displayName ?? ""),
+        toLat: destination.lat,
+        toLon: destination.lon,
+      };
+      const est = await fetchFareEstimate(vehicle, routeInput);
+      if (!est) {
+        setFareBreakdown(null);
+        setRouteError("Tarif konnte nicht geladen werden. Bitte Verbindung prüfen.");
+        return;
+      }
+      let standardTotal: number | null = null;
+      if (vehicle === "xl" || vehicle === "wheelchair") {
+        const std = await fetchFareEstimate("standard", routeInput);
+        standardTotal = std?.total ?? null;
+      }
+      setFareBreakdown(fareBreakdownFromEstimate(vehicle, est, routeResult.distanceKm, standardTotal));
+    },
+    [origin, destination, fareBreakdownFromEstimate],
+  );
+
+  const refreshFareBreakdown = useCallback(async () => {
+    if (!selectedVehicle || !route) {
+      setFareBreakdown(null);
+      return;
+    }
+    await syncFareForVehicle(selectedVehicle, route);
+  }, [selectedVehicle, route, syncFareForVehicle]);
+
+  const applyVehicleFareEstimate = useCallback(
+    (vehicle: VehicleType, estimate: FareEstimateApiResult, standardTotal: number | null) => {
+      if (!route) return;
+      setFareBreakdown(fareBreakdownFromEstimate(vehicle, estimate, route.distanceKm, standardTotal));
+    },
+    [route, fareBreakdownFromEstimate],
+  );
+
+  const selectedVehicleRef = useRef(selectedVehicle);
+  selectedVehicleRef.current = selectedVehicle;
+
   const fetchRoute = useCallback(async () => {
     if (!destination) return;
     setIsLoadingRoute(true);
@@ -298,6 +377,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
       );
       if (!result.ok) {
         setRoute(null);
+        setFareBreakdown(null);
         setRouteError(result.message || ROUTE_NOT_COMPUTABLE_MESSAGE_DE);
         return;
       }
@@ -325,55 +405,18 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
               : undefined,
       };
       setRoute(routeResult);
-      if (!selectedVehicle) {
+      const vehicle = selectedVehicleRef.current;
+      if (!vehicle) {
         setFareBreakdown(null);
         return;
       }
-      const est = await fetchFareEstimate(selectedVehicle, {
-        fromFull: String(origin.displayName ?? ""),
-        fromLat: origin.lat,
-        fromLon: origin.lon,
-        toFull: String(destination.displayName ?? ""),
-        toLat: destination.lat,
-        toLon: destination.lon,
-      });
-      if (!est) {
-        setFareBreakdown(null);
-        setRouteError("Tarif konnte nicht geladen werden. Bitte Verbindung prüfen.");
-        return;
-      }
-      let vehicleSurchargeEur: number | null = null;
-      if (selectedVehicle === "xl" || selectedVehicle === "wheelchair") {
-        const std = await fetchFareEstimate("standard", {
-          fromFull: String(origin.displayName ?? ""),
-          fromLat: origin.lat,
-          fromLon: origin.lon,
-          toFull: String(destination.displayName ?? ""),
-          toLat: destination.lat,
-          toLon: destination.lon,
-        });
-        vehicleSurchargeEur = vehicleSurchargeFromEstimates(
-          selectedVehicle,
-          est,
-          std?.total ?? null,
-        );
-      }
-      const base = Number(est.profile?.baseFareEur ?? est.breakdown?.baseFare ?? 0);
-      setFareBreakdown({
-        baseFare: base,
-        distanceCharge: Math.max(0, est.total - base),
-        waitingCharge: 0,
-        total: est.total,
-        distanceKm: Math.round(routeResult.distanceKm * 100) / 100,
-        fareKind: "taxameter",
-        vehicleSurchargeEur,
-      });
+      await syncFareForVehicle(vehicle, routeResult);
     } catch {
       setRouteError("Route konnte nicht berechnet werden.");
     } finally {
       setIsLoadingRoute(false);
     }
-  }, [origin, destination, selectedVehicle, viaStops]);
+  }, [origin, destination, viaStops, syncFareForVehicle]);
 
   const startRide = useCallback(() => {
     if (!fareBreakdown) return;
@@ -457,7 +500,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
       route, fareBreakdown, finalFare, rideStatus, isLoadingRoute, routeError, history,
       wheelchairSelectCompleted, setWheelchairSelectCompleted,
       setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime, setCustomerDriverNote,
-      fetchRoute, startRide, cancelRide, completeRide, resetRide,
+      fetchRoute, refreshFareBreakdown, applyVehicleFareEstimate, startRide, cancelRide, completeRide, resetRide,
       setPendingDestination, peekPendingDestination, consumePendingDestination,
       loadHistory,
     }}>

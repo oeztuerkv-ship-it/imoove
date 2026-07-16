@@ -26,6 +26,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RealMapView } from "@/components/RealMapView";
+import { CustomerRouteStopsPanel } from "@/components/booking/CustomerRouteStopsPanel";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
@@ -214,6 +215,163 @@ function trackingPaymentPillText(req: RideRequest): string {
     return who ? `Kostenübernahme: ${who}` : "Kostenübernahme";
   }
   return block.title;
+}
+
+function searchPaymentDisplayLabel(req: RideRequest): string {
+  const pm = formatCustomerPaymentMethodLabel(req.paymentMethod);
+  if (pm === "Bar") return "Barzahlung";
+  if (pm === "Kreditkarte") return "Kartenzahlung";
+  return pm;
+}
+
+function SearchPaymentIcon({ kind, size = 18 }: { kind: ReceiptPayIcon; size?: number }) {
+  const iconColor = "#6B7280";
+  if (kind === "card") {
+    return <Feather name="credit-card" size={size} color={iconColor} />;
+  }
+  if (kind === "paypal") {
+    return <Text style={{ fontSize: size, fontFamily: "Inter_700Bold", color: "#1565C0", lineHeight: size + 2 }}>P</Text>;
+  }
+  if (kind === "app") {
+    return <Feather name="smartphone" size={size} color={iconColor} />;
+  }
+  if (kind === "access_code") {
+    return <MaterialCommunityIcons name="shield-check-outline" size={size} color="#15803D" />;
+  }
+  if (kind === "voucher") {
+    return <MaterialCommunityIcons name="ticket-percent-outline" size={size} color="#2563EB" />;
+  }
+  return <MaterialCommunityIcons name="cash" size={size} color={iconColor} />;
+}
+
+const SEARCH_PANEL_BORDER = "rgba(26, 26, 26, 0.14)";
+
+function SearchMetaChip({
+  icon,
+  label,
+  valuePill,
+  iconOnly = false,
+}: {
+  icon: React.ReactNode;
+  label?: string;
+  valuePill?: string;
+  iconOnly?: boolean;
+}) {
+  return (
+    <View
+      style={styles.searchMetaChip}
+      accessibilityLabel={iconOnly && valuePill ? `Strecke ${valuePill}` : label}
+    >
+      <View style={styles.searchMetaChipIcon}>{icon}</View>
+      <View style={styles.searchMetaChipMain}>
+        {iconOnly && valuePill ? (
+          <View style={styles.searchMetaChipMetric}>
+            <Text style={styles.searchMetaChipMetricText} numberOfLines={1}>
+              {valuePill}
+            </Text>
+          </View>
+        ) : label ? (
+          <Text style={styles.searchMetaChipLabel} numberOfLines={1}>
+            {label}
+          </Text>
+        ) : null}
+        {!iconOnly && valuePill ? (
+          <View style={styles.searchMetaChipMetric}>
+            <Text style={styles.searchMetaChipMetricText} numberOfLines={1}>
+              {valuePill}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function SearchTripMetaRow({
+  distanceKm,
+  billingRequest,
+}: {
+  distanceKm?: number | null;
+  billingRequest: RideRequest | null;
+}) {
+  const block = billingRequest ? customerPayerBlockFromRideRequest(billingRequest) : null;
+  const simplePayment = block?.title === "Zahlung";
+  const iconKind = billingRequest ? receiptPaymentIconKind(billingRequest, null) : "cash";
+
+  if (distanceKm == null && !billingRequest) return null;
+
+  if (simplePayment && billingRequest && distanceKm != null) {
+    return (
+      <View style={styles.searchMetaRow}>
+        <SearchMetaChip
+          icon={<Feather name="map" size={16} color="#6B7280" />}
+          valuePill={`${Number(distanceKm).toFixed(1)} km`}
+          iconOnly
+        />
+        <SearchMetaChip
+          icon={<SearchPaymentIcon kind={iconKind} size={16} />}
+          label={searchPaymentDisplayLabel(billingRequest)}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      {distanceKm != null ? (
+        <View style={styles.searchMetaRow}>
+          <SearchMetaChip
+            icon={<Feather name="map" size={16} color="#6B7280" />}
+            valuePill={`${Number(distanceKm).toFixed(1)} km`}
+            iconOnly
+          />
+        </View>
+      ) : null}
+      {billingRequest && block ? (
+        <View style={styles.searchMetaRow}>
+          <SearchMetaChip
+            icon={<SearchPaymentIcon kind={iconKind} size={16} />}
+            label={simplePayment ? searchPaymentDisplayLabel(billingRequest) : block.title}
+            valuePill={simplePayment ? undefined : block.subtitle.slice(0, 28)}
+          />
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+function SearchCancelButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.searchCancelBtn, pressed && { opacity: 0.72 }]}
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Abbrechen"
+    >
+      <Feather name="x" size={18} color="#DC2626" />
+      <Text style={styles.searchCancelBtnText}>Abbrechen</Text>
+    </Pressable>
+  );
+}
+
+function SearchTripSummary({
+  originName,
+  destName,
+  distanceKm,
+  billingRequest,
+}: {
+  originName: string;
+  destName: string;
+  distanceKm?: number | null;
+  billingRequest: RideRequest | null;
+}) {
+  return (
+    <View style={styles.searchTripSummary}>
+      <CustomerRouteStopsPanel originName={originName} destName={destName} />
+      <SearchTripMetaRow distanceKm={distanceKm} billingRequest={billingRequest} />
+    </View>
+  );
 }
 
 function splitDestinationLines(displayName: string | undefined): { title: string; sub: string } {
@@ -1530,54 +1688,17 @@ export default function StatusScreen() {
                     : "Deine Anfrage wird bearbeitet"}
                 </Text>
               </View>
-              <Pressable
-                style={({ pressed }) => [styles.searchCancelBtn, pressed && { opacity: 0.72 }]}
-                onPress={() => handleCancel()}
-                hitSlop={8}
-              >
-                <Text style={styles.searchCancelBtnText}>Fahrt{"\n"}stornieren</Text>
-              </Pressable>
+              <SearchCancelButton onPress={() => handleCancel()} />
             </View>
 
             <View style={styles.searchCardDivider} />
 
-            <View style={styles.searchRouteRow}>
-              <View style={[styles.searchRouteDot, { backgroundColor: "#22C55E" }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.searchRouteLabel}>Von</Text>
-                <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {displayOrigin?.displayName ?? "Esslingen am Neckar"}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.searchRouteLine} />
-            <View style={styles.searchRouteRow}>
-              <View style={[styles.searchRouteDot, { backgroundColor: "#DC2626" }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.searchRouteLabel}>Nach</Text>
-                <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {displayDestination?.displayName ?? "–"}
-                </Text>
-              </View>
-            </View>
-
-            {route?.distanceKm != null && (
-              <View style={styles.searchDistanceRow}>
-                <Text style={styles.searchDistanceLabel}>Strecke</Text>
-                <Text style={styles.searchDistanceValue}>{Number(route.distanceKm).toFixed(1)} km</Text>
-              </View>
-            )}
-
-            {pendingBillingRequest ? (
-              <View style={styles.searchPayerBox}>
-                <Text style={styles.searchPayerTitle}>
-                  {customerPayerBlockFromRideRequest(pendingBillingRequest).title}
-                </Text>
-                <Text style={styles.searchPayerSub}>
-                  {customerPayerBlockFromRideRequest(pendingBillingRequest).subtitle}
-                </Text>
-              </View>
-            ) : null}
+            <SearchTripSummary
+              originName={displayOrigin?.displayName ?? "Esslingen am Neckar"}
+              destName={displayDestination?.displayName ?? "–"}
+              distanceKm={route?.distanceKm}
+              billingRequest={pendingBillingRequest}
+            />
           </View>
         </View>
       </View>
@@ -1634,54 +1755,17 @@ export default function StatusScreen() {
                   {subText}
                 </Text>
               </View>
-              <Pressable
-                style={({ pressed }) => [styles.searchCancelBtn, pressed && { opacity: 0.72 }]}
-                onPress={() => handleCancel()}
-                hitSlop={8}
-              >
-                <Text style={styles.searchCancelBtnText}>Fahrt{"\n"}stornieren</Text>
-              </Pressable>
+              <SearchCancelButton onPress={() => handleCancel()} />
             </View>
 
             <View style={styles.searchCardDivider} />
 
-            <View style={styles.searchRouteRow}>
-              <View style={[styles.searchRouteDot, { backgroundColor: "#22C55E" }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.searchRouteLabel}>Von</Text>
-                <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {displayOrigin?.displayName ?? "Esslingen am Neckar"}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.searchRouteLine} />
-            <View style={styles.searchRouteRow}>
-              <View style={[styles.searchRouteDot, { backgroundColor: "#DC2626" }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.searchRouteLabel}>Nach</Text>
-                <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {displayDestination?.displayName ?? "–"}
-                </Text>
-              </View>
-            </View>
-
-            {route?.distanceKm != null && (
-              <View style={styles.searchDistanceRow}>
-                <Text style={styles.searchDistanceLabel}>Strecke</Text>
-                <Text style={styles.searchDistanceValue}>{Number(route.distanceKm).toFixed(1)} km</Text>
-              </View>
-            )}
-
-            {pendingBillingRequest ? (
-              <View style={styles.searchPayerBox}>
-                <Text style={styles.searchPayerTitle}>
-                  {customerPayerBlockFromRideRequest(pendingBillingRequest).title}
-                </Text>
-                <Text style={styles.searchPayerSub}>
-                  {customerPayerBlockFromRideRequest(pendingBillingRequest).subtitle}
-                </Text>
-              </View>
-            ) : null}
+            <SearchTripSummary
+              originName={displayOrigin?.displayName ?? "Esslingen am Neckar"}
+              destName={displayDestination?.displayName ?? "–"}
+              distanceKm={route?.distanceKm}
+              billingRequest={pendingBillingRequest}
+            />
           </View>
         </View>
       </View>
@@ -2329,14 +2413,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: rs(8),
     paddingHorizontal: rs(10),
-    maxWidth: rs(112),
+    minWidth: rs(72),
+    borderWidth: 1,
+    borderColor: "#DC2626",
+    borderRadius: rs(10),
+    backgroundColor: "#FFFFFF",
+    gap: rs(2),
   },
   searchCancelBtnText: {
-    fontSize: rf(14),
+    fontSize: rf(12),
     fontFamily: "Inter_600SemiBold",
     color: "#DC2626",
     textAlign: "center",
-    lineHeight: rf(18),
   },
   searchLoaderWrap: {
     width: rs(56),
@@ -2371,22 +2459,51 @@ const styles = StyleSheet.create({
   searchCardSub: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#525252" },
   searchCardDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#D4D4D4", marginBottom: rs(12) },
 
-  searchRouteRow: { flexDirection: "row", alignItems: "center", gap: rs(12), paddingVertical: rs(8) },
-  searchRouteDot: { width: rs(11), height: rs(11), borderRadius: rs(6), flexShrink: 0 },
-  searchRouteLine: { width: 1, height: rs(14), marginLeft: rs(4), backgroundColor: "#D4D4D4" },
-  searchRouteLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium", color: "#525252", marginBottom: 2 },
-  searchRouteAddr: { fontSize: rf(14), fontFamily: "Inter_500Medium", color: "#111111" },
-  searchDistanceRow: {
+  searchTripSummary: { gap: rs(8) },
+  searchMetaRow: { flexDirection: "row", alignItems: "stretch", gap: rs(8), marginTop: rs(2) },
+  searchMetaChip: {
+    flex: 1,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: rs(8),
+    minHeight: rs(52),
     paddingVertical: rs(8),
-    marginTop: rs(2),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#D4D4D4",
+    paddingHorizontal: rs(10),
+    backgroundColor: "#F9FAFB",
+    borderRadius: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: SEARCH_PANEL_BORDER,
+    minWidth: 0,
   },
-  searchDistanceLabel: { fontSize: rf(13), fontFamily: "Inter_500Medium", color: "#525252" },
-  searchDistanceValue: { fontSize: rf(14), fontFamily: "Inter_600SemiBold", color: "#111111" },
+  searchMetaChipIcon: {
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(16),
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  searchMetaChipMain: { flex: 1, minWidth: 0, justifyContent: "center", minHeight: rs(32) },
+  searchMetaChipLabel: {
+    fontSize: rf(13),
+    lineHeight: rf(18),
+    fontFamily: "Inter_600SemiBold",
+    color: "#111111",
+  },
+  searchMetaChipMetric: {
+    alignSelf: "flex-start",
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(5),
+    borderRadius: rs(6),
+    backgroundColor: "#E5E7EB",
+  },
+  searchMetaChipMetricText: {
+    fontSize: rf(13),
+    lineHeight: rf(18),
+    fontFamily: "Inter_600SemiBold",
+    color: "#374151",
+  },
   searchPriceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -2418,16 +2535,6 @@ const styles = StyleSheet.create({
     color: "#2563EB",
     marginTop: 2,
   },
-  searchPayerBox: {
-    marginTop: rs(12),
-    padding: rs(12),
-    backgroundColor: "#EFF6FF",
-    borderRadius: rs(12),
-    borderWidth: 1,
-    borderColor: "#93C5FD",
-  },
-  searchPayerTitle: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#1D4ED8" },
-  searchPayerSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#1E40AF", marginTop: rs(4), lineHeight: rf(17) },
 
   chatOverlay: {
     flex: 1,

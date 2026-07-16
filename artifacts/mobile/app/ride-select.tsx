@@ -5,8 +5,9 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
+import { CollapsibleBrokerNotice } from "@/components/CollapsibleBrokerNotice";
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
+import { CustomerTaxameterBillingNotice } from "@/components/CustomerTaxameterBillingNotice";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { VEHICLES, useRide } from "@/context/RideContext";
@@ -74,6 +75,7 @@ export default function RideSelectScreen() {
     isLoadingRoute,
     routeError,
     fetchRoute,
+    applyVehicleFareEstimate,
     setScheduledTime,
     setWheelchairSelectCompleted,
   } = useRide();
@@ -81,8 +83,19 @@ export default function RideSelectScreen() {
   useEffect(() => {
     if (!destination) return;
     if (!selectedVehicle) setSelectedVehicle("standard");
+  }, [destination, selectedVehicle, setSelectedVehicle]);
+
+  useEffect(() => {
+    if (!destination) return;
     void fetchRoute();
-  }, [destination, selectedVehicle, setSelectedVehicle, fetchRoute]);
+  }, [destination, origin, fetchRoute]);
+
+  useEffect(() => {
+    if (!selectedVehicle) return;
+    const est = vehicleEstimates.get(selectedVehicle);
+    if (!est) return;
+    applyVehicleFareEstimate(selectedVehicle, est, standardTotal);
+  }, [selectedVehicle, vehicleEstimates, standardTotal, applyVehicleFareEstimate]);
 
   useEffect(() => {
     if (!destination?.displayName?.trim()) {
@@ -243,9 +256,9 @@ export default function RideSelectScreen() {
         ) : fareEstimateError ? (
           <Text style={{ color: colors.destructive }}>{fareEstimateError}</Text>
         ) : null}
-        {!isLoadingRoute && !routeError && !fareEstimateError && vehicleEstimates.size > 0 ? (
-          <CustomerFareEstimateLegalHint align="left" />
-        ) : null}
+
+        <CustomerTaxameterBillingNotice />
+        <CollapsibleBrokerNotice />
       </ScrollView>
 
       <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: insets.bottom + 14 }]}>

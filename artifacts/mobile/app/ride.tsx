@@ -21,6 +21,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
+import { CustomerTaxameterBillingNotice } from "@/components/CustomerTaxameterBillingNotice";
+import { CustomerRouteStopsPanel } from "@/components/booking/CustomerRouteStopsPanel";
 import {
   calculateCopayment,
   effectivePricingModeForCustomerRide,
@@ -133,8 +135,8 @@ type RidePaymentOption = {
 
 /** Reihenfolge unterhalb von Apple/Google Pay: Karte → Bar → Gutschein → Transportschein. */
 const RIDE_PAYMENT_OPTIONS_STANDARD: RidePaymentOption[] = [
-  { id: "card", label: "Kreditkarte", isCard: true },
   { id: "cash", label: "Bar", isEuro: true },
+  { id: "card", label: "Kreditkarte", isCard: true },
   { id: "access_code", label: "Gutschein / Code", isAccessCode: true },
   { id: "voucher", label: "Transportschein (KK)", isVoucher: true },
 ];
@@ -166,6 +168,14 @@ function companionLabel(v: CompanionCount): string {
     2: "2 Begleitpersonen",
   };
   return m[v];
+}
+
+function PaymentSelectDot({ selected }: { selected: boolean }) {
+  return (
+    <View style={[styles.paymentSelectDot, selected && styles.paymentSelectDotSelected]}>
+      {selected ? <View style={styles.paymentSelectDotInner} /> : null}
+    </View>
+  );
 }
 
 function AccessCodeModal({
@@ -869,8 +879,7 @@ export default function RideScreen() {
 
   const vehicle = VEHICLES.find((v) => v.id === selectedVehicle)!;
   const payerBlock = customerPayerBlockFromBooking(paymentMethod, isExempted);
-  const brokerInScroll = paymentMethod === "access_code";
-  const scrollBottomInset = brokerInScroll ? bottomPad + rs(118) : bottomPad + rs(200);
+  const scrollBottomInset = bottomPad + rs(200);
 
   const renderBrokerNotice = () => (
     <Pressable
@@ -909,17 +918,10 @@ export default function RideScreen() {
     </Pressable>
   );
 
-  const renderTaxameterLegalNotice = () => (
-    <View style={styles.taxameterNoticeBox}>
-      <Feather name="info" size={14} color="#374151" style={{ marginTop: 1 }} />
-      <Text style={styles.taxameterNoticeText}>
-        <Text style={styles.taxameterNoticeStrong}>Abrechnung nach Taxameter am Fahrtende.</Text>
-      </Text>
-    </View>
-  );
+  const renderTaxameterLegalNotice = () => <CustomerTaxameterBillingNotice />;
 
   const renderWalletBookingInfoBox = () => (
-    <View style={[styles.taxameterNoticeBox, styles.walletBookingInfoBox]}>
+    <View style={[styles.walletBookingInfoBox]}>
       <Feather name="info" size={14} color="#1D4ED8" style={{ marginTop: 1 }} />
       <Text style={styles.walletBookingInfoText}>{CUSTOMER_WALLET_BOOKING_INFO_DE}</Text>
     </View>
@@ -948,29 +950,10 @@ export default function RideScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.content, { paddingBottom: scrollBottomInset }]}
       >
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.locationRow}>
-            <View style={[styles.originDot, { backgroundColor: colors.success }]} />
-            <View style={styles.locationInfo}>
-              <Text style={[styles.locationLabel, { color: colors.mutedForeground }]}>Abfahrt</Text>
-              <Text style={[styles.locationValue, { color: colors.foreground }]}>
-                {origin?.displayName ?? "Esslingen am Neckar"}
-              </Text>
-            </View>
-          </View>
-          <View style={[styles.routeConnector, { backgroundColor: colors.success }]} />
-          <View style={styles.locationRow}>
-            <View style={[styles.destPin, { backgroundColor: colors.primary }]}>
-              <Feather name="map-pin" size={10} color={colors.primaryForeground} />
-            </View>
-            <View style={styles.locationInfo}>
-              <Text style={[styles.locationLabel, { color: colors.mutedForeground }]}>Ziel</Text>
-              <Text style={[styles.locationValue, { color: colors.foreground }]} numberOfLines={2}>
-                {destination?.displayName ?? "–"}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <CustomerRouteStopsPanel
+          originName={origin?.displayName ?? "Esslingen am Neckar"}
+          destName={destination?.displayName ?? "–"}
+        />
         {selectedVehicle === "wheelchair" ? (
           <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#86EFAC", backgroundColor: "#F0FDF4", padding: 14, gap: 8 }}>
             <Pressable
@@ -990,30 +973,30 @@ export default function RideScreen() {
           </View>
         ) : null}
 
-        {fareBreakdown ? renderTaxameterLegalNotice() : null}
-
-        <View style={[styles.tripSummaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.tripFactsRow}>
           {[
-            { icon: "map" as const, value: `${route?.distanceKm ?? 0} km`, label: "Strecke" },
-            { vehicleIcon: vehicle.icon as any, value: vehicle.name, label: "Fahrzeug" },
-            { icon: "users" as const, value: `${vehicle.minSeats}`, label: "Plätze" },
-          ].map((s) => (
-            <View key={s.label} style={styles.tripSummaryItem}>
-              <View style={[styles.tripSummaryIcon, { backgroundColor: colors.background }]}>
-                {"vehicleIcon" in s ? (
-                  <MaterialCommunityIcons name={s.vehicleIcon} size={18} color={colors.primary} />
-                ) : (
-                  <Feather name={s.icon} size={17} color={colors.primary} />
-                )}
-              </View>
-              <Text style={[styles.statValue, { color: colors.foreground }]} numberOfLines={1}>{s.value}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+            { icon: "map" as const, value: `${Number(route?.distanceKm ?? 0).toFixed(1)} km` },
+            { vehicleIcon: vehicle.icon as React.ComponentProps<typeof MaterialCommunityIcons>["name"], value: vehicle.name },
+            { icon: "users" as const, value: `${vehicle.minSeats}` },
+          ].map((fact, index) => (
+            <View
+              key={index}
+              style={[styles.tripFactChip, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              {"vehicleIcon" in fact ? (
+                <MaterialCommunityIcons name={fact.vehicleIcon} size={14} color={colors.mutedForeground} />
+              ) : (
+                <Feather name={fact.icon} size={14} color={colors.mutedForeground} />
+              )}
+              <Text style={[styles.tripFactText, { color: colors.foreground }]} numberOfLines={1}>
+                {fact.value}
+              </Text>
             </View>
           ))}
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNGSART WÄHLEN</Text>
+        <View style={[styles.card, styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNGSART</Text>
 
           {platformPayOption ? (
             <View style={styles.platformPaySection}>
@@ -1058,32 +1041,29 @@ export default function RideScreen() {
                   style={[
                     styles.paymentBtn,
                     {
-                      backgroundColor: isSelected ? ONRODA_MARK_RED + "0F" : colors.card,
+                      backgroundColor: isSelected ? ONRODA_MARK_RED + "08" : colors.card,
                       borderColor: isSelected ? ONRODA_MARK_RED : colors.border,
-                      borderWidth: isSelected ? 2 : 1.5,
                     },
                   ]}
                   onPress={() => selectPaymentMethod(opt.id)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: isSelected }}
                 >
                   <View style={styles.paymentBtnLeft}>
                     {opt.isEuro ? (
                       <Text style={[styles.euroSymbol, { color: colors.foreground }]}>€</Text>
                     ) : opt.isCard ? (
-                      <Feather name="credit-card" size={16} color={colors.foreground} />
+                      <Feather name="credit-card" size={15} color={colors.foreground} />
                     ) : opt.isVoucher ? (
-                      <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
+                      <MaterialCommunityIcons name="ticket-percent-outline" size={15} color={colors.foreground} />
                     ) : opt.isAccessCode ? (
-                      <MaterialCommunityIcons name="shield-check-outline" size={16} color="#15803D" />
+                      <MaterialCommunityIcons name="shield-check-outline" size={15} color="#15803D" />
                     ) : (
-                      <Feather name="credit-card" size={16} color={colors.foreground} />
+                      <Feather name="credit-card" size={15} color={colors.foreground} />
                     )}
                     <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
                   </View>
-                  {isSelected ? (
-                    <View style={styles.paymentCheck}>
-                      <Feather name="check" size={10} color="#fff" />
-                    </View>
-                  ) : null}
+                  <PaymentSelectDot selected={isSelected} />
                 </Pressable>
               );
             })}
@@ -1096,6 +1076,7 @@ export default function RideScreen() {
               </Text>
             </>
           ) : null}
+          {fareBreakdown ? renderTaxameterLegalNotice() : null}
         </View>
 
         {paymentMethod === "access_code" ? (
@@ -1122,7 +1103,7 @@ export default function RideScreen() {
               </Text>
               <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </Pressable>
-            {brokerInScroll ? renderBrokerNotice() : null}
+            {renderBrokerNotice()}
           </View>
         ) : null}
 
@@ -1188,7 +1169,6 @@ export default function RideScreen() {
               {fareBreakdown ? formatEuro(calculateCopayment(fareBreakdown.total, isExempted)) : "–"}
               {isExempted ? "  (befreit)" : ""}
             </Text>
-            {fareBreakdown ? renderTaxameterLegalNotice() : null}
             <Pressable
               style={styles.exemptRow}
               onPress={() => {
@@ -1212,6 +1192,8 @@ export default function RideScreen() {
           </View>
         ) : null}
 
+        {paymentMethod !== "access_code" ? renderBrokerNotice() : null}
+
         {schedDateStr && (
           <View style={[styles.card, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
             <Text style={[styles.cardLabel, { color: "#D97706" }]}>VORBESTELLUNG</Text>
@@ -1224,7 +1206,6 @@ export default function RideScreen() {
       </ScrollView>
 
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 10 }]}>
-        {!brokerInScroll ? renderBrokerNotice() : null}
         <View style={styles.bottomContent}>
           {paymentMethod === "voucher" ? (
             <View style={[styles.priceBox, { borderColor: "#93C5FD", backgroundColor: "#EFF6FF" }]}>
@@ -1233,30 +1214,17 @@ export default function RideScreen() {
                 {fareBreakdown ? formatEuro(calculateCopayment(fareBreakdown.total, isExempted)) : "–"}
               </Text>
             </View>
-          ) : paymentMethod === "access_code" ? (
-            <View style={[styles.priceBox, { borderColor: "#86EFAC", backgroundColor: "#F0FDF4" }]}>
-              <Text style={[styles.bottomLabel, { color: "#15803D" }]}>Abrechnung</Text>
-              <Text style={[styles.bottomPrice, { fontSize: rf(14), color: "#166534" }]}>
-                über Code
-              </Text>
-            </View>
-          ) : isStripeWalletPaymentMethod(paymentMethod) ? (
-            <View style={[styles.priceBox, styles.priceBoxCompact, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <CustomerFarePriceBlock
-                vehicle={selectedVehicle}
-                surchargeEur={fareBreakdown.vehicleSurchargeEur}
-                walletHint
-                primaryStyle={[styles.bottomPriceCompact, { color: colors.foreground }]}
-                secondaryStyle={[styles.bottomHintCompact, { color: colors.mutedForeground }]}
-              />
-            </View>
           ) : (
             <View style={[styles.priceBox, styles.priceBoxCompact, { borderColor: colors.border, backgroundColor: colors.card }]}>
               <CustomerFarePriceBlock
                 vehicle={selectedVehicle}
                 surchargeEur={fareBreakdown.vehicleSurchargeEur}
+                walletHint={isStripeWalletPaymentMethod(paymentMethod)}
                 primaryStyle={[styles.bottomPriceCompact, { color: colors.foreground }]}
-                secondaryStyle={[styles.bottomHintCompact, { color: "#2563EB" }]}
+                secondaryStyle={[
+                  styles.bottomHintCompact,
+                  { color: isStripeWalletPaymentMethod(paymentMethod) ? colors.mutedForeground : "#2563EB" },
+                ]}
               />
             </View>
           )}
@@ -1438,26 +1406,13 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: rs(18), paddingTop: rs(16), gap: rs(12) },
   card: { borderRadius: rs(16), borderWidth: 1, padding: rs(18), gap: rs(12) },
   cardLabel: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 },
-  locationRow: { flexDirection: "row", alignItems: "flex-start", gap: rs(12) },
-  originDot: { width: rs(14), height: rs(14), borderRadius: rs(7), marginTop: 3 },
-  destPin: { width: rs(20), height: rs(20), borderRadius: rs(10), justifyContent: "center", alignItems: "center", marginTop: 2 },
-  locationInfo: { flex: 1, gap: rs(2) },
-  locationLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
-  locationValue: { fontSize: rf(15), fontFamily: "Inter_500Medium", lineHeight: rf(22) },
-  routeConnector: { width: 2, height: rs(22), borderRadius: rs(2), marginLeft: rs(6), alignSelf: "flex-start" },
-  taxameterNoticeBox: {
+  walletBookingInfoBox: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: rs(8),
-    backgroundColor: "#F3F4F6",
     borderRadius: rs(10),
     paddingHorizontal: rs(12),
     paddingVertical: rs(10),
-  },
-  taxameterNoticeText: { flex: 1, fontSize: rf(12), lineHeight: rf(17) },
-  taxameterNoticeLead: { fontFamily: "Inter_500Medium", color: "#4B5563" },
-  taxameterNoticeStrong: { fontFamily: "Inter_700Bold", color: "#111827" },
-  walletBookingInfoBox: {
     backgroundColor: "#EFF6FF",
     borderWidth: 1,
     borderColor: "#BFDBFE",
@@ -1469,11 +1424,22 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: "#1E3A8A",
   },
-  tripSummaryCard: { flexDirection: "row", borderRadius: rs(18), borderWidth: 1, paddingVertical: rs(14), paddingHorizontal: rs(8), gap: rs(4) },
-  tripSummaryItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(5), minWidth: 0 },
-  tripSummaryIcon: { width: rs(34), height: rs(34), borderRadius: rs(17), alignItems: "center", justifyContent: "center" },
-  statValue: { fontSize: rf(15), fontFamily: "Inter_700Bold" },
-  statLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
+  tripFactsRow: { flexDirection: "row", alignItems: "stretch", gap: rs(6) },
+  tripFactChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(5),
+    minHeight: rs(38),
+    paddingVertical: rs(7),
+    paddingHorizontal: rs(6),
+    borderRadius: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    minWidth: 0,
+  },
+  tripFactText: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  paymentCard: { paddingVertical: rs(14), gap: rs(10) },
   vehicleRow: { flexDirection: "row", alignItems: "center", gap: rs(12) },
   vehicleIcon: { width: rs(44), height: rs(44), borderRadius: rs(12), justifyContent: "center", alignItems: "center" },
   vehicleName: { fontSize: rf(16), fontFamily: "Inter_600SemiBold" },
@@ -1537,8 +1503,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  paymentList: { gap: rs(8), marginTop: rs(4) },
-  paymentListAfterPlatform: { marginTop: rs(14), paddingTop: rs(14), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E5E7EB" },
+  paymentList: { gap: rs(6), marginTop: rs(2) },
+  paymentListAfterPlatform: { marginTop: rs(10), paddingTop: rs(10), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E5E7EB" },
   stripeSetupHint: {
     marginTop: rs(12),
     fontSize: rf(12),
@@ -1549,23 +1515,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: rs(13),
-    paddingHorizontal: rs(14),
-    borderRadius: rs(12),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
     width: "100%",
-    minHeight: rs(48),
+    minHeight: rs(44),
   },
-  paymentBtnLeft: { flexDirection: "row", alignItems: "center", gap: rs(6), flexShrink: 1 },
-  paymentCheck: {
-    width: rs(18),
-    height: rs(18),
-    borderRadius: rs(9),
-    backgroundColor: ONRODA_MARK_RED,
+  paymentBtnLeft: { flexDirection: "row", alignItems: "center", gap: rs(8), flexShrink: 1 },
+  paymentSelectDot: {
+    width: rs(20),
+    height: rs(20),
+    borderRadius: rs(10),
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
+  },
+  paymentSelectDotSelected: { borderColor: ONRODA_MARK_RED },
+  paymentSelectDotInner: {
+    width: rs(10),
+    height: rs(10),
+    borderRadius: rs(5),
+    backgroundColor: ONRODA_MARK_RED,
   },
   paymentBtnText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
-  euroSymbol: { fontSize: rf(15), fontFamily: "Inter_700Bold" },
+  euroSymbol: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
   exemptRow: { flexDirection: "row", alignItems: "center", gap: rs(10), marginTop: rs(4) },
   exemptCheckbox: { width: rs(22), height: rs(22), borderRadius: rs(6), borderWidth: 2, justifyContent: "center", alignItems: "center" },
   exemptText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_500Medium" },
