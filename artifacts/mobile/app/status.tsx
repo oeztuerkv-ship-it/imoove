@@ -562,7 +562,13 @@ function TrackingProgressStep({
       ) : (
         <Feather name={icon as React.ComponentProps<typeof Feather>["name"]} size={size} color={color} />
       )}
-      <Text style={active ? styles.trackingProgressActiveText : styles.trackingProgressText}>{label}</Text>
+      <Text
+        style={active ? styles.trackingProgressActiveText : styles.trackingProgressText}
+        numberOfLines={1}
+        allowFontScaling={false}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -2068,20 +2074,36 @@ export default function StatusScreen() {
               <MaterialCommunityIcons name="map-marker-check" size={rf(28)} color="#22C55E" />
             ) : (
               <>
-                <Text style={[styles.trackingEtaLabel, statusAppleFont("medium")]}>{isDriving ? "Ziel in" : "Ankunft in"}</Text>
+                <Text
+                  style={[styles.trackingEtaLabel, statusAppleFont("medium")]}
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                >
+                  {isDriving ? "Ziel in" : "Ankunft in"}
+                </Text>
                 <View style={styles.trackingEtaValueRow}>
-                  <Text style={[styles.trackingEtaNumber, statusAppleFont("bold")]}>
+                  <Text style={[styles.trackingEtaNumber, statusAppleFont("bold")]} allowFontScaling={false}>
                     {eta != null ? eta : "—"}
                   </Text>
-                  <Text style={[styles.trackingEtaMin, statusAppleFont("bold")]}>min</Text>
+                  <Text style={[styles.trackingEtaMin, statusAppleFont("bold")]} allowFontScaling={false}>
+                    min
+                  </Text>
                 </View>
                 {etaDistanceText ? (
-                  <Text style={[styles.trackingEtaDistance, statusAppleFont("regular")]}>{etaDistanceText}</Text>
+                  <Text
+                    style={[styles.trackingEtaDistance, statusAppleFont("regular")]}
+                    allowFontScaling={false}
+                    numberOfLines={2}
+                  >
+                    {etaDistanceText}
+                  </Text>
                 ) : null}
               </>
             )}
             {isArrived ? (
-              <Text style={styles.trackingEtaDistance}>Am Abholort</Text>
+              <Text style={styles.trackingEtaDistance} allowFontScaling={false}>
+                Am Abholort
+              </Text>
             ) : null}
           </View>
 
@@ -2090,7 +2112,9 @@ export default function StatusScreen() {
           <View style={styles.trackingDriverInfo}>
             <View style={styles.trackingDriverAvatarWrap}>
               <View style={styles.trackingDriverAvatar}>
-                <Text style={styles.trackingDriverAvatarText}>{driverInitials}</Text>
+                <Text style={styles.trackingDriverAvatarText} allowFontScaling={false}>
+                  {driverInitials}
+                </Text>
               </View>
               <View
                 style={styles.trackingDriverOnlineDot}
@@ -2098,19 +2122,29 @@ export default function StatusScreen() {
               />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[styles.trackingDriverName, statusAppleFont("semibold")]} numberOfLines={1}>
+              <Text
+                style={[styles.trackingDriverName, statusAppleFont("semibold")]}
+                numberOfLines={1}
+                allowFontScaling={false}
+              >
                 {driverName}
               </Text>
-              <Text style={[styles.trackingDriverStatus, statusAppleFont("regular")]} numberOfLines={2}>
+              <Text
+                style={[styles.trackingDriverStatus, statusAppleFont("regular")]}
+                numberOfLines={2}
+                allowFontScaling={false}
+              >
                 {driverStatusLabel}
               </Text>
               {driverRating != null ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
                   <StarRating stars={driverRating} size={14} />
-                  <Text style={styles.trackingDriverRatingText}>{driverRating.toFixed(1)}</Text>
+                  <Text style={styles.trackingDriverRatingText} allowFontScaling={false}>
+                    {driverRating.toFixed(1)}
+                  </Text>
                 </View>
               ) : null}
-              <Text style={styles.trackingPlateLine} numberOfLines={1}>
+              <Text style={styles.trackingPlateLine} numberOfLines={1} allowFontScaling={false}>
                 {driverPlate}
                 {driverCar ? ` · ${driverCar}` : ""}
               </Text>
@@ -2133,8 +2167,14 @@ export default function StatusScreen() {
 
         <View style={styles.trackingActionRow}>
           {effectiveAcceptedRequest ? (
-            <View style={styles.trackingOutlinePill}>
-              <Text style={[styles.trackingPillText, statusAppleFont("regular")]} numberOfLines={1}>
+            <View style={[styles.trackingOutlinePill, styles.trackingPaymentPill]}>
+              <Text
+                style={[styles.trackingPillText, statusAppleFont("regular")]}
+                numberOfLines={1}
+                allowFontScaling={false}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
                 {trackingPaymentPillText(effectiveAcceptedRequest)}
               </Text>
             </View>
@@ -2144,6 +2184,7 @@ export default function StatusScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.trackingOutlinePill,
+                styles.trackingChatPill,
                 isDriving && styles.trackingChatPillLive,
                 pressed && { opacity: 0.88 },
               ]}
@@ -2155,7 +2196,7 @@ export default function StatusScreen() {
             >
               <Feather
                 name="message-circle"
-                size={rf(18)}
+                size={rf(17)}
                 color={isDriving ? TRACKING_CHAT_WHATSAPP : TRACKING_LABEL}
               />
               <Text
@@ -2164,6 +2205,8 @@ export default function StatusScreen() {
                   statusAppleFont("semibold"),
                   isDriving && styles.trackingChatPillLiveText,
                 ]}
+                allowFontScaling={false}
+                numberOfLines={1}
               >
                 Chat
               </Text>
@@ -2186,8 +2229,14 @@ export default function StatusScreen() {
             ]}
             onPress={() => handleCancel()}
           >
-            <Feather name="x-circle" size={rf(18)} color={TRACKING_ACCENT} />
-            <Text style={[styles.trackingPillText, styles.trackingCancelPillText, statusAppleFont("semibold")]} numberOfLines={1}>
+            <Feather name="x-circle" size={rf(17)} color={TRACKING_ACCENT} />
+            <Text
+              style={[styles.trackingPillText, styles.trackingCancelPillText, statusAppleFont("semibold")]}
+              numberOfLines={1}
+              allowFontScaling={false}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
               Stornieren
             </Text>
           </Pressable>
@@ -2409,16 +2458,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   trackingEtaBox: {
-    width: rs(88),
+    width: rs(92),
+    maxWidth: "28%",
+    flexShrink: 0,
   },
   trackingEtaLabel: {
-    fontSize: rf(13),
+    fontSize: rf(12),
     color: TRACKING_SECONDARY,
     letterSpacing: Platform.OS === "ios" ? 0.1 : 0.2,
   },
   trackingEtaNumber: {
-    fontSize: rf(34),
-    lineHeight: rf(36),
+    fontSize: rf(32),
+    lineHeight: rf(34),
     color: TRACKING_LABEL,
     letterSpacing: Platform.OS === "ios" ? -0.4 : -0.25,
   },
@@ -2430,21 +2481,22 @@ const styles = StyleSheet.create({
   },
   trackingEtaMin: {
     marginBottom: rs(4),
-    fontSize: rf(16),
+    fontSize: rf(15),
     color: TRACKING_LABEL,
     letterSpacing: Platform.OS === "ios" ? -0.25 : 0,
   },
   trackingEtaDistance: {
     marginTop: rs(2),
-    fontSize: rf(11),
+    fontSize: rf(10),
     color: TRACKING_SECONDARY,
-    lineHeight: rf(14),
+    lineHeight: rf(13),
   },
   trackingDivider: {
-    width: 1,
+    width: StyleSheet.hairlineWidth,
     height: rs(68),
     backgroundColor: "#E5E7EB",
-    marginHorizontal: rs(10),
+    marginHorizontal: rs(8),
+    flexShrink: 0,
   },
   trackingDriverInfo: {
     flex: 1,
@@ -2568,16 +2620,26 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(6),
-    paddingVertical: rs(9),
-    paddingHorizontal: rs(12),
+    gap: rs(5),
+    paddingVertical: rs(8),
+    paddingHorizontal: rs(10),
     borderRadius: rs(12),
     borderWidth: 1,
     borderColor: TRACKING_BORDER,
     backgroundColor: "#FFFFFF",
     position: "relative",
     flexShrink: 1,
+    minWidth: 0,
     maxWidth: "100%",
+  },
+  trackingPaymentPill: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    maxWidth: "42%",
+  },
+  trackingChatPill: {
+    flexShrink: 0,
   },
   trackingChatPillLive: {
     borderColor: TRACKING_CHAT_WHATSAPP,
@@ -2587,7 +2649,7 @@ const styles = StyleSheet.create({
     color: TRACKING_CHAT_WHATSAPP,
   },
   trackingPillText: {
-    fontSize: rf(14),
+    fontSize: rf(13),
     color: TRACKING_LABEL,
     letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
     flexShrink: 1,
@@ -2596,8 +2658,9 @@ const styles = StyleSheet.create({
     marginTop: rs(10),
     flexDirection: "row",
     flexWrap: "nowrap",
-    gap: rs(8),
+    gap: rs(6),
     alignItems: "center",
+    width: "100%",
   },
   trackingChatActionBadge: {
     position: "absolute",
@@ -2616,6 +2679,8 @@ const styles = StyleSheet.create({
   trackingCancelPill: {
     borderColor: TRACKING_ACCENT,
     borderWidth: 1,
+    flexShrink: 1,
+    maxWidth: "36%",
   },
   trackingCancelPillText: {
     color: TRACKING_ACCENT,
