@@ -110,3 +110,48 @@ export async function cancelCustomerRide(
   }
   return { ok: true };
 }
+
+export async function patchCustomerRideDestination(
+  authToken: string | null | undefined,
+  rideId: string,
+  destination: { to: string; toFull: string; toLat: number; toLon: number },
+): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  const token = (await resolveCustomerBearerToken(authToken)) ?? "";
+  const id = rideId.trim();
+  const apiBase = getApiBaseUrl();
+  if (!token || !id || !apiBase) {
+    return { ok: false, error: "api_not_configured", status: 503 };
+  }
+  const toFull = destination.toFull.trim().slice(0, 500);
+  const to = destination.to.trim().slice(0, 200) || toFull;
+  if (!toFull || !Number.isFinite(destination.toLat) || !Number.isFinite(destination.toLon)) {
+    return { ok: false, error: "destination_invalid", status: 400 };
+  }
+  const res = await fetch(`${apiBase}/customer/v1/rides/${encodeURIComponent(id)}/destination`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to,
+      toFull,
+      toLat: destination.toLat,
+      toLon: destination.toLon,
+    }),
+  }).catch(() => null);
+  if (!res) {
+    return { ok: false, error: "network_error", status: 0 };
+  }
+  if (!res.ok) {
+    let error = "destination_change_failed";
+    try {
+      const body = (await res.json()) as { error?: unknown };
+      if (typeof body.error === "string" && body.error.trim()) error = body.error.trim();
+    } catch {
+      /* ignore */
+    }
+    return { ok: false, error, status: res.status };
+  }
+  return { ok: true };
+}

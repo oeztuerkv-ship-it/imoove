@@ -33,14 +33,20 @@ flowchart LR
 | Phase (`customerPhase`) | UI (Stand) | API-Status (typ.) |
 |-------------------------|------------|-------------------|
 | `searching` | Suche-Fahrer (rot, Spinner) | `searching_driver`, … |
-| `accepted` / `preparing` | Karte + **helles Bottom-Sheet** (Ziel oben, ETA, Fahrer, Fortschritt) — **kein** ☰-Menü; Aktionen: **Chat** + Storno; bei PIN-pflichtiger Direktfahrt: **Abhol-Code** oben rechts im Ziel-Chip + Sheet-Zeile; **ETA/km = Fahrer-Navi** (`etaMinutes`/`remainingDistM`), keine Luftlinie | `accepted`, `driver_arriving`, … |
+| `accepted` / `preparing` | Karte + **helles Bottom-Sheet** (Ziel oben mit ⋮ → **Ziel ändern**, ETA, Fahrer, Fortschritt); Aktionen: **Chat** + Storno; bei PIN-pflichtiger Direktfahrt: **Abhol-Code** oben rechts im Ziel-Chip + Sheet-Zeile; **ETA/km = Fahrer-Navi** (`etaMinutes`/`remainingDistM`), keine Luftlinie | `accepted`, `driver_arriving`, … |
 | `arrived` | wie oben + grünes „Fahrer ist da“ (mit Code-Hinweis) | `driver_waiting` |
-| `driving` | wie oben | `in_progress` |
+| `driving` | wie oben (Ziel ändern weiter möglich bei Taxi) | `in_progress` |
 
 **Fortschritt (genau ein Schritt aktiv):** `trackingProgressActiveStep` in `status.tsx` — (0) `accepted`/`driver_arriving` → „Fahrer unterwegs“; (1) `driver_waiting`/`in_progress` → „Ankunft“; (2) nur `completed` → „Ziel erreicht“.
 | `completed` | Danke + Beleg | terminal |
 
 **Ziel von Orte/extern:** siehe **`imoove-mobile-destination-navigation.mdc`** — **nicht** URL-Params auf `/`.
+
+**Ziel während Live-Fahrt ändern (Kunde):**
+
+1. `status.tsx` Zielkarte ⋮ → Bestätigung → Modal mit `TaxiAddressInput` (gleiche Photon-Suche wie Buchung).
+2. `PATCH /customer/v1/rides/:id/destination` (`customerApi.ts`) — nur Taxi (`pricingMode !== fixed_price`, kein `medical`); Status accepted…in_progress; Preis unverändert.
+3. Fahrer: Expo-Push `ride_destination_changed` + WS `ride:destination:update` + Poll → `setDriverNavigationPhaseParams` → Navi-Route neu (`navigation.tsx`).
 
 **Gleiches Gerät, Fahrer auch eingeloggt:**
 
@@ -66,6 +72,7 @@ flowchart TD
 | Navi Mount | einmal `router.dismissTo(/driver/navigation, params)` pro `rideId` | — |
 | pickup → Ziel | **`router.setParams`** (`setDriverNavigationPhaseParams`) — **kein** zweiter `push` | `in_progress` |
 | Kunde storniert | Alert → `replaceDriverStackExclusive("/driver/dashboard")` | `cancelled_by_customer` |
+| Kunde ändert Ziel | Push/WS/`activeRide` → `setDriverNavigationPhaseParams` (dest/to) → Route-Effect neu | `to*` auf Ride |
 
 **Stack nach App-Kill (iOS/Android):**
 

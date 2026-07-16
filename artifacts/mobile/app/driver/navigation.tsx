@@ -106,6 +106,7 @@ import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlement
 import { isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
 import {
   setDriverLiveNavigationRideId,
+  subscribeDriverDestinationChanged,
   subscribeDriverRideCancelledByCustomer,
 } from "@/utils/driverLiveNavigation";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -1230,20 +1231,118 @@ export default function DriverNavigationScreen() {
     });
   }, [params.rideId]);
 
+  const lastDestinationAlertKeyRef = useRef("");
+  const applyCustomerDestinationChange = useCallback(
+    (
+      destination: { toFull: string; toLat: number; toLon: number },
+      opts?: { alert?: boolean },
+    ) => {
+      if (!isValidMapCoord(destination.toLat, destination.toLon)) return;
+      const curDestLat = parseFloat(params.destLat ?? "0");
+      const curDestLon = parseFloat(params.destLon ?? "0");
+      const sameCoords =
+        Math.abs(curDestLat - destination.toLat) < 1e-5 &&
+        Math.abs(curDestLon - destination.toLon) < 1e-5;
+      const sameName = (params.destName ?? "").trim() === destination.toFull.trim();
+      if (sameCoords && sameName) return;
+
+      const label = destination.toFull.trim() || "Neues Ziel";
+      const lat = String(destination.toLat);
+      const lon = String(destination.toLon);
+      if (isDrivingPhase) {
+        setDriverNavigationPhaseParams({
+          toLat: lat,
+          toLon: lon,
+          toName: label,
+          destLat: lat,
+          destLon: lon,
+          destName: label,
+        });
+      } else {
+        setDriverNavigationPhaseParams({
+          destLat: lat,
+          destLon: lon,
+          destName: label,
+        });
+      }
+      if (opts?.alert !== false) {
+        const alertKey = `${destination.toLat.toFixed(5)},${destination.toLon.toFixed(5)}`;
+        if (lastDestinationAlertKeyRef.current !== alertKey) {
+          lastDestinationAlertKeyRef.current = alertKey;
+          Alert.alert("Achtung: Ziel wurde geändert", label);
+        }
+      }
+    },
+    [
+      isDrivingPhase,
+      params.destLat,
+      params.destLon,
+      params.destName,
+    ],
+  );
+  const applyCustomerDestinationChangeRef = useRef(applyCustomerDestinationChange);
+  applyCustomerDestinationChangeRef.current = applyCustomerDestinationChange;
+
+  useEffect(() => {
+    const rideId = params.rideId?.trim() ?? "";
+    if (!rideId) return;
+    return subscribeDriverDestinationChanged((changedId, destination) => {
+      if (changedId !== rideId) return;
+      applyCustomerDestinationChangeRef.current(destination);
+    });
+  }, [params.rideId]);
+
   useEffect(() => {
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId) return;
     let sub: { remove: () => void } | null = null;
     void import("expo-notifications").then((Notifications) => {
       sub = Notifications.addNotificationReceivedListener((notification) => {
-        const data = notification.request.content.data as { kind?: unknown; rideId?: unknown };
-        if (data.kind !== "ride_cancelled_by_customer") return;
+        const data = notification.request.content.data as {
+          kind?: unknown;
+          rideId?: unknown;
+          toFull?: unknown;
+          toLat?: unknown;
+          toLon?: unknown;
+        };
+        if (data.kind === "ride_cancelled_by_customer") {
+          if (typeof data.rideId === "string" && data.rideId.trim() === rideId) {
+            exitAfterCustomerCancelRef.current(null);
+          }
+          return;
+        }
+        if (data.kind !== "ride_destination_changed") return;
         if (typeof data.rideId !== "string" || data.rideId.trim() !== rideId) return;
-        exitAfterCustomerCancelRef.current(null);
+        const toLat =
+          typeof data.toLat === "number"
+            ? data.toLat
+            : typeof data.toLat === "string"
+              ? Number(data.toLat)
+              : NaN;
+        const toLon =
+          typeof data.toLon === "number"
+            ? data.toLon
+            : typeof data.toLon === "string"
+              ? Number(data.toLon)
+              : NaN;
+        const toFull = typeof data.toFull === "string" ? data.toFull : "Neues Ziel";
+        applyCustomerDestinationChangeRef.current({ toFull, toLat, toLon });
       });
     });
     return () => sub?.remove();
   }, [params.rideId]);
+
+  useEffect(() => {
+    if (!activeRide || String(activeRide.id) !== String(params.rideId ?? "")) return;
+    const toLat = activeRide.toLat;
+    const toLon = activeRide.toLon;
+    if (typeof toLat !== "number" || typeof toLon !== "number") return;
+    const toFull = (activeRide.toFull ?? activeRide.to ?? "").trim() || "Ziel";
+    applyCustomerDestinationChangeRef.current(
+      { toFull, toLat, toLon },
+      { alert: false },
+    );
+  }, [activeRide?.id, activeRide?.toLat, activeRide?.toLon, activeRide?.toFull, activeRide?.to, params.rideId]);
 
   useEffect(() => {
     if (!params.rideId || cancelHandledRef.current || !hadActiveRideInListRef.current) return;
@@ -1262,6 +1361,28 @@ export default function DriverNavigationScreen() {
       if (isCustomerFinalCancelledStatus(next)) {
         exitAfterCustomerCancelRef.current(null);
       }
+      return;
+    }
+    if (msg.type === "ride:destination:update") {
+      const toLat =
+        typeof msg.toLat === "number"
+          ? msg.toLat
+          : typeof msg.toLat === "string"
+            ? Number(msg.toLat)
+            : NaN;
+      const toLon =
+        typeof msg.toLon === "number"
+          ? msg.toLon
+          : typeof msg.toLon === "string"
+            ? Number(msg.toLon)
+            : NaN;
+      const toFull =
+        typeof msg.toFull === "string"
+          ? msg.toFull
+          : typeof msg.to === "string"
+            ? msg.to
+            : "Neues Ziel";
+      applyCustomerDestinationChangeRef.current({ toFull, toLat, toLon });
       return;
     }
     if (msg.type === "chat:ride:update") {

@@ -31,12 +31,18 @@ import {
   CustomerRouteStopsPanel,
   formatCustomerReservationPickupInRahmen,
 } from "@/components/booking/CustomerRouteStopsPanel";
+import { TaxiAddressInput } from "@/components/booking/TaxiAddressInput";
+import {
+  EMPTY_SELECTED_ADDRESS,
+  type SelectedAddress,
+} from "@/components/booking/selectedAddress";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import type { GeoLocation } from "@/utils/routing";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { patchCustomerRideDestination } from "@/utils/customerRidesApi";
 import { customerPayerBlockFromRideRequest, formatCustomerPaymentMethodLabel } from "@/utils/customerBillingCopy";
 import {
   CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
@@ -665,6 +671,9 @@ export default function StatusScreen() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const [destChangeModalOpen, setDestChangeModalOpen] = useState(false);
+  const [destChangeDraft, setDestChangeDraft] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
+  const [destChangeSubmitting, setDestChangeSubmitting] = useState(false);
   const cancelFlowStartedRef = useRef(false);
   const currentRideIdRef = useRef<string | null>(null);
   const requestsRef = useRef(requests);
@@ -877,13 +886,28 @@ export default function StatusScreen() {
     const o = geoFromRideRequest(r.from, r.fromFull, r.fromLat, r.fromLon);
     const d = geoFromRideRequest(r.to, r.toFull, r.toLat, r.toLon);
     if (o && !origin?.displayName?.trim()) setOrigin(o);
-    if (d && !destination?.displayName?.trim()) setDestination(d);
+    if (!d) return;
+    const cur = destination;
+    const same =
+      cur &&
+      Math.abs((cur.lat ?? 0) - d.lat) < 1e-5 &&
+      Math.abs((cur.lon ?? 0) - d.lon) < 1e-5 &&
+      (cur.displayName ?? "").trim() === (d.displayName ?? "").trim();
+    if (!same) setDestination(d);
   }, [
     rideMatchingCurrentId?.id,
     rideMatchingCurrentId?.from,
+    rideMatchingCurrentId?.fromFull,
+    rideMatchingCurrentId?.fromLat,
+    rideMatchingCurrentId?.fromLon,
     rideMatchingCurrentId?.to,
+    rideMatchingCurrentId?.toFull,
+    rideMatchingCurrentId?.toLat,
+    rideMatchingCurrentId?.toLon,
     origin?.displayName,
     destination?.displayName,
+    destination?.lat,
+    destination?.lon,
     setOrigin,
     setDestination,
   ]);
@@ -1542,6 +1566,80 @@ export default function StatusScreen() {
     setChatOpen(true);
   };
 
+  const canChangeDestination =
+    (customerPhase === "accepted" ||
+      customerPhase === "preparing" ||
+      customerPhase === "arrived" ||
+      customerPhase === "driving") &&
+    serverRideForUi?.pricingMode !== "fixed_price" &&
+    serverRideForUi?.rideKind !== "medical";
+
+  const openDestinationChangeFlow = () => {
+    if (!canChangeDestination || !currentRideId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert("Ziel ändern?", "Möchten Sie ein neues Ziel für diese Fahrt eingeben?", [
+      { text: "Abbrechen", style: "cancel" },
+      {
+        text: "Ziel ändern",
+        onPress: () => {
+          setDestChangeDraft(EMPTY_SELECTED_ADDRESS);
+          setDestChangeModalOpen(true);
+        },
+      },
+    ]);
+  };
+
+  const submitDestinationChange = async () => {
+    const rideId = currentRideId;
+    if (!rideId || destChangeSubmitting) return;
+    if (!destChangeDraft.fullName.trim() || !Number.isFinite(destChangeDraft.lat) || !Number.isFinite(destChangeDraft.lon)) {
+      Alert.alert("Ziel", "Bitte ein Ziel suchen und auswählen.");
+      return;
+    }
+    if (Math.abs(destChangeDraft.lat) < 1e-6 && Math.abs(destChangeDraft.lon) < 1e-6) {
+      Alert.alert("Ziel", "Bitte ein Ziel aus der Vorschlagsliste antippen.");
+      return;
+    }
+    setDestChangeSubmitting(true);
+    try {
+      const result = await patchCustomerRideDestination(null, rideId, {
+        to: destChangeDraft.name.trim() || destChangeDraft.fullName.trim(),
+        toFull: destChangeDraft.fullName.trim(),
+        toLat: destChangeDraft.lat,
+        toLon: destChangeDraft.lon,
+      });
+      if (!result.ok) {
+        const msg =
+          result.error === "destination_locked_fixed_price"
+            ? "Bei Festpreis-Fahrten kann das Ziel nicht geändert werden."
+            : result.error === "destination_locked_medical"
+              ? "Bei Krankentransporten kann das Ziel nicht geändert werden."
+              : result.error === "destination_locked_for_status"
+                ? "In diesem Status kann das Ziel nicht mehr geändert werden."
+                : result.status === 404 || result.error === "not_found"
+                  ? "Server kennt diese Funktion noch nicht. Bitte kurz warten (Deploy) und erneut versuchen."
+                  : result.error === "api_not_configured" || result.error === "network_error"
+                    ? "Keine Verbindung. Bitte Internet prüfen und erneut versuchen."
+                    : result.error === "unauthorized" || result.status === 401
+                      ? "Bitte erneut anmelden und Ziel noch einmal ändern."
+                      : "Ziel konnte nicht geändert werden. Bitte erneut versuchen.";
+        Alert.alert("Ziel ändern", msg);
+        return;
+      }
+      setDestination({
+        displayName: destChangeDraft.fullName.trim(),
+        lat: destChangeDraft.lat,
+        lon: destChangeDraft.lon,
+      });
+      setDestChangeModalOpen(false);
+      setDestChangeDraft(EMPTY_SELECTED_ADDRESS);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void refreshRequests();
+    } finally {
+      setDestChangeSubmitting(false);
+    }
+  };
+
   const handleFertig = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace("/");
@@ -2000,6 +2098,17 @@ export default function StatusScreen() {
             <Feather name="crosshair" size={rf(14)} color={TRACKING_ACCENT} />
             <Text style={styles.targetChipText}>Ziel</Text>
           </View>
+          {canChangeDestination ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ziel-Menü"
+              hitSlop={10}
+              onPress={openDestinationChangeFlow}
+              style={({ pressed }) => [styles.destMenuBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Feather name="menu" size={rf(20)} color="#6B7280" />
+            </Pressable>
+          ) : null}
           {liveRidePin ? (
             <View
               style={styles.livePinChip}
@@ -2285,6 +2394,73 @@ export default function StatusScreen() {
         </Pressable>
       </Modal>
 
+      <Modal
+        visible={destChangeModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDestChangeModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.destChangeOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Pressable style={styles.destChangeBackdrop} onPress={() => setDestChangeModalOpen(false)} />
+          <View style={[styles.destChangeCard, { marginBottom: bottomPad + rs(12) }]}>
+            <Text style={styles.destChangeTitle}>Ziel eingeben</Text>
+            <ScrollView
+              style={styles.destChangeInputWrap}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+              bounces={false}
+            >
+              <TaxiAddressInput
+                value={destChangeDraft.name}
+                subline={destChangeDraft.subline}
+                placeholder="Straße, PLZ oder Stadt…"
+                onSelect={setDestChangeDraft}
+                colors={colors}
+                userGps={
+                  displayOrigin?.lat != null && displayOrigin?.lon != null
+                    ? { lat: displayOrigin.lat, lon: displayOrigin.lon }
+                    : null
+                }
+                isDestination
+                showClear
+                onRouteClear={() => setDestChangeDraft(EMPTY_SELECTED_ADDRESS)}
+              />
+            </ScrollView>
+            <View style={styles.destChangeActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.destChangeBtn,
+                  styles.destChangeBtnCancel,
+                  pressed && { opacity: 0.88 },
+                ]}
+                onPress={() => setDestChangeModalOpen(false)}
+              >
+                <Text style={styles.destChangeBtnCancelText}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.destChangeBtn,
+                  styles.destChangeBtnConfirm,
+                  (!destChangeDraft.fullName.trim() || destChangeSubmitting) && styles.destChangeBtnDisabled,
+                  pressed && destChangeDraft.fullName.trim() && !destChangeSubmitting ? { opacity: 0.9 } : null,
+                ]}
+                onPress={() => {
+                  void submitDestinationChange();
+                }}
+                disabled={destChangeSubmitting || !destChangeDraft.fullName.trim()}
+              >
+                <Text style={styles.destChangeBtnConfirmText}>
+                  {destChangeSubmitting ? "…" : "Bestätigen"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <RideChatModal
         visible={chatOpen}
         onClose={() => setChatOpen(false)}
@@ -2433,6 +2609,83 @@ const styles = StyleSheet.create({
     fontSize: rf(13),
     fontFamily: "Inter_700Bold",
     color: TRACKING_ACCENT,
+  },
+  destMenuBtn: {
+    width: rs(36),
+    height: rs(36),
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: rs(12),
+    flexShrink: 0,
+  },
+  destChangeOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    paddingHorizontal: rs(14),
+  },
+  destChangeBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15,23,42,0.55)",
+  },
+  destChangeCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: rs(16),
+    paddingHorizontal: rs(14),
+    paddingTop: rs(14),
+    paddingBottom: rs(12),
+    gap: rs(10),
+    zIndex: 2,
+    elevation: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: rs(16),
+    shadowOffset: { width: 0, height: rs(6) },
+  },
+  destChangeTitle: {
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  destChangeInputWrap: {
+    borderRadius: rs(12),
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    maxHeight: rs(200),
+  },
+  destChangeActions: {
+    flexDirection: "row",
+    gap: rs(8),
+    paddingTop: rs(2),
+  },
+  destChangeBtn: {
+    flex: 1,
+    minHeight: rs(44),
+    borderRadius: rs(12),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: rs(11),
+  },
+  destChangeBtnCancel: {
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  destChangeBtnCancelText: {
+    color: "#111827",
+    fontSize: rf(15),
+    fontFamily: "Inter_700Bold",
+  },
+  destChangeBtnConfirm: {
+    backgroundColor: TRACKING_ACCENT,
+  },
+  destChangeBtnConfirmText: {
+    color: "#FFFFFF",
+    fontSize: rf(15),
+    fontFamily: "Inter_700Bold",
+  },
+  destChangeBtnDisabled: {
+    opacity: 0.45,
   },
   trackingBottomSheet: {
     position: "absolute",

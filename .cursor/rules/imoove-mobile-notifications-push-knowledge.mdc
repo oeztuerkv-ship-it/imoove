@@ -57,6 +57,7 @@ Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in 
 | Fahrt läuft / beendet | `notifyPassengerRideInProgress` / `notifyPassengerRideCompleted` | Kunde (Quittung → `/status`) |
 | Reservierung abgelaufen (Cron, nur `scheduled` / `scheduled_assigned` / `ready_for_dispatch`) | `notifyPassengerReservationExpired` | Kunde |
 | Alter Sofort-Such-Hänger → `expired` (Cron Job 7) | **kein** Reservierungs-Push | — |
+| Kunde ändert Ziel (aktive Taxi-Fahrt) | `notifyDriverDestinationChanged` (`PATCH …/destination`) | Zugewiesener Fahrer — Titel **„Achtung: Ziel wurde geändert“** |
 
 Push-Marker / Cron: `ridePushNotificationMarkers.ts`, `index.ts` Jobs.
 

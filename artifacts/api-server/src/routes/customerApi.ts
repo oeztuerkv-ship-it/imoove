@@ -2,7 +2,12 @@ import { Router } from "express";
 import { getStripeClient } from "../lib/stripeClient.js";
 import { anonymizeCustomerAccount } from "../lib/customerAccountDeletion";
 import { cancelRideForVerifiedCustomerSession } from "./rides";
-import { findRideForPassenger, listRidesForPassenger, updateRide } from "../db/ridesData";
+import {
+  findRideForPassenger,
+  insertSupplementalRideEvent,
+  listRidesForPassenger,
+  updateRide,
+} from "../db/ridesData";
 import {
   attachAssignedDriverToCustomerRide,
   buildAssignedDriverMapForCustomerRides,
@@ -38,6 +43,8 @@ import {
 import { logger } from "../lib/logger";
 import { applyStripePaymentIntentToRide } from "../lib/stripeRidePaymentSync.js";
 import { getOrCreateStripeCustomerForPassenger, resolvePassengerSavedCardPaymentMethod } from "../lib/stripePassengerCustomer";
+import { notifyDriverDestinationChanged } from "../lib/driverRideExpoPush";
+import { broadcastToRideRoom } from "../wsRideSocketHub";
 import { retryPassengerFailedRidePayment } from "../lib/ridePaymentRecovery";
 import { submitPassengerRideTip } from "../lib/rideTipPayment";
 import { respondCustomerPaymentRouteError } from "../lib/stripeHttpError.js";
@@ -139,6 +146,121 @@ router.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, as
       res.status(404).json({ error: "not_found" });
       return;
     }
+    res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+const CUSTOMER_DESTINATION_CHANGE_STATUSES = new Set([
+  "accepted",
+  "driver_arriving",
+  "driver_waiting",
+  "in_progress",
+  "passenger_onboard",
+  "arrived",
+  "ready_for_dispatch",
+]);
+
+/** Kunde ändert Ziel während aktiver Fahrt (Taxi) — Preis bleibt unverändert (Taxameter). */
+router.patch("/customer/v1/rides/:id/destination", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const body = (req.body ?? {}) as {
+      to?: unknown;
+      toFull?: unknown;
+      toLat?: unknown;
+      toLon?: unknown;
+    };
+    const toFull = String(body.toFull ?? "").trim().slice(0, 500);
+    const toLabel = String(body.to ?? toFull).trim().slice(0, 200) || toFull;
+    const toLat = typeof body.toLat === "number" ? body.toLat : Number(body.toLat);
+    const toLon = typeof body.toLon === "number" ? body.toLon : Number(body.toLon);
+    if (!toFull || !Number.isFinite(toLat) || !Number.isFinite(toLon)) {
+      res.status(400).json({ error: "destination_invalid" });
+      return;
+    }
+    if (Math.abs(toLat) > 90 || Math.abs(toLon) > 180) {
+      res.status(400).json({ error: "destination_coords_out_of_range" });
+      return;
+    }
+
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!CUSTOMER_DESTINATION_CHANGE_STATUSES.has(ride.status)) {
+      res.status(409).json({ error: "destination_locked_for_status" });
+      return;
+    }
+    if (ride.pricingMode === "fixed_price") {
+      res.status(409).json({ error: "destination_locked_fixed_price" });
+      return;
+    }
+    if (ride.rideKind === "medical") {
+      res.status(409).json({ error: "destination_locked_medical" });
+      return;
+    }
+
+    const prevToFull = ride.toFull;
+    const prevToLat = ride.toLat ?? null;
+    const prevToLon = ride.toLon ?? null;
+    const updated = await updateRide(
+      ride.id,
+      { to: toLabel, toFull, toLat, toLon },
+      { mutationActor: { actorType: "customer", actorId: passengerId } },
+    );
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+
+    void insertSupplementalRideEvent(ride.id, {
+      eventType: "ride_destination_changed",
+      fromStatus: ride.status,
+      toStatus: updated.status,
+      actorType: "customer",
+      actorId: passengerId,
+      payload: {
+        from: { toFull: prevToFull, toLat: prevToLat, toLon: prevToLon },
+        to: { toFull, toLat, toLon },
+      },
+    }).catch(() => undefined);
+
+    broadcastToRideRoom(ride.id, {
+      type: "ride:destination:update",
+      rideId: ride.id,
+      to: toLabel,
+      toFull,
+      toLat,
+      toLon,
+    });
+
+    const fleetDriverId = (updated.driverId ?? "").trim();
+    const companyId = (updated.companyId ?? "").trim();
+    if (fleetDriverId && companyId) {
+      void notifyDriverDestinationChanged(fleetDriverId, companyId, ride.id, {
+        toFull,
+        toLat,
+        toLon,
+      }).catch(() => undefined);
+    }
+
+    logger.info(
+      { event: "auth.customer.ride_destination_changed", rideId: ride.id, passengerId },
+      "customer ride destination changed",
+    );
     res.json({ ok: true, item: toCustomerRideView(updated) });
   } catch (e) {
     next(e);

@@ -151,3 +151,30 @@ export async function notifyDriverRideCancelledByCustomer(
     })),
   );
 }
+
+/** Zugewiesener Fahrer: Kunde hat das Ziel während der aktiven Fahrt geändert. */
+export async function notifyDriverDestinationChanged(
+  fleetDriverId: string,
+  companyId: string,
+  rideId: string,
+  destination: { toFull: string; toLat: number; toLon: number },
+): Promise<void> {
+  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+  if (tokens.length === 0) return;
+  const label = destination.toFull.trim().slice(0, 100) || "Neues Ziel";
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Achtung: Ziel wurde geändert",
+      body: label,
+      priority: "high",
+      data: {
+        kind: "ride_destination_changed" as const,
+        rideId: String(rideId),
+        toFull: label,
+        toLat: destination.toLat,
+        toLon: destination.toLon,
+      },
+    })),
+  );
+}
