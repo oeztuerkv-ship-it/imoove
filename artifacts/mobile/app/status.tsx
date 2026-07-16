@@ -653,6 +653,8 @@ export default function StatusScreen() {
   const [serverEtaMinutes, setServerEtaMinutes] = useState<number | null>(null);
   /** Straßen-Restmeter vom Fahrer-Navi (gleiche Quelle wie Fahrer-Anzeige). */
   const [serverRemainingDistM, setServerRemainingDistM] = useState<number | null>(null);
+  /** Straßen-Polyline vom Fahrer-Navi (WS `route:driver:update`) — bevorzugt vor Buchungs-OSRM. */
+  const [driverNavPolyline, setDriverNavPolyline] = useState<[number, number][] | null>(null);
   const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [customTipInput, setCustomTipInput] = useState("");
   const [tipSubmitting, setTipSubmitting] = useState(false);
@@ -1026,7 +1028,7 @@ export default function StatusScreen() {
   customerPhaseRef.current = customerPhase;
   acceptedRequestRef.current = effectiveAcceptedRequest;
 
-  // WebSocket for real-time driver GPS + HTTP fallback
+  // WebSocket for real-time driver GPS + shared nav route + HTTP fallback
   useEffect(() => {
     if (
       !effectiveAcceptedRequest ||
@@ -1041,6 +1043,30 @@ export default function StatusScreen() {
     if (getDriverLiveNavigationRideId() === rid) {
       return;
     }
+
+    const applyDriverNavRouteMsg = (msg: Record<string, unknown>) => {
+      const raw = msg.polyline;
+      if (!Array.isArray(raw) || raw.length < 2) return;
+      const next: [number, number][] = [];
+      for (const pt of raw) {
+        if (!Array.isArray(pt) || pt.length < 2) continue;
+        const lat = typeof pt[0] === "number" ? pt[0] : Number(pt[0]);
+        const lon = typeof pt[1] === "number" ? pt[1] : Number(pt[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        next.push([lat, lon]);
+      }
+      if (next.length >= 2) setDriverNavPolyline(next);
+      const etaFromDriver =
+        typeof msg.etaMinutes === "number" && Number.isFinite(msg.etaMinutes)
+          ? Math.max(0, Math.round(msg.etaMinutes))
+          : null;
+      if (etaFromDriver != null) setServerEtaMinutes(etaFromDriver);
+      const distFromDriver =
+        typeof msg.remainingDistM === "number" && Number.isFinite(msg.remainingDistM)
+          ? Math.max(0, Math.round(msg.remainingDistM))
+          : null;
+      if (distFromDriver != null) setServerRemainingDistM(distFromDriver);
+    };
 
     connectToRide(
       rid,
@@ -1058,6 +1084,9 @@ export default function StatusScreen() {
               : null;
           if (distFromDriver != null) setServerRemainingDistM(distFromDriver);
         }
+        if (msg.type === "route:driver:update") {
+          applyDriverNavRouteMsg(msg);
+        }
         if (msg.type === "chat:ride:update") {
           const row = parseRideChatUpdate(msg);
           if (!row) return;
@@ -1068,12 +1097,11 @@ export default function StatusScreen() {
       readCustomerSessionJwtForWsJoin,
     );
 
-    // HTTP fallback polling every 5s
+    // HTTP fallback: location + catch-up nav route
     const poll = async () => {
       try {
-        const res = await fetch(`${API_BASE}/rides/${rid}/driver-location`, {
-          headers: await customerSessionHeadersJson(),
-        });
+        const headers = await customerSessionHeadersJson();
+        const res = await fetch(`${API_BASE}/rides/${rid}/driver-location`, { headers });
         if (res.ok) {
           const loc = (await res.json()) as {
             lat: number;
@@ -1089,11 +1117,30 @@ export default function StatusScreen() {
             setServerRemainingDistM(Math.max(0, Math.round(loc.remainingDistM)));
           }
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
-    poll();
+    const fetchSharedRoute = async () => {
+      try {
+        const headers = await customerSessionHeadersJson();
+        const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(rid)}/driver-nav-route`, {
+          headers,
+        });
+        if (!res.ok) return;
+        const body = (await res.json()) as Record<string, unknown>;
+        applyDriverNavRouteMsg(body);
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    void fetchSharedRoute();
     const interval = setInterval(poll, 5000);
-    return () => { clearInterval(interval); disconnectSocket(); };
+    return () => {
+      clearInterval(interval);
+      disconnectSocket();
+    };
   }, [effectiveAcceptedRequest?.id, rawPhase]);
 
   // Send customer GPS to driver every ~4s when ride is active
@@ -1232,11 +1279,16 @@ export default function StatusScreen() {
       if (rawPhase === "driving") {
         setServerEtaMinutes(null);
         setServerRemainingDistM(null);
+        setDriverNavPolyline(null);
         setEta(null);
       }
       prevPhaseRef.current = rawPhase;
     }
   }, [rawPhase]);
+
+  useEffect(() => {
+    setDriverNavPolyline(null);
+  }, [currentRideId, displayDestination?.lat, displayDestination?.lon]);
 
   /** Nur Fahrer-Navi-ETA (Matrix/OSRM) — kein Luftlinien-Fallback (sonst Abweichung zur Fahrer-Sicht). */
   useEffect(() => {
@@ -2061,6 +2113,10 @@ export default function StatusScreen() {
   const progressThirdLabel =
     rideStatus === "completed" ? "Ziel erreicht" : rideStatus === "in_progress" ? "Fahrt läuft" : "Ziel erreicht";
   const distanceKm = route?.distanceKm;
+  const liveMapPolyline =
+    driverNavPolyline && driverNavPolyline.length >= 2
+      ? driverNavPolyline
+      : route?.polyline;
   const etaDistanceText =
     serverRemainingDistM != null
       ? formatDriverNavDistanceKm(serverRemainingDistM, { toDestination: isDriving })
@@ -2075,7 +2131,7 @@ export default function StatusScreen() {
       <RealMapView
         origin={displayOrigin}
         destination={displayDestination}
-        polyline={route?.polyline}
+        polyline={liveMapPolyline}
         style={styles.map}
         driverMarker={driverMarker}
         followLiveDriver={Boolean(driverMarker)}

@@ -186,7 +186,7 @@ import {
   notifyPassengerReservationExpired,
   shouldNotifyPassengerReservationExpired,
 } from "../lib/passengerRideExpoPush";
-import { broadcastRideStatusChange } from "../wsRideSocketHub";
+import { broadcastRideStatusChange, broadcastToRideRoom } from "../wsRideSocketHub";
 import { resolveNoShowPolicy } from "../lib/noShowPolicy";
 import {
   computeWaitingChargeForRide,
@@ -212,6 +212,32 @@ export interface DriverLocation {
   remainingDistM?: number;
   /** Ziel der Navigation: Abholung oder Fahrtziel. */
   navPhase?: DriverNavPhase;
+}
+
+/** Letzte vom Fahrer-Navi geteilte Straßenroute (für Kunden-Karte, In-Memory). */
+export type DriverNavRouteShare = {
+  polyline: [number, number][];
+  updatedAt: string;
+  etaMinutes?: number;
+  remainingDistM?: number;
+  navPhase?: DriverNavPhase;
+};
+
+const DRIVER_NAV_ROUTE_MAX_POINTS = 100;
+
+export function normalizeDriverNavPolyline(raw: unknown): [number, number][] | null {
+  if (!Array.isArray(raw) || raw.length < 2) return null;
+  const out: [number, number][] = [];
+  for (const pt of raw) {
+    if (!Array.isArray(pt) || pt.length < 2) continue;
+    const lat = typeof pt[0] === "number" ? pt[0] : Number(pt[0]);
+    const lon = typeof pt[1] === "number" ? pt[1] : Number(pt[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+    out.push([lat, lon]);
+    if (out.length >= DRIVER_NAV_ROUTE_MAX_POINTS) break;
+  }
+  return out.length >= 2 ? out : null;
 }
 
 function driverNavExtrasFromBody(body: unknown): Pick<DriverLocation, "etaMinutes" | "remainingDistM" | "navPhase"> {
@@ -244,6 +270,8 @@ const DEMO: RideRequest[] = [];
 
 export const driverLocations = new Map<string, DriverLocation>();
 export const customerLocations = new Map<string, DriverLocation>();
+/** rideId → letzte Navi-Polyline (WS + GET Catch-up für Kunden). */
+export const driverNavRoutes = new Map<string, DriverNavRouteShare>();
 const customerCancelReasons = new Map<string, string>();
 
 export function getCustomerCancelReasonForRide(rideId: string): string | null {
@@ -3227,6 +3255,88 @@ router.get("/rides/:id/driver-location", async (req, res, next) => {
       return;
     }
     res.json(loc);
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Fahrer teilt aktuelle Navi-Polyline (nur bei Routenwechsel — nicht bei jedem GPS-Tick). */
+router.post("/rides/:id/driver-nav-route", async (req, res, next) => {
+  try {
+    const fleet = await resolveFleetActorOrNull(req);
+    if (!fleet) {
+      res.status(401).json({ error: "unauthorized", hint: "Fleet driver token required." });
+      return;
+    }
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const assignedDriver = (ride.driverId ?? "").trim();
+    if (!assignedDriver || assignedDriver !== fleet.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const body = req.body as Record<string, unknown>;
+    const polyline = normalizeDriverNavPolyline(body.polyline);
+    if (!polyline) {
+      res.status(400).json({ error: "polyline_required" });
+      return;
+    }
+    const extras = driverNavExtrasFromBody(body);
+    const share: DriverNavRouteShare = {
+      polyline,
+      updatedAt: new Date().toISOString(),
+      ...extras,
+    };
+    driverNavRoutes.set(id, share);
+    broadcastToRideRoom(id, {
+      type: "route:driver:update",
+      polyline: share.polyline,
+      ...(share.etaMinutes != null ? { etaMinutes: share.etaMinutes } : {}),
+      ...(share.remainingDistM != null ? { remainingDistM: share.remainingDistM } : {}),
+      ...(share.navPhase ? { navPhase: share.navPhase } : {}),
+    });
+    res.json({ ok: true, pointCount: share.polyline.length });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Kunde/Fahrer: letzte geteilte Navi-Route (Catch-up nach Join / ohne WS). */
+router.get("/rides/:id/driver-nav-route", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const fleet = await resolveFleetActorOrNull(req);
+    const cust = await resolveCustomerActorOrNull(req);
+    const panel = await resolvePanelActorOrNull(req);
+    const assignedDriver = (ride.driverId ?? "").trim();
+    const allowedFleet =
+      fleet != null && assignedDriver !== "" && assignedDriver === fleet.fleetDriverId;
+    const allowedPassenger = cust != null && passengerOwnsRide(ride, cust.passengerGoogleId);
+    const rideCompanyId = (ride.companyId ?? "").trim();
+    const allowedPanel =
+      panel != null && rideCompanyId !== "" && rideCompanyId === panel.companyId.trim();
+    if (!allowedFleet && !allowedPassenger && !allowedPanel) {
+      res.status(401).json({
+        error: "unauthorized",
+        hint: "Fleet driver token, passenger session, or partner panel JWT (same company) required.",
+      });
+      return;
+    }
+    const share = driverNavRoutes.get(id) ?? null;
+    if (!share) {
+      res.status(404).json({ error: "no_route_yet" });
+      return;
+    }
+    res.json(share);
   } catch (e) {
     next(e);
   }

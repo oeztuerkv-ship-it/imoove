@@ -176,6 +176,40 @@ export function sendDriverLocation(lat: number, lon: number, extras?: DriverLoca
   }
 }
 
+export type DriverNavRouteSharePayload = {
+  polyline: [number, number][];
+  etaMinutes?: number;
+  remainingDistM?: number;
+  navPhase?: "pickup" | "destination";
+};
+
+/**
+ * Navi-Straßenroute an Kunden im Ride-Room (nur bei Routenwechsel / Reroute).
+ * Wird gequeued, wenn der Socket noch nicht offen ist.
+ */
+export function sendDriverNavRoute(payload: DriverNavRouteSharePayload) {
+  if (!_rideId || !payload.polyline || payload.polyline.length < 2) return;
+  const body = JSON.stringify({
+    type: "route:driver",
+    rideId: _rideId,
+    polyline: payload.polyline,
+    ...(payload.etaMinutes != null ? { etaMinutes: payload.etaMinutes } : {}),
+    ...(payload.remainingDistM != null ? { remainingDistM: payload.remainingDistM } : {}),
+    ...(payload.navPhase ? { navPhase: payload.navPhase } : {}),
+  });
+  if (_ws?.readyState === WebSocket.OPEN) {
+    try {
+      _ws.send(body);
+    } catch {
+      _pendingMessages.push(body);
+      _connect();
+    }
+    return;
+  }
+  _pendingMessages.push(body);
+  _connect();
+}
+
 /** Send customer GPS location via WebSocket (falls back silently if not connected). */
 export function sendCustomerLocation(lat: number, lon: number) {
   if (_ws?.readyState === WebSocket.OPEN && _rideId) {

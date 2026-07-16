@@ -4,7 +4,7 @@ import { postRideChatMessage } from "./db/rideChatMessagesData";
 import { findRide } from "./db/ridesData";
 import { logger } from "./lib/logger";
 import { resolveWsJoinPrincipal, wsJoinPrincipalMatchesRide } from "./lib/wsRideJoinAuth";
-import { driverLocations, customerLocations } from "./routes/rides";
+import { driverLocations, customerLocations, driverNavRoutes, normalizeDriverNavPolyline } from "./routes/rides";
 
 type SocketRole = "driver" | "customer" | "partner";
 
@@ -180,6 +180,24 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
             } catch {
               /* ignore */
             }
+            const cachedRoute = driverNavRoutes.get(rideIdRaw);
+            if (cachedRoute && (role === "customer" || role === "partner")) {
+              try {
+                socket.send(
+                  JSON.stringify({
+                    type: "route:driver:update",
+                    polyline: cachedRoute.polyline,
+                    ...(cachedRoute.etaMinutes != null ? { etaMinutes: cachedRoute.etaMinutes } : {}),
+                    ...(cachedRoute.remainingDistM != null
+                      ? { remainingDistM: cachedRoute.remainingDistM }
+                      : {}),
+                    ...(cachedRoute.navPhase ? { navPhase: cachedRoute.navPhase } : {}),
+                  }),
+                );
+              } catch {
+                /* ignore */
+              }
+            }
           }
           return;
         }
@@ -239,6 +257,45 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
                   type: "location:driver:update",
                   lat: msg.lat,
                   lon: msg.lon,
+                  ...(etaMinutes != null ? { etaMinutes } : {}),
+                  ...(remainingDistM != null ? { remainingDistM } : {}),
+                  ...(navPhase ? { navPhase } : {}),
+                }),
+              );
+            }
+          });
+          return;
+        }
+
+        if (msgType === "route:driver") {
+          if (meta.role !== "driver") return;
+          const polyline = normalizeDriverNavPolyline(msg.polyline);
+          if (!polyline) return;
+          const etaMinutes =
+            typeof msg.etaMinutes === "number" && Number.isFinite(msg.etaMinutes)
+              ? Math.max(0, Math.round(msg.etaMinutes))
+              : undefined;
+          const remainingDistM =
+            typeof msg.remainingDistM === "number" && Number.isFinite(msg.remainingDistM)
+              ? Math.max(0, Math.round(msg.remainingDistM))
+              : undefined;
+          const navPhaseRaw = typeof msg.navPhase === "string" ? msg.navPhase.trim() : "";
+          const navPhase =
+            navPhaseRaw === "pickup" || navPhaseRaw === "destination" ? navPhaseRaw : undefined;
+          const share = {
+            polyline,
+            updatedAt: new Date().toISOString(),
+            ...(etaMinutes != null ? { etaMinutes } : {}),
+            ...(remainingDistM != null ? { remainingDistM } : {}),
+            ...(navPhase ? { navPhase } : {}),
+          };
+          driverNavRoutes.set(boundRideId, share);
+          rooms.get(boundRideId)?.forEach((client) => {
+            if (client !== socket && client.readyState === WebSocket.OPEN) {
+              client.send(
+                JSON.stringify({
+                  type: "route:driver:update",
+                  polyline: share.polyline,
                   ...(etaMinutes != null ? { etaMinutes } : {}),
                   ...(remainingDistM != null ? { remainingDistM } : {}),
                   ...(navPhase ? { navPhase } : {}),
