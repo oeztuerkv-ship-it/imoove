@@ -2030,7 +2030,7 @@ export default function StatusScreen() {
           <View style={styles.drivingBannerIconCircle}>
             <MaterialCommunityIcons
               name="navigation"
-              size={rf(18)}
+              size={rf(14)}
               color={TRACKING_ACCENT}
               style={styles.drivingBannerNavIcon}
             />
@@ -2730,15 +2730,15 @@ const styles = StyleSheet.create({
   },
   drivingBanner: {
     position: "absolute",
-    left: rs(16),
-    right: rs(16),
+    left: rs(48),
+    right: rs(48),
     backgroundColor: "#FFFFFF",
     borderRadius: rs(16),
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(12),
-    paddingHorizontal: rs(16),
-    paddingVertical: rs(14),
+    gap: rs(10),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#E5E7EB",
     shadowColor: "#000",
