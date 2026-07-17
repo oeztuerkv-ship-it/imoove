@@ -1,0 +1,19 @@
+# Admin-Panel / Nginx HTTP-Auth Brute-Force (Beispiel)
+# Voraussetzung: Nginx schreibt Fehlversuche nach /var/log/nginx/admin-auth-error.log
+# Filter + Jail aktivieren, dann: fail2ban-client reload
+#
+# Prüfen: fail2ban-client status nginx-http-auth
+
+[nginx-http-auth]
+enabled = true
+port = http,https
+filter = nginx-http-auth
+logpath = /var/log/nginx/admin-auth-error.log
+maxretry = 5
+findtime = 600
+bantime = 3600
+# Gestaffelte Sperrzeiten (1h → 24h → 1 Woche bei Wiederholung)
+bantime.increment = true
+bantime.factor = 24
+bantime.overreach = 604800
+bantime.maxtime = 604800

@@ -1694,3 +1694,51 @@ export const homepageAnalyticsEventsTable = pgTable("homepage_analytics_events",
   anonymous_visitor_id: text("anonymous_visitor_id").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Fail2Ban-Dashboard: Team-IPs die nicht gesperrt werden sollen. */
+export const securityIpWhitelistTable = pgTable(
+  "security_ip_whitelist",
+  {
+    id: text("id").primaryKey(),
+    ip_cidr: text("ip_cidr").notNull(),
+    label: text("label").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    created_by: text("created_by").notNull().default(""),
+    active: boolean("active").notNull().default(true),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    ipCidrUq: uniqueIndex("security_ip_whitelist_ip_cidr_uq").on(t.ip_cidr),
+  }),
+);
+
+/** Fail2Ban-Dashboard: permanente manuelle IP-Sperren. */
+export const securityIpBlocklistTable = pgTable(
+  "security_ip_blocklist",
+  {
+    id: text("id").primaryKey(),
+    ip_cidr: text("ip_cidr").notNull(),
+    label: text("label").notNull().default(""),
+    reason: text("reason").notNull().default(""),
+    created_by: text("created_by").notNull().default(""),
+    active: boolean("active").notNull().default(true),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    ipCidrUq: uniqueIndex("security_ip_blocklist_ip_cidr_uq").on(t.ip_cidr),
+  }),
+);
+
+/** Fail2Ban-Dashboard: Ban/Unban-Audit für Statistik. */
+export const securityBanEventsTable = pgTable("security_ban_events", {
+  id: text("id").primaryKey(),
+  ip: text("ip").notNull(),
+  jail: text("jail"),
+  action: text("action").notNull(),
+  source: text("source").notNull().default("admin_api"),
+  admin_username: text("admin_username").notNull().default(""),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

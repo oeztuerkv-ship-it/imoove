@@ -1,0 +1,11 @@
+# Gestaffelte Sperrzeiten für SSH (Beispiel — in jail.local oder jail.d/sshd.local)
+# Wiederholte Auffälligkeit: bantime wächst (factor=24 → 1h, 24h, … bis maxtime)
+
+[sshd]
+bantime = 3600
+findtime = 600
+maxretry = 5
+bantime.increment = true
+bantime.factor = 24
+bantime.overreach = 604800
+bantime.maxtime = 604800

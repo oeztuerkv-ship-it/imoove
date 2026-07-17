@@ -1,0 +1,13 @@
+# Permanente IP-Sperren (Admin-Dashboard Blockliste)
+# Deploy: /etc/fail2ban/jail.d/onroda-permanent.local
+# fail2ban-client reload
+
+[onroda-permanent]
+enabled = true
+filter = dummy
+action = iptables-multiport[name=onroda-permanent, port="http,https,ssh", protocol=tcp]
+# -1 = dauerhaft (Fail2Ban >= 0.10)
+bantime = -1
+findtime = 1
+maxretry = 1
+logpath = /dev/null

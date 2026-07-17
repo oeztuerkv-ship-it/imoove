@@ -279,7 +279,7 @@ const ADMIN_NAV_GROUPS_RAW = [
       { pageKey: "settings", label: "Konto & Sicherheit", icon: "cog", roles: ["admin", "service", "taxi", "insurance", "hotel"] },
       { pageKey: "settings-system", label: "System", icon: "cog", roles: ["admin"] },
       { pageKey: "server-status", label: "Server-Status", icon: "pulse", roles: ["admin"] },
-      { pageKey: "fail2ban", label: "Firewall & IPs", icon: "shield", roles: ["admin"] },
+      { pageKey: "fail2ban", label: "Sicherheit & IPs", icon: "shield", roles: ["admin"] },
     ],
   },
 ];
@@ -489,7 +489,7 @@ const ADMIN_TOP_NAV = [
       { pageKey: "settings-payments", label: "Zahlungsarten" },
       { pageKey: "settings-system", label: "System" },
       { pageKey: "server-status", label: "Server-Status" },
-      { pageKey: "fail2ban", label: "Firewall & IPs" },
+      { pageKey: "fail2ban", label: "Sicherheit & IPs" },
     ],
   },
 ];

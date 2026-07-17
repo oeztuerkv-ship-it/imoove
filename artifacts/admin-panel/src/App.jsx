@@ -329,8 +329,8 @@ const PAGE_META = {
     subtitle: "Anonyme Nutzung der Marketing-Homepage — ohne IP, DSGVO-freundlich vorbereitet",
   },
   "fail2ban": {
-    title: "Firewall & Gesperrte IPs",
-    subtitle: "Fail2Ban — gesperrte IPs einsehen und manuell entsperren oder sperren",
+    title: "Sicherheits-Dashboard",
+    subtitle: "Fail2Ban, Whitelist, permanente Sperren, Geo/Hoster und Panel-Login-Schutz",
   },
   "server-status": {
     title: "Server-Status",

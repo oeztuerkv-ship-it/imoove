@@ -74,6 +74,11 @@ export function canAccessAdminHomepageAnalytics(role: AdminRole): boolean {
   return role === "admin" || role === "service";
 }
 
+/** Plattform-Operator: Fail2Ban / Sicherheits-Dashboard (nur Voll-Admin). */
+export function canAccessAdminSecurityDashboard(role: AdminRole): boolean {
+  return isFullAdminRole(role);
+}
+
 export function canAdminReleaseRide(role: AdminRole): boolean {
   return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
 }

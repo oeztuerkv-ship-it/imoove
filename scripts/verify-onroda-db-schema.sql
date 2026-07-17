@@ -1596,6 +1596,27 @@ BEGIN
     errs := array_append(errs, 'index ride_chat_messages_ride_created_idx (Migration 128)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'security_ip_whitelist'
+  ) THEN
+    errs := array_append(errs, 'table security_ip_whitelist (Migration 131)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'security_ip_blocklist'
+  ) THEN
+    errs := array_append(errs, 'table security_ip_blocklist (Migration 131)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'security_ban_events'
+  ) THEN
+    errs := array_append(errs, 'table security_ban_events (Migration 131)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',
