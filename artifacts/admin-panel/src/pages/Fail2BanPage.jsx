@@ -48,7 +48,7 @@ function SimpleBanChart({ daily, valueKey = "bans" }) {
   }, [daily, valueKey]);
 
   if (!daily?.length) {
-    return <p className="admin-m-muted">Noch keine Ereignisse im gewählten Zeitraum.</p>;
+    return <p className="admin-muted">Noch keine Ereignisse im gewählten Zeitraum.</p>;
   }
 
   return (
@@ -70,7 +70,7 @@ function SimpleBanChart({ daily, valueKey = "bans" }) {
 }
 
 function GeoCell({ geo }) {
-  if (!geo?.lookupOk) return <span className="admin-m-muted">—</span>;
+  if (!geo?.lookupOk) return <span className="admin-muted">—</span>;
   const country = geo.countryCode ? `${geo.country ?? "?"} (${geo.countryCode})` : geo.country ?? "—";
   return (
     <span title={geo.isp ?? ""}>
@@ -78,13 +78,29 @@ function GeoCell({ geo }) {
       {geo.hosterLabel ? (
         <>
           <br />
-          <span className="admin-m-muted" style={{ fontSize: 12 }}>
-            {geo.hosterLabel}
-          </span>
+          <span className="admin-muted">{geo.hosterLabel}</span>
         </>
       ) : null}
     </span>
   );
+}
+
+function TableEmpty({ loading, empty, emptyLabel }) {
+  if (loading) {
+    return (
+      <div className="admin-section-block__inset">
+        <p className="admin-muted">Wird geladen …</p>
+      </div>
+    );
+  }
+  if (empty) {
+    return (
+      <div className="admin-section-block__inset">
+        <div className="admin-info-banner admin-info-banner--inline">{emptyLabel}</div>
+      </div>
+    );
+  }
+  return null;
 }
 
 export default function Fail2BanPage() {
@@ -166,9 +182,6 @@ export default function Fail2BanPage() {
         (j.bannedIps ?? []).map((row) => ({
           ip: row.ip,
           jail: j.jail,
-          geo: row.geo,
-          permanent: row.permanent,
-          whitelisted: row.whitelisted,
         })),
       ),
     [jails],
@@ -305,330 +318,473 @@ export default function Fail2BanPage() {
   );
 
   return (
-    <div className="admin-page admin-page--security">
-      {msg ? (
-        <div className="admin-info-banner admin-info-banner--inline admin-info-banner--success" style={{ marginBottom: 12 }}>
-          {msg}
-        </div>
-      ) : null}
+    <div className="admin-page admin-page--loose">
+      <p className="admin-page-lead">
+        <strong>Plattform-Sicherheit</strong> — Fail2Ban-Jails, Team-Whitelist, permanente Sperren, Geo/Hoster und
+        Panel-Login-Schutz.
+      </p>
+
+      {msg ? <div className="admin-success-banner">{msg}</div> : null}
       {error ? (
-        <div className="admin-info-banner admin-info-banner--inline admin-info-banner--error" style={{ marginBottom: 12 }}>
+        <div className="admin-error-banner" role="alert">
           {error}
         </div>
       ) : null}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <button type="button" className="admin-c-btn admin-c-btn--secondary" onClick={() => void fetchStatus()} disabled={loading}>
-          ↻ Aktualisieren
-        </button>
-        <button type="button" className="admin-c-btn admin-c-btn--secondary" onClick={() => void syncRules()} disabled={!!busy}>
-          Regeln synchronisieren
-        </button>
-        {selected.size > 0 ? (
-          <button type="button" className="admin-c-btn admin-c-btn--primary" onClick={() => void bulkUnban()} disabled={!!busy}>
-            {selected.size} ausgewählt — entsperren
-          </button>
-        ) : null}
+      <div className="admin-stat-grid admin-stat-grid--wide">
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Fail2Ban</div>
+          <div className="admin-stat-value" style={{ fontSize: "1.15rem" }}>
+            {loading ? "…" : data?.fail2banAvailable ? "Erreichbar" : "Offline"}
+          </div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Permanenter Jail</div>
+          <div className="admin-stat-value" style={{ fontSize: "1.05rem", wordBreak: "break-word" }}>
+            {loading ? "…" : data?.permanentJail ?? "onroda-permanent"}
+          </div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Panel-Login-Schutz</div>
+          <div className="admin-stat-value" style={{ fontSize: "1rem", lineHeight: 1.35 }}>
+            {loading ? (
+              "…"
+            ) : (
+              <>
+                <span className={`admin-c-badge ${panelProtectionClass(panel?.status)}`}>
+                  {panel?.jail ?? "nginx-http-auth"}
+                </span>
+                <div className="admin-muted" style={{ marginTop: 6, fontWeight: 500 }}>
+                  {panel?.currentBanned ?? 0} aktiv · {panel?.totalBanned ?? 0} gesamt
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Gestaffelte Sperrzeit</div>
+          <div className="admin-stat-value" style={{ fontSize: "1rem", lineHeight: 1.35 }}>
+            {loading
+              ? "…"
+              : incrementJails.length
+                ? `${incrementJails.length} Jail(s) aktiv`
+                : "Nicht aktiv"}
+          </div>
+        </div>
       </div>
 
-      {!loading && data ? (
-        <>
-          <section className="admin-m-card admin-m-card--unified" style={{ marginBottom: 16 }}>
-            <h3 className="admin-m-card__title">Systemstatus</h3>
-            <div className="admin-kv-grid admin-kv-grid--2">
-              <div>
-                <span className="admin-kv-grid__k">Fail2Ban</span>
-                <span className="admin-kv-grid__v">{data.fail2banAvailable ? "Erreichbar" : "Nicht verfügbar"}</span>
-              </div>
-              <div>
-                <span className="admin-kv-grid__k">Permanenter Jail</span>
-                <span className="admin-kv-grid__v">{data.permanentJail ?? "onroda-permanent"}</span>
-              </div>
-              <div>
-                <span className="admin-kv-grid__k">Panel-Login-Schutz</span>
-                <span className="admin-kv-grid__v">
-                  <span className={`admin-c-badge ${panelProtectionClass(panel?.status)}`}>
-                    {panel?.jail ?? "nginx-http-auth"}
-                  </span>
-                  {" · "}
-                  {panel?.currentBanned ?? 0} aktiv / {panel?.totalBanned ?? 0} gesamt
-                </span>
-              </div>
-              <div>
-                <span className="admin-kv-grid__k">Gestaffelte Sperrzeit</span>
-                <span className="admin-kv-grid__v">
-                  {incrementJails.length
-                    ? `${incrementJails.length} Jail(s) mit bantime.increment`
-                    : "Nicht aktiv — siehe Deploy-Beispiel"}
-                </span>
-              </div>
-            </div>
-            {panel?.hint ? <p className="admin-m-muted" style={{ marginTop: 12, marginBottom: 0 }}>{panel.hint}</p> : null}
-          </section>
-
-          <AdminCollapsibleSection title="Whitelist — Team-IPs (Schutz vor Selbstsperre)" defaultOpen>
-            <p className="admin-m-muted">
-              Einträge werden in Fail2Ban als <code>ignoreip</code> auf alle Jails angewendet. Gesperrte Whitelist-IPs können nicht erneut gebannt werden.
-            </p>
-            <div className="admin-form-row" style={{ marginTop: 12, marginBottom: 12 }}>
-              <input
-                className="admin-c-input"
-                value={wlIp}
-                onChange={(e) => setWlIp(e.target.value)}
-                placeholder="IP oder CIDR, z. B. 203.0.113.10"
-              />
-              <input
-                className="admin-c-input"
-                value={wlLabel}
-                onChange={(e) => setWlLabel(e.target.value)}
-                placeholder="Bezeichnung (optional)"
-              />
-              <button type="button" className="admin-c-btn admin-c-btn--primary" onClick={() => void addWhitelist()} disabled={!!busy}>
-                Hinzufügen
-              </button>
-            </div>
-            {!data.whitelist?.length ? (
-              <p className="admin-m-muted">Keine Whitelist-Einträge — Team-IPs hier eintragen.</p>
-            ) : (
-              <table className="admin-c-table admin-c-table--compact">
-                <thead>
-                  <tr>
-                    <th>IP / CIDR</th>
-                    <th>Bezeichnung</th>
-                    <th>Seit</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.whitelist.map((row) => (
-                    <tr key={row.id}>
-                      <td className="admin-c-table__mono">{row.ipCidr}</td>
-                      <td>{row.label || "—"}</td>
-                      <td>{formatDt(row.createdAt)}</td>
-                      <td className="admin-c-table__actions">
-                        <button
-                          type="button"
-                          className="admin-c-btn admin-c-btn--ghost admin-c-btn--sm"
-                          onClick={() => void removeWhitelist(row.id, row.ipCidr)}
-                          disabled={busy === row.id}
-                        >
-                          Entfernen
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </AdminCollapsibleSection>
-
-          <AdminCollapsibleSection title="Permanente Blockliste" defaultOpen={false}>
-            <p className="admin-m-muted">
-              Zusätzlich zu zeitlichen Fail2Ban-Sperren. Einträge werden im Jail <code>{data.permanentJail}</code> angewendet (Fallback: erster Jail).
-            </p>
-            <div className="admin-form-row" style={{ marginTop: 12, marginBottom: 12 }}>
-              <input className="admin-c-input" value={blIp} onChange={(e) => setBlIp(e.target.value)} placeholder="IP oder CIDR" />
-              <input className="admin-c-input" value={blLabel} onChange={(e) => setBlLabel(e.target.value)} placeholder="Bezeichnung" />
-              <input className="admin-c-input" value={blReason} onChange={(e) => setBlReason(e.target.value)} placeholder="Grund" />
-              <button type="button" className="admin-c-btn admin-c-btn--danger" onClick={() => void addBlocklist()} disabled={!!busy}>
-                Permanent sperren
-              </button>
-            </div>
-            {!data.blocklist?.length ? (
-              <p className="admin-m-muted">Keine permanenten Sperren.</p>
-            ) : (
-              <table className="admin-c-table admin-c-table--compact">
-                <thead>
-                  <tr>
-                    <th>IP / CIDR</th>
-                    <th>Grund</th>
-                    <th>Seit</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.blocklist.map((row) => (
-                    <tr key={row.id}>
-                      <td className="admin-c-table__mono">{row.ipCidr}</td>
-                      <td>{row.reason || row.label || "—"}</td>
-                      <td>{formatDt(row.createdAt)}</td>
-                      <td className="admin-c-table__actions">
-                        <button
-                          type="button"
-                          className="admin-c-btn admin-c-btn--ghost admin-c-btn--sm"
-                          onClick={() => void removeBlocklist(row.id, row.ipCidr)}
-                          disabled={busy === row.id}
-                        >
-                          Aufheben
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </AdminCollapsibleSection>
-
-          <AdminCollapsibleSection title="Sperren pro Tag" defaultOpen={false}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              {[7, 14, 30].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className={`admin-c-btn admin-c-btn--sm ${statsDays === d ? "admin-c-btn--primary" : "admin-c-btn--secondary"}`}
-                  onClick={() => setStatsDays(d)}
-                >
-                  {d} Tage
-                </button>
-              ))}
-            </div>
-            <SimpleBanChart daily={statsDaily} valueKey="bans" />
-            <p className="admin-m-muted" style={{ marginTop: 8 }}>
-              Basis: Ban-/Unban-Ereignisse aus diesem Dashboard (nicht vollständiges Fail2Ban-Log).
-            </p>
-          </AdminCollapsibleSection>
-
-          <AdminCollapsibleSection title="Manuell sperren (zeitlich, Fail2Ban-Jail)" defaultOpen={false}>
-            <div className="admin-form-row">
-              <input
-                className="admin-c-input"
-                value={banIp}
-                onChange={(e) => setBanIp(e.target.value)}
-                placeholder="IP-Adresse"
-              />
-              <select className="admin-c-input" value={banJail} onChange={(e) => setBanJail(e.target.value)}>
-                {jails.map((j) => (
-                  <option key={j.jail} value={j.jail}>
-                    {j.jail}
-                  </option>
-                ))}
-              </select>
-              <button type="button" className="admin-c-btn admin-c-btn--danger" onClick={() => void ban()} disabled={!!busy}>
-                Sperren
-              </button>
-            </div>
-          </AdminCollapsibleSection>
-        </>
+      {panel?.hint && !loading ? (
+        <div className="admin-info-banner" style={{ marginBottom: 16 }}>
+          {panel.hint}
+        </div>
       ) : null}
 
+      <AdminCollapsibleSection
+        title="Aktionen"
+        subtitle="Status neu laden, Regeln nach Fail2Ban spiegeln, Mehrfach-Entsperren"
+        defaultOpen
+        flushBody
+      >
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern">
+          <button
+            type="button"
+            className="admin-btn-primary admin-filter-toolbar--modern__refresh"
+            onClick={() => void fetchStatus()}
+            disabled={loading}
+          >
+            {loading ? "Lade …" : "Aktualisieren"}
+          </button>
+          <button type="button" className="admin-c-btn-sec" onClick={() => void syncRules()} disabled={!!busy}>
+            Regeln synchronisieren
+          </button>
+          {selected.size > 0 ? (
+            <button type="button" className="admin-m-btn-bearb" onClick={() => void bulkUnban()} disabled={!!busy}>
+              {selected.size} ausgewählt — entsperren
+            </button>
+          ) : null}
+        </div>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Whitelist — Team-IPs"
+        subtitle="Schutz vor Selbstsperre · ignoreip auf alle Jails"
+        defaultOpen
+        flushBody
+      >
+        <div className="admin-section-block__inset">
+          <p className="admin-muted" style={{ margin: 0 }}>
+            Einträge werden in Fail2Ban als <code>ignoreip</code> angewendet. Whitelist-IPs können nicht gebannt werden.
+          </p>
+          <div className="admin-filter-toolbar admin-filter-toolbar--modern">
+            <label className="admin-filter-field">
+              <span className="admin-field-label">IP / CIDR</span>
+              <input
+                className="admin-input"
+                value={wlIp}
+                onChange={(e) => setWlIp(e.target.value)}
+                placeholder="z. B. 203.0.113.10"
+                autoComplete="off"
+              />
+            </label>
+            <label className="admin-filter-field">
+              <span className="admin-field-label">Bezeichnung</span>
+              <input
+                className="admin-input"
+                value={wlLabel}
+                onChange={(e) => setWlLabel(e.target.value)}
+                placeholder="optional"
+                autoComplete="off"
+              />
+            </label>
+            <button type="button" className="admin-btn-primary" onClick={() => void addWhitelist()} disabled={!!busy}>
+              Hinzufügen
+            </button>
+          </div>
+        </div>
+        <TableEmpty
+          loading={loading}
+          empty={!loading && !(data?.whitelist?.length > 0)}
+          emptyLabel="Keine Whitelist-Einträge — Team-IPs hier eintragen."
+        />
+        {data?.whitelist?.length > 0 ? (
+          <div className="admin-rides-table-wrap">
+            <table className="admin-rides-table">
+              <thead>
+                <tr>
+                  <th>IP / CIDR</th>
+                  <th>Bezeichnung</th>
+                  <th>Seit</th>
+                  <th className="admin-rides-table__col-actions">Aktion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.whitelist.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <code>{row.ipCidr}</code>
+                    </td>
+                    <td>{row.label || "—"}</td>
+                    <td>{formatDt(row.createdAt)}</td>
+                    <td className="admin-rides-table__actions">
+                      <button
+                        type="button"
+                        className="admin-m-btn-bearb admin-m-btn-bearb--sm"
+                        onClick={() => void removeWhitelist(row.id, row.ipCidr)}
+                        disabled={busy === row.id}
+                      >
+                        {busy === row.id ? "…" : "Entfernen"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Permanente Blockliste"
+        subtitle={`Jail ${data?.permanentJail ?? "onroda-permanent"} · zusätzlich zu zeitlichen Fail2Ban-Sperren`}
+        defaultOpen={false}
+        flushBody
+      >
+        <div className="admin-section-block__inset">
+          <div className="admin-filter-toolbar admin-filter-toolbar--modern">
+            <label className="admin-filter-field">
+              <span className="admin-field-label">IP / CIDR</span>
+              <input
+                className="admin-input"
+                value={blIp}
+                onChange={(e) => setBlIp(e.target.value)}
+                placeholder="IP oder CIDR"
+                autoComplete="off"
+              />
+            </label>
+            <label className="admin-filter-field">
+              <span className="admin-field-label">Bezeichnung</span>
+              <input
+                className="admin-input"
+                value={blLabel}
+                onChange={(e) => setBlLabel(e.target.value)}
+                placeholder="optional"
+                autoComplete="off"
+              />
+            </label>
+            <label className="admin-filter-field admin-filter-field--wide">
+              <span className="admin-field-label">Grund</span>
+              <input
+                className="admin-input"
+                value={blReason}
+                onChange={(e) => setBlReason(e.target.value)}
+                placeholder="z. B. wiederkehrender Scan"
+                autoComplete="off"
+              />
+            </label>
+            <button type="button" className="admin-btn-danger" onClick={() => void addBlocklist()} disabled={!!busy}>
+              Permanent sperren
+            </button>
+          </div>
+        </div>
+        <TableEmpty
+          loading={loading}
+          empty={!loading && !(data?.blocklist?.length > 0)}
+          emptyLabel="Keine permanenten Sperren."
+        />
+        {data?.blocklist?.length > 0 ? (
+          <div className="admin-rides-table-wrap">
+            <table className="admin-rides-table">
+              <thead>
+                <tr>
+                  <th>IP / CIDR</th>
+                  <th>Grund</th>
+                  <th>Seit</th>
+                  <th className="admin-rides-table__col-actions">Aktion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.blocklist.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <code>{row.ipCidr}</code>
+                    </td>
+                    <td>{row.reason || row.label || "—"}</td>
+                    <td>{formatDt(row.createdAt)}</td>
+                    <td className="admin-rides-table__actions">
+                      <button
+                        type="button"
+                        className="admin-m-btn-bearb admin-m-btn-bearb--sm"
+                        onClick={() => void removeBlocklist(row.id, row.ipCidr)}
+                        disabled={busy === row.id}
+                      >
+                        {busy === row.id ? "…" : "Aufheben"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Sperren pro Tag"
+        subtitle="Ban-/Unban-Ereignisse aus diesem Dashboard"
+        defaultOpen={false}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          {[7, 14, 30].map((d) => (
+            <button
+              key={d}
+              type="button"
+              className={statsDays === d ? "admin-btn-primary" : "admin-c-btn-sec"}
+              onClick={() => setStatsDays(d)}
+            >
+              {d} Tage
+            </button>
+          ))}
+        </div>
+        <SimpleBanChart daily={statsDaily} valueKey="bans" />
+        <p className="admin-muted" style={{ marginTop: 8, marginBottom: 0 }}>
+          Basis: Dashboard-Aktionen — nicht das vollständige Fail2Ban-Log.
+        </p>
+      </AdminCollapsibleSection>
+
+      <AdminCollapsibleSection
+        title="Manuell sperren"
+        subtitle="Zeitliche Sperre in einem Fail2Ban-Jail"
+        defaultOpen={false}
+      >
+        <div className="admin-filter-toolbar admin-filter-toolbar--modern">
+          <label className="admin-filter-field">
+            <span className="admin-field-label">IP-Adresse</span>
+            <input
+              className="admin-input"
+              value={banIp}
+              onChange={(e) => setBanIp(e.target.value)}
+              placeholder="z. B. 1.2.3.4"
+              autoComplete="off"
+            />
+          </label>
+          <label className="admin-filter-field">
+            <span className="admin-field-label">Jail</span>
+            <select className="admin-input" value={banJail} onChange={(e) => setBanJail(e.target.value)}>
+              {jails.map((j) => (
+                <option key={j.jail} value={j.jail}>
+                  {j.jail}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="admin-btn-danger" onClick={() => void ban()} disabled={!!busy}>
+            Sperren
+          </button>
+        </div>
+      </AdminCollapsibleSection>
+
       {loading ? (
-        <p className="admin-m-muted">Lädt…</p>
+        <AdminCollapsibleSection title="Gesperrte IPs" subtitle="Wird geladen …" defaultOpen collapsible={false}>
+          <p className="admin-muted">Lädt …</p>
+        </AdminCollapsibleSection>
       ) : (
         jails.map((j) => (
-          <section key={j.jail} className="admin-m-card admin-m-card--unified" style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 className="admin-m-card__title" style={{ margin: 0 }}>
-                {j.jail}
-              </h3>
-              <span className="admin-m-muted">
-                Aktuell: <strong>{j.currentBanned}</strong> · Gesamt: {j.totalBanned}
-              </span>
-            </div>
-            {!j.bannedIps?.length ? (
-              <p className="admin-m-muted">Keine gesperrten IPs</p>
-            ) : (
-              <table className="admin-c-table admin-c-table--compact">
-                <thead>
-                  <tr>
-                    <th style={{ width: 36 }}>
-                      <input
-                        type="checkbox"
-                        checked={allRows.length > 0 && selected.size >= allRows.length}
-                        onChange={toggleSelectAll}
-                        aria-label="Alle auswählen"
-                      />
-                    </th>
-                    <th>IP</th>
-                    <th>Land / Hoster</th>
-                    <th>Flags</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {j.bannedIps.map((row) => {
-                    const key = selectionKey(row.ip, j.jail);
-                    return (
-                      <tr key={key}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={selected.has(key)}
-                            onChange={() => toggleSelect(row.ip, j.jail)}
-                            aria-label={`${row.ip} auswählen`}
-                          />
-                        </td>
-                        <td className="admin-c-table__mono">{row.ip}</td>
-                        <td>
-                          <GeoCell geo={row.geo} />
-                        </td>
-                        <td>
-                          {row.whitelisted ? <span className="admin-c-badge admin-c-badge--ok">Whitelist</span> : null}
-                          {row.permanent ? <span className="admin-c-badge admin-c-badge--err">Permanent</span> : null}
-                        </td>
-                        <td className="admin-c-table__actions">
-                          <button
-                            type="button"
-                            className="admin-c-btn admin-c-btn--ghost admin-c-btn--sm"
-                            onClick={() => void unban(row.ip, j.jail)}
-                            disabled={busy === `${row.ip}-${j.jail}`}
-                          >
-                            Entsperren
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </section>
+          <AdminCollapsibleSection
+            key={j.jail}
+            title={j.jail}
+            subtitle={`Aktuell gesperrt: ${j.currentBanned} · Gesamt: ${j.totalBanned}`}
+            defaultOpen={j.currentBanned > 0}
+            flushBody
+          >
+            <TableEmpty
+              loading={false}
+              empty={!j.bannedIps?.length}
+              emptyLabel="Keine gesperrten IPs in diesem Jail."
+            />
+            {j.bannedIps?.length > 0 ? (
+              <div className="admin-rides-table-wrap">
+                <table className="admin-rides-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 44 }}>
+                        <input
+                          type="checkbox"
+                          checked={allRows.length > 0 && selected.size >= allRows.length}
+                          onChange={toggleSelectAll}
+                          aria-label="Alle auswählen"
+                        />
+                      </th>
+                      <th>IP</th>
+                      <th>Land / Hoster</th>
+                      <th>Flags</th>
+                      <th className="admin-rides-table__col-actions">Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {j.bannedIps.map((row) => {
+                      const key = selectionKey(row.ip, j.jail);
+                      return (
+                        <tr key={key}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selected.has(key)}
+                              onChange={() => toggleSelect(row.ip, j.jail)}
+                              aria-label={`${row.ip} auswählen`}
+                            />
+                          </td>
+                          <td>
+                            <code>{row.ip}</code>
+                          </td>
+                          <td>
+                            <GeoCell geo={row.geo} />
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {row.whitelisted ? (
+                                <span className="admin-c-badge admin-c-badge--ok">Whitelist</span>
+                              ) : null}
+                              {row.permanent ? (
+                                <span className="admin-c-badge admin-c-badge--err">Permanent</span>
+                              ) : null}
+                              {!row.whitelisted && !row.permanent ? (
+                                <span className="admin-muted">—</span>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="admin-rides-table__actions">
+                            <button
+                              type="button"
+                              className="admin-m-btn-bearb admin-m-btn-bearb--sm"
+                              onClick={() => void unban(row.ip, j.jail)}
+                              disabled={busy === `${row.ip}-${j.jail}`}
+                            >
+                              {busy === `${row.ip}-${j.jail}` ? "…" : "Entsperren"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </AdminCollapsibleSection>
         ))
       )}
 
       {!loading && data?.jailConfigs?.length ? (
-        <AdminCollapsibleSection title="Jail-Konfiguration (Fail2Ban)" defaultOpen={false}>
-          <table className="admin-c-table admin-c-table--compact">
-            <thead>
-              <tr>
-                <th>Jail</th>
-                <th>bantime</th>
-                <th>findtime</th>
-                <th>maxretry</th>
-                <th>bantime.increment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.jailConfigs.map((c) => (
-                <tr key={c.jail}>
-                  <td>{c.jail}</td>
-                  <td className="admin-c-table__mono">{c.bantime ?? "—"}</td>
-                  <td className="admin-c-table__mono">{c.findtime ?? "—"}</td>
-                  <td className="admin-c-table__mono">{c.maxretry ?? "—"}</td>
-                  <td className="admin-c-table__mono">{c.bantimeIncrement ?? "—"}</td>
+        <AdminCollapsibleSection
+          title="Jail-Konfiguration"
+          subtitle="bantime / findtime / maxretry / bantime.increment"
+          defaultOpen={false}
+          flushBody
+        >
+          <div className="admin-rides-table-wrap">
+            <table className="admin-rides-table">
+              <thead>
+                <tr>
+                  <th>Jail</th>
+                  <th>bantime</th>
+                  <th>findtime</th>
+                  <th>maxretry</th>
+                  <th>bantime.increment</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.jailConfigs.map((c) => (
+                  <tr key={c.jail}>
+                    <td>{c.jail}</td>
+                    <td>
+                      <code>{c.bantime ?? "—"}</code>
+                    </td>
+                    <td>
+                      <code>{c.findtime ?? "—"}</code>
+                    </td>
+                    <td>
+                      <code>{c.maxretry ?? "—"}</code>
+                    </td>
+                    <td>
+                      <code>{c.bantimeIncrement ?? "—"}</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </AdminCollapsibleSection>
       ) : null}
 
       <style>{`
-        .hp-analytics-chart { margin-top: 12px; }
+        .hp-analytics-chart { margin-top: 4px; }
         .hp-analytics-chart__bars {
-          display: flex; align-items: flex-end; gap: 4px; height: 120px;
-          border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;
+          display: flex;
+          align-items: flex-end;
+          gap: 6px;
+          min-height: 160px;
+          padding: 8px 4px 0;
+          border-bottom: 1px solid var(--onroda-border, #e2e8f0);
         }
         .hp-analytics-chart__col {
-          flex: 1; min-width: 12px; height: 100%; display: flex; flex-direction: column;
-          align-items: center; justify-content: flex-end;
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          height: 160px;
         }
         .hp-analytics-chart__bar {
-          width: 100%; max-width: 28px; background: linear-gradient(180deg, #f87171, #dc2626);
-          border-radius: 3px 3px 0 0; min-height: 4px;
+          width: 100%;
+          max-width: 28px;
+          background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+          border-radius: 6px 6px 2px 2px;
         }
-        .hp-analytics-chart__label { font-size: 10px; color: #64748b; margin-top: 4px; }
-        .admin-form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-        .admin-form-row .admin-c-input { flex: 1; min-width: 140px; }
+        .hp-analytics-chart__label {
+          margin-top: 6px;
+          font-size: var(--admin-type-caption, 13px);
+          color: var(--onroda-text-muted, #64748b);
+        }
       `}</style>
     </div>
   );
