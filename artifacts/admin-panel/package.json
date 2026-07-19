@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-google-recaptcha-v3": "^1.11.0"
   },
   "optionalDependencies": {
     "lightningcss-darwin-arm64": "1.32.0",

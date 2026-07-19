@@ -22,6 +22,15 @@ module.exports = {
       interpreter: "none",
       env: {
         NODE_ENV: "production",
+        // Google reCAPTCHA v3 — Secret nur aus Server-Umgebung / .env, nie hardcoden.
+        // Auf dem Server in artifacts/api-server/.env setzen: RECAPTCHA_SECRET_KEY=…
+        // Optional Score-Schwelle (Default 0.5): RECAPTCHA_MIN_SCORE=0.5
+        ...(process.env.RECAPTCHA_SECRET_KEY
+          ? { RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY }
+          : {}),
+        ...(process.env.RECAPTCHA_MIN_SCORE
+          ? { RECAPTCHA_MIN_SCORE: process.env.RECAPTCHA_MIN_SCORE }
+          : {}),
       },
     },
     {

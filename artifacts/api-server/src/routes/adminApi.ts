@@ -301,6 +301,7 @@ import {
   sendPartnerRegistrationRejectionEmail,
 } from "../lib/partnerApprovalMail";
 import { logger } from "../lib/logger";
+import { RECAPTCHA_FAIL_MESSAGE_DE, verifyRecaptchaV3 } from "../lib/recaptchaVerify";
 import { passengerEmailForAdmin, retryOperatorRidePaymentCapture } from "../lib/ridePaymentRecovery";
 import adminInsuranceRouter from "./adminInsuranceApi";
 import adminKrankenInvoiceRouter from "./adminKrankenInvoiceRoutes";
@@ -486,6 +487,40 @@ const router: IRouter = Router();
 router.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
+  const recaptchaToken =
+    typeof req.body?.recaptchaToken === "string"
+      ? req.body.recaptchaToken
+      : typeof req.body?.recaptcha_token === "string"
+        ? req.body.recaptcha_token
+        : "";
+
+  const captcha = await verifyRecaptchaV3({
+    token: recaptchaToken,
+    remoteIp: req.ip,
+    expectedAction: "admin_login",
+  });
+  if (!captcha.ok) {
+    const loginAudit = process.env.ADMIN_AUTH_LOGIN_AUDIT === "1";
+    if (loginAudit) {
+      logger.warn(
+        {
+          event: "admin.auth.login",
+          outcome: "fail",
+          username: username || "(empty)",
+          clientIp: req.ip,
+          reason: "recaptcha_failed",
+          detail: captcha.reason,
+        },
+        "admin login recaptcha failed",
+      );
+    }
+    res.status(403).json({
+      error: "recaptcha_failed",
+      message: RECAPTCHA_FAIL_MESSAGE_DE,
+    });
+    return;
+  }
+
   const ok = await authenticateAdminCredentials(username, password);
   const loginAudit = process.env.ADMIN_AUTH_LOGIN_AUDIT === "1";
   if (!ok.ok) {

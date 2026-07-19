@@ -24,6 +24,7 @@ import PanelUsersPage from "./pages/PanelUsersPage.jsx";
 import AccessCodesPage from "./pages/AccessCodesPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import AdminUsersPage from "./pages/AdminUsersPage.jsx";
+import AdminLoginForm from "./components/AdminLoginForm.jsx";
 import AdminPasswordResetPage from "./pages/AdminPasswordResetPage.jsx";
 import AdminPlaceholderPage from "./pages/AdminPlaceholderPage.jsx";
 import FinanceDashboardPage from "./pages/FinanceDashboardPage.jsx";
@@ -397,9 +398,6 @@ export default function App() {
   const [active, setActive] = useState("dashboard");
   const [authBooting, setAuthBooting] = useState(true);
   const [authUser, setAuthUser] = useState(null);
-  const [authForm, setAuthForm] = useState({ username: "", password: "" });
-  const [authError, setAuthError] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
   const [loginRevealed, setLoginRevealed] = useState(false);
   const spacePressCountRef = useRef(0);
   const spaceResetTimerRef = useRef(0);
@@ -710,50 +708,11 @@ export default function App() {
     };
   }, [authBooting, authUser]);
 
-  async function onLogin(e) {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError("");
-    try {
-      const res = await fetch(`${API_BASE}/admin/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: authForm.username.trim(),
-          password: authForm.password,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok || typeof data?.token !== "string") {
-        if (data?.error === "invalid_credentials") {
-          setAuthError("Benutzername oder Passwort falsch.");
-        } else if (data?.error === "auth_bootstrap_persist_failed") {
-          setAuthError("Bootstrap-Login konnte nicht in die DB übernommen werden. Bitte Server-Logs prüfen.");
-        } else {
-          setAuthError("Login fehlgeschlagen.");
-        }
-        return;
-      }
-      setAdminSessionToken(data.token);
-      if (!getAdminSessionToken()) {
-        setAuthError("Ungültiges Admin-Token — bitte erneut anmelden.");
-        return;
-      }
-      setAuthUser(data.user ?? null);
-      setAuthForm({ username: "", password: "" });
-      adminInitialRouteAppliedRef.current = false;
-      const role = data.user?.role ?? "admin";
-      const hash = buildAdminAppHash({
-        active: firstAllowedAdminPage(role) || "dashboard",
-        companiesListTab: "all",
-      });
-      adminHistorySkipPushRef.current = true;
-      window.history.replaceState({ adminApp: 1 }, "", adminAppHistoryHref(hash));
-    } catch {
-      setAuthError("Login fehlgeschlagen.");
-    } finally {
-      setAuthLoading(false);
-    }
+  async function onLoginSuccess({ user, hash }) {
+    setAuthUser(user);
+    adminInitialRouteAppliedRef.current = false;
+    adminHistorySkipPushRef.current = true;
+    window.history.replaceState({ adminApp: 1 }, "", adminAppHistoryHref(hash));
   }
 
   function renderPage() {
@@ -1009,36 +968,7 @@ export default function App() {
     ) {
       return <div className="admin-gate-blank" aria-hidden="true" />;
     }
-    return (
-      <div className="admin-page" style={{ maxWidth: 460, margin: "40px auto" }}>
-        <div className="admin-panel-card">
-          <div className="admin-panel-card__title">Admin-Login</div>
-          <form onSubmit={onLogin} className="admin-form-vertical">
-            <input
-              className="admin-input"
-              placeholder="Benutzername"
-              value={authForm.username}
-              onChange={(e) => setAuthForm((p) => ({ ...p, username: e.target.value }))}
-              autoComplete="username"
-              required
-            />
-            <input
-              className="admin-input"
-              placeholder="Passwort"
-              type="password"
-              value={authForm.password}
-              onChange={(e) => setAuthForm((p) => ({ ...p, password: e.target.value }))}
-              autoComplete="current-password"
-              required
-            />
-            {authError ? <div className="admin-error-banner">{authError}</div> : null}
-            <button type="submit" className="admin-btn-primary" disabled={authLoading}>
-              {authLoading ? "Anmeldung …" : "Anmelden"}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
+    return <AdminLoginForm onSuccess={onLoginSuccess} />;
   }
 
   return (
