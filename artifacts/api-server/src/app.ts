@@ -328,6 +328,14 @@ app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
   return next();
 });
 
+app.get("/konto-loeschen", (req, res, next) => {
+  const host = hostname(req);
+  if (host === "onroda.de" || host === "www.onroda.de") {
+    return res.sendFile(path.join(staticRoot, "konto-loeschen.html"), (err) => { if (err) next(err); });
+  }
+  return next();
+});
+
 app.get("/fixpreise", (req, res, next) => {
   const host = hostname(req);
   if (host === "onroda.de" || host === "www.onroda.de") {

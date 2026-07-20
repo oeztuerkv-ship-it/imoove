@@ -21,6 +21,9 @@ grep -qF "Widerrufsrecht" "${STATIC}/agb.html" || err "agb.html: erwarteter Mark
 [[ -f "${STATIC}/fixpreise/index.html" ]] || err "Fehlt: ${STATIC}/fixpreise/index.html (Nginx try_files /fixpreise)"
 
 grep -qF 'id="fixpreis-page-title"' "${STATIC}/fixpreise/index.html" || err "fixpreise/index.html: erwarteter Seiten-Marker fehlt"
+[[ -f "${STATIC}/konto-loeschen.html" ]] || err "Fehlt: ${STATIC}/konto-loeschen.html"
+grep -qF "Konto löschen" "${STATIC}/konto-loeschen.html" || err "konto-loeschen.html: erwarteter Titel fehlt"
+grep -qF "14 Tagen" "${STATIC}/konto-loeschen.html" || err "konto-loeschen.html: Bearbeitungsdauer fehlt"
 
 grep -qF "Status Ihrer Partner-Registrierung" "$STATUS" || err "partner-status.html: erwarteter Titel-Text fehlt"
 grep -qF "registration-request" "$STATUS" || err "partner-status.html: API-Pfad-Hinweis fehlt"
@@ -42,5 +45,8 @@ if [[ -n "${LIVE_MARKETING_ROOT:-}" ]]; then
   L_AGB="${LIVE_MARKETING_ROOT%/}/agb.html"
   [[ -f "$L_AGB" ]] || err "Live-Webroot: fehlt $L_AGB — rsync aus artifacts/marketing-site/ ausführen"
   grep -qF "Widerrufsrecht" "$L_AGB" || err "Live agb.html: Inhalt unplausibel (Marker Widerrufsrecht fehlt)"
+  L_DELETE="${LIVE_MARKETING_ROOT%/}/konto-loeschen.html"
+  [[ -f "$L_DELETE" ]] || err "Live-Webroot: fehlt $L_DELETE — rsync aus artifacts/marketing-site/ ausführen"
+  grep -qF "Konto löschen" "$L_DELETE" || err "Live konto-loeschen.html: Inhalt unplausibel"
   echo "verify-onroda-marketing-partner-status-repo: OK (LIVE_MARKETING_ROOT=${LIVE_MARKETING_ROOT})"
 fi
