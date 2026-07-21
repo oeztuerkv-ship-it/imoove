@@ -949,6 +949,55 @@
       background: #ffffff;
     }
 
+    /* Classic + Van: unter der sticky Navi, über dem Hero-Text */
+    .hp-hero-taxi-lane {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0.35rem;
+      height: clamp(52px, 7vw, 72px);
+      z-index: 6;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .hp-hero-taxi {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      height: clamp(40px, 5.2vw, 56px);
+      width: auto;
+      max-width: none;
+      object-fit: contain;
+      will-change: transform;
+      filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.12));
+    }
+
+    .hp-hero-taxi--classic {
+      animation: hp-hero-taxi-ltr 22s linear infinite;
+    }
+
+    .hp-hero-taxi--van {
+      height: clamp(44px, 5.8vw, 62px);
+      animation: hp-hero-taxi-ltr 22s linear infinite;
+      animation-delay: 11s;
+    }
+
+    @keyframes hp-hero-taxi-ltr {
+      from {
+        transform: translate3d(-30vw, -50%, 0);
+      }
+      to {
+        transform: translate3d(110vw, -50%, 0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hp-hero-taxi-lane {
+        display: none;
+      }
+    }
+
     .hp-hero-layout {
       display: grid;
       grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.98fr);
