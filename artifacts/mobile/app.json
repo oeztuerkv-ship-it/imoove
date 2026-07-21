@@ -4,6 +4,12 @@
     "owner": "oeztuerkv-ship-it",
     "slug": "mobile",
     "version": "1.0.1",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d26d59ac-9c12-4d1b-baa1-f30b9398cfef"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "onroda",
