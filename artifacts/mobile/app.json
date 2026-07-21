@@ -3,7 +3,7 @@
     "name": "ONRODA",
     "owner": "oeztuerkv-ship-it",
     "slug": "mobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -23,7 +23,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
-      "buildNumber": "40",
+      "buildNumber": "41",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
         "NSCameraUsageDescription": "ONRODA nutzt die Kamera zum Scannen von Transportscheinen und Fahrt-QR-Codes.",
