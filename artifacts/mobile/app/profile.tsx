@@ -29,6 +29,7 @@ import {
   CustomerLegalConsentModal,
   CustomerLegalLinksFooter,
 } from "@/components/CustomerLegalConsent";
+import { LoginLogoTaxiDrive } from "@/components/LoginLogoTaxiDrive";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { formatAppVersionLabel } from "@/utils/appVersionLabel";
 import {
@@ -2098,7 +2099,12 @@ export default function ProfileScreen() {
           </>
         ) : (
           /* ══ NOT LOGGED IN ══ */
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View style={{ flex: 1 }}>
+            <LoginLogoTaxiDrive />
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
+            >
             <View style={[styles.loginSection, { paddingHorizontal: loginPadH }]}>
               {/* App branding */}
               <View style={styles.brandBlock}>
@@ -2720,6 +2726,7 @@ export default function ProfileScreen() {
               )}
             </View>
           </KeyboardAvoidingView>
+          </View>
         )}
 
         {/* ── Horizontal footer links ── */}

@@ -9,12 +9,6 @@ catalogs:
     '@tanstack/react-query':
       specifier: ^5.90.21
       version: 5.96.2
-    '@types/node':
-      specifier: ^25.3.3
-      version: 25.5.2
-    drizzle-orm:
-      specifier: ^0.45.1
-      version: 0.45.2
     react:
       specifier: ^19.1.0
       version: 19.1.0

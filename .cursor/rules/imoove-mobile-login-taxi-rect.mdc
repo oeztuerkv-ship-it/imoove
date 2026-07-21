@@ -1,0 +1,13 @@
+---
+description: ONRODA Login — Classic+Van Rechteck-Fahrt am Bildschirmrand
+globs: artifacts/mobile/components/LoginLogoTaxiDrive.tsx,artifacts/mobile/app/index.tsx,artifacts/mobile/app/profile.tsx
+alwaysApply: false
+---
+
+# Mobile: Login-Taxi-Overlay
+
+Classic + Van fahren langsam im **Rechteck** am Bildschirmrand (Onboarding + Profil-Login).
+
+- Komponente: `LoginLogoTaxiDrive` (~4,5 s pro Seite)
+- `pointerEvents="none"` — Buttons bleiben klickbar
+- Parent: full-screen (`absoluteFill` / `flex:1`), Overlay als erstes Kind

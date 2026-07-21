@@ -1,0 +1,13 @@
+---
+description: ONRODA Intro-Splash — offizielles Logo + Taxi unter Wordmark
+globs: artifacts/mobile/components/IntroSplash.tsx
+alwaysApply: false
+---
+
+# Mobile: Intro-Splash
+
+1. Offizielles Logo Fade-in  
+2. Classic-Taxi fährt geradeaus unter „ONRODA“  
+3. Pulse → Taxi weg → App  
+
+Session-Flag `globalThis.__onrodaIntroSplashShown`.
