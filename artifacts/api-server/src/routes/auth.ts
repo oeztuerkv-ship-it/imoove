@@ -586,7 +586,20 @@ router.post("/auth/apple/session", async (req, res) => {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[auth/apple/session] verify failed ms=${Date.now() - startedAt}:`, msg);
+    const isAud = err instanceof Error && err.name === "AppleAudMismatch";
+    console.warn(
+      `[auth/apple/session] verify failed ms=${Date.now() - startedAt}${isAud ? " aud_mismatch" : ""}:`,
+      msg,
+    );
+    if (isAud) {
+      res.status(401).json({
+        error: "apple_aud_mismatch",
+        message:
+          "Apple-Token-Audience passt nicht zur Server-Konfiguration (Bundle-ID vs. Services-ID).",
+        detail: msg,
+      });
+      return;
+    }
     res.status(401).json({ error: "invalid_apple_identity_token" });
   }
 });

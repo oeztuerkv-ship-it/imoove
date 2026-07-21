@@ -57,7 +57,9 @@ async function exchangeAppleTokenWithApi(opts: {
     throw new Error(
       code === "invalid_apple_identity_token"
         ? "Apple-Anmeldung konnte nicht verifiziert werden."
-        : code === "session_jwt_unconfigured"
+        : code === "apple_aud_mismatch"
+          ? "Apple-App-Konfiguration stimmt nicht mit dem Server überein (Bundle-ID). Bitte App-Update oder Support."
+          : code === "session_jwt_unconfigured"
           ? "Server: Session-JWT nicht konfiguriert (AUTH_JWT_SECRET)."
           : code === "account_deleted"
             ? "Dieses Konto wurde gelöscht und kann nicht erneut angemeldet werden."
