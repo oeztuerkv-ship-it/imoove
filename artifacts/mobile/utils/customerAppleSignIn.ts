@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 
 import { fetchAuthWithRetry, mapAuthNetworkFailure } from "@/utils/authNetworkRetry";
+import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 
 export type AppleSessionExchangeResult = {
   sessionToken: string;
@@ -66,12 +67,20 @@ async function exchangeAppleTokenWithApi(opts: {
             : `Apple-Anmeldung fehlgeschlagen (${code}).`,
     );
   }
+  const sessionToken = data.sessionToken.trim();
   const profile = data.profile ?? {};
+  const fromJwt = parseJwtPayloadUnsafe(sessionToken);
+  const googleId =
+    String(profile.googleId ?? "").trim() ||
+    (typeof fromJwt?.sub === "string" ? fromJwt.sub.trim() : "");
+  if (!googleId) {
+    throw new Error("Ungültiges Session-Token von der API (kein passenger_id).");
+  }
   return {
-    sessionToken: data.sessionToken.trim(),
-    googleId: String(profile.googleId ?? "").trim(),
-    name: String(profile.name ?? "").trim(),
-    email: String(profile.email ?? "").trim(),
+    sessionToken,
+    googleId,
+    name: String(profile.name ?? fromJwt?.name ?? "").trim(),
+    email: String(profile.email ?? fromJwt?.email ?? "").trim(),
     photoUri: null,
   };
 }

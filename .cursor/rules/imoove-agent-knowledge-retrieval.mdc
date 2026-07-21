@@ -33,6 +33,7 @@ Der Nutzer erwartet: **nicht nur den aktuellen Diff**, sondern **bekanntes Syste
 | Touch | Zusätzlich lesen |
 |-------|------------------|
 | Bestehende API-Route, neues Pflichtfeld, Mobile-Validierung | **`imoove-api-mobile-backward-compatibility.mdc`** |
+| Kunden Apple/Google-Login, Session, Legal-Consent, Onboarding bleibt | **`imoove-mobile-customer-oauth-session.mdc`** |
 | `RideRequestContext`, Poll, Markt | Ghost-Orders + Notifications |
 | `dashboard.tsx`, ONLINE, Banner | Ghost-Orders + Notifications |
 | `status.tsx`, Kunde wartet | **`imoove-mobile-live-ride-flows.mdc`** + Destination-Navigation + Notifications |

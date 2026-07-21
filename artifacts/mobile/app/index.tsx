@@ -758,6 +758,9 @@ export default function HomeScreen() {
         sessionToken: session.sessionToken,
       });
       await clearPendingOAuthSession();
+      if (__DEV__) {
+        console.log("[OAuth] session applied, isLoggedIn should flip via UserContext");
+      }
     },
     [loginWithGoogle],
   );
@@ -781,6 +784,7 @@ export default function HomeScreen() {
         await applyOAuthSession(gate.session);
         return;
       }
+      // Ohne gespeicherte AGB: Modal — Abbruch lässt den Nutzer bewusst auf dem Login-Screen.
       setPendingOAuthSession(gate.session);
       await savePendingOAuthSession(gate.session);
       setLegalConsentModalVisible(true);

@@ -212,22 +212,39 @@ function mergeCustomerAuthSession(
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [profileHydrated, setProfileHydrated] = useState(false);
+  const profileRef = React.useRef(profile);
+  profileRef.current = profile;
 
   useEffect(() => {
+    let cancelled = false;
     AsyncStorage.getItem(PROFILE_KEY)
       .then((raw) => {
-        if (raw?.trim()) {
-          try {
-            setProfile(JSON.parse(raw) as UserProfile);
-          } catch {
-            void AsyncStorage.removeItem(PROFILE_KEY);
-          }
+        if (cancelled || !raw?.trim()) return;
+        try {
+          const parsed = JSON.parse(raw) as UserProfile;
+          setProfile((current) => {
+            // Späte Hydration darf eine frische In-Memory-Session nicht überschreiben
+            // (Race: Apple/Google-Login vor Abschluss von getItem nach Mount).
+            if (
+              current.isLoggedIn &&
+              typeof current.sessionToken === "string" &&
+              current.sessionToken.trim().length > 0
+            ) {
+              return current;
+            }
+            return parsed;
+          });
+        } catch {
+          void AsyncStorage.removeItem(PROFILE_KEY);
         }
       })
       .catch(() => {})
       .finally(() => {
-        setProfileHydrated(true);
+        if (!cancelled) setProfileHydrated(true);
       });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -239,30 +256,43 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, [profile.isLoggedIn, profile.sessionToken, profile.googleId]);
 
-  const save = useCallback((updated: UserProfile) => {
-    setProfile(updated);
-    AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updated)).catch(() => {});
+  const persistProfile = useCallback(async (updated: UserProfile): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
+    } catch {
+      /* Storage voll / transient — In-Memory-State bleibt Quelle bis zum nächsten Write */
+    }
   }, []);
 
-  const updateProfile = useCallback((updates: Partial<UserProfile>) => {
-    setProfile((prev) => {
-      const updated = { ...prev, ...updates };
-      AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updated)).catch(() => {});
-      return updated;
-    });
-  }, []);
+  const save = useCallback(
+    (updated: UserProfile) => {
+      setProfile(updated);
+      void persistProfile(updated);
+    },
+    [persistProfile],
+  );
 
-  const loginWithGoogle = useCallback((data: Partial<UserProfile> | Record<string, unknown>): Promise<void> => {
-    const incoming = data as Partial<UserProfile>;
-    return new Promise((resolve) => {
+  const updateProfile = useCallback(
+    (updates: Partial<UserProfile>) => {
       setProfile((prev) => {
-        const merged = mergeOAuthSessionIntoProfile(prev, incoming);
-        AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(merged)).catch(() => {});
-        resolve();
-        return merged;
+        const updated = { ...prev, ...updates };
+        void persistProfile(updated);
+        return updated;
       });
-    });
-  }, []);
+    },
+    [persistProfile],
+  );
+
+  const loginWithGoogle = useCallback(
+    async (data: Partial<UserProfile> | Record<string, unknown>): Promise<void> => {
+      const incoming = data as Partial<UserProfile>;
+      const merged = mergeOAuthSessionIntoProfile(profileRef.current, incoming);
+      profileRef.current = merged;
+      setProfile(merged);
+      await persistProfile(merged);
+    },
+    [persistProfile],
+  );
 
   const registerLocalCustomer = useCallback(
     (data: { name: string; email: string; phone: string }, options?: { emailVerificationProofToken?: string }) => {
@@ -283,16 +313,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [save],
   );
 
-  const applyCustomerSession = useCallback((customer: CustomerAuthDto, sessionToken: string): Promise<void> => {
-    return new Promise((resolve) => {
-      setProfile((prev) => {
-        const merged = mergeCustomerAuthSession(prev, customer, sessionToken);
-        AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(merged)).catch(() => {});
-        resolve();
-        return merged;
-      });
-    });
-  }, []);
+  const applyCustomerSession = useCallback(
+    async (customer: CustomerAuthDto, sessionToken: string): Promise<void> => {
+      const merged = mergeCustomerAuthSession(profileRef.current, customer, sessionToken);
+      profileRef.current = merged;
+      setProfile(merged);
+      await persistProfile(merged);
+    },
+    [persistProfile],
+  );
 
   const loginWithEmailAccount = useCallback(
     async (data: {
@@ -361,15 +390,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           phone: data.phone.trim(),
           isLoggedIn: true,
         };
-        AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updated)).catch(() => {});
+        profileRef.current = updated;
+        void persistProfile(updated);
         return updated;
       });
     },
-    [],
+    [persistProfile],
   );
 
   const logout = useCallback(async () => {
     await performCustomerLogout();
+    profileRef.current = DEFAULT_PROFILE;
     setProfile(DEFAULT_PROFILE);
   }, []);
 

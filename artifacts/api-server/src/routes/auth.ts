@@ -3,7 +3,10 @@ import { Router, type Request, type Response } from "express";
 import { createHash, randomBytes } from "crypto";
 import { getFirebaseAuth, isFirebaseAdminConfigured } from "../lib/firebaseAdmin";
 import { upsertPassengerProfile } from "../db/passengerProfilesData";
-import { assertPassengerMayAuthenticate } from "../db/passengerProfileDeletionData";
+import {
+  assertPassengerMayAuthenticate,
+  findPassengerProfile,
+} from "../db/passengerProfileDeletionData";
 import { applePassengerSubject, verifyAppleIdentityToken } from "../lib/appleSignInVerify";
 import {
   isSessionJwtConfigured,
@@ -559,18 +562,21 @@ router.post("/auth/apple/session", async (req, res) => {
     }
 
     const email = verified.email ?? clientEmail;
-    const sessionToken = await signSessionJwt({
-      googleId: passengerId,
-      name: fullName,
-      email,
-      photoUri: null,
-    });
-    void upsertPassengerProfile({
+    await upsertPassengerProfile({
       passengerId,
       name: fullName,
       email,
       authProvider: "apple",
-    }).catch(() => undefined);
+    });
+    const stored = await findPassengerProfile(passengerId);
+    const profileName = fullName || (stored?.name ?? "").trim();
+    const profileEmail = email || (stored?.email ?? "").trim();
+    const sessionToken = await signSessionJwt({
+      googleId: passengerId,
+      name: profileName,
+      email: profileEmail,
+      photoUri: null,
+    });
     console.info(
       `[auth/apple/session] ok passenger=${passengerId.slice(0, 24)}… ms=${Date.now() - startedAt}`,
     );
@@ -579,8 +585,8 @@ router.post("/auth/apple/session", async (req, res) => {
       sessionToken,
       profile: {
         googleId: passengerId,
-        name: fullName,
-        email,
+        name: profileName,
+        email: profileEmail,
         photoUri: null,
       },
     });

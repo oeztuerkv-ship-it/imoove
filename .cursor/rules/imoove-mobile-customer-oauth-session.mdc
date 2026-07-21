@@ -1,0 +1,50 @@
+---
+description: Kunden-OAuth (Apple/Google) — Session speichern, Legal-Gate, kein „Login ok aber Start-Screen“
+globs: artifacts/mobile/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Mobile: Kunden-OAuth-Session (Apple/Google)
+
+## Symptom
+
+Server-Log zeigt `[auth/apple/session] ok` (200) und oft danach `legal-status` 200 — Nutzer bleibt aber auf dem **Login-/Onboarding-Screen** (`showOnboarding`), als wäre nichts passiert.
+
+## Kein Auth-Bug (wenn Session 200)
+
+Die API hat das JWT ausgestellt. Der Fehler liegt im **Client-State / Persistenz / Legal-Gate**:
+
+1. **Hauptmenü = kein Router-Push** — Home (`app/index.tsx`) blendet Onboarding aus, sobald `profile.isLoggedIn` (UserContext). Kein `router.replace` nötig.
+2. **Session nur in AsyncStorage** (`@taxi24_user_profile`), **kein SecureStore**.
+3. **Legal-Gate:** Nach Session ruft `finalizeCustomerOAuthSession` → `GET /auth/customer/legal-status` auf.
+   - `hasConsent: true` → `loginWithGoogle` / `applyOAuthSession`
+   - `hasConsent: false` → Consent-Modal; **Abbrechen = bewusst weiter ausgeloggt** (Start-Screen). HTTP 200 auf legal-status allein heißt nicht „eingeloggt“.
+
+## Bekannte Races (nicht wieder einführen)
+
+| Race | Wirkung |
+|------|---------|
+| `loginWithGoogle` resolved **vor** `AsyncStorage.setItem` | Spätere Leser / Remount sehen keine Session |
+| Hydrate-`getItem` nach Mount überschreibt frische In-Memory-Session | Login wirkt „weg“ |
+| Apple liefert Name/E-Mail nur beim **ersten** Gerätelogin | Response/JWT ohne Name — Session trotzdem gültig (`sub` = `apple:…`) |
+
+## Verbindliche Invarianten
+
+- `loginWithGoogle` / `applyCustomerSession`: **zuerst** State setzen, **`await` Persistenz** (`persistProfile`), dann weiter.
+- Hydration: gespeichertes Profil **nicht** anwenden, wenn aktuell schon `isLoggedIn` + `sessionToken`.
+- Apple-Client: `googleId` aus API-Profil **oder** JWT `sub` (`customerAppleSignIn.ts`).
+- Apple-API: `upsertPassengerProfile` **await**, Name/E-Mail aus DB nachreichen (`POST /auth/apple/session`).
+
+## Dateien
+
+- `artifacts/mobile/context/UserContext.tsx` — Persistenz + Hydrate-Guard
+- `artifacts/mobile/utils/customerAppleSignIn.ts` / `completeCustomerOAuthSession.ts`
+- `artifacts/mobile/app/index.tsx` / `app/profile.tsx` — OAuth-Handler
+- `artifacts/api-server/src/routes/auth.ts` — Apple-Session
+
+## Abnahme
+
+- Wiederkehrender Apple-Login (Consent schon gesetzt): Onboarding verschwindet ohne Modal.
+- Erstanmeldung ohne Consent: Modal „Konto abschließen“; nach Akzeptieren eingeloggt.
+- Nach Kill+Cold start: Session noch da (AsyncStorage).
+---
