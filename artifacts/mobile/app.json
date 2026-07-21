@@ -23,7 +23,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
-      "buildNumber": "35",
+      "buildNumber": "40",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
         "NSCameraUsageDescription": "ONRODA nutzt die Kamera zum Scannen von Transportscheinen und Fahrt-QR-Codes.",
@@ -56,7 +56,7 @@
     },
     "android": {
       "package": "com.vedat.Onroda",
-      "versionCode": 4,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"

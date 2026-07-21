@@ -30,6 +30,7 @@ import {
   CustomerLegalLinksFooter,
 } from "@/components/CustomerLegalConsent";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
+import { formatAppVersionLabel } from "@/utils/appVersionLabel";
 import {
   accountSheetPrimaryLabel,
   accountSheetInputText,
@@ -2735,6 +2736,13 @@ export default function ProfileScreen() {
             <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Datenschutz</Text>
           </Pressable>
         </View>
+        <Text
+          style={[styles.appVersionLabel, { color: colors.mutedForeground }]}
+          accessibilityRole="text"
+          accessibilityLabel={formatAppVersionLabel()}
+        >
+          {formatAppVersionLabel()}
+        </Text>
 
       </ScrollView>
       <CustomerLegalConsentModal
@@ -3058,4 +3066,12 @@ const styles = StyleSheet.create({
   footerLinkBtn: { paddingVertical: rs(6), paddingHorizontal: rs(4) },
   footerLinkText: { fontSize: rf(12), fontFamily: "Inter_400Regular" },
   footerSep: { fontSize: rf(12), fontFamily: "Inter_400Regular" },
+  appVersionLabel: {
+    textAlign: "center",
+    fontSize: rf(11),
+    fontFamily: "Inter_400Regular",
+    marginTop: rs(10),
+    marginBottom: rs(8),
+    paddingHorizontal: rs(16),
+  },
 });
