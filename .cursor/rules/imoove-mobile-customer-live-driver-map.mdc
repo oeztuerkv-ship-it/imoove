@@ -1,0 +1,43 @@
+---
+description: Kunden-Live-Karte — sanfte Fahrer-Interpolation, Bearing-Rotation, Camera-Follow
+globs: artifacts/mobile/components/RealMapView.native.tsx,artifacts/mobile/hooks/useSmoothedDriverMarker.ts,artifacts/mobile/utils/liveDriverMarkerMotion.ts
+alwaysApply: false
+---
+
+# Mobile Kunde: Live-Fahrer auf der Karte (MVP)
+
+## Scope (bewusst client-only)
+
+| Dabei | Nicht (später) |
+|-------|----------------|
+| Interpolation zwischen zwei GPS-Fixes (`AnimatedRegion`) | Server-Heading |
+| Icon-Rotation aus Bearing der letzten zwei Punkte | Snap-to-road |
+| Sanfteres Camera-Follow (Throttle + längere `animateCamera`) | Prediction / Dead Reckoning |
+
+Quelle der Wahrheit bleibt WS `location:driver:update` + HTTP-Poll in `app/status.tsx` — **kein** API-Umbau.
+
+## Dateien
+
+- `utils/liveDriverMarkerMotion.ts` — Haversine, Bearing, Tween-Dauer (rein, testbar)
+- `hooks/useSmoothedDriverMarker.ts` — AnimatedRegion-Tween + Rotation
+- `components/RealMapView.native.tsx` — Auto-Icon, soft follow
+- Smoke: `npx tsx artifacts/mobile/utils/liveDriverMarkerMotion.selftest.ts`
+
+## Invarianten
+
+1. **fitMap** bei Live-Follow **nicht** an jedes `driverMarker`-Tick binden — sonst Sprung durch wiederholtes `fitToCoordinates` / hartes Camera-Reset.
+2. Soft follow: nach Bootstrap (`fitMap` einmal) → `animateCamera` auf neues Fix, min. Intervall ~400 ms, Dauer ≈ Marker-Tween (~0,7–2,2 s).
+3. Sprung &gt; ~180 m → **snap** (kein Tween).
+4. **iOS = Apple Maps:** `Marker.rotation` / `flat` unzuverlässig → Kind-View `transform: rotate(bearing)`.
+5. Optional `driverMarker.heading` nutzen, wenn gesetzt; sonst Bearing aus Fixes.
+
+## Abnahme (Gerät)
+
+1. Fahrt aktiv (`/status`), Fahrer bewegt sich → Auto gleitet, springt nicht pro Fix.
+2. Richtung ändert sich mit Fahrtrichtung (nach ≥ ~1,5 m Bewegung).
+3. Kamera folgt weicher, ohne ständiges „Nachziehen“/Zoom-Reset.
+4. Partner-Track (`app/partner/track.tsx`) erbt dasselbe `RealMapView`-Verhalten.
+
+## Abgrenzung
+
+Fahrer-Navi-Follow (`driver/navigation.tsx`) ist **getrennt** — siehe `imoove-mobile-driver-nav-gps-follow.mdc`.

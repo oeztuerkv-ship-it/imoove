@@ -1,8 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { StyleSheet } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import MapView, { Marker, MarkerAnimated, Polyline } from "react-native-maps";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+import { useSmoothedDriverMarker } from "@/hooks/useSmoothedDriverMarker";
 import { useColors } from "@/hooks/useColors";
+import {
+  LIVE_DRIVER_CAMERA_DURATION_MS,
+  LIVE_DRIVER_CAMERA_MIN_INTERVAL_MS,
+} from "@/utils/liveDriverMarkerMotion";
 import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { nativeMapViewProps } from "@/utils/nativeMapProvider";
 import { type GeoLocation } from "@/utils/routing";
@@ -57,7 +63,7 @@ interface RealMapViewProps {
   polyline?: [number, number][];
   style?: object;
   centerKey?: number;
-  driverMarker?: { lat: number; lon: number } | null;
+  driverMarker?: { lat: number; lon: number; heading?: number } | null;
   customerLiveMarker?: { lat: number; lon: number } | null;
   followLiveDriver?: boolean;
   edgePaddingTop?: number;
@@ -84,6 +90,20 @@ export function RealMapView({
   const colors = useColors();
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
+  const lastLiveCameraAtRef = useRef(0);
+  const liveFollowBootstrappedRef = useRef(false);
+
+  const { animatedCoordinate, rotation, cameraTarget, tweenDurationMs } =
+    useSmoothedDriverMarker(driverMarker);
+
+  /** Apple Maps ignores Marker.rotation — rotate the child View instead. */
+  const [tracksDriverView, setTracksDriverView] = useState(true);
+  useEffect(() => {
+    if (!animatedCoordinate) return;
+    setTracksDriverView(true);
+    const t = setTimeout(() => setTracksDriverView(false), 450);
+    return () => clearTimeout(t);
+  }, [animatedCoordinate, rotation]);
 
   const fitMap = useCallback(() => {
     if (!mapRef.current) return;
@@ -99,6 +119,7 @@ export function RealMapView({
         ? { latitude: driverMarker.lat, longitude: driverMarker.lon }
         : null;
 
+    // Live follow: only initial / route-anchor fit here — continuous follow is soft camera below.
     if (followLiveDriver && driverPoint) {
       const liveCoords = [driverPoint];
       if (originPoint) liveCoords.push(originPoint);
@@ -112,11 +133,13 @@ export function RealMapView({
       if (liveCoords.length === 1) {
         mapRef.current.animateCamera(
           { center: driverPoint, pitch: 0, heading: 0, zoom: LIVE_TRACKING_CAMERA_ZOOM },
-          { duration: 600 },
+          { duration: LIVE_DRIVER_CAMERA_DURATION_MS },
         );
       } else {
         mapRef.current.fitToCoordinates(liveCoords, { edgePadding: livePadding, animated: true });
       }
+      liveFollowBootstrappedRef.current = true;
+      lastLiveCameraAtRef.current = Date.now();
       return;
     }
 
@@ -192,9 +215,9 @@ export function RealMapView({
     userLocation?.lat,
     userLocation?.lon,
     followLiveDriver,
-    driverMarker?.lat,
-    driverMarker?.lon,
+    // Intentionally omit driverMarker lat/lon — soft camera handles live updates.
     compactFit,
+    Boolean(driverMarker),
   ]);
 
   const handleMapReady = useCallback(() => {
@@ -209,8 +232,75 @@ export function RealMapView({
 
   useEffect(() => {
     if (!mapReadyRef.current) return;
+    if (followLiveDriver) {
+      liveFollowBootstrappedRef.current = false;
+    }
     fitMap();
   }, [fitMap, centerKey]);
+
+  // Soft camera follow: throttled per GPS fix (not via fitMap deps — that caused jump/refit).
+  useEffect(() => {
+    if (!followLiveDriver || !mapReadyRef.current || !mapRef.current || !cameraTarget) {
+      return;
+    }
+    if (!liveFollowBootstrappedRef.current) {
+      return;
+    }
+    const now = Date.now();
+    if (now - lastLiveCameraAtRef.current < LIVE_DRIVER_CAMERA_MIN_INTERVAL_MS) {
+      return;
+    }
+    lastLiveCameraAtRef.current = now;
+
+    const originPoint = toMapPoint(origin);
+    const destPoint = toMapPoint(destination);
+    if (originPoint || destPoint) {
+      const liveCoords = [cameraTarget];
+      if (originPoint) liveCoords.push(originPoint);
+      if (destPoint) liveCoords.push(destPoint);
+      mapRef.current.fitToCoordinates(liveCoords, {
+        edgePadding: {
+          top: Math.max(56, edgePaddingTop - 48),
+          right: 44,
+          bottom: Math.max(140, edgePaddingBottom - 80),
+          left: 44,
+        },
+        animated: true,
+      });
+      return;
+    }
+
+    const duration = Math.max(
+      LIVE_DRIVER_CAMERA_DURATION_MS,
+      tweenDurationMs > 0 ? tweenDurationMs : LIVE_DRIVER_CAMERA_DURATION_MS,
+    );
+    mapRef.current.animateCamera(
+      {
+        center: cameraTarget,
+        pitch: 0,
+        heading: 0,
+        zoom: LIVE_TRACKING_CAMERA_ZOOM,
+      },
+      { duration },
+    );
+  }, [
+    followLiveDriver,
+    cameraTarget?.latitude,
+    cameraTarget?.longitude,
+    tweenDurationMs,
+    origin?.lat,
+    origin?.lon,
+    destination?.lat,
+    destination?.lon,
+    edgePaddingTop,
+    edgePaddingBottom,
+  ]);
+
+  useEffect(() => {
+    if (!followLiveDriver) {
+      liveFollowBootstrappedRef.current = false;
+    }
+  }, [followLiveDriver]);
 
   const routeCoords = useMemo(() => {
     if (polyline && polyline.length >= 2) {
@@ -263,12 +353,19 @@ export function RealMapView({
           pinColor="#EF4444"
         />
       )}
-      {driverMarker && isValidMapCoord(driverMarker.lat, driverMarker.lon) && (
-        <Marker
-          coordinate={{ latitude: driverMarker.lat, longitude: driverMarker.lon }}
+      {animatedCoordinate && (
+        <MarkerAnimated
+          coordinate={animatedCoordinate}
           title="Ihr Fahrer"
-          pinColor="#2563EB"
-        />
+          anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={tracksDriverView}
+        >
+          <View style={styles.driverIconWrap}>
+            <View style={{ transform: [{ rotate: `${rotation}deg` }] }}>
+              <MaterialCommunityIcons name="car" size={30} color="#1D4ED8" />
+            </View>
+          </View>
+        </MarkerAnimated>
       )}
       {customerLiveMarker && isValidMapCoord(customerLiveMarker.lat, customerLiveMarker.lon) && (
         <Marker
@@ -287,3 +384,21 @@ export function RealMapView({
     </MapView>
   );
 }
+
+const styles = StyleSheet.create({
+  driverIconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderWidth: 2,
+    borderColor: "#2563EB",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+});

@@ -39,6 +39,7 @@ Der Nutzer erwartet: **nicht nur den aktuellen Diff**, sondern **bekanntes Syste
 | `RideRequestContext`, Poll, Markt | Ghost-Orders + Notifications |
 | `dashboard.tsx`, ONLINE, Banner | Ghost-Orders + Notifications |
 | `status.tsx`, Kunde wartet | **`imoove-mobile-live-ride-flows.mdc`** + Destination-Navigation + Notifications |
+| Kunden-Karte Live-Fahrer (`RealMapView`, Marker glatt) | **`imoove-mobile-customer-live-driver-map.mdc`** |
 | `driver/navigation`, Stack, RESET | **`imoove-mobile-live-ride-flows.mdc`** (nur `dismissTo`, kein Bridge-RESET) |
 | `SessionRestoreCoordinator` | **`imoove-mobile-live-ride-flows.mdc`** + Ghost-Orders wenn Markt |
 | Push-Token / Expo | Notifications + `passengerExpoPushData` / `fleetDriverExpoPushData` |
