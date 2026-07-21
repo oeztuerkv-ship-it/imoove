@@ -1,4 +1,3 @@
-import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +12,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BookingDateTimePicker } from "@/components/booking/BookingDateTimePicker";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
+import { useColors } from "@/hooks/useColors";
 import type { PartnerBookMode } from "@/utils/partnerInstantBooking";
 import { defaultPartnerReservationTime } from "@/utils/partnerInstantBooking";
 import { RESERVATION_LEAD_MS } from "@/utils/partnerScheduling";
@@ -32,6 +33,7 @@ type Props = {
 
 export function PartnerOrderSheet({ visible, fromLabel, toLabel, submitting, onClose, onConfirm }: Props) {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const [mode, setMode] = useState<PartnerBookMode>("now");
   const [note, setNote] = useState("");
   const [reservationAt, setReservationAt] = useState(() => defaultPartnerReservationTime());
@@ -45,11 +47,6 @@ export function PartnerOrderSheet({ visible, fromLabel, toLabel, submitting, onC
       setShowPicker(false);
     }
   }, [visible]);
-
-  const onPickerChange = (_e: DateTimePickerEvent, value?: Date) => {
-    if (Platform.OS === "android") setShowPicker(false);
-    if (value) setReservationAt(value);
-  };
 
   const handleConfirm = () => {
     const scheduledAt = mode === "reservation" ? reservationAt.toISOString() : null;
@@ -110,26 +107,13 @@ export function PartnerOrderSheet({ visible, fromLabel, toLabel, submitting, onC
 
             {mode === "reservation" ? (
               <View style={styles.reservationBlock}>
-                {Platform.OS === "android" ? (
-                  <Pressable style={styles.dateBtn} onPress={() => setShowPicker(true)}>
-                    <Text style={styles.dateBtnText}>
-                      {new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(
-                        reservationAt,
-                      )}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {Platform.OS === "ios" || showPicker ? (
-                  <DateTimePicker
-                    value={reservationAt}
-                    mode="datetime"
-                    minimumDate={minReservation}
-                    onChange={onPickerChange}
-                    locale="de-DE"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
-                    style={Platform.OS === "ios" ? { height: 160 } : undefined}
-                  />
-                ) : null}
+                <Pressable style={styles.dateBtn} onPress={() => setShowPicker(true)}>
+                  <Text style={styles.dateBtnText}>
+                    {new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(
+                      reservationAt,
+                    )}
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
 
@@ -152,6 +136,19 @@ export function PartnerOrderSheet({ visible, fromLabel, toLabel, submitting, onC
           </Pressable>
         </KeyboardAvoidingView>
       </Pressable>
+
+      <BookingDateTimePicker
+        visible={showPicker}
+        value={reservationAt}
+        minimumDate={minReservation}
+        title="Abholtermin"
+        onClose={() => setShowPicker(false)}
+        onConfirm={(d) => {
+          setReservationAt(d);
+          setShowPicker(false);
+        }}
+        colors={colors}
+      />
     </Modal>
   );
 }
@@ -177,70 +174,80 @@ const styles = StyleSheet.create({
   },
   routeValue: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#374151", marginBottom: 10, lineHeight: 22 },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
+    color: "#374151",
     marginBottom: 8,
   },
   noteInput: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 12,
     minHeight: 72,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
     color: "#111",
     textAlignVertical: "top",
   },
-  noteCount: { fontSize: 11, color: "#9CA3AF", textAlign: "right", marginTop: 4, marginBottom: 12 },
+  noteCount: {
+    alignSelf: "flex-end",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#9CA3AF",
+    marginTop: 4,
+    marginBottom: 12,
+  },
   modeRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
   modeBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    padding: 12,
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: HOME_SHEET_RIM,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
   },
-  modeBtnActive: { borderColor: PARTNER_GREEN, backgroundColor: "rgba(21,128,61,0.08)" },
+  modeBtnActive: { borderColor: PARTNER_GREEN, backgroundColor: "#F0FDF4" },
   radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: "#9CA3AF",
+    borderColor: "#D1D5DB",
   },
   radioActive: { borderColor: PARTNER_GREEN, backgroundColor: PARTNER_GREEN },
   modeText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#111" },
-  reservationBlock: { marginBottom: 8 },
+  reservationBlock: { marginBottom: 12 },
   dateBtn: {
-    padding: 12,
-    borderRadius: 12,
     borderWidth: 1,
-    borderColor: HOME_SHEET_RIM,
-    backgroundColor: "#F9FAFB",
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: "#fff",
   },
-  dateBtnText: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#111" },
-  actions: { flexDirection: "row", gap: 10, marginTop: 16 },
+  dateBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#111" },
+  actions: { flexDirection: "row", gap: 10, marginTop: 8 },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: HOME_SHEET_RIM,
+    borderColor: "#E5E7EB",
+    paddingVertical: 14,
     alignItems: "center",
   },
-  cancelBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#374151" },
+  cancelBtnText: { fontFamily: "Inter_600SemiBold", color: "#6B7280", fontSize: 15 },
   confirmBtn: {
     flex: 1.2,
-    paddingVertical: 14,
     borderRadius: 12,
     backgroundColor: PARTNER_GREEN,
+    paddingVertical: 14,
     alignItems: "center",
+    justifyContent: "center",
   },
-  confirmBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  confirmBtnText: { fontFamily: "Inter_700Bold", color: "#fff", fontSize: 15 },
 });

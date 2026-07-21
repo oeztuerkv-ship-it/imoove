@@ -1,0 +1,34 @@
+---
+description: Android DateTimePicker — kein mode=datetime (Crash)
+globs: artifacts/mobile/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Mobile: DateTimePicker auf Android
+
+## Symptom
+
+Android-Crash beim Öffnen der Datumsauswahl (Reservierung / Abholtermin). UI oft ErrorBoundary „Something went wrong“.
+
+## Ursache
+
+`@react-native-community/datetimepicker`: **`mode="datetime"` ist iOS-only**. Auf Android → Crash/Native-Fehler.
+
+Plugin in `app.json` ist korrekt; der Crash kommt von der **falschen `mode`-Nutzung**, nicht vom fehlenden Plugin.
+
+## Fix / Invariante
+
+- Gemeinsame Komponente: `components/booking/BookingDateTimePicker.tsx`
+  - **iOS:** Modal + `mode="datetime"` + `display="spinner"`
+  - **Android:** `DateTimePickerAndroid.open` nacheinander `date` → `time` (kein `datetime`)
+- Kein zweites Inline-`mode="datetime"` in Screens (Fahrer `create-reservation`, Partner-Sheet, `new-booking`).
+- Krankenfahrten (`booking-medical`) schon getrennt `date`/`time` — so belassen.
+
+## Logs
+
+Kein Sentry/Crashlytics im Mobile-Repo. Diagnose: Repro auf Android + ErrorBoundary / Logcat.
+
+## Abnahme
+
+Android: Reservierung → Abholtermin tippen → System-Dialoge Datum/Uhrzeit, kein Crash.
+---

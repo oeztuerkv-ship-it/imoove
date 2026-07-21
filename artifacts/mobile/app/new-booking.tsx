@@ -1,5 +1,4 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import RNDateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { router, useFocusEffect, useLocalSearchParams, type Href } from "expo-router";
@@ -32,7 +31,7 @@ import {
 } from "@/constants/accountSheetTypography";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import { AddSearchFavoriteModal } from "@/components/AddSearchFavoriteModal";
-import { BookingDateTimePicker as SharedBookingDateTimePicker } from "@/components/booking/BookingDateTimePicker";
+import { BookingDateTimePicker } from "@/components/booking/BookingDateTimePicker";
 import { FixpreisDestinationQuickPicks } from "@/components/booking/FixpreisDestinationQuickPicks";
 import { LiveSearchResultGroup } from "@/components/booking/LiveSearchResultGroup";
 import { LiveSearchRouteCard } from "@/components/booking/LiveSearchRouteCard";
@@ -294,67 +293,6 @@ async function reverseGeocodeLatLon(lat: number, lon: number): Promise<SelectedA
 
 
 function pad(n: number) { return n.toString().padStart(2, "0"); }
-
-function BookingDateTimePicker({
-  visible,
-  value,
-  onClose,
-  onConfirm,
-  colors,
-}: {
-  visible: boolean;
-  value: Date | null;
-  onClose: () => void;
-  onConfirm: (date: Date) => void;
-  colors: ReturnType<typeof useColors>;
-}) {
-  const minDate = new Date();
-  const [draft, setDraft] = useState(value ?? minDate);
-
-  useEffect(() => {
-    if (visible) setDraft(value ?? minDate);
-  }, [visible, value]);
-
-  const onChange = (_event: DateTimePickerEvent, next?: Date) => {
-    if (next) setDraft(next);
-  };
-
-  const confirm = () => {
-    onConfirm(draft);
-    Haptics.selectionAsync();
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.dtModalOverlay} onPress={onClose}>
-        <Pressable style={styles.dtModalOverlayInner} onPress={(e) => e.stopPropagation()}>
-          <Pressable style={[styles.dtModalCard, { backgroundColor: HOME_SHEET_PANEL }]} onPress={(e) => e.stopPropagation()}>
-          <View style={[styles.dtSheetHeader, { borderBottomColor: HOME_SHEET_RIM }]}>
-            <Pressable onPress={onClose} hitSlop={10}>
-              <Text style={[styles.dtSheetAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
-            </Pressable>
-            <Text style={[styles.dtSheetTitle, { color: colors.foreground }]}>Abholzeit</Text>
-            <Pressable onPress={confirm} hitSlop={10}>
-              <Text style={[styles.dtSheetAction, { color: HOME_SHEET_TEXT }]}>Fertig</Text>
-            </Pressable>
-          </View>
-          <RNDateTimePicker
-            value={draft}
-            mode="datetime"
-            display="spinner"
-            is24Hour
-            locale="de-DE"
-            minimumDate={minDate}
-            onChange={onChange}
-            style={styles.dtSpinner}
-            textColor={colors.foreground}
-          />
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
 
 function DriverNoteModal({
   visible,
@@ -1663,7 +1601,7 @@ export default function NewBookingScreen() {
           <CollapsibleBrokerNotice />
         </KeyboardAwareScrollViewCompat>
 
-        <SharedBookingDateTimePicker
+        <BookingDateTimePicker
           visible={showDtPicker}
           value={scheduledAt}
           minimumDate={minimumScheduledPickupDate()}

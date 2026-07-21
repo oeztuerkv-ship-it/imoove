@@ -1,7 +1,10 @@
-import RNDateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import RNDateTimePicker, {
+  DateTimePickerAndroid,
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { accountSheetCardTitle, accountSheetToolbarAction } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
@@ -10,6 +13,21 @@ import { rs } from "@/utils/scale";
 
 type Colors = ReturnType<typeof useColors>;
 
+function mergeDateAndTime(datePart: Date, timePart: Date): Date {
+  const next = new Date(datePart);
+  next.setHours(timePart.getHours(), timePart.getMinutes(), 0, 0);
+  return next;
+}
+
+function clampToMinimum(value: Date, minimumDate: Date): Date {
+  return value.getTime() < minimumDate.getTime() ? new Date(minimumDate) : value;
+}
+
+/**
+ * Abholtermin-Picker.
+ * iOS: `mode="datetime"` + Spinner im Modal.
+ * Android: **kein** `datetime` (nicht unterstützt → Crash) — native Dialoge Datum, dann Uhrzeit.
+ */
 export function BookingDateTimePicker({
   visible,
   value,
@@ -28,19 +46,73 @@ export function BookingDateTimePicker({
   title?: string;
 }) {
   const minDate = minimumDate ?? new Date();
-  const [draft, setDraft] = useState(value ?? minDate);
+  const [draft, setDraft] = useState(() => clampToMinimum(value ?? minDate, minDate));
+  const androidOpenRef = useRef(false);
+  const valueRef = useRef(value);
+  const minDateRef = useRef(minDate);
+  const onCloseRef = useRef(onClose);
+  const onConfirmRef = useRef(onConfirm);
+  valueRef.current = value;
+  minDateRef.current = minDate;
+  onCloseRef.current = onClose;
+  onConfirmRef.current = onConfirm;
 
   useEffect(() => {
-    if (visible) setDraft(value && value.getTime() >= minDate.getTime() ? value : minDate);
+    if (visible) setDraft(clampToMinimum(value ?? minDate, minDate));
   }, [visible, value, minDate]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    if (!visible) {
+      androidOpenRef.current = false;
+      return;
+    }
+    if (androidOpenRef.current) return;
+    androidOpenRef.current = true;
+
+    const floor = minDateRef.current;
+    const initial = clampToMinimum(valueRef.current ?? floor, floor);
+
+    DateTimePickerAndroid.open({
+      value: initial,
+      mode: "date",
+      minimumDate: floor,
+      onChange: (event, datePart) => {
+        if (event.type !== "set" || !datePart) {
+          androidOpenRef.current = false;
+          onCloseRef.current();
+          return;
+        }
+        DateTimePickerAndroid.open({
+          value: mergeDateAndTime(datePart, initial),
+          mode: "time",
+          is24Hour: true,
+          onChange: (timeEvent, timePart) => {
+            androidOpenRef.current = false;
+            if (timeEvent.type !== "set" || !timePart) {
+              onCloseRef.current();
+              return;
+            }
+            const merged = clampToMinimum(mergeDateAndTime(datePart, timePart), floor);
+            onConfirmRef.current(merged);
+            void Haptics.selectionAsync();
+          },
+        });
+      },
+    });
+  }, [visible]);
+
+  if (Platform.OS === "android") {
+    return null;
+  }
 
   const onChange = (_event: DateTimePickerEvent, next?: Date) => {
     if (next) setDraft(next);
   };
 
   const confirm = () => {
-    onConfirm(draft);
-    Haptics.selectionAsync();
+    onConfirm(clampToMinimum(draft, minDate));
+    void Haptics.selectionAsync();
   };
 
   return (

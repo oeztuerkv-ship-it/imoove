@@ -1,12 +1,10 @@
 import { Feather } from "@expo/vector-icons";
-import RNDateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -17,7 +15,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BookingDateTimePicker } from "@/components/booking/BookingDateTimePicker";
 import { useDriver } from "@/context/DriverContext";
+import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
@@ -45,68 +45,9 @@ function defaultScheduledAt(): Date {
   return d;
 }
 
-function ReservationDateTimePicker({
-  visible,
-  value,
-  onClose,
-  onConfirm,
-}: {
-  visible: boolean;
-  value: Date;
-  onClose: () => void;
-  onConfirm: (date: Date) => void;
-}) {
-  const minDate = useMemo(() => new Date(Date.now() + RESERVATION_LEAD_MS), [visible]);
-  const [draft, setDraft] = useState(value);
-
-  useEffect(() => {
-    if (visible) setDraft(value);
-  }, [visible, value]);
-
-  const onChange = (_event: DateTimePickerEvent, next?: Date) => {
-    if (next) setDraft(next);
-  };
-
-  const confirm = () => {
-    onConfirm(draft);
-    Haptics.selectionAsync();
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.dtModalOverlay} onPress={onClose}>
-        <Pressable style={styles.dtModalOverlayInner} onPress={(e) => e.stopPropagation()}>
-          <Pressable style={styles.dtModalCard} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.dtSheetHeader}>
-              <Pressable onPress={onClose} hitSlop={10}>
-                <Text style={styles.dtSheetActionMuted}>Abbrechen</Text>
-              </Pressable>
-              <Text style={styles.dtSheetTitle}>Abholtermin</Text>
-              <Pressable onPress={confirm} hitSlop={10}>
-                <Text style={styles.dtSheetAction}>Fertig</Text>
-              </Pressable>
-            </View>
-            <RNDateTimePicker
-              value={draft}
-              mode="datetime"
-              display="spinner"
-              is24Hour
-              locale="de-DE"
-              minimumDate={minDate}
-              onChange={onChange}
-              style={styles.dtSpinner}
-              textColor="#111827"
-            />
-            <Text style={styles.dtPickerHint}>Mindestens 60 Minuten im Voraus</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
 export default function DriverCreateReservationScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const { driver } = useDriver();
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -206,7 +147,7 @@ export default function DriverCreateReservationScreen() {
         <Pressable
           style={styles.dtField}
           onPress={() => {
-            Haptics.selectionAsync();
+            void Haptics.selectionAsync();
             setShowDtPicker(true);
           }}
         >
@@ -234,14 +175,17 @@ export default function DriverCreateReservationScreen() {
           <Text style={styles.submitText}>{busy ? "Speichern …" : "Reservierung speichern"}</Text>
         </Pressable>
       </ScrollView>
-      <ReservationDateTimePicker
+      <BookingDateTimePicker
         visible={showDtPicker}
         value={scheduledAt}
+        minimumDate={new Date(Date.now() + RESERVATION_LEAD_MS)}
+        title="Abholtermin"
         onClose={() => setShowDtPicker(false)}
         onConfirm={(d) => {
           setScheduledAt(d);
           setShowDtPicker(false);
         }}
+        colors={colors}
       />
     </KeyboardAvoidingView>
   );
@@ -310,37 +254,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   submitText: { color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 },
-  dtModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(17, 24, 39, 0.45)",
-    justifyContent: "flex-end",
-  },
-  dtModalOverlayInner: { flex: 1, justifyContent: "flex-end" },
-  dtModalCard: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 24,
-  },
-  dtSheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  dtSheetTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#111827" },
-  dtSheetAction: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#DC2626" },
-  dtSheetActionMuted: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
-  dtSpinner: { height: 216, alignSelf: "center" },
-  dtPickerHint: {
-    textAlign: "center",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#6B7280",
-    marginTop: 4,
-    paddingHorizontal: 16,
-  },
 });
