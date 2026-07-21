@@ -995,6 +995,36 @@
       align-items: center;
     }
 
+    .hp-hero-store,
+    .hp-footer-store {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .hp-hero-store {
+      margin-top: 1rem;
+    }
+
+    .hp-footer-store {
+      margin-top: 1rem;
+    }
+
+    .hp-hero-store .hp-store-badge--apple img,
+    .hp-hero-store .hp-store-badge--google img,
+    .hp-footer-store .hp-store-badge--apple img,
+    .hp-footer-store .hp-store-badge--google img {
+      width: 135px;
+    }
+
+    .hp-store-badge--soon {
+      cursor: default;
+      opacity: 0.55;
+      filter: grayscale(0.15);
+      pointer-events: none;
+    }
+
     @keyframes hp-device-float {
       0%,
       100% {
@@ -4152,6 +4182,10 @@
     .hp-store-badge--google:hover,
     .hp-store-badge--apple:hover {
       box-shadow: none;
+    }
+
+    a.hp-store-badge--apple:hover {
+      opacity: 0.92;
     }
 
     .hp-app-download__social {
