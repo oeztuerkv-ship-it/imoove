@@ -1,6 +1,7 @@
 import * as WebBrowser from "expo-web-browser";
 
 import { getApiBaseUrl, parseApiJsonResponse } from "@/utils/apiBase";
+import { fetchAuthWithRetry, mapAuthNetworkFailure } from "@/utils/authNetworkRetry";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { mapGoogleOAuthReturnError } from "@/utils/googleOAuthErrors";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
@@ -28,10 +29,19 @@ async function fetchGoogleOAuthStart(
   returnUrl: string,
 ): Promise<{ authUrl: string; state: string }> {
   const startUrl = `${apiUrl}/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`;
-  const res = await fetch(startUrl, {
-    headers: { Accept: "application/json" },
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetchAuthWithRetry(
+      startUrl,
+      {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      },
+      { timeoutMs: 12_000, maxAttempts: 3 },
+    );
+  } catch (err) {
+    throw new Error(mapAuthNetworkFailure(err, "Google-Anmeldung"));
+  }
   if (res.status === 404) {
     throw new Error(
       `Login-Route nicht gefunden (404). Erwartet: ${startUrl} — EXPO_PUBLIC_API_URL muss auf …/api zeigen.`,

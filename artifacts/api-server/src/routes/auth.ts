@@ -544,12 +544,16 @@ router.post("/auth/apple/session", async (req, res) => {
   const clientEmail =
     typeof req.body?.email === "string" ? req.body.email.trim().slice(0, 254) : "";
 
+  const startedAt = Date.now();
   try {
     const verified = await verifyAppleIdentityToken(identityToken);
     const passengerId = applePassengerSubject(verified.sub);
 
     const authGate = await assertPassengerMayAuthenticate(passengerId);
     if (!authGate.ok) {
+      console.warn(
+        `[auth/apple/session] account_deleted passenger=${passengerId.slice(0, 24)}… ms=${Date.now() - startedAt}`,
+      );
       res.status(403).json({ ok: false, error: "account_deleted" });
       return;
     }
@@ -567,6 +571,9 @@ router.post("/auth/apple/session", async (req, res) => {
       email,
       authProvider: "apple",
     }).catch(() => undefined);
+    console.info(
+      `[auth/apple/session] ok passenger=${passengerId.slice(0, 24)}… ms=${Date.now() - startedAt}`,
+    );
     res.json({
       ok: true,
       sessionToken,
@@ -579,7 +586,7 @@ router.post("/auth/apple/session", async (req, res) => {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[auth/apple/session] verify failed:", msg);
+    console.warn(`[auth/apple/session] verify failed ms=${Date.now() - startedAt}:`, msg);
     res.status(401).json({ error: "invalid_apple_identity_token" });
   }
 });

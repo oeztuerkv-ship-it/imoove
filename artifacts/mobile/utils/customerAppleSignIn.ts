@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { fetchAuthWithRetry, mapAuthNetworkFailure } from "@/utils/authNetworkRetry";
+
 export type AppleSessionExchangeResult = {
   sessionToken: string;
   googleId: string;
@@ -25,15 +27,25 @@ async function exchangeAppleTokenWithApi(opts: {
   email?: string | null;
 }): Promise<AppleSessionExchangeResult> {
   const base = opts.apiUrl.replace(/\/+$/, "");
-  const res = await fetch(`${base}/auth/apple/session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      identityToken: opts.identityToken,
-      ...(opts.fullName ? { fullName: opts.fullName } : {}),
-      ...(opts.email ? { email: opts.email } : {}),
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetchAuthWithRetry(
+      `${base}/auth/apple/session`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          identityToken: opts.identityToken,
+          ...(opts.fullName ? { fullName: opts.fullName } : {}),
+          ...(opts.email ? { email: opts.email } : {}),
+        }),
+      },
+      { timeoutMs: 12_000, maxAttempts: 3 },
+    );
+  } catch (err) {
+    throw new Error(mapAuthNetworkFailure(err, "Apple-Anmeldung"));
+  }
+
   const data = (await res.json().catch(() => ({}))) as {
     ok?: boolean;
     error?: string;
@@ -47,7 +59,9 @@ async function exchangeAppleTokenWithApi(opts: {
         ? "Apple-Anmeldung konnte nicht verifiziert werden."
         : code === "session_jwt_unconfigured"
           ? "Server: Session-JWT nicht konfiguriert (AUTH_JWT_SECRET)."
-          : `Apple-Anmeldung fehlgeschlagen (${code}).`,
+          : code === "account_deleted"
+            ? "Dieses Konto wurde gelöscht und kann nicht erneut angemeldet werden."
+            : `Apple-Anmeldung fehlgeschlagen (${code}).`,
     );
   }
   const profile = data.profile ?? {};

@@ -1,7 +1,11 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const APPLE_ISSUER = "https://appleid.apple.com";
-const APPLE_JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
+/** Timeout für JWKS-Fetch — ohne Limit hängt verifyAppleIdentityToken bei Netzproblemen. */
+const APPLE_JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"), {
+  timeoutDuration: 8_000,
+  cooldownDuration: 30_000,
+});
 
 export type VerifiedAppleIdentity = {
   sub: string;

@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { fetchAuthWithRetry } from "@/utils/authNetworkRetry";
 import * as Linking from "expo-linking";
 
 export const ONRODA_LEGAL_URLS = {
@@ -64,13 +65,22 @@ export async function fetchCustomerLegalStatus(
   if (!base || !token) {
     return { ok: false, error: "api_not_configured" };
   }
-  const res = await fetch(`${base}/auth/customer/legal-status`, {
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetchAuthWithRetry(
+      `${base}/auth/customer/legal-status`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      },
+      { timeoutMs: 12_000, maxAttempts: 3 },
+    );
+  } catch {
+    return { ok: false, error: "network_timeout" };
+  }
   const data = await readJson(res);
   if (!res.ok || data.ok === false) {
     return {
@@ -120,6 +130,9 @@ export function mapCustomerLegalError(code: unknown): string {
   const k = typeof code === "string" ? code : "";
   if (k === "legal_acceptance_required") {
     return "Bitte AGB und Datenschutzerklärung akzeptieren.";
+  }
+  if (k === "network_timeout") {
+    return "Verbindung zur Anmeldung zu langsam — bitte erneut versuchen.";
   }
   if (k === "legal_versions_unavailable" || k === "database_not_configured") {
     return "Rechtstexte momentan nicht verfügbar — bitte später erneut versuchen.";

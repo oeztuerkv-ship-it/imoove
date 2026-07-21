@@ -6,9 +6,11 @@ export function mapGoogleOAuthReturnError(error: string | null, detail: string |
     case "access_denied":
       return "Google-Anmeldung abgebrochen.";
     case "invalid_state":
-      return "Anmeldung abgelaufen — bitte erneut versuchen.";
+      return "Anmeldung abgelaufen (Server-Neustart oder Timeout) — bitte erneut versuchen.";
     case "missing_params":
       return "Google-Rückruf unvollständig — bitte erneut versuchen.";
+    case "account_deleted":
+      return "Dieses Konto wurde gelöscht und kann nicht erneut angemeldet werden.";
     case "profile_fetch_failed":
       return "Google-Profil konnte nicht geladen werden.";
     case "session_token_failed":
