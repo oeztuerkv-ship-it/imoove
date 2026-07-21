@@ -971,21 +971,25 @@
       object-fit: contain;
       will-change: transform;
       filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.12));
+      /* Vor Start / während Delay: komplett links außerhalb (kein „halber Van“ am Rand) */
+      transform: translate3d(-40vw, -50%, 0);
+      animation: hp-hero-taxi-ltr 20s linear infinite;
+      animation-fill-mode: backwards;
     }
 
     .hp-hero-taxi--classic {
-      animation: hp-hero-taxi-ltr 22s linear infinite;
+      animation-delay: 0s;
     }
 
     .hp-hero-taxi--van {
       height: clamp(44px, 5.8vw, 62px);
-      animation: hp-hero-taxi-ltr 22s linear infinite;
-      animation-delay: 11s;
+      /* Kurz hinter dem Classic — Konvoi, nicht 11s allein am Rand */
+      animation-delay: 2.8s;
     }
 
     @keyframes hp-hero-taxi-ltr {
       from {
-        transform: translate3d(-30vw, -50%, 0);
+        transform: translate3d(-40vw, -50%, 0);
       }
       to {
         transform: translate3d(110vw, -50%, 0);
