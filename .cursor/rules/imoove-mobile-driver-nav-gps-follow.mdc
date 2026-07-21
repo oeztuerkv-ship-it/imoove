@@ -1,0 +1,30 @@
+---
+description: Fahrer-Navi iOS — Live-GPS Follow, distanceInterval, kein onRegionChange-Kill
+globs: artifacts/mobile/app/driver/navigation.tsx
+alwaysApply: false
+---
+
+# Fahrer-Navi: Live-GPS / Kamera-Follow (iOS)
+
+## Symptom
+
+Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig nach. Karte folgt nicht flüssig.
+
+## Ursachen (Repo)
+
+1. **`onRegionChange` schaltete Auto-Follow aus** — `animateCamera` (Follow) löst Region-Events aus; nach kurzem Puffer → `navFollowEnabledRef = false` → keine Kamera-Updates mehr bis „Navigation folgen“.
+2. **`timeInterval` ist Android-only** (expo-location). Auf iOS zählt **`distanceInterval`**. Vorher 5 m + totes Follow → wahrgenommenes Springen.
+3. Background-Task (`isIosBackgroundLocationEnabled`) ist getrennt; Foreground-Navi nutzt `watchPositionAsync` in `navigation.tsx`.
+
+## Invarianten
+
+- Follow nur bei **Nutzer-Pan** (`onPanDrag`) aus — **nicht** bei `onRegionChange`.
+- GPS Navi: `Accuracy.BestForNavigation`, `distanceInterval: 1` (iOS), `timeInterval: 1000` (Android).
+- Marker: jedes GPS-Tick `setDriverLat/Lon`; Kamera Follow gedrosselt (~250 ms).
+- `followsUserLocation={false}` — eigenes Puck + `focusNavigationCamera`.
+- Overview-Button (`fitRoute`) darf Follow absichtlich aus machen; Recenter erzwingt Follow wieder (`force: true`).
+
+## Datei
+
+`artifacts/mobile/app/driver/navigation.tsx`
+---

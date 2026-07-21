@@ -675,7 +675,8 @@ export default function DriverNavigationScreen() {
   }, []);
 
   const markProgrammaticCamera = useCallback((durationMs: number) => {
-    programmaticCameraUntilRef.current = Date.now() + durationMs + 450;
+    // iOS feuert oft noch Region-Events nach animateCamera — Puffer großzügig halten.
+    programmaticCameraUntilRef.current = Date.now() + Math.max(durationMs, 0) + 1200;
   }, []);
 
   const fitRoute = useCallback((coords: { latitude: number; longitude: number }[]) => {
@@ -712,7 +713,7 @@ export default function DriverNavigationScreen() {
         return;
       }
 
-      const duration = opts?.animated === false ? 0 : navCameraInitializedRef.current ? 400 : 0;
+      const duration = opts?.animated === false ? 0 : navCameraInitializedRef.current ? 280 : 0;
       markProgrammaticCamera(duration);
       mapRef.current.animateCamera(buildNavCamera(lat, lon, heading), { duration });
       navCameraInitializedRef.current = true;
@@ -726,7 +727,7 @@ export default function DriverNavigationScreen() {
       let lat = driverLatRef.current;
       let lon = driverLonRef.current;
       let heading: number | undefined;
-      const fresh = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      const fresh = await getCurrentPositionSafe({ accuracy: Location.Accuracy.BestForNavigation });
       if (fresh && isValidMapCoord(fresh.coords.latitude, fresh.coords.longitude)) {
         lat = fresh.coords.latitude;
         lon = fresh.coords.longitude;
@@ -738,15 +739,11 @@ export default function DriverNavigationScreen() {
     })();
   }, [focusNavigationCamera]);
 
+  /** Nur echte Nutzer-Pan-Geste — nicht onRegionChange (sonst killt animateCamera das Follow auf iOS). */
   const handleMapUserInteraction = useCallback(() => {
-    navFollowEnabledRef.current = false;
-  }, []);
-
-  const handleRegionChange = useCallback(() => {
     if (Date.now() < programmaticCameraUntilRef.current) return;
     navFollowEnabledRef.current = false;
   }, []);
-
   useEffect(() => {
     navCameraInitializedRef.current = false;
     navFollowEnabledRef.current = true;
@@ -1706,13 +1703,15 @@ export default function DriverNavigationScreen() {
   };
 
   // GPS tracking — subscription stable per ride; reads latest state via refs.
+  // iOS: timeInterval wird von expo-location ignoriert (nur Android) — distanceInterval steuert die Rate.
   useEffect(() => {
     if (Platform.OS === "web") return;
     let sub: Location.LocationSubscription | null = null;
+    let lastCameraFollowAt = 0;
     void (async () => {
       const fg = await requestForegroundPermissionsSafe();
       if (!fg || fg.status !== "granted") return;
-      const boot = await getCurrentPositionSafe({ accuracy: Location.Accuracy.Balanced });
+      const boot = await getCurrentPositionSafe({ accuracy: Location.Accuracy.BestForNavigation });
       if (boot) {
         const { latitude, longitude } = boot.coords;
         setDriverLat(latitude);
@@ -1728,7 +1727,13 @@ export default function DriverNavigationScreen() {
         }
       }
       sub = await watchPositionSafe(
-        { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          // Android: ~1 Hz. iOS: wirkungslos — siehe distanceInterval.
+          timeInterval: 1000,
+          // iOS-Hauptsteuer: 1 m → kontinuierliche Updates beim Fahren (vorher 5 m + totes Follow).
+          distanceInterval: 1,
+        },
         (loc) => {
           const { latitude, longitude } = loc.coords;
           setDriverLat(latitude);
@@ -1805,6 +1810,11 @@ export default function DriverNavigationScreen() {
 
           if (!navFollowEnabledRef.current) return;
 
+          const now = Date.now();
+          // Kamera max. ~4×/s — Marker folgt jedem GPS-Tick; weniger animateCamera-Kampf auf iOS.
+          if (now - lastCameraFollowAt < 250 && navCameraInitializedRef.current) return;
+          lastCameraFollowAt = now;
+
           focusNavigationCamera({
             lat: latitude,
             lon: longitude,
@@ -1818,7 +1828,6 @@ export default function DriverNavigationScreen() {
       sub?.remove();
     };
   }, [params.rideId, focusNavigationCamera]);
-
   const handleMapReady = useCallback(() => {
     mapReady.current = true;
     logMapsRuntimeDiagnosticsOnce("DriverNavigation.onMapReady");
@@ -2088,11 +2097,15 @@ export default function DriverNavigationScreen() {
         mapPadding={NAV_MAP_PADDING}
         onMapReady={handleMapReady}
         onPanDrag={handleMapUserInteraction}
-        onRegionChange={handleRegionChange}
         initialCamera={initialNavCamera}
       >
         {isValidMapCoord(driverLat, driverLon) ? (
-          <Marker coordinate={{ latitude: driverLat, longitude: driverLon }} anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker
+            coordinate={{ latitude: driverLat, longitude: driverLon }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
+            flat
+          >
             <View style={styles.navPuckWrap}>
               <View style={styles.navPuck}>
                 <MaterialCommunityIcons name="navigation" size={20} color="#FFFFFF" />
