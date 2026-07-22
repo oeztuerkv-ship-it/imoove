@@ -48,7 +48,6 @@ export default function DriverLoginScreen() {
     setLoading(true);
     safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
     try {
-      await new Promise((r) => setTimeout(r, 600));
       const result = await login(email, password);
       if (result.ok) {
         safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
@@ -59,11 +58,6 @@ export default function DriverLoginScreen() {
               "Die Anmeldung war erfolgreich, aber der Server hat das Fahrerprofil nicht geliefert. Das ist kein Freigabe-Hinweis — bitte erneut anmelden oder den Support informieren.",
           );
         }
-        try {
-          await refreshDriverMarketHard();
-        } catch {
-          /* Markt nach Login optional — Navigation trotzdem */
-        }
         const target = result.mustChangePassword ? "/driver/change-password" : "/driver/dashboard";
         try {
           router.replace(target as never);
@@ -73,6 +67,8 @@ export default function DriverLoginScreen() {
             "Anmeldung erfolgreich, aber die Weiterleitung ist fehlgeschlagen. Bitte die App neu öffnen oder erneut „Als Fahrer anmelden“.",
           );
         }
+        // Markt nach Navigation nachladen — blockiert die Anmeldung nicht.
+        void refreshDriverMarketHard().catch(() => {});
       } else {
         safeHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
         Alert.alert("Anmeldung fehlgeschlagen", result.error || "E-Mail oder Passwort ist falsch.");

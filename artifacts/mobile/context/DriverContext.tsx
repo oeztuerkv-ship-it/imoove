@@ -649,7 +649,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
           const enriched = mergeFleetDriverMeIntoProfile(profile, meResult.data);
           setDriver(enriched);
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(enriched));
-          await syncDriverExpoPushTokenWithRetry({
+          // Push-Sync nicht den Login blockieren (Retries + Expo können mehrere Sekunden dauern).
+          void syncDriverExpoPushTokenWithRetry({
             authToken: token,
             fleetDriverId: enriched.id,
             companyId: enriched.companyId,
@@ -671,13 +672,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         setDriver(failed);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(failed));
         setLastError(msg);
-      }
-      if (!meSyncFailed && profile.id && profile.companyId) {
-        await syncDriverExpoPushTokenWithRetry({
-          authToken: token,
-          fleetDriverId: profile.id,
-          companyId: profile.companyId,
-        });
       }
       const mustChangePassword = Boolean(data.passwordChangeRequired ?? d.mustChangePassword);
       return meSyncFailed

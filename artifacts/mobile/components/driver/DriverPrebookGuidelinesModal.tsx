@@ -1,7 +1,12 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as Haptics from "expo-haptics";
+import React, { useState } from "react";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import {
+  acceptDriverPrebookGuidelines,
+} from "@/utils/driverPrebookGuidelinesConsent";
 
 type Step = {
   key: string;
@@ -18,22 +23,16 @@ const STEPS: Step[] = [
     body: "Storniere nicht weniger als 60 Minuten vor der Abholzeit.",
   },
   {
-    key: "online-45",
+    key: "online-30",
     icon: <MaterialCommunityIcons name="car" size={24} color="#111827" />,
-    title: "45 min vorher",
-    body: "Du musst spätestens 45 Minuten vor der Abholzeit die App geöffnet haben und online sein.",
+    title: "30 min vorher",
+    body: "Du musst 30 Minuten vor der Abholzeit die App geöffnet haben und online sein.",
   },
   {
     key: "activate",
     icon: <MaterialCommunityIcons name="steering" size={24} color="#111827" />,
-    title: "45–25 min vorher",
-    body: "Aktiviere die Vorbestellung zwischen 45 und 25 Minuten vor Abholung — du hast 20 Minuten Zeit.",
-  },
-  {
-    key: "deadline-25",
-    icon: <Feather name="alert-circle" size={22} color="#111827" />,
-    title: "25 min vorher",
-    body: "Spätestens bis 25 Minuten vor Abholung muss aktiviert sein — sonst wird die Fahrt freigegeben und du bist 24 Stunden gesperrt.",
+    title: "Benachrichtigung",
+    body: "Aktiviere die Vorbestellung und fahre zum Abholpunkt.",
   },
   {
     key: "punctual",
@@ -61,18 +60,50 @@ function TimelineStep({ step, isLast }: { step: Step; isLast: boolean }) {
 type Props = {
   visible: boolean;
   onClose: () => void;
+  /** Fleet-Fahrer-ID — nötig zum Speichern der Bestätigung. */
+  driverId: string;
+  alreadyAccepted: boolean;
+  onAccepted: () => void;
 };
 
-/** Richtlinien Vorbestellungen — Layout wie Referenz (Timeline, Vollbild lesen). */
-export function DriverPrebookGuidelinesModal({ visible, onClose }: Props) {
+/** Richtlinien Vorbestellungen — Bestätigung schützt vor Annahme ohne Kenntnis der Regeln. */
+export function DriverPrebookGuidelinesModal({
+  visible,
+  onClose,
+  driverId,
+  alreadyAccepted,
+  onAccepted,
+}: Props) {
   const insets = useSafeAreaInsets();
+  const [saving, setSaving] = useState(false);
+
+  const handleAccept = async () => {
+    if (alreadyAccepted) {
+      onClose();
+      return;
+    }
+    const id = driverId.trim();
+    if (!id || saving) return;
+    setSaving(true);
+    try {
+      await acceptDriverPrebookGuidelines(id);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      onAccepted();
+    } catch {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const bottomPad = Math.max(insets.bottom, 16);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.screen, { paddingTop: Math.max(insets.top, 12) }]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 24) + 16 }]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: 24 }]}
         >
           <Pressable
             onPress={onClose}
@@ -95,6 +126,40 @@ export function DriverPrebookGuidelinesModal({ visible, onClose }: Props) {
             ))}
           </View>
         </ScrollView>
+
+        <View style={[styles.footer, { paddingBottom: bottomPad }]}>
+          {alreadyAccepted ? (
+            <View style={styles.acceptedBadge}>
+              <Feather name="check-circle" size={18} color="#15803D" />
+              <Text style={styles.acceptedBadgeText}>Bereits bestätigt</Text>
+            </View>
+          ) : (
+            <Text style={styles.footerHint}>
+              Mit „Akzeptiert“ bestätigst du, dass du die Regeln kennst. Ohne Bestätigung kannst du keine
+              Vorbestellungen annehmen oder aktivieren.
+            </Text>
+          )}
+          <Pressable
+            onPress={() => void handleAccept()}
+            disabled={saving}
+            style={({ pressed }) => [
+              styles.acceptBtn,
+              alreadyAccepted ? styles.acceptBtnSecondary : null,
+              (pressed || saving) && { opacity: 0.85 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={alreadyAccepted ? "Schließen" : "Richtlinien akzeptieren"}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                {!alreadyAccepted ? <Feather name="check" size={20} color="#FFFFFF" /> : null}
+                <Text style={styles.acceptBtnText}>{alreadyAccepted ? "Schließen" : "Akzeptiert"}</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -181,5 +246,49 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: "Inter_400Regular",
     color: "#374151",
+  },
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E7EB",
+    paddingHorizontal: 22,
+    paddingTop: 14,
+    backgroundColor: "#FFFFFF",
+  },
+  footerHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    marginBottom: 12,
+  },
+  acceptedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  acceptedBadgeText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#15803D",
+  },
+  acceptBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#111827",
+    borderRadius: 14,
+    paddingVertical: 16,
+    minHeight: 54,
+  },
+  acceptBtnSecondary: {
+    backgroundColor: "#111827",
+  },
+  acceptBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
   },
 });

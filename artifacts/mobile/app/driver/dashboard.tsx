@@ -96,6 +96,7 @@ import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsH
 import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
 import { releaseDispatchOffer } from "@/utils/releaseDispatchOffer";
 import { syncDriverExpoPushTokenWithRetry } from "@/utils/syncDriverExpoPushToken";
+import { hasAcceptedDriverPrebookGuidelines } from "@/utils/driverPrebookGuidelinesConsent";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
 import { MedicalScanResultSheet } from "@/components/MedicalScanResultSheet";
@@ -3334,6 +3335,11 @@ export default function DriverDashboard() {
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
   const [showPrebookGuidelines, setShowPrebookGuidelines] = useState(false);
+  const [prebookGuidelinesAccepted, setPrebookGuidelinesAccepted] = useState(false);
+  const prebookGuidelinesAcceptedRef = useRef(false);
+  const pendingAfterPrebookGuidelinesRef = useRef<{ kind: "accept" | "activate"; id: string } | null>(
+    null,
+  );
   const [releaseBusyId, setReleaseBusyId] = useState<string | null>(null);
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
@@ -3721,6 +3727,23 @@ export default function DriverDashboard() {
   const driverId = driver?.id ?? "";
   const driverMarketOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!driverId.trim()) {
+      prebookGuidelinesAcceptedRef.current = false;
+      setPrebookGuidelinesAccepted(false);
+      return;
+    }
+    void hasAcceptedDriverPrebookGuidelines(driverId).then((ok) => {
+      if (cancelled) return;
+      prebookGuidelinesAcceptedRef.current = ok;
+      setPrebookGuidelinesAccepted(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [driverId]);
+
   const pendingRequests = filterDriverInstantMarketOffers(allPending, {
     driverId,
     driverMarketOnline,
@@ -3973,6 +3996,11 @@ export default function DriverDashboard() {
       driverMarketRequests.find((r) => r.id === id) ??
       requests.find((r) => r.id === id);
     const isOpenReservation = poolReq?.status === "scheduled";
+    if (isOpenReservation && !prebookGuidelinesAcceptedRef.current) {
+      pendingAfterPrebookGuidelinesRef.current = { kind: "accept", id };
+      setShowPrebookGuidelines(true);
+      return;
+    }
     if (!driver.isAvailable && !isOpenReservation) {
       Alert.alert("Offline", "Schalten Sie auf ONLINE, um Sofortfahrten anzunehmen.");
       return;
@@ -4143,6 +4171,11 @@ export default function DriverDashboard() {
   };
 
   const handleActivateScheduled = async (id: string) => {
+    if (!prebookGuidelinesAcceptedRef.current) {
+      pendingAfterPrebookGuidelinesRef.current = { kind: "activate", id };
+      setShowPrebookGuidelines(true);
+      return;
+    }
     try {
       await activateForDispatch(id);
       await refreshRequests?.();
@@ -4664,6 +4697,53 @@ export default function DriverDashboard() {
                   </Pressable>
                 </View>
 
+                {(ordersView === "anfragen" || ordersView === "angenommen") && (
+                    <Pressable
+                      onPress={() => setShowPrebookGuidelines(true)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                        marginBottom: 14,
+                        paddingVertical: 14,
+                        paddingHorizontal: 14,
+                        borderRadius: 14,
+                        borderWidth: 1,
+                        borderColor: "#E5E7EB",
+                        backgroundColor: "#FAFAFA",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: "#FFFFFF",
+                          borderWidth: 1,
+                          borderColor: "#E5E7EB",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Feather name="book-open" size={17} color="#111827" />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#111827" }}>
+                          Richtlinien
+                        </Text>
+                        <Text
+                          style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: "#6B7280", marginTop: 2 }}
+                          numberOfLines={2}
+                        >
+                          {prebookGuidelinesAccepted
+                            ? "Vorbestellungen — Regeln bestätigt"
+                            : "Bitte bestätigen, bevor du Vorbestellungen annimmst"}
+                        </Text>
+                      </View>
+                      <Feather name="chevron-right" size={18} color="#9CA3AF" />
+                    </Pressable>
+                )}
+
                 {ordersView === "anfragen" ? (
                   pendingRequests.length === 0 && scheduledOpenRequests.length === 0 ? (
                     <View style={styles.emptyCenter}>
@@ -4713,49 +4793,6 @@ export default function DriverDashboard() {
                   )
                 ) : (
                   <>
-                    <Pressable
-                      onPress={() => setShowPrebookGuidelines(true)}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 12,
-                        marginBottom: 14,
-                        paddingVertical: 14,
-                        paddingHorizontal: 14,
-                        borderRadius: 14,
-                        borderWidth: 1,
-                        borderColor: "#E5E7EB",
-                        backgroundColor: "#FAFAFA",
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: "#FFFFFF",
-                          borderWidth: 1,
-                          borderColor: "#E5E7EB",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Feather name="book-open" size={17} color="#111827" />
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#111827" }}>
-                          Richtlinien
-                        </Text>
-                        <Text
-                          style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: "#6B7280", marginTop: 2 }}
-                          numberOfLines={2}
-                        >
-                          Vorbestellungen — so vermeidest du eine Sperre
-                        </Text>
-                      </View>
-                      <Feather name="chevron-right" size={18} color="#9CA3AF" />
-                    </Pressable>
-
                     {scheduledAssignedRequests.length === 0 ? (
                     <View style={styles.emptyCenter}>
                       <MaterialCommunityIcons name="calendar-check" size={56} color="#9CA3AF" />
@@ -4900,7 +4937,25 @@ export default function DriverDashboard() {
 
       <DriverPrebookGuidelinesModal
         visible={showPrebookGuidelines}
-        onClose={() => setShowPrebookGuidelines(false)}
+        driverId={driverId}
+        alreadyAccepted={prebookGuidelinesAccepted}
+        onClose={() => {
+          pendingAfterPrebookGuidelinesRef.current = null;
+          setShowPrebookGuidelines(false);
+        }}
+        onAccepted={() => {
+          prebookGuidelinesAcceptedRef.current = true;
+          setPrebookGuidelinesAccepted(true);
+          setShowPrebookGuidelines(false);
+          const pending = pendingAfterPrebookGuidelinesRef.current;
+          pendingAfterPrebookGuidelinesRef.current = null;
+          if (!pending?.id) return;
+          if (pending.kind === "accept") {
+            void handleAccept(pending.id);
+          } else {
+            void handleActivateScheduled(pending.id);
+          }
+        }}
       />
 
       <Modal
