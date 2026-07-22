@@ -1,0 +1,51 @@
+---
+description: Fahrer-Abschluss — Taxameter Tarif-Korridor (±18 %) vs. Ist-km/Ist-Min., hart ohne Ack
+globs:
+  - artifacts/api-server/src/lib/driverFinalFareTariffCorridor.ts
+  - artifacts/api-server/src/lib/driverFinalFarePlausibility.ts
+  - artifacts/api-server/src/lib/rideMinimumTransportGuard.ts
+  - artifacts/api-server/src/routes/rides.ts
+  - artifacts/mobile/utils/driverRideStatusErrors.ts
+  - artifacts/mobile/utils/driverRideCompletion.ts
+alwaysApply: false
+---
+
+# Taxameter-Abschluss: Tarif-Korridor (Betrugsschutz)
+
+## Reihenfolge bei `PATCH …/status` → `completed` (Taxi, `in_progress`)
+
+1. **Status / 0 €** vor Fahrtbeginn (unverändert)
+2. **Schätzungs-Cap** `evaluateFinalFarePlausibility` — extreme Abweichung zur Buchungsschätzung; **Ack-Bypass** möglich
+3. **`waitingChargeEur`** wird auf die Fahrer-Eingabe addiert (separat)
+4. **GPS-Mindestbeförderung** ≥ **0,5 km und 2 Min.** (`rideMinimumTransportGuard`) — Text: „und“, nicht „oder“
+5. **Tarif-Korridor** `evaluateRideCompletionTariffCorridor` — **hart, kein Ack**
+
+Festpreis: Schritte 2/5 für Taxameter-Eingabe entfallen (Server setzt vereinbarten Preis).
+
+## Korridor-Regel
+
+- Erwartung = `estimateTaxiFromMergedTariff(...).finalRounded` mit:
+  - `distanceKm` = GPS-Ist
+  - `tripMinutes` = GPS-Ist-Dauer
+  - `waitingMinutes` = `waitingMinutesBilled` (nicht GPS)
+  - Fahrzeug / Nacht-`at` / Flughafen- & Feiertags-Flags aus Buchungs-`tariffSnapshot`
+  - Tarif: `resolveMergedTariff` + Overlay `mergedTariffAudit`
+- Erlaubt: **±18 %** um Erwartung; zusätzlich Eingabe **≥ `baseFare`** (aus Engine-Breakdown)
+- Vergleich = **Fahrer-Eingabe** (vor Addieren von `waitingChargeEur`)
+- Fehler: `final_fare_below_base` | `final_fare_outside_tariff_corridor`
+
+## Dateien
+
+| Pfad | Rolle |
+|------|--------|
+| `lib/driverFinalFareTariffCorridor.ts` | Korridor |
+| `lib/driverFinalFarePlausibility.ts` | Schätzungs-Cap |
+| `lib/rideMinimumTransportGuard.ts` | GPS-Mindestbeförderung |
+| `scripts/driverFinalFareTariffCorridorSelftest.ts` | `pnpm --filter @workspace/api-server run test:final-fare-tariff-corridor` |
+
+## Abnahme
+
+- Kurze Fahrt / niedriger Preis unter Grundpreis → blockiert
+- Preis weit außerhalb ±18 % vs. Ist-km/Zeit → blockiert, **kein** Bestätigungs-Dialog
+- Festpreis-Abschluss unverändert
+- GPS unter 0,5 km **oder** unter 2 Min. → weiterhin `insufficient_transport_for_fare`

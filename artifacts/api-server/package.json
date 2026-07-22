@@ -20,6 +20,7 @@
     "test:invoice-pdf-sample": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfSample.mjs",
     "test:invoice-pdf-stress": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfStressTest.mjs",
     "test:customer-receipt": "pnpm run build && node --enable-source-maps ./dist/scripts/customerReceiptSelftest.mjs",
+    "test:final-fare-tariff-corridor": "pnpm run build && node --enable-source-maps ./dist/scripts/driverFinalFareTariffCorridorSelftest.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

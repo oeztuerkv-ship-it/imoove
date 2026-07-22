@@ -22,7 +22,11 @@ export function driverRideStatusUserMessage(
     complete_without_trip_start: "Ohne Fahrtbeginn ist nur 0,00 € oder Storno möglich.",
     complete_trip_not_started: "Bitte Fahrt zum Ziel starten, bevor ein Preis abgerechnet wird.",
     insufficient_transport_for_fare:
-      "Keine ausreichende Beförderung (unter 0,5 km oder 2 Min.). Bitte mit 0,00 € abschließen — keine Beförderung — oder stornieren.",
+      "Keine ausreichende Beförderung (weniger als 0,5 km oder weniger als 2 Min.). Bitte mit 0,00 € abschließen — keine Beförderung — oder stornieren.",
+    final_fare_below_base:
+      "Der Taxameter-Preis liegt unter dem Grundpreis. Bitte den Betrag vom Taxameter prüfen und korrigieren.",
+    final_fare_outside_tariff_corridor:
+      "Der Taxameter-Preis passt nicht zu km/Zeit dieser Fahrt (Tarif-Korridor). Bitte den Betrag vom Taxameter prüfen und korrigieren.",
     passenger_pin_required:
       "Bitte zuerst den 4-stelligen Code vom Fahrgast eingeben — erst dann kann die Fahrt starten.",
     passenger_pin_invalid: "Falscher Code. Bitte erneut beim Fahrgast nachfragen.",

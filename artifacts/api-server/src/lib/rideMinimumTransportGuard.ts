@@ -41,7 +41,7 @@ export function evaluateMinimumTransportForPositiveFare(
     error: "insufficient_transport_for_fare",
     message:
       `Keine ausreichende Beförderung erkannt (${distLabel}, ${durLabel}). ` +
-      "Für einen Fahrpreis sind mindestens 0,5 km oder 2 Minuten Fahrzeit nötig. " +
+      "Für einen Fahrpreis sind mindestens 0,5 km und 2 Minuten Fahrzeit nötig. " +
       "Bitte mit 0,00 € abschließen (keine Beförderung) oder die Fahrt stornieren.",
     actualDistanceKm: metrics?.distanceKm ?? null,
     actualDurationMinutes: metrics?.durationMinutes ?? null,

@@ -38,6 +38,7 @@ import {
 import { logger } from "../lib/logger";
 import { logRideAntiFraudAttempt } from "../lib/rideAntiFraud";
 import { evaluateFinalFarePlausibility } from "../lib/driverFinalFarePlausibility";
+import { evaluateRideCompletionTariffCorridor } from "../lib/driverFinalFareTariffCorridor";
 import {
   computeRideCompletionGpsMetrics,
   evaluateMinimumTransportForPositiveFare,
@@ -2627,6 +2628,41 @@ export async function patchRideStatusRoute(
             message: transportGuard.message,
             actualDistanceKm: transportGuard.actualDistanceKm,
             actualDurationMinutes: transportGuard.actualDurationMinutes,
+          });
+          return;
+        }
+      }
+
+      // Taxameter: Tarif-Korridor aus Ist-km/Ist-Min. (hart, kein Ack-Bypass). Festpreis ausgenommen.
+      if (
+        cur.status === "in_progress" &&
+        !isRideFixedPrice(cur.pricingMode) &&
+        parsedFinalFare != null &&
+        Number.isFinite(parsedFinalFare) &&
+        parsedFinalFare > 0.009 &&
+        completionGpsMetrics
+      ) {
+        const opPayloadCorridor = await getOperationalConfigPayload();
+        const regionsCorridor = await listServiceRegionsForApi();
+        const corridor = evaluateRideCompletionTariffCorridor({
+          ride: cur,
+          driverEnteredFareEur: parsedFinalFare,
+          actualDistanceKm: completionGpsMetrics.distanceKm,
+          actualDurationMinutes: completionGpsMetrics.durationMinutes,
+          opPayload: opPayloadCorridor,
+          regions: regionsCorridor,
+        });
+        if (!corridor.ok) {
+          res.status(400).json({
+            error: corridor.error,
+            message: corridor.message,
+            expectedFareEur: corridor.expectedFareEur,
+            minAllowedFinalFareEur: corridor.minAllowedEur,
+            maxAllowedFinalFareEur: corridor.maxAllowedEur,
+            baseFareEur: corridor.baseFareEur,
+            driverEnteredFareEur: corridor.driverEnteredFareEur,
+            actualDistanceKm: corridor.actualDistanceKm,
+            actualDurationMinutes: corridor.actualDurationMinutes,
           });
           return;
         }
