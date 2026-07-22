@@ -42,6 +42,8 @@
 --   054 → email_verification_codes (Kunden-E-Mail-Codes)
 --   056 → fleet_drivers.home_address, drivers_license_* (Partner, optional)
 --   066 → fleet_drivers.is_market_online (Fleet-App Markt ONLINE/OFFLINE)
+--   107 → fleet_drivers.last_market_lat/lon (Dispatch-Radius)
+--   132 → fleet_drivers.last_market_at (Outlier-Max-Age / ONLINE-Reset)
 --   057 → app_news_items (Mobile Neuigkeiten, Admin-CMS)
 --   059 → ride_support_tickets erweitert (company_id, priority, source, Actor-Felder)
 --   060 → medical_document_extractions (OCR-Struktur ohne API-Pflicht)
@@ -1370,6 +1372,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'last_market_lon'
   ) THEN
     errs := array_append(errs, 'fleet_drivers.last_market_lon (Migration 107)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'last_market_at'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.last_market_at (Migration 132)');
   END IF;
 
   IF NOT EXISTS (

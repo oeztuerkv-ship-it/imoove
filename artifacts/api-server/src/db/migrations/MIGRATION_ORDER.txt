@@ -133,3 +133,4 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 129_support_threads_help_category.sql
 130_passenger_ride_verify_pin.sql
 131_security_ip_dashboard.sql
+132_fleet_drivers_last_market_at.sql

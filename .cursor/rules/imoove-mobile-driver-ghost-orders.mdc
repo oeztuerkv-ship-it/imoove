@@ -71,7 +71,19 @@ Schutz-Zweige (Baseline still):
 
 Wenn Ghost **nach** allen Mobile-Fixes bleibt: Ride-ID + Status + `rejected_by` in DB prüfen.
 
-## Wichtige Funktionen & Dateien
+## Markt-GPS / Dispatch-Radius (stale last_market_*)
+
+**Symptom:** Fahrer und Kunde am gleichen Ort, Distanz in DB trotzdem >10 km → kein Push/kein Markt.
+
+**Ursache:** `last_market_lat/lon` von früherem Ort; Sprung >5 km wurde als GPS-Outlier verworfen → alte Koordinaten bleiben; Radius filtert.
+
+**Fix (API, Migration 132):**
+
+1. **ONLINE** (`setFleetDriverMarketOnline(true)`): `last_market_lat/lon/at` → **NULL** (erster Ping gilt immer).
+2. **Max-Age 3 Min.** (`decideMarketLocationUpdate`): alter Fix → Sprung erlaubt.
+3. **Log** bei verworfenem Sprung: `[market-location] discarded outlier jump` inkl. `fleetDriverId`, `distanceKm`.
+
+Dateien: `lib/marketLocationUpdate.ts`, `db/fleetDriversData.ts`.
 
 | Datei | Inhalt |
 |-------|--------|

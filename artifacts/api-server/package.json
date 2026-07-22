@@ -21,6 +21,7 @@
     "test:invoice-pdf-stress": "pnpm run build && node --enable-source-maps ./dist/scripts/invoicePdfStressTest.mjs",
     "test:customer-receipt": "pnpm run build && node --enable-source-maps ./dist/scripts/customerReceiptSelftest.mjs",
     "test:final-fare-tariff-corridor": "pnpm run build && node --enable-source-maps ./dist/scripts/driverFinalFareTariffCorridorSelftest.mjs",
+    "test:market-location-update": "pnpm run build && node --enable-source-maps ./dist/scripts/marketLocationUpdateSelftest.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

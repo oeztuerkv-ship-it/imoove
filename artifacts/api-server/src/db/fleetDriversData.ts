@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { findCompanyById } from "./adminData";
 import { getDb, isPostgresConfigured } from "./client";
-import { isGpsOutlierJump } from "../lib/gpsOutlierFilter";
+import { decideMarketLocationUpdate } from "../lib/marketLocationUpdate";
+import { logger } from "../lib/logger";
 import { findActivePanelUserByEmailNormalized } from "./panelAuthData";
 import { adminCompaniesTable, adminAuthUsersTable, fleetDriversTable } from "./schema";
 import {
@@ -876,19 +877,52 @@ export async function updateFleetDriverMarketLocation(
   const co = companyId.trim();
   if (!id || !co || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
-  const prev = await getFleetDriverMarketLocation(fleetDriverId, companyId);
-  if (prev && isGpsOutlierJump(prev.lat, prev.lon, lat, lon)) {
+  const rows = await db
+    .select({
+      lat: fleetDriversTable.last_market_lat,
+      lon: fleetDriversTable.last_market_lon,
+      at: fleetDriversTable.last_market_at,
+    })
+    .from(fleetDriversTable)
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)))
+    .limit(1);
+  const prev = rows[0];
+  const decision = decideMarketLocationUpdate({
+    prevLat: prev?.lat,
+    prevLon: prev?.lon,
+    nextLat: lat,
+    nextLon: lon,
+    lastMarketAt: prev?.at ?? null,
+  });
+
+  if (!decision.accept) {
+    logger.warn(
+      {
+        fleetDriverId: id,
+        companyId: co,
+        distanceKm: decision.distanceKm,
+        reason: decision.reason,
+        prevLat: prev?.lat ?? null,
+        prevLon: prev?.lon ?? null,
+        nextLat: lat,
+        nextLon: lon,
+        lastMarketAt: prev?.at ? prev.at.toISOString() : null,
+      },
+      "[market-location] discarded outlier jump (fresh last_market_*)",
+    );
     await touchFleetDriverHeartbeat(fleetDriverId);
     return;
   }
 
+  const now = new Date();
   await db
     .update(fleetDriversTable)
     .set({
       last_market_lat: lat,
       last_market_lon: lon,
-      last_heartbeat_at: new Date(),
-      updated_at: new Date(),
+      last_market_at: now,
+      last_heartbeat_at: now,
+      updated_at: now,
     })
     .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)));
 }
@@ -896,7 +930,7 @@ export async function updateFleetDriverMarketLocation(
 export async function getFleetDriverMarketLocation(
   fleetDriverId: string,
   companyId: string,
-): Promise<{ lat: number; lon: number } | null> {
+): Promise<{ lat: number; lon: number; at: Date | null } | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();
   if (!db) return null;
@@ -907,6 +941,7 @@ export async function getFleetDriverMarketLocation(
     .select({
       lat: fleetDriversTable.last_market_lat,
       lon: fleetDriversTable.last_market_lon,
+      at: fleetDriversTable.last_market_at,
     })
     .from(fleetDriversTable)
     .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)))
@@ -914,7 +949,7 @@ export async function getFleetDriverMarketLocation(
   const lat = rows[0]?.lat;
   const lon = rows[0]?.lon;
   if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  return { lat, lon };
+  return { lat, lon, at: rows[0]?.at ?? null };
 }
 
 /** Auftragsmarkt ONLINE/OFFLINE (Fleet-App), mandantengebunden. */
@@ -947,9 +982,20 @@ export async function setFleetDriverMarketOnline(
   const id = fleetDriverId.trim();
   const co = companyId.trim();
   if (!id || !co) return false;
+  const now = new Date();
+  const patch = online
+    ? {
+        is_market_online: true,
+        // Erster Ping nach ONLINE darf nicht an altem last_market_* scheitern (Outlier >5 km).
+        last_market_lat: null,
+        last_market_lon: null,
+        last_market_at: null,
+        updated_at: now,
+      }
+    : { is_market_online: false, updated_at: now };
   const rows = await db
     .update(fleetDriversTable)
-    .set({ is_market_online: online, updated_at: new Date() })
+    .set(patch)
     .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)))
     .returning({ id: fleetDriversTable.id });
   return rows.length > 0;

@@ -237,6 +237,8 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   /** Letzte Position am Markt (Dispatch-Radius). */
   last_market_lat: doublePrecision("last_market_lat"),
   last_market_lon: doublePrecision("last_market_lon"),
+  /** Zeitpunkt letzter erfolgreicher last_market_*-Write (Outlier-Max-Age); NULL nach ONLINE-Reset. */
+  last_market_at: timestamp("last_market_at", { withTimezone: true }),
   /** ONRODA-Admin: Fahrer-Override für Krankenfahrten (wirksam wenn inherit=false). */
   medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
   /** true = medical_transport_enabled vom Unternehmen erben. */
