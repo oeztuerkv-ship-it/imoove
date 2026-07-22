@@ -1594,6 +1594,52 @@
 
     initAboutModal();
 
+    function initPartnerLoginGate() {
+      var modal = document.getElementById("hp-partner-login-gate");
+      if (!modal) return;
+
+      function openGate() {
+        modal.hidden = false;
+        modal.setAttribute("aria-hidden", "false");
+        modal.classList.add("is-open");
+        document.body.classList.add("hp-motion-modal-open");
+        var closeBtn = modal.querySelector(".hp-motion-modal__close");
+        if (closeBtn) closeBtn.focus();
+      }
+
+      function closeGate() {
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+        modal.classList.remove("is-open");
+        document.body.classList.remove("hp-motion-modal-open");
+      }
+
+      document.addEventListener("click", function (e) {
+        var trigger =
+          e.target && e.target.closest ? e.target.closest("[data-partner-login-gate]") : null;
+        if (!trigger) return;
+        e.preventDefault();
+        openGate();
+      });
+
+      modal.addEventListener("click", function (e) {
+        var closeTrigger =
+          e.target && e.target.closest
+            ? e.target.closest("[data-partner-login-gate-close]")
+            : null;
+        if (closeTrigger) closeGate();
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !modal.hidden) {
+          e.preventDefault();
+          closeGate();
+        }
+      });
+    }
+
+    initPartnerLoginGate();
+
     function initAppDownloadReveal() {
       var section = document.querySelector(".hp-app-download");
       if (!section) {

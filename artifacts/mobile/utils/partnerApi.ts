@@ -108,6 +108,44 @@ export async function partnerPanelLogin(username: string, password: string): Pro
   };
 }
 
+/** Öffentlich: Passwort-Reset-Mail für Partner-Zugang (wie Panel-Login). */
+export async function partnerRequestPasswordReset(
+  identity: string,
+): Promise<{ ok: true; message: string } | { ok: false; message: string }> {
+  const base = getApiBaseUrl();
+  if (!base) return { ok: false, message: "API-URL fehlt." };
+  const trimmed = identity.trim();
+  if (!trimmed) return { ok: false, message: "Bitte E-Mail oder Benutzername eingeben." };
+
+  const res = await fetch(`${base}/panel-auth/password-reset/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identity: trimmed }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (res.status === 429) {
+    return { ok: false, message: "Zu viele Versuche — bitte in ein paar Minuten erneut." };
+  }
+  if (!res.ok || data?.ok === false) {
+    const msg =
+      typeof data?.message === "string" && data.message.trim()
+        ? data.message
+        : data?.error === "panel_user_not_found"
+          ? "Kein aktiver Partner-Zugang zu dieser E-Mail oder diesem Benutzernamen."
+          : data?.error === "panel_user_no_email"
+            ? "Zu diesem Zugang ist keine E-Mail hinterlegt — bitte Administrator kontaktieren."
+            : await fetchErrorMessage(res, "Anfrage fehlgeschlagen. Bitte später erneut versuchen.");
+    return { ok: false, message: msg };
+  }
+  return {
+    ok: true,
+    message:
+      typeof data?.message === "string" && data.message.trim()
+        ? data.message
+        : "Die E-Mail mit dem Link zum neuen Passwort wurde gesendet.",
+  };
+}
+
 export async function partnerFetchMe(token: string): Promise<PartnerMeUser | null> {
   const r = await partnerAuthedJson<{ ok?: boolean; user?: PartnerMeUser }>(token, "/panel/v1/me");
   if (!r.ok) return null;

@@ -77,7 +77,10 @@ export default function LoginPage() {
           <OnrodaMark className="partner-login__brand-mark" />
           <p className="partner-login__brand-subtitle">Partnerportal</p>
         </div>
-        <h1 className="partner-login__title">Unternehmens-Login</h1>
+        <h1 className="partner-login__title">Willkommen im Partnerportal</h1>
+        <p className="partner-login__welcome-sub">
+          Verwalten Sie Buchungen schnell, sicher und zentral.
+        </p>
         <form className="partner-login__form" onSubmit={onSubmit}>
           <label className="partner-login__label">
             E-Mail oder Benutzername
@@ -173,6 +176,21 @@ export default function LoginPage() {
               </button>
             </form>
           )}
+        </div>
+        <div className="partner-login__guest-hint">
+          <p className="partner-login__guest-hint-title">Interesse an einer Zusammenarbeit?</p>
+          <p className="partner-login__guest-hint-text">
+            Verbinden Sie Ihr Hotel, Unternehmen oder Ihre Praxis mit ONRODA und buchen Sie Fahrten
+            schnell und unkompliziert.
+          </p>
+          <div className="partner-login__guest-hint-links">
+            <a href="https://onroda.de/" rel="noopener noreferrer">
+              Zur Webseite
+            </a>
+            <a href="https://onroda.de/#partner" rel="noopener noreferrer">
+              Partner werden
+            </a>
+          </div>
         </div>
       </div>
     </div>

@@ -56,6 +56,16 @@
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--onroda-text-dark);
+  text-align: center;
+}
+
+.partner-login__welcome-sub {
+  margin: 8px 0 18px;
+  font-size: 0.98rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--onroda-text-grey);
+  text-align: center;
 }
 
 .partner-login__lead {
@@ -190,4 +200,46 @@
   background: var(--onroda-bg-light);
   border: 1px solid var(--onroda-border-outline);
   color: var(--onroda-text-dark);
+}
+
+.partner-login__guest-hint {
+  margin-top: var(--onroda-space-6);
+  padding: var(--onroda-space-4) var(--onroda-space-5);
+  border-radius: var(--onroda-radius-nav, 12px);
+  background: var(--onroda-bg-light, #f7f7f5);
+  border: 1px solid var(--onroda-border-subtle, #e8e8e4);
+}
+
+.partner-login__guest-hint-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+  line-height: 1.4;
+}
+
+.partner-login__guest-hint-text {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--onroda-text-grey);
+}
+
+.partner-login__guest-hint-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.1rem;
+}
+
+.partner-login__guest-hint-links a {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--onroda-teal, #0f766e);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.partner-login__guest-hint-links a:hover {
+  color: var(--onroda-red);
 }

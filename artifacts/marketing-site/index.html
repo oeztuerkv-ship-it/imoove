@@ -47,7 +47,12 @@
         <a class="hp-header-legal" href="/datenschutz">Datenschutz</a>
         <a class="hp-header-legal" href="/impressum">Impressum</a>
         <a class="hp-header-legal" href="/agb">AGB</a>
-        <a class="hp-topbar-btn hp-topbar-btn--header" href="https://panel.onroda.de/" rel="noopener noreferrer">
+        <a
+          class="hp-topbar-btn hp-topbar-btn--header"
+          href="https://panel.onroda.de/"
+          data-partner-login-gate
+          rel="noopener noreferrer"
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
@@ -1392,7 +1397,9 @@
           <ul class="hp-footer-nav">
             <li><a href="#partner">Partner werden</a></li>
             <li><a href="/partner/anfrage-status">Anfragestatus</a></li>
-            <li><a href="https://panel.onroda.de/" rel="noopener noreferrer">Partner-Login</a></li>
+            <li>
+              <a href="https://panel.onroda.de/" data-partner-login-gate rel="noopener noreferrer">Partner-Login</a>
+            </li>
           </ul>
         </div>
 
@@ -1551,6 +1558,52 @@
       </svg>
     </span>
   </a>
+
+  <div
+    id="hp-partner-login-gate"
+    class="hp-motion-modal hp-partner-login-gate"
+    hidden
+    aria-hidden="true"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="hp-partner-login-gate-title"
+  >
+    <button type="button" class="hp-motion-modal__backdrop" data-partner-login-gate-close aria-label="Dialog schließen"></button>
+    <div class="hp-motion-modal__panel" role="document">
+      <header class="hp-motion-modal__head">
+        <div>
+          <h2 id="hp-partner-login-gate-title">Partner-Login</h2>
+        </div>
+        <button type="button" class="hp-motion-modal__close" data-partner-login-gate-close aria-label="Schließen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </header>
+      <div class="hp-motion-modal__body">
+        <p class="hp-partner-login-gate__lead">
+          <strong>Willkommen im Partnerportal</strong>
+        </p>
+        <p class="hp-partner-login-gate__hint">
+          Verwalten Sie Buchungen schnell, sicher und zentral.
+        </p>
+        <div class="hp-partner-login-gate__box">
+          <p class="hp-partner-login-gate__box-title">Interesse an einer Zusammenarbeit?</p>
+          <p class="hp-partner-login-gate__box-text">
+            Verbinden Sie Ihr Hotel, Unternehmen oder Ihre Praxis mit ONRODA und buchen Sie Fahrten
+            schnell und unkompliziert.
+          </p>
+          <div class="hp-partner-login-gate__actions">
+            <a class="hp-btn-primary" href="https://panel.onroda.de/" rel="noopener noreferrer">
+              Zum Partner-Portal
+            </a>
+            <a class="hp-link" href="https://onroda.de/">Zur Webseite</a>
+            <a class="hp-link" href="https://onroda.de/#partner">Partner werden</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/script.js"></script>
   <script src="/analytics.js" defer></script>
