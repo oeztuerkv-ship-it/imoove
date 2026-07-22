@@ -87,18 +87,18 @@ export function shouldAdvanceDispatchTierByTimeout(
   nowMs = Date.now(),
 ): boolean {
   if (!isDispatchTierManagedRide(ride)) return false;
-  if (isOpenReservationForDispatch(ride) && !ride.dispatchTierStartedAt) return false;
   const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
   if (tier === "C") return false;
   return dispatchTierElapsedSec(ride, nowMs) >= timeoutSec;
 }
 
+/**
+ * Sofortfahrt und Vorbestellung: gleiche A→B→C-Uhr ab Buchung.
+ * (`scheduledAt` bleibt in der Signatur für Aufrufer; Start ist immer sofort.)
+ */
 export function initialDispatchTierFieldsForRide(
-  scheduledAt: string | null | undefined,
+  _scheduledAt?: string | null,
 ): Pick<RideRequest, "dispatchTier" | "dispatchTierStartedAt"> {
-  if (isFarFutureReservation(scheduledAt ?? null)) {
-    return { dispatchTier: "A", dispatchTierStartedAt: null };
-  }
   return { dispatchTier: "A", dispatchTierStartedAt: new Date().toISOString() };
 }
 

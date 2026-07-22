@@ -13,7 +13,7 @@ alwaysApply: false
 | Rolle | Oberfläche | State / Poll | Push-Titel (Beispiele) |
 |-------|------------|-------------|-------------------------|
 | **Kunde** | `/`, `/status`, … | `GET /customer/v1/rides` → global `requests` | „Fahrer gefunden“, „Fahrer da“, Reservierung |
-| **Fahrer** | `/driver/*` | `GET /fleet-driver/v1/market-rides` → `driverMarketRequests` (+ auf Surface: `requests`) | **„Neue Fahrt“** (`instant_ride_offer`) |
+| **Fahrer** | `/driver/*` | `GET /fleet-driver/v1/market-rides` → `driverMarketRequests` (+ auf Surface: `requests`) | **„Neue Fahrt“** (`instant_ride_offer`), **„Neue Reservierung“** (`scheduled_pool_offer`) |
 
 `isDriverSurface` = `useSegments()[0] === "driver"` (auch **`/driver/login`**).
 
@@ -57,13 +57,17 @@ Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in 
 
 | Event | Funktion | An wen |
 |-------|----------|--------|
-| Neue Sofortfahrt erstellt | `notifyMarketOnlineDriversInstantRideOffer` | Online-Fahrer mit passendem Fahrzeug |
+| Neue Sofortfahrt erstellt | `notifyMarketOnlineDriversInstantRideOffer` | Online-Fahrer mit passendem Fahrzeug + aktuellem Dispatch-Tier |
+| Neue Reservierung / Vorbestellung (`status=scheduled`) | `notifyEligibleDriversScheduledPoolOffer` (via `insertRide` + Panel) | Einsatzbereite Fahrer mit passendem Fahrzeug + **gleichem** Dispatch-Tier A/B/C (auch Markt-OFFLINE) — Titel **„Neue Reservierung“**, `kind=scheduled_pool_offer` |
+| Tier A→B / B→C (Timeout oder Freigabe) | `advanceRideDispatchTier` → Sofort- **und** Reservierungs-Notify | Nur Fahrer der **neuen** Stufe (beide Helfer filtern früh) |
 | Fahrer-Storno | `POST …/driver-cancel` → `searching_driver` | **Kein** erneuter Markt-Push (nur Client-Diff-Bug) |
 | Fahrer angenommen / wartet / unterwegs | `notifyPassengerDriverAccepted` / `…Arriving` / `…Waiting` | Kunde (`passengerRideExpoPush.ts`) |
 | Fahrt läuft / beendet | `notifyPassengerRideInProgress` / `notifyPassengerRideCompleted` | Kunde (Quittung → `/status`) |
 | Reservierung abgelaufen (Cron, nur `scheduled` / `scheduled_assigned` / `ready_for_dispatch`) | `notifyPassengerReservationExpired` | Kunde |
 | Alter Sofort-Such-Hänger → `expired` (Cron Job 7) | **kein** Reservierungs-Push | — |
 | Kunde ändert Ziel (aktive Taxi-Fahrt) | `notifyDriverDestinationChanged` (`PATCH …/destination`) | Zugewiesener Fahrer — Titel **„Achtung: Ziel wurde geändert“** |
+
+**Invariante:** Keine eigene Reservierungs-Stufenlogik — dieselbe `dispatch_tier` / Timeout / Freigabe wie Sofort (`rideDispatchTierData.ts`, `dispatchPriorityTier.ts`). Vorbestellung startet die Tier-Uhr bei Buchung (wie Sofort).
 
 Push-Marker / Cron: `ridePushNotificationMarkers.ts`, `index.ts` Jobs.
 

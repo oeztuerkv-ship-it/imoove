@@ -12,7 +12,10 @@ import {
   shouldAdvanceDispatchTierByTimeout,
   type DispatchPriority,
 } from "../lib/dispatchPriorityTier";
-import { notifyMarketOnlineDriversInstantRideOffer } from "../lib/driverRideExpoPush";
+import {
+  notifyEligibleDriversScheduledPoolOffer,
+  notifyMarketOnlineDriversInstantRideOffer,
+} from "../lib/driverRideExpoPush";
 
 async function loadDispatchTimeoutSec(): Promise<number> {
   const op = await getOperationalConfigPayload();
@@ -61,7 +64,12 @@ export async function advanceRideDispatchTier(opts: {
   });
 
   const updated = await findRide(rid);
-  if (updated) void notifyMarketOnlineDriversInstantRideOffer(updated);
+  if (updated) {
+    // Sofort: ONLINE-Markt; Reservierung: Planer-Pool (gleiche Tier-Filter A/B/C).
+    // Beide Helfer no-open früh — sichere Doppelaufrufe.
+    void notifyMarketOnlineDriversInstantRideOffer(updated);
+    void notifyEligibleDriversScheduledPoolOffer(updated);
+  }
   return updated;
 }
 
