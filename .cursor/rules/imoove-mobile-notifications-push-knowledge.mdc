@@ -24,6 +24,12 @@ alwaysApply: false
 - **Fix (API):** `upsertPassengerExpoPushToken` löscht Token aus Fleet-Tabelle; `upsertFleetDriverExpoPushToken` löscht aus Passenger-Tabelle (`passengerExpoPushData.ts`, `fleetDriverExpoPushData.ts`).
 - Sync: `syncCustomerExpoPushToken.ts` (Kunde), `syncDriverExpoPushToken.ts` (Fahrer) — nach Login jeweils erneut syncen.
 
+## Fahrer: ein Login = eine Session (Multi-Gerät)
+
+- **`POST /fleet-auth/login`:** `session_version` +1 → alte Fleet-JWTs → `token_revoked`; Push-Tokens des Fahrers gelöscht; Markt **OFFLINE**.
+- **`upsertFleetDriverExpoPushToken`:** löscht **alle** anderen Tokens desselben Fahrers — nur das aktuelle Gerät klingelt.
+- Altes Gerät: nächster API-Call 401 `token_revoked` → neu anmelden.
+
 ## Foreground & lokaler Alarm
 
 | Mechanismus | Wo | Wann |

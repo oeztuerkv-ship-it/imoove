@@ -28,6 +28,15 @@ export async function upsertFleetDriverExpoPushToken(
   const tok = expoPushToken.trim();
   if (!did || !cid || !tok || !isLikelyExponentPushToken(tok)) return;
   await deletePassengerExpoPushTokenByToken(tok);
+  // Nur das aktuelle Gerät: alle anderen Tokens dieses Fahrers entfernen.
+  await db
+    .delete(fleetDriverExpoPushTokensTable)
+    .where(
+      and(
+        eq(fleetDriverExpoPushTokensTable.fleet_driver_id, did),
+        eq(fleetDriverExpoPushTokensTable.company_id, cid),
+      ),
+    );
   await db
     .insert(fleetDriverExpoPushTokensTable)
     .values({

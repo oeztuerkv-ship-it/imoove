@@ -845,13 +845,24 @@ export async function adminPatchFleetDriverAdminFields(
   return r.length > 0;
 }
 
-export async function touchFleetDriverLogin(id: string): Promise<void> {
+export async function touchFleetDriverLogin(id: string): Promise<number> {
   const db = getDb();
-  if (!db) return;
-  await db
+  if (!db) return 1;
+  const did = id.trim();
+  if (!did) return 1;
+  const rows = await db
     .update(fleetDriversTable)
-    .set({ last_login_at: new Date(), updated_at: new Date() })
-    .where(eq(fleetDriversTable.id, id));
+    .set({
+      last_login_at: new Date(),
+      updated_at: new Date(),
+      // Neue Anmeldung invalidiert alle bisherigen Fleet-JWTs (Multi-Gerät).
+      session_version: sql`${fleetDriversTable.session_version} + 1`,
+    })
+    .where(eq(fleetDriversTable.id, did))
+    .returning({ session_version: fleetDriversTable.session_version });
+  const sv = rows[0]?.session_version;
+  const n = typeof sv === "number" ? sv : Number(sv);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
 export async function touchFleetDriverHeartbeat(id: string): Promise<void> {

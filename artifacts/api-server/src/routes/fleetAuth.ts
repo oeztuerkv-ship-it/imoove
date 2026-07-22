@@ -1,7 +1,13 @@
 import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
 import { deleteFleetDriverExpoPushTokens } from "../db/fleetDriverExpoPushData";
-import { findFleetDriverByEmailNormalized, getCompanyKind, setFleetDriverMarketOnline, syncFleetDriverDispatchPriorityFromAdminEmail, touchFleetDriverLogin } from "../db/fleetDriversData";
+import {
+  findFleetDriverByEmailNormalized,
+  getCompanyKind,
+  setFleetDriverMarketOnline,
+  syncFleetDriverDispatchPriorityFromAdminEmail,
+  touchFleetDriverLogin,
+} from "../db/fleetDriversData";
 import { findActivePanelUserByEmailNormalized } from "../db/panelAuthData";
 import {
   getFleetLoginCompanyDenyReason,
@@ -13,7 +19,6 @@ import {
 } from "../lib/onrodaAccessMessages.js";
 import {
   isFleetDriverJwtConfigured,
-  normalizeFleetDriverSessionVersion,
   signFleetDriverJwt,
   verifyFleetDriverJwt,
 } from "../lib/fleetDriverJwt";
@@ -100,13 +105,18 @@ router.post("/fleet-auth/login", async (req, res) => {
     return;
   }
 
+  // Alte Geräte: JWT tot + kein Push + Markt nicht „online ohne Session“.
+  await deleteFleetDriverExpoPushTokens(row.id, row.company_id);
+  await setFleetDriverMarketOnline(row.id, row.company_id, false).catch(() => undefined);
+  const sessionVersion = await touchFleetDriverLogin(row.id);
+
   let token: string;
   try {
     token = await signFleetDriverJwt({
       fleetDriverId: row.id,
       companyId: row.company_id,
       email: row.email,
-      sessionVersion: normalizeFleetDriverSessionVersion(row.session_version),
+      sessionVersion,
     });
   } catch (e) {
     console.error("[fleet-auth/login] signFleetDriverJwt:", e);
@@ -114,7 +124,6 @@ router.post("/fleet-auth/login", async (req, res) => {
     return;
   }
 
-  await touchFleetDriverLogin(row.id);
   void syncFleetDriverDispatchPriorityFromAdminEmail(row.id, row.company_id);
 
   res.json({
