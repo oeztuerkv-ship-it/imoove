@@ -41,6 +41,7 @@ Reihenfolge der Bugs (historisch):
 | `refreshRequests()` ohne State-Leerung | Alte `requests` bleiben bis Fetch fertig |
 | `setAvailable(true)` vor `await` PATCH | Markt-Fetch mit `is_market_online=false` |
 | Blind-`useEffect` spiegelt `isAvailable` → PATCH | Stales `/me` (false) oder Login-Offline überschreibt frisches ONLINE → **`is_market_online` bleibt false** trotz UI-Online + GPS-Ping |
+| Countdown 10 s → API-`reject` | Fahrer sieht Fahrt nie wieder; keine zweite Chance wenn niemand annimmt |
 | `applyFleetMeSyncFailure` setzt `isAvailable: false` | Profil-Sync-Fehler erzwingt Offline und schrieb früher per Effect false in die DB |
 | `firstRender.current = false` beim ONLINE-Toggle | Alle IDs wirken „neu“ → Banner/Ton |
 | `isOnlineFlowRunning = false` **synchron** im `finally` nach `setRequests()` | Effect läuft mit Flag schon `false` → Ghost |
@@ -68,7 +69,8 @@ Schutz-Zweige (Baseline still):
 ### 4. API / DB (echter Auftrag vs Ghost)
 
 - `GET /fleet-driver/v1/market-rides`: offener Markt nur wenn `is_market_online=true`; `rejectedBy` filtert abgelehnte; terminale Status ausgeschlossen; `Cache-Control: no-store`
-- `POST /rides/:id/reject` → `rejectedBy` in DB
+- `POST /rides/:id/reject` → `rejectedBy` in DB (**nur manueller Ablehnen-Button**, nicht Countdown-Timeout)
+- Sofort-Countdown **10 s** ohne Aktion → lokaler **Snooze ~20 s** (`snoozeInstantOfferAfterMiss`), dann erneut Angebot + Klingeln wenn Fahrt noch offen — **kein** `rejectedBy`
 - Migration **`066_fleet_drivers_market_online.sql`** — Online-Status persistent
 
 Wenn Ghost **nach** allen Mobile-Fixes bleibt: Ride-ID + Status + `rejected_by` in DB prüfen.

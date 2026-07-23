@@ -118,7 +118,10 @@ import {
 } from "@/utils/driverPaymentMethodLabel";
 import {
   clearInstantOfferDeadline,
+  clearInstantOfferSnooze,
   getInstantOfferDeadlineMs,
+  snoozeInstantOfferAfterMiss,
+  subscribeInstantOfferSnooze,
 } from "@/utils/instantOfferCountdown";
 import {
   dismissDriverAdminMessageId,
@@ -457,6 +460,7 @@ function InstantCard({
   req,
   onAccept,
   onReject,
+  onMissTimeout,
   driverPos,
   showReleaseButton,
   onRelease,
@@ -465,6 +469,8 @@ function InstantCard({
   req: RideRequest;
   onAccept: () => void;
   onReject: () => void;
+  /** Countdown abgelaufen — zweite Chance später, kein API-Reject. */
+  onMissTimeout: () => void;
   driverPos?: { lat: number; lon: number } | null;
   showReleaseButton?: boolean;
   onRelease?: () => void;
@@ -484,6 +490,8 @@ function InstantCard({
   /** Stabil: Parent übergibt oft neue Inline-Callbacks (GPS-Re-Renders) — nicht in Effect-Deps. */
   const onRejectRef = useRef(onReject);
   onRejectRef.current = onReject;
+  const onMissTimeoutRef = useRef(onMissTimeout);
+  onMissTimeoutRef.current = onMissTimeout;
 
   useEffect(() => {
     offerHandledRef.current = false;
@@ -495,7 +503,7 @@ function InstantCard({
       if (remaining <= 0 && !offerHandledRef.current) {
         offerHandledRef.current = true;
         clearInstantOfferDeadline(req.id);
-        onRejectRef.current();
+        onMissTimeoutRef.current();
       }
     };
 
@@ -1203,6 +1211,7 @@ function TabUebersicht({
   pendingRequests,
   onAccept,
   onReject,
+  onMissTimeout,
   driverPos,
   isAvailable,
   marketLoading,
@@ -1215,6 +1224,7 @@ function TabUebersicht({
   pendingRequests: RideRequest[];
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
+  onMissTimeout: (id: string) => void;
   driverPos?: { lat: number; lon: number } | null;
   isAvailable: boolean;
   marketLoading?: boolean;
@@ -1295,6 +1305,7 @@ function TabUebersicht({
           <InstantCard req={firstReq} driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)}
+            onMissTimeout={() => onMissTimeout(firstReq.id)}
             showReleaseButton={Boolean(onReleaseDispatch && canReleaseDispatchOffer(firstReq, driverDispatchPriority))}
             onRelease={() => onReleaseDispatch?.(firstReq.id)}
             releaseBusy={releaseBusyId === firstReq.id}
@@ -1350,6 +1361,7 @@ function TabUebersicht({
             driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)}
+            onMissTimeout={() => onMissTimeout(firstReq.id)}
             showReleaseButton={Boolean(onReleaseDispatch && canReleaseDispatchOffer(firstReq, driverDispatchPriority))}
             onRelease={() => onReleaseDispatch?.(firstReq.id)}
             releaseBusy={releaseBusyId === firstReq.id}
@@ -3761,6 +3773,10 @@ export default function DriverDashboard() {
   const audioPrimedRef = useRef(false);
   const [marketPanelKey, setMarketPanelKey] = useState(0);
   const [marketRefreshing, setMarketRefreshing] = useState(false);
+  /** Soft-Miss-Snooze abgelaufen → Marktfilter/Klingeln neu berechnen. */
+  const [offerSnoozeRev, setOfferSnoozeRev] = useState(0);
+
+  useEffect(() => subscribeInstantOfferSnooze(() => setOfferSnoozeRev((n) => n + 1)), []);
 
   // In-app notification banner
   const [bannerRide, setBannerRide] = useState<RideRequest | null>(null);
@@ -3873,6 +3889,7 @@ export default function DriverDashboard() {
     suppressedIds: suppressedMarketOfferIdsRef.current,
     hideWhileOnActiveRide: true,
   });
+  void offerSnoozeRev; // Snooze-Ende → Re-Render inkl. Filter
 
   const activeDriverRequest =
     driverMarketRequests.find(
@@ -4135,6 +4152,7 @@ export default function DriverDashboard() {
 
   const handleAccept = async (id: string) => {
     clearInstantOfferDeadline(id);
+    clearInstantOfferSnooze(id);
     setFollowUpHighlight(null);
     if (!driver) return;
     if (!driverId.trim()) {
@@ -4204,6 +4222,7 @@ export default function DriverDashboard() {
   const handleReject = async (id: string) => {
     // Sofort: sonst sieht Poll/Countdown-Ablauf die ID als „neu“ (Ghost-Banner oben).
     clearInstantOfferDeadline(id);
+    clearInstantOfferSnooze(id);
     suppressedMarketOfferIdsRef.current.add(id);
     prevPendingIds.current.add(id);
     stopRideSound().catch(() => {});
@@ -4217,6 +4236,18 @@ export default function DriverDashboard() {
       Alert.alert("Ablehnen fehlgeschlagen", "Bitte erneut versuchen oder Liste aktualisieren.");
     }
   };
+
+  /** Countdown 10 s ohne Aktion: nicht rejecten — nach ~20 s erneut anbieten/klingeln. */
+  const handleMissTimeout = useCallback((id: string) => {
+    clearInstantOfferDeadline(id);
+    snoozeInstantOfferAfterMiss(id);
+    stopRideSound().catch(() => {});
+    if (bannerTimer.current) clearTimeout(bannerTimer.current);
+    setBannerRide((cur) => (cur?.id === id ? null : cur));
+    bannerAnim.setValue(-140);
+    // Während Snooze aus prev entfernen, damit Rückkehr = „neu“ → Klingeln.
+    prevPendingIds.current.delete(id);
+  }, []);
   const handleReleaseDispatch = async (id: string) => {
     if (!driver?.authToken?.trim()) {
       Alert.alert("Freigabe nicht möglich", "Bitte erneut als Fahrer anmelden.");
@@ -4743,6 +4774,7 @@ export default function DriverDashboard() {
                 pendingRequests={pendingRequests}
                 onAccept={handleAccept}
                 onReject={handleReject}
+                onMissTimeout={handleMissTimeout}
                 driverPos={driverPos}
                 isAvailable={driver.einsatzbereit && driver.isAvailable}
                 marketLoading={marketRefreshing}
@@ -4929,6 +4961,7 @@ export default function DriverDashboard() {
                           driverPos={driverPos}
                           onAccept={() => handleAccept(req.id)}
                           onReject={() => handleReject(req.id)}
+                          onMissTimeout={() => handleMissTimeout(req.id)}
                           showReleaseButton={canReleaseDispatchOffer(req, driver.dispatchPriority)}
                           onRelease={() => void handleReleaseDispatch(req.id)}
                           releaseBusy={releaseBusyId === req.id}

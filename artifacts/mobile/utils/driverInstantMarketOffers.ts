@@ -1,4 +1,5 @@
 import type { RideRequest } from "@/context/RideRequestContext";
+import { isInstantOfferSnoozed } from "@/utils/instantOfferCountdown";
 
 const DRIVER_MARKET_STATUSES = new Set<RideRequest["status"]>([
   "pending",
@@ -43,6 +44,7 @@ export function filterDriverInstantMarketOffers(
   }
   return reqs.filter((r) => {
     if (opts.suppressedIds?.has(r.id)) return false;
+    if (isInstantOfferSnoozed(r.id)) return false;
     if (!opts.driverMarketOnline) return false;
     if (!DRIVER_MARKET_STATUSES.has(r.status)) return false;
     if (r.driverId) return false;

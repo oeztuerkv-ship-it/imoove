@@ -36,6 +36,7 @@ import { getDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation"
 import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
 import { stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
+import { subscribeInstantOfferSnooze } from "@/utils/instantOfferCountdown";
 
 export type RequestStatus =
   | "draft"
@@ -771,6 +772,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const rejectingRideIdsRef = useRef<Set<string>>(new Set());
   /** Abgelehnt / abgebrochen — kein erneutes „Neue Fahrt“-Alarm (z. B. nach driver-cancel → searching_driver). */
   const driverSuppressedOfferIdsRef = useRef<Set<string>>(new Set());
+  const [offerSnoozeRev, setOfferSnoozeRev] = useState(0);
+  useEffect(() => subscribeInstantOfferSnooze(() => setOfferSnoozeRev((n) => n + 1)), []);
   const fleetDriverMarketOnlineRef = useRef(Boolean(fleetDriver?.isAvailable));
   fleetDriverMarketOnlineRef.current = Boolean(fleetDriver?.isAvailable);
   const isDriverSurfaceRef = useRef(isDriverSurface);
@@ -1719,7 +1722,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         driverMarketOnline,
         suppressedIds: driverSuppressedOfferIdsRef.current,
       }),
-    [driverMarketPending, driverIdForMarket, driverMarketOnline],
+    [driverMarketPending, driverIdForMarket, driverMarketOnline, offerSnoozeRev],
   );
 
   const eligibleInstantOffersKey = useMemo(
