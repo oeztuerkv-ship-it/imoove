@@ -4259,7 +4259,7 @@ export default function DriverDashboard() {
     }
   };
 
-  /** Countdown 10 s ohne Aktion: nicht rejecten — nach ~20 s erneut anbieten/klingeln (wiederholt). */
+  /** Countdown 10 s ohne Aktion: nicht rejecten — nach ~10 s erneut anbieten/klingeln (wiederholt). */
   const handleMissTimeout = useCallback((id: string) => {
     const ride = allPendingRef.current.find((r) => r.id === id);
     if (ride) stashSoftMissRide(ride);

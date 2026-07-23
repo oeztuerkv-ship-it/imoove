@@ -23,7 +23,7 @@ export type InstantOfferSnoozeEvent =
 const snoozeListeners = new Set<(event: InstantOfferSnoozeEvent) => void>();
 
 /** Pause zwischen verpasstem 10-s-Angebot und erneutem Klingeln. */
-export const INSTANT_OFFER_MISS_SNOOZE_MS = 20_000;
+export const INSTANT_OFFER_MISS_SNOOZE_MS = 10_000;
 
 function notifySnoozeListeners(event: InstantOfferSnoozeEvent): void {
   for (const listener of snoozeListeners) {

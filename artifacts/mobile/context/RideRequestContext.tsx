@@ -33,7 +33,7 @@ import { enqueueOfflineStatusPatch, flushOfflineStatusQueue } from "@/utils/offl
 import { isDriverPushKind, setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
 import { requestDriverPushMarketRefresh, setDriverPushMarketRefreshHandler } from "@/utils/driverPushMarketRefresh";
 import { getDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
-import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
+import { clearDriverInstantOfferAlarmDedupe, ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
 import { stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
 import {
@@ -1038,6 +1038,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
                 }
               }
               driverMarketPrevPendingIdsRef.current.delete(event.rideId);
+              // Soft-Miss-Zyklus: 50-s-Alarm-Dedupe sonst blockiert Ton bei Versuch 2/3.
+              clearDriverInstantOfferAlarmDedupe(event.rideId);
               finishInstantOfferWake(event.rideId);
             } else {
               abandonInstantOfferWake(event.rideId);
