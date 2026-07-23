@@ -56,7 +56,7 @@ import {
   type DriverRideEarnings,
 } from "@/utils/fleetDriverRideEarnings";
 import { CUSTOMER_FIXED_PRICE_LABEL } from "@/utils/customerFareDisplay";
-import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
+import { filterDriverInstantMarketOffers, driverHasActiveAssignedRide } from "@/utils/driverInstantMarketOffers";
 import { setDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation";
 import {
   getCurrentPositionSafe,
@@ -121,9 +121,12 @@ import {
   clearInstantOfferSnooze,
   getInstantOfferCycle,
   getInstantOfferDeadlineMs,
+  isInstantOfferSnoozed,
   snoozeInstantOfferAfterMiss,
+  stashSoftMissRide,
   subscribeInstantOfferSnooze,
 } from "@/utils/instantOfferCountdown";
+import { mergeSoftMissStashIntoOffers } from "@/utils/softMissOfferStash";
 import {
   dismissDriverAdminMessageId,
   fetchLatestUndismissedBannerMessage,
@@ -3894,12 +3897,20 @@ export default function DriverDashboard() {
     };
   }, [driverId]);
 
-  const pendingRequests = filterDriverInstantMarketOffers(allPending, {
-    driverId,
-    driverMarketOnline,
-    suppressedIds: suppressedMarketOfferIdsRef.current,
-    hideWhileOnActiveRide: true,
-  });
+  const pendingRequests = (() => {
+    const filtered = filterDriverInstantMarketOffers(allPending, {
+      driverId,
+      driverMarketOnline,
+      suppressedIds: suppressedMarketOfferIdsRef.current,
+      hideWhileOnActiveRide: true,
+    });
+    // Während aktiver Fahrt kein Soft-Miss-Stash wieder einmischen.
+    if (driverHasActiveAssignedRide(allPending, driverId)) return filtered;
+    return mergeSoftMissStashIntoOffers(filtered, {
+      driverId,
+      suppressedIds: suppressedMarketOfferIdsRef.current,
+    }).filter((r) => !isInstantOfferSnoozed(r.id));
+  })();
   void offerSnoozeRev; // Snooze-Ende → Re-Render inkl. Filter
 
   const activeDriverRequest =
@@ -4250,6 +4261,8 @@ export default function DriverDashboard() {
 
   /** Countdown 10 s ohne Aktion: nicht rejecten — nach ~20 s erneut anbieten/klingeln (wiederholt). */
   const handleMissTimeout = useCallback((id: string) => {
+    const ride = allPendingRef.current.find((r) => r.id === id);
+    if (ride) stashSoftMissRide(ride);
     clearInstantOfferDeadline(id);
     snoozeInstantOfferAfterMiss(id);
     stopRideSound().catch(() => {});

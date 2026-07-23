@@ -39,8 +39,14 @@ import { setRideStatusWsHandler } from "@/utils/socket";
 import {
   abandonInstantOfferWake,
   finishInstantOfferWake,
+  getSoftMissStash,
+  isInstantOfferSnoozed,
   subscribeInstantOfferSnooze,
 } from "@/utils/instantOfferCountdown";
+import {
+  fetchSoftMissOpen,
+  mergeSoftMissStashIntoOffers,
+} from "@/utils/softMissOfferStash";
 
 export type RequestStatus =
   | "draft"
@@ -988,10 +994,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     () =>
       subscribeInstantOfferSnooze((event) => {
         if (event.type === "wake_refresh") {
-          // Nicht aus lokalem Cache zeigen — sonst 1-s-Flash wenn A→B den Fahrer rausnimmt.
+          // Markt-Refresh + soft-miss-open (ohne Tier): weiter klingeln wenn Fahrt noch offen.
           void (async () => {
             const rows = await fetchDriverMarketRef.current({ hardReset: false });
-            const stillVisible =
+            const inMarket =
               Array.isArray(rows) &&
               rows.some(
                 (r) =>
@@ -1002,7 +1008,35 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
                     r.status === "searching_driver" ||
                     r.status === "offered"),
               );
-            if (stillVisible) {
+            let stillOpen = inMarket;
+            if (!stillOpen) {
+              const token = await readFleetAuthToken();
+              const stashed = getSoftMissStash<RideRequest>(event.rideId);
+              if (token) {
+                const openState = await fetchSoftMissOpen({
+                  authToken: token,
+                  rideId: event.rideId,
+                });
+                // open = Server bestätigt; unknown = API noch ohne Endpoint → Stash weiterlaufen lassen
+                stillOpen =
+                  openState === "open" || (openState === "unknown" && Boolean(stashed));
+              } else if (stashed) {
+                stillOpen = true;
+              }
+            }
+            if (stillOpen) {
+              const stashed = getSoftMissStash<RideRequest>(event.rideId);
+              if (stashed && !inMarket) {
+                // A→B o.ä.: Stash wieder in den lokalen Markt legen, damit InstantCard rendert.
+                setDriverMarketRequests((prev) =>
+                  prev.some((r) => r.id === stashed.id) ? prev : [stashed, ...prev],
+                );
+                if (isDriverSurfaceRef.current) {
+                  setRequests((prev) =>
+                    prev.some((r) => r.id === stashed.id) ? prev : [stashed, ...prev],
+                  );
+                }
+              }
               driverMarketPrevPendingIdsRef.current.delete(event.rideId);
               finishInstantOfferWake(event.rideId);
             } else {
@@ -1763,15 +1797,18 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const driverMarketOnline = Boolean(fleetDriver?.einsatzbereit && fleetDriver?.isAvailable);
   const driverIdForMarket = fleetDriver?.id ?? "";
 
-  const eligibleInstantOffers = useMemo(
-    () =>
-      filterDriverInstantMarketOffers(driverMarketPending, {
-        driverId: driverIdForMarket,
-        driverMarketOnline,
-        suppressedIds: driverSuppressedOfferIdsRef.current,
-      }),
-    [driverMarketPending, driverIdForMarket, driverMarketOnline, offerSnoozeRev],
-  );
+  const eligibleInstantOffers = useMemo(() => {
+    const filtered = filterDriverInstantMarketOffers(driverMarketPending, {
+      driverId: driverIdForMarket,
+      driverMarketOnline,
+      suppressedIds: driverSuppressedOfferIdsRef.current,
+    });
+    // Soft-Miss: Stash bleibt sichtbar auch wenn Tier den Fahrer aus market-rides nimmt.
+    return mergeSoftMissStashIntoOffers(filtered, {
+      driverId: driverIdForMarket,
+      suppressedIds: driverSuppressedOfferIdsRef.current,
+    }).filter((r) => !isInstantOfferSnoozed(r.id));
+  }, [driverMarketPending, driverIdForMarket, driverMarketOnline, offerSnoozeRev]);
 
   const eligibleInstantOffersKey = useMemo(
     () => instantMarketOfferIdsKey(eligibleInstantOffers),

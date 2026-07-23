@@ -84,6 +84,7 @@ import {
   rideRequiresPassengerPin,
   verifyPassengerRidePinForRide,
 } from "../lib/customerRideVerifyPin";
+import { isOpenInstantRideForDispatch } from "../lib/dispatchPriorityTier";
 
 const router: IRouter = Router();
 
@@ -866,6 +867,56 @@ router.post("/fleet-driver/v1/rides/:rideId/passenger-rating", requireFleetDrive
       rating: result.rating,
       passengerRatingAverage: result.passengerRatingAverage,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Soft-Miss-Schleife (Mobile): Ist die Sofortfahrt noch offen?
+ * Ohne A/B/C-Tier-Filter — absichtlich, damit bereits angebotene Fahrer
+ * nach Pause erneut klingeln können, solange niemand angenommen hat.
+ */
+router.get("/fleet-driver/v1/rides/:rideId/soft-miss-open", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.json({ ok: true, open: false, reason: "not_found" });
+      return;
+    }
+    const kindMap = await lookupAdminCompanyKinds(
+      [(ride.companyId ?? "").trim()].filter(Boolean),
+    );
+    const originKind = resolveRideOriginCompanyKind(ride.companyId ?? null, kindMap);
+    if (
+      !fleetDriverCanSeeDispatchRide({
+        rideCompanyId: ride.companyId,
+        rideOriginCompanyKind: originKind,
+        driverCompanyId: a.companyId,
+      })
+    ) {
+      res.json({ ok: true, open: false, reason: "forbidden" });
+      return;
+    }
+    if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) {
+      res.json({ ok: true, open: false, reason: "rejected" });
+      return;
+    }
+    if (!isOpenInstantRideForDispatch(ride)) {
+      res.json({ ok: true, open: false, reason: "not_open" });
+      return;
+    }
+    res.json({ ok: true, open: true });
   } catch (e) {
     next(e);
   }

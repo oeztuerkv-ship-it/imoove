@@ -11,6 +11,8 @@ const snoozeTimersByRideId = new Map<string, ReturnType<typeof setTimeout>>();
 const wakeHoldRideIds = new Set<string>();
 /** Remount-Schlüssel für InstantCard — neuer Zyklus = frischer 10-s-Countdown. */
 const offerCycleByRideId = new Map<string, number>();
+/** Letzter bekannter Ride-Snapshot für Soft-Miss über A→B hinweg. */
+const softMissStashByRideId = new Map<string, unknown>();
 
 export type InstantOfferSnoozeEvent =
   | { type: "start"; rideId: string }
@@ -61,6 +63,24 @@ export function getInstantOfferDeadlineMs(rideId: string, durationSec: number): 
 
 export function getInstantOfferCycle(rideId: string): number {
   return offerCycleByRideId.get(rideId.trim()) ?? 0;
+}
+
+export function stashSoftMissRide(ride: { id: string }): void {
+  const id = String(ride.id ?? "").trim();
+  if (!id) return;
+  softMissStashByRideId.set(id, ride);
+}
+
+export function getSoftMissStash<T = unknown>(rideId: string): T | undefined {
+  return softMissStashByRideId.get(rideId.trim()) as T | undefined;
+}
+
+export function listSoftMissStash<T = unknown>(): T[] {
+  return [...softMissStashByRideId.values()] as T[];
+}
+
+export function clearSoftMissStash(rideId: string): void {
+  softMissStashByRideId.delete(rideId.trim());
 }
 
 export function clearInstantOfferDeadline(rideId: string): void {
@@ -119,7 +139,7 @@ export function finishInstantOfferWake(rideId: string): void {
   notifySnoozeListeners({ type: "end", rideId: id });
 }
 
-/** Nicht mehr am Markt (Tier/Annahme/Storno) → Soft-Miss-Schleife beenden. */
+/** Nicht mehr offen / manuell beendet → Soft-Miss-Schleife beenden. */
 export function abandonInstantOfferWake(rideId: string): void {
   const id = rideId.trim();
   if (!id) return;
@@ -129,6 +149,7 @@ export function abandonInstantOfferWake(rideId: string): void {
   wakeHoldRideIds.delete(id);
   snoozeUntilByRideId.delete(id);
   clearInstantOfferDeadline(id);
+  softMissStashByRideId.delete(id);
   notifySnoozeListeners({ type: "clear", rideId: id });
 }
 
@@ -140,6 +161,7 @@ export function clearInstantOfferSnooze(rideId: string): void {
   snoozeTimersByRideId.delete(id);
   const wasHeld = wakeHoldRideIds.delete(id);
   const wasSnoozed = snoozeUntilByRideId.delete(id);
+  softMissStashByRideId.delete(id);
   if (wasHeld || wasSnoozed) {
     notifySnoozeListeners({ type: "clear", rideId: id });
   }

@@ -70,8 +70,8 @@ Schutz-Zweige (Baseline still):
 
 - `GET /fleet-driver/v1/market-rides`: offener Markt nur wenn `is_market_online=true`; `rejectedBy` filtert abgelehnte; terminale Status ausgeschlossen; `Cache-Control: no-store`
 - `POST /rides/:id/reject` → `rejectedBy` in DB (**nur manueller Ablehnen-Button**, nicht Countdown-Timeout)
-- Sofort-Countdown **10 s** ohne Aktion → lokaler **Snooze ~20 s** (`snoozeInstantOfferAfterMiss`), dann **Markt-Refresh** (`wake_refresh`); nur wenn die Fahrt für diesen Fahrer noch in `market-rides` ist → erneut Angebot + Klingeln — **kein** `rejectedBy`. **Wiederholt**, bis Annahme, manuelles X, Fahrt endet, oder Fahrer die Stufe nicht mehr sieht. Soft-Miss ändert `dispatch_tier` nicht (unabhängig von A→B→C-Server-Logik).
-- **Timing mit A→B→C:** Default-Tier-Timeout **~30 s**. 10 s Angebot + 20 s Snooze ≈ Wake genau wenn oft A→B wechselt. Stale-Cache zeigte die Karte ~1 s, dann Poll/Refresh nimmt sie für A-Fahrer weg. Fix: Wake hält die Karte versteckt bis Refresh; wenn nicht mehr sichtbar → `abandonInstantOfferWake` (kein Flash, keine Fake-3. Chance).
+- Sofort-Countdown **10 s** ohne Aktion → lokaler **Snooze ~20 s** (`snoozeInstantOfferAfterMiss`), dann **Markt-Refresh** + **`GET …/soft-miss-open`** (ohne Tier-Filter). Wenn Fahrt noch offen → Stash wieder einmischen + Klingeln. **Wiederholt** bis Annahme, manuelles X, oder Fahrt nicht mehr offen. Soft-Miss ändert `dispatch_tier` nicht.
+- **A→B→C:** Soft-Miss läuft für Fahrer, die das Angebot schon hatten, auch weiter, wenn die Stufe wechselt (Stash + `soft-miss-open`). Neu am Markt sieht nur die aktuelle Stufe.
 - **Bug (behoben):** Bei Snooze blieb die Ride-ID in `driverMarketPrevPendingIdsRef` / Dashboard-`prevPendingIds` (leerer Pool updatete Prev nicht) → Rückkehr ohne Klingeln. Fix: Prev bei leerem Pool + bei Snooze-`end` löschen.
 - Migration **`066_fleet_drivers_market_online.sql`** — Online-Status persistent
 
