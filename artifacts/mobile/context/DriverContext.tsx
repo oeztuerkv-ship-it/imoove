@@ -20,18 +20,24 @@ const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
 
 async function syncFleetMarketAvailability(authToken: string, available: boolean): Promise<void> {
   const tok = authToken.trim();
-  if (!tok) return;
-  try {
-    await fetch(`${API_BASE}/fleet-driver/v1/market-availability`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${tok}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ available }),
-    });
-  } catch {
-    /* offline — lokaler Schalter bleibt */
+  if (!tok) throw new Error("missing_auth_token");
+  const res = await fetch(`${API_BASE}/fleet-driver/v1/market-availability`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${tok}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ available }),
+  });
+  if (!res.ok) {
+    let code = `http_${res.status}`;
+    try {
+      const data = (await res.json()) as { error?: string };
+      if (typeof data.error === "string" && data.error.trim()) code = data.error.trim();
+    } catch {
+      /* ignore */
+    }
+    throw new Error(code);
   }
 }
 
@@ -143,7 +149,8 @@ function applyFleetMeSyncFailure(profile: DriverProfile, message: string): Drive
   return {
     ...profile,
     einsatzbereit: false,
-    isAvailable: false,
+    // Lokalen Markt-Schalter nicht killen — sonst schreibt ein Folge-Effect/Sync false in die DB,
+    // obwohl der Fahrer ONLINE war und nur /me kurz fehlschlug.
     meSyncError: message,
     notFreigegebenMessage: message,
     blockBannerTitle: ME_SYNC_FAILED_TITLE,
@@ -508,6 +515,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [driver, setDriver] = useState<DriverProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastError, setLastError] = useState("");
+  /** Invalidiert parallele /me-Antworten nach ONLINE/OFFLINE-Toggle (kein Stale-Overwrite). */
+  const meSyncGenerationRef = React.useRef(0);
+  const availabilityPatchInFlightRef = React.useRef(false);
+  const driverRef = React.useRef<DriverProfile | null>(null);
+  driverRef.current = driver;
 
   useEffect(() => {
     let cancelled = false;
@@ -759,9 +771,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   }, [driver?.authToken]);
 
   const refreshEinsatzbereit = useCallback(async (): Promise<DriverProfile | null> => {
-    const token = driver?.authToken;
+    const token = driverRef.current?.authToken;
     if (!token) return null;
+    const gen = meSyncGenerationRef.current;
     const meResult = await fetchFleetDriverMe(token);
+    if (gen !== meSyncGenerationRef.current) return driverRef.current;
     if (!meResult.ok) {
       setLastError(meResult.message);
       let next: DriverProfile | null = null;
@@ -776,12 +790,20 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     let next: DriverProfile | null = null;
     setDriver((prev) => {
       if (!prev) return prev;
-      next = mergeFleetDriverMeIntoProfile(prev, meResult.data);
+      // Während PATCH ONLINE/OFFLINE: Server-/me-Wert für isAvailable nicht überschreiben.
+      if (availabilityPatchInFlightRef.current || gen !== meSyncGenerationRef.current) {
+        next = {
+          ...mergeFleetDriverMeIntoProfile(prev, meResult.data),
+          isAvailable: prev.isAvailable,
+        };
+      } else {
+        next = mergeFleetDriverMeIntoProfile(prev, meResult.data);
+      }
       patchStoredDriver(next);
       return next;
     });
     return next;
-  }, [driver?.authToken]);
+  }, []);
 
   const patchAssignedVehicleSnapshot = useCallback(
     (snap: { plate?: string; konzessionNumber?: string; car?: string }) => {
@@ -807,6 +829,9 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const setAvailable = useCallback(async (v: boolean): Promise<void> => {
     if (!driver?.authToken) return;
     if (v && !driver.einsatzbereit) return;
+    availabilityPatchInFlightRef.current = true;
+    meSyncGenerationRef.current += 1;
+    const patchGen = meSyncGenerationRef.current;
     setDriver((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, isAvailable: v };
@@ -815,6 +840,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       await syncFleetMarketAvailability(driver.authToken, v);
+      if (patchGen !== meSyncGenerationRef.current) return;
       if (v && driver.id && driver.companyId) {
         await syncDriverExpoPushTokenWithRetry({
           authToken: driver.authToken,
@@ -832,8 +858,12 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         return reverted;
       });
       throw e;
+    } finally {
+      if (patchGen === meSyncGenerationRef.current) {
+        availabilityPatchInFlightRef.current = false;
+      }
     }
-  }, [driver?.authToken, driver?.einsatzbereit]);
+  }, [driver?.authToken, driver?.einsatzbereit, driver?.id, driver?.companyId]);
 
   const blockDriver48h = useCallback(async () => {
     const until = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
@@ -852,19 +882,17 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     if (!driver?.authToken) return;
     if (driver.einsatzbereit) return;
     if (!driver.isAvailable) return;
+    // Nur lokal OFFLINE erzwingen — nicht blind PATCH false (Race mit frischem ONLINE-Toggle).
     setDriver((prev) => {
       if (!prev || prev.einsatzbereit || !prev.isAvailable) return prev;
       const updated = { ...prev, isAvailable: false };
       patchStoredDriver(updated);
-      void syncFleetMarketAvailability(updated.authToken, false);
       return updated;
     });
   }, [driver?.einsatzbereit, driver?.isAvailable, driver?.authToken]);
 
-  useEffect(() => {
-    if (!driver?.authToken) return;
-    void syncFleetMarketAvailability(driver.authToken, driver.isAvailable);
-  }, [driver?.authToken, driver?.isAvailable]);
+  // Kein useEffect mehr, der isAvailable → Server spiegelt: das hat nach Login-Offline
+  // und bei parallelem /me Stale-false zurückgeschrieben und ONLINE wieder gekillt.
 
   useEffect(() => {
     if (!driver?.authToken) return;

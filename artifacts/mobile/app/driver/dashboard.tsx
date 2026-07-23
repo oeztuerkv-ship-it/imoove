@@ -4558,9 +4558,11 @@ export default function DriverDashboard() {
                   prevPendingIds.current = new Set(allPendingRef.current.map((r) => r.id));
                   setBannerRide(null);
                   bannerAnim.setValue(-140);
+                  let wentOnlineOk = false;
                   try {
                     await refreshDriverMarketHard();
                     await setAvailable(true);
+                    wentOnlineOk = true;
                     if (Platform.OS === "android") {
                       void maybeShowDriverBatteryOptimizationHint({ reason: "first_online" });
                     } else if (Platform.OS === "ios") {
@@ -4568,13 +4570,18 @@ export default function DriverDashboard() {
                     }
                     await refreshDriverMarketHard();
                     setMarketPanelKey((k) => k + 1);
+                  } catch {
+                    Alert.alert(
+                      "Online fehlgeschlagen",
+                      "Der Auftragsmarkt konnte nicht auf ONLINE gesetzt werden. Bitte Verbindung prüfen und erneut versuchen.",
+                    );
                   } finally {
                     if (onlineFlowEndTimerRef.current) clearTimeout(onlineFlowEndTimerRef.current);
                     onlineFlowEndTimerRef.current = setTimeout(() => {
                       onlineFlowEndTimerRef.current = null;
                       prevPendingIds.current = new Set(allPendingRef.current.map((r) => r.id));
                       firstRender.current = false;
-                      prevDriverOnline.current = true;
+                      prevDriverOnline.current = wentOnlineOk;
                       isOnlineFlowRunning.current = false;
                     }, 200);
                   }

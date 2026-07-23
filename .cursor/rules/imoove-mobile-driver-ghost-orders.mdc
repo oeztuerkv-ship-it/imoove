@@ -40,6 +40,8 @@ Reihenfolge der Bugs (historisch):
 |--------|---------|
 | `refreshRequests()` ohne State-Leerung | Alte `requests` bleiben bis Fetch fertig |
 | `setAvailable(true)` vor `await` PATCH | Markt-Fetch mit `is_market_online=false` |
+| Blind-`useEffect` spiegelt `isAvailable` → PATCH | Stales `/me` (false) oder Login-Offline überschreibt frisches ONLINE → **`is_market_online` bleibt false** trotz UI-Online + GPS-Ping |
+| `applyFleetMeSyncFailure` setzt `isAvailable: false` | Profil-Sync-Fehler erzwingt Offline und schrieb früher per Effect false in die DB |
 | `firstRender.current = false` beim ONLINE-Toggle | Alle IDs wirken „neu“ → Banner/Ton |
 | `isOnlineFlowRunning = false` **synchron** im `finally` nach `setRequests()` | Effect läuft mit Flag schon `false` → Ghost |
 | `prevPendingIds` nie = echter Stand nach Flow | Notification vergleicht mit leerem/veraltetem Set |
@@ -88,7 +90,7 @@ Dateien: `lib/marketLocationUpdate.ts`, `db/fleetDriversData.ts`.
 | Datei | Inhalt |
 |-------|--------|
 | `context/RideRequestContext.tsx` | `fetchDriverMarket`, `refreshDriverMarketHard`, Poll, Driver-Surface-Effect |
-| `context/DriverContext.tsx` | `setAvailable` async + `await` PATCH; `/me` → `isAvailable` |
+| `context/DriverContext.tsx` | `setAvailable` async + `await` PATCH (**res.ok** prüfen); `/me` → `isAvailable`; **kein** Spiegel-Effect `isAvailable→Server`; Stale-/me nach Toggle invalidieren |
 | `app/driver/dashboard.tsx` | ONLINE-Toggle, `isOnlineFlowRunning`, `allPendingRef`, Notification-Effect |
 | `app/driver/login.tsx` | `refreshDriverMarketHard` nach erfolgreichem Login |
 | `api-server/.../fleetDriverApi.ts` | `market-rides` Filter + Cache-Header |
@@ -104,7 +106,7 @@ Details: **`imoove-mobile-notifications-push-knowledge.mdc`**.
 
 1. **Niemals** nur `refreshRequests()`/`fetchAll()` erwarten, dass Ghost verschwindet — bei Login/ONLINE **`refreshDriverMarketHard()`** oder explizit `requests` leeren.
 2. **Notification-Baseline** (`prevPendingIds`) immer aus **aktuellem** Markt-Stand setzen — Ref (`allPendingRef`) + verzögertes Freigeben von `isOnlineFlowRunning`, nicht blind auf Effect-Reihenfolge vertrauen.
-3. **`setAvailable`:** PATCH **vor** oder **ohne** optimistisches UI-Online; Effect in `DriverContext` synct zusätzlich — Doppel-PATCH ist ok.
+3. **`setAvailable`:** PATCH mit Fehlerbehandlung; paralleles `/me` darf frisches ONLINE nicht mit Stale-`isMarketOnline:false` überschreiben. **Kein** Dauer-Effect, der jeden `isAvailable`-State auf den Server schreibt.
 4. Auf **`/driver/*`** ohne Fleet-Token: **keine** Kunden-`requests` im Provider lassen.
 5. Hook-Aufrufe: `const { refreshDriverMarketHard, suppressDriverInstantOffer } = useRideRequests()` — ReferenceError wenn vergessen (Passiert bei `login.tsx`).
 6. Storno/Abbruch: immer **`suppressDriverInstantOffer`** + Notifications-Regel lesen.
