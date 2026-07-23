@@ -3776,7 +3776,13 @@ export default function DriverDashboard() {
   /** Soft-Miss-Snooze abgelaufen → Marktfilter/Klingeln neu berechnen. */
   const [offerSnoozeRev, setOfferSnoozeRev] = useState(0);
 
-  useEffect(() => subscribeInstantOfferSnooze(() => setOfferSnoozeRev((n) => n + 1)), []);
+  useEffect(() => subscribeInstantOfferSnooze((event) => {
+    // Wake: ID aus Prev, sonst gilt Rückkehr nicht als „neu“ → kein Klingeln/Banner.
+    if (event.type === "end") {
+      prevPendingIds.current.delete(event.rideId);
+    }
+    setOfferSnoozeRev((n) => n + 1);
+  }), []);
 
   // In-app notification banner
   const [bannerRide, setBannerRide] = useState<RideRequest | null>(null);
@@ -4237,7 +4243,7 @@ export default function DriverDashboard() {
     }
   };
 
-  /** Countdown 10 s ohne Aktion: nicht rejecten — nach ~20 s erneut anbieten/klingeln. */
+  /** Countdown 10 s ohne Aktion: nicht rejecten — nach ~20 s erneut anbieten/klingeln (wiederholt). */
   const handleMissTimeout = useCallback((id: string) => {
     clearInstantOfferDeadline(id);
     snoozeInstantOfferAfterMiss(id);
@@ -4245,7 +4251,7 @@ export default function DriverDashboard() {
     if (bannerTimer.current) clearTimeout(bannerTimer.current);
     setBannerRide((cur) => (cur?.id === id ? null : cur));
     bannerAnim.setValue(-140);
-    // Während Snooze aus prev entfernen, damit Rückkehr = „neu“ → Klingeln.
+    // Sofort aus Prev, damit Snooze-Ende = „neu“.
     prevPendingIds.current.delete(id);
   }, []);
   const handleReleaseDispatch = async (id: string) => {

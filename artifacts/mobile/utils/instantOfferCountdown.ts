@@ -1,26 +1,34 @@
 /** Countdown-Ende pro Sofortauftrag — überlebt Offline/Remount (kein Reset auf 10). */
 const deadlineByRideId = new Map<string, number>();
 
-/** Nach Countdown-Timeout: kurz ausblenden, dann zweite Chance (Klingeln), wenn noch offen. */
+/**
+ * Nach Countdown-Timeout: kurz ausblenden, dann erneut anbieten/klingeln (wiederholbar),
+ * solange die Fahrt offen ist und der Fahrer nicht manuell abgelehnt hat.
+ */
 const snoozeUntilByRideId = new Map<string, number>();
 const snoozeTimersByRideId = new Map<string, ReturnType<typeof setTimeout>>();
-const snoozeListeners = new Set<() => void>();
 
-/** Default: 20 s Pause nach verpasstem 10-s-Angebot. */
+export type InstantOfferSnoozeEvent = { type: "start" | "end" | "clear"; rideId: string };
+
+const snoozeListeners = new Set<(event: InstantOfferSnoozeEvent) => void>();
+
+/** Pause zwischen verpasstem 10-s-Angebot und erneutem Klingeln. */
 export const INSTANT_OFFER_MISS_SNOOZE_MS = 20_000;
 
-function notifySnoozeListeners(): void {
+function notifySnoozeListeners(event: InstantOfferSnoozeEvent): void {
   for (const listener of snoozeListeners) {
     try {
-      listener();
+      listener(event);
     } catch {
       /* ignore */
     }
   }
 }
 
-/** UI/Context: bei Snooze-Start/Ende neu filtern (zweite Chance). */
-export function subscribeInstantOfferSnooze(listener: () => void): () => void {
+/** UI/Context: bei Snooze-Start/Ende neu filtern und Prev-IDs für Klingeln zurücksetzen. */
+export function subscribeInstantOfferSnooze(
+  listener: (event: InstantOfferSnoozeEvent) => void,
+): () => void {
   snoozeListeners.add(listener);
   return () => {
     snoozeListeners.delete(listener);
@@ -57,7 +65,7 @@ export function isInstantOfferSnoozed(rideId: string, nowMs = Date.now()): boole
 
 /**
  * Countdown abgelaufen ohne Annahme/Ablehnen: nicht in rejectedBy schreiben —
- * nach `snoozeMs` wieder anzeigen + Klingeln, falls die Fahrt noch im Markt ist.
+ * nach `snoozeMs` wieder anzeigen + Klingeln (beliebig oft wiederholbar).
  */
 export function snoozeInstantOfferAfterMiss(
   rideId: string,
@@ -68,14 +76,17 @@ export function snoozeInstantOfferAfterMiss(
   clearInstantOfferDeadline(id);
   const prevTimer = snoozeTimersByRideId.get(id);
   if (prevTimer) clearTimeout(prevTimer);
-  const until = Date.now() + Math.max(1000, snoozeMs);
+  const waitMs = Math.max(1000, snoozeMs);
+  const until = Date.now() + waitMs;
   snoozeUntilByRideId.set(id, until);
-  notifySnoozeListeners();
+  notifySnoozeListeners({ type: "start", rideId: id });
   const timer = setTimeout(() => {
     snoozeTimersByRideId.delete(id);
     snoozeUntilByRideId.delete(id);
-    notifySnoozeListeners();
-  }, Math.max(1000, snoozeMs));
+    // Neuer Countdown erst nach Wake — alte Deadline darf nicht kleben.
+    clearInstantOfferDeadline(id);
+    notifySnoozeListeners({ type: "end", rideId: id });
+  }, waitMs);
   snoozeTimersByRideId.set(id, timer);
 }
 
@@ -85,5 +96,7 @@ export function clearInstantOfferSnooze(rideId: string): void {
   const timer = snoozeTimersByRideId.get(id);
   if (timer) clearTimeout(timer);
   snoozeTimersByRideId.delete(id);
-  if (snoozeUntilByRideId.delete(id)) notifySnoozeListeners();
+  if (snoozeUntilByRideId.delete(id)) {
+    notifySnoozeListeners({ type: "clear", rideId: id });
+  }
 }

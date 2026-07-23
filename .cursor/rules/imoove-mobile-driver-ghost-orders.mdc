@@ -70,7 +70,8 @@ Schutz-Zweige (Baseline still):
 
 - `GET /fleet-driver/v1/market-rides`: offener Markt nur wenn `is_market_online=true`; `rejectedBy` filtert abgelehnte; terminale Status ausgeschlossen; `Cache-Control: no-store`
 - `POST /rides/:id/reject` → `rejectedBy` in DB (**nur manueller Ablehnen-Button**, nicht Countdown-Timeout)
-- Sofort-Countdown **10 s** ohne Aktion → lokaler **Snooze ~20 s** (`snoozeInstantOfferAfterMiss`), dann erneut Angebot + Klingeln wenn Fahrt noch offen — **kein** `rejectedBy`
+- Sofort-Countdown **10 s** ohne Aktion → lokaler **Snooze ~20 s** (`snoozeInstantOfferAfterMiss`), dann erneut Angebot + Klingeln wenn Fahrt noch offen — **kein** `rejectedBy`. **Wiederholt**, bis Annahme, manuelles X, oder Fahrt endet. Unabhängig von A→B→C (Server-Tier); Soft-Miss ändert `dispatch_tier` nicht.
+- **Bug (behoben):** Bei Snooze blieb die Ride-ID in `driverMarketPrevPendingIdsRef` / Dashboard-`prevPendingIds` (leerer Pool updatete Prev nicht) → Rückkehr ohne Klingeln. Fix: Prev bei leerem Pool + bei Snooze-`end` löschen.
 - Migration **`066_fleet_drivers_market_online.sql`** — Online-Status persistent
 
 Wenn Ghost **nach** allen Mobile-Fixes bleibt: Ride-ID + Status + `rejected_by` in DB prüfen.

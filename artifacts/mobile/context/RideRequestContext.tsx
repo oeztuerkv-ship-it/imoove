@@ -773,7 +773,17 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   /** Abgelehnt / abgebrochen — kein erneutes „Neue Fahrt“-Alarm (z. B. nach driver-cancel → searching_driver). */
   const driverSuppressedOfferIdsRef = useRef<Set<string>>(new Set());
   const [offerSnoozeRev, setOfferSnoozeRev] = useState(0);
-  useEffect(() => subscribeInstantOfferSnooze(() => setOfferSnoozeRev((n) => n + 1)), []);
+  useEffect(
+    () =>
+      subscribeInstantOfferSnooze((event) => {
+        // Bugfix: bei leerem Pool blieb die ID in prev → nach Snooze kein Klingeln.
+        if (event.type === "end") {
+          driverMarketPrevPendingIdsRef.current.delete(event.rideId);
+        }
+        setOfferSnoozeRev((n) => n + 1);
+      }),
+    [],
+  );
   const fleetDriverMarketOnlineRef = useRef(Boolean(fleetDriver?.isAvailable));
   fleetDriverMarketOnlineRef.current = Boolean(fleetDriver?.isAvailable);
   const isDriverSurfaceRef = useRef(isDriverSurface);
@@ -1752,6 +1762,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
     if (pool.length === 0) {
       if (driverMarketHydrated) void stopRideSound();
+      // Wichtig: Prev leeren — sonst bleibt Snooze-ID „gesehen“ und wacht ohne Klingeln auf.
+      driverMarketPrevPendingIdsRef.current = currentIds;
       driverMarketOnlinePrevRef.current = driverOnline;
       return;
     }
