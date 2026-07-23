@@ -3,12 +3,20 @@ const deadlineByRideId = new Map<string, number>();
 
 /**
  * Nach Countdown-Timeout: kurz ausblenden, dann erneut anbieten/klingeln (wiederholbar),
- * solange die Fahrt offen ist und der Fahrer nicht manuell abgelehnt hat.
+ * solange die Fahrt für diesen Fahrer noch am Markt sichtbar ist und er nicht manuell abgelehnt hat.
  */
 const snoozeUntilByRideId = new Map<string, number>();
 const snoozeTimersByRideId = new Map<string, ReturnType<typeof setTimeout>>();
+/** Nach Pause: versteckt bis Markt-Refresh bestätigt, dass die Fahrt noch sichtbar ist. */
+const wakeHoldRideIds = new Set<string>();
+/** Remount-Schlüssel für InstantCard — neuer Zyklus = frischer 10-s-Countdown. */
+const offerCycleByRideId = new Map<string, number>();
 
-export type InstantOfferSnoozeEvent = { type: "start" | "end" | "clear"; rideId: string };
+export type InstantOfferSnoozeEvent =
+  | { type: "start"; rideId: string }
+  | { type: "wake_refresh"; rideId: string }
+  | { type: "end"; rideId: string }
+  | { type: "clear"; rideId: string };
 
 const snoozeListeners = new Set<(event: InstantOfferSnoozeEvent) => void>();
 
@@ -25,7 +33,13 @@ function notifySnoozeListeners(event: InstantOfferSnoozeEvent): void {
   }
 }
 
-/** UI/Context: bei Snooze-Start/Ende neu filtern und Prev-IDs für Klingeln zurücksetzen. */
+function bumpOfferCycle(rideId: string): number {
+  const next = (offerCycleByRideId.get(rideId) ?? 0) + 1;
+  offerCycleByRideId.set(rideId, next);
+  return next;
+}
+
+/** UI/Context: Snooze-Start, Wake-Refresh, Ende, Clear. */
 export function subscribeInstantOfferSnooze(
   listener: (event: InstantOfferSnoozeEvent) => void,
 ): () => void {
@@ -35,16 +49,22 @@ export function subscribeInstantOfferSnooze(
   };
 }
 
+/** Frischer Countdown; abgelaufene/kurz vor Ende stehende Deadlines nicht wiederverwenden. */
 export function getInstantOfferDeadlineMs(rideId: string, durationSec: number): number {
-  const existing = deadlineByRideId.get(rideId);
-  if (existing != null) return existing;
-  const deadline = Date.now() + durationSec * 1000;
-  deadlineByRideId.set(rideId, deadline);
+  const id = rideId.trim();
+  const existing = deadlineByRideId.get(id);
+  if (existing != null && existing - Date.now() > 1000) return existing;
+  const deadline = Date.now() + Math.max(1, durationSec) * 1000;
+  deadlineByRideId.set(id, deadline);
   return deadline;
 }
 
+export function getInstantOfferCycle(rideId: string): number {
+  return offerCycleByRideId.get(rideId.trim()) ?? 0;
+}
+
 export function clearInstantOfferDeadline(rideId: string): void {
-  deadlineByRideId.delete(rideId);
+  deadlineByRideId.delete(rideId.trim());
 }
 
 export function clearAllInstantOfferDeadlines(): void {
@@ -54,18 +74,16 @@ export function clearAllInstantOfferDeadlines(): void {
 export function isInstantOfferSnoozed(rideId: string, nowMs = Date.now()): boolean {
   const id = rideId.trim();
   if (!id) return false;
+  if (wakeHoldRideIds.has(id)) return true;
   const until = snoozeUntilByRideId.get(id);
   if (until == null) return false;
-  if (nowMs >= until) {
-    snoozeUntilByRideId.delete(id);
-    return false;
-  }
-  return true;
+  // Kein Auto-Delete hier — sonst Race mit Timer (kurz sichtbar → Deadline weg).
+  return nowMs < until;
 }
 
 /**
  * Countdown abgelaufen ohne Annahme/Ablehnen: nicht in rejectedBy schreiben —
- * nach `snoozeMs` wieder anzeigen + Klingeln (beliebig oft wiederholbar).
+ * nach `snoozeMs` Markt prüfen, dann ggf. wieder anzeigen + Klingeln.
  */
 export function snoozeInstantOfferAfterMiss(
   rideId: string,
@@ -76,18 +94,42 @@ export function snoozeInstantOfferAfterMiss(
   clearInstantOfferDeadline(id);
   const prevTimer = snoozeTimersByRideId.get(id);
   if (prevTimer) clearTimeout(prevTimer);
+  wakeHoldRideIds.delete(id);
   const waitMs = Math.max(1000, snoozeMs);
-  const until = Date.now() + waitMs;
-  snoozeUntilByRideId.set(id, until);
+  snoozeUntilByRideId.set(id, Date.now() + waitMs);
   notifySnoozeListeners({ type: "start", rideId: id });
   const timer = setTimeout(() => {
     snoozeTimersByRideId.delete(id);
     snoozeUntilByRideId.delete(id);
-    // Neuer Countdown erst nach Wake — alte Deadline darf nicht kleben.
+    wakeHoldRideIds.add(id);
     clearInstantOfferDeadline(id);
-    notifySnoozeListeners({ type: "end", rideId: id });
+    notifySnoozeListeners({ type: "wake_refresh", rideId: id });
   }, waitMs);
   snoozeTimersByRideId.set(id, timer);
+}
+
+/** Markt hat bestätigt: Fahrt noch sichtbar → erneut anbieten. */
+export function finishInstantOfferWake(rideId: string): void {
+  const id = rideId.trim();
+  if (!id) return;
+  wakeHoldRideIds.delete(id);
+  snoozeUntilByRideId.delete(id);
+  clearInstantOfferDeadline(id);
+  bumpOfferCycle(id);
+  notifySnoozeListeners({ type: "end", rideId: id });
+}
+
+/** Nicht mehr am Markt (Tier/Annahme/Storno) → Soft-Miss-Schleife beenden. */
+export function abandonInstantOfferWake(rideId: string): void {
+  const id = rideId.trim();
+  if (!id) return;
+  const timer = snoozeTimersByRideId.get(id);
+  if (timer) clearTimeout(timer);
+  snoozeTimersByRideId.delete(id);
+  wakeHoldRideIds.delete(id);
+  snoozeUntilByRideId.delete(id);
+  clearInstantOfferDeadline(id);
+  notifySnoozeListeners({ type: "clear", rideId: id });
 }
 
 export function clearInstantOfferSnooze(rideId: string): void {
@@ -96,7 +138,9 @@ export function clearInstantOfferSnooze(rideId: string): void {
   const timer = snoozeTimersByRideId.get(id);
   if (timer) clearTimeout(timer);
   snoozeTimersByRideId.delete(id);
-  if (snoozeUntilByRideId.delete(id)) {
+  const wasHeld = wakeHoldRideIds.delete(id);
+  const wasSnoozed = snoozeUntilByRideId.delete(id);
+  if (wasHeld || wasSnoozed) {
     notifySnoozeListeners({ type: "clear", rideId: id });
   }
 }

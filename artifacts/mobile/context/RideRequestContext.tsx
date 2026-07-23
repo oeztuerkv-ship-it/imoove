@@ -36,7 +36,11 @@ import { getDriverMarketFetchLocation } from "@/utils/driverMarketFetchLocation"
 import { ringForDriverInstantOffer } from "@/utils/driverInstantOfferAlarm";
 import { stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
-import { subscribeInstantOfferSnooze } from "@/utils/instantOfferCountdown";
+import {
+  abandonInstantOfferWake,
+  finishInstantOfferWake,
+  subscribeInstantOfferSnooze,
+} from "@/utils/instantOfferCountdown";
 
 export type RequestStatus =
   | "draft"
@@ -245,9 +249,9 @@ interface RideRequestContextValue {
   /** Manuelles Neuladen der Aufträge (z. B. „Erneut suchen“). */
   refreshRequests: () => Promise<void>;
   /** Fahrer-Markt: State leeren, dann frisch vom Server (nach ONLINE / Storno). */
-  refreshDriverMarketHard: (opts?: { lat?: number; lon?: number }) => Promise<boolean>;
+  refreshDriverMarketHard: (opts?: { lat?: number; lon?: number }) => Promise<RideRequest[] | null>;
   /** Fahrer-Markt ohne Hard-Reset (z. B. nach Push — Alarm nicht unterbrechen). */
-  refreshDriverMarket: (opts?: { lat?: number; lon?: number }) => Promise<boolean>;
+  refreshDriverMarket: (opts?: { lat?: number; lon?: number }) => Promise<RideRequest[] | null>;
   /** Sofort-Markt in der UI leeren (z. B. vor OFFLINE — kein Aufblitzen). */
   clearDriverMarketRequests: () => void;
   /** Kein erneutes Klingeln/Banner für diese Auftrags-ID (Abbruch, Ablehnung, Storno). */
@@ -289,8 +293,8 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   startDriving: async () => {},
   completeRequest: async () => {},
   refreshRequests: async () => {},
-  refreshDriverMarketHard: async () => false,
-  refreshDriverMarket: async () => false,
+  refreshDriverMarketHard: async () => null,
+  refreshDriverMarket: async () => null,
   clearDriverMarketRequests: () => {},
   suppressDriverInstantOffer: () => {},
 });
@@ -773,17 +777,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   /** Abgelehnt / abgebrochen — kein erneutes „Neue Fahrt“-Alarm (z. B. nach driver-cancel → searching_driver). */
   const driverSuppressedOfferIdsRef = useRef<Set<string>>(new Set());
   const [offerSnoozeRev, setOfferSnoozeRev] = useState(0);
-  useEffect(
-    () =>
-      subscribeInstantOfferSnooze((event) => {
-        // Bugfix: bei leerem Pool blieb die ID in prev → nach Snooze kein Klingeln.
-        if (event.type === "end") {
-          driverMarketPrevPendingIdsRef.current.delete(event.rideId);
-        }
-        setOfferSnoozeRev((n) => n + 1);
-      }),
-    [],
-  );
+  const fetchDriverMarketRef = useRef<
+    (opts?: { hardReset?: boolean; lat?: number; lon?: number }) => Promise<RideRequest[] | null>
+  >(async () => null);
   const fleetDriverMarketOnlineRef = useRef(Boolean(fleetDriver?.isAvailable));
   fleetDriverMarketOnlineRef.current = Boolean(fleetDriver?.isAvailable);
   const isDriverSurfaceRef = useRef(isDriverSurface);
@@ -910,10 +906,14 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   const fetchDriverMarket = useCallback(
-    async (opts?: { hardReset?: boolean; lat?: number; lon?: number }): Promise<boolean> => {
-      if (!API_BASE) return false;
+    async (opts?: {
+      hardReset?: boolean;
+      lat?: number;
+      lon?: number;
+    }): Promise<RideRequest[] | null> => {
+      if (!API_BASE) return null;
       const token = await readFleetAuthToken();
-      if (!token) return false;
+      if (!token) return null;
 
       if (opts?.hardReset) {
         setDriverMarketRequests([]);
@@ -961,7 +961,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         applyDriverMarketPayload(instantRows, scheduledNorm);
         setIsDriverMarketConnected(marketRes.ok || schedRes.ok);
         if (isDriverSurfaceRef.current) setIsConnected(marketRes.ok || schedRes.ok);
-        return marketRes.ok || schedRes.ok;
+        return instantRows;
       } catch {
         setIsDriverMarketConnected(false);
         if (isDriverSurfaceRef.current) setIsConnected(false);
@@ -974,12 +974,50 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
             lastCountRef.current = 0;
           }
         }
-        return false;
+        return null;
       } finally {
         setDriverMarketHydrated(true);
       }
     },
     [applyDriverMarketPayload, readFleetAuthToken, ridesFromPayload],
+  );
+
+  fetchDriverMarketRef.current = fetchDriverMarket;
+
+  useEffect(
+    () =>
+      subscribeInstantOfferSnooze((event) => {
+        if (event.type === "wake_refresh") {
+          // Nicht aus lokalem Cache zeigen — sonst 1-s-Flash wenn A→B den Fahrer rausnimmt.
+          void (async () => {
+            const rows = await fetchDriverMarketRef.current({ hardReset: false });
+            const stillVisible =
+              Array.isArray(rows) &&
+              rows.some(
+                (r) =>
+                  r.id === event.rideId &&
+                  !r.driverId &&
+                  (r.status === "pending" ||
+                    r.status === "requested" ||
+                    r.status === "searching_driver" ||
+                    r.status === "offered"),
+              );
+            if (stillVisible) {
+              driverMarketPrevPendingIdsRef.current.delete(event.rideId);
+              finishInstantOfferWake(event.rideId);
+            } else {
+              abandonInstantOfferWake(event.rideId);
+            }
+            setOfferSnoozeRev((n) => n + 1);
+          })();
+          return;
+        }
+        if (event.type === "end") {
+          driverMarketPrevPendingIdsRef.current.delete(event.rideId);
+        }
+        setOfferSnoozeRev((n) => n + 1);
+      }),
+    [],
   );
 
   const refreshDriverMarketHard = useCallback(

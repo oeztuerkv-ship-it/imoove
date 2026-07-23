@@ -119,6 +119,7 @@ import {
 import {
   clearInstantOfferDeadline,
   clearInstantOfferSnooze,
+  getInstantOfferCycle,
   getInstantOfferDeadlineMs,
   snoozeInstantOfferAfterMiss,
   subscribeInstantOfferSnooze,
@@ -1302,7 +1303,10 @@ function TabUebersicht({
           {isAvailable ? "Online" : "Offline"}
         </Text>
         {firstReq && isAvailable && (
-          <InstantCard req={firstReq} driverPos={driverPos}
+          <InstantCard
+            key={`${firstReq.id}-c${getInstantOfferCycle(firstReq.id)}`}
+            req={firstReq}
+            driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)}
             onMissTimeout={() => onMissTimeout(firstReq.id)}
@@ -1357,6 +1361,7 @@ function TabUebersicht({
             </View>
           ) : null}
           <InstantCard
+            key={`${firstReq.id}-c${getInstantOfferCycle(firstReq.id)}`}
             req={firstReq}
             driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
@@ -4962,7 +4967,7 @@ export default function DriverDashboard() {
                     <>
                       {pendingRequests.map((req) => (
                         <InstantCard
-                          key={req.id}
+                          key={`${req.id}-c${getInstantOfferCycle(req.id)}`}
                           req={req}
                           driverPos={driverPos}
                           onAccept={() => handleAccept(req.id)}
