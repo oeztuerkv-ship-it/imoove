@@ -282,7 +282,20 @@ function parseEuroDriverInput(text: string): number | null {
 }
 
 // MOCK_RIDES entfernt - nur echte Fahrten aus RideContext
-type RideEntry = { id: string; date: string; time: string; from: string; to: string; km: number; duration: number; netAmount: number; payment: string; };
+type RideEntry = {
+  id: string;
+  date: string;
+  time: string;
+  from: string;
+  to: string;
+  km: number;
+  duration: number;
+  netAmount: number;
+  payment: string;
+  kind?: "completed" | "missed";
+  routeVisible?: boolean;
+  missedReason?: "rejected" | "taken_by_other" | "closed" | string;
+};
 
 const API_BASE = getApiBaseUrl();
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -1392,16 +1405,38 @@ function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
 }
 
 /* ─── Tab: Fahrten ─── */
-function TabFahrten({ allRides, fleetAuthToken }: { allRides: RideEntry[]; fleetAuthToken?: string }) {
+function missedReasonLabel(reason: RideEntry["missedReason"]): string {
+  if (reason === "rejected") return "Abgelehnt";
+  if (reason === "taken_by_other") return "An anderen Fahrer gegangen";
+  if (reason === "closed") return "Nicht mehr verfügbar";
+  return "Verpasst";
+}
+
+function TabFahrten({
+  allRides,
+  missedRides,
+  fleetAuthToken,
+  driverPriority,
+}: {
+  allRides: RideEntry[];
+  missedRides: RideEntry[];
+  fleetAuthToken?: string;
+  driverPriority?: DriverProfile["dispatchPriority"];
+}) {
   const colors = useColors();
-  const [activeFilter, setActiveFilter] = useState<"heute" | "woche" | "alle">("alle");
+  const [activeFilter, setActiveFilter] = useState<"heute" | "woche" | "alle" | "verpasst">("alle");
   const [rideEarnings, setRideEarnings] = useState<DriverRideEarnings | null>(null);
   const [showEarningsModal, setShowEarningsModal] = useState(false);
   const [earningsLoadingId, setEarningsLoadingId] = useState<string | null>(null);
   const todayStr = fmt(new Date()).date;
-  const displayed = activeFilter === "heute"
-    ? allRides.filter((r) => r.date === todayStr)
-    : activeFilter === "woche" ? allRides.slice(0, 12) : allRides;
+  const isMissed = activeFilter === "verpasst";
+  const displayed = isMissed
+    ? missedRides
+    : activeFilter === "heute"
+      ? allRides.filter((r) => r.date === todayStr)
+      : activeFilter === "woche"
+        ? allRides.slice(0, 12)
+        : allRides;
 
   const openRideBreakdown = useCallback(async (rideId: string) => {
     if (!fleetAuthToken) {
@@ -1426,58 +1461,87 @@ function TabFahrten({ allRides, fleetAuthToken }: { allRides: RideEntry[]; fleet
     <>
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
       <View style={[styles.filterRow, { backgroundColor: colors.muted }]}>
-        {(["heute", "woche", "alle"] as const).map((f) => (
+        {(["heute", "woche", "alle", "verpasst"] as const).map((f) => (
           <Pressable
             key={f}
             style={[styles.filterBtn, activeFilter === f && [styles.filterBtnActive, { backgroundColor: colors.surface }]]}
             onPress={() => setActiveFilter(f)}
           >
-            <Text style={[styles.filterText, { color: activeFilter === f ? "#EF1D26" : "#8E8E93", fontFamily: activeFilter === f ? "Inter_700Bold" : "Inter_500Medium", fontSize: 14 }]}>
-              {f === "heute" ? "Heute" : f === "woche" ? "Woche" : "Alle"}
+            <Text style={[styles.filterText, { color: activeFilter === f ? "#EF1D26" : "#8E8E93", fontFamily: activeFilter === f ? "Inter_700Bold" : "Inter_500Medium", fontSize: f === "verpasst" ? 12 : 14 }]}>
+              {f === "heute" ? "Heute" : f === "woche" ? "Woche" : f === "alle" ? "Alle" : "Verpasst"}
             </Text>
           </Pressable>
         ))}
       </View>
       {displayed.length === 0 ? (
         <View style={styles.emptyCenter}>
-          <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Keine Fahrten in diesem Zeitraum</Text>
+          <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+            {isMissed ? "Keine verpassten Fahrten" : "Keine Fahrten in diesem Zeitraum"}
+          </Text>
         </View>
-      ) : displayed.map((ride) => (
+      ) : displayed.map((ride) => {
+        const showFullRoute = isMissed
+          ? ride.routeVisible === true || driverPriority === "A"
+          : true;
+        return (
         <Pressable
           key={ride.id}
           style={[styles.rideCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => void openRideBreakdown(ride.id)}
-          disabled={earningsLoadingId === ride.id}
+          onPress={() => {
+            if (isMissed) return;
+            void openRideBreakdown(ride.id);
+          }}
+          disabled={isMissed || earningsLoadingId === ride.id}
         >
           <View style={styles.rideTop}>
             <Text style={[styles.rideId, { color: colors.mutedForeground }]}>#{ride.id} · {ride.date} {ride.time}</Text>
-            <View style={styles.rideAmountRow}>
-              {earningsLoadingId === ride.id ? (
-                <ActivityIndicator size="small" color="#22C55E" />
-              ) : (
-                <Text style={[styles.rideAmount, { color: "#22C55E" }]}>{formatEuro(ride.netAmount)}</Text>
-              )}
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </View>
+            {isMissed ? (
+              <Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>
+                {missedReasonLabel(ride.missedReason)}
+              </Text>
+            ) : (
+              <View style={styles.rideAmountRow}>
+                {earningsLoadingId === ride.id ? (
+                  <ActivityIndicator size="small" color="#22C55E" />
+                ) : (
+                  <Text style={[styles.rideAmount, { color: "#22C55E" }]}>{formatEuro(ride.netAmount)}</Text>
+                )}
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </View>
+            )}
           </View>
-          <View style={styles.rideRouteBlock}>
-            <View style={styles.rideRouteRow}>
-              <View style={[styles.rideDot, { backgroundColor: "#22C55E" }]} />
-              <Text style={[styles.rideAddr, { color: colors.foreground }]} numberOfLines={1}>{ride.from}</Text>
+          {showFullRoute ? (
+            <View style={styles.rideRouteBlock}>
+              <View style={styles.rideRouteRow}>
+                <View style={[styles.rideDot, { backgroundColor: "#22C55E" }]} />
+                <Text style={[styles.rideAddr, { color: colors.foreground }]} numberOfLines={1}>{ride.from}</Text>
+              </View>
+              <View style={[styles.rideVLine, { backgroundColor: colors.border }]} />
+              <View style={styles.rideRouteRow}>
+                <View style={[styles.rideDot, { backgroundColor: "#DC2626" }]} />
+                <Text style={[styles.rideAddr, { color: colors.foreground }]} numberOfLines={1}>{ride.to}</Text>
+              </View>
             </View>
-            <View style={[styles.rideVLine, { backgroundColor: colors.border }]} />
-            <View style={styles.rideRouteRow}>
-              <View style={[styles.rideDot, { backgroundColor: "#DC2626" }]} />
-              <Text style={[styles.rideAddr, { color: colors.foreground }]} numberOfLines={1}>{ride.to}</Text>
+          ) : (
+            <View style={styles.rideRouteBlock}>
+              <View style={styles.rideRouteRow}>
+                <View style={[styles.rideDot, { backgroundColor: "#8E8E93" }]} />
+                <Text style={[styles.rideAddr, { color: colors.foreground }]} numberOfLines={1}>
+                  {ride.from || "Umgebung"}
+                </Text>
+              </View>
             </View>
-          </View>
-          <View style={[styles.rideMeta, { borderTopColor: colors.border }]}>
-            <View style={styles.rideMetaItem}><Feather name="map-pin" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.km.toFixed(1)} km</Text></View>
-            <View style={styles.rideMetaItem}><Feather name="clock" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.duration} Min.</Text></View>
-            <View style={styles.rideMetaItem}><Feather name="credit-card" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.payment}</Text></View>
-          </View>
+          )}
+          {!isMissed ? (
+            <View style={[styles.rideMeta, { borderTopColor: colors.border }]}>
+              <View style={styles.rideMetaItem}><Feather name="map-pin" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.km.toFixed(1)} km</Text></View>
+              <View style={styles.rideMetaItem}><Feather name="clock" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.duration} Min.</Text></View>
+              <View style={styles.rideMetaItem}><Feather name="credit-card" size={11} color={colors.mutedForeground} /><Text style={[styles.rideMetaText, { color: colors.mutedForeground }]}>{ride.payment}</Text></View>
+            </View>
+          ) : null}
         </Pressable>
-      ))}
+        );
+      })}
     </ScrollView>
     <DriverRideEarningsModal
       visible={showEarningsModal}
@@ -3921,6 +3985,7 @@ export default function DriverDashboard() {
 
   const appRides = history.filter((r) => r.status === "completed");
   const [serverRides, setServerRides] = useState<RideEntry[]>([]);
+  const [missedRides, setMissedRides] = useState<RideEntry[]>([]);
 
   useEffect(() => {
     if (!driver?.authToken || !API_BASE) return;
@@ -3949,9 +4014,43 @@ export default function DriverDashboard() {
               r.paymentMethod === "paypal" ? "PayPal" :
               r.paymentMethod === "card" ? "Kreditkarte" :
               r.paymentMethod ?? "Bar",
+            kind: "completed",
           };
         });
         setServerRides(mapped);
+      })
+      .catch(() => {});
+  }, [driver?.authToken, activeTab]);
+
+  useEffect(() => {
+    if (!driver?.authToken || !API_BASE || activeTab !== "fahrten") return;
+    fetch(`${API_BASE}/fleet-driver/v1/missed-rides`, {
+      headers: { Authorization: `Bearer ${driver.authToken}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!Array.isArray(data.rides)) return;
+        const mapped: RideEntry[] = data.rides.map((r: any, i: number) => {
+          const d = r.offeredAt ? new Date(r.offeredAt) : r.createdAt ? new Date(r.createdAt) : new Date();
+          const routeVisible = r.routeVisible === true;
+          return {
+            id: r.id ?? `M-${i + 1}`,
+            date: fmt(d).date,
+            time: fmt(d).time,
+            from: routeVisible
+              ? (r.from ?? r.fromFull ?? "Start")
+              : (r.approxArea || r.from || r.fromFull || "Umgebung"),
+            to: routeVisible ? (r.to ?? r.toFull ?? "Ziel") : "",
+            km: routeVisible ? (r.distanceKm ?? 0) : 0,
+            duration: routeVisible ? (r.durationMinutes ?? 0) : 0,
+            netAmount: 0,
+            payment: "",
+            kind: "missed",
+            routeVisible,
+            missedReason: r.missedReason,
+          };
+        });
+        setMissedRides(mapped);
       })
       .catch(() => {});
   }, [driver?.authToken, activeTab]);
@@ -4826,7 +4925,14 @@ export default function DriverDashboard() {
                 )}
               </ScrollView>
             )}
-            {activeTab === "fahrten" && <TabFahrten allRides={allRides} fleetAuthToken={driver?.authToken} />}
+            {activeTab === "fahrten" && (
+              <TabFahrten
+                allRides={allRides}
+                missedRides={missedRides}
+                fleetAuthToken={driver?.authToken}
+                driverPriority={driver?.dispatchPriority}
+              />
+            )}
             {activeTab === "geldbeutel" && (
               <TabGeldbeutel
                 allRides={allRides}

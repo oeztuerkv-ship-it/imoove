@@ -143,7 +143,7 @@ function omitImmutableRidePricingFields(patch: Partial<RideRequest>): Partial<Ri
   return rest;
 }
 
-function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
+export function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
   const rk = r.ride_kind;
   const pk = r.payer_kind;
   const auth = r.authorization_source;

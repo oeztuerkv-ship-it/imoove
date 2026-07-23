@@ -60,6 +60,7 @@ Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in 
 | Neue Sofortfahrt erstellt | `notifyMarketOnlineDriversInstantRideOffer` | Online-Fahrer mit passendem Fahrzeug + aktuellem Dispatch-Tier |
 | Neue Reservierung / Vorbestellung (`status=scheduled`) | `notifyEligibleDriversScheduledPoolOffer` (via `insertRide` + Panel) | Einsatzbereite Fahrer mit passendem Fahrzeug + **gleichem** Dispatch-Tier A/B/C (auch Markt-OFFLINE) — Titel **„Neue Reservierung“**, `kind=scheduled_pool_offer` |
 | Tier A→B / B→C (Timeout oder Freigabe) | `advanceRideDispatchTier` → Sofort- **und** Reservierungs-Notify | Nur Fahrer der **neuen** Stufe (beide Helfer filtern früh) |
+| Verpasste Fahrten (Fahrer „Meine Fahrten“) | `GET /fleet-driver/v1/missed-rides` | Offer in `ride_driver_dispatch_offers` ohne `accepted_at`, Chance vorbei (`rejected` / `taken_by_other` / `closed`); Anzeige Tier **A** = Strecke, **B/C** = grober Ort (`toDriverMissedRideView`) |
 | Fahrer-Storno | `POST …/driver-cancel` → `searching_driver` | **Kein** erneuter Markt-Push (nur Client-Diff-Bug) |
 | Fahrer angenommen / wartet / unterwegs | `notifyPassengerDriverAccepted` / `…Arriving` / `…Waiting` | Kunde (`passengerRideExpoPush.ts`) |
 | Fahrt läuft / beendet | `notifyPassengerRideInProgress` / `notifyPassengerRideCompleted` | Kunde (Quittung → `/status`) |
@@ -68,6 +69,8 @@ Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in 
 | Kunde ändert Ziel (aktive Taxi-Fahrt) | `notifyDriverDestinationChanged` (`PATCH …/destination`) | Zugewiesener Fahrer — Titel **„Achtung: Ziel wurde geändert“** |
 
 **Invariante:** Keine eigene Reservierungs-Stufenlogik — dieselbe `dispatch_tier` / Timeout / Freigabe wie Sofort (`rideDispatchTierData.ts`, `dispatchPriorityTier.ts`). Vorbestellung startet die Tier-Uhr bei Buchung (wie Sofort).
+
+**Verpasst / Offer-Nachweis:** `recordDispatchOffersSentForDriver` bei Markt-GET (Sofort + offene Scheduled), und bei Push (`notifyMarketOnlineDriversInstantRideOffer` / `notifyEligibleDriversScheduledPoolOffer`). Ohne Offer-Zeile erscheint die Fahrt nicht unter „Verpasst“.
 
 Push-Marker / Cron: `ridePushNotificationMarkers.ts`, `index.ts` Jobs.
 

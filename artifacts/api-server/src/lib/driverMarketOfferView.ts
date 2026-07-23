@@ -114,3 +114,46 @@ export function toDriverOpenReservationView(
   }
   return redactedOpenOfferView(r, { driverLat: null, driverLon: null });
 }
+
+/** Grober Ort für B/C (kein Straßen-Detail) — letzte Adresszeile / Stadtteil. */
+export function coarseAreaFromRideAddress(r: Pick<RideRequest, "fromFull" | "from">): string {
+  const raw = String(r.fromFull || r.from || "").trim();
+  if (!raw) return "Umgebung";
+  const parts = raw
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) {
+    const last = parts[parts.length - 1]!;
+    return last.replace(/\b\d{5}\b/g, "").trim() || last;
+  }
+  const noHouse = parts[0]!.replace(/\b\d{1,5}[a-z]?\b/gi, "").replace(/\s+/g, " ").trim();
+  return noHouse || "Umgebung";
+}
+
+/**
+ * Verpasste Fahrt in „Meine Fahrten“: immer nach aktueller Fahrer-Prio redigieren
+ * (auch wenn die Fahrt schon einen anderen Fahrer hat / abgeschlossen ist).
+ * Tier A: Start/Ziel; B/C: nur grober Ort + Zeiten (keine Strecken-Details).
+ */
+export function toDriverMissedRideView(
+  r: RideRequest,
+  opts: {
+    driverDispatchPriority?: DispatchPriority | string | null;
+  },
+): RideRequest & { routeVisible: boolean; approxArea: string } {
+  const priority = normalizeDispatchPriority(opts.driverDispatchPriority ?? "C");
+  const approxArea = coarseAreaFromRideAddress(r);
+  if (priority === "A") {
+    const full = stripPartnerOnlyRideFields(r);
+    return { ...full, routeVisible: true, approxArea };
+  }
+  const redacted = redactedOpenOfferView(r, { driverLat: null, driverLon: null });
+  return {
+    ...redacted,
+    from: approxArea,
+    fromFull: approxArea,
+    routeVisible: false,
+    approxArea,
+  };
+}

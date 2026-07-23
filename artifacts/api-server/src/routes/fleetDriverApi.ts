@@ -28,6 +28,7 @@ import {
 } from "../db/fleetDriverExpoPushData";
 import {
   isInstantDispatchRideStatus,
+  listMissedDispatchOffersForDriver,
   recordDispatchOfferSeen,
   recordDispatchOffersSentForDriver,
 } from "../db/rideDispatchOfferData";
@@ -47,7 +48,11 @@ import { releaseInstantRideDispatchOffer, syncDispatchTiersForRides } from "../d
 import { listRides, listRidesForDriver, findRide, updateRide } from "../db/ridesData";
 import { getCustomerCancelReasonForRide } from "./rides";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
-import { toDriverOpenMarketOfferView, toDriverOpenReservationView } from "../lib/driverMarketOfferView.js";
+import {
+  toDriverMissedRideView,
+  toDriverOpenMarketOfferView,
+  toDriverOpenReservationView,
+} from "../lib/driverMarketOfferView.js";
 import { attachBookingPartnerNamesToRides } from "../lib/rideBookingPartnerName.js";
 import { driverMatchesDispatchTier, normalizeDispatchPriority } from "../lib/dispatchPriorityTier.js";
 import {
@@ -581,6 +586,10 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
     );
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     const withPartners = await attachBookingPartnerNamesToRides(withCodes);
+    const openScheduledIds = tierFiltered
+      .filter((r) => r.status === "scheduled" && !r.driverId)
+      .map((r) => r.id);
+    void recordDispatchOffersSentForDriver(a.fleetDriverId, a.companyId, openScheduledIds);
     res.json({
       ok: true,
       einsatzbereit: true,
@@ -1274,6 +1283,33 @@ router.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (re
       actualDistanceKm: r.actualDistanceKm ?? null,
     }));
     res.json({ rides: withDuration });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Angebote die dieser Fahrer gesehen/bekommen hat, aber nicht angenommen hat
+ * und deren Chance vorbei ist (Ablehnung, anderer Fahrer, terminal).
+ * Adress-Detail: Tier A volle Strecke; B/C nur grober Ort.
+ */
+router.get("/fleet-driver/v1/missed-rides", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = req.fleetDriverAuth!;
+    const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : 100;
+    const limit = Number.isFinite(limitRaw) ? limitRaw : 100;
+    const rows = await listMissedDispatchOffersForDriver(a.fleetDriverId, a.companyId, limit);
+    const driverPriority = await getFleetDriverDispatchPriority(a.fleetDriverId, a.companyId);
+    const rides = rows.map((row) => {
+      const view = toDriverMissedRideView(row.ride, { driverDispatchPriority: driverPriority });
+      return {
+        ...view,
+        offeredAt: row.offeredAt,
+        seenAt: row.seenAt,
+        missedReason: row.missedReason,
+      };
+    });
+    res.json({ ok: true, rides });
   } catch (err) {
     next(err);
   }

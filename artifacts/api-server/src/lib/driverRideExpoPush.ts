@@ -44,10 +44,12 @@ export async function notifyMarketOnlineDriversInstantRideOffer(ride: RideReques
   const drivers = await listMarketOnlineDriversEligibleForInstantRide(ride);
   if (drivers.length === 0) return;
 
+  const { recordDispatchOffersSentForDriver } = await import("../db/rideDispatchOfferData.js");
   const messages: ExpoPushMessage[] = [];
   for (const { fleetDriverId, companyId } of drivers) {
     const marketOnline = await getFleetDriverMarketOnline(fleetDriverId, companyId);
     if (!marketOnline) continue;
+    void recordDispatchOffersSentForDriver(fleetDriverId, companyId, [ride.id]);
     const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
     for (const to of tokens) {
       messages.push({
@@ -72,9 +74,11 @@ export async function notifyEligibleDriversScheduledPoolOffer(ride: RideRequest)
   const drivers = await listDriversEligibleForScheduledPoolOffer(ride);
   if (drivers.length === 0) return;
 
+  const { recordDispatchOffersSentForDriver } = await import("../db/rideDispatchOfferData.js");
   const fromLabel = (ride.fromFull || ride.from || "Abholung").trim().slice(0, 48);
   const messages: ExpoPushMessage[] = [];
   for (const { fleetDriverId, companyId } of drivers) {
+    void recordDispatchOffersSentForDriver(fleetDriverId, companyId, [ride.id]);
     const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
     for (const to of tokens) {
       messages.push({

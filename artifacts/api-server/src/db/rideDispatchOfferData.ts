@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
+import type { RideRequest } from "../domain/rideRequest";
 import { getDb, isPostgresConfigured } from "./client";
-import { insertSupplementalRideEvent } from "./ridesData";
-import { rideDriverDispatchOffersTable } from "./schema";
+import { insertSupplementalRideEvent, rowToRide } from "./ridesData";
+import { rideDriverDispatchOffersTable, ridesTable } from "./schema";
 
 const INSTANT_DISPATCH_STATUSES = new Set([
   "pending",
@@ -182,4 +183,90 @@ export async function listDispatchOffersForRide(rideId: string): Promise<Dispatc
 
 export function isInstantDispatchRideStatus(status: string): boolean {
   return INSTANT_DISPATCH_STATUSES.has(status);
+}
+
+const MISSED_TERMINAL_STATUSES = new Set<string>([
+  "completed",
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+  "expired",
+]);
+
+export type MissedRideReason = "rejected" | "taken_by_other" | "closed";
+
+export type MissedRideOfferRow = {
+  rideId: string;
+  offeredAt: string;
+  seenAt: string | null;
+  missedReason: MissedRideReason;
+  ride: RideRequest;
+};
+
+/**
+ * Verpasst = Offer gesendet, nicht angenommen, Chance vorbei
+ * (explizit abgelehnt | anderer Fahrer | terminaler Status).
+ */
+export function classifyMissedRideOpportunity(
+  ride: Pick<RideRequest, "status" | "driverId" | "rejectedBy">,
+  fleetDriverId: string,
+): MissedRideReason | null {
+  const did = fleetDriverId.trim();
+  if (!did) return null;
+  const assigned = typeof ride.driverId === "string" ? ride.driverId.trim() : "";
+  if (assigned === did) return null;
+  if ((ride.rejectedBy ?? []).map((id) => String(id).trim()).includes(did)) return "rejected";
+  if (assigned.length > 0 && assigned !== did) return "taken_by_other";
+  if (MISSED_TERMINAL_STATUSES.has(String(ride.status ?? ""))) return "closed";
+  return null;
+}
+
+/** Offene Angebote dieses Fahrers, deren Chance vorbei ist (für „Verpasste Fahrten“). */
+export async function listMissedDispatchOffersForDriver(
+  fleetDriverId: string,
+  companyId: string,
+  limit = 100,
+): Promise<MissedRideOfferRow[]> {
+  if (!isPostgresConfigured()) return [];
+  const db = getDb();
+  if (!db) return [];
+  const did = fleetDriverId.trim();
+  const cid = companyId.trim();
+  if (!did || !cid) return [];
+
+  const cap = Math.min(Math.max(1, Math.floor(limit)), 200);
+  const rows = await db
+    .select({
+      offer: rideDriverDispatchOffersTable,
+      ride: ridesTable,
+    })
+    .from(rideDriverDispatchOffersTable)
+    .innerJoin(ridesTable, eq(ridesTable.id, rideDriverDispatchOffersTable.ride_id))
+    .where(
+      and(
+        eq(rideDriverDispatchOffersTable.fleet_driver_id, did),
+        eq(rideDriverDispatchOffersTable.company_id, cid),
+        isNull(rideDriverDispatchOffersTable.accepted_at),
+        or(isNull(ridesTable.driver_id), ne(ridesTable.driver_id, did)),
+      ),
+    )
+    .orderBy(desc(rideDriverDispatchOffersTable.sent_at))
+    .limit(cap * 2);
+
+  const out: MissedRideOfferRow[] = [];
+  for (const row of rows) {
+    const ride = rowToRide(row.ride);
+    const reason = classifyMissedRideOpportunity(ride, did);
+    if (!reason) continue;
+    out.push({
+      rideId: ride.id,
+      offeredAt: row.offer.sent_at.toISOString(),
+      seenAt: row.offer.seen_at?.toISOString() ?? null,
+      missedReason: reason,
+      ride,
+    });
+    if (out.length >= cap) break;
+  }
+  return out;
 }
