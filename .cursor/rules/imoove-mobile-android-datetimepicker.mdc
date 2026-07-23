@@ -10,17 +10,23 @@ alwaysApply: false
 
 Android-Crash beim Öffnen der Datumsauswahl (Reservierung / Abholtermin). UI oft ErrorBoundary „Something went wrong“.
 
+**Zusätzlich:** Datum springt beim Scrollen/Auswahl immer wieder auf **heute** (oder bleibt am falschen Tag) — iOS-Spinner und teils Android.
+
 ## Ursache
 
 `@react-native-community/datetimepicker`: **`mode="datetime"` ist iOS-only**. Auf Android → Crash/Native-Fehler.
 
 Plugin in `app.json` ist korrekt; der Crash kommt von der **falschen `mode`-Nutzung**, nicht vom fehlenden Plugin.
 
+**Datums-Sprung:** `BookingDateTimePicker` syncte den Draft bei jedem Render neu, weil `minimumDate={new Date(...)}` / `minimumScheduledPickupDate()` **jedes Mal eine neue Date-Referenz** ist (Deps `[visible, value, minDate]`). Parent-Polls (Markt, Heartbeat) → Spinner springt zurück zum Floor („heute“ + Vorlauf).
+
 ## Fix / Invariante
 
 - Gemeinsame Komponente: `components/booking/BookingDateTimePicker.tsx`
   - **iOS:** Modal + `mode="datetime"` + `display="spinner"`
   - **Android:** `DateTimePickerAndroid.open` nacheinander `date` → `time` (kein `datetime`)
+  - Draft/`minimumDate`-Floor **nur beim Öffnen** (`visible` true) snapshotten — nicht bei jedem Parent-Re-Render
+  - Datum+Zeit lokal mergen (`getFullYear/Month/Date` + Stunden), Clamp an Floor erst bei **Fertig**/Android-Confirm
 - Kein zweites Inline-`mode="datetime"` in Screens (Fahrer `create-reservation`, Partner-Sheet, `new-booking`).
 - Krankenfahrten (`booking-medical`) schon getrennt `date`/`time` — so belassen.
 
@@ -31,4 +37,4 @@ Kein Sentry/Crashlytics im Mobile-Repo. Diagnose: Repro auf Android + ErrorBound
 ## Abnahme
 
 Android: Reservierung → Abholtermin tippen → System-Dialoge Datum/Uhrzeit, kein Crash.
----
+iOS/Android: anderes Datum wählen → bleibt stehen, springt nicht zurück auf heute.---

@@ -3,7 +3,7 @@ import RNDateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { accountSheetCardTitle, accountSheetToolbarAction } from "@/constants/accountSheetTypography";
@@ -13,20 +13,30 @@ import { rs } from "@/utils/scale";
 
 type Colors = ReturnType<typeof useColors>;
 
+/** Lokales Kalenderdatum + Uhrzeit — kein UTC-Mitternacht-Versatz vom Android-Picker. */
 function mergeDateAndTime(datePart: Date, timePart: Date): Date {
-  const next = new Date(datePart);
-  next.setHours(timePart.getHours(), timePart.getMinutes(), 0, 0);
-  return next;
+  return new Date(
+    datePart.getFullYear(),
+    datePart.getMonth(),
+    datePart.getDate(),
+    timePart.getHours(),
+    timePart.getMinutes(),
+    0,
+    0,
+  );
 }
 
 function clampToMinimum(value: Date, minimumDate: Date): Date {
-  return value.getTime() < minimumDate.getTime() ? new Date(minimumDate) : value;
+  return value.getTime() < minimumDate.getTime() ? new Date(minimumDate.getTime()) : value;
 }
 
 /**
  * Abholtermin-Picker.
  * iOS: `mode="datetime"` + Spinner im Modal.
  * Android: **kein** `datetime` (nicht unterstützt → Crash) — native Dialoge Datum, dann Uhrzeit.
+ *
+ * Wichtig: Draft/Floor nur beim **Öffnen** setzen — nicht bei jedem Parent-Re-Render
+ * (`minimumDate={new Date(...)}` wäre sonst neue Referenz → Spinner springt zurück auf „heute“).
  */
 export function BookingDateTimePicker({
   visible,
@@ -45,33 +55,33 @@ export function BookingDateTimePicker({
   colors: Colors;
   title?: string;
 }) {
-  const minDate = minimumDate ?? new Date();
-  const [draft, setDraft] = useState(() => clampToMinimum(value ?? minDate, minDate));
-  const androidOpenRef = useRef(false);
   const valueRef = useRef(value);
-  const minDateRef = useRef(minDate);
+  const minimumDatePropRef = useRef(minimumDate);
   const onCloseRef = useRef(onClose);
   const onConfirmRef = useRef(onConfirm);
   valueRef.current = value;
-  minDateRef.current = minDate;
+  minimumDatePropRef.current = minimumDate;
   onCloseRef.current = onClose;
   onConfirmRef.current = onConfirm;
 
-  useEffect(() => {
-    if (visible) setDraft(clampToMinimum(value ?? minDate, minDate));
-  }, [visible, value, minDate]);
+  const [openFloor, setOpenFloor] = useState(() => new Date());
+  const [draft, setDraft] = useState(() => new Date());
+  const androidOpenRef = useRef(false);
 
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
+  useLayoutEffect(() => {
     if (!visible) {
       androidOpenRef.current = false;
       return;
     }
+
+    const floor = new Date((minimumDatePropRef.current ?? new Date()).getTime());
+    const initial = clampToMinimum(valueRef.current ?? floor, floor);
+    setOpenFloor(floor);
+    setDraft(initial);
+
+    if (Platform.OS !== "android") return;
     if (androidOpenRef.current) return;
     androidOpenRef.current = true;
-
-    const floor = minDateRef.current;
-    const initial = clampToMinimum(valueRef.current ?? floor, floor);
 
     DateTimePickerAndroid.open({
       value: initial,
@@ -83,8 +93,9 @@ export function BookingDateTimePicker({
           onCloseRef.current();
           return;
         }
+        const timeSeed = mergeDateAndTime(datePart, initial);
         DateTimePickerAndroid.open({
-          value: mergeDateAndTime(datePart, initial),
+          value: timeSeed,
           mode: "time",
           is24Hour: true,
           onChange: (timeEvent, timePart) => {
@@ -107,11 +118,13 @@ export function BookingDateTimePicker({
   }
 
   const onChange = (_event: DateTimePickerEvent, next?: Date) => {
-    if (next) setDraft(next);
+    if (!next) return;
+    // Nicht bei jedem Scroll an den Floor klemmen — sonst springt der Spinner zurück.
+    setDraft(next);
   };
 
   const confirm = () => {
-    onConfirm(clampToMinimum(draft, minDate));
+    onConfirm(clampToMinimum(draft, openFloor));
     void Haptics.selectionAsync();
   };
 
@@ -138,7 +151,7 @@ export function BookingDateTimePicker({
               display="spinner"
               is24Hour
               locale="de-DE"
-              minimumDate={minDate}
+              minimumDate={openFloor}
               onChange={onChange}
               style={styles.dtSpinner}
               textColor={colors.foreground}
