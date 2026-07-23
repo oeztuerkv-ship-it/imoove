@@ -1948,7 +1948,7 @@ export default function DriverNavigationScreen() {
           ) : null}
         </View>
         <View style={styles.rideInfoRouteDist}>
-          <Text style={[styles.rideInfoRouteDistValue, navAppleFont("semibold")]} numberOfLines={1}>
+          <Text style={[styles.rideInfoRouteDistValue, navAppleFont("bold")]} numberOfLines={1}>
             {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
           </Text>
           <Text style={[styles.rideInfoRouteDistLabel, navAppleFont("medium")]}>Entfernung</Text>
@@ -2024,9 +2024,6 @@ export default function DriverNavigationScreen() {
           <Feather name="map-pin" size={20} color={locked ? "#9CA3AF" : "#fff"} />
           <View>
             <Text style={[styles.actionBtnText, locked && styles.actionBtnTextGray]}>Angekommen</Text>
-            {locked && (
-              <Text style={styles.actionBtnSub}>{fmtDist(distToPickup)} bis Abholort</Text>
-            )}
           </View>
         </Pressable>
       );
@@ -2892,13 +2889,14 @@ const styles = StyleSheet.create({
   rideInfoRouteDist: {
     alignItems: "flex-end",
     justifyContent: "center",
-    minWidth: 72,
+    minWidth: 88,
     paddingLeft: 6,
   },
   rideInfoRouteDistValue: {
-    fontSize: 15,
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
     color: "#111827",
-    letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
+    letterSpacing: Platform.OS === "ios" ? -0.4 : 0,
   },
   rideInfoRouteDistLabel: {
     marginTop: 2,

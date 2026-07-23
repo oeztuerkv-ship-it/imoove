@@ -186,7 +186,7 @@ const SEARCH_LOADER_RED = "#DC2626";
 const SEARCH_RING_BORDER = 2.5;
 const NO_DRIVER_WAIT_MS = 60_000;
 /** Storno-Grund für API + Anzeige, wenn die Fahrersuche ohne Annahme endet. */
-const NO_DRIVER_CANCEL_REASON = "Kein Fahrer gefunden (Wartezeit abgelaufen)";
+const NO_DRIVER_CANCEL_REASON = "Kein Fahrer gefunden";
 
 function geoFromRideRequest(
   shortLabel: string,
@@ -320,7 +320,7 @@ function reservationPickupSubline(
   pickupDiffMs: number | null,
 ): string {
   if (pickupDiffMs !== null && pickupDiffMs <= 0) {
-    return "Kein Fahrer gefunden – wird automatisch storniert";
+    return "Kein Fahrer gefunden";
   }
   if (pickupDiffMs !== null && pickupDiffMs > 0 && pickupDiffMs < 60 * 60 * 1000) {
     return `Noch ${Math.ceil(pickupDiffMs / 60000)} Min. bis Abholung`;

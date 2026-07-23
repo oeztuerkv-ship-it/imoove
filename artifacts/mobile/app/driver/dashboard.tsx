@@ -517,15 +517,15 @@ function InstantCard({
 
   const pulseBorderColor = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#86EFAC", "#16A34A"],
+    outputRange: ["#111827", "#000000"],
   });
   const pulseBorderWidth = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [2, 4.5],
+    outputRange: [2, 3],
   });
   const pulseShadowOpacity = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.18, 0.55],
+    outputRange: [0.08, 0.22],
   });
 
   const handleReject = () => {
@@ -548,29 +548,29 @@ function InstantCard({
     <View style={{ marginHorizontal: 14, marginBottom: 14 }}>
       <Animated.View
         style={{
-          borderRadius: 32,
+          borderRadius: 22,
           borderWidth: pulseBorderWidth,
           borderColor: pulseBorderColor,
-          shadowColor: "#22C55E",
+          shadowColor: "#000000",
           shadowOpacity: pulseShadowOpacity,
-          shadowRadius: 18,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: 14,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 10,
         }}
       >
         <View
           style={{
             backgroundColor: "#FFFFFF",
-            borderRadius: 30,
+            borderRadius: 20,
             overflow: "hidden",
           }}
         >
           <View
             style={{
-              paddingHorizontal: 24,
-              paddingTop: 24,
-              paddingBottom: 22,
-              backgroundColor: "#F0FDF4",
+              paddingHorizontal: 18,
+              paddingTop: 20,
+              paddingBottom: 18,
+              backgroundColor: "#FFFFFF",
             }}
           >
             <View style={{ alignItems: "center" }}>
@@ -613,44 +613,109 @@ function InstantCard({
 
             {premiumRoute ? (
               <View style={{ marginTop: 20, width: "100%" }}>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#64748B", marginBottom: 8, textTransform: "uppercase" }}>
-                  Abholung
-                </Text>
-                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={2}>
-                  {fromAddress.place || req.from}
-                </Text>
-                {fromAddress.address ? (
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748B", marginTop: 4 }} numberOfLines={3}>
-                    {fromAddress.address}
-                  </Text>
-                ) : null}
-                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#64748B", marginTop: 14, marginBottom: 8, textTransform: "uppercase" }}>
-                  Ziel
-                </Text>
-                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={2}>
-                  {toAddress.place || req.to}
-                </Text>
-                {toAddress.address ? (
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748B", marginTop: 4 }} numberOfLines={3}>
-                    {toAddress.address}
-                  </Text>
-                ) : null}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-                  {req.distanceKm > 0 ? (
-                    <View style={{ backgroundColor: "#F1F5F9", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-                      <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#334155" }}>
-                        {req.distanceKm.toFixed(1)} km Fahrt
-                      </Text>
+                {/* Abholung / Ziel — gleicher Aufbau wie Live-/Vorbestellungs-Karte */}
+                <View style={{ flexDirection: "row" }}>
+                  <View style={{ width: 48, alignItems: "center", marginRight: 14 }}>
+                    <View
+                      style={{
+                        width: 48,
+                        height: 38,
+                        borderRadius: 24,
+                        backgroundColor: "#FFFFFF",
+                        borderWidth: 1,
+                        borderColor: "#000000",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#22C55E" }} />
                     </View>
-                  ) : null}
-                  {req.estimatedFare > 0 ? (
-                    <View style={{ backgroundColor: "#FFF1F2", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-                      <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#BE123C" }}>
-                        ca. {req.estimatedFare.toFixed(2).replace(".", ",")} €
-                      </Text>
+                    <View
+                      style={{
+                        width: 1,
+                        height: 42,
+                        borderStyle: "dashed",
+                        borderWidth: 1,
+                        borderColor: "#D1D5DB",
+                        marginVertical: 2,
+                      }}
+                    />
+                    <View
+                      style={{
+                        width: 48,
+                        height: 38,
+                        borderRadius: 24,
+                        backgroundColor: "#FFFFFF",
+                        borderWidth: 1,
+                        borderColor: "#000000",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#DC2626" }} />
                     </View>
-                  ) : null}
+                  </View>
+
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#6B7280", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 }}
+                    >
+                      Abholung
+                    </Text>
+                    <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={2}>
+                      {fromAddress.place || req.from || "Abholung"}
+                    </Text>
+                    {fromAddress.address ? (
+                      <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
+                        {fromAddress.address}
+                      </Text>
+                    ) : null}
+
+                    <View style={{ marginTop: 28 }}>
+                      <Text
+                        style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#6B7280", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 }}
+                      >
+                        Ziel
+                      </Text>
+                      <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={2}>
+                        {toAddress.place || req.to || "Ziel"}
+                      </Text>
+                      {toAddress.address ? (
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
+                          {toAddress.address}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
+
+                {req.distanceKm > 0 || req.estimatedFare > 0 ? (
+                  <View
+                    style={{
+                      marginTop: 16,
+                      ...DRIVER_CARD_BLACK_FRAME,
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    {req.distanceKm > 0 ? (
+                      <View style={{ backgroundColor: "#F1F5F9", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
+                        <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#334155" }}>
+                          {req.distanceKm.toFixed(1)} km Fahrt
+                        </Text>
+                      </View>
+                    ) : null}
+                    {req.estimatedFare > 0 ? (
+                      <View style={{ backgroundColor: "#FFF1F2", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
+                        <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#BE123C" }}>
+                          ca. {req.estimatedFare.toFixed(2).replace(".", ",")} €
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -745,13 +810,13 @@ function InstantCard({
                   height: 52,
                   borderRadius: 26,
                   borderWidth: 2,
-                  borderColor: "#BBF7D0",
-                  backgroundColor: "#F0FDF4",
+                  borderColor: "#111827",
+                  backgroundColor: "#F9FAFB",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#15803D" }}>{secondsLeft}</Text>
+                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827" }}>{secondsLeft}</Text>
               </View>
               <Text style={{ marginTop: 6, fontSize: 10, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3 }}>
                 {t("driver.offer.seconds")}
@@ -3047,13 +3112,7 @@ function ActiveRideScreen({
             >
               <Feather name="map-pin" size={20} color={isNearCustomer ? "#fff" : "#9CA3AF"} />
               <Text style={[activeStyles.binDaBtnText, !isNearCustomer && { color: "#9CA3AF" }]}>
-                {isNearCustomer
-                  ? "Angekommen — Bin da!"
-                  : distanceToCustomer != null
-                    ? distanceToCustomer >= 1000
-                      ? `${(distanceToCustomer / 1000).toFixed(1)} km bis Abholort`
-                      : `${Math.round(distanceToCustomer)} m bis Abholort`
-                    : "Zum Abholort fahren"}
+                {isNearCustomer ? "Angekommen — Bin da!" : "Angekommen"}
               </Text>
             </Pressable>
 
