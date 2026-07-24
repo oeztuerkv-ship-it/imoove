@@ -5,7 +5,6 @@ import React, { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +19,7 @@ import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
 import { FahrerRegistrierenFooter } from "@/src/screens/LoginScreen";
+import { openInAppBrowser } from "@/utils/customerLegalConsent";
 
 const PARTNER_REGISTER_URL = "https://onroda.de/#partner";
 
@@ -198,12 +198,14 @@ export default function DriverLoginScreen() {
             padding={16}
             onPartnerRegisterPress={() => {
               safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
-              void Linking.openURL(PARTNER_REGISTER_URL).catch(() => {
+              try {
+                openInAppBrowser(PARTNER_REGISTER_URL);
+              } catch {
                 Alert.alert(
                   "Hinweis",
-                  "Partner-Registrierung konnte nicht geöffnet werden. Bitte im Browser onroda.de aufrufen.",
+                  "Partner-Registrierung konnte nicht geöffnet werden. Bitte onroda.de in der App unter Partner-Login öffnen.",
                 );
-              });
+              }
             }}
           />
         </View>

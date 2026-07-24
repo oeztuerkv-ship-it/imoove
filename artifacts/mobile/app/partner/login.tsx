@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePartner } from "@/context/PartnerContext";
 import { useColors } from "@/hooks/useColors";
 import { partnerRequestPasswordReset } from "@/utils/partnerApi";
+import { openInAppBrowser } from "@/utils/customerLegalConsent";
 import { loginActionButtonStyle, loginActionLabelStyle } from "@/src/screens/LoginScreen";
 
 const PARTNER_GREEN = "#15803D";
@@ -245,7 +245,7 @@ export default function PartnerLoginScreen() {
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              void Linking.openURL(ONRODA_WEB);
+              openInAppBrowser(ONRODA_WEB);
             }}
             hitSlop={8}
           >
@@ -254,7 +254,7 @@ export default function PartnerLoginScreen() {
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              void Linking.openURL(ONRODA_PARTNER);
+              openInAppBrowser(ONRODA_PARTNER);
             }}
             hitSlop={8}
           >

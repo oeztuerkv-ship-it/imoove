@@ -83,7 +83,6 @@ import { AppNewsDetailModal } from "@/components/AppNewsDetailModal";
 import {
   CustomerLegalConsentCheckbox,
   CustomerLegalConsentModal,
-  CustomerLegalLinksFooter,
 } from "@/components/CustomerLegalConsent";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
@@ -423,6 +422,8 @@ export default function HomeScreen() {
   const [obRegPasswordConfirm, setObRegPasswordConfirm] = useState("");
   const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
   const [registerLegalConsentChecked, setRegisterLegalConsentChecked] = useState(false);
+  /** Social (Apple/Google): AGB vor dem Tippen — sonst Legal-Modal nach SIWA → Reviewer sieht wieder Login. */
+  const [socialLegalConsentChecked, setSocialLegalConsentChecked] = useState(false);
   const [pendingOAuthSession, setPendingOAuthSession] = useState<PendingOAuthSession | null>(null);
   const [legalConsentModalVisible, setLegalConsentModalVisible] = useState(false);
   const [obLoginEmail, setObLoginEmail] = useState("");
@@ -795,6 +796,10 @@ export default function HomeScreen() {
 
   const handleGoogleSignIn = useCallback(async () => {
     if (googleOAuthAttemptRef.current || googleSignInLoading) return;
+    if (!socialLegalConsentChecked) {
+      Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
+      return;
+    }
     googleOAuthAttemptRef.current = true;
     setGoogleSignInLoading(true);
     try {
@@ -810,6 +815,7 @@ export default function HomeScreen() {
           photoUri: session.photoUri,
           authProvider: session.authProvider,
         },
+        { localLegalAccepted: true },
       );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
@@ -822,6 +828,7 @@ export default function HomeScreen() {
     completeOAuthAfterSession,
     googleSignInLoading,
     profile.isLoggedIn,
+    socialLegalConsentChecked,
   ]);
 
   const handleAppleSignIn = useCallback(async () => {
@@ -830,6 +837,10 @@ export default function HomeScreen() {
       return;
     }
     if (appleOAuthAttemptRef.current || appleSignInLoading) return;
+    if (!socialLegalConsentChecked) {
+      Alert.alert("Hinweis", mapCustomerLegalError("legal_acceptance_required"));
+      return;
+    }
     appleOAuthAttemptRef.current = true;
     setAppleSignInLoading(true);
     try {
@@ -848,6 +859,7 @@ export default function HomeScreen() {
           googleId: session.googleId,
           authProvider: "apple",
         },
+        { localLegalAccepted: true },
       );
     } catch (e: unknown) {
       if (isAppleSignInCanceledError(e)) return;
@@ -861,6 +873,7 @@ export default function HomeScreen() {
     appleSignInLoading,
     completeOAuthAfterSession,
     profile.isLoggedIn,
+    socialLegalConsentChecked,
   ]);
 
   const submitEmailVerificationStart = useCallback(async () => {
@@ -2235,27 +2248,6 @@ export default function HomeScreen() {
         sponsorsRoute={SPONSORS_ROUTE as Href}
       />
 
-      <CustomerLegalConsentModal
-        visible={legalConsentModalVisible}
-        sessionToken={pendingOAuthSession?.sessionToken ?? ""}
-        mutedColor={colors.mutedForeground}
-        foregroundColor={colors.foreground}
-        surfaceColor={colors.surface}
-        borderColor={colors.border}
-        onCancel={async () => {
-          setLegalConsentModalVisible(false);
-          setPendingOAuthSession(null);
-          await clearPendingOAuthSession();
-        }}
-        onAccepted={async () => {
-          const pending = pendingOAuthSession;
-          if (!pending) return;
-          await applyOAuthSession(pending);
-          setLegalConsentModalVisible(false);
-          setPendingOAuthSession(null);
-        }}
-      />
-
       {/* ── BOTTOM TAB BAR ── */}
       <BottomTabBar active="start" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
 
@@ -2862,9 +2854,12 @@ export default function HomeScreen() {
                     compact={isSmallScreen}
                   />
 
-                  <CustomerLegalLinksFooter
+                  <CustomerLegalConsentCheckbox
+                    checked={socialLegalConsentChecked}
+                    onCheckedChange={setSocialLegalConsentChecked}
                     mutedColor={colors.mutedForeground}
-                    fontSize={isSmallScreen ? 9 : 10}
+                    fontSize={isSmallScreen ? 11 : 12}
+                    disabled={googleSignInLoading || appleSignInLoading}
                   />
                 </View>
               </>
@@ -3368,6 +3363,28 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
       )}
+
+      {/* Über dem Onboarding-Overlay (zIndex 9999): sonst wirkt SIWA wie „Login bleibt stehen“. */}
+      <CustomerLegalConsentModal
+        visible={legalConsentModalVisible}
+        sessionToken={pendingOAuthSession?.sessionToken ?? ""}
+        mutedColor={colors.mutedForeground}
+        foregroundColor={colors.foreground}
+        surfaceColor={colors.surface}
+        borderColor={colors.border}
+        onCancel={async () => {
+          setLegalConsentModalVisible(false);
+          setPendingOAuthSession(null);
+          await clearPendingOAuthSession();
+        }}
+        onAccepted={async () => {
+          const pending = pendingOAuthSession;
+          if (!pending) return;
+          await applyOAuthSession(pending);
+          setLegalConsentModalVisible(false);
+          setPendingOAuthSession(null);
+        }}
+      />
 
       {/* ── Adresse bearbeiten Modal ── */}
       <Modal visible={!!editPreset} transparent animationType="fade" onRequestClose={() => setEditPreset(null)}>

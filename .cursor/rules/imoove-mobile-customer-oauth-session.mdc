@@ -10,6 +10,13 @@ alwaysApply: false
 
 Server-Log zeigt `[auth/apple/session] ok` (200) und oft danach `legal-status` 200 — Nutzer bleibt aber auf dem **Login-/Onboarding-Screen** (`showOnboarding`), als wäre nichts passiert.
 
+**App-Review / SIWA (Build 41):** Reviewer „confirmed account → Login page again“ — oft **kein** API-Bug. Ursachen:
+1. Nach Apple-Session `hasConsent: false` → Modal „Konto abschließen“; **Abbrechen** = wieder Login (wirkt wie fehlgeschlagen).
+2. Modal war im JSX **vor** dem Onboarding-Overlay (`zIndex: 9999`) — auf manchen Geräten schwer wahrnehmbar.
+3. Social-Login hatte nur Legal-**Links**, keine Checkbox → Consent erst **nach** SIWA.
+
+**Fix-Linie:** Checkbox auf Social-Schritt vor Apple/Google; `localLegalAccepted: true` → Consent sofort serverseitig; Modal `presentationStyle="overFullScreen"` **nach** Onboarding im Tree; Legal-URLs / Partner-Links via `WebBrowser.openBrowserAsync` (SFSafariViewController), nicht `Linking.openURL`.
+
 ## Kein Auth-Bug (wenn Session 200)
 
 Die API hat das JWT ausgestellt. Der Fehler liegt im **Client-State / Persistenz / Legal-Gate**:

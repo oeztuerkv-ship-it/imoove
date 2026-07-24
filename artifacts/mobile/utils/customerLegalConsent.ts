@@ -1,6 +1,6 @@
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { fetchAuthWithRetry } from "@/utils/authNetworkRetry";
-import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 
 export const ONRODA_LEGAL_URLS = {
   agb: "https://onroda.de/agb",
@@ -20,8 +20,22 @@ export type CustomerLegalStatus = {
   privacyVersion: string;
 };
 
+/** In-App (SFSafariViewController / Chrome Custom Tabs) — kein Wechsel in den System-Browser. */
 export function openOnrodaLegalPage(slug: keyof typeof ONRODA_LEGAL_URLS): void {
-  void Linking.openURL(ONRODA_LEGAL_URLS[slug]);
+  void WebBrowser.openBrowserAsync(ONRODA_LEGAL_URLS[slug], {
+    presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+    controlsColor: "#EF1D26",
+  });
+}
+
+/** Beliebige HTTPS-URL in der In-App-Browser-Sheet (Partner-Info, Marketing). */
+export function openInAppBrowser(url: string): void {
+  const u = url.trim();
+  if (!u) return;
+  void WebBrowser.openBrowserAsync(u, {
+    presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+    controlsColor: "#EF1D26",
+  });
 }
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {

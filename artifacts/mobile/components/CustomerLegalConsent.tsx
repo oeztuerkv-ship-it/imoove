@@ -178,7 +178,13 @@ export function CustomerLegalConsentModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      onRequestClose={onCancel}
+    >
       <View style={styles.modalBackdrop}>
         <View style={[styles.modalCard, { backgroundColor: surfaceColor, borderColor }]}>
           <Text style={[styles.modalTitle, { color: foregroundColor }]}>Konto abschließen</Text>

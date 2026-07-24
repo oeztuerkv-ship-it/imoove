@@ -23,13 +23,13 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vedat.mobile",
-      "buildNumber": "41",
+      "buildNumber": "42",
       "infoPlist": {
         "CFBundleDisplayName": "ONRODA",
         "NSCameraUsageDescription": "ONRODA nutzt die Kamera zum Scannen von Transportscheinen und Fahrt-QR-Codes.",
-        "NSLocationWhenInUseUsageDescription": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
-        "NSLocationAlwaysUsageDescription": "ONRODA benötigt deinen Standort während aktiver Fahrten, auch im Hintergrund.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",
+        "NSLocationWhenInUseUsageDescription": "ONRODA nutzt deinen Standort, um Abholadresse und Ziel auf der Karte zu setzen, verfügbare Fahrzeuge in deiner Nähe zu zeigen und die Ankunft des Fahrers während der Fahrt anzuzeigen.",
+        "NSLocationAlwaysUsageDescription": "ONRODA nutzt deinen Standort auch im Hintergrund, solange eine Fahrt aktiv ist — z. B. damit Fahrer deine Position zur Abholung finden und du den Fahrerfortschritt verfolgen kannst.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "ONRODA nutzt deinen Standort, um Fahrten zu vermitteln (Abholung in der Nähe), die Route zu berechnen und bei aktiver Fahrt Kunde und Fahrer auf der Karte anzuzeigen — auch im Hintergrund, solange die Fahrt läuft.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -111,9 +111,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysPermission": "ONRODA benötigt deinen Standort während aktiver Fahrten, auch im Hintergrund.",
-          "locationAlwaysAndWhenInUsePermission": "ONRODA benötigt deinen Standort, um Fahrten zu vermitteln.",
-          "locationWhenInUsePermission": "ONRODA benötigt deinen Standort für die aktuelle Fahrt.",
+          "locationAlwaysPermission": "ONRODA nutzt deinen Standort auch im Hintergrund, solange eine Fahrt aktiv ist — z. B. damit Fahrer deine Position zur Abholung finden und du den Fahrerfortschritt verfolgen kannst.",
+          "locationAlwaysAndWhenInUsePermission": "ONRODA nutzt deinen Standort, um Fahrten zu vermitteln (Abholung in der Nähe), die Route zu berechnen und bei aktiver Fahrt Kunde und Fahrer auf der Karte anzuzeigen — auch im Hintergrund, solange die Fahrt läuft.",
+          "locationWhenInUsePermission": "ONRODA nutzt deinen Standort, um Abholadresse und Ziel auf der Karte zu setzen, verfügbare Fahrzeuge in deiner Nähe zu zeigen und die Ankunft des Fahrers während der Fahrt anzuzeigen.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
