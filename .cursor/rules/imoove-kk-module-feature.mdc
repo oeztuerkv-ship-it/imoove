@@ -42,6 +42,7 @@ alwaysApply: false
 
 - Partner-E-Mail (`panel_users`, aktiv) darf **nicht** als `fleet_drivers`-E-Mail angelegt werden (`email_reserved_panel_account`).
 - `POST /fleet-auth/login` mit Panel-E-Mail → `403 panel_email_not_fleet_driver` (auch wenn fälschlich ein Fahrer-Datensatz existiert).
+- **Ausnahme (temporär, z. B. Apple Review):** Env `ONRODA_FLEET_ALLOW_PANEL_EMAILS=a@x.de,b@y.de` — nur diese Adressen dürfen Panel- und Fleet-Login teilen. Nach Review leeren.
 
 ## Abnahme kurz
 

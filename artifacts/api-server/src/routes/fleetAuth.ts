@@ -24,6 +24,7 @@ import {
 } from "../lib/fleetDriverJwt";
 import { rateLimitFleetLogin } from "../lib/fleetLoginRateLimit";
 import { verifyPassword } from "../lib/password";
+import { isPanelEmailAllowedForFleetDriver } from "../lib/fleetPanelEmailAllowlist";
 
 const router: IRouter = Router();
 
@@ -56,7 +57,7 @@ router.post("/fleet-auth/login", async (req, res) => {
   }
 
   const panelAccount = await findActivePanelUserByEmailNormalized(email);
-  if (panelAccount) {
+  if (panelAccount && !isPanelEmailAllowedForFleetDriver(email)) {
     res.status(403).json({
       error: "panel_email_not_fleet_driver",
       message: PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE,

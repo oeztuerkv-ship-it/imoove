@@ -5,6 +5,7 @@ import { getDb, isPostgresConfigured } from "./client";
 import { decideMarketLocationUpdate } from "../lib/marketLocationUpdate";
 import { logger } from "../lib/logger";
 import { findActivePanelUserByEmailNormalized } from "./panelAuthData";
+import { isPanelEmailAllowedForFleetDriver } from "../lib/fleetPanelEmailAllowlist";
 import { adminCompaniesTable, adminAuthUsersTable, fleetDriversTable } from "./schema";
 import {
   emailQualifiesForAutoDispatchPriorityA,
@@ -47,7 +48,7 @@ export async function validateFleetDriverEmailAssignment(
   if (!isValidFleetDriverEmail(em)) return null;
 
   const panelUser = await findActivePanelUserByEmailNormalized(em);
-  if (panelUser) {
+  if (panelUser && !isPanelEmailAllowedForFleetDriver(em)) {
     return {
       reason: "email_reserved_panel_account",
       existingDriverId: "",
