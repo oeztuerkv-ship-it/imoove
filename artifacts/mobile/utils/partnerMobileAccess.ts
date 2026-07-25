@@ -4,6 +4,8 @@ export const PARTNER_MOBILE_ALLOWED_COMPANY_KINDS = new Set([
   "corporate",
   "voucher_client",
   "general",
+  /** Taxi-Unternehmen: Buchungs-App + Apple-Review (gleiche Accounts wie Fleet). */
+  "taxi",
 ]);
 
 export type PartnerMeUser = {
