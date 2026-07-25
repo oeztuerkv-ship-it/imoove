@@ -1,0 +1,36 @@
+---
+description: Finance Phase A — Bar negativer operatorPayoutAmount, Netting, keine Auszahlung bei Negativsaldo
+alwaysApply: false
+---
+
+# Finance: Bar-/Karten-Netting (Phase A)
+
+## Formel (`financeCalculationService.ts`)
+
+| Zahlung | `operatorPayoutAmount` |
+|---------|-------------------------|
+| Bar (`cash`/`bar`/…) | **−commissionAmount** (Unternehmen schuldet Provision) |
+| Karte / Apple / Google | `max(0, gross − commission)` (wie bisher) |
+
+Erkennung Bar: `isCashPaymentMethod` in `ridePaymentMethod.ts`.
+
+## Recalc
+
+- `recalcUnlockedCashRideFinancials` — nur `locked_at IS NULL`
+- Admin: `POST /api/admin/finance/ride-financials/recalc-cash-netting`
+- **Gelockte Snapshots nicht anfassen**
+
+## Keine Auszahlung bei Negativ/Null
+
+- `markRideFinancialPayoutAusgezahlt` → 400 `payout_not_positive`
+- `adminRecordSettlementPayoutAttempt` → 409 `settlement_no_positive_payout`
+- Stripe Connect Destination Charges bei **Karten**-Fahrten bleiben (pro Fahrt); Bar läuft nicht über Stripe
+
+## UI
+
+- Partner-Dashboard: negativ → Label „Sie schulden ONRODA“
+- Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button
+
+## Phase B (noch offen)
+
+Richtung-Feld an `settlements` + Invoice-Lifecycle für Provisionsforderung.

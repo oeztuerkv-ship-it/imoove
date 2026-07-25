@@ -8,3 +8,12 @@ export function isStripeWalletPaymentMethod(paymentMethod: string | null | undef
   if (pm.includes("google")) return true;
   return false;
 }
+
+/** Barzahlung — Kunde zahlt dem Unternehmen direkt; Plattform-Provision ist Forderung (negativer operatorPayout). */
+export function isCashPaymentMethod(paymentMethod: string | null | undefined): boolean {
+  const pm = (paymentMethod ?? "").trim().toLowerCase().replace(/_/g, " ");
+  if (!pm) return false;
+  if (pm === "cash" || pm === "bar" || pm === "bargeld") return true;
+  if (pm.includes("barzahlung") || pm.includes("cash ")) return true;
+  return false;
+}

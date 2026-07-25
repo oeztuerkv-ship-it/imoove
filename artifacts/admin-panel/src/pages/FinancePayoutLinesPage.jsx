@@ -150,21 +150,29 @@ export default function FinancePayoutLinesPage() {
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const openNet = Number(summary?.openNetTotal);
   const kpiCards = useMemo(
     () => [
       { label: "Treffer (Filter)", value: String(summary?.totalRows ?? total) },
       { label: "Offen", value: String(summary?.openCount ?? "—") },
-      { label: "Offen · Netto gesamt", value: money(summary?.openNetTotal) },
+      {
+        label:
+          Number.isFinite(openNet) && openNet < 0
+            ? "Offen · Netto (Unternehmen schuldet)"
+            : "Offen · Netto gesamt",
+        value: money(summary?.openNetTotal),
+      },
       { label: "Ausgezahlt", value: String(summary?.paidOutCount ?? "—") },
     ],
-    [summary, total],
+    [summary, total, openNet],
   );
 
   return (
     <div className="admin-page admin-page--loose admin-page--content">
       <p className="admin-page-lead">
         Unternehmer-Auszahlungen je Fahrt — Zuordnung über Finanz-Snapshot, Partner oder Fahrt-Mandant.
-        Stripe-Gebühr zu Lasten ONRODA; Netto Unternehmer ohne Gebührenabzug.
+        Stripe-Gebühr zu Lasten ONRODA; Netto Unternehmer ohne Gebührenabzug. Bar-Fahrten: negativer Netto
+        (Provisionsschuld) — keine IBAN-Auszahlung.
       </p>
 
       {error ? (
@@ -294,6 +302,8 @@ export default function FinancePayoutLinesPage() {
                 const rideId = row.rideId ?? row.ride_id ?? "";
                 const status = row.payoutLineStatus ?? row.payout_line_status ?? "offen";
                 const isOpen = status === "offen";
+                const net = Number(row.operatorPayoutAmount ?? row.operator_payout_amount);
+                const canMarkPaidOut = isOpen && Number.isFinite(net) && net > 0;
                 const companyName = row.companyName ?? row.company_name;
                 const companyId = row.companyId ?? row.company_id;
                 const when = formatDtParts(row.calculatedAt ?? row.calculated_at);
@@ -339,14 +349,17 @@ export default function FinancePayoutLinesPage() {
                       {money(row.stripeFeeAmount ?? row.stripe_fee_amount)}
                     </td>
                     <td className="admin-crisp-numeric admin-table__num">{money(row.commissionAmount ?? row.commission_amount)}</td>
-                    <td className="admin-crisp-numeric admin-table__num admin-payout-lines-net">
+                    <td
+                      className="admin-crisp-numeric admin-table__num admin-payout-lines-net"
+                      style={Number.isFinite(net) && net < 0 ? { color: "var(--admin-danger, #b91c1c)" } : undefined}
+                    >
                       {money(row.operatorPayoutAmount ?? row.operator_payout_amount)}
                     </td>
                     <td>
                       <span className={payoutStatusPill(status)}>{payoutStatusLabel(status)}</span>
                     </td>
                     <td className="admin-payout-lines-action">
-                      {isOpen ? (
+                      {canMarkPaidOut ? (
                         <button
                           type="button"
                           className="admin-btn-table-ghost"
@@ -355,6 +368,10 @@ export default function FinancePayoutLinesPage() {
                         >
                           {busyRideId === rideId ? "…" : "Ausgezahlt"}
                         </button>
+                      ) : isOpen && Number.isFinite(net) && net <= 0 ? (
+                        <span className="admin-table-sub" title="Kein positiver Auszahlungsbetrag">
+                          Schuld / 0
+                        </span>
                       ) : (
                         <span className="admin-table-sub">—</span>
                       )}

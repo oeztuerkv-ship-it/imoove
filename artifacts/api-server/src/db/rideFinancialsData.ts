@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, isNull, sql } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import {
   calculateRideFinancialsV1,
@@ -9,8 +9,11 @@ import {
   type RideFinancialBillingStatus,
   type RideFinancialSettlementStatus,
 } from "../lib/financeCalculationService";
+import { isCashPaymentMethod } from "../lib/ridePaymentMethod";
 import { getDb } from "./client";
-import { financialAuditLogTable, invoiceItemsTable, rideFinancialsTable } from "./schema";
+import { financialAuditLogTable, invoiceItemsTable, rideFinancialsTable, ridesTable } from "./schema";
+import { findRide } from "./ridesData";
+import { logger } from "../lib/logger";
 
 type PostgresDb = NonNullable<ReturnType<typeof getDb>>;
 
@@ -657,6 +660,11 @@ export async function markRideFinancialPayoutAusgezahlt(input: {
     return { ok: true, idempotent: true };
   }
 
+  const payout = Number(row.operator_payout_amount ?? 0);
+  if (!Number.isFinite(payout) || payout <= 0) {
+    return { ok: false, error: "payout_not_positive" };
+  }
+
   const now = new Date();
   await db
     .update(rideFinancialsTable)
@@ -761,4 +769,87 @@ export async function patchRideFinancialTipAmount(rideId: string, tipAmount: num
     .update(rideFinancialsTable)
     .set({ tip_amount: safe, updated_at: now })
     .where(eq(rideFinancialsTable.ride_id, rideId.trim()));
+}
+
+/**
+ * Phase A Cash-Netting: offene (nicht gelockte) Bar-Fahrten neu berechnen.
+ * Gelockte Snapshots bleiben unverändert. Ohne forceRecalc.
+ */
+export async function recalcUnlockedCashRideFinancials(opts?: {
+  limit?: number;
+  actorType?: string;
+  actorId?: string | null;
+}): Promise<{
+  scanned: number;
+  updated: number;
+  skippedLocked: number;
+  skippedNotCash: number;
+  failed: number;
+  errors: Array<{ rideId: string; error: string }>;
+}> {
+  const db = getDb();
+  if (!db) {
+    return { scanned: 0, updated: 0, skippedLocked: 0, skippedNotCash: 0, failed: 0, errors: [] };
+  }
+  const limit = Math.min(5000, Math.max(1, opts?.limit ?? 2000));
+  const rows = await db
+    .select({
+      rideId: rideFinancialsTable.ride_id,
+      lockedAt: rideFinancialsTable.locked_at,
+      paymentMethod: ridesTable.payment_method,
+    })
+    .from(rideFinancialsTable)
+    .innerJoin(ridesTable, eq(ridesTable.id, rideFinancialsTable.ride_id))
+    .where(isNull(rideFinancialsTable.locked_at))
+    .limit(limit);
+
+  let updated = 0;
+  let skippedNotCash = 0;
+  let failed = 0;
+  const errors: Array<{ rideId: string; error: string }> = [];
+
+  for (const row of rows) {
+    if (!isCashPaymentMethod(row.paymentMethod)) {
+      skippedNotCash += 1;
+      continue;
+    }
+    const ride = await findRide(row.rideId);
+    if (!ride) {
+      failed += 1;
+      errors.push({ rideId: row.rideId, error: "ride_not_found" });
+      continue;
+    }
+    try {
+      const out = await upsertRideFinancialSnapshot({
+        ride,
+        reason: "cash_netting_recalc_unlocked",
+        actorType: opts?.actorType ?? "system",
+        actorId: opts?.actorId ?? "cash_netting_phase_a",
+      });
+      if (!out.ok) {
+        failed += 1;
+        errors.push({ rideId: row.rideId, error: out.error });
+        continue;
+      }
+      if (out.skipped) {
+        // race: inzwischen gelockt
+        continue;
+      }
+      updated += 1;
+    } catch (err) {
+      failed += 1;
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push({ rideId: row.rideId, error: msg });
+      logger.warn({ err, rideId: row.rideId }, "[finance] cash netting recalc failed");
+    }
+  }
+
+  return {
+    scanned: rows.length,
+    updated,
+    skippedLocked: 0,
+    skippedNotCash,
+    failed,
+    errors: errors.slice(0, 50),
+  };
 }

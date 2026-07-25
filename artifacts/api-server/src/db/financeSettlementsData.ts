@@ -262,6 +262,13 @@ export async function adminRecordSettlementPayoutAttempt(input: {
         throw Object.assign(new Error("company_mismatch"), { code: "company_mismatch" });
       }
 
+      const settlementPayout = Number(st.payout_amount ?? 0);
+      if (!Number.isFinite(settlementPayout) || settlementPayout <= 0) {
+        throw Object.assign(new Error("settlement_no_positive_payout"), {
+          code: "settlement_no_positive_payout",
+        });
+      }
+
       const openpay = await tx
         .select()
         .from(paymentsTable)
@@ -315,6 +322,7 @@ export async function adminRecordSettlementPayoutAttempt(input: {
     const err = e as Error & { code?: string };
     if (err.code === "settlement_not_found") return { ok: false, error: "settlement_not_found" };
     if (err.code === "company_mismatch") return { ok: false, error: "company_mismatch" };
+    if (err.code === "settlement_no_positive_payout") return { ok: false, error: "settlement_no_positive_payout" };
     const msg = String(err.message ?? "");
     if (msg.includes("payments_settlement_single_open")) {
       return { ok: false, error: "duplicate_payment_blocked" };

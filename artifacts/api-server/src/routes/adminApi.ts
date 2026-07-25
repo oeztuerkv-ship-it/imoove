@@ -239,6 +239,7 @@ import {
   getRideFinancialSnapshotByRideId,
   mapBillingStatusByRideIds,
   markRideFinancialPayoutAusgezahlt,
+  recalcUnlockedCashRideFinancials,
 } from "../db/rideFinancialsData";
 import {
   getAdminTaxiFleetVehicleDetail,
@@ -1224,10 +1225,42 @@ adminJson.post("/finance/payout-lines/:rideId/mark-ausgezahlt", async (req, res,
     });
     if (!out.ok) {
       const status = out.error === "snapshot_not_found" ? 404 : 400;
-      res.status(status).json({ error: out.error });
+      res.status(status).json({
+        error: out.error,
+        ...(out.error === "payout_not_positive"
+          ? {
+              hint: "Kein positiver Auszahlungsbetrag (z. B. Bar-Fahrt / Negativsaldo) — keine IBAN-Auszahlung.",
+            }
+          : {}),
+      });
       return;
     }
     res.json({ ok: true, rideId, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Phase A: nicht gelockte Bar-Fahrten auf cash_negative_commission neu berechnen.
+ * Gelockte Snapshots bleiben unangetastet.
+ */
+adminJson.post("/finance/ride-financials/recalc-cash-netting", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = (req.body ?? {}) as { limit?: unknown };
+    const limit =
+      typeof body.limit === "number" && Number.isFinite(body.limit) ? Math.floor(body.limit) : undefined;
+    const out = await recalcUnlockedCashRideFinancials({
+      limit,
+      actorType: "admin",
+      actorId: `admin_console:${role}`,
+    });
+    res.json({ ok: true, ...out });
   } catch (e) {
     next(e);
   }
@@ -1829,8 +1862,22 @@ adminJson.post("/finance/settlements/:settlementId/record-payment", async (req, 
       actorLabel: `admin_console:${role}`,
     });
     if (!out.ok) {
-      const st = out.error === "settlement_not_found" ? 404 : out.error === "company_mismatch" ? 403 : 400;
-      res.status(st).json({ error: out.error });
+      const st =
+        out.error === "settlement_not_found"
+          ? 404
+          : out.error === "company_mismatch"
+            ? 403
+            : out.error === "settlement_no_positive_payout"
+              ? 409
+              : 400;
+      res.status(st).json({
+        error: out.error,
+        ...(out.error === "settlement_no_positive_payout"
+          ? {
+              hint: "Negativ- oder Nullsaldo — keine Auszahlung; Phase B: Provisionsrechnung an Unternehmen.",
+            }
+          : {}),
+      });
       return;
     }
     res.json({ ok: true, paymentId: out.paymentId, idempotent: out.idempotent === true });

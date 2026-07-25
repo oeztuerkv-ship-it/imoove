@@ -289,8 +289,12 @@ export function SettlementKpiPeriodPanel({
         <Card
           hero
           value={formatMoney(settlement.payout)}
-          label="Ihr Anteil"
-          hint="Klicken für Fahrtenliste"
+          label={settlement.payout < 0 ? "Sie schulden ONRODA" : "Ihr Anteil"}
+          hint={
+            settlement.payout < 0
+              ? "Negativsaldo (Bar-Provision) — keine Auszahlung in diesem Zeitraum"
+              : "Klicken für Fahrtenliste"
+          }
           onClick={openDrill}
         />
         <Card hero value={String(completedRides)} label={`Abgeschlossen · ${activeOption.periodLabel}`} />
@@ -364,7 +368,7 @@ export function SettlementKpiPeriodPanel({
                       <th>Route</th>
                       <th>Endpreis</th>
                       <th>Provision</th>
-                      <th>Ihr Anteil</th>
+                      <th>Ihr Anteil / Saldo</th>
                       <th>Zahlungsart</th>
                       <th>Fahrer</th>
                       <th>Status Zahlung</th>

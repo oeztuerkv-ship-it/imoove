@@ -1,4 +1,5 @@
 import type { RideRequest } from "../domain/rideRequest";
+import { isCashPaymentMethod } from "./ridePaymentMethod";
 
 export type FinancePayerType =
   | "passenger"
@@ -64,7 +65,7 @@ export interface FinanceCalculationResult {
 const DEFAULT_VAT_RATE = 0.19;
 const DEFAULT_COMMISSION_VALUE = 0.15;
 const DEFAULT_CALCULATION_VERSION = "finance_v1";
-const DEFAULT_RULE_SET = "onroda.finance.v1.default";
+const DEFAULT_RULE_SET = "onroda.finance.v1.cash_card_netting";
 
 function roundMoney(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -158,6 +159,24 @@ function deriveInitialSettlementStatus(ride: RideRequest): RideFinancialSettleme
   return "open";
 }
 
+/**
+ * Unternehmer-Netto je Fahrt:
+ * - Karte/Wallet: positiv (gross − commission) — Plattform zahlt an Unternehmen aus
+ * - Bar: negativ (−commission) — Unternehmen hat Brutto schon kassiert, schuldet Provision
+ */
+export function computeOperatorPayoutAmount(input: {
+  grossAmount: number;
+  commissionAmount: number;
+  paymentMethod?: string | null;
+}): number {
+  const commission = roundMoney(Math.max(0, input.commissionAmount));
+  if (isCashPaymentMethod(input.paymentMethod)) {
+    return roundMoney(-commission);
+  }
+  const gross = roundMoney(Math.max(0, input.grossAmount));
+  return roundMoney(Math.max(0, gross - commission));
+}
+
 export function calculateRideFinancialsV1(input: FinanceCalculationInput): FinanceCalculationResult {
   const { ride } = input;
   const pricingContext = input.pricingContext ?? null;
@@ -188,7 +207,12 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
     commissionAmount = roundMoney(Math.max(commissionAmount, minComm));
   }
   commissionAmount = roundMoney(Math.min(commissionAmount, grossAmount));
-  const operatorPayoutAmount = roundMoney(Math.max(0, grossAmount - commissionAmount));
+  const cashRide = isCashPaymentMethod(ride.paymentMethod);
+  const operatorPayoutAmount = computeOperatorPayoutAmount({
+    grossAmount,
+    commissionAmount,
+    paymentMethod: ride.paymentMethod,
+  });
 
   return {
     grossAmount,
@@ -210,6 +234,9 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
       pricingMode: ride.pricingMode ?? "taxi_tariff",
       rideKind: ride.rideKind,
       payerKind: ride.payerKind,
+      paymentMethod: ride.paymentMethod ?? "",
+      cashRide,
+      payoutModel: cashRide ? "cash_negative_commission" : "card_gross_minus_commission",
       initialBillingStatus: deriveInitialBillingStatus(ride),
       initialSettlementStatus: deriveInitialSettlementStatus(ride),
       grossSource: resolveGrossSource(ride, grossFromSnapshot),
@@ -231,6 +258,7 @@ export function previewDriverSettlementFromGross(
   driverPayoutAmount: number;
 } {
   const grossSafe = toSafeNonNegative(grossEur, 0);
+  /** Preview ohne Bar → Karten-Logik (positiver Unternehmer-/Fahrer-Anteil). */
   const ride = {
     id: "preview",
     status: "completed",
@@ -239,6 +267,7 @@ export function previewDriverSettlementFromGross(
     rideKind: "standard",
     payerKind: "passenger",
     pricingMode: "taxi_tariff",
+    paymentMethod: "card",
   } as RideRequest;
   const calc = calculateRideFinancialsV1({ ride, pricingContext });
   const rate = calc.commissionValue;
