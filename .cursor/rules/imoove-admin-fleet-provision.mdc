@@ -1,0 +1,25 @@
+---
+description: Admin Flotten-Erfassung — flexibles Formular Unternehmen/Portal/Owner + Zeilen Fahrzeug und/oder Fahrer
+alwaysApply: false
+---
+
+# Admin: Flotten-Erfassung
+
+## Produkt
+
+- **Seite:** Admin-Panel `fleet-provision` („Flotten-Erfassung“)
+- **API:** `POST /api/admin/fleet-provision` (Admin-Bearer), Zuweisung einzeln: `POST /api/admin/taxi-fleet-drivers/:companyId/assignments`
+- **Zeilen:** nur Fahrzeug, nur Fahrer, oder beides → bei beidem `setDriverVehicleAssignment`
+- **Portal-Zugang:** nur wenn im Body explizit gesetzt — kein Auto-Anlegen beim reinen Flotten-Nachzug
+- **E-Mail-Kollision** Fahrer ↔ Panel: hart (`email_reserved_panel_account`), unverändert
+- **Fahrer-Mail:** `sendFleetDriverWelcomeEmail` (SMTP wie Partner-Mails)
+
+## Code
+
+- `artifacts/api-server/src/lib/adminFleetProvision.ts`
+- `artifacts/api-server/src/lib/fleetDriverWelcomeMail.ts`
+- `artifacts/admin-panel/src/pages/FleetProvisionPage.jsx`
+
+## Versicherungsnummer
+
+Kein eigenes DB-Feld an `fleet_vehicles` — wird in `admin_internal_note` als `Versicherung: …` abgelegt. TÜV → `next_inspection_date`.

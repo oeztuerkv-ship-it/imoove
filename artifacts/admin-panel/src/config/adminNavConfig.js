@@ -40,6 +40,7 @@ export const ADMIN_PAGE_ROLES = {
   "insurer-exports": ["admin", "service", "insurance"],
 
   companies: ["admin", "service", "taxi"],
+  "fleet-provision": ["admin", "service", "taxi"],
   "taxi-fleet-drivers": ["admin", "service", "taxi"],
   "taxi-fleet-vehicles": ["admin", "service", "taxi"],
   "company-registration-requests": ["admin", "service"],
@@ -216,6 +217,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     roles: ["admin", "service", "taxi"],
     items: [
       { pageKey: "companies", label: "Firmenliste & Profile", icon: "building", roles: ["admin", "service", "taxi"] },
+      { pageKey: "fleet-provision", label: "Flotten-Erfassung", icon: "rides", roles: ["admin", "service", "taxi"] },
       { pageKey: "taxi-fleet-drivers", label: "Taxi · Fahrer", icon: "driver", roles: ["admin", "service", "taxi"] },
       { pageKey: "taxi-fleet-vehicles", label: "Taxi · Fahrzeuge", icon: "rides", roles: ["admin", "service", "taxi"] },
       { pageKey: "company-registration-requests", label: "Registrierungsanfragen", icon: "document", roles: R.adminSvc },
@@ -396,6 +398,7 @@ const ADMIN_TOP_NAV = [
       { pageKey: "companies", label: "Sonstige", companiesTab: "other" },
       { type: TOP_NAV_DIVIDER },
       { pageKey: "taxi-fleet-drivers", label: "Taxi · Fahrer" },
+      { pageKey: "fleet-provision", label: "Flotten-Erfassung" },
       { pageKey: "taxi-fleet-vehicles", label: "Taxi · Fahrzeuge" },
       { pageKey: "company-registration-requests", label: "Registrierungsanfragen" },
       { pageKey: "company-vehicle-requests", label: "Anfragen · Fahrzeuge" },

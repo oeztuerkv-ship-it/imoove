@@ -56,6 +56,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-product-architecture.mdc` — Schichten Marketing / API / Mobile / Panel
 - `.cursor/rules/imoove-api-mobile-backward-compatibility.mdc` — **API ↔ Mobile:** neue Pflichtfelder an bestehenden Endpunkten rückwärtskompatibel (fehlend = Default, nicht 400)
 - `.cursor/rules/imoove-api-passenger-gdpr-reauth.mdc` — **Konto-Löschung:** Apple/Google-Re-Login reaktiviert Profil; E-Mail-Login bleibt gesperrt bis Neuregistrierung
+- `.cursor/rules/imoove-admin-fleet-provision.mdc` — **Admin Flotten-Erfassung:** `POST /admin/fleet-provision`, optionales Portal, Zeilen Fzg/Fahrer
 - `.cursor/rules/imoove-panel-ux-separation.mdc` — **Admin = Plattform-Konsole**, **Partner = Unternehmens-Panel** (Sprache, Farben, Navigation, kein UI-Mix)
 - **ONRODA Admin-Standard** (`artifacts/admin-panel/`): `docs/admin-ui-reference.md` + `.cursor/rules/imoove-admin-panel-ui-reference.mdc` — helles Karten-Layout, Mandantenzentrale-Referenz, Bearbeiten in der Zentrale, typgetrennte Zusatzsektionen, kein TaxiMaster-Design; gleiche Tragfähigkeit aller `company_kind`
 - **Modernes UI (Team-Linie, alle Oberflächen):** `.cursor/rules/imoove-modern-ui-design-agreement.mdc` — Aufklappbare Sektionen, Modals, Chat, KV-Grid; Partner-Referenz: `artifacts/partner-panel/docs/partner-ui-reference.md`

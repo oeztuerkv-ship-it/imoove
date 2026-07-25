@@ -65,6 +65,7 @@ import DriverMessagesPage from "./pages/DriverMessagesPage.jsx";
 import PartnerMessagesPage from "./pages/PartnerMessagesPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
+import FleetProvisionPage from "./pages/FleetProvisionPage.jsx";
 import DriversOverviewPage from "./pages/DriversOverviewPage.jsx";
 import DriversRevenuePage from "./pages/DriversRevenuePage.jsx";
 import Fail2BanPage from "./pages/Fail2BanPage.jsx";
@@ -812,6 +813,8 @@ export default function App() {
             onInitialCompanyConsumed={clearTaxiFleetSeedCompanyId}
           />
         );
+      case "fleet-provision":
+        return <FleetProvisionPage />;
       case "drivers-overview":
         return <DriversOverviewPage userRole={userRole} />;
       case "drivers-revenue":

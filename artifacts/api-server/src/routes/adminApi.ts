@@ -290,6 +290,7 @@ import {
 } from "../db/adminFleetDriversOverviewData";
 import { persistPanelUserManualAttachment } from "../lib/persistPanelUserManualAttachment";
 import { sendPanelUserWelcomeEmail } from "../lib/panelUserWelcomeMail";
+import { runAdminFleetProvision, type FleetProvisionBody } from "../lib/adminFleetProvision";
 import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
@@ -2665,6 +2666,73 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles", async (req, res, next
       meta: { licensePlate, konzessionNumber, approveNow, adminUserId: adminId },
     });
     res.status(201).json({ ok: true, id: ins.id, approvalStatus: approveNow ? "approved" : "draft" });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Flexible Flotten-Erfassung (Unternehmen ± Portal/Owner + Zeilen Fahrzeug und/oder Fahrer).
+ * Portal-Zugang nur bei explizit gesetzten Feldern; Fahrer-Willkommens-Mail bei Neuanlage (default).
+ */
+adminJson.post("/fleet-provision", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const result = await runAdminFleetProvision((req.body ?? {}) as FleetProvisionBody);
+    if (!result.ok) {
+      res.status(result.status).json({
+        ok: false,
+        error: result.error,
+        ...(result.hint ? { hint: result.hint } : {}),
+      });
+      return;
+    }
+    res.status(201).json(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Admin: Fahrer↔Fahrzeug zuweisen (gleiche Logik wie Partner-Fleet). */
+adminJson.post("/taxi-fleet-drivers/:companyId/assignments", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = (req.body ?? {}) as { driverId?: unknown; vehicleId?: unknown };
+    const driverId = typeof b.driverId === "string" ? b.driverId.trim() : "";
+    const vehicleId = typeof b.vehicleId === "string" ? b.vehicleId.trim() : "";
+    if (!driverId || !vehicleId) {
+      res.status(400).json({ error: "driver_and_vehicle_required" });
+      return;
+    }
+    const { setDriverVehicleAssignment } = await import("../db/fleetAssignmentsData");
+    const r = await setDriverVehicleAssignment({ companyId, driverId, vehicleId });
+    if (!r.ok) {
+      res.status(400).json({ error: r.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_assignment.set",
+      subjectType: "fleet_assignment",
+      subjectId: `${driverId}:${vehicleId}`,
+      meta: { driverId, vehicleId, source: "admin_api" },
+    });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }
