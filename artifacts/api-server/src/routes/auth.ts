@@ -3,10 +3,7 @@ import { Router, type Request, type Response } from "express";
 import { createHash, randomBytes } from "crypto";
 import { getFirebaseAuth, isFirebaseAdminConfigured } from "../lib/firebaseAdmin";
 import { upsertPassengerProfile } from "../db/passengerProfilesData";
-import {
-  assertPassengerMayAuthenticate,
-  findPassengerProfile,
-} from "../db/passengerProfileDeletionData";
+import { findPassengerProfile } from "../db/passengerProfileDeletionData";
 import { applePassengerSubject, verifyAppleIdentityToken } from "../lib/appleSignInVerify";
 import {
   isSessionJwtConfigured,
@@ -361,15 +358,31 @@ router.get("/auth/google/callback", async (req, res) => {
       picture?: string;
     };
 
-    const authGate = await assertPassengerMayAuthenticate(profile.sub);
-    if (!authGate.ok) {
-      res.redirect(appendQueryParams(returnUrl, { error: "account_deleted" }));
-      return;
-    }
-
     void idToken;
     void accessToken;
     void accessTokenExpiresAt;
+
+    // Stabile Google-sub: nach DSGVO-Löschung Reaktivierung statt dauerhaftem account_deleted.
+    let googleReactivated = false;
+    try {
+      const upsert = await upsertPassengerProfile({
+        passengerId: profile.sub,
+        name: profile.name ?? "",
+        email: profile.email ?? "",
+        authProvider: "google",
+        reactivateIfDeleted: true,
+      });
+      googleReactivated = upsert.reactivated;
+    } catch (profileErr) {
+      console.error("[auth] google profile upsert:", profileErr);
+      res.redirect(appendQueryParams(returnUrl, { error: "profile_upsert_failed" }));
+      return;
+    }
+    if (googleReactivated) {
+      console.info(
+        `[auth/google/callback] reactivated deleted passenger=${String(profile.sub).slice(0, 24)}…`,
+      );
+    }
 
     let sessionToken: string;
     try {
@@ -384,13 +397,6 @@ router.get("/auth/google/callback", async (req, res) => {
       res.redirect(appendQueryParams(returnUrl, { error: "session_token_failed" }));
       return;
     }
-
-    void upsertPassengerProfile({
-      passengerId: profile.sub,
-      name: profile.name ?? "",
-      email: profile.email ?? "",
-      authProvider: "google",
-    }).catch(() => undefined);
 
     res.redirect(appendQueryParams(returnUrl, { token: sessionToken }));
   } catch (e) {
@@ -552,21 +558,14 @@ router.post("/auth/apple/session", async (req, res) => {
     const verified = await verifyAppleIdentityToken(identityToken);
     const passengerId = applePassengerSubject(verified.sub);
 
-    const authGate = await assertPassengerMayAuthenticate(passengerId);
-    if (!authGate.ok) {
-      console.warn(
-        `[auth/apple/session] account_deleted passenger=${passengerId.slice(0, 24)}… ms=${Date.now() - startedAt}`,
-      );
-      res.status(403).json({ ok: false, error: "account_deleted" });
-      return;
-    }
-
+    // Stabile apple:<sub>: nach DSGVO-Löschung Profil reaktivieren (kein permanentes account_deleted).
     const email = verified.email ?? clientEmail;
-    await upsertPassengerProfile({
+    const upsert = await upsertPassengerProfile({
       passengerId,
       name: fullName,
       email,
       authProvider: "apple",
+      reactivateIfDeleted: true,
     });
     const stored = await findPassengerProfile(passengerId);
     const profileName = fullName || (stored?.name ?? "").trim();
@@ -578,7 +577,7 @@ router.post("/auth/apple/session", async (req, res) => {
       photoUri: null,
     });
     console.info(
-      `[auth/apple/session] ok passenger=${passengerId.slice(0, 24)}… ms=${Date.now() - startedAt}`,
+      `[auth/apple/session] ok${upsert.reactivated ? " reactivated" : ""} passenger=${passengerId.slice(0, 24)}… ms=${Date.now() - startedAt}`,
     );
     res.json({
       ok: true,

@@ -1,0 +1,32 @@
+---
+description: DSGVO-Konto-Löschung — Apple/Google Re-Login reaktiviert Profil; E-Mail bleibt gesperrt bis Neuregistrierung
+alwaysApply: false
+---
+
+# API: Kundenkonto-Löschung & erneute Anmeldung (DSGVO)
+
+## Symptom (behoben)
+
+Nach Selbst-Löschung (`anonymizeCustomerAccount`) blockierte `assertPassengerMayAuthenticate` **jeden** erneuten Login mit derselben stabilen `passenger_id` (`apple:<sub>` / Google `sub`) dauerhaft mit `account_deleted`.
+
+## Gewünschtes Verhalten
+
+| Auth | Nach Löschung |
+|------|----------------|
+| **Apple / Google** | Erneuter OAuth-Login **reaktiviert** das Profil: `deleted_at = null`, Name/E-Mail aus dem Login (nicht „Gelöschter Nutzer“ / `deleted_*@` behalten). Alte Fahrten bleiben anonymisiert. |
+| **E-Mail/Passwort** | Login mit `password_hash === "DELETED"` bleibt **403** `account_deleted`. Die Original-E-Mail ist freigegeben → **Neuregistrierung** mit neuer UUID möglich. |
+| **Bestehende Session-JWT** | `requireCustomerSession` prüft weiter `deleted_at` → 403 bis neuer Login. |
+
+## Code
+
+- Reaktivierung: `upsertPassengerProfile({ …, reactivateIfDeleted: true })` in `passengerProfilesData.ts`
+- Aufruf nur aus OAuth: `POST /auth/apple/session`, `GET /auth/google/callback` (`auth.ts`)
+- **Nicht** `reactivateIfDeleted` aus Customer-API-Nebenpfaden setzen
+- `assertPassengerMayAuthenticate` nur noch für E-Mail-Login / Session-Sperre — **nicht** als OAuth-Hard-Block
+
+## Abnahme
+
+1. Konto löschen (App) → Session tot.
+2. Gleiche Apple-ID erneut Sign in → Session OK, Profil nicht mehr „Gelöschter Nutzer“.
+3. Google analog.
+4. E-Mail: Login mit gelöschtem Konto → 403; Register mit derselben Adresse → neuer Account.

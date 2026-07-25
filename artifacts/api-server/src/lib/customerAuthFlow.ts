@@ -173,6 +173,9 @@ export async function loginCustomerAccount(opts: {
     return { ok: false, error: "invalid_credentials", status: 401 };
   }
 
+  // E-Mail-Konto: nach Löschung password_hash=DELETED + anonymisierte E-Mail — kein Login mit altem Passwort.
+  // Neuregistrierung mit derselben Adresse ist möglich (E-Mail freigegeben → neuer UUID-Account).
+  // Apple/Google: stabile IDs → Reaktivierung in auth.ts via reactivateIfDeleted (nicht hier).
   if (row.password_hash === "DELETED" || (await assertPassengerMayAuthenticate(row.id)).ok === false) {
     return { ok: false, error: "account_deleted", status: 403 };
   }

@@ -17,17 +17,42 @@ export async function upsertPassengerProfile(input: {
   name?: string;
   email?: string;
   authProvider: PassengerAuthProvider;
-}): Promise<void> {
+  /**
+   * OAuth (Apple/Google): nach DSGVO-Löschung erneut anmelden erlauben.
+   * Cleared `deleted_at` und überschreibt anonymisierte Name/E-Mail — alte Ride-Daten bleiben anonym.
+   * Ohne Flag: gelöschte Profile unverändert (kein stilles Reaktivieren aus Nebenpfaden).
+   */
+  reactivateIfDeleted?: boolean;
+}): Promise<{ reactivated: boolean }> {
   const db = getDb();
-  if (!db) return;
+  if (!db) return { reactivated: false };
   const passengerId = input.passengerId.trim();
-  if (!passengerId) return;
+  if (!passengerId) return { reactivated: false };
   const existing = await findPassengerProfile(passengerId);
-  if (existing?.deleted_at) return;
   const now = new Date();
   const name = (input.name ?? "").trim().slice(0, 200);
   const email = (input.email ?? "").trim().slice(0, 254);
   const authProvider = input.authProvider;
+
+  if (existing?.deleted_at) {
+    if (!input.reactivateIfDeleted) return { reactivated: false };
+    // Kein COALESCE mit „Gelöschter Nutzer“ / deleted_*@ — Apple liefert Name/E-Mail oft nur beim Erstlogin.
+    await db
+      .update(passengerProfilesTable)
+      .set({
+        deleted_at: null,
+        name,
+        email,
+        auth_provider: authProvider,
+        last_seen_at: now,
+        updated_at: now,
+      })
+      .where(eq(passengerProfilesTable.passenger_id, passengerId));
+
+    const { ensurePassengerRideVerifyPin } = await import("../lib/customerRideVerifyPin");
+    void ensurePassengerRideVerifyPin(passengerId);
+    return { reactivated: true };
+  }
 
   await db
     .insert(passengerProfilesTable)
@@ -54,6 +79,7 @@ export async function upsertPassengerProfile(input: {
   // Jeder App-Kunde hat immer einen Abhol-PIN (Auto-Vergabe falls fehlend).
   const { ensurePassengerRideVerifyPin } = await import("../lib/customerRideVerifyPin");
   void ensurePassengerRideVerifyPin(passengerId);
+  return { reactivated: false };
 }
 
 export async function touchPassengerProfileFromEmailAccount(input: {

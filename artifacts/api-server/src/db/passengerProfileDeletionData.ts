@@ -34,6 +34,10 @@ export async function isPassengerAccountDeleted(passengerId: string): Promise<bo
   return row?.deleted_at != null;
 }
 
+/**
+ * Sperre für bestehende Session / E-Mail-Passwort-Login nach Löschung.
+ * Nicht für Apple/Google-OAuth-Neu-Login: dort `upsertPassengerProfile({ reactivateIfDeleted: true })`.
+ */
 export async function assertPassengerMayAuthenticate(
   passengerId: string,
 ): Promise<{ ok: true } | { ok: false; error: "account_deleted" }> {

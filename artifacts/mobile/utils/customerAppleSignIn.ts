@@ -63,7 +63,7 @@ async function exchangeAppleTokenWithApi(opts: {
           : code === "session_jwt_unconfigured"
           ? "Server: Session-JWT nicht konfiguriert (AUTH_JWT_SECRET)."
           : code === "account_deleted"
-            ? "Dieses Konto wurde gelöscht und kann nicht erneut angemeldet werden."
+            ? "Dieses Konto wurde gelöscht. Bitte App aktualisieren oder Support kontaktieren."
             : `Apple-Anmeldung fehlgeschlagen (${code}).`,
     );
   }

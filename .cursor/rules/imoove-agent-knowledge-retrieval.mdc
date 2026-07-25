@@ -42,8 +42,9 @@ Der Nutzer erwartet: **nicht nur den aktuellen Diff**, sondern **bekanntes Syste
 | Kunden-Karte Live-Fahrer (`RealMapView`, Marker glatt) | **`imoove-mobile-customer-live-driver-map.mdc`** |
 | `driver/navigation`, Stack, RESET | **`imoove-mobile-live-ride-flows.mdc`** (nur `dismissTo`, kein Bridge-RESET) |
 | `SessionRestoreCoordinator` | **`imoove-mobile-live-ride-flows.mdc`** + Ghost-Orders wenn Markt |
-| Push-Token / Expo | Notifications + `passengerExpoPushData` / `fleetDriverExpoPushData` |
-| `driver-cancel`, Status-API | `rides.ts` + Notifications + Core-Policy Storno |
+ | Push-Token / Expo | Notifications + `passengerExpoPushData` / `fleetDriverExpoPushData` |
+ | `driver-cancel`, Status-API | `rides.ts` + Notifications + Core-Policy Storno |
+ | Konto-Löschung / Re-Login Apple/Google | **`imoove-api-passenger-gdpr-reauth.mdc`** |
 
 ## Typische „vergessene“ Querschnitte
 

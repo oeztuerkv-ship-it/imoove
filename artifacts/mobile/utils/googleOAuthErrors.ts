@@ -10,7 +10,9 @@ export function mapGoogleOAuthReturnError(error: string | null, detail: string |
     case "missing_params":
       return "Google-Rückruf unvollständig — bitte erneut versuchen.";
     case "account_deleted":
-      return "Dieses Konto wurde gelöscht und kann nicht erneut angemeldet werden.";
+      return "Dieses Konto wurde gelöscht. Bitte App aktualisieren oder Support kontaktieren.";
+    case "profile_upsert_failed":
+      return "Profil konnte nicht gespeichert werden — bitte erneut versuchen.";
     case "profile_fetch_failed":
       return "Google-Profil konnte nicht geladen werden.";
     case "session_token_failed":
