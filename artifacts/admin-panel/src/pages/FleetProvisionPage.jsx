@@ -15,6 +15,7 @@ function emptyRow() {
     insuranceNumber: "",
     nextInspectionDate: "",
     konzessionNumber: "",
+    vehicleClass: "standard",
     driverMode: "none", // none | existing | create
     driverId: "",
     driverName: "",
@@ -201,6 +202,7 @@ export default function FleetProvisionPage() {
           insuranceNumber: r.insuranceNumber.trim() || undefined,
           nextInspectionDate: r.nextInspectionDate.trim() || null,
           konzessionNumber: r.konzessionNumber.trim() || undefined,
+          vehicleClass: r.vehicleClass || "standard",
         };
       }
       if (r.driverMode === "existing" && r.driverId) {
@@ -670,6 +672,19 @@ export default function FleetProvisionPage() {
                           onChange={(e) => updateRow(r.key, { licensePlate: e.target.value })}
                           disabled={submitting}
                         />
+                      </label>
+                      <label className="admin-field">
+                        <span className="admin-field__label">Fahrzeugtyp</span>
+                        <select
+                          className="admin-input"
+                          value={r.vehicleClass || "standard"}
+                          onChange={(e) => updateRow(r.key, { vehicleClass: e.target.value })}
+                          disabled={submitting}
+                        >
+                          <option value="standard">Standard</option>
+                          <option value="xl">XL</option>
+                          <option value="wheelchair">Rollstuhl</option>
+                        </select>
                       </label>
                       <label className="admin-field">
                         <span className="admin-field__label">Versicherungsnummer</span>

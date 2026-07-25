@@ -23,3 +23,7 @@ alwaysApply: false
 ## Versicherungsnummer
 
 Kein eigenes DB-Feld an `fleet_vehicles` — wird in `admin_internal_note` als `Versicherung: …` abgelegt. TÜV → `next_inspection_date`.
+
+## Fahrzeugtyp
+
+`vehicleClass`: `standard` | `xl` | `wheelchair` (Default `standard`). Bei `wheelchair` wird `vehicleType` ebenfalls `wheelchair` gesetzt — analog Admin-Fahrzeug-Anlage und Kunden-App „Wähle deine Fahrt“.

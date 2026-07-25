@@ -61,6 +61,8 @@ export type FleetProvisionVehicleInput = {
   insuranceNumber?: string;
   nextInspectionDate?: string | null;
   konzessionNumber?: string;
+  /** standard | xl | wheelchair — Default standard (wie Kunden-App „Wähle deine Fahrt“). */
+  vehicleClass?: string;
 };
 
 export type FleetProvisionDriverInput = {
@@ -417,13 +419,23 @@ export async function runAdminFleetProvision(body: FleetProvisionBody): Promise<
             clip(String(v.konzessionNumber ?? ""), 64) ||
             companyConcession ||
             plate;
+          const classRaw = clip(String(v.vehicleClass ?? "standard"), 32).toLowerCase();
+          const allowedClasses = new Set(["standard", "xl", "wheelchair"]);
+          if (!allowedClasses.has(classRaw)) {
+            result.ok = false;
+            result.error = "vehicle_class_invalid";
+            rowResults.push(result);
+            continue;
+          }
+          const vehicleClass = classRaw as "standard" | "xl" | "wheelchair";
+          const vehicleType = vehicleClass === "wheelchair" ? "wheelchair" : "sedan";
           const ins = await insertFleetVehicle({
             companyId,
             licensePlate: plate,
             konzessionNumber: kz,
-            vehicleType: "sedan",
+            vehicleType,
             vehicleLegalType: "taxi",
-            vehicleClass: "standard",
+            vehicleClass,
             nextInspectionDate:
               v.nextInspectionDate === null
                 ? null
@@ -453,7 +465,7 @@ export async function runAdminFleetProvision(body: FleetProvisionBody): Promise<
             action: "admin.fleet_vehicle.created",
             subjectType: "fleet_vehicle",
             subjectId: vehicleId,
-            meta: { licensePlate: plate, source: "admin_fleet_provision" },
+            meta: { licensePlate: plate, vehicleClass, source: "admin_fleet_provision" },
           });
         }
         result.vehicleId = vehicleId;
