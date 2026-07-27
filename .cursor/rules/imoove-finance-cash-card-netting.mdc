@@ -3,7 +3,7 @@ description: Finance Phase A — Bar negativer operatorPayoutAmount, Netting, ke
 alwaysApply: false
 ---
 
-# Finance: Bar-/Karten-Netting (Phase A)
+# Finance: Bar-/Karten-Netting (Phase A+)
 
 ## Formel (`financeCalculationService.ts`)
 
@@ -14,23 +14,38 @@ alwaysApply: false
 
 Erkennung Bar: `isCashPaymentMethod` in `ridePaymentMethod.ts`.
 
+## Scope (verbindlich)
+
+| Regel | Bedeutung |
+|-------|-----------|
+| **Nur `company_kind = taxi`** | Hotel / Agentur / Firmenkunde / Insurer / Medical-Mandant: **kein** Auszahlungs-/Schuld-Saldo über Netting — nur bestehender Rechnungsweg (`invoices` / Monatsrechnung). Helper: `cashCardNettingScope.ts` |
+| **KK-Rechnung** | Fahrt mit `transport_vouchers.kranken_invoice_id` (echte Sammelrechnung) → **raus aus Netting** (Provision läuft über KK-Weg). |
+| **Flat-Medical** | Krankenfahrt **ohne** verknüpfte KK-Rechnung → **bleibt im Netting** (einziger Provisionsweg). |
+
+Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_only`. Non-Taxi Overview liefert leere Settlement-/Payment-Stats.
+
 ## Recalc
 
 - `recalcUnlockedCashRideFinancials` — nur `locked_at IS NULL`
 - Admin: `POST /api/admin/finance/ride-financials/recalc-cash-netting`
 - **Gelockte Snapshots nicht anfassen**
 
-## Keine Auszahlung bei Negativ/Null
+## Keine Auszahlung bei Negativ/Null / KK
 
-- `markRideFinancialPayoutAusgezahlt` → 400 `payout_not_positive`
+- `markRideFinancialPayoutAusgezahlt` → 400 `payout_not_positive` oder `linked_kranken_invoice`
 - `adminRecordSettlementPayoutAttempt` → 409 `settlement_no_positive_payout`
 - Stripe Connect Destination Charges bei **Karten**-Fahrten bleiben (pro Fahrt); Bar läuft nicht über Stripe
 
 ## UI
 
 - Partner-Dashboard: negativ → Label „Sie schulden ONRODA“
-- Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button
+- Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button; nur Taxi + ohne KK-Link
 
-## Phase B (noch offen)
+## Roadmap Nachvollziehbarkeit
 
-Richtung-Feld an `settlements` + Invoice-Lifecycle für Provisionsforderung.
+1. ~~Medical/KK-Ausschluss (an echte KK-Rechnung gekoppelt) + Taxi-Scope härten~~ (P1)
+2. Cancel/No-Show-Brutto + Badges (P3)
+3. Partner-Drill Tip + Stripe (P4)
+4. Korrektur-Ledger Storno/Refund/Chargeback (P2)
+5. Admin-Gutschriften (P5)
+6. Phase B Schuldrichtung + Provisionsrechnung (P6)

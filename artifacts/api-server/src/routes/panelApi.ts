@@ -1071,6 +1071,13 @@ router.get("/panel/v1/overview/settlement-rides", requirePanelAuth, async (req, 
     if (!denyUnlessPanelModule(res, ctx.profile, "overview")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 
+    const company = await getPanelCompanyById(ctx.claims.companyId);
+    const companyKind: PanelCompanyKind = company?.companyKind ?? ctx.profile.companyKind;
+    if (companyKind !== "taxi") {
+      res.status(403).json({ error: "taxi_only" });
+      return;
+    }
+
     const q = normalizeQueryRecord(req.query as Record<string, unknown>);
     const periodQuery = parsePanelSettlementPeriodQuery(q);
     const limitRaw = typeof q.limit === "string" ? Number.parseInt(q.limit, 10) : 200;

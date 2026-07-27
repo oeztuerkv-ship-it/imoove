@@ -22,6 +22,10 @@ import {
   type ReminderHistoryEntry,
 } from "../lib/invoiceTimeline.js";
 import type { InvoiceWorkflowFilter } from "../lib/invoiceWorkflow.js";
+import {
+  sqlCompanyKindIsTaxi,
+  sqlRideNotLinkedToKrankenInvoice,
+} from "../lib/cashCardNettingScope.js";
 
 export type FinanceSummary = {
   totalRevenue: number;
@@ -234,8 +238,13 @@ function resolvedPayoutCompanyIdSql() {
   return sql`coalesce(${rideFinancialsTable.service_provider_company_id}, ${rideFinancialsTable.partner_company_id}, ${ridesTable.company_id}, ${fleetDriversTable.company_id})`;
 }
 
+/** Auszahlungsliste: nur completed Taxi-Fahrten ohne echte KK-Rechnung. */
 function payoutEligibleRideCondition(): SQL {
-  return eq(ridesTable.status, "completed");
+  return and(
+    eq(ridesTable.status, "completed"),
+    sqlCompanyKindIsTaxi(resolvedPayoutCompanyIdSql()),
+    sqlRideNotLinkedToKrankenInvoice(sql`${ridesTable.id}`),
+  )!;
 }
 
 function payoutLinesBaseJoin() {
@@ -848,7 +857,7 @@ export async function getFinanceEligibilitySummaryForRide(rideId: string): Promi
       settlementBlockers: ["missing_snapshot_or_ride"],
     };
   }
-  const [{ getInvoiceEligibility, getSettlementEligibility }] = await Promise.all([
+  const [{ getInvoiceEligibility, getSettlementEligibilityWithNettingScope }] = await Promise.all([
     import("./rideFinancialsData"),
   ]);
   const invoice = getInvoiceEligibility({
@@ -860,7 +869,7 @@ export async function getFinanceEligibilitySummaryForRide(rideId: string): Promi
       billingStatus: rf.billing_status,
     },
   });
-  const settlement = getSettlementEligibility({
+  const settlement = await getSettlementEligibilityWithNettingScope({
     ride,
     snapshot: {
       serviceProviderCompanyId: rf.service_provider_company_id,
@@ -931,6 +940,8 @@ export async function getAdminDailyDriverSettlement(args: {
         gte(rideFinancialsTable.calculated_at, args.dateFrom),
         lte(rideFinancialsTable.calculated_at, args.dateTo),
         isNotNull(ridesTable.driver_id),
+        sqlCompanyKindIsTaxi(sql`coalesce(${ridesTable.company_id}, '')`),
+        sqlRideNotLinkedToKrankenInvoice(sql`${ridesTable.id}`),
       ),
     )
     .groupBy(ridesTable.driver_id, ridesTable.company_id)

@@ -8,6 +8,10 @@ import {
   settlementRideAllocationsTable,
   settlementsTable,
 } from "./schema";
+import {
+  companyIsCashCardNettingEligible,
+  rideHasLinkedKrankenInvoice,
+} from "../lib/cashCardNettingScope";
 
 type ExecDb = NonNullable<ReturnType<typeof getDb>>;
 
@@ -57,6 +61,16 @@ export async function adminCreateSettlementWithRideAllocations(input: {
 
   if (!companyId || !periodStart || !periodEnd || rideIds.length === 0) {
     return { ok: false, error: "invalid_input" };
+  }
+
+  if (!(await companyIsCashCardNettingEligible(companyId))) {
+    return { ok: false, error: "company_kind_not_taxi_netting" };
+  }
+
+  for (const rideId of rideIds) {
+    if (await rideHasLinkedKrankenInvoice(rideId)) {
+      return { ok: false, error: "ride_linked_kranken_invoice" };
+    }
   }
 
   if (keyFiltered) {

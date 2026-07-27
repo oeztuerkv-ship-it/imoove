@@ -1232,6 +1232,11 @@ adminJson.post("/finance/payout-lines/:rideId/mark-ausgezahlt", async (req, res,
               hint: "Kein positiver Auszahlungsbetrag (z. B. Bar-Fahrt / Negativsaldo) — keine IBAN-Auszahlung.",
             }
           : {}),
+        ...(out.error === "linked_kranken_invoice"
+          ? {
+              hint: "Fahrt ist an eine KK-Rechnung gebunden — Auszahlung nur über den KK-Weg, nicht über Bar-/Karten-Netting.",
+            }
+          : {}),
       });
       return;
     }

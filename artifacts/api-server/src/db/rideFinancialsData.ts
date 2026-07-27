@@ -10,6 +10,7 @@ import {
   type RideFinancialSettlementStatus,
 } from "../lib/financeCalculationService";
 import { isCashPaymentMethod } from "../lib/ridePaymentMethod";
+import { rideHasLinkedKrankenInvoice } from "../lib/cashCardNettingScope";
 import { getDb } from "./client";
 import { financialAuditLogTable, invoiceItemsTable, rideFinancialsTable, ridesTable } from "./schema";
 import { findRide } from "./ridesData";
@@ -665,6 +666,10 @@ export async function markRideFinancialPayoutAusgezahlt(input: {
     return { ok: false, error: "payout_not_positive" };
   }
 
+  if (await rideHasLinkedKrankenInvoice(rideId)) {
+    return { ok: false, error: "linked_kranken_invoice" };
+  }
+
   const now = new Date();
   await db
     .update(rideFinancialsTable)
@@ -757,6 +762,22 @@ export function getSettlementEligibility(input: {
     }
   }
   return { eligible: blockers.length === 0, blockers };
+}
+
+/** Async: Settlement/Auszahlung nur ohne echte KK-Rechnung (Flat-Medical ok). */
+export async function getSettlementEligibilityWithNettingScope(input: {
+  ride: RideRequest;
+  snapshot: {
+    serviceProviderCompanyId?: string | null;
+    settlementStatus: RideFinancialSettlementStatus;
+  } | null;
+}): Promise<{ eligible: boolean; blockers: string[] }> {
+  const base = getSettlementEligibility(input);
+  if (!base.eligible) return base;
+  if (await rideHasLinkedKrankenInvoice(input.ride.id)) {
+    return { eligible: false, blockers: [...base.blockers, "linked_kranken_invoice"] };
+  }
+  return base;
 }
 
 /** Trinkgeld nach Fahrtende — ohne Provision, nur Snapshot-Spalte. */

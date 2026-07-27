@@ -1335,8 +1335,17 @@ export async function getPanelCompanyOverviewMetrics(
     presentation === "taxi_betrieb" ? await getPanelCompanyCommissionRate(companyId) : null;
 
   async function buildPeriodSlice(createdAtFilter?: SQL): Promise<PanelMetricsPeriodSlice> {
-    const [stats, settlement, paymentStats] = await Promise.all([
-      queryPanelCompletedPeriodStats(db, companyId, createdAtFilter),
+    const stats = await queryPanelCompletedPeriodStats(db, companyId, createdAtFilter);
+    if (presentation !== "taxi_betrieb") {
+      return {
+        completedRides: stats.completedRides,
+        revenue: stats.revenue,
+        settlement: { ...EMPTY_PANEL_SETTLEMENT },
+        paymentStats: emptyPaymentStats(),
+        avgCompletedFare: stats.avgCompletedFare,
+      };
+    }
+    const [settlement, paymentStats] = await Promise.all([
       queryPanelFinancialSettlement(db, companyId, createdAtFilter),
       queryPanelPaymentStatsForPeriod(db, companyId, createdAtFilter),
     ]);

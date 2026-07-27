@@ -170,7 +170,8 @@ export default function FinancePayoutLinesPage() {
   return (
     <div className="admin-page admin-page--loose admin-page--content">
       <p className="admin-page-lead">
-        Unternehmer-Auszahlungen je Fahrt — Zuordnung über Finanz-Snapshot, Partner oder Fahrt-Mandant.
+        Unternehmer-Auszahlungen je Fahrt — nur Taxi-Mandanten, ohne Fahrten mit verknüpfter KK-Rechnung
+        (Flat-Medical ohne KK bleibt). Zuordnung über Finanz-Snapshot, Partner oder Fahrt-Mandant.
         Stripe-Gebühr zu Lasten ONRODA; Netto Unternehmer ohne Gebührenabzug. Bar-Fahrten: negativer Netto
         (Provisionsschuld) — keine IBAN-Auszahlung.
       </p>

@@ -11,8 +11,19 @@ import {
   normalizeInvoicePrefix,
   resolveCompanyInvoicePrefix,
 } from "../lib/invoiceNumbering";
+import { sqlRideNotLinkedToKrankenInvoice } from "../lib/cashCardNettingScope";
+
 function companyIdMatchCondition(companyId: string): SQL {
   return sql`${ridesTable.company_id}::text = ${companyId}`;
+}
+
+/** Bar-/Karten-Netting: completed + Mandant + ohne echte KK-Rechnung. */
+function cashCardNettingRideConditions(companyId: string): SQL[] {
+  return [
+    eq(ridesTable.status, "completed"),
+    companyIdMatchCondition(companyId),
+    sqlRideNotLinkedToKrankenInvoice(sql`${ridesTable.id}`),
+  ];
 }
 
 export type PanelFinancialSettlementWindow = {
@@ -445,7 +456,7 @@ export async function queryPanelFinancialSettlement(
   companyId: string,
   createdAtFilter?: SQL,
 ): Promise<PanelFinancialSettlementWindow> {
-  const conditions: SQL[] = [eq(ridesTable.status, "completed"), companyIdMatchCondition(companyId)];
+  const conditions: SQL[] = cashCardNettingRideConditions(companyId);
   if (createdAtFilter) conditions.push(createdAtFilter);
 
   const [row] = await db
@@ -470,7 +481,7 @@ export async function queryPanelPaymentStatsForPeriod(
   companyId: string,
   createdAtFilter?: SQL,
 ): Promise<PanelPaymentPeriodStats> {
-  const conditions: SQL[] = [eq(ridesTable.status, "completed"), companyIdMatchCondition(companyId)];
+  const conditions: SQL[] = cashCardNettingRideConditions(companyId);
   if (createdAtFilter) conditions.push(createdAtFilter);
 
   const [row] = await db
@@ -532,7 +543,7 @@ export async function listPanelSettlementRides(
   if (!db) return { rides: [], period: query };
 
   const completedAtFilter = buildPanelSettlementCompletedAtFilter(query);
-  const conditions: SQL[] = [eq(ridesTable.status, "completed"), companyIdMatchCondition(companyId)];
+  const conditions: SQL[] = cashCardNettingRideConditions(companyId);
   if (completedAtFilter) conditions.push(completedAtFilter);
   const settlementAt = panelSettlementRideCompletedAtExpr();
 
