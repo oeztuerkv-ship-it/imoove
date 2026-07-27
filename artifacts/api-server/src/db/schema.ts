@@ -249,9 +249,9 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   permission_kk_module: boolean("permission_kk_module").notNull().default(false),
   /** Inhaber-Fahrerkonto — voller KK-Zugriff bei aktivem Mandanten-Modul. */
   is_owner: boolean("is_owner").notNull().default(false),
-  /** Premium-Dispatch: A (zuerst), B, C — nur Admin. */
-  dispatch_priority: text("dispatch_priority").notNull().default("C"),
-  /** Aufeinanderfolgende Markt-Ablehnungen (20 → Priorität sinkt). */
+  /** Premium-Dispatch: A (manuell Admin) oder B (Standard neue Fahrer). */
+  dispatch_priority: text("dispatch_priority").notNull().default("B"),
+  /** Aufeinanderfolgende Markt-Ablehnungen (20 → Priorität A→B). */
   dispatch_reject_streak: integer("dispatch_reject_streak").notNull().default(0),
   /** Optional: individueller Provisionssatz (Dezimal); NULL = Mandant. */
   commission_rate: doublePrecision("commission_rate"),
@@ -753,7 +753,7 @@ export const ridesTable = pgTable("rides", {
   passenger_rating: integer("passenger_rating"),
   /** Fahrer bewertet Kunde (1–5), einmalig nach Fahrtende. */
   driver_passenger_rating: integer("driver_passenger_rating"),
-  /** Sofortfahrt: aktuelle Angebots-Stufe A→B→C. */
+  /** Sofortfahrt: aktuelle Angebots-Stufe A→B. */
   dispatch_tier: text("dispatch_tier").notNull().default("A"),
   dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),
   /** Zwei-Wege-Chat (Snapshot bei Annahme durch A-Fahrer); strikt fahrtgebunden. */

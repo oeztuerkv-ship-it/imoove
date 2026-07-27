@@ -6,7 +6,6 @@ import {
   getFleetDriverDispatchPriority,
   getFleetDriverMarketOnline,
   setFleetDriverMarketOnline,
-  syncFleetDriverDispatchPriorityFromAdminEmail,
   touchFleetDriverHeartbeat,
   updateFleetDriverMarketLocation,
   getFleetDriverMarketLocation,
@@ -104,8 +103,6 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       res.status(401).json({ error: "not_found" });
       return;
     }
-    void syncFleetDriverDispatchPriorityFromAdminEmail(a.fleetDriverId, a.companyId);
-    const rowFresh = (await findFleetDriverInCompany(a.fleetDriverId, a.companyId)) ?? row;
     const [assignments, vehicles] = await Promise.all([
       listAssignmentsForCompany(a.companyId),
       listFleetVehiclesForCompany(a.companyId),
@@ -116,7 +113,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       assignedVehicle && assignedVehicle.isActive && assignedVehicle.approvalStatus === "approved"
         ? assignedVehicle
         : null;
-    const listRow = fleetDriverTableRowToList(rowFresh);
+    const listRow = fleetDriverTableRowToList(row);
     const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
     const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
     const driverWorkflow = deriveDriverWorkflowLabel(listRow);
@@ -130,7 +127,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
         : einsatzbereit
           ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" as const }
           : buildFleetDriverMeClientHints(readinessR, listRow);
-    const isMarketOnline = Boolean(rowFresh.is_market_online);
+    const isMarketOnline = Boolean(row.is_market_online);
     const opPayload = await getOperationalConfigPayload();
     const regions = await listServiceRegionsForApi();
     const pricingCtx = await resolveFinancePricingContextForRide(
@@ -155,7 +152,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       companyConcessionNumber,
     });
     const dispatchRejectStreak =
-      Number((rowFresh as { dispatch_reject_streak?: number }).dispatch_reject_streak ?? 0) || 0;
+      Number((row as { dispatch_reject_streak?: number }).dispatch_reject_streak ?? 0) || 0;
     const offerStats = await getFleetDriverOfferStats(a.fleetDriverId, a.companyId, dispatchRejectStreak);
     const [cancellationSuspensionRow, cancellationsInWindow] = await Promise.all([
       findActiveFleetDriverCancellationSuspension(a.fleetDriverId),
@@ -197,16 +194,16 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       },
       ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
       driver: {
-        id: rowFresh.id,
-        companyId: rowFresh.company_id,
-        email: rowFresh.email,
-        firstName: rowFresh.first_name,
-        lastName: rowFresh.last_name,
-        accessStatus: rowFresh.access_status,
+        id: row.id,
+        companyId: row.company_id,
+        email: row.email,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        accessStatus: row.access_status,
         approvalStatus: listRow.approvalStatus,
-        mustChangePassword: rowFresh.must_change_password,
-        vehicleLegalType: rowFresh.vehicle_legal_type,
-        vehicleClass: rowFresh.vehicle_class,
+        mustChangePassword: row.must_change_password,
+        vehicleLegalType: row.vehicle_legal_type,
+        vehicleClass: row.vehicle_class,
         dispatchPriority: listRow.dispatchPriority,
         ratingAverage: averageFleetDriverRating(listRow.ratingSum, listRow.ratingCount),
         ratingCount: listRow.ratingCount,

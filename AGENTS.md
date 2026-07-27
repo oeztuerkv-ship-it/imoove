@@ -38,6 +38,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-pre-completion-git-checklist.mdc` — **vor jeder Fertigmeldung:** sauberes `git status`, keine relevanten `??`, `git show --name-only HEAD`, erwartete Dateien auf `main` / Push
 - `.cursor/rules/imoove-mobile-expo-pnpm-workflow.mdc` — **Mobile:** Port **8081**, Metro/pnpm, **vor Push** lokaler Dev-Lauf + Bundle/App ok; kein Mix Admin/API/Partner; Details auch in `imoove-mobile-backup-expo-dev.mdc`
 - `.cursor/rules/imoove-mobile-driver-ghost-orders.mdc` — **Mobile Fahrer:** globaler `RideRequestContext`, Ghost-Aufträge, ONLINE-Baseline
+- `.cursor/rules/imoove-dispatch-tiers-ab.mdc` — **Dispatch:** nur Tier A/B; A manuell Admin; neue Fahrer = B; Timeout A→B 60 s
 - `.cursor/rules/imoove-mobile-notifications-push-knowledge.mdc` — **Mobile Push/Banner/Ton:** Kunde vs Fahrer, Token-Exklusivität, `suppressDriverInstantOffer`
 - `.cursor/rules/imoove-mobile-destination-navigation.mdc` — **Mobile:** Orte → Ziel → `/ride-select` (keine URL-Params auf `/`)
 - `.cursor/rules/imoove-mobile-customer-oauth-session.mdc` — **Mobile Kunden-OAuth:** Session-Persistenz, Legal-Gate, Apple „200 aber Login-Screen“

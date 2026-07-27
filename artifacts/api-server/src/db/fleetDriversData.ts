@@ -6,9 +6,8 @@ import { decideMarketLocationUpdate } from "../lib/marketLocationUpdate";
 import { logger } from "../lib/logger";
 import { findActivePanelUserByEmailNormalized } from "./panelAuthData";
 import { isPanelEmailAllowedForFleetDriver } from "../lib/fleetPanelEmailAllowlist";
-import { adminCompaniesTable, adminAuthUsersTable, fleetDriversTable } from "./schema";
+import { adminCompaniesTable, fleetDriversTable } from "./schema";
 import {
-  emailQualifiesForAutoDispatchPriorityA,
   nextDispatchTier,
   normalizeDispatchPriority,
   type DispatchPriority,
@@ -162,8 +161,8 @@ export interface FleetDriverListRow {
   permissionKkModule: boolean;
   /** Inhaber-Fahrerkonto. */
   isOwner: boolean;
-  /** Premium-Dispatch A/B/C (Admin). */
-  dispatchPriority: "A" | "B" | "C";
+  /** Premium-Dispatch A/B (A nur manuell Admin). */
+  dispatchPriority: "A" | "B";
   /** Optional: individueller Provisionssatz (0.08 = 8 %); NULL = Mandant. */
   commissionRate: number | null;
   ratingSum: number;
@@ -1131,7 +1130,7 @@ export async function getFleetDriverDispatchPriority(
   companyId: string,
 ): Promise<DispatchPriority> {
   const row = await findFleetDriverInCompany(fleetDriverId, companyId);
-  if (!row) return "C";
+  if (!row) return "B";
   return normalizeDispatchPriority((row as { dispatch_priority?: string }).dispatch_priority);
 }
 
@@ -1154,12 +1153,12 @@ export async function resetFleetDriverDispatchRejectStreak(
     .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)));
 }
 
-/** Nach Markt-Ablehnung: Streak +1; bei 20× → A→B→C, Streak zurücksetzen. */
+/** Nach Markt-Ablehnung: Streak +1; bei 20× → A→B (Ende), Streak zurücksetzen. */
 export async function recordFleetDriverOfferRejectStreak(
   fleetDriverId: string,
   companyId: string,
 ): Promise<{ streak: number; downgraded: boolean; priority: DispatchPriority }> {
-  const fallback = { streak: 0, downgraded: false, priority: "C" as DispatchPriority };
+  const fallback = { streak: 0, downgraded: false, priority: "B" as DispatchPriority };
   if (!isPostgresConfigured()) return fallback;
   const db = getDb();
   if (!db) return fallback;
@@ -1236,37 +1235,4 @@ export async function setFleetDriverCommissionRateForAdmin(
     .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
     .returning({ id: fleetDriversTable.id });
   return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-
-/** Plattform-Admin-E-Mail → automatisch Priorität A (Vedat / admin_auth_users). */
-export async function syncFleetDriverDispatchPriorityFromAdminEmail(
-  fleetDriverId: string,
-  companyId: string,
-): Promise<void> {
-  const row = await findFleetDriverInCompany(fleetDriverId, companyId);
-  if (!row) return;
-  const email = String(row.email ?? "").trim();
-  if (!email) return;
-
-  let autoA = emailQualifiesForAutoDispatchPriorityA(email);
-  if (!autoA && isPostgresConfigured()) {
-    const db = getDb();
-    if (db) {
-      const admins = await db
-        .select({ email: adminAuthUsersTable.email })
-        .from(adminAuthUsersTable)
-        .where(sql`lower(trim(${adminAuthUsersTable.email})) = lower(trim(${email}))`)
-        .limit(1);
-      autoA = admins.length > 0;
-    }
-  }
-  if (!autoA) return;
-  const cur = normalizeDispatchPriority((row as { dispatch_priority?: string }).dispatch_priority);
-  if (cur === "A") return;
-  const db = getDb();
-  if (!db) return;
-  await db
-    .update(fleetDriversTable)
-    .set({ dispatch_priority: "A", updated_at: new Date() })
-    .where(and(eq(fleetDriversTable.id, fleetDriverId), eq(fleetDriversTable.company_id, companyId)));
 }

@@ -77,7 +77,7 @@ function premiumOpenOfferView(
   } as RideRequest;
 }
 
-/** Offenes Sofortangebot: Prio A sieht Route/Entfernung/Preis; B/C nur Anfahrt km/Min. */
+/** Offenes Sofortangebot: Prio A sieht Route/Entfernung/Preis; B nur Anfahrt km/Min. */
 export function toDriverOpenMarketOfferView(
   r: RideRequest,
   opts: {
@@ -90,14 +90,14 @@ export function toDriverOpenMarketOfferView(
     return toDriverRideView(r);
   }
 
-  const priority = normalizeDispatchPriority(opts.driverDispatchPriority ?? "C");
+  const priority = normalizeDispatchPriority(opts.driverDispatchPriority ?? "B");
   if (priority === "A") {
     return premiumOpenOfferView(r, opts);
   }
   return redactedOpenOfferView(r, opts);
 }
 
-/** Offene Reservierung: Prio A sieht volle Adressen; B/C reduziert (wie Sofortangebot). */
+/** Offene Reservierung: Prio A sieht volle Adressen; B reduziert (wie Sofortangebot). */
 export function toDriverOpenReservationView(
   r: RideRequest,
   opts: {
@@ -108,14 +108,14 @@ export function toDriverOpenReservationView(
     return stripPartnerOnlyRideFields(toDriverRideView(r));
   }
 
-  const priority = normalizeDispatchPriority(opts.driverDispatchPriority ?? "C");
+  const priority = normalizeDispatchPriority(opts.driverDispatchPriority ?? "B");
   if (priority === "A") {
     return stripPartnerOnlyRideFields(r);
   }
   return redactedOpenOfferView(r, { driverLat: null, driverLon: null });
 }
 
-/** Grober Ort für B/C (kein Straßen-Detail) — letzte Adresszeile / Stadtteil. */
+/** Grober Ort für B (kein Straßen-Detail) — letzte Adresszeile / Stadtteil. */
 export function coarseAreaFromRideAddress(r: Pick<RideRequest, "fromFull" | "from">): string {
   const raw = String(r.fromFull || r.from || "").trim();
   if (!raw) return "Umgebung";
@@ -134,7 +134,7 @@ export function coarseAreaFromRideAddress(r: Pick<RideRequest, "fromFull" | "fro
 /**
  * Verpasste Fahrt in „Meine Fahrten“: immer nach aktueller Fahrer-Prio redigieren
  * (auch wenn die Fahrt schon einen anderen Fahrer hat / abgeschlossen ist).
- * Tier A: Start/Ziel; B/C: nur grober Ort + Zeiten (keine Strecken-Details).
+ * Tier A: Start/Ziel; B: nur grober Ort + Zeiten (keine Strecken-Details).
  */
 export function toDriverMissedRideView(
   r: RideRequest,
@@ -142,7 +142,7 @@ export function toDriverMissedRideView(
     driverDispatchPriority?: DispatchPriority | string | null;
   },
 ): RideRequest & { routeVisible: boolean; approxArea: string } {
-  const priority = normalizeDispatchPriority(opts.driverDispatchPriority ?? "C");
+  const priority = normalizeDispatchPriority(opts.driverDispatchPriority ?? "B");
   const approxArea = coarseAreaFromRideAddress(r);
   if (priority === "A") {
     const full = stripPartnerOnlyRideFields(r);

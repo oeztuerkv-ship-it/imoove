@@ -177,7 +177,7 @@ export interface RideRequest {
   rejectedBy: string[];
   status: RequestStatus;
   /** Premium-Dispatch-Stufe (Sofort/Reservierung am Markt). */
-  dispatchTier?: "A" | "B" | "C" | null;
+  dispatchTier?: "A" | "B" | null;
   /** Zwei-Wege-Chat aktiv (nur A-Fahrer nach Annahme). */
   chatEnabled?: boolean;
 }
@@ -663,7 +663,7 @@ function normalizeRequest(r: any): RideRequest {
       const t = String(r.dispatchTier ?? r.dispatch_tier ?? "A")
         .trim()
         .toUpperCase();
-      return t === "A" || t === "B" || t === "C" ? t : "A";
+      return t === "A" || t === "B" ? t : "A";
     })(),
     chatEnabled: Boolean(r.chatEnabled ?? r.chat_enabled),
   } as RideRequest;

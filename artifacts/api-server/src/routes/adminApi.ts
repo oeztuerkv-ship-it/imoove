@@ -2386,8 +2386,8 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/dispatch-prior
     if (!allowed) return;
     const raw = (req.body as { dispatchPriority?: unknown })?.dispatchPriority;
     const rawStr = String(raw ?? "").trim().toUpperCase();
-    if (rawStr !== "A" && rawStr !== "B" && rawStr !== "C") {
-      res.status(400).json({ error: "invalid_dispatch_priority", hint: "A | B | C" });
+    if (rawStr !== "A" && rawStr !== "B") {
+      res.status(400).json({ error: "invalid_dispatch_priority", hint: "A | B" });
       return;
     }
     const priority = normalizeDispatchPriority(rawStr);

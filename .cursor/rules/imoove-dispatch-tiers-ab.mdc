@@ -1,0 +1,26 @@
+# Dispatch-Tiers: nur A und B
+
+## Produktlinie
+
+- **Tier A:** Premium — sieht Angebote zuerst. **Nur manuell** im Admin-Panel (`DriversOverviewPage` → PATCH `dispatchPriority`).
+- **Tier B:** Standard für **alle neuen Fahrer** (DB-Default `fleet_drivers.dispatch_priority = 'B'`).
+- **Kein Tier C** mehr (Migration **133**).
+- **Kein Auto-A** mehr per E-Mail / `admin_auth_users` / Env (`syncFleetDriverDispatchPriorityFromAdminEmail` entfernt).
+
+## Fahrt-Eskalation
+
+- Neue Sofort-/Pool-Fahrten starten auf **`rides.dispatch_tier = 'A'`**.
+- Nach Timeout (**Default 60 s**, `premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC` / Fallback in `getDispatchTierTimeoutSec`) → **B**, dann Stopp.
+- Freigabe durch A-Fahrer: ebenfalls A→B (`releaseRideDispatchOffer`).
+
+## Ablehnungs-Streak (bleibt)
+
+- 20 Markt-Ablehnungen in Folge (`DISPATCH_REJECT_STREAK_DOWNGRADE_THRESHOLD`): **A→B**.
+- Bereits **B**: kein weiterer Abstieg (`nextDispatchTier("B")` = null); Streak wird trotzdem zurückgesetzt. Sinnvoll als Anti-Spam für Premium-A.
+
+## Code-Anker
+
+- `artifacts/api-server/src/lib/dispatchPriorityTier.ts`
+- `artifacts/api-server/src/db/rideDispatchTierData.ts`
+- `artifacts/api-server/src/db/fleetDriversData.ts` (`recordFleetDriverOfferRejectStreak`, `setFleetDriverDispatchPriorityForAdmin`)
+- Migration `133_dispatch_tiers_ab_only.sql`

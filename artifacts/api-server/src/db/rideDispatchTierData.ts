@@ -65,7 +65,7 @@ export async function advanceRideDispatchTier(opts: {
 
   const updated = await findRide(rid);
   if (updated) {
-    // Sofort: ONLINE-Markt; Reservierung: Planer-Pool (gleiche Tier-Filter A/B/C).
+    // Sofort: ONLINE-Markt; Reservierung: Planer-Pool (gleiche Tier-Filter A/B).
     // Beide Helfer no-open früh — sichere Doppelaufrufe.
     void notifyMarketOnlineDriversInstantRideOffer(updated);
     void notifyEligibleDriversScheduledPoolOffer(updated);
@@ -73,14 +73,14 @@ export async function advanceRideDispatchTier(opts: {
   return updated;
 }
 
-/** Timeout A→B oder B→C; bleibt auf C ohne weiteren Schritt. */
+/** Timeout A→B; bleibt auf B ohne weiteren Schritt. */
 export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<{
   ride: RideRequest;
   advanced: boolean;
 }> {
   if (!isDispatchTierManagedRide(ride)) return { ride, advanced: false };
   const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
-  if (tier === "C") return { ride, advanced: false };
+  if (tier === "B") return { ride, advanced: false };
 
   const timeoutSec = await loadDispatchTimeoutSec();
   if (!shouldAdvanceDispatchTierByTimeout(ride, timeoutSec)) return { ride, advanced: false };

@@ -1752,8 +1752,7 @@ function formatDriverRatingLabel(rating: number | null, ratingCount: number): st
 
 function dispatchPriorityLabel(priority: DriverProfile["dispatchPriority"]): string {
   if (priority === "A") return "Priorität A (Premium)";
-  if (priority === "B") return "Priorität B";
-  return "Priorität C (Standard)";
+  return "Priorität B (Standard)";
 }
 
 /* ─── Tab: Profil ─── */

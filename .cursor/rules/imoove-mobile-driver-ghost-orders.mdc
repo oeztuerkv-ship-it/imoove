@@ -72,7 +72,7 @@ Schutz-Zweige (Baseline still):
 - `POST /rides/:id/reject` → `rejectedBy` in DB (**nur manueller Ablehnen-Button**, nicht Countdown-Timeout)
 - Sofort-Countdown **10 s** ohne Aktion → lokaler **Snooze ~10 s** (`snoozeInstantOfferAfterMiss`), dann **Markt-Refresh** + **`GET …/soft-miss-open`** (ohne Tier-Filter). Wenn Fahrt noch offen → Stash wieder einmischen + Klingeln. **Wiederholt** bis Annahme, manuelles X, oder Fahrt nicht mehr offen. Soft-Miss ändert `dispatch_tier` nicht.
 - **Ton bei Soft-Miss:** `clearDriverInstantOfferAlarmDedupe(rideId)` vor Wake — sonst blockiert `RING_DEDUPE_MS` (50 s) den Ton bei Versuch 2/3.
-- **A→B→C:** Soft-Miss läuft für Fahrer, die das Angebot schon hatten, auch weiter, wenn die Stufe wechselt (Stash + `soft-miss-open`). Neu am Markt sieht nur die aktuelle Stufe.
+- **A→B:** Soft-Miss läuft für Fahrer, die das Angebot schon hatten, auch weiter, wenn die Stufe wechselt (Stash + `soft-miss-open`). Neu am Markt sieht nur die aktuelle Stufe.
 - **Bug (behoben):** Bei Snooze blieb die Ride-ID in `driverMarketPrevPendingIdsRef` / Dashboard-`prevPendingIds` (leerer Pool updatete Prev nicht) → Rückkehr ohne Klingeln. Fix: Prev bei leerem Pool + bei Snooze-`end` löschen.
 - Migration **`066_fleet_drivers_market_online.sql`** — Online-Status persistent
 

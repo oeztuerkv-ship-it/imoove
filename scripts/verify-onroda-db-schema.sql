@@ -1361,6 +1361,35 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'fleet_drivers_dispatch_priority_chk'
+      AND contype = 'c'
+      AND conrelid = 'public.fleet_drivers'::regclass
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers_dispatch_priority_chk A|B (Migration 133)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'rides_dispatch_tier_chk'
+      AND contype = 'c'
+      AND conrelid = 'public.rides'::regclass
+  ) THEN
+    errs := array_append(errs, 'rides_dispatch_tier_chk A|B (Migration 133)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'fleet_drivers'
+      AND column_name = 'dispatch_priority'
+      AND column_default ILIKE '%B%'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.dispatch_priority default B (Migration 133)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'last_market_lat'
   ) THEN

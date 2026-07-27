@@ -306,11 +306,11 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
   const permissionKkModule = me.permissionKkModule === true;
   const isOwner = me.isOwner === true;
   const kkModuleAuthorized = me.kkModuleAuthorized === true;
-  const dispatchPriorityRaw = String(me.dispatchPriority ?? d.dispatchPriority ?? "C")
+  const dispatchPriorityRaw = String(me.dispatchPriority ?? d.dispatchPriority ?? "B")
     .trim()
     .toUpperCase();
   const dispatchPriority: DriverProfile["dispatchPriority"] =
-    dispatchPriorityRaw === "A" || dispatchPriorityRaw === "B" ? dispatchPriorityRaw : "C";
+    dispatchPriorityRaw === "A" || dispatchPriorityRaw === "B" ? dispatchPriorityRaw : "B";
   const ratingCount =
     typeof d.ratingCount === "number" && Number.isFinite(d.ratingCount) && d.ratingCount >= 0
       ? Math.round(d.ratingCount)
@@ -394,9 +394,7 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     isOwner: p.isOwner === true,
     kkModuleAuthorized: p.kkModuleAuthorized === true,
     dispatchPriority:
-      p.dispatchPriority === "A" || p.dispatchPriority === "B" || p.dispatchPriority === "C"
-        ? p.dispatchPriority
-        : "C",
+      p.dispatchPriority === "A" || p.dispatchPriority === "B" ? p.dispatchPriority : "B",
     meSyncError: typeof p.meSyncError === "string" ? p.meSyncError : "",
   };
 }
@@ -464,7 +462,7 @@ export interface DriverProfile {
   /** Effektiver KK-Modul-Zugriff (Scan/Upload). */
   kkModuleAuthorized: boolean;
   /** Premium-Dispatch A/B/C (Admin). */
-  dispatchPriority: "A" | "B" | "C";
+  dispatchPriority: "A" | "B";
   /** Gesetzt, wenn GET /fleet-driver/v1/me nach Login/Refresh fehlschlägt (≠ Freigabe-Block). */
   meSyncError: string;
 }
@@ -649,7 +647,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         permissionKkModule: false,
         isOwner: false,
         kkModuleAuthorized: false,
-        dispatchPriority: "C",
+        dispatchPriority: "B",
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));

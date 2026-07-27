@@ -175,8 +175,8 @@ export interface RideRequest {
   passengerPinVerifiedAt?: string | null;
   driverId?: string | null;
   rejectedBy: string[];
-  /** Sofortfahrt: aktuelle Dispatch-Stufe (A→B→C). */
-  dispatchTier?: "A" | "B" | "C" | null;
+  /** Sofortfahrt: aktuelle Dispatch-Stufe (A→B). */
+  dispatchTier?: "A" | "B" | null;
   dispatchTierStartedAt?: string | null;
   /** Zwei-Wege-Chat aktiv (Snapshot bei Annahme durch A-Fahrer); strikt fahrtgebunden. */
   chatEnabled?: boolean;

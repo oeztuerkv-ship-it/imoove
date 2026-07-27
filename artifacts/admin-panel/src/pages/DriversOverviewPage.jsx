@@ -146,7 +146,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [noteIn, setNoteIn] = useState("");
-  const [dispatchPriorityIn, setDispatchPriorityIn] = useState("C");
+  const [dispatchPriorityIn, setDispatchPriorityIn] = useState("B");
   const [actBusy, setActBusy] = useState(false);
 
   const [blockOpen, setBlockOpen] = useState(false);
@@ -239,7 +239,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
         }
         setDetail(j);
         setNoteIn(j.driver?.adminInternalNote || "");
-        setDispatchPriorityIn(String(j.driver?.dispatchPriority || "C").toUpperCase());
+        setDispatchPriorityIn(String(j.driver?.dispatchPriority || "B").toUpperCase());
         setDetailLoading(false);
       })
       .catch(() => {
@@ -699,7 +699,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                       <strong>Letzte Aktivität</strong> {fmtTs(detail.driver.lastHeartbeatAt || detail.driver.lastLoginAt)}
                     </div>
                     <div>
-                      <strong>Dispatch-Priorität</strong> {detail.driver.dispatchPriority || "C"}
+                      <strong>Dispatch-Priorität</strong> {detail.driver.dispatchPriority || "B"}
                     </div>
                   </div>
 
@@ -712,7 +712,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                   ) : null}
 
                   <label className="admin-field-label" style={{ display: "block", marginTop: 12 }}>
-                    Premium-Dispatch (A / B / C)
+                    Premium-Dispatch (A / B) — A nur manuell
                   </label>
                   <select
                     className="admin-input"
@@ -721,8 +721,7 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                     onChange={(e) => setDispatchPriorityIn(e.target.value)}
                   >
                     <option value="A">A — zuerst am Markt</option>
-                    <option value="B">B</option>
-                    <option value="C">C — Standard</option>
+                    <option value="B">B — Standard</option>
                   </select>
                   <button
                     type="button"

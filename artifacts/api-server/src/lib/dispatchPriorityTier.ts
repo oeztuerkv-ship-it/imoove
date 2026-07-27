@@ -1,9 +1,9 @@
 import { isFarFutureReservation } from "./dispatchStatus";
 import type { RideRequest } from "../domain/rideRequest";
 
-export type DispatchPriority = "A" | "B" | "C";
+export type DispatchPriority = "A" | "B";
 
-const TIER_ORDER: DispatchPriority[] = ["A", "B", "C"];
+const TIER_ORDER: DispatchPriority[] = ["A", "B"];
 
 const OPEN_INSTANT_STATUSES = new Set<RideRequest["status"]>([
   "pending",
@@ -16,8 +16,9 @@ export function normalizeDispatchPriority(raw: unknown): DispatchPriority {
   const t = String(raw ?? "")
     .trim()
     .toUpperCase();
-  if (t === "A" || t === "B" || t === "C") return t;
-  return "C";
+  if (t === "A" || t === "B") return t;
+  /** Legacy C und Ungültiges → B (Standardstufe). */
+  return "B";
 }
 
 export function nextDispatchTier(tier: DispatchPriority): DispatchPriority | null {
@@ -52,7 +53,7 @@ export function isOpenReservationForDispatch(
   return true;
 }
 
-/** Sofort- oder Reservierungsangebot mit A→B→C-Stufen. */
+/** Sofort- oder Reservierungsangebot mit A→B-Stufen. */
 export function isDispatchTierManagedRide(
   ride: Pick<RideRequest, "status" | "driverId" | "scheduledAt">,
 ): boolean {
@@ -64,7 +65,7 @@ export function getDispatchTierTimeoutSec(dispatchConfig?: Record<string, unknow
   if (Number.isFinite(env) && env >= 5 && env <= 300) return Math.round(env);
   const cfg = Number(dispatchConfig?.premiumTierTimeoutSeconds);
   if (Number.isFinite(cfg) && cfg >= 5 && cfg <= 300) return Math.round(cfg);
-  return 30;
+  return 60;
 }
 
 export function dispatchTierStartedMs(ride: Pick<RideRequest, "dispatchTierStartedAt" | "createdAt">): number {
@@ -88,28 +89,16 @@ export function shouldAdvanceDispatchTierByTimeout(
 ): boolean {
   if (!isDispatchTierManagedRide(ride)) return false;
   const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
-  if (tier === "C") return false;
+  if (tier === "B") return false;
   return dispatchTierElapsedSec(ride, nowMs) >= timeoutSec;
 }
 
 /**
- * Sofortfahrt und Vorbestellung: gleiche A→B→C-Uhr ab Buchung.
+ * Sofortfahrt und Vorbestellung: gleiche A→B-Uhr ab Buchung.
  * (`scheduledAt` bleibt in der Signatur für Aufrufer; Start ist immer sofort.)
  */
 export function initialDispatchTierFieldsForRide(
   _scheduledAt?: string | null,
 ): Pick<RideRequest, "dispatchTier" | "dispatchTierStartedAt"> {
   return { dispatchTier: "A", dispatchTierStartedAt: new Date().toISOString() };
-}
-
-/** E-Mail gehört zu Plattform-Admin → automatisch Dispatch-Priorität A. */
-export function emailQualifiesForAutoDispatchPriorityA(email: string): boolean {
-  const em = email.trim().toLowerCase();
-  if (!em) return false;
-  if (em.includes("vedat")) return true;
-  const listed = (process.env.ONRODA_DISPATCH_PRIORITY_A_EMAILS ?? "")
-    .split(/[,;]/)
-    .map((x) => x.trim().toLowerCase())
-    .filter(Boolean);
-  return listed.includes(em);
 }

@@ -5,7 +5,6 @@ import {
   findFleetDriverByEmailNormalized,
   getCompanyKind,
   setFleetDriverMarketOnline,
-  syncFleetDriverDispatchPriorityFromAdminEmail,
   touchFleetDriverLogin,
 } from "../db/fleetDriversData";
 import { findActivePanelUserByEmailNormalized } from "../db/panelAuthData";
@@ -124,8 +123,6 @@ router.post("/fleet-auth/login", async (req, res) => {
     res.status(500).json({ error: "token_sign_failed" });
     return;
   }
-
-  void syncFleetDriverDispatchPriorityFromAdminEmail(row.id, row.company_id);
 
   res.json({
     ok: true,
