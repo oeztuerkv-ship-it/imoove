@@ -64,10 +64,20 @@ export function statusDe(s) {
     cancelled_by_customer: "Storno Kunde",
     cancelled_by_driver: "Storno Fahrer",
     cancelled_by_system: "Storno System",
+    no_show: "No-Show",
     expired: "Abgelaufen",
     rejected: "Abgelehnt",
   };
   return m[s] ?? s ?? "—";
+}
+
+/** Abrechnungs-Badge: Fahrt vs. Storno-Gebühr vs. No-Show-Gebühr. */
+export function settlementRideKindBadge(status) {
+  const s = String(status ?? "");
+  if (s === "completed") return { label: "Fahrt", tone: "ok" };
+  if (s === "no_show") return { label: "No-Show", tone: "warn" };
+  if (s.startsWith("cancelled")) return { label: "Storno", tone: "warn" };
+  return { label: statusDe(s), tone: "muted" };
 }
 
 /**
@@ -76,7 +86,8 @@ export function statusDe(s) {
  * @param {number | null | undefined} selectedYear
  */
 export function settlementPeriodScopeHint(periodKey, weekMode, selectedYear) {
-  const completionNote = "abgeschlossene Fahrten nach Fahrtende";
+  const completionNote =
+    "abgeschlossene Fahrten nach Fahrtende; Storno-/No-Show-Gebühren (final_fare > 0) inklusive";
   switch (periodKey) {
     case "today":
       return `Tag = Kalendertag (Europe/Berlin), ${completionNote}.`;

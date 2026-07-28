@@ -92,10 +92,25 @@ function isCompletedTaxiRide(ride: RideRequest): boolean {
   return mode === "taxi_tariff" || mode === "hybrid" || mode == null;
 }
 
+const FEE_TERMINAL_STATUSES = new Set([
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "no_show",
+]);
+
+/** Storno/No-Show mit gesetzter Gebühr (`finalFare`) — nicht Schätzpreis. */
+export function isBillableCancelOrNoShow(ride: Pick<RideRequest, "status" | "finalFare">): boolean {
+  if (!FEE_TERMINAL_STATUSES.has(String(ride.status ?? ""))) return false;
+  const fee = ride.finalFare;
+  return fee != null && Number.isFinite(Number(fee)) && Number(fee) > 0;
+}
+
 /**
  * Bruttobetrag für Finance:
- * - Abgeschlossene Taxi-Fahrt: Taxameter-`finalFare` (Fahrer-Endpreis).
- * - Sonst Buchungs-`tariffSnapshot.finalPriceEur` (Schätzung bei Buchung) oder Legacy-Schätzung.
+ * - Abgeschlossene Taxi-Fahrt: Taxameter-`finalFare`.
+ * - Storno/No-Show mit Gebühr: `finalFare` (Fee), nie `tariffSnapshot`.
+ * - Sonst Buchungs-`tariffSnapshot.finalPriceEur` oder Legacy-Schätzung.
  */
 export function effectiveTaxiGrossEur(ride: RideRequest): number {
   const finalFare = ride.finalFare;
@@ -104,6 +119,9 @@ export function effectiveTaxiGrossEur(ride: RideRequest): number {
     finalFare != null &&
     Number.isFinite(Number(finalFare))
   ) {
+    return roundMoney(Math.max(0, Number(finalFare)));
+  }
+  if (isBillableCancelOrNoShow(ride)) {
     return roundMoney(Math.max(0, Number(finalFare)));
   }
   const fromSnap = readTariffSnapshotGrossEur(ride);
@@ -123,6 +141,9 @@ function resolveGrossSource(ride: RideRequest, usedSnapshot: boolean): string {
     Number.isFinite(Number(ride.finalFare))
   ) {
     return "taxameter_final_fare";
+  }
+  if (isBillableCancelOrNoShow(ride)) {
+    return ride.status === "no_show" ? "no_show_fee" : "cancel_fee";
   }
   if (usedSnapshot) return "tariff_snapshot";
   return "legacy_final_or_estimate";
@@ -146,14 +167,26 @@ function deriveBillingMode(ride: RideRequest): FinanceBillingMode {
 }
 
 function deriveInitialBillingStatus(ride: RideRequest): RideFinancialBillingStatus {
-  if (ride.status === "cancelled" || ride.status === "cancelled_by_customer" || ride.status === "cancelled_by_driver") {
+  if (isBillableCancelOrNoShow(ride)) return "unbilled";
+  if (
+    ride.status === "cancelled" ||
+    ride.status === "cancelled_by_customer" ||
+    ride.status === "cancelled_by_driver" ||
+    ride.status === "no_show"
+  ) {
     return "cancelled";
   }
   return "unbilled";
 }
 
 function deriveInitialSettlementStatus(ride: RideRequest): RideFinancialSettlementStatus {
-  if (ride.status === "cancelled" || ride.status === "cancelled_by_customer" || ride.status === "cancelled_by_driver") {
+  if (isBillableCancelOrNoShow(ride)) return "open";
+  if (
+    ride.status === "cancelled" ||
+    ride.status === "cancelled_by_customer" ||
+    ride.status === "cancelled_by_driver" ||
+    ride.status === "no_show"
+  ) {
     return "held";
   }
   return "open";
@@ -183,7 +216,9 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
 
   const grossAmount = effectiveTaxiGrossEur(ride);
   const grossFromSnapshot =
-    !isCompletedTaxiRide(ride) || ride.finalFare == null || !Number.isFinite(Number(ride.finalFare))
+    !isCompletedTaxiRide(ride) &&
+    !isBillableCancelOrNoShow(ride) &&
+    (ride.finalFare == null || !Number.isFinite(Number(ride.finalFare)))
       ? readTariffSnapshotGrossEur(ride) !== null
       : false;
 

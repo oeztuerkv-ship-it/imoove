@@ -4,6 +4,7 @@ import type { RideRequest } from "../domain/rideRequest";
 import {
   calculateRideFinancialsV1,
   deriveFinanceInitialStatuses,
+  isBillableCancelOrNoShow,
   type FinanceCommissionType,
   type FinancePricingContext,
   type RideFinancialBillingStatus,
@@ -382,6 +383,26 @@ export async function upsertRideFinancialSnapshot(
       [FINANCE_PRICING_SNAPSHOT_KEY]: pricingSnap,
     };
 
+    const statusPatch: {
+      billing_status?: RideFinancialBillingStatus;
+      settlement_status?: RideFinancialSettlementStatus;
+    } = {};
+    const terminalBilling = new Set(["paid", "invoiced", "partially_paid", "written_off"]);
+    const terminalSettlement = new Set(["paid_out", "approved", "disputed"]);
+    if (
+      (isBillableCancelOrNoShow(ride) ||
+        ride.status === "cancelled" ||
+        ride.status === "cancelled_by_customer" ||
+        ride.status === "cancelled_by_driver" ||
+        ride.status === "no_show") &&
+      !terminalBilling.has(String(existing.billing_status ?? "")) &&
+      !terminalSettlement.has(String(existing.settlement_status ?? ""))
+    ) {
+      const synced = deriveFinanceInitialStatuses(ride);
+      statusPatch.billing_status = synced.billingStatus;
+      statusPatch.settlement_status = synced.settlementStatus;
+    }
+
     await tx
       .update(rideFinancialsTable)
       .set({
@@ -398,6 +419,7 @@ export async function upsertRideFinancialSnapshot(
         commission_value: calc.commissionValue,
         commission_amount: calc.commissionAmount,
         operator_payout_amount: calc.operatorPayoutAmount,
+        ...statusPatch,
         calculation_version: calc.calculationVersion,
         calculation_rule_set: calc.calculationRuleSet,
         calculation_metadata_json,
@@ -745,8 +767,13 @@ export function getSettlementEligibility(input: {
   } | null;
 }): { eligible: boolean; blockers: string[] } {
   const blockers: string[] = [];
-  if (input.ride.status !== "completed") pushBlocker(blockers, "ride_not_completed");
-  if (input.ride.status.startsWith("cancelled")) pushBlocker(blockers, "cancelled_ride");
+  const billableFee = isBillableCancelOrNoShow(input.ride);
+  if (input.ride.status !== "completed" && !billableFee) {
+    pushBlocker(blockers, "ride_not_completed");
+  }
+  if (input.ride.status.startsWith("cancelled") && !billableFee) {
+    pushBlocker(blockers, "cancelled_ride");
+  }
   if (!input.snapshot) pushBlocker(blockers, "missing_snapshot");
   if (input.snapshot && !input.snapshot.serviceProviderCompanyId) {
     pushBlocker(blockers, "missing_service_provider");

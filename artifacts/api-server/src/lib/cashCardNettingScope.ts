@@ -6,7 +6,7 @@
  */
 import { and, eq, sql, type SQL } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "../db/client";
-import { adminCompaniesTable, transportVouchersTable } from "../db/schema";
+import { adminCompaniesTable, ridesTable, transportVouchersTable } from "../db/schema";
 
 export const CASH_CARD_NETTING_COMPANY_KIND = "taxi" as const;
 
@@ -28,6 +28,20 @@ export function sqlRideNotLinkedToKrankenInvoice(rideIdSql: SQL): SQL {
     where tv.ride_id = ${rideIdSql}
       and tv.kranken_invoice_id is not null
       and length(trim(tv.kranken_invoice_id)) > 0
+  )`;
+}
+
+/**
+ * Completed-Fahrten plus Storno/No-Show mit Gebühr (`final_fare > 0`).
+ * Storno ohne Fee bleibt draußen.
+ */
+export function sqlRideInCashCardNettingStatuses(): SQL {
+  return sql`(
+    ${ridesTable.status} = 'completed'
+    OR (
+      ${ridesTable.status} IN ('cancelled', 'cancelled_by_customer', 'cancelled_by_driver', 'no_show')
+      AND coalesce(${ridesTable.final_fare}, 0) > 0
+    )
   )`;
 }
 

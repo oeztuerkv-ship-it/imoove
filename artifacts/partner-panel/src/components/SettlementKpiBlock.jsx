@@ -10,6 +10,7 @@ import {
   paymentStatusDe,
   settlementAmountCell,
   settlementPeriodScopeHint,
+  settlementRideKindBadge,
 } from "../dashboard/settlementDashboardHelpers.js";
 
 /** @typedef {"today" | "week" | "month" | "year"} SettlementUiPeriodKey */
@@ -327,6 +328,14 @@ export function SettlementKpiPeriodPanel({
               {Number(ps.pendingPaymentCount ?? 0)} offen · {Number(ps.failedPaymentCount ?? 0)} fehlgeschlagen
             </span>
           </div>
+          {Number(ps.feeRideCount ?? 0) > 0 ? (
+            <div>
+              <span className="panel-settlement-payment-stats__lbl">Storno / No-Show (Gebühr)</span>
+              <span className="panel-settlement-payment-stats__val">
+                {formatMoney(Number(ps.feeGrossAmount ?? 0))} · {Number(ps.feeRideCount ?? 0)} Positionen
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -359,14 +368,15 @@ export function SettlementKpiPeriodPanel({
           {!drillLoading && !drillErr ? (
             <div className="panel-dash-table-wrap">
               {drillRides.length === 0 ? (
-                <p className="panel-dash-empty">Keine abgeschlossenen Fahrten in diesem Zeitraum.</p>
+                <p className="panel-dash-empty">Keine abrechnungsrelevanten Fahrten in diesem Zeitraum.</p>
               ) : (
                 <table className="panel-dash-table panel-dash-table--settlement">
                   <thead>
                     <tr>
                       <th>Zeit</th>
+                      <th>Art</th>
                       <th>Route</th>
-                      <th>Endpreis</th>
+                      <th>Endpreis / Gebühr</th>
                       <th>Provision</th>
                       <th>Ihr Anteil / Saldo</th>
                       <th>Zahlungsart</th>
@@ -377,9 +387,17 @@ export function SettlementKpiPeriodPanel({
                   <tbody>
                     {drillRides.map((r) => {
                       const amt = settlementAmountCell(r);
+                      const kind = settlementRideKindBadge(r.status);
                       return (
                         <tr key={r.id}>
                           <td>{formatShortDt(r.createdAt)}</td>
+                          <td>
+                            <span
+                              className={`panel-settlement-kind-badge panel-settlement-kind-badge--${kind.tone}`}
+                            >
+                              {kind.label}
+                            </span>
+                          </td>
                           <td>
                             <span className="panel-dash-table__muted">{r.from || "—"}</span> → {r.to || "—"}
                           </td>

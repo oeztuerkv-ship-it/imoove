@@ -1224,6 +1224,8 @@ function emptyPaymentStats(): PanelPaymentPeriodStats {
     cashGrossAmount: 0,
     failedPaymentCount: 0,
     pendingPaymentCount: 0,
+    feeRideCount: 0,
+    feeGrossAmount: 0,
   };
 }
 

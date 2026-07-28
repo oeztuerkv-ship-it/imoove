@@ -484,6 +484,15 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
           cells: { type: "Bar", amount: fmtEuro(ps.cashGrossAmount), count: String(ps.cashRideCount) },
         },
       ];
+      if (Number(ps.feeRideCount ?? 0) > 0) {
+        paymentRows.push({
+          cells: {
+            type: "Storno/No-Show",
+            amount: fmtEuro(ps.feeGrossAmount ?? 0),
+            count: String(ps.feeRideCount ?? 0),
+          },
+        });
+      }
       for (const row of paymentRows) {
         ctx.y = drawInvoiceTableRow(ctx, columns, row);
       }
@@ -493,7 +502,7 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
 
     const disclaimerText =
       "Diese Übersicht dient der Information für Ihren Steuerberater und ersetzt keine steuerliche Beratung.";
-    const scopeText = `Grundlage: abgeschlossene Fahrten mit Finanz-Snapshot zum Abrechnungszeitpunkt. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`;
+    const scopeText = `Grundlage: abgeschlossene Fahrten sowie Storno-/No-Show-Gebühren (final_fare > 0) mit Finanz-Snapshot. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`;
     const footerLayout = measureSettlementDocumentFooter(doc, ctx.contentWidth, scopeText, disclaimerText);
     const contentMaxY = footerLayout.boxTop - 10;
 

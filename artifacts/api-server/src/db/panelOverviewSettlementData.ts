@@ -11,16 +11,16 @@ import {
   normalizeInvoicePrefix,
   resolveCompanyInvoicePrefix,
 } from "../lib/invoiceNumbering";
-import { sqlRideNotLinkedToKrankenInvoice } from "../lib/cashCardNettingScope";
+import { sqlRideNotLinkedToKrankenInvoice, sqlRideInCashCardNettingStatuses } from "../lib/cashCardNettingScope";
 
 function companyIdMatchCondition(companyId: string): SQL {
   return sql`${ridesTable.company_id}::text = ${companyId}`;
 }
 
-/** Bar-/Karten-Netting: completed + Mandant + ohne echte KK-Rechnung. */
+/** Bar-/Karten-Netting: completed + billable Storno/No-Show; ohne echte KK-Rechnung. */
 function cashCardNettingRideConditions(companyId: string): SQL[] {
   return [
-    eq(ridesTable.status, "completed"),
+    sqlRideInCashCardNettingStatuses(),
     companyIdMatchCondition(companyId),
     sqlRideNotLinkedToKrankenInvoice(sql`${ridesTable.id}`),
   ];
@@ -40,6 +40,9 @@ export type PanelPaymentPeriodStats = {
   cashGrossAmount: number;
   failedPaymentCount: number;
   pendingPaymentCount: number;
+  /** Storno/No-Show mit Gebühr im Netting-Fenster. */
+  feeRideCount: number;
+  feeGrossAmount: number;
 };
 
 export type PanelSettlementPeriodKey = "today" | "week" | "weekCalendar" | "month" | "year";
@@ -493,6 +496,8 @@ export async function queryPanelPaymentStatsForPeriod(
       cashGrossAmount: sql<string>`coalesce(sum(${rideFinancialsTable.gross_amount}) FILTER (WHERE ${CASH_PM_SQL}), 0)`,
       failedPaymentCount: sql<number>`count(*) FILTER (WHERE ${CARD_PM_SQL} AND ${ridesTable.payment_status} = 'failed')::int`,
       pendingPaymentCount: sql<number>`count(*) FILTER (WHERE ${CARD_PM_SQL} AND ${ridesTable.payment_status} IN ('pending', 'authorized'))::int`,
+      feeRideCount: sql<number>`count(*) FILTER (WHERE ${ridesTable.status} IN ('cancelled', 'cancelled_by_customer', 'cancelled_by_driver', 'no_show'))::int`,
+      feeGrossAmount: sql<string>`coalesce(sum(${rideFinancialsTable.gross_amount}) FILTER (WHERE ${ridesTable.status} IN ('cancelled', 'cancelled_by_customer', 'cancelled_by_driver', 'no_show')), 0)`,
     })
     .from(ridesTable)
     .leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
@@ -506,6 +511,8 @@ export async function queryPanelPaymentStatsForPeriod(
     cashGrossAmount: Number(row?.cashGrossAmount ?? 0),
     failedPaymentCount: Number(row?.failedPaymentCount ?? 0),
     pendingPaymentCount: Number(row?.pendingPaymentCount ?? 0),
+    feeRideCount: Number(row?.feeRideCount ?? 0),
+    feeGrossAmount: Number(row?.feeGrossAmount ?? 0),
   };
 }
 

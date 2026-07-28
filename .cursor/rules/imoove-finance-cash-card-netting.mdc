@@ -21,6 +21,7 @@ Erkennung Bar: `isCashPaymentMethod` in `ridePaymentMethod.ts`.
 | **Nur `company_kind = taxi`** | Hotel / Agentur / Firmenkunde / Insurer / Medical-Mandant: **kein** Auszahlungs-/Schuld-Saldo über Netting — nur bestehender Rechnungsweg (`invoices` / Monatsrechnung). Helper: `cashCardNettingScope.ts` |
 | **KK-Rechnung** | Fahrt mit `transport_vouchers.kranken_invoice_id` (echte Sammelrechnung) → **raus aus Netting** (Provision läuft über KK-Weg). |
 | **Flat-Medical** | Krankenfahrt **ohne** verknüpfte KK-Rechnung → **bleibt im Netting** (einziger Provisionsweg). |
+| **Storno/No-Show-Gebühr** | `finalFare` = Fee ist Brutto (`grossSource` cancel_fee / no_show_fee), **nicht** `tariffSnapshot`. Mit Fee im Netting + Partner-Badge; ohne Fee draußen. |
 
 Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_only`. Non-Taxi Overview liefert leere Settlement-/Payment-Stats.
 
@@ -29,6 +30,7 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 - `recalcUnlockedCashRideFinancials` — nur `locked_at IS NULL`
 - Admin: `POST /api/admin/finance/ride-financials/recalc-cash-netting`
 - **Gelockte Snapshots nicht anfassen**
+- Cancel/No-Show-Upsert aktualisiert `billing_status` / `settlement_status` (Fee → unbilled/open), sofern nicht schon bezahlt/ausgezahlt
 
 ## Keine Auszahlung bei Negativ/Null / KK
 
@@ -39,12 +41,13 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 ## UI
 
 - Partner-Dashboard: negativ → Label „Sie schulden ONRODA“
+- Partner-Drill: Badge Fahrt / Storno / No-Show; KPI-Zeile „Storno / No-Show (Gebühr)“
 - Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button; nur Taxi + ohne KK-Link
 
 ## Roadmap Nachvollziehbarkeit
 
 1. ~~Medical/KK-Ausschluss (an echte KK-Rechnung gekoppelt) + Taxi-Scope härten~~ (P1)
-2. Cancel/No-Show-Brutto + Badges (P3)
+2. ~~Cancel/No-Show-Brutto + Badges~~ (P3)
 3. Partner-Drill Tip + Stripe (P4)
 4. Korrektur-Ledger Storno/Refund/Chargeback (P2)
 5. Admin-Gutschriften (P5)

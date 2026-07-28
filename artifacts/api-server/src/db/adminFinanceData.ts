@@ -24,6 +24,7 @@ import {
 import type { InvoiceWorkflowFilter } from "../lib/invoiceWorkflow.js";
 import {
   sqlCompanyKindIsTaxi,
+  sqlRideInCashCardNettingStatuses,
   sqlRideNotLinkedToKrankenInvoice,
 } from "../lib/cashCardNettingScope.js";
 
@@ -238,10 +239,10 @@ function resolvedPayoutCompanyIdSql() {
   return sql`coalesce(${rideFinancialsTable.service_provider_company_id}, ${rideFinancialsTable.partner_company_id}, ${ridesTable.company_id}, ${fleetDriversTable.company_id})`;
 }
 
-/** Auszahlungsliste: nur completed Taxi-Fahrten ohne echte KK-Rechnung. */
+/** Auszahlungsliste: Taxi; completed + billable Storno/No-Show; ohne echte KK-Rechnung. */
 function payoutEligibleRideCondition(): SQL {
   return and(
-    eq(ridesTable.status, "completed"),
+    sqlRideInCashCardNettingStatuses(),
     sqlCompanyKindIsTaxi(resolvedPayoutCompanyIdSql()),
     sqlRideNotLinkedToKrankenInvoice(sql`${ridesTable.id}`),
   )!;
