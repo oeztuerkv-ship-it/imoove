@@ -242,6 +242,10 @@ import {
   recalcUnlockedCashRideFinancials,
 } from "../db/rideFinancialsData";
 import {
+  listRideFinancialAdjustmentsAdmin,
+  recordRidePaymentReversalAdjustment,
+} from "../db/rideFinancialAdjustmentsData";
+import {
   getAdminTaxiFleetVehicleDetail,
   listAdminTaxiFleetVehicleRows,
 } from "../db/adminTaxiFleetVehiclesData";
@@ -1931,6 +1935,28 @@ adminJson.get("/finance/audit", async (req, res, next) => {
       countFinancialAuditAdmin(filters),
       listFinancialAuditAdmin({ filters, limit: pageSize, offset }),
     ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Korrektur-Ledger (Refund/Chargeback/manuell) — UI folgt P5 Gutschriften. */
+adminJson.get("/finance/adjustments", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const { page, pageSize, offset } = parsePagination(req);
+    const { total, items } = await listRideFinancialAdjustmentsAdmin({
+      companyId: q.company_id,
+      rideId: q.ride_id,
+      kind: q.kind,
+      limit: pageSize,
+      offset,
+    });
     res.json({ ok: true, total, page, pageSize, items });
   } catch (e) {
     next(e);
@@ -6405,6 +6431,21 @@ adminJson.post("/rides/:id/refund", async (req, res, next) => {
       actorId: req.adminAuth?.username ?? null,
       payload: { refundId: refund.id, amountEur: refundAmountEur, paymentIntentId: pi },
     });
+    const adjustmentOutcome = await recordRidePaymentReversalAdjustment({
+      rideId,
+      kind: "refund",
+      refundGrossEur: refundAmountEur,
+      externalRef: refund.id,
+      actorType: "admin",
+      actorId: req.adminAuth?.username ?? null,
+      metadata: { paymentIntentId: pi, source: "admin_refund" },
+    });
+    if (!adjustmentOutcome.ok) {
+      logger.warn(
+        { rideId, refundId: refund.id, error: adjustmentOutcome.error },
+        "[finance] refund adjustment ledger write failed",
+      );
+    }
     const pid = (updated.passengerId ?? "").trim();
     if (pid) void notifyPassengerRideRefunded(pid, rideId, refundAmountEur);
     res.json({
@@ -6413,6 +6454,8 @@ adminJson.post("/rides/:id/refund", async (req, res, next) => {
       paymentStatus: updated.paymentStatus,
       refundId: refund.id,
       amountEur: refundAmountEur,
+      adjustmentId: adjustmentOutcome.ok ? adjustmentOutcome.adjustment.id : null,
+      adjustmentIdempotent: adjustmentOutcome.ok ? Boolean(adjustmentOutcome.idempotent) : false,
     });
   } catch (e) {
     next(e);

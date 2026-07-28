@@ -48,7 +48,7 @@ import { isFarFutureReservation } from "../lib/dispatchStatus";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
 import * as schemaNs from "./schema";
-import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
+import { adminCompaniesTable, rideEventsTable, rideFinancialAdjustmentsTable, ridesTable } from "./schema";
 import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
 import {
   getPanelCompanyCommissionRate,
@@ -1153,6 +1153,8 @@ const EMPTY_PANEL_SETTLEMENT: PanelFinancialSettlementWindow = {
   grossAmount: 0,
   commissionAmount: 0,
   operatorPayoutAmount: 0,
+  adjustmentCount: 0,
+  adjustmentOperatorPayoutDelta: 0,
 };
 
 export type PanelMetricsPeriodSlice = {
@@ -1337,8 +1339,11 @@ export async function getPanelCompanyOverviewMetrics(
   const commissionRate =
     presentation === "taxi_betrieb" ? await getPanelCompanyCommissionRate(companyId) : null;
 
-  async function buildPeriodSlice(createdAtFilter?: SQL): Promise<PanelMetricsPeriodSlice> {
-    const stats = await queryPanelCompletedPeriodStats(db, companyId, createdAtFilter);
+  async function buildPeriodSlice(
+    rideCompletedAtFilter?: SQL,
+    adjustmentCreatedAtFilter?: SQL,
+  ): Promise<PanelMetricsPeriodSlice> {
+    const stats = await queryPanelCompletedPeriodStats(db, companyId, rideCompletedAtFilter);
     if (presentation !== "taxi_betrieb") {
       return {
         completedRides: stats.completedRides,
@@ -1349,8 +1354,8 @@ export async function getPanelCompanyOverviewMetrics(
       };
     }
     const [settlement, paymentStats] = await Promise.all([
-      queryPanelFinancialSettlement(db, companyId, createdAtFilter),
-      queryPanelPaymentStatsForPeriod(db, companyId, createdAtFilter),
+      queryPanelFinancialSettlement(db, companyId, rideCompletedAtFilter, adjustmentCreatedAtFilter),
+      queryPanelPaymentStatsForPeriod(db, companyId, rideCompletedAtFilter),
     ]);
     return {
       completedRides: stats.completedRides,
@@ -1374,6 +1379,7 @@ export async function getPanelCompanyOverviewMetrics(
   const weekRollingStart = sql`(now() - interval '7 days')`;
   const thirtyRollingStart = sql`(now() - interval '30 days')`;
   const settlementAt = panelSettlementRideCompletedAtExpr();
+  const adjAt = rideFinancialAdjustmentsTable.created_at;
 
   const [
     today,
@@ -1389,12 +1395,24 @@ export async function getPanelCompanyOverviewMetrics(
     stTomorrow,
     qualRow,
   ] = await Promise.all([
-    buildPeriodSlice(and(gte(settlementAt, berlinTodayStart), lt(settlementAt, berlinTodayEnd))),
-    buildPeriodSlice(gte(settlementAt, weekRollingStart)),
-    buildPeriodSlice(and(gte(settlementAt, berlinWeekStart), lt(settlementAt, berlinWeekEnd))),
-    buildPeriodSlice(gte(settlementAt, thirtyRollingStart)),
-    buildPeriodSlice(and(gte(settlementAt, berlinMonthStart), lt(settlementAt, berlinMonthEnd))),
-    buildPeriodSlice(and(gte(settlementAt, berlinYearStart), lt(settlementAt, berlinYearEnd))),
+    buildPeriodSlice(
+      and(gte(settlementAt, berlinTodayStart), lt(settlementAt, berlinTodayEnd)),
+      and(gte(adjAt, berlinTodayStart), lt(adjAt, berlinTodayEnd)),
+    ),
+    buildPeriodSlice(gte(settlementAt, weekRollingStart), gte(adjAt, weekRollingStart)),
+    buildPeriodSlice(
+      and(gte(settlementAt, berlinWeekStart), lt(settlementAt, berlinWeekEnd)),
+      and(gte(adjAt, berlinWeekStart), lt(adjAt, berlinWeekEnd)),
+    ),
+    buildPeriodSlice(gte(settlementAt, thirtyRollingStart), gte(adjAt, thirtyRollingStart)),
+    buildPeriodSlice(
+      and(gte(settlementAt, berlinMonthStart), lt(settlementAt, berlinMonthEnd)),
+      and(gte(adjAt, berlinMonthStart), lt(adjAt, berlinMonthEnd)),
+    ),
+    buildPeriodSlice(
+      and(gte(settlementAt, berlinYearStart), lt(settlementAt, berlinYearEnd)),
+      and(gte(adjAt, berlinYearStart), lt(adjAt, berlinYearEnd)),
+    ),
     db
       .select({ openRides: sql<number>`count(*)::int` })
       .from(ridesTable)

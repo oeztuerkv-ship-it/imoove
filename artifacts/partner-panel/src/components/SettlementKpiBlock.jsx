@@ -23,7 +23,13 @@ export const SETTLEMENT_PERIOD_OPTIONS = [
 ];
 
 /**
- * @param {{ grossAmount?: unknown; commissionAmount?: unknown; operatorPayoutAmount?: unknown } | null | undefined} settlement
+ * @param {{
+ *   grossAmount?: unknown;
+ *   commissionAmount?: unknown;
+ *   operatorPayoutAmount?: unknown;
+ *   adjustmentCount?: unknown;
+ *   adjustmentOperatorPayoutDelta?: unknown;
+ * } | null | undefined} settlement
  */
 export function readSettlementWindow(settlement) {
   if (!settlement || typeof settlement !== "object") return null;
@@ -31,7 +37,17 @@ export function readSettlementWindow(settlement) {
   const commission = Number(settlement.commissionAmount);
   const payout = Number(settlement.operatorPayoutAmount);
   if ([gross, commission, payout].some((n) => Number.isNaN(n))) return null;
-  return { gross, commission, payout };
+  const adjustmentCount = Number(settlement.adjustmentCount ?? 0);
+  const adjustmentOperatorPayoutDelta = Number(settlement.adjustmentOperatorPayoutDelta ?? 0);
+  return {
+    gross,
+    commission,
+    payout,
+    adjustmentCount: Number.isFinite(adjustmentCount) ? adjustmentCount : 0,
+    adjustmentOperatorPayoutDelta: Number.isFinite(adjustmentOperatorPayoutDelta)
+      ? adjustmentOperatorPayoutDelta
+      : 0,
+  };
 }
 
 /**
@@ -91,6 +107,7 @@ export function SettlementKpiPeriodPanel({
   const [drillLoading, setDrillLoading] = useState(false);
   const [drillErr, setDrillErr] = useState("");
   const [drillRides, setDrillRides] = useState([]);
+  const [drillAdjustments, setDrillAdjustments] = useState([]);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfErr, setPdfErr] = useState("");
 
@@ -129,12 +146,15 @@ export function SettlementKpiPeriodPanel({
       if (!res.ok || !data?.ok) {
         setDrillErr("Fahrtenliste konnte nicht geladen werden.");
         setDrillRides([]);
+        setDrillAdjustments([]);
         return;
       }
       setDrillRides(Array.isArray(data.rides) ? data.rides : []);
+      setDrillAdjustments(Array.isArray(data.adjustments) ? data.adjustments : []);
     } catch {
       setDrillErr("Fahrtenliste konnte nicht geladen werden.");
       setDrillRides([]);
+      setDrillAdjustments([]);
     } finally {
       setDrillLoading(false);
     }
@@ -342,6 +362,15 @@ export function SettlementKpiPeriodPanel({
               </span>
             </div>
           ) : null}
+          {Number(settlement.adjustmentCount ?? 0) > 0 ? (
+            <div>
+              <span className="panel-settlement-payment-stats__lbl">Korrekturen (Refund/Chargeback)</span>
+              <span className="panel-settlement-payment-stats__val">
+                {formatMoney(Number(settlement.adjustmentOperatorPayoutDelta ?? 0))} ·{" "}
+                {Number(settlement.adjustmentCount)} Positionen · bereits im Saldo
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -373,14 +402,16 @@ export function SettlementKpiPeriodPanel({
           {drillErr ? <p className="panel-page__warn">{drillErr}</p> : null}
           {!drillLoading && !drillErr ? (
             <div className="panel-dash-table-wrap">
-              {drillRides.length === 0 ? (
+              {drillRides.length === 0 && drillAdjustments.length === 0 ? (
                 <p className="panel-dash-empty">Keine abrechnungsrelevanten Fahrten in diesem Zeitraum.</p>
               ) : (
                 <>
                   <p className="panel-settlement-drill__hint">
                     Trinkgeld: 100&nbsp;% Fahrer (nicht in Provision). Stripe-Gebühr: zu Lasten ONRODA, nicht in
-                    Ihrem Anteil.
+                    Ihrem Anteil. Korrekturen (Erstattung / Chargeback) erscheinen als eigene Zeilen und sind im
+                    Saldo oben bereits eingerechnet.
                   </p>
+                  {drillRides.length > 0 ? (
                   <table className="panel-dash-table panel-dash-table--settlement">
                     <thead>
                       <tr>
@@ -440,6 +471,52 @@ export function SettlementKpiPeriodPanel({
                       })}
                     </tbody>
                   </table>
+                  ) : null}
+                  {drillAdjustments.length > 0 ? (
+                    <>
+                      <h4 className="panel-settlement-drill__title" style={{ marginTop: "1rem" }}>
+                        Korrekturen im Zeitraum
+                      </h4>
+                      <table className="panel-dash-table panel-dash-table--settlement">
+                        <thead>
+                          <tr>
+                            <th>Zeit</th>
+                            <th>Art</th>
+                            <th>Fahrt</th>
+                            <th>Brutto Δ</th>
+                            <th>Provision Δ</th>
+                            <th>Ihr Anteil Δ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {drillAdjustments.map((a) => {
+                            const kindLabel =
+                              a.kind === "refund"
+                                ? "Erstattung"
+                                : a.kind === "chargeback"
+                                  ? "Chargeback"
+                                  : a.label || a.kind;
+                            return (
+                              <tr key={a.id}>
+                                <td>{formatShortDt(a.createdAt)}</td>
+                                <td>
+                                  <span className="panel-settlement-kind-badge panel-settlement-kind-badge--warn">
+                                    {kindLabel}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="panel-dash-table__muted">{a.rideId || "—"}</span>
+                                </td>
+                                <td>{formatMoney(Number(a.grossDelta ?? 0))}</td>
+                                <td>{formatMoney(Number(a.commissionDelta ?? 0))}</td>
+                                <td>{formatMoney(Number(a.operatorPayoutDelta ?? 0))}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </>
+                  ) : null}
                 </>
               )}
             </div>

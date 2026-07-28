@@ -1002,6 +1002,37 @@ export const rideFinancialsTable = pgTable("ride_financials", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Gelabelte Finanz-Korrekturen (Refund/Chargeback/manuell) — Bezug zur Ursprungsfahrt. */
+export const rideFinancialAdjustmentsTable = pgTable(
+  "ride_financial_adjustments",
+  {
+    id: text("id").primaryKey(),
+    company_id: text("company_id")
+      .notNull()
+      .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+    ride_id: text("ride_id")
+      .notNull()
+      .references(() => ridesTable.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    label: text("label").notNull().default(""),
+    gross_delta: doublePrecision("gross_delta").notNull().default(0),
+    commission_delta: doublePrecision("commission_delta").notNull().default(0),
+    operator_payout_delta: doublePrecision("operator_payout_delta").notNull().default(0),
+    stripe_fee_delta: doublePrecision("stripe_fee_delta").notNull().default(0),
+    tip_delta: doublePrecision("tip_delta").notNull().default(0),
+    payment_method_snap: text("payment_method_snap").notNull().default(""),
+    external_ref: text("external_ref").notNull().default(""),
+    metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    actor_type: text("actor_type").notNull().default("system"),
+    actor_id: text("actor_id"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    companyCreatedIdx: index("ride_financial_adjustments_company_created_idx").on(t.company_id, t.created_at),
+    rideIdx: index("ride_financial_adjustments_ride_idx").on(t.ride_id, t.created_at),
+  }),
+);
+
 export const invoicesTable = pgTable("invoices", {
   id: text("id").primaryKey(),
   invoice_number: text("invoice_number").notNull(),

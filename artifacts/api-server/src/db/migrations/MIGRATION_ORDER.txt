@@ -135,3 +135,4 @@ PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 1
 131_security_ip_dashboard.sql
 132_fleet_drivers_last_market_at.sql
 133_dispatch_tiers_ab_only.sql
+134_ride_financial_adjustments.sql

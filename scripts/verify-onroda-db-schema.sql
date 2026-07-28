@@ -1537,6 +1537,20 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ride_financial_adjustments'
+  ) THEN
+    errs := array_append(errs, 'table ride_financial_adjustments (Migration 134)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financial_adjustments' AND column_name = 'operator_payout_delta'
+  ) THEN
+    errs := array_append(errs, 'ride_financial_adjustments.operator_payout_delta (Migration 134)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'provision_amount'
   ) THEN

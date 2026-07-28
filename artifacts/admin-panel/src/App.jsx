@@ -116,7 +116,7 @@ const PAGE_META = {
   },
   "billing-credits": {
     title: "Gutschriften",
-    subtitle: "Gutschriften und Korrekturbuchungen.",
+    subtitle: "Korrektur-Ledger (Refund/Chargeback) — manuelle Erfassung folgt; API: /api/admin/finance/adjustments",
     placeholder: true,
   },
   "billing-open": {

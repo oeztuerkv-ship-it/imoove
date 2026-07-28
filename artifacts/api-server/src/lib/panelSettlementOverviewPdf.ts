@@ -502,7 +502,7 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
 
     const disclaimerText =
       "Diese Übersicht dient der Information für Ihren Steuerberater und ersetzt keine steuerliche Beratung.";
-    const scopeText = `Grundlage: abgeschlossene Fahrten sowie Storno-/No-Show-Gebühren (final_fare > 0) mit Finanz-Snapshot. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`;
+    const scopeText = `Grundlage: abgeschlossene Fahrten sowie Storno-/No-Show-Gebühren (final_fare > 0) mit Finanz-Snapshot. Korrekturen (Refund/Chargeback) nach Buchungsdatum im Zeitraum sind in Brutto/Provision/Anteil enthalten. ${snapshot.scopeNote} Der Provisionssatz gilt für neu abgeschlossene Fahrten; Änderungen erfolgen durch den Plattform-Admin.`;
     const footerLayout = measureSettlementDocumentFooter(doc, ctx.contentWidth, scopeText, disclaimerText);
     const contentMaxY = footerLayout.boxTop - 10;
 
@@ -542,6 +542,24 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
       );
       if (ctx.y + stripeCardH <= contentMaxY) {
         ctx.y = drawSettlementInfoCard(ctx, "Stripe-Gebühr (informativ)", stripeLines);
+      }
+    }
+
+    const adjCount = Number(settlement.adjustmentCount ?? 0);
+    if (Number.isFinite(adjCount) && adjCount > 0) {
+      const adjLines = [
+        {
+          text: `${adjCount} Korrektur(en) · Anteil Δ: ${fmtEuro(Number(settlement.adjustmentOperatorPayoutDelta ?? 0))}`,
+          bold: true,
+        },
+        {
+          text: "Erstattungen und Chargebacks sind im Saldo oben bereits eingerechnet (gelabelte Ledger-Zeilen).",
+          muted: true,
+        },
+      ];
+      const adjCardH = measureSettlementInfoCard(doc, ctx.contentWidth, "Korrekturen", adjLines);
+      if (ctx.y + adjCardH <= contentMaxY) {
+        ctx.y = drawSettlementInfoCard(ctx, "Korrekturen", adjLines);
       }
     }
 

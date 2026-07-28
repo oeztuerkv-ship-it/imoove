@@ -3,6 +3,7 @@ import { getDb } from "./client";
 import {
   adminCompaniesTable,
   fleetDriversTable,
+  rideFinancialAdjustmentsTable,
   rideFinancialsTable,
   ridesTable,
 } from "./schema";
@@ -12,6 +13,11 @@ import {
   resolveCompanyInvoicePrefix,
 } from "../lib/invoiceNumbering";
 import { sqlRideNotLinkedToKrankenInvoice, sqlRideInCashCardNettingStatuses } from "../lib/cashCardNettingScope";
+import {
+  mapRideFinancialAdjustmentRow,
+  sumAdjustmentsForCompany,
+  type RideFinancialAdjustmentRow,
+} from "./rideFinancialAdjustmentsData";
 
 function companyIdMatchCondition(companyId: string): SQL {
   return sql`${ridesTable.company_id}::text = ${companyId}`;
@@ -30,6 +36,9 @@ export type PanelFinancialSettlementWindow = {
   grossAmount: number;
   commissionAmount: number;
   operatorPayoutAmount: number;
+  /** Anzahl Korrekturzeilen im Zeitraum (bereits in Beträgen eingerechnet). */
+  adjustmentCount: number;
+  adjustmentOperatorPayoutDelta: number;
 };
 
 export type PanelPaymentPeriodStats = {
@@ -343,11 +352,12 @@ export async function getPanelSettlementOverviewExportSnapshot(
   if (!db) return null;
 
   const createdAtFilter = buildPanelSettlementCompletedAtFilter(query);
+  const adjustmentFilter = buildPanelAdjustmentCreatedAtFilter(query);
   const labels = formatPanelSettlementPeriodLabels(query);
   const generatedAt = new Date();
   const [stats, settlement, paymentStats, commissionRate, invoiceMeta] = await Promise.all([
     queryPanelCompletedPeriodStats(db, companyId, createdAtFilter),
-    queryPanelFinancialSettlement(db, companyId, createdAtFilter),
+    queryPanelFinancialSettlement(db, companyId, createdAtFilter, adjustmentFilter),
     queryPanelPaymentStatsForPeriod(db, companyId, createdAtFilter),
     getPanelCompanyCommissionRate(companyId),
     getPanelCompanyInvoiceMeta(companyId),
@@ -458,10 +468,53 @@ export function buildPanelSettlementCompletedAtFilter(
 /** @deprecated Alias — filtert nach Fahrtende (`completed_at`), nicht Buchungsdatum. */
 export const buildPanelSettlementCreatedAtFilter = buildPanelSettlementCompletedAtFilter;
 
+/** Korrekturen nach `ride_financial_adjustments.created_at` (gleicher Perioden-Kalender). */
+export function buildPanelAdjustmentCreatedAtFilter(
+  query: PanelSettlementPeriodQuery,
+  now = new Date(),
+): SQL | undefined {
+  const createdAt = rideFinancialAdjustmentsTable.created_at;
+  const year = normalizePanelSettlementYear(query.year, now);
+  const berlin = berlinCalendarParts(now);
+  const monthYear = query.year != null ? year : berlin.year;
+  const monthNum = query.month ?? berlin.month;
+  const nextMonthYear = monthNum === 12 ? monthYear + 1 : monthYear;
+  const nextMonthNum = monthNum === 12 ? 1 : monthNum + 1;
+
+  const berlinTodayStart = sql`((now() AT TIME ZONE 'Europe/Berlin')::date) AT TIME ZONE 'Europe/Berlin'`;
+  const berlinTodayEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '1 day') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthStart = sql`(make_timestamptz(${monthYear}, ${monthNum}, 1, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthEnd = sql`(make_timestamptz(${nextMonthYear}, ${nextMonthNum}, 1, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinYearStart = sql`(make_timestamptz(${year}, 1, 1, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinYearEnd = sql`(make_timestamptz(${year + 1}, 1, 1, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const weekRollingStart = sql`(now() - interval '7 days')`;
+  const berlinWeekStart = sql`(date_trunc('week', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinWeekEnd = sql`((date_trunc('week', (now() AT TIME ZONE 'Europe/Berlin')) + interval '7 days') AT TIME ZONE 'Europe/Berlin')`;
+
+  switch (query.period) {
+    case "today":
+      return and(gte(createdAt, berlinTodayStart), lt(createdAt, berlinTodayEnd)) as SQL;
+    case "week":
+      if (query.weekMode === "calendar") {
+        return and(gte(createdAt, berlinWeekStart), lt(createdAt, berlinWeekEnd)) as SQL;
+      }
+      return gte(createdAt, weekRollingStart);
+    case "weekCalendar":
+      return and(gte(createdAt, berlinWeekStart), lt(createdAt, berlinWeekEnd)) as SQL;
+    case "month":
+      return and(gte(createdAt, berlinMonthStart), lt(createdAt, berlinMonthEnd)) as SQL;
+    case "year":
+      return and(gte(createdAt, berlinYearStart), lt(createdAt, berlinYearEnd)) as SQL;
+    default:
+      return undefined;
+  }
+}
+
 export async function queryPanelFinancialSettlement(
   db: NonNullable<ReturnType<typeof getDb>>,
   companyId: string,
   createdAtFilter?: SQL,
+  adjustmentCreatedAtFilter?: SQL,
 ): Promise<PanelFinancialSettlementWindow> {
   const conditions: SQL[] = cashCardNettingRideConditions(companyId);
   if (createdAtFilter) conditions.push(createdAtFilter);
@@ -476,10 +529,14 @@ export async function queryPanelFinancialSettlement(
     .innerJoin(ridesTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
     .where(and(...conditions));
 
+  const adj = await sumAdjustmentsForCompany(companyId, adjustmentCreatedAtFilter);
+
   return {
-    grossAmount: Number(row?.grossAmount ?? 0),
-    commissionAmount: Number(row?.commissionAmount ?? 0),
-    operatorPayoutAmount: Number(row?.operatorPayoutAmount ?? 0),
+    grossAmount: Number(row?.grossAmount ?? 0) + adj.grossDelta,
+    commissionAmount: Number(row?.commissionAmount ?? 0) + adj.commissionDelta,
+    operatorPayoutAmount: Number(row?.operatorPayoutAmount ?? 0) + adj.operatorPayoutDelta,
+    adjustmentCount: adj.count,
+    adjustmentOperatorPayoutDelta: adj.operatorPayoutDelta,
   };
 }
 
@@ -551,9 +608,13 @@ export async function listPanelSettlementRides(
   companyId: string,
   query: PanelSettlementPeriodQuery,
   limit = 200,
-): Promise<{ rides: PanelSettlementRideRow[]; period: PanelSettlementPeriodQuery }> {
+): Promise<{
+  rides: PanelSettlementRideRow[];
+  adjustments: RideFinancialAdjustmentRow[];
+  period: PanelSettlementPeriodQuery;
+}> {
   const db = getDb();
-  if (!db) return { rides: [], period: query };
+  if (!db) return { rides: [], adjustments: [], period: query };
 
   const completedAtFilter = buildPanelSettlementCompletedAtFilter(query);
   const conditions: SQL[] = cashCardNettingRideConditions(companyId);
@@ -620,5 +681,20 @@ export async function listPanelSettlementRides(
     };
   });
 
-  return { rides, period: query };
+  const adjFilter = buildPanelAdjustmentCreatedAtFilter(query);
+  const dbAdj = getDb();
+  let adjAll: RideFinancialAdjustmentRow[] = [];
+  if (dbAdj) {
+    const adjConds = [eq(rideFinancialAdjustmentsTable.company_id, companyId.trim())];
+    if (adjFilter) adjConds.push(adjFilter);
+    const adjRows = await dbAdj
+      .select()
+      .from(rideFinancialAdjustmentsTable)
+      .where(and(...adjConds))
+      .orderBy(desc(rideFinancialAdjustmentsTable.created_at))
+      .limit(Math.min(Math.max(limit, 1), 500));
+    adjAll = adjRows.map(mapRideFinancialAdjustmentRow);
+  }
+
+  return { rides, adjustments: adjAll, period: query };
 }
