@@ -243,6 +243,7 @@ import {
 } from "../db/rideFinancialsData";
 import {
   listRideFinancialAdjustmentsAdmin,
+  recordManualRideFinancialAdjustment,
   recordRidePaymentReversalAdjustment,
 } from "../db/rideFinancialAdjustmentsData";
 import {
@@ -1941,7 +1942,7 @@ adminJson.get("/finance/audit", async (req, res, next) => {
   }
 });
 
-/** Korrektur-Ledger (Refund/Chargeback/manuell) — UI folgt P5 Gutschriften. */
+/** Korrektur-Ledger (Refund/Chargeback/manuell). */
 adminJson.get("/finance/adjustments", async (req, res, next) => {
   try {
     if (!canAccessAdminStats(adminConsoleRole(req))) {
@@ -1958,6 +1959,77 @@ adminJson.get("/finance/adjustments", async (req, res, next) => {
       offset,
     });
     res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Manuelle Gutschrift / Belastung am Unternehmer-Saldo (nur Taxi, Fahrt mit Snapshot). */
+adminJson.post("/finance/adjustments", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const body = (req.body ?? {}) as {
+      rideId?: unknown;
+      kind?: unknown;
+      operatorPayoutAmountEur?: unknown;
+      commissionAmountEur?: unknown;
+      grossAmountEur?: unknown;
+      label?: unknown;
+      note?: unknown;
+    };
+    const rideId = typeof body.rideId === "string" ? body.rideId.trim() : "";
+    const kindRaw = typeof body.kind === "string" ? body.kind.trim() : "";
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    if (kindRaw !== "manual_credit" && kindRaw !== "manual_debit") {
+      res.status(400).json({ error: "invalid_kind", message: "kind muss manual_credit oder manual_debit sein." });
+      return;
+    }
+    const parseEur = (v: unknown): number => {
+      if (typeof v === "number") return v;
+      if (typeof v === "string") return Number(v.trim().replace(",", "."));
+      return NaN;
+    };
+    const operatorPayoutAmountEur = parseEur(body.operatorPayoutAmountEur);
+    const commissionAmountEur = body.commissionAmountEur != null ? parseEur(body.commissionAmountEur) : undefined;
+    const grossAmountEur = body.grossAmountEur != null ? parseEur(body.grossAmountEur) : undefined;
+    if (!Number.isFinite(operatorPayoutAmountEur) || Math.abs(operatorPayoutAmountEur) < 0.005) {
+      res.status(400).json({ error: "invalid_operator_payout_amount" });
+      return;
+    }
+    const note = typeof body.note === "string" ? body.note.trim() : "";
+    if (!note) {
+      res.status(400).json({ error: "note_required", message: "Begründung / Hinweis ist Pflicht." });
+      return;
+    }
+    const label = typeof body.label === "string" ? body.label.trim() : "";
+    const outcome = await recordManualRideFinancialAdjustment({
+      rideId,
+      kind: kindRaw,
+      operatorPayoutAmountEur,
+      commissionAmountEur: Number.isFinite(commissionAmountEur) ? commissionAmountEur : undefined,
+      grossAmountEur: Number.isFinite(grossAmountEur) ? grossAmountEur : undefined,
+      label: label || undefined,
+      note,
+      actorType: "admin",
+      actorId: req.adminAuth?.username ?? null,
+    });
+    if (!outcome.ok) {
+      const status =
+        outcome.error === "ride_not_found" || outcome.error === "snapshot_not_found"
+          ? 404
+          : outcome.error === "taxi_only"
+            ? 403
+            : 400;
+      res.status(status).json({ error: outcome.error });
+      return;
+    }
+    res.json({ ok: true, adjustment: outcome.adjustment });
   } catch (e) {
     next(e);
   }

@@ -30,6 +30,7 @@ import AdminPlaceholderPage from "./pages/AdminPlaceholderPage.jsx";
 import FinanceDashboardPage from "./pages/FinanceDashboardPage.jsx";
 import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinancePayoutLinesPage from "./pages/FinancePayoutLinesPage.jsx";
+import FinanceCreditsPage from "./pages/FinanceCreditsPage.jsx";
 import FailedPaymentsPage from "./pages/FailedPaymentsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceKrankenInvoicesPage from "./pages/FinanceKrankenInvoicesPage.jsx";
@@ -116,8 +117,7 @@ const PAGE_META = {
   },
   "billing-credits": {
     title: "Gutschriften",
-    subtitle: "Korrektur-Ledger (Refund/Chargeback) — manuelle Erfassung folgt; API: /api/admin/finance/adjustments",
-    placeholder: true,
+    subtitle: "Korrektur-Ledger: Refund, Chargeback, manuelle Gutschrift/Belastung",
   },
   "billing-open": {
     title: "Fehlgeschlagene Zahlungen",
@@ -919,6 +919,15 @@ export default function App() {
         return <FinanceRideFinancialsPage />;
       case "finance-payout-lines":
         return <FinancePayoutLinesPage />;
+      case "billing-credits":
+        return (
+          <FinanceCreditsPage
+            onOpenRide={(id) => {
+              setRideRecordId(id);
+              setActive("ride-detail");
+            }}
+          />
+        );
       case "billing-open":
         return (
           <FailedPaymentsPage

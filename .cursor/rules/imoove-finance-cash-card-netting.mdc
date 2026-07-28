@@ -45,7 +45,7 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 - Partner-Drill + KPIs: **Trinkgeld** (100 % Fahrer) und **Stripe-Gebühr** (zu Lasten ONRODA) pro Zeile bzw. Summe
 - Partner-Drill + KPIs: **Korrekturen** (Refund/Chargeback) als gelabelte Zeilen; Summen im Saldo bereits eingerechnet
 - Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button; nur Taxi + ohne KK-Link
-- Admin: `GET /api/admin/finance/adjustments` (Ledger-Liste; Gutschriften-UI = P5)
+- Admin: `GET/POST /api/admin/finance/adjustments` — Ledger-Liste + manuelle Gutschrift/Belastung (Admin „Gutschriften“)
 
 ## Korrektur-Ledger (`ride_financial_adjustments`, Migration 134)
 
@@ -53,7 +53,8 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 - Kinds: `refund`, `chargeback`, `manual_credit`, `manual_debit`, `cancel_fee`, `no_show_fee`
 - Refund/Chargeback: Umkehr der Snapshot-Deltas (anteiliger Teil-Refund); Idempotenz `(ride_id, kind, external_ref)`
 - Hooks: Admin `POST /rides/:id/refund`, Stripe `charge.refunded` / `charge.dispute.created`
-- Cancel/No-Show-Gebühren bleiben als Fahrtzeilen (P3); Ledger fokussiert Post-hoc Refund/Chargeback (+ manuell in P5)
+- Manuell (P5): nur Taxi + Snapshot; positiver Betrag → Vorzeichen nach `manual_credit` (+) / `manual_debit` (−); Begründung Pflicht
+- Cancel/No-Show-Gebühren bleiben als Fahrtzeilen (P3); Ledger fokussiert Post-hoc Refund/Chargeback + manuell
 
 ## Roadmap Nachvollziehbarkeit
 
@@ -61,5 +62,5 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 2. ~~Cancel/No-Show-Brutto + Badges~~ (P3)
 3. ~~Partner-Drill Tip + Stripe~~ (P4)
 4. ~~Korrektur-Ledger Storno/Refund/Chargeback~~ (P2)
-5. Admin-Gutschriften (P5)
+5. ~~Admin-Gutschriften~~ (P5)
 6. Phase B Schuldrichtung + Provisionsrechnung (P6)

@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
 import {
+  adminCompaniesTable,
   financialAuditLogTable,
   rideFinancialAdjustmentsTable,
   rideFinancialsTable,
   ridesTable,
 } from "./schema";
 import { getRideFinancialSnapshotByRideId } from "./rideFinancialsData";
+import { companyIsCashCardNettingEligible } from "../lib/cashCardNettingScope";
 import { logger } from "../lib/logger";
 
 export type RideFinancialAdjustmentKind =
@@ -385,13 +387,78 @@ export async function listAdjustmentsForRideIds(rideIds: string[]): Promise<Ride
   return rows.map(mapRideFinancialAdjustmentRow);
 }
 
+export type RideFinancialAdjustmentAdminRow = RideFinancialAdjustmentRow & {
+  companyName: string | null;
+};
+
+/** Manuelle Gutschrift/Belastung am Unternehmer-Saldo (Taxi-Netting). Beträge positiv eingeben; Vorzeichen folgt kind. */
+export async function recordManualRideFinancialAdjustment(input: {
+  rideId: string;
+  kind: "manual_credit" | "manual_debit";
+  /** Positiver Euro-Betrag für Unternehmer-Anteil-Delta. */
+  operatorPayoutAmountEur: number;
+  commissionAmountEur?: number;
+  grossAmountEur?: number;
+  label?: string;
+  note?: string;
+  actorType?: string;
+  actorId?: string | null;
+}): Promise<
+  | { ok: true; adjustment: RideFinancialAdjustmentRow }
+  | { ok: false; error: string }
+> {
+  const rideId = input.rideId.trim();
+  if (!rideId) return { ok: false, error: "ride_id_required" };
+
+  const ride = await loadRideCompanyAndPaymentMethod(rideId);
+  if (!ride) return { ok: false, error: "ride_not_found" };
+
+  const taxiOk = await companyIsCashCardNettingEligible(ride.companyId);
+  if (!taxiOk) return { ok: false, error: "taxi_only" };
+
+  const snap = await getRideFinancialSnapshotByRideId(rideId);
+  if (!snap) return { ok: false, error: "snapshot_not_found" };
+
+  const opAbs = Math.abs(Number(input.operatorPayoutAmountEur) || 0);
+  if (!(opAbs > 0.004)) return { ok: false, error: "invalid_operator_payout_amount" };
+
+  const commissionAbs = Math.abs(Number(input.commissionAmountEur) || 0);
+  const grossAbs = Math.abs(Number(input.grossAmountEur) || 0);
+  const sign = input.kind === "manual_credit" ? 1 : -1;
+
+  const note = (input.note ?? "").trim();
+  const label =
+    (input.label ?? "").trim() ||
+    `${defaultAdjustmentLabel(input.kind)}${note ? `: ${note.slice(0, 80)}` : ""}`;
+
+  return insertRideFinancialAdjustment({
+    companyId: ride.companyId,
+    rideId,
+    kind: input.kind,
+    label,
+    operatorPayoutDelta: roundMoney(sign * opAbs),
+    commissionDelta: roundMoney(sign * commissionAbs),
+    grossDelta: roundMoney(sign * grossAbs),
+    paymentMethodSnap: ride.paymentMethod,
+    actorType: input.actorType ?? "admin",
+    actorId: input.actorId ?? null,
+    metadata: {
+      source: "admin_manual",
+      note: note || undefined,
+      operatorPayoutAmountEur: opAbs,
+      commissionAmountEur: commissionAbs || undefined,
+      grossAmountEur: grossAbs || undefined,
+    },
+  });
+}
+
 export async function listRideFinancialAdjustmentsAdmin(args: {
   companyId?: string;
   rideId?: string;
   kind?: string;
   limit?: number;
   offset?: number;
-}): Promise<{ total: number; items: RideFinancialAdjustmentRow[] }> {
+}): Promise<{ total: number; items: RideFinancialAdjustmentAdminRow[] }> {
   if (!isPostgresConfigured()) return { total: 0, items: [] };
   const db = getDb();
   if (!db) return { total: 0, items: [] };
@@ -414,8 +481,12 @@ export async function listRideFinancialAdjustmentsAdmin(args: {
     .where(where);
 
   const rows = await db
-    .select()
+    .select({
+      adj: rideFinancialAdjustmentsTable,
+      companyName: adminCompaniesTable.name,
+    })
     .from(rideFinancialAdjustmentsTable)
+    .leftJoin(adminCompaniesTable, eq(adminCompaniesTable.id, rideFinancialAdjustmentsTable.company_id))
     .where(where)
     .orderBy(desc(rideFinancialAdjustmentsTable.created_at))
     .limit(limit)
@@ -423,7 +494,10 @@ export async function listRideFinancialAdjustmentsAdmin(args: {
 
   return {
     total: Number(countRow?.total ?? 0),
-    items: rows.map(mapRideFinancialAdjustmentRow),
+    items: rows.map((r) => ({
+      ...mapRideFinancialAdjustmentRow(r.adj),
+      companyName: r.companyName?.trim() ? r.companyName.trim() : null,
+    })),
   };
 }
 
