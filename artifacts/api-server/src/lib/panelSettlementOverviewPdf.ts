@@ -525,6 +525,26 @@ export function buildPanelSettlementOverviewPdf(input: PanelSettlementOverviewPd
       ctx.y += compactH + 10;
     }
 
+    const stripeTotal = Number(ps.stripeFeeTotal ?? 0);
+    if (Number.isFinite(stripeTotal) && stripeTotal > 0.005) {
+      const stripeLines = [
+        { text: `Stripe-Gebühr gesamt: ${fmtEuro(stripeTotal)}`, bold: true },
+        {
+          text: "Zu Lasten ONRODA · nicht im Unternehmer-Anteil.",
+          muted: true,
+        },
+      ];
+      const stripeCardH = measureSettlementInfoCard(
+        doc,
+        ctx.contentWidth,
+        "Stripe-Gebühr (informativ)",
+        stripeLines,
+      );
+      if (ctx.y + stripeCardH <= contentMaxY) {
+        ctx.y = drawSettlementInfoCard(ctx, "Stripe-Gebühr (informativ)", stripeLines);
+      }
+    }
+
     if (ps.pendingPaymentCount > 0 || ps.failedPaymentCount > 0) {
       const hints: string[] = [];
       if (ps.pendingPaymentCount > 0) hints.push(`Offen / reserviert: ${ps.pendingPaymentCount}`);

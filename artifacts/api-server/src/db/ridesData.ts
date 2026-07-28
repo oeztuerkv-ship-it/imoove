@@ -1226,6 +1226,7 @@ function emptyPaymentStats(): PanelPaymentPeriodStats {
     pendingPaymentCount: 0,
     feeRideCount: 0,
     feeGrossAmount: 0,
+    stripeFeeTotal: 0,
   };
 }
 

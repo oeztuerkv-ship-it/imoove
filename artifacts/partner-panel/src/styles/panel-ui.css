@@ -3453,6 +3453,13 @@
   color: #292524;
 }
 
+.panel-settlement-drill__hint {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  color: #78716c;
+  line-height: 1.35;
+}
+
 .panel-settlement-drill__close {
   border: none;
   background: transparent;

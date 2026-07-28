@@ -43,6 +43,8 @@ export type PanelPaymentPeriodStats = {
   /** Storno/No-Show mit Gebühr im Netting-Fenster. */
   feeRideCount: number;
   feeGrossAmount: number;
+  /** Summe Stripe-Gebühren (ONRODA-Kosten, nicht Unternehmer-Anteil). */
+  stripeFeeTotal: number;
 };
 
 export type PanelSettlementPeriodKey = "today" | "week" | "weekCalendar" | "month" | "year";
@@ -70,6 +72,8 @@ export type PanelSettlementRideRow = {
   commissionAmount: number | null;
   operatorPayoutAmount: number | null;
   tipAmount: number | null;
+  /** Stripe-Transaktionsgebühr (zu Lasten ONRODA); nicht im Unternehmer-Anteil. */
+  stripeFeeAmount: number | null;
   estimatedFare: number | null;
   finalFare: number | null;
   hasFinancials: boolean;
@@ -498,6 +502,7 @@ export async function queryPanelPaymentStatsForPeriod(
       pendingPaymentCount: sql<number>`count(*) FILTER (WHERE ${CARD_PM_SQL} AND ${ridesTable.payment_status} IN ('pending', 'authorized'))::int`,
       feeRideCount: sql<number>`count(*) FILTER (WHERE ${ridesTable.status} IN ('cancelled', 'cancelled_by_customer', 'cancelled_by_driver', 'no_show'))::int`,
       feeGrossAmount: sql<string>`coalesce(sum(${rideFinancialsTable.gross_amount}) FILTER (WHERE ${ridesTable.status} IN ('cancelled', 'cancelled_by_customer', 'cancelled_by_driver', 'no_show')), 0)`,
+      stripeFeeTotal: sql<string>`coalesce(sum(coalesce(${rideFinancialsTable.stripe_fee_amount}, 0)), 0)`,
     })
     .from(ridesTable)
     .leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
@@ -513,6 +518,7 @@ export async function queryPanelPaymentStatsForPeriod(
     pendingPaymentCount: Number(row?.pendingPaymentCount ?? 0),
     feeRideCount: Number(row?.feeRideCount ?? 0),
     feeGrossAmount: Number(row?.feeGrossAmount ?? 0),
+    stripeFeeTotal: Number(row?.stripeFeeTotal ?? 0),
   };
 }
 
@@ -566,6 +572,7 @@ export async function listPanelSettlementRides(
       estimatedFare: ridesTable.estimated_fare,
       finalFare: ridesTable.final_fare,
       tipAmount: sql<number | null>`coalesce(${rideFinancialsTable.tip_amount}, ${ridesTable.tip_amount})`,
+      stripeFeeAmount: rideFinancialsTable.stripe_fee_amount,
       grossAmount: rideFinancialsTable.gross_amount,
       commissionAmount: rideFinancialsTable.commission_amount,
       operatorPayoutAmount: rideFinancialsTable.operator_payout_amount,
@@ -603,6 +610,10 @@ export async function listPanelSettlementRides(
       operatorPayoutAmount:
         hasFinancials && r.operatorPayoutAmount != null ? Number(r.operatorPayoutAmount) : null,
       tipAmount: r.tipAmount != null && Number.isFinite(Number(r.tipAmount)) ? Number(r.tipAmount) : null,
+      stripeFeeAmount:
+        hasFinancials && r.stripeFeeAmount != null && Number.isFinite(Number(r.stripeFeeAmount))
+          ? Number(r.stripeFeeAmount)
+          : null,
       estimatedFare: r.estimatedFare != null ? Number(r.estimatedFare) : null,
       finalFare: r.finalFare != null ? Number(r.finalFare) : null,
       hasFinancials,

@@ -323,6 +323,12 @@ export function SettlementKpiPeriodPanel({
             </span>
           </div>
           <div>
+            <span className="panel-settlement-payment-stats__lbl">Stripe-Gebühr gesamt</span>
+            <span className="panel-settlement-payment-stats__val">
+              {formatMoney(Number(ps.stripeFeeTotal ?? 0))} · zu Lasten ONRODA
+            </span>
+          </div>
+          <div>
             <span className="panel-settlement-payment-stats__lbl">Karte offen/fehlgeschlagen</span>
             <span className="panel-settlement-payment-stats__val">
               {Number(ps.pendingPaymentCount ?? 0)} offen · {Number(ps.failedPaymentCount ?? 0)} fehlgeschlagen
@@ -370,53 +376,71 @@ export function SettlementKpiPeriodPanel({
               {drillRides.length === 0 ? (
                 <p className="panel-dash-empty">Keine abrechnungsrelevanten Fahrten in diesem Zeitraum.</p>
               ) : (
-                <table className="panel-dash-table panel-dash-table--settlement">
-                  <thead>
-                    <tr>
-                      <th>Zeit</th>
-                      <th>Art</th>
-                      <th>Route</th>
-                      <th>Endpreis / Gebühr</th>
-                      <th>Provision</th>
-                      <th>Ihr Anteil / Saldo</th>
-                      <th>Zahlungsart</th>
-                      <th>Fahrer</th>
-                      <th>Status Zahlung</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {drillRides.map((r) => {
-                      const amt = settlementAmountCell(r);
-                      const kind = settlementRideKindBadge(r.status);
-                      return (
-                        <tr key={r.id}>
-                          <td>{formatShortDt(r.createdAt)}</td>
-                          <td>
-                            <span
-                              className={`panel-settlement-kind-badge panel-settlement-kind-badge--${kind.tone}`}
-                            >
-                              {kind.label}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="panel-dash-table__muted">{r.from || "—"}</span> → {r.to || "—"}
-                          </td>
-                          <td>
-                            {amt.value}
-                            {amt.label ? (
-                              <span className="panel-dash-table__amount-kind"> · {amt.label}</span>
-                            ) : null}
-                          </td>
-                          <td>{r.commissionAmount != null ? formatMoney(r.commissionAmount) : "—"}</td>
-                          <td>{r.operatorPayoutAmount != null ? formatMoney(r.operatorPayoutAmount) : "—"}</td>
-                          <td>{paymentMethodDe(r.paymentMethod)}</td>
-                          <td>{r.driverName || "—"}</td>
-                          <td>{paymentStatusDe(r.paymentStatus)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <>
+                  <p className="panel-settlement-drill__hint">
+                    Trinkgeld: 100&nbsp;% Fahrer (nicht in Provision). Stripe-Gebühr: zu Lasten ONRODA, nicht in
+                    Ihrem Anteil.
+                  </p>
+                  <table className="panel-dash-table panel-dash-table--settlement">
+                    <thead>
+                      <tr>
+                        <th>Zeit</th>
+                        <th>Art</th>
+                        <th>Route</th>
+                        <th>Endpreis / Gebühr</th>
+                        <th>Provision</th>
+                        <th>Ihr Anteil / Saldo</th>
+                        <th>Trinkgeld</th>
+                        <th title="Zu Lasten ONRODA — nicht in Ihrem Anteil">Stripe-Gebühr</th>
+                        <th>Zahlungsart</th>
+                        <th>Fahrer</th>
+                        <th>Status Zahlung</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {drillRides.map((r) => {
+                        const amt = settlementAmountCell(r);
+                        const kind = settlementRideKindBadge(r.status);
+                        const tip = r.tipAmount != null ? Number(r.tipAmount) : null;
+                        const stripeFee = r.stripeFeeAmount != null ? Number(r.stripeFeeAmount) : null;
+                        return (
+                          <tr key={r.id}>
+                            <td>{formatShortDt(r.createdAt)}</td>
+                            <td>
+                              <span
+                                className={`panel-settlement-kind-badge panel-settlement-kind-badge--${kind.tone}`}
+                              >
+                                {kind.label}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="panel-dash-table__muted">{r.from || "—"}</span> → {r.to || "—"}
+                            </td>
+                            <td>
+                              {amt.value}
+                              {amt.label ? (
+                                <span className="panel-dash-table__amount-kind"> · {amt.label}</span>
+                              ) : null}
+                            </td>
+                            <td>{r.commissionAmount != null ? formatMoney(r.commissionAmount) : "—"}</td>
+                            <td>{r.operatorPayoutAmount != null ? formatMoney(r.operatorPayoutAmount) : "—"}</td>
+                            <td>
+                              {tip != null && Number.isFinite(tip) && tip > 0.005 ? formatMoney(tip) : "—"}
+                            </td>
+                            <td>
+                              {stripeFee != null && Number.isFinite(stripeFee) && stripeFee > 0.005
+                                ? formatMoney(stripeFee)
+                                : "—"}
+                            </td>
+                            <td>{paymentMethodDe(r.paymentMethod)}</td>
+                            <td>{r.driverName || "—"}</td>
+                            <td>{paymentStatusDe(r.paymentStatus)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
               )}
             </div>
           ) : null}

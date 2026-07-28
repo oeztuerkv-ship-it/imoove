@@ -42,13 +42,14 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 
 - Partner-Dashboard: negativ → Label „Sie schulden ONRODA“
 - Partner-Drill: Badge Fahrt / Storno / No-Show; KPI-Zeile „Storno / No-Show (Gebühr)“
+- Partner-Drill + KPIs: **Trinkgeld** (100 % Fahrer) und **Stripe-Gebühr** (zu Lasten ONRODA) pro Zeile bzw. Summe
 - Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button; nur Taxi + ohne KK-Link
 
 ## Roadmap Nachvollziehbarkeit
 
 1. ~~Medical/KK-Ausschluss (an echte KK-Rechnung gekoppelt) + Taxi-Scope härten~~ (P1)
 2. ~~Cancel/No-Show-Brutto + Badges~~ (P3)
-3. Partner-Drill Tip + Stripe (P4)
+3. ~~Partner-Drill Tip + Stripe~~ (P4)
 4. Korrektur-Ledger Storno/Refund/Chargeback (P2)
 5. Admin-Gutschriften (P5)
 6. Phase B Schuldrichtung + Provisionsrechnung (P6)
