@@ -10,6 +10,8 @@ const MAX_HANDLED_PUSH_IDS = 50;
 const CUSTOMER_RIDE_PUSH_KINDS = new Set([
   "reservation_confirmed",
   "reservation_activated",
+  "reservation_dispatch_started",
+  "reservation_reopened_to_market",
   "reservation_expired",
   "ride_accepted",
   "driver_arriving",

@@ -5,7 +5,6 @@ import { findRide } from "../db/ridesData";
 import { ridesTable } from "../db/schema";
 import { notifyCronRideStatusChange } from "../lib/cronRideStatusNotify";
 import {
-  notifyDriverReservationActivationReminder,
   notifyMarketOnlineDriversInstantRideOffer,
 } from "../lib/driverRideExpoPush";
 
@@ -387,7 +386,6 @@ export async function activateAssignedReservationsToReadyForDispatch(
       status: ridesTable.status,
       passenger_id: ridesTable.passenger_id,
       driver_id: ridesTable.driver_id,
-      company_id: ridesTable.company_id,
     })
     .from(ridesTable)
     .where(
@@ -416,8 +414,6 @@ export async function activateAssignedReservationsToReadyForDispatch(
   const promoted: PromotedReservationRow[] = [];
   for (const row of candidates) {
     if (row.status !== "scheduled_assigned") continue;
-    const driverId = typeof row.driver_id === "string" ? row.driver_id.trim() : "";
-    const companyId = typeof row.company_id === "string" ? row.company_id.trim() : "";
     promoted.push({
       id: row.id,
       passenger_id: row.passenger_id,
@@ -431,9 +427,8 @@ export async function activateAssignedReservationsToReadyForDispatch(
       toStatus: "ready_for_dispatch",
       passengerId: row.passenger_id,
     });
-    if (driverId && companyId) {
-      void notifyDriverReservationActivationReminder(driverId, companyId, row.id);
-    }
+    // Kein weiterer Fahrer-Push: Aktivierung war manuell durch denselben Fahrer.
+    // Kunden-Push läuft über notifyCronRideStatusChange → notifyPassengerReservationActivated.
   }
 
   return promoted;

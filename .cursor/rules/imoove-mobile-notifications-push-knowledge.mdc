@@ -64,6 +64,9 @@ Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in 
 | Fahrer-Storno | `POST …/driver-cancel` → `searching_driver` | **Kein** erneuter Markt-Push (nur Client-Diff-Bug) |
 | Fahrer angenommen / wartet / unterwegs | `notifyPassengerDriverAccepted` / `…Arriving` / `…Waiting` | Kunde (`passengerRideExpoPush.ts`) |
 | Fahrt läuft / beendet | `notifyPassengerRideInProgress` / `notifyPassengerRideCompleted` | Kunde (Quittung → `/status`) |
+| Cron Job 4: `scheduled` → `searching_driver` (T−30) | `notifyCronRideStatusChange` → `notifyPassengerReservationDispatchStarted` + `notifyMarketOnlineDriversInstantRideOffer` | Kunde + Online-Fahrer |
+| Manuell: `scheduled_assigned` → `ready_for_dispatch` | `notifyCronRideStatusChange` → `notifyPassengerReservationActivated` | Kunde (Live-Tracking); **kein** Extra-Push an denselben Fahrer |
+| Cron: verpasste Aktivierung → Markt | `notifyPassengerReservationReopenedToMarket` + Markt-Offer + `notifyDriverMissedActivationReservation` | Kunde + Markt-Fahrer + sanktionierter Fahrer |
 | Reservierung abgelaufen (Cron, nur `scheduled` / `scheduled_assigned` / `ready_for_dispatch`) | `notifyPassengerReservationExpired` | Kunde |
 | Alter Sofort-Such-Hänger → `expired` (Cron Job 7) | **kein** Reservierungs-Push | — |
 | Kunde ändert Ziel (aktive Taxi-Fahrt) | `notifyDriverDestinationChanged` (`PATCH …/destination`) | Zugewiesener Fahrer — Titel **„Achtung: Ziel wurde geändert“** |

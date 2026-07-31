@@ -46,6 +46,46 @@ export async function notifyPassengerReservationActivated(passengerId: string, r
   );
 }
 
+/**
+ * Cron Job 4: offene Reservierung im T−30-Fenster → Fahrersuche (`searching_driver`).
+ * Kunde: Vorbestellung wird jetzt aktiv vermittelt.
+ */
+export async function notifyPassengerReservationDispatchStarted(
+  passengerId: string,
+  rideId: string,
+): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrersuche gestartet",
+      body: "Ihre Reservierung ist jetzt aktiv — wir suchen einen Fahrer.",
+      data: { kind: "reservation_dispatch_started", rideId },
+    })),
+  );
+}
+
+/**
+ * Verpasste Fahrer-Aktivierung: zugewiesener Fahrer freigegeben → erneut Markt.
+ * Kunde: klarer Hinweis, dass neu vermittelt wird.
+ */
+export async function notifyPassengerReservationReopenedToMarket(
+  passengerId: string,
+  rideId: string,
+): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Neuer Fahrer wird gesucht",
+      body: "Der zugewiesene Fahrer hat nicht rechtzeitig aktiviert. Wir suchen einen neuen Fahrer.",
+      data: { kind: "reservation_reopened_to_market", rideId },
+    })),
+  );
+}
+
 /** Sofortfahrt: Fahrer am Abholort (`driver_waiting`) → Push „Fahrer da“. */
 export async function notifyPassengerDriverWaiting(passengerId: string, rideId: string): Promise<void> {
   const tokens = await listPassengerExpoPushTokens(passengerId);

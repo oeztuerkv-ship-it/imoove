@@ -2417,7 +2417,7 @@ export async function patchRideStatusRoute(
       await insertSupplementalRideEvent(id, {
         eventType: "reservation_dispatch_activated",
         fromStatus: cur.status,
-        toStatus: "searching_driver",
+        toStatus: activated[0]?.to_status ?? nextStatus,
         actorType: mutActor.actorType,
         actorId: mutActor.actorId,
         payload: { source: "manual_or_api" },

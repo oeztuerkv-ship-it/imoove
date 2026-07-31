@@ -48,6 +48,16 @@
         <a class="hp-header-legal" href="/impressum">Impressum</a>
         <a class="hp-header-legal" href="/agb">AGB</a>
         <a
+          class="hp-header-instagram"
+          href="https://www.instagram.com/onroda_taxi/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="ONRODA auf Instagram"
+        >
+          <img class="hp-instagram-icon hp-instagram-icon--header" src="/instagram-logo.jpg" width="26" height="26" alt="" decoding="async" />
+          <span class="hp-header-instagram__label">Instagram</span>
+        </a>
+        <a
           class="hp-topbar-btn hp-topbar-btn--header"
           href="https://panel.onroda.de/"
           data-partner-login-gate
@@ -935,7 +945,7 @@
               </p>
             </div>
 
-            <form id="partner-form" action="#" method="post" novalidate>
+            <form id="partner-form" action="/partner/anfrage-status" method="get" novalidate data-onroda-partner-ajax="1">
               <div class="hp-partner-form-grid">
                 <!-- Honeypot: nicht ausfüllen (Spam-Schutz). -->
                 <div class="hp-field hp-field--full hp-honeypot" aria-hidden="true">

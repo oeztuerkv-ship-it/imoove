@@ -49,6 +49,7 @@ import {
 } from "../lib/kkModuleAccess.js";
 import {
   PARTNER_FLEET_DRIVER_PATCH_ADMIN_FIELDS,
+  PARTNER_FLEET_VEHICLE_CREATE_FORBIDDEN_FIELDS,
   PARTNER_FLEET_VEHICLE_PATCH_ADMIN_FIELDS,
   rejectPartnerAdminOnlyBodyFields,
 } from "../lib/fleetAdminOnlyFields.js";
@@ -513,10 +514,7 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const b = req.body as Record<string, unknown>;
-    if (b.vehicleType === "wheelchair" || b.vehicleClass === "wheelchair") {
-      res.status(403).json({ error: "admin_only_field", field: "vehicleType" });
-      return;
-    }
+    if (rejectPartnerAdminOnlyBodyFields(res, b, PARTNER_FLEET_VEHICLE_CREATE_FORBIDDEN_FIELDS)) return;
     const gate = await requireFleetOnboardingEntityCreateAllowed(ctx.claims.companyId);
     if (!gate.ok) {
       res.status(403).json({ error: gate.error });
@@ -538,7 +536,7 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
     const vehicleType = (typeof b.vehicleType === "string" ? b.vehicleType : "sedan") as FleetVehicleType;
     const vehicleLegalType = "taxi" as FleetVehicleLegalType;
     const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetVehicleClass;
-    const allowed: FleetVehicleType[] = ["sedan", "station_wagon", "van", "wheelchair"];
+    const allowed: FleetVehicleType[] = ["sedan", "station_wagon", "van"];
     if (!allowed.includes(vehicleType)) {
       res.status(400).json({ error: "invalid_vehicle_type" });
       return;
@@ -547,19 +545,11 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       res.status(400).json({ error: "vehicle_legal_type_invalid" });
       return;
     }
-    if (!ALLOWED_VEHICLE_CLASSES.includes(vehicleClass)) {
+    if (!ALLOWED_VEHICLE_CLASSES.includes(vehicleClass) || vehicleClass === "wheelchair") {
       res.status(400).json({ error: "vehicle_class_invalid" });
       return;
     }
-    const resolvedClass: FleetVehicleClass =
-      vehicleType === "wheelchair" ? "wheelchair" : vehicleClass;
-    if (vehicleType === "wheelchair" && vehicleClass !== "wheelchair") {
-      res.status(400).json({
-        error: "wheelchair_vehicle_class_required",
-        message: "Rollstuhlfahrzeuge müssen die Fahrzeugklasse „wheelchair“ haben.",
-      });
-      return;
-    }
+    const resolvedClass: FleetVehicleClass = vehicleClass;
     const ins = await insertFleetVehicle({
       companyId: ctx.claims.companyId,
       licensePlate,
@@ -572,6 +562,7 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
       konzessionNumber: konzessionRaw,
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
+      /** Immer pending — Partner darf Freigabe nicht setzen (CREATE_FORBIDDEN). */
       approvalStatus: "pending_approval",
     });
     if (!ins.ok) {

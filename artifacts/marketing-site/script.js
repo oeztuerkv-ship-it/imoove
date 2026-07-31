@@ -1817,17 +1817,17 @@
         if (companyTypeEl && companyTypeEl.options && companyTypeEl.selectedIndex >= 0) {
           companyTypeLabel = (companyTypeEl.options[companyTypeEl.selectedIndex].text || "").trim();
         }
-        var companyName = document.getElementById("companyName").value.trim();
-        var firstName = document.getElementById("firstName").value.trim();
-        var lastName = document.getElementById("lastName").value.trim();
-        var businessEmail = document.getElementById("businessEmail").value.trim();
-        var businessPhone = document.getElementById("businessPhone").value.trim();
-        var address = document.getElementById("address").value.trim();
-        var postalCode = document.getElementById("postalCode").value.trim();
-        var city = document.getElementById("city").value.trim();
-        var country = document.getElementById("country").value.trim();
-        var region = document.getElementById("region").value.trim();
-        var notes = document.getElementById("notes").value.trim();
+        var companyName = fieldTrim("companyName");
+        var firstName = fieldTrim("firstName");
+        var lastName = fieldTrim("lastName");
+        var businessEmail = fieldTrim("businessEmail");
+        var businessPhone = fieldTrim("businessPhone");
+        var address = fieldTrim("address");
+        var postalCode = fieldTrim("postalCode");
+        var city = fieldTrim("city");
+        var country = fieldTrim("country") || "DE";
+        var region = fieldTrim("region");
+        var notes = fieldTrim("notes");
         var hpEl = document.getElementById("partner-hp-company-website");
         var hpVal = hpEl ? String(hpEl.value || "").trim() : "";
 
@@ -1839,6 +1839,10 @@
         }
         if (!partnerType) {
           setMessage("Bitte wählen Sie die Art Ihres Unternehmens.", "error");
+          return;
+        }
+        if (!companyName || !firstName || !lastName || !businessEmail || !businessPhone || !address || !postalCode || !city) {
+          setMessage("Bitte alle Pflichtfelder ausfüllen (Name, Kontakt, Adresse).", "error");
           return;
         }
         if (hpVal) {
