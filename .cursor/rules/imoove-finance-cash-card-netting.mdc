@@ -47,14 +47,21 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 - Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button; nur Taxi + ohne KK-Link
 - Admin: `GET/POST /api/admin/finance/adjustments` — Ledger-Liste + manuelle Gutschrift/Belastung (Admin „Gutschriften“)
 
-## Korrektur-Ledger (`ride_financial_adjustments`, Migration 134)
+## Korrektur-Ledger (`ride_financial_adjustments`, Migration 134+)
 
-- Saldo = `ride_financials` **+** Summe Adjustment-Deltas (kein stilles Überschreiben des Snapshots)
+- Saldo = `ride_financials` **+** Summe **freigegebener** Adjustment-Deltas (kein stilles Überschreiben des Snapshots)
 - Kinds: `refund`, `chargeback`, `manual_credit`, `manual_debit`, `cancel_fee`, `no_show_fee`
 - Refund/Chargeback: Umkehr der Snapshot-Deltas (anteiliger Teil-Refund); Idempotenz `(ride_id, kind, external_ref)`
 - Hooks: Admin `POST /rides/:id/refund`, Stripe `charge.refunded` / `charge.dispute.created`
 - Manuell (P5): nur Taxi + Snapshot; positiver Betrag → Vorzeichen nach `manual_credit` (+) / `manual_debit` (−); Begründung Pflicht
+- Vier-Augen (P5.1): `|operator_payout_delta| ≥ 100 €` (Env `FINANCE_ADJUSTMENT_DUAL_APPROVAL_EUR`) → `pending_approval` bis zweiter Admin freigibt; darunter sofort `approved` + Audit
 - Cancel/No-Show-Gebühren bleiben als Fahrtzeilen (P3); Ledger fokussiert Post-hoc Refund/Chargeback + manuell
+
+### Buchungszeitraum (Steuerberater / Nachvollziehbarkeit)
+
+- **Refunds und Chargebacks** (und sonstige Korrekturen) werden im Zeitraum ihrer **Korrektur** verbucht — maßgeblich `coalesce(approved_at, created_at)` der Ledger-Zeile, **nicht** das Fahrtende (`completed_at`) der Ursprungsfahrt.
+- Nachvollziehbarkeits-Anker zur Ursprungsfahrt: **`ride_financial_adjustments.ride_id`** (FK auf `rides`). Kein separates `origin_ride_id`-Feld nötig.
+- Pending (Vier-Augen) zählen **nicht** in Partner-/Settlement-Salden, bis `approval_status = approved`.
 
 ## Roadmap Nachvollziehbarkeit
 
@@ -63,4 +70,5 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 3. ~~Partner-Drill Tip + Stripe~~ (P4)
 4. ~~Korrektur-Ledger Storno/Refund/Chargeback~~ (P2)
 5. ~~Admin-Gutschriften~~ (P5)
+5a. Vier-Augen ab 100 € (P5.1)
 6. Phase B Schuldrichtung + Provisionsrechnung (P6)

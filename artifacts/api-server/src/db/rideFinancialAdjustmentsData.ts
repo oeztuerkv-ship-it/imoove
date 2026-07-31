@@ -20,6 +20,8 @@ export type RideFinancialAdjustmentKind =
   | "cancel_fee"
   | "no_show_fee";
 
+export type RideFinancialAdjustmentApprovalStatus = "approved" | "pending_approval" | "rejected";
+
 export type RideFinancialAdjustmentRow = {
   id: string;
   companyId: string;
@@ -36,8 +38,19 @@ export type RideFinancialAdjustmentRow = {
   metadata: Record<string, unknown>;
   actorType: string;
   actorId: string | null;
+  approvalStatus: RideFinancialAdjustmentApprovalStatus;
+  requestedBy: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
   createdAt: string;
 };
+
+/** Default 100 €; überschreibbar via FINANCE_ADJUSTMENT_DUAL_APPROVAL_EUR. */
+export function getAdjustmentDualApprovalThresholdEur(): number {
+  const raw = Number(String(process.env.FINANCE_ADJUSTMENT_DUAL_APPROVAL_EUR ?? "100").trim());
+  if (!Number.isFinite(raw) || raw < 0) return 100;
+  return raw;
+}
 
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
@@ -47,6 +60,9 @@ function roundMoney(n: number): number {
 export function mapRideFinancialAdjustmentRow(
   r: typeof rideFinancialAdjustmentsTable.$inferSelect,
 ): RideFinancialAdjustmentRow {
+  const statusRaw = String(r.approval_status ?? "approved").trim();
+  const approvalStatus: RideFinancialAdjustmentApprovalStatus =
+    statusRaw === "pending_approval" || statusRaw === "rejected" ? statusRaw : "approved";
   return {
     id: r.id,
     companyId: r.company_id,
@@ -66,6 +82,10 @@ export function mapRideFinancialAdjustmentRow(
         : {},
     actorType: r.actor_type ?? "system",
     actorId: r.actor_id ?? null,
+    approvalStatus,
+    requestedBy: r.requested_by ?? null,
+    approvedBy: r.approved_by ?? null,
+    approvedAt: r.approved_at instanceof Date ? r.approved_at.toISOString() : r.approved_at ? String(r.approved_at) : null,
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   };
 }
@@ -81,6 +101,11 @@ const KIND_LABELS: Record<RideFinancialAdjustmentKind, string> = {
 
 export function defaultAdjustmentLabel(kind: RideFinancialAdjustmentKind): string {
   return KIND_LABELS[kind] ?? kind;
+}
+
+/** Periodenfilter: Wirksamkeit = coalesce(approved_at, created_at). */
+export function rideFinancialAdjustmentEffectiveAtExpr() {
+  return sql`coalesce(${rideFinancialAdjustmentsTable.approved_at}, ${rideFinancialAdjustmentsTable.created_at})`;
 }
 
 /**
@@ -133,6 +158,24 @@ export async function findAdjustmentByExternalRef(
   return rows[0] ? mapRideFinancialAdjustmentRow(rows[0]) : null;
 }
 
+async function applyRideFinancialCorrectionSideEffects(
+  rideId: string,
+  kind: RideFinancialAdjustmentKind,
+  now: Date,
+): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  const rfPatch: Record<string, unknown> = {
+    correction_count: sql`${rideFinancialsTable.correction_count} + 1`,
+    last_correction_at: now,
+    updated_at: now,
+  };
+  if (kind === "chargeback") {
+    rfPatch.settlement_status = "disputed";
+  }
+  await db.update(rideFinancialsTable).set(rfPatch).where(eq(rideFinancialsTable.ride_id, rideId));
+}
+
 export async function insertRideFinancialAdjustment(input: {
   companyId: string;
   rideId: string;
@@ -148,6 +191,8 @@ export async function insertRideFinancialAdjustment(input: {
   metadata?: Record<string, unknown>;
   actorType?: string;
   actorId?: string | null;
+  /** Wenn gesetzt: Freigabe-Status erzwingen (sonst aus kind + Betrag abgeleitet). */
+  approvalStatus?: RideFinancialAdjustmentApprovalStatus;
 }): Promise<
   | { ok: true; adjustment: RideFinancialAdjustmentRow; idempotent?: boolean }
   | { ok: false; error: string }
@@ -169,6 +214,18 @@ export async function insertRideFinancialAdjustment(input: {
   const id = `rfa-${randomUUID().replace(/-/g, "").slice(0, 22)}`;
   const now = new Date();
   const label = (input.label ?? "").trim() || defaultAdjustmentLabel(input.kind);
+  const operatorPayoutDelta = roundMoney(input.operatorPayoutDelta ?? 0);
+  const actorId = input.actorId ?? null;
+
+  const isManual = input.kind === "manual_credit" || input.kind === "manual_debit";
+  const threshold = getAdjustmentDualApprovalThresholdEur();
+  let approvalStatus: RideFinancialAdjustmentApprovalStatus =
+    input.approvalStatus ??
+    (isManual && Math.abs(operatorPayoutDelta) + 1e-9 >= threshold ? "pending_approval" : "approved");
+  if (!isManual) approvalStatus = "approved";
+
+  const approvedAt = approvalStatus === "approved" ? now : null;
+  const approvedBy = approvalStatus === "approved" ? actorId : null;
 
   try {
     await db.insert(rideFinancialAdjustmentsTable).values({
@@ -179,14 +236,21 @@ export async function insertRideFinancialAdjustment(input: {
       label,
       gross_delta: roundMoney(input.grossDelta ?? 0),
       commission_delta: roundMoney(input.commissionDelta ?? 0),
-      operator_payout_delta: roundMoney(input.operatorPayoutDelta ?? 0),
+      operator_payout_delta: operatorPayoutDelta,
       stripe_fee_delta: roundMoney(input.stripeFeeDelta ?? 0),
       tip_delta: roundMoney(input.tipDelta ?? 0),
       payment_method_snap: (input.paymentMethodSnap ?? "").trim(),
       external_ref: externalRef,
-      metadata_json: input.metadata ?? {},
+      metadata_json: {
+        ...(input.metadata ?? {}),
+        dualApprovalThresholdEur: threshold,
+      },
       actor_type: input.actorType ?? "system",
-      actor_id: input.actorId ?? null,
+      actor_id: actorId,
+      approval_status: approvalStatus,
+      requested_by: actorId,
+      approved_by: approvedBy,
+      approved_at: approvedAt,
       created_at: now,
     });
   } catch (err) {
@@ -198,31 +262,27 @@ export async function insertRideFinancialAdjustment(input: {
     return { ok: false, error: "insert_failed" };
   }
 
-  const rfPatch: Record<string, unknown> = {
-    correction_count: sql`${rideFinancialsTable.correction_count} + 1`,
-    last_correction_at: now,
-    updated_at: now,
-  };
-  if (input.kind === "chargeback") {
-    rfPatch.settlement_status = "disputed";
+  if (approvalStatus === "approved") {
+    await applyRideFinancialCorrectionSideEffects(rideId, input.kind, now);
   }
-  await db.update(rideFinancialsTable).set(rfPatch).where(eq(rideFinancialsTable.ride_id, rideId));
 
   await db.insert(financialAuditLogTable).values({
     id: `fal-${randomUUID()}`,
     entity_type: "ride_financial_adjustment",
     entity_id: id,
-    action: `adjustment_${input.kind}`,
+    action: approvalStatus === "pending_approval" ? `adjustment_${input.kind}_pending` : `adjustment_${input.kind}`,
     old_value_json: {},
     new_value_json: {
       rideId,
       kind: input.kind,
-      operatorPayoutDelta: roundMoney(input.operatorPayoutDelta ?? 0),
+      operatorPayoutDelta,
       commissionDelta: roundMoney(input.commissionDelta ?? 0),
       externalRef,
+      approvalStatus,
+      dualApprovalThresholdEur: threshold,
     },
     actor_type: input.actorType ?? "system",
-    actor_id: input.actorId ?? null,
+    actor_id: actorId,
   });
 
   const rows = await db
@@ -293,6 +353,7 @@ export async function recordRidePaymentReversalAdjustment(input: {
     externalRef: input.externalRef,
     actorType: input.actorType,
     actorId: input.actorId,
+    approvalStatus: "approved",
     metadata: {
       ...(input.metadata ?? {}),
       refundGrossEur: input.refundGrossEur,
@@ -304,9 +365,10 @@ export async function recordRidePaymentReversalAdjustment(input: {
   });
 }
 
+/** Nur freigegebene Korrekturen (Partner-Saldo). */
 export async function sumAdjustmentsForCompany(
   companyId: string,
-  createdAtFilter?: SQL,
+  effectiveAtFilter?: SQL,
 ): Promise<{
   grossDelta: number;
   commissionDelta: number;
@@ -327,8 +389,11 @@ export async function sumAdjustmentsForCompany(
   const db = getDb();
   if (!db) return empty;
 
-  const conditions: SQL[] = [eq(rideFinancialAdjustmentsTable.company_id, companyId.trim())];
-  if (createdAtFilter) conditions.push(createdAtFilter);
+  const conditions: SQL[] = [
+    eq(rideFinancialAdjustmentsTable.company_id, companyId.trim()),
+    eq(rideFinancialAdjustmentsTable.approval_status, "approved"),
+  ];
+  if (effectiveAtFilter) conditions.push(effectiveAtFilter);
 
   const [row] = await db
     .select({
@@ -354,12 +419,15 @@ export async function sumAdjustmentsForCompany(
 
 export async function listAdjustmentsForCompany(
   companyId: string,
-  opts?: { createdAtFrom?: Date; createdAtTo?: Date; limit?: number },
+  opts?: { createdAtFrom?: Date; createdAtTo?: Date; limit?: number; approvedOnly?: boolean },
 ): Promise<RideFinancialAdjustmentRow[]> {
   if (!isPostgresConfigured()) return [];
   const db = getDb();
   if (!db) return [];
   const conditions: SQL[] = [eq(rideFinancialAdjustmentsTable.company_id, companyId.trim())];
+  if (opts?.approvedOnly !== false) {
+    conditions.push(eq(rideFinancialAdjustmentsTable.approval_status, "approved"));
+  }
   if (opts?.createdAtFrom) conditions.push(gte(rideFinancialAdjustmentsTable.created_at, opts.createdAtFrom));
   if (opts?.createdAtTo) conditions.push(lte(rideFinancialAdjustmentsTable.created_at, opts.createdAtTo));
 
@@ -382,7 +450,12 @@ export async function listAdjustmentsForRideIds(rideIds: string[]): Promise<Ride
   const rows = await db
     .select()
     .from(rideFinancialAdjustmentsTable)
-    .where(inArray(rideFinancialAdjustmentsTable.ride_id, ids))
+    .where(
+      and(
+        inArray(rideFinancialAdjustmentsTable.ride_id, ids),
+        eq(rideFinancialAdjustmentsTable.approval_status, "approved"),
+      ),
+    )
     .orderBy(desc(rideFinancialAdjustmentsTable.created_at));
   return rows.map(mapRideFinancialAdjustmentRow);
 }
@@ -452,10 +525,144 @@ export async function recordManualRideFinancialAdjustment(input: {
   });
 }
 
+export async function approveRideFinancialAdjustment(input: {
+  adjustmentId: string;
+  approverId: string;
+}): Promise<
+  | { ok: true; adjustment: RideFinancialAdjustmentRow; idempotent?: boolean }
+  | { ok: false; error: string }
+> {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+
+  const id = input.adjustmentId.trim();
+  const approverId = input.approverId.trim();
+  if (!id || !approverId) return { ok: false, error: "invalid_input" };
+
+  const rows = await db
+    .select()
+    .from(rideFinancialAdjustmentsTable)
+    .where(eq(rideFinancialAdjustmentsTable.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { ok: false, error: "not_found" };
+
+  const current = mapRideFinancialAdjustmentRow(row);
+  if (current.approvalStatus === "approved") {
+    return { ok: true, adjustment: current, idempotent: true };
+  }
+  if (current.approvalStatus === "rejected") {
+    return { ok: false, error: "already_rejected" };
+  }
+  if (current.approvalStatus !== "pending_approval") {
+    return { ok: false, error: "not_pending" };
+  }
+
+  const requester = (current.requestedBy ?? current.actorId ?? "").trim().toLowerCase();
+  if (requester && requester === approverId.toLowerCase()) {
+    return { ok: false, error: "cannot_self_approve" };
+  }
+
+  const now = new Date();
+  await db
+    .update(rideFinancialAdjustmentsTable)
+    .set({
+      approval_status: "approved",
+      approved_by: approverId,
+      approved_at: now,
+    })
+    .where(eq(rideFinancialAdjustmentsTable.id, id));
+
+  await applyRideFinancialCorrectionSideEffects(current.rideId, current.kind, now);
+
+  await db.insert(financialAuditLogTable).values({
+    id: `fal-${randomUUID()}`,
+    entity_type: "ride_financial_adjustment",
+    entity_id: id,
+    action: "adjustment_approved",
+    old_value_json: { approvalStatus: "pending_approval", requestedBy: current.requestedBy },
+    new_value_json: { approvalStatus: "approved", approvedBy: approverId },
+    actor_type: "admin",
+    actor_id: approverId,
+  });
+
+  const refreshed = await db
+    .select()
+    .from(rideFinancialAdjustmentsTable)
+    .where(eq(rideFinancialAdjustmentsTable.id, id))
+    .limit(1);
+  return refreshed[0]
+    ? { ok: true, adjustment: mapRideFinancialAdjustmentRow(refreshed[0]) }
+    : { ok: false, error: "update_failed" };
+}
+
+export async function rejectRideFinancialAdjustment(input: {
+  adjustmentId: string;
+  actorId: string;
+  reason?: string;
+}): Promise<
+  | { ok: true; adjustment: RideFinancialAdjustmentRow }
+  | { ok: false; error: string }
+> {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+
+  const id = input.adjustmentId.trim();
+  const actorId = input.actorId.trim();
+  if (!id || !actorId) return { ok: false, error: "invalid_input" };
+
+  const rows = await db
+    .select()
+    .from(rideFinancialAdjustmentsTable)
+    .where(eq(rideFinancialAdjustmentsTable.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { ok: false, error: "not_found" };
+  const current = mapRideFinancialAdjustmentRow(row);
+  if (current.approvalStatus !== "pending_approval") {
+    return { ok: false, error: current.approvalStatus === "approved" ? "already_approved" : "not_pending" };
+  }
+
+  const meta = {
+    ...current.metadata,
+    rejectReason: (input.reason ?? "").trim() || undefined,
+  };
+  await db
+    .update(rideFinancialAdjustmentsTable)
+    .set({
+      approval_status: "rejected",
+      metadata_json: meta,
+    })
+    .where(eq(rideFinancialAdjustmentsTable.id, id));
+
+  await db.insert(financialAuditLogTable).values({
+    id: `fal-${randomUUID()}`,
+    entity_type: "ride_financial_adjustment",
+    entity_id: id,
+    action: "adjustment_rejected",
+    old_value_json: { approvalStatus: "pending_approval" },
+    new_value_json: { approvalStatus: "rejected", reason: input.reason ?? null },
+    actor_type: "admin",
+    actor_id: actorId,
+  });
+
+  const refreshed = await db
+    .select()
+    .from(rideFinancialAdjustmentsTable)
+    .where(eq(rideFinancialAdjustmentsTable.id, id))
+    .limit(1);
+  return refreshed[0]
+    ? { ok: true, adjustment: mapRideFinancialAdjustmentRow(refreshed[0]) }
+    : { ok: false, error: "update_failed" };
+}
+
 export async function listRideFinancialAdjustmentsAdmin(args: {
   companyId?: string;
   rideId?: string;
   kind?: string;
+  approvalStatus?: string;
   limit?: number;
   offset?: number;
 }): Promise<{ total: number; items: RideFinancialAdjustmentAdminRow[] }> {
@@ -467,9 +674,11 @@ export async function listRideFinancialAdjustmentsAdmin(args: {
   const companyId = (args.companyId ?? "").trim();
   const rideId = (args.rideId ?? "").trim();
   const kind = (args.kind ?? "").trim();
+  const approvalStatus = (args.approvalStatus ?? "").trim();
   if (companyId) conditions.push(eq(rideFinancialAdjustmentsTable.company_id, companyId));
   if (rideId) conditions.push(eq(rideFinancialAdjustmentsTable.ride_id, rideId));
   if (kind) conditions.push(eq(rideFinancialAdjustmentsTable.kind, kind));
+  if (approvalStatus) conditions.push(eq(rideFinancialAdjustmentsTable.approval_status, approvalStatus));
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);

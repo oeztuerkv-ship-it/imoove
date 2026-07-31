@@ -15,6 +15,7 @@ import {
 import { sqlRideNotLinkedToKrankenInvoice, sqlRideInCashCardNettingStatuses } from "../lib/cashCardNettingScope";
 import {
   mapRideFinancialAdjustmentRow,
+  rideFinancialAdjustmentEffectiveAtExpr,
   sumAdjustmentsForCompany,
   type RideFinancialAdjustmentRow,
 } from "./rideFinancialAdjustmentsData";
@@ -468,12 +469,12 @@ export function buildPanelSettlementCompletedAtFilter(
 /** @deprecated Alias — filtert nach Fahrtende (`completed_at`), nicht Buchungsdatum. */
 export const buildPanelSettlementCreatedAtFilter = buildPanelSettlementCompletedAtFilter;
 
-/** Korrekturen nach `ride_financial_adjustments.created_at` (gleicher Perioden-Kalender). */
+/** Korrekturen nach Wirksamkeit `coalesce(approved_at, created_at)` (gleicher Perioden-Kalender). */
 export function buildPanelAdjustmentCreatedAtFilter(
   query: PanelSettlementPeriodQuery,
   now = new Date(),
 ): SQL | undefined {
-  const createdAt = rideFinancialAdjustmentsTable.created_at;
+  const createdAt = rideFinancialAdjustmentEffectiveAtExpr();
   const year = normalizePanelSettlementYear(query.year, now);
   const berlin = berlinCalendarParts(now);
   const monthYear = query.year != null ? year : berlin.year;
@@ -685,7 +686,10 @@ export async function listPanelSettlementRides(
   const dbAdj = getDb();
   let adjAll: RideFinancialAdjustmentRow[] = [];
   if (dbAdj) {
-    const adjConds = [eq(rideFinancialAdjustmentsTable.company_id, companyId.trim())];
+    const adjConds = [
+      eq(rideFinancialAdjustmentsTable.company_id, companyId.trim()),
+      eq(rideFinancialAdjustmentsTable.approval_status, "approved"),
+    ];
     if (adjFilter) adjConds.push(adjFilter);
     const adjRows = await dbAdj
       .select()

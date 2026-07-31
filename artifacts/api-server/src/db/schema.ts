@@ -1025,11 +1025,17 @@ export const rideFinancialAdjustmentsTable = pgTable(
     metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
     actor_type: text("actor_type").notNull().default("system"),
     actor_id: text("actor_id"),
+    /** approved | pending_approval | rejected — nur approved im Partner-Saldo. */
+    approval_status: text("approval_status").notNull().default("approved"),
+    requested_by: text("requested_by"),
+    approved_by: text("approved_by"),
+    approved_at: timestamp("approved_at", { withTimezone: true }),
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     companyCreatedIdx: index("ride_financial_adjustments_company_created_idx").on(t.company_id, t.created_at),
     rideIdx: index("ride_financial_adjustments_ride_idx").on(t.ride_id, t.created_at),
+    approvalStatusIdx: index("ride_financial_adjustments_approval_status_idx").on(t.approval_status, t.created_at),
   }),
 );
 

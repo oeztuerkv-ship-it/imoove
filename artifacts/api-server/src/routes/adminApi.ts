@@ -242,9 +242,12 @@ import {
   recalcUnlockedCashRideFinancials,
 } from "../db/rideFinancialsData";
 import {
+  approveRideFinancialAdjustment,
+  getAdjustmentDualApprovalThresholdEur,
   listRideFinancialAdjustmentsAdmin,
   recordManualRideFinancialAdjustment,
   recordRidePaymentReversalAdjustment,
+  rejectRideFinancialAdjustment,
 } from "../db/rideFinancialAdjustmentsData";
 import {
   getAdminTaxiFleetVehicleDetail,
@@ -1955,10 +1958,18 @@ adminJson.get("/finance/adjustments", async (req, res, next) => {
       companyId: q.company_id,
       rideId: q.ride_id,
       kind: q.kind,
+      approvalStatus: q.approval_status,
       limit: pageSize,
       offset,
     });
-    res.json({ ok: true, total, page, pageSize, items });
+    res.json({
+      ok: true,
+      total,
+      page,
+      pageSize,
+      items,
+      dualApprovalThresholdEur: getAdjustmentDualApprovalThresholdEur(),
+    });
   } catch (e) {
     next(e);
   }
@@ -2026,6 +2037,72 @@ adminJson.post("/finance/adjustments", async (req, res, next) => {
           : outcome.error === "taxi_only"
             ? 403
             : 400;
+      res.status(status).json({ error: outcome.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      adjustment: outcome.adjustment,
+      dualApprovalThresholdEur: getAdjustmentDualApprovalThresholdEur(),
+      pendingApproval: outcome.adjustment.approvalStatus === "pending_approval",
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Zweite Admin-Person: Vier-Augen-Freigabe. */
+adminJson.post("/finance/adjustments/:id/approve", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const approverId = (req.adminAuth?.username ?? "").trim();
+    if (!approverId) {
+      res.status(400).json({ error: "approver_required" });
+      return;
+    }
+    const outcome = await approveRideFinancialAdjustment({
+      adjustmentId: String(req.params.id ?? ""),
+      approverId,
+    });
+    if (!outcome.ok) {
+      const status =
+        outcome.error === "not_found"
+          ? 404
+          : outcome.error === "cannot_self_approve"
+            ? 403
+            : 400;
+      res.status(status).json({ error: outcome.error });
+      return;
+    }
+    res.json({ ok: true, adjustment: outcome.adjustment, idempotent: Boolean(outcome.idempotent) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/finance/adjustments/:id/reject", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const actorId = (req.adminAuth?.username ?? "").trim();
+    if (!actorId) {
+      res.status(400).json({ error: "actor_required" });
+      return;
+    }
+    const body = (req.body ?? {}) as { reason?: unknown };
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    const outcome = await rejectRideFinancialAdjustment({
+      adjustmentId: String(req.params.id ?? ""),
+      actorId,
+      reason: reason || undefined,
+    });
+    if (!outcome.ok) {
+      const status = outcome.error === "not_found" ? 404 : 400;
       res.status(status).json({ error: outcome.error });
       return;
     }

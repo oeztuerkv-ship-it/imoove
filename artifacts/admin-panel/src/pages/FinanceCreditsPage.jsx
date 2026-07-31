@@ -17,6 +17,13 @@ const KIND_OPTIONS = [
   { value: "no_show_fee", label: "No-Show-Gebühr" },
 ];
 
+const APPROVAL_OPTIONS = [
+  { value: "", label: "Alle Freigaben" },
+  { value: "pending_approval", label: "Wartet auf Freigabe" },
+  { value: "approved", label: "Freigegeben" },
+  { value: "rejected", label: "Abgelehnt" },
+];
+
 const KIND_LABELS = Object.fromEntries(KIND_OPTIONS.filter((o) => o.value).map((o) => [o.value, o.label]));
 
 function money(v) {
@@ -37,6 +44,20 @@ function kindBadgeClass(kind) {
   return "admin-c-badge admin-c-badge--info";
 }
 
+function approvalBadgeClass(status) {
+  if (status === "approved") return "admin-c-badge admin-c-badge--ok";
+  if (status === "pending_approval") return "admin-c-badge admin-c-badge--warn";
+  if (status === "rejected") return "admin-c-badge admin-c-badge--err";
+  return "admin-c-badge admin-c-badge--neutral";
+}
+
+function approvalDe(status) {
+  if (status === "approved") return "Freigegeben";
+  if (status === "pending_approval") return "Wartet";
+  if (status === "rejected") return "Abgelehnt";
+  return status || "—";
+}
+
 function actorDe(type, id) {
   const m = { system: "System", admin: "Admin", stripe_webhook: "Stripe" };
   const t = m[String(type ?? "").trim()] || String(type ?? "—");
@@ -51,7 +72,9 @@ export default function FinanceCreditsPage({ onOpenRide }) {
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [companies, setCompanies] = useState([]);
-  const [filters, setFilters] = useState({ kind: "", companyId: "", rideId: "" });
+  const [thresholdEur, setThresholdEur] = useState(100);
+  const [busyId, setBusyId] = useState("");
+  const [filters, setFilters] = useState({ kind: "", companyId: "", rideId: "", approvalStatus: "" });
   const [rideIdInput, setRideIdInput] = useState("");
 
   const [form, setForm] = useState({
@@ -104,12 +127,15 @@ export default function FinanceCreditsPage({ onOpenRide }) {
       if (filters.kind.trim()) q.set("kind", filters.kind.trim());
       if (filters.companyId.trim()) q.set("company_id", filters.companyId.trim());
       if (filters.rideId.trim()) q.set("ride_id", filters.rideId.trim());
+      if (filters.approvalStatus.trim()) q.set("approval_status", filters.approvalStatus.trim());
       const res = await fetch(`${LIST_URL}?${q.toString()}`, { headers: adminApiHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!data?.ok) throw new Error("invalid_response");
       setItems(Array.isArray(data.items) ? data.items : []);
       setTotal(Number(data.total ?? 0));
+      const thr = Number(data.dualApprovalThresholdEur);
+      if (Number.isFinite(thr) && thr >= 0) setThresholdEur(thr);
     } catch {
       setItems([]);
       setTotal(0);
@@ -168,11 +194,18 @@ export default function FinanceCreditsPage({ onOpenRide }) {
         };
         throw new Error(errMap[data?.error] || data?.message || data?.error || `HTTP ${res.status}`);
       }
-      setOkMsg(
-        form.kind === "manual_credit"
-          ? "Gutschrift gebucht — im Partner-Saldo im Buchungszeitraum sichtbar."
-          : "Belastung gebucht — im Partner-Saldo im Buchungszeitraum sichtbar.",
-      );
+      if (data.pendingApproval || data.adjustment?.approvalStatus === "pending_approval") {
+        setOkMsg(
+          `Korrektur angelegt — wartet auf zweite Admin-Freigabe (ab ${money(thresholdEur)} Unternehmer-Anteil). Noch nicht im Partner-Saldo.`,
+        );
+        setFilters((f) => ({ ...f, approvalStatus: "pending_approval" }));
+      } else {
+        setOkMsg(
+          form.kind === "manual_credit"
+            ? "Gutschrift freigegeben — im Partner-Saldo im Buchungszeitraum sichtbar."
+            : "Belastung freigegeben — im Partner-Saldo im Buchungszeitraum sichtbar.",
+        );
+      }
       setForm({
         rideId: "",
         kind: "manual_credit",
@@ -190,14 +223,69 @@ export default function FinanceCreditsPage({ onOpenRide }) {
     }
   }
 
+  async function approveRow(id) {
+    if (!id || busyId) return;
+    setBusyId(id);
+    setError("");
+    setOkMsg("");
+    try {
+      const res = await fetch(`${LIST_URL}/${encodeURIComponent(id)}/approve`, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        const errMap = {
+          cannot_self_approve: "Vier-Augen: Anleger darf nicht selbst freigeben.",
+          not_pending: "Eintrag ist nicht freigabefähig.",
+          already_rejected: "Eintrag wurde abgelehnt.",
+        };
+        throw new Error(errMap[data?.error] || data?.error || `HTTP ${res.status}`);
+      }
+      setOkMsg("Korrektur freigegeben — jetzt im Partner-Saldo.");
+      await loadList();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Freigabe fehlgeschlagen.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function rejectRow(id) {
+    if (!id || busyId) return;
+    const reason = window.prompt("Ablehnungsgrund (optional):") ?? "";
+    setBusyId(id);
+    setError("");
+    setOkMsg("");
+    try {
+      const res = await fetch(`${LIST_URL}/${encodeURIComponent(id)}/reject`, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() || undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      setOkMsg("Korrektur abgelehnt.");
+      await loadList();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ablehnung fehlgeschlagen.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="admin-page admin-page--loose admin-page--content">
       <p className="admin-page-lead">
         Korrektur-Ledger der Plattform: Erstattungen, Chargebacks und manuelle Gutschriften/Belastungen am
-        Unternehmer-Saldo. Manuelle Buchungen nur für Taxi-Fahrten mit Finanz-Snapshot; Beträge positiv eingeben —
-        Vorzeichen folgt der Art (Gutschrift +, Belastung −).
+        Unternehmer-Saldo. Manuelle Buchungen nur für Taxi-Fahrten mit Finanz-Snapshot. Ab{" "}
+        {money(thresholdEur)} Unternehmer-Anteil gilt Vier-Augen (zweite Admin-Person). Pending zählt nicht im
+        Partner-Saldo.
       </p>
 
       {error ? (
@@ -290,6 +378,23 @@ export default function FinanceCreditsPage({ onOpenRide }) {
       <AdminCollapsibleSection title="Ledger" subtitle={`${total} Einträge`} defaultOpen flushBody>
         <div className="admin-filter-toolbar admin-filter-toolbar--modern admin-filter-toolbar--search-wide">
           <label className="admin-filter-field">
+            <span className="admin-field-label">Freigabe</span>
+            <select
+              className="admin-select"
+              value={filters.approvalStatus}
+              onChange={(e) => {
+                setFilters((f) => ({ ...f, approvalStatus: e.target.value }));
+                setPage(1);
+              }}
+            >
+              {APPROVAL_OPTIONS.map((o) => (
+                <option key={o.value || "all-appr"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-filter-field">
             <span className="admin-field-label">Art</span>
             <select
               className="admin-select"
@@ -348,12 +453,13 @@ export default function FinanceCreditsPage({ onOpenRide }) {
             <div className="admin-table-row admin-table-row--head">
               <div>Zeit</div>
               <div>Art</div>
+              <div>Freigabe</div>
               <div>Unternehmen</div>
               <div>Fahrt</div>
               <div>Anteil Δ</div>
               <div>Provision Δ</div>
-              <div>Brutto Δ</div>
               <div>Akteur</div>
+              <div>Aktion</div>
             </div>
             {items.map((x) => (
               <div className="admin-table-row" key={x.id}>
@@ -363,14 +469,13 @@ export default function FinanceCreditsPage({ onOpenRide }) {
                     {kindDe(x.kind)}
                   </span>
                 </div>
+                <div>
+                  <span className={approvalBadgeClass(x.approvalStatus)}>{approvalDe(x.approvalStatus)}</span>
+                </div>
                 <div>{x.companyName || x.companyId || "—"}</div>
                 <div className="admin-mono">
                   {typeof onOpenRide === "function" ? (
-                    <button
-                      type="button"
-                      className="admin-link-btn"
-                      onClick={() => onOpenRide(x.rideId)}
-                    >
+                    <button type="button" className="admin-link-btn" onClick={() => onOpenRide(x.rideId)}>
                       {x.rideId}
                     </button>
                   ) : (
@@ -379,8 +484,37 @@ export default function FinanceCreditsPage({ onOpenRide }) {
                 </div>
                 <div className="admin-crisp-numeric">{money(x.operatorPayoutDelta)}</div>
                 <div className="admin-crisp-numeric">{money(x.commissionDelta)}</div>
-                <div className="admin-crisp-numeric">{money(x.grossDelta)}</div>
-                <div>{actorDe(x.actorType, x.actorId)}</div>
+                <div>
+                  {actorDe(x.actorType, x.actorId)}
+                  {x.requestedBy && x.approvalStatus === "pending_approval" ? (
+                    <div className="admin-dash-table__muted">Antrag: {x.requestedBy}</div>
+                  ) : null}
+                  {x.approvedBy ? <div className="admin-dash-table__muted">OK: {x.approvedBy}</div> : null}
+                </div>
+                <div>
+                  {x.approvalStatus === "pending_approval" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="admin-m-btn-pri"
+                        disabled={Boolean(busyId)}
+                        onClick={() => void approveRow(x.id)}
+                      >
+                        {busyId === x.id ? "…" : "Freigeben"}
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="admin-m-btn-gh"
+                        disabled={Boolean(busyId)}
+                        onClick={() => void rejectRow(x.id)}
+                      >
+                        Ablehnen
+                      </button>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </div>
               </div>
             ))}
             {!loading && items.length === 0 ? (

@@ -1552,6 +1552,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financial_adjustments' AND column_name = 'approval_status'
+  ) THEN
+    errs := array_append(errs, 'ride_financial_adjustments.approval_status (Migration 135)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'provision_amount'
   ) THEN
     errs := array_append(errs, 'rides.provision_amount (Migration 113)');

@@ -48,8 +48,9 @@ import { isFarFutureReservation } from "../lib/dispatchStatus";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
 import * as schemaNs from "./schema";
-import { adminCompaniesTable, rideEventsTable, rideFinancialAdjustmentsTable, ridesTable } from "./schema";
+import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
 import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
+import { rideFinancialAdjustmentEffectiveAtExpr } from "./rideFinancialAdjustmentsData";
 import {
   getPanelCompanyCommissionRate,
   normalizePanelSettlementYear,
@@ -1379,7 +1380,7 @@ export async function getPanelCompanyOverviewMetrics(
   const weekRollingStart = sql`(now() - interval '7 days')`;
   const thirtyRollingStart = sql`(now() - interval '30 days')`;
   const settlementAt = panelSettlementRideCompletedAtExpr();
-  const adjAt = rideFinancialAdjustmentsTable.created_at;
+  const adjAt = rideFinancialAdjustmentEffectiveAtExpr();
 
   const [
     today,
