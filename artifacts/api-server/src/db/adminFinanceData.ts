@@ -480,6 +480,8 @@ export type InvoiceAdminListFilters = {
   invoicePrefix?: string;
   /** Bankmatching / Suche: Rechnungsnummer oder Verwendungszweck (Teilstring). */
   invoiceNumber?: string;
+  /** z. B. cash_card_netting_weekly_commission — Filter auf metadata_json.source */
+  metadataSource?: string;
 };
 
 function appendInvoiceWorkflowFilter(cond: SQL[], filter: InvoiceWorkflowFilter | undefined): void {
@@ -547,6 +549,11 @@ export function buildInvoiceAdminWhere(filters: InvoiceAdminListFilters): SQL[] 
   if (filters.invoiceNumber?.trim()) {
     const q = `%${filters.invoiceNumber.trim().replace(/%/g, "\\%")}%`;
     cond.push(sql`${invoicesTable.invoice_number} ilike ${q}`);
+  }
+  if (filters.metadataSource?.trim()) {
+    cond.push(
+      sql`coalesce(${invoicesTable.metadata_json}->>'source', '') = ${filters.metadataSource.trim()}`,
+    );
   }
   return cond;
 }
@@ -702,12 +709,23 @@ export async function findInvoiceAdmin(invoiceId: string) {
   };
 }
 
-export async function countSettlementsAdmin(filters: { companyId?: string; status?: string }): Promise<number> {
+export async function countSettlementsAdmin(filters: {
+  companyId?: string;
+  status?: string;
+  direction?: string;
+  hasCommissionInvoice?: boolean;
+}): Promise<number> {
   const db = getDb();
   if (!db) return 0;
   const cond: SQL[] = [];
   if (filters.companyId?.trim()) cond.push(eq(settlementsTable.company_id, filters.companyId.trim()));
   if (filters.status?.trim()) cond.push(eq(settlementsTable.status, filters.status.trim()));
+  if (filters.direction?.trim()) cond.push(eq(settlementsTable.direction, filters.direction.trim()));
+  if (filters.hasCommissionInvoice === true) {
+    cond.push(sql`${settlementsTable.commission_invoice_id} is not null`);
+  } else if (filters.hasCommissionInvoice === false) {
+    cond.push(sql`${settlementsTable.commission_invoice_id} is null`);
+  }
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(settlementsTable)
@@ -716,7 +734,12 @@ export async function countSettlementsAdmin(filters: { companyId?: string; statu
 }
 
 export async function listSettlementsAdmin(args: {
-  filters: { companyId?: string; status?: string };
+  filters: {
+    companyId?: string;
+    status?: string;
+    direction?: string;
+    hasCommissionInvoice?: boolean;
+  };
   limit: number;
   offset: number;
 }) {
@@ -725,6 +748,12 @@ export async function listSettlementsAdmin(args: {
   const cond: SQL[] = [];
   if (args.filters.companyId?.trim()) cond.push(eq(settlementsTable.company_id, args.filters.companyId.trim()));
   if (args.filters.status?.trim()) cond.push(eq(settlementsTable.status, args.filters.status.trim()));
+  if (args.filters.direction?.trim()) cond.push(eq(settlementsTable.direction, args.filters.direction.trim()));
+  if (args.filters.hasCommissionInvoice === true) {
+    cond.push(sql`${settlementsTable.commission_invoice_id} is not null`);
+  } else if (args.filters.hasCommissionInvoice === false) {
+    cond.push(sql`${settlementsTable.commission_invoice_id} is null`);
+  }
   const rows = await db
     .select()
     .from(settlementsTable)

@@ -1392,6 +1392,7 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       companyCode: q.company_code,
       invoicePrefix: q.invoice_prefix,
       invoiceNumber: refSearch || undefined,
+      metadataSource: (q.metadata_source ?? "").trim() || undefined,
     };
     const { page, pageSize, offset } = parsePagination(req);
     const [total, items] = await Promise.all([
@@ -1442,6 +1443,7 @@ adminJson.get("/finance/invoices/export", async (req, res, next) => {
       companyCode: q.company_code,
       invoicePrefix: q.invoice_prefix,
       invoiceNumber: (q.invoice_number ?? "").trim() || undefined,
+      metadataSource: (q.metadata_source ?? "").trim() || undefined,
     });
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="onroda-rechnungen.csv"');
@@ -1783,9 +1785,13 @@ adminJson.get("/finance/settlements", async (req, res, next) => {
       return;
     }
     const q = req.query as Record<string, string | undefined>;
+    const hasInvRaw = (q.has_commission_invoice ?? "").trim().toLowerCase();
     const filters = {
       companyId: q.company_id,
       status: q.status,
+      direction: q.direction,
+      hasCommissionInvoice:
+        hasInvRaw === "1" || hasInvRaw === "true" ? true : hasInvRaw === "0" || hasInvRaw === "false" ? false : undefined,
     };
     const { page, pageSize, offset } = parsePagination(req);
     const [total, items] = await Promise.all([

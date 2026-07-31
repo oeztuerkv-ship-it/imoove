@@ -25,6 +25,7 @@ import {
   weeklyCommissionIdempotencyKey,
 } from "../lib/taxiNettingWeeklyPeriod";
 import { logger } from "../lib/logger";
+import { WEEKLY_COMMISSION_INVOICE_SOURCE } from "./panelInvoicesData";
 
 type ExecDb = NonNullable<ReturnType<typeof getDb>>;
 
@@ -260,7 +261,7 @@ export async function runTaxiNettingWeeklyCommissionRun(input: {
               allowDuplicatePeriod: true,
               notes: `Provisionsnachzahlung Taxi-Netting Kalenderwoche ${periodStart}–${periodEnd} (Negativsaldo).`,
               metadataExtra: {
-                source: "cash_card_netting_weekly_commission",
+                source: WEEKLY_COMMISSION_INVOICE_SOURCE,
                 settlement_direction: direction,
                 netting_payout_amount: payoutAmount,
                 period_start: periodStart,

@@ -32,6 +32,7 @@ import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinancePayoutLinesPage from "./pages/FinancePayoutLinesPage.jsx";
 import FinanceCreditsPage from "./pages/FinanceCreditsPage.jsx";
 import FailedPaymentsPage from "./pages/FailedPaymentsPage.jsx";
+import FinanceSettlementsPage from "./pages/FinanceSettlementsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceKrankenInvoicesPage from "./pages/FinanceKrankenInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
@@ -125,8 +126,7 @@ const PAGE_META = {
   },
   "billing-cycles": {
     title: "Wochen- / Monatsabrechnung",
-    subtitle: "Sammelabrechnung je Mandant oder Kostenträger.",
-    placeholder: true,
+    subtitle: "Taxi-Wochenlauf, Settlements und Provisionsforderungen (Negativsaldo).",
   },
   "billing-hotel": {
     title: "Abrechnung Hotel",
@@ -413,6 +413,8 @@ export default function App() {
   const [panelUsersSeedCompanyId, setPanelUsersSeedCompanyId] = useState(null);
   /** Nach Zurück von der Zentrale: Zeile in der Mandantenliste für Voll-Workspace (`CompanyWorkspaceForm`) aufklappen. */
   const [companiesExpandWorkspaceCompanyId, setCompaniesExpandWorkspaceCompanyId] = useState(null);
+  /** Deep-Link von Settlements → Invoice-Detail / Provisionsfilter. */
+  const [financeInvoiceFocus, setFinanceInvoiceFocus] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [narrowNav, setNarrowNav] = useState(false);
   /** Verhindert pushState-Schleife nach popstate / initialem Hash-Lesen */
@@ -937,8 +939,25 @@ export default function App() {
             }}
           />
         );
+      case "billing-cycles":
+        return (
+          <FinanceSettlementsPage
+            onOpenInvoice={(invoiceId, opts) => {
+              setFinanceInvoiceFocus({
+                invoiceId: invoiceId || null,
+                metadataSource: opts?.metadataSource || null,
+              });
+              setActive("finance-invoices");
+            }}
+          />
+        );
       case "finance-invoices":
-        return <FinanceInvoicesPage />;
+        return (
+          <FinanceInvoicesPage
+            initialFocus={financeInvoiceFocus}
+            onConsumeInitialFocus={() => setFinanceInvoiceFocus(null)}
+          />
+        );
       case "finance-kranken-invoices":
         return <FinanceKrankenInvoicesPage />;
       case "finance-audit":

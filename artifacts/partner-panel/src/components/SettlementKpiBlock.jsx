@@ -87,7 +87,11 @@ export function readSettlementPeriod(metrics, periodKey, weekMode = "rolling") {
  *   initialPeriod?: SettlementUiPeriodKey;
  *   selectedYear?: number;
  *   onYearChange?: (year: number) => void;
- *   onNavigateFinanzen?: (opts: { billingMonth: string }) => void;
+ *   onNavigateFinanzen?: (opts: {
+ *     billingMonth?: string;
+ *     tab?: string;
+ *     invoiceId?: string;
+ *   }) => void;
  * }} props
  */
 export function SettlementKpiPeriodPanel({
@@ -290,6 +294,40 @@ export function SettlementKpiPeriodPanel({
 
       <p className="panel-settlement-panel__scope">{scopeHint}</p>
       {commissionHint ? <p className="panel-settlement-panel__commission">{commissionHint}</p> : null}
+
+      {metrics?.openCommissionDebt && typeof metrics.openCommissionDebt === "object" ? (
+        <div className="panel-settlement-debt-banner" role="status">
+          <p className="panel-settlement-debt-banner__title">
+            Sie schulden ONRODA: {formatMoney(Number(metrics.openCommissionDebt.totalGross ?? 0))}
+          </p>
+          <p className="panel-settlement-debt-banner__meta">
+            Rechnung {String(metrics.openCommissionDebt.invoiceNumber ?? "—")}
+            {metrics.openCommissionDebt.dueDate
+              ? ` · fällig ${String(metrics.openCommissionDebt.dueDate).slice(0, 10)}`
+              : ""}
+            {Number(metrics.openCommissionDebt.openCount) > 1
+              ? ` · ${Number(metrics.openCommissionDebt.openCount)} offene Provisionsrechnungen`
+              : ""}
+            {metrics.openCommissionDebt.statusLabelDe
+              ? ` · ${String(metrics.openCommissionDebt.statusLabelDe)}`
+              : ""}
+          </p>
+          {typeof onNavigateFinanzen === "function" && metrics.openCommissionDebt.invoiceId ? (
+            <button
+              type="button"
+              className="partner-btn-secondary partner-btn-secondary--sm"
+              onClick={() =>
+                onNavigateFinanzen({
+                  tab: "invoices",
+                  invoiceId: String(metrics.openCommissionDebt.invoiceId),
+                })
+              }
+            >
+              Offene Rechnung anzeigen →
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="panel-kpi-grid panel-kpi-grid--tier1">
         <Card

@@ -86,7 +86,7 @@ function timelineKindClass(kind) {
   return "";
 }
 
-export default function FinanceInvoicesPage() {
+export default function FinanceInvoicesPage({ initialFocus = null, onConsumeInitialFocus }) {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -107,6 +107,7 @@ export default function FinanceInvoicesPage() {
   const [companyCode, setCompanyCode] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("");
   const [bankReference, setBankReference] = useState("");
+  const [metadataSource, setMetadataSource] = useState("");
 
   const [monthlyRunOpen, setMonthlyRunOpen] = useState(false);
   const [monthlyPeriodStart, setMonthlyPeriodStart] = useState(() => defaultPreviousMonthPeriod().periodStart);
@@ -140,6 +141,7 @@ export default function FinanceInvoicesPage() {
       if (companyCode.trim()) q.set("company_code", companyCode.trim());
       if (invoicePrefix.trim()) q.set("invoice_prefix", invoicePrefix.trim());
       if (bankReference.trim()) q.set("invoice_number", bankReference.trim());
+      if (metadataSource.trim()) q.set("metadata_source", metadataSource.trim());
       const res = await fetch(`${LIST_URL}?${q.toString()}`, { headers: adminApiHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -153,7 +155,7 @@ export default function FinanceInvoicesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, workflowFilter, companyId, companyCode, invoicePrefix, bankReference]);
+  }, [page, workflowFilter, companyId, companyCode, invoicePrefix, bankReference, metadataSource]);
 
   useEffect(() => {
     void loadKpis();
@@ -162,6 +164,20 @@ export default function FinanceInvoicesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!initialFocus || typeof initialFocus !== "object") return;
+    if (typeof initialFocus.metadataSource === "string" && initialFocus.metadataSource) {
+      setMetadataSource(initialFocus.metadataSource);
+      setPage(1);
+    }
+    if (typeof initialFocus.invoiceId === "string" && initialFocus.invoiceId.trim()) {
+      void openDetail(initialFocus.invoiceId.trim());
+    }
+    if (typeof onConsumeInitialFocus === "function") onConsumeInitialFocus();
+    // openDetail is stable enough for mount/deep-link; avoid re-running on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFocus]);
 
   async function openDetail(id) {
     setDetailLoading(true);
@@ -210,6 +226,7 @@ export default function FinanceInvoicesPage() {
     if (companyId.trim()) q.set("company_id", companyId.trim());
     if (companyCode.trim()) q.set("company_code", companyCode.trim());
     if (invoicePrefix.trim()) q.set("invoice_prefix", invoicePrefix.trim());
+    if (metadataSource.trim()) q.set("metadata_source", metadataSource.trim());
     try {
       const res = await fetch(`${EXPORT_URL}?${q.toString()}`, { headers: adminApiHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -645,6 +662,18 @@ export default function FinanceInvoicesPage() {
             }}
             style={{ minWidth: 90 }}
           />
+          <select
+            className="admin-input"
+            value={metadataSource}
+            onChange={(e) => {
+              setMetadataSource(e.target.value);
+              setPage(1);
+            }}
+            title="Rechnungsquelle"
+          >
+            <option value="">Alle Quellen</option>
+            <option value="cash_card_netting_weekly_commission">Wochen-Provision (Netting)</option>
+          </select>
           <button type="button" className="admin-btn-refresh" onClick={() => void load()} disabled={loading}>
             {loading ? "Lade …" : "Aktualisieren"}
           </button>

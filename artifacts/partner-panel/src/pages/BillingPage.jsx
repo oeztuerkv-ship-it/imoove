@@ -19,6 +19,7 @@ export default function BillingPage({ billingIntent = null, onConsumeBillingInte
   const showCodes = hasPanelModule(user?.panelModules, "access_codes");
 
   const [tab, setTab] = useState("overview");
+  const [focusInvoiceId, setFocusInvoiceId] = useState(null);
   const [payoutNotice, setPayoutNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [kpiLoading, setKpiLoading] = useState(false);
@@ -97,9 +98,17 @@ export default function BillingPage({ billingIntent = null, onConsumeBillingInte
   }, [tab]);
 
   useEffect(() => {
-    if (!billingIntent?.month || typeof billingIntent.month !== "string") return;
-    setMonth(billingIntent.month);
-    setTab("export");
+    if (!billingIntent || typeof billingIntent !== "object") return;
+    if (typeof billingIntent.month === "string") setMonth(billingIntent.month);
+    if (typeof billingIntent.tab === "string" && billingIntent.tab) {
+      setTab(billingIntent.tab);
+    } else if (typeof billingIntent.month === "string") {
+      setTab("export");
+    }
+    if (typeof billingIntent.invoiceId === "string" && billingIntent.invoiceId) {
+      setFocusInvoiceId(billingIntent.invoiceId);
+      if (!billingIntent.tab) setTab("invoices");
+    }
     if (typeof onConsumeBillingIntent === "function") onConsumeBillingIntent();
   }, [billingIntent, onConsumeBillingIntent]);
 
@@ -233,7 +242,15 @@ export default function BillingPage({ billingIntent = null, onConsumeBillingInte
       {tab === "overview" ? (
         <FinanceOverviewTab kpiLoading={kpiLoading} kpiMonthLabel={kpiMonthLabel} kpi={kpi} onRefreshKpi={() => void loadKpiSnapshot()} />
       ) : null}
-      {tab === "invoices" ? <FinanceInvoicesTab rides={rides} loading={loading} /> : null}
+      {tab === "invoices" ? (
+        <FinanceInvoicesTab
+          rides={rides}
+          loading={loading}
+          token={token}
+          focusInvoiceId={focusInvoiceId}
+          onConsumeFocus={() => setFocusInvoiceId(null)}
+        />
+      ) : null}
       {tab === "payouts" ? (
         <FinancePayoutsTab
           rides={rides}

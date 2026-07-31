@@ -40,12 +40,13 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 
 ## UI
 
-- Partner-Dashboard: negativ → Label „Sie schulden ONRODA“
+- Partner-Dashboard: negativ → Label „Sie schulden ONRODA“; bei offener Provisionsrechnung Banner + Link Finanzen → Rechnungen (`openCommissionDebt` in Overview-Metrics)
 - Partner-Drill: Badge Fahrt / Storno / No-Show; KPI-Zeile „Storno / No-Show (Gebühr)“
 - Partner-Drill + KPIs: **Trinkgeld** (100 % Fahrer) und **Stripe-Gebühr** (zu Lasten ONRODA) pro Zeile bzw. Summe
 - Partner-Drill + KPIs: **Korrekturen** (Refund/Chargeback) als gelabelte Zeilen; Summen im Saldo bereits eingerechnet
 - Admin Auszahlungsliste: Negativ rot, kein „Ausgezahlt“-Button; nur Taxi + ohne KK-Link
 - Admin: `GET/POST /api/admin/finance/adjustments` — Ledger-Liste + manuelle Gutschrift/Belastung (Admin „Gutschriften“)
+- Admin: **Wochen- / Monatsabrechnung** (`billing-cycles`) — Settlements-Liste (Richtung, `commission_invoice_id`), Wochenlauf-UI, Deep-Link Invoices; Filter `metadata_source=cash_card_netting_weekly_commission`; mark-paid / Reminder am bestehenden Invoice-Workflow
 
 ## Korrektur-Ledger (`ride_financial_adjustments`, Migration 134+)
 
@@ -69,7 +70,8 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 - Settlement-Create (Fahrten-Zuordnung) setzt Richtung + rechnet freigegebene Adjustments der Periode in `adjustments` / `payout_amount` ein.
 - Wochenlauf: `POST /api/admin/finance/settlements/weekly-commission-run` (`dryRun` Standard `true`) — Taxi-Mandanten, Default letzte Kalenderwoche Mo–So Berlin; Negativ → `invoices`/`invoice_items` (`source=cash_card_netting_weekly_commission`), Zahlungsziel 14 Tage; Verknüpfung `settlements.commission_invoice_id`.
 - Positiv: Settlement ohne Auto-Rechnung (Auszahlung weiter nur bei positivem Saldo, Phase A).
-- Partner-Link offene Rechnung + Admin-Tracking-UI: P6 #3/#4 (folgt).
+- Partner (#3): Overview `openCommissionDebt` → Banner + Finanzen/Rechnungen mit Fokus-Invoice-ID.
+- Admin (#4): Settlements-UI unter `billing-cycles`; Invoice-Filter `metadata_source`; Forderung trackbar via bestehendem mark-paid / Reminder.
 
 ## Roadmap Nachvollziehbarkeit
 
@@ -79,4 +81,4 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 4. ~~Korrektur-Ledger Storno/Refund/Chargeback~~ (P2)
 5. ~~Admin-Gutschriften~~ (P5)
 5a. ~~Vier-Augen ab 100 €~~ (P5.1)
-6. Phase B — Kern Richtung + Wochen-Provisionsrechnung (P6 #1+#2); Partner-Link / Admin-UI (#3+#4) offen
+6. ~~Phase B — Richtung + Wochen-Provisionsrechnung + Partner-Link + Admin-Tracking (P6)~~

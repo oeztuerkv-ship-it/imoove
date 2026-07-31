@@ -62,6 +62,10 @@ import {
   type PanelFinancialSettlementWindow,
   type PanelPaymentPeriodStats,
 } from "./panelOverviewSettlementData";
+import {
+  getOpenCommissionDebtForCompany,
+  type OpenCommissionDebtSummary,
+} from "./panelInvoicesData";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
@@ -1206,6 +1210,11 @@ export type PanelCompanyOverviewMetrics = {
     avgDistanceKm: number | null;
     completedWithAccessCode: number;
   };
+  /**
+   * Offene Provisionsnachzahlung aus Wochen-Netting (P6).
+   * Nur taxi_betrieb; sonst null.
+   */
+  openCommissionDebt: OpenCommissionDebtSummary | null;
 };
 
 function monthWindowBerlin(companyId: string): SQL {
@@ -1332,6 +1341,7 @@ export async function getPanelCompanyOverviewMetrics(
         avgDistanceKm: avgKm,
         completedWithAccessCode,
       },
+      openCommissionDebt: null,
     };
   }
 
@@ -1395,6 +1405,7 @@ export async function getPanelCompanyOverviewMetrics(
     stToday,
     stTomorrow,
     qualRow,
+    openCommissionDebt,
   ] = await Promise.all([
     buildPeriodSlice(
       and(gte(settlementAt, berlinTodayStart), lt(settlementAt, berlinTodayEnd)),
@@ -1464,6 +1475,7 @@ export async function getPanelCompanyOverviewMetrics(
       .from(ridesTable)
       .where(and(monthWindowBerlin(companyId), eq(ridesTable.status, "completed")))
       .then(([row]) => row),
+    presentation === "taxi_betrieb" ? getOpenCommissionDebtForCompany(companyId) : Promise.resolve(null),
   ]);
 
   const compN = Number(compDec?.n ?? 0);
@@ -1504,6 +1516,7 @@ export async function getPanelCompanyOverviewMetrics(
       avgDistanceKm,
       completedWithAccessCode: Number(qualRow?.withCode ?? 0),
     },
+    openCommissionDebt,
   };
 }
 

@@ -137,8 +137,12 @@ function TaxiEntrepreneurShellInner({ user, company, onLogout }) {
   const navigateTaxiModule = useCallback(
     (key, opts) => {
       if (opts && typeof opts.settingsTab === "string") setSettingsTabIntent(opts.settingsTab);
-      if (opts && typeof opts.billingMonth === "string") {
-        setBillingIntent({ month: opts.billingMonth });
+      if (opts && (typeof opts.billingMonth === "string" || typeof opts.invoiceId === "string" || typeof opts.tab === "string")) {
+        setBillingIntent({
+          ...(typeof opts.billingMonth === "string" ? { month: opts.billingMonth } : {}),
+          ...(typeof opts.tab === "string" ? { tab: opts.tab } : {}),
+          ...(typeof opts.invoiceId === "string" ? { invoiceId: opts.invoiceId } : {}),
+        });
       }
       setActiveTaxiModule(key);
       pushPartnerPanelModuleHistory(key, { paramName: "taxiModule", omitWhen: "dashboard" });

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, notInArray, sql } from "drizzle-orm";
 import { resolveInvoicePaymentReference } from "../lib/invoicePaymentReference.js";
 import {
   buildPartnerPaymentUi,
@@ -10,6 +10,21 @@ import {
 import { getDb } from "./client";
 import { getPanelCompanyById } from "./panelCompanyData";
 import { invoiceItemsTable, invoicesTable } from "./schema";
+
+/** Metadata `source` aus dem Wochenlauf (P6) — Provisionsnachzahlung bei Negativsaldo. */
+export const WEEKLY_COMMISSION_INVOICE_SOURCE = "cash_card_netting_weekly_commission";
+
+export type OpenCommissionDebtSummary = {
+  invoiceId: string;
+  invoiceNumber: string;
+  totalGross: number;
+  dueDate: string | null;
+  status: string;
+  workflowStatus: InvoiceWorkflowStatus;
+  statusLabelDe: string;
+  /** Anzahl offener Provisionsrechnungen (inkl. dieser). */
+  openCount: number;
+};
 
 /** @deprecated Alias — nutze InvoiceWorkflowStatus. */
 export type PanelInvoicePaymentStatus = InvoiceWorkflowStatus | "open" | "partial";
@@ -34,6 +49,8 @@ export type PanelInvoiceSummary = {
   paymentReference: string;
   statusLabelDe: string;
   paymentUi: PartnerPaymentUi;
+  /** z. B. cash_card_netting_weekly_commission */
+  metadataSource: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -102,6 +119,8 @@ function mapSummary(row: typeof invoicesTable.$inferSelect, itemCount: number): 
     storedReference: row.payment_reference,
   });
   const dueDate = row.due_date ? String(row.due_date) : null;
+  const meta = row.metadata_json && typeof row.metadata_json === "object" ? row.metadata_json : {};
+  const metadataSource = typeof meta.source === "string" && meta.source.trim() ? meta.source.trim() : null;
   return {
     id: row.id,
     invoiceNumber: row.invoice_number,
@@ -127,6 +146,7 @@ function mapSummary(row: typeof invoicesTable.$inferSelect, itemCount: number): 
       dueDate,
       paymentReference,
     }),
+    metadataSource,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
   };
@@ -151,6 +171,45 @@ export async function listPanelInvoicesForCompany(companyId: string): Promise<Pa
     .groupBy(invoicesTable.id)
     .orderBy(desc(invoicesTable.created_at));
   return rows.map((r) => mapSummary(r.invoice, Number(r.itemCount ?? 0)));
+}
+
+/**
+ * Offene Provisionsnachzahlung aus dem Taxi-Wochen-Netting (Partner-Dashboard-Link).
+ * Älteste offene Rechnung zuerst (Zahlungsziel / Nachverfolgung).
+ */
+export async function getOpenCommissionDebtForCompany(
+  companyId: string,
+): Promise<OpenCommissionDebtSummary | null> {
+  const db = getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(invoicesTable)
+    .where(
+      and(
+        eq(invoicesTable.company_id, companyId),
+        sql`coalesce(${invoicesTable.metadata_json}->>'source', '') = ${WEEKLY_COMMISSION_INVOICE_SOURCE}`,
+        notInArray(invoicesTable.status, ["paid", "cancelled"]),
+        ne(invoicesTable.status, "draft"),
+      ),
+    )
+    .orderBy(asc(invoicesTable.due_date), asc(invoicesTable.created_at));
+  if (rows.length === 0) return null;
+  const row = rows[0]!;
+  const workflowStatus = resolveInvoiceWorkflowStatus({
+    status: row.status,
+    due_date: row.due_date,
+  });
+  return {
+    invoiceId: row.id,
+    invoiceNumber: row.invoice_number,
+    totalGross: Number(row.total_gross),
+    dueDate: row.due_date ? String(row.due_date) : null,
+    status: row.status,
+    workflowStatus,
+    statusLabelDe: workflowStatusLabelDe(workflowStatus),
+    openCount: rows.length,
+  };
 }
 
 export async function getPanelInvoiceForCompany(

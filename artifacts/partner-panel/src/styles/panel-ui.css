@@ -3427,6 +3427,34 @@
   font-size: 0.88rem;
 }
 
+.panel-settlement-debt-banner {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+}
+
+.panel-settlement-debt-banner__title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #9a3412;
+}
+
+.panel-settlement-debt-banner__meta {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #9a3412;
+  line-height: 1.4;
+}
+
+.partner-table__row--focus {
+  outline: 2px solid #0d9488;
+  outline-offset: -2px;
+  background: #f0fdfa;
+}
+
 .panel-settlement-finance-link__hint {
   color: #78716c;
   font-size: 0.82rem;
