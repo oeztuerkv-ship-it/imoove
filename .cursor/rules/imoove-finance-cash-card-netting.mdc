@@ -63,6 +63,14 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 - Nachvollziehbarkeits-Anker zur Ursprungsfahrt: **`ride_financial_adjustments.ride_id`** (FK auf `rides`). Kein separates `origin_ride_id`-Feld nötig.
 - Pending (Vier-Augen) zählen **nicht** in Partner-/Settlement-Salden, bis `approval_status = approved`.
 
+## Phase B — Schuldrichtung + Provisionsrechnung (P6-Kern)
+
+- `settlements.direction`: `platform_pays_partner` wenn `payout_amount > 0`, sonst `partner_pays_platform` (Negativsaldo). Ableitung: `settlementDirection.ts`.
+- Settlement-Create (Fahrten-Zuordnung) setzt Richtung + rechnet freigegebene Adjustments der Periode in `adjustments` / `payout_amount` ein.
+- Wochenlauf: `POST /api/admin/finance/settlements/weekly-commission-run` (`dryRun` Standard `true`) — Taxi-Mandanten, Default letzte Kalenderwoche Mo–So Berlin; Negativ → `invoices`/`invoice_items` (`source=cash_card_netting_weekly_commission`), Zahlungsziel 14 Tage; Verknüpfung `settlements.commission_invoice_id`.
+- Positiv: Settlement ohne Auto-Rechnung (Auszahlung weiter nur bei positivem Saldo, Phase A).
+- Partner-Link offene Rechnung + Admin-Tracking-UI: P6 #3/#4 (folgt).
+
 ## Roadmap Nachvollziehbarkeit
 
 1. ~~Medical/KK-Ausschluss (an echte KK-Rechnung gekoppelt) + Taxi-Scope härten~~ (P1)
@@ -70,5 +78,5 @@ Partner-UI Settlement nur bei Taxi; API `settlement-rides` / Export PDF: `taxi_o
 3. ~~Partner-Drill Tip + Stripe~~ (P4)
 4. ~~Korrektur-Ledger Storno/Refund/Chargeback~~ (P2)
 5. ~~Admin-Gutschriften~~ (P5)
-5a. Vier-Augen ab 100 € (P5.1)
-6. Phase B Schuldrichtung + Provisionsrechnung (P6)
+5a. ~~Vier-Augen ab 100 €~~ (P5.1)
+6. Phase B — Kern Richtung + Wochen-Provisionsrechnung (P6 #1+#2); Partner-Link / Admin-UI (#3+#4) offen

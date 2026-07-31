@@ -12,6 +12,9 @@ import {
   companyIsCashCardNettingEligible,
   rideHasLinkedKrankenInvoice,
 } from "../lib/cashCardNettingScope";
+import { deriveSettlementDirection, roundSettlementMoney } from "../lib/settlementDirection";
+import { buildPanelAdjustmentEffectiveAtDateRangeFilter } from "./panelOverviewSettlementData";
+import { sumAdjustmentsForCompany } from "./rideFinancialAdjustmentsData";
 
 type ExecDb = NonNullable<ReturnType<typeof getDb>>;
 
@@ -48,7 +51,7 @@ export async function adminCreateSettlementWithRideAllocations(input: {
   idempotencyKey?: string | null;
   actorLabel: string;
 }): Promise<
-  | { ok: true; settlementId: string; idempotent?: boolean }
+  | { ok: true; settlementId: string; idempotent?: boolean; direction?: string; payoutAmount?: number }
   | { ok: false; error: string; conflictSettlementId?: string }
 > {
   const db = getDb();
@@ -152,6 +155,7 @@ export async function adminCreateSettlementWithRideAllocations(input: {
         platform_commission: 0,
         adjustments: 0,
         payout_amount: 0,
+        direction: "platform_pays_partner",
         status: "draft",
         payment_reference: "",
         ...(keyFiltered ? { idempotency_key: keyFiltered } : {}),
@@ -183,12 +187,20 @@ export async function adminCreateSettlementWithRideAllocations(input: {
           .where(eq(rideFinancialsTable.id, rf.id));
       }
 
+      const adjFilter = buildPanelAdjustmentEffectiveAtDateRangeFilter(periodStart, periodEnd);
+      const adj = await sumAdjustmentsForCompany(companyId, adjFilter);
+      const payoutAmount = roundSettlementMoney(sumPay + adj.operatorPayoutDelta);
+      const adjustments = roundSettlementMoney(adj.operatorPayoutDelta);
+      const direction = deriveSettlementDirection(payoutAmount);
+
       await tx
         .update(settlementsTable)
         .set({
-          gross_revenue: Math.round(sumGross * 100) / 100,
-          platform_commission: Math.round(sumComm * 100) / 100,
-          payout_amount: Math.round(sumPay * 100) / 100,
+          gross_revenue: roundSettlementMoney(sumGross + adj.grossDelta),
+          platform_commission: roundSettlementMoney(sumComm + adj.commissionDelta),
+          adjustments,
+          payout_amount: payoutAmount,
+          direction,
           updated_at: new Date(),
         })
         .where(eq(settlementsTable.id, settlementId));
@@ -201,13 +213,16 @@ export async function adminCreateSettlementWithRideAllocations(input: {
           companyId,
           rideCount: rideIds.length,
           gross: sumGross,
+          adjustments,
+          payoutAmount,
+          direction,
           idempotencyKey: keyFiltered || null,
         },
         actorType: "admin",
         actorId: input.actorLabel,
       });
 
-      return { ok: true as const, settlementId };
+      return { ok: true as const, settlementId, direction, payoutAmount };
     });
   } catch (e: unknown) {
     const err = e as Error & { code?: string };

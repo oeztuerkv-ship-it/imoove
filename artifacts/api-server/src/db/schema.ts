@@ -1092,6 +1092,12 @@ export const settlementsTable = pgTable("settlements", {
   platform_commission: doublePrecision("platform_commission").notNull().default(0),
   adjustments: doublePrecision("adjustments").notNull().default(0),
   payout_amount: doublePrecision("payout_amount").notNull().default(0),
+  /**
+   * platform_pays_partner | partner_pays_platform — aus Vorzeichen von payout_amount.
+   */
+  direction: text("direction").notNull().default("platform_pays_partner"),
+  /** Bei Negativsaldo: verknüpfte Provisionsrechnung. */
+  commission_invoice_id: text("commission_invoice_id"),
   status: text("status").notNull().default("draft"),
   paid_at: timestamp("paid_at", { withTimezone: true }),
   payment_reference: text("payment_reference").notNull().default(""),

@@ -1559,6 +1559,20 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'settlements' AND column_name = 'direction'
+  ) THEN
+    errs := array_append(errs, 'settlements.direction (Migration 136)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'settlements' AND column_name = 'commission_invoice_id'
+  ) THEN
+    errs := array_append(errs, 'settlements.commission_invoice_id (Migration 136)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'provision_amount'
   ) THEN
     errs := array_append(errs, 'rides.provision_amount (Migration 113)');

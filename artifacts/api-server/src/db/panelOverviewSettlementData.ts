@@ -425,6 +425,45 @@ export function panelSettlementRideCompletedAtExpr(): SQL {
   return sql`coalesce(${ridesTable.completed_at}, ${ridesTable.created_at})`;
 }
 
+/**
+ * Absolutes Berlin-Datumsfenster [periodStart, periodEnd] inklusiv (Tage).
+ * Ende = Mitternacht des Folgetags von periodEnd.
+ */
+export function buildPanelSettlementCompletedAtDateRangeFilter(
+  periodStartIso: string,
+  periodEndInclusiveIso: string,
+): SQL {
+  const settlementAt = panelSettlementRideCompletedAtExpr();
+  const [ys, ms, ds] = periodStartIso.split("-").map((x) => Number(x));
+  const endExclusive = (() => {
+    const d = new Date(`${periodEndInclusiveIso}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
+  const [ye, me, de] = endExclusive.split("-").map((x) => Number(x));
+  const startTs = sql`(make_timestamptz(${ys}, ${ms}, ${ds}, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const endTs = sql`(make_timestamptz(${ye}, ${me}, ${de}, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  return and(gte(settlementAt, startTs), lt(settlementAt, endTs)) as SQL;
+}
+
+/** Korrekturen: gleiche Datumsgrenzen auf coalesce(approved_at, created_at). */
+export function buildPanelAdjustmentEffectiveAtDateRangeFilter(
+  periodStartIso: string,
+  periodEndInclusiveIso: string,
+): SQL {
+  const effectiveAt = rideFinancialAdjustmentEffectiveAtExpr();
+  const [ys, ms, ds] = periodStartIso.split("-").map((x) => Number(x));
+  const endExclusive = (() => {
+    const d = new Date(`${periodEndInclusiveIso}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
+  const [ye, me, de] = endExclusive.split("-").map((x) => Number(x));
+  const startTs = sql`(make_timestamptz(${ys}, ${ms}, ${ds}, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  const endTs = sql`(make_timestamptz(${ye}, ${me}, ${de}, 0, 0, 0, 'Europe/Berlin') AT TIME ZONE 'Europe/Berlin')`;
+  return and(gte(effectiveAt, startTs), lt(effectiveAt, endTs)) as SQL;
+}
+
 export function buildPanelSettlementCompletedAtFilter(
   query: PanelSettlementPeriodQuery,
   now = new Date(),

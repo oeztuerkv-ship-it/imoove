@@ -56,6 +56,8 @@ import {
   adminCreateSettlementWithRideAllocations,
   adminRecordSettlementPayoutAttempt,
 } from "../db/financeSettlementsData";
+import { runTaxiNettingWeeklyCommissionRun } from "../db/taxiNettingWeeklyCommissionRunData";
+import { berlinCalendarWeekPeriod } from "../lib/taxiNettingWeeklyPeriod";
 import {
   adminMarkInvoicePaid,
   adminRevertInvoicePayment,
@@ -1847,7 +1849,60 @@ adminJson.post("/finance/settlements/create", async (req, res, next) => {
       res.status(status).json({ error: code, conflictSettlementId: out.conflictSettlementId });
       return;
     }
-    res.json({ ok: true, settlementId: out.settlementId, idempotent: out.idempotent === true });
+    res.json({
+      ok: true,
+      settlementId: out.settlementId,
+      idempotent: out.idempotent === true,
+      direction: out.direction ?? null,
+      payoutAmount: out.payoutAmount ?? null,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Phase B: Wochenlauf Taxi-Netting — Settlement mit Richtung;
+ * Negativsaldo → Provisionsrechnung (invoices, 14 Tage Zahlungsziel).
+ * Default-Periode: letzte abgeschlossene Kalenderwoche (Mo–So Berlin).
+ * dryRun Standard true.
+ */
+adminJson.post("/finance/settlements/weekly-commission-run", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = (req.body ?? {}) as {
+      periodStart?: unknown;
+      periodEnd?: unknown;
+      dryRun?: unknown;
+      weeksAgo?: unknown;
+    };
+    const dryRun = body.dryRun !== false;
+    let periodStart = typeof body.periodStart === "string" ? body.periodStart.trim() : "";
+    let periodEnd = typeof body.periodEnd === "string" ? body.periodEnd.trim() : "";
+    if (!periodStart || !periodEnd) {
+      const weeksAgo =
+        typeof body.weeksAgo === "number" && Number.isFinite(body.weeksAgo)
+          ? Math.max(1, Math.floor(body.weeksAgo))
+          : 1;
+      const w = berlinCalendarWeekPeriod(weeksAgo);
+      periodStart = w.periodStart;
+      periodEnd = w.periodEnd;
+    }
+    const out = await runTaxiNettingWeeklyCommissionRun({
+      periodStart,
+      periodEnd,
+      dryRun,
+      actorLabel: `admin_console:${role}`,
+    });
+    if (!out.ok) {
+      res.status(400).json({ error: out.error });
+      return;
+    }
+    res.json(out);
   } catch (e) {
     next(e);
   }
