@@ -3,6 +3,7 @@ import { and, asc, eq, notInArray, sql } from "drizzle-orm";
 import { resolveInvoiceBillingEmail } from "./adminInvoiceFinanceData.js";
 import { getDb } from "./client";
 import {
+  buildPanelAdjustmentEffectiveAtDateRangeFilter,
   buildPanelSettlementCompletedAtDateRangeFilter,
   queryPanelFinancialSettlement,
 } from "./panelOverviewSettlementData.js";
@@ -286,6 +287,7 @@ export async function runPartnerMonthlyReport(input: {
   let errorCount = 0;
 
   const rideFilter = buildPanelSettlementCompletedAtDateRangeFilter(periodStart, periodEnd);
+  const adjFilter = buildPanelAdjustmentEffectiveAtDateRangeFilter(periodStart, periodEnd);
 
   for (const company of companies) {
     const companyId = company.id;
@@ -346,7 +348,9 @@ export async function runPartnerMonthlyReport(input: {
         operatorPayoutAmount: number;
       } | null = null;
       if (companyKind === "taxi") {
-        const window = await queryPanelFinancialSettlement(db, companyId, rideFilter, rideFilter);
+        // Ride-Filter nutzt rides.completed_at; Adjustments eigenen effective_at-Filter
+        // (nicht denselben SQL-Fragment — sonst fehlender JOIN / Spaltenfehler).
+        const window = await queryPanelFinancialSettlement(db, companyId, rideFilter, adjFilter);
         taxiKpis = {
           grossAmount: window.grossAmount,
           commissionAmount: window.commissionAmount,
