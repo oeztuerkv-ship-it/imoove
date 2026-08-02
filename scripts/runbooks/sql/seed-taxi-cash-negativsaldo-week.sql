@@ -9,15 +9,19 @@
 
 \set ON_ERROR_STOP on
 
-SELECT CASE
-  WHEN NOT EXISTS (
+-- Guard als PL/pgSQL (echtes Short-Circuit). Nicht CASE + SELECT 1/0 —
+-- Postgres kann unkorrelierte Skalar-Unterabfragen im THEN als InitPlan vorab auswerten.
+DO $$
+BEGIN
+  IF NOT EXISTS (
     SELECT 1 FROM admin_companies c
     WHERE c.id = :'company_id'
       AND lower(trim(c.company_kind)) = 'taxi'
       AND c.is_active IS TRUE
-  ) THEN (SELECT 1 / 0)
-  ELSE 1
-END AS taxi_company_ok;
+  ) THEN
+    RAISE EXCEPTION 'company % is not an active taxi company', :'company_id';
+  END IF;
+END $$;
 
 DELETE FROM ride_financials
 WHERE ride_id LIKE 'REQ-QA-NET-' || :'seed_tag' || '-%';
