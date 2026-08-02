@@ -1301,6 +1301,94 @@
   border: 1px solid #fde68a;
 }
 
+.partner-pill--memo {
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
+.partner-memo-card {
+  border-left: 3px solid #6366f1;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 40%);
+}
+
+.partner-memo-card__phase {
+  background: #6366f1 !important;
+}
+
+.partner-memo-card__preview {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 42rem;
+}
+
+.partner-memo-card__hint {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.partner-memo-card__note {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  color: #1e293b;
+}
+
+.partner-memo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  padding: 16px;
+}
+
+.partner-memo-modal__panel {
+  width: min(480px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 22px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+}
+
+.partner-memo-modal__title {
+  margin: 0 0 14px;
+  font-size: 1.1rem;
+}
+
+.partner-memo-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.partner-memo-modal__field label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.partner-memo-modal__field input,
+.partner-memo-modal__field textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.partner-memo-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .partner-pill--danger {
   background: #fef2f2;
   color: #b91c1c;

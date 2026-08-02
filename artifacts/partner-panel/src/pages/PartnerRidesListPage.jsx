@@ -4,7 +4,12 @@ import { API_BASE } from "../lib/apiBase.js";
 import { getPartnerMeta } from "./finance/financeHelpers.js";
 import PartnerRideChatModal from "../components/PartnerRideChatModal.jsx";
 import PartnerRideCard from "../components/PartnerRideCard.jsx";
+import PartnerPrivateReminderCard from "../components/PartnerPrivateReminderCard.jsx";
 import { usePartnerChatUnread } from "../context/PartnerChatUnreadContext.jsx";
+import {
+  fromIsoToDatetimeLocal,
+  toIsoFromDatetimeLocal,
+} from "../lib/smartBooking.js";
 import {
   billingSummary,
   isPartnerRidePast,
@@ -67,14 +72,53 @@ function sortRidesForSegment(rides, segment) {
   });
 }
 
+function memoSegmentOf(reminder, nowMs = Date.now()) {
+  const t = Date.parse(String(reminder?.scheduledAt ?? ""));
+  if (!Number.isFinite(t)) return "zukunft";
+  return t >= nowMs ? "zukunft" : "abgelaufen";
+}
+
+function memoDateKey(reminder) {
+  const d = new Date(reminder?.scheduledAt ?? "");
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function memoMatchesSearch(reminder, q) {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return true;
+  const hay = [reminder.fromFull, reminder.toFull, reminder.note, reminder.id]
+    .map((x) => String(x ?? "").toLowerCase())
+    .join(" ");
+  return hay.includes(needle);
+}
+
+function emptyMemoForm() {
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  d.setMinutes(0, 0, 0);
+  return {
+    id: null,
+    scheduledAtLocal: fromIsoToDatetimeLocal(d.toISOString()),
+    fromFull: "",
+    toFull: "",
+    note: "",
+  };
+}
+
 export default function PartnerRidesListPage({ variant }) {
   const { token, user } = usePanelAuth();
   const [rides, setRides] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteRideId, setNoteRideId] = useState(null);
+  const [memoFormOpen, setMemoFormOpen] = useState(false);
+  const [memoForm, setMemoForm] = useState(() => emptyMemoForm());
   const [actionBusy, setActionBusy] = useState("");
   const [actionMsg, setActionMsg] = useState("");
   const [trackingByRide, setTrackingByRide] = useState({});
@@ -86,38 +130,80 @@ export default function PartnerRidesListPage({ variant }) {
     usePartnerChatUnread();
 
   const canCreate = Array.isArray(user?.permissions) && user.permissions.includes("rides.create");
+  const role = String(user?.role ?? "").trim().toLowerCase();
+  const canManageMemos =
+    variant !== "history" &&
+    String(user?.companyKind ?? "").trim().toLowerCase() === "taxi" &&
+    (role === "owner" || role === "manager");
 
-  const loadRides = useCallback(async (silent = false) => {
-    if (!token) return;
-    if (!silent) setErr("");
-    if (!silent) setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/panel/v1/rides`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
+  const loadReminders = useCallback(
+    async (silent = false) => {
+      if (!token || !canManageMemos) {
+        setReminders([]);
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/private-reminders`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          if (!silent && res.status !== 403) {
+            /* Fahrten bleiben nutzbar; Merkliste optional */
+          }
+          if (res.status === 403) setReminders([]);
+          return;
+        }
+        setReminders(Array.isArray(data.reminders) ? data.reminders : []);
+      } catch {
+        if (!silent) {
+          /* ignore — rides list still works */
+        }
+      }
+    },
+    [token, canManageMemos],
+  );
+
+  const loadRides = useCallback(
+    async (silent = false) => {
+      if (!token) return;
+      if (!silent) setErr("");
+      if (!silent) setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/rides`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          if (!silent) {
+            setErr("Fahrten konnten nicht geladen werden.");
+            setRides([]);
+          }
+          return;
+        }
+        setRides(Array.isArray(data.rides) ? data.rides : []);
+        void loadReminders(silent);
+        if (silent) void refreshChatUnread();
+      } catch {
         if (!silent) {
           setErr("Fahrten konnten nicht geladen werden.");
           setRides([]);
         }
-        return;
+      } finally {
+        if (!silent) setLoading(false);
       }
-      setRides(Array.isArray(data.rides) ? data.rides : []);
-      if (silent) void refreshChatUnread();
-    } catch {
-      if (!silent) {
-        setErr("Fahrten konnten nicht geladen werden.");
-        setRides([]);
-      }
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [token, refreshChatUnread]);
+    },
+    [token, refreshChatUnread, loadReminders],
+  );
 
   useEffect(() => {
     void loadRides();
   }, [loadRides]);
+
+  useEffect(() => {
+    if (canManageMemos) void loadReminders(true);
+    else setReminders([]);
+  }, [canManageMemos, loadReminders]);
 
   const displayedRides = useMemo(() => {
     if (variant === "history") {
@@ -126,27 +212,68 @@ export default function PartnerRidesListPage({ variant }) {
     return rides;
   }, [rides, variant]);
 
-  const filteredRides = useMemo(() => {
+  const displayedReminders = useMemo(() => {
+    if (!canManageMemos || variant === "history") return [];
+    return reminders;
+  }, [reminders, canManageMemos, variant]);
+
+  const filteredFeed = useMemo(() => {
     const q = searchQuery.trim();
-    const activeSegment = variant === "history" ? "abgelaufen" : segment;
-    let list = displayedRides.filter((ride) => partnerRideSegmentOf(ride) === activeSegment);
-    if (q) {
-      list = list.filter((ride) => partnerRideMatchesSearch(ride, q));
+    const activeSeg = variant === "history" ? "abgelaufen" : segment;
+    const nowMs = Date.now();
+
+    let rideList = displayedRides.filter((ride) => partnerRideSegmentOf(ride) === activeSeg);
+    if (q) rideList = rideList.filter((ride) => partnerRideMatchesSearch(ride, q));
+    if (dateFilter) rideList = rideList.filter((ride) => partnerRideListDateKey(ride) === dateFilter);
+    rideList = sortRidesForSegment(rideList, activeSeg);
+
+    let memoList = [];
+    if (activeSeg === "zukunft" || activeSeg === "abgelaufen") {
+      memoList = displayedReminders.filter((m) => memoSegmentOf(m, nowMs) === activeSeg);
+      if (q) memoList = memoList.filter((m) => memoMatchesSearch(m, q));
+      if (dateFilter) memoList = memoList.filter((m) => memoDateKey(m) === dateFilter);
+      memoList = [...memoList].sort((a, b) => {
+        const ta = Date.parse(String(a.scheduledAt ?? "")) || 0;
+        const tb = Date.parse(String(b.scheduledAt ?? "")) || 0;
+        return activeSeg === "zukunft" ? ta - tb : tb - ta;
+      });
     }
-    if (dateFilter) {
-      list = list.filter((ride) => partnerRideListDateKey(ride) === dateFilter);
-    }
-    return sortRidesForSegment(list, activeSegment);
-  }, [displayedRides, segment, variant, searchQuery, dateFilter]);
+
+    /** @type {{ kind: 'ride'; ride: object; sortAt: number } | { kind: 'memo'; reminder: object; sortAt: number }[]} */
+    const items = [
+      ...rideList.map((ride) => ({
+        kind: "ride",
+        ride,
+        sortAt: Date.parse(String(ride.scheduledAt ?? ride.createdAt ?? "")) || 0,
+      })),
+      ...memoList.map((reminder) => ({
+        kind: "memo",
+        reminder,
+        sortAt: Date.parse(String(reminder.scheduledAt ?? "")) || 0,
+      })),
+    ];
+    items.sort((a, b) => (activeSeg === "zukunft" ? a.sortAt - b.sortAt : b.sortAt - a.sortAt));
+    return items;
+  }, [displayedRides, displayedReminders, segment, variant, searchQuery, dateFilter]);
+
+  const filteredRides = useMemo(
+    () => filteredFeed.filter((x) => x.kind === "ride").map((x) => x.ride),
+    [filteredFeed],
+  );
 
   const segmentCounts = useMemo(() => {
     const counts = { aktuell: 0, zukunft: 0, abgelaufen: 0 };
+    const nowMs = Date.now();
     for (const ride of displayedRides) {
       const seg = partnerRideSegmentOf(ride);
       if (seg in counts) counts[seg] += 1;
     }
+    for (const memo of displayedReminders) {
+      const seg = memoSegmentOf(memo, nowMs);
+      if (seg in counts) counts[seg] += 1;
+    }
     return counts;
-  }, [displayedRides]);
+  }, [displayedRides, displayedReminders]);
 
   const openChat = useCallback(
     (ride) => {
@@ -429,6 +556,111 @@ export default function PartnerRidesListPage({ variant }) {
     [token, expandedId],
   );
 
+  const openMemoCreate = useCallback(() => {
+    setMemoForm(emptyMemoForm());
+    setMemoFormOpen(true);
+    setActionMsg("");
+  }, []);
+
+  const openMemoEdit = useCallback((reminder) => {
+    setMemoForm({
+      id: reminder.id,
+      scheduledAtLocal: fromIsoToDatetimeLocal(reminder.scheduledAt),
+      fromFull: reminder.fromFull ?? "",
+      toFull: reminder.toFull ?? "",
+      note: reminder.note ?? "",
+    });
+    setMemoFormOpen(true);
+    setActionMsg("");
+  }, []);
+
+  const saveMemo = useCallback(async () => {
+    if (!token || !canManageMemos) return;
+    const scheduledAt = toIsoFromDatetimeLocal(memoForm.scheduledAtLocal);
+    if (!scheduledAt) {
+      setActionMsg("Bitte Datum und Uhrzeit setzen.");
+      return;
+    }
+    const fromFull = memoForm.fromFull.trim();
+    const toFull = memoForm.toFull.trim();
+    const note = memoForm.note.trim();
+    if (!fromFull && !toFull && !note) {
+      setActionMsg("Bitte Start, Ziel oder Notiz ausfüllen.");
+      return;
+    }
+    const busyKey = memoForm.id ? `memo-${memoForm.id}` : "memo-new";
+    setActionBusy(busyKey);
+    setActionMsg("");
+    try {
+      const isEdit = Boolean(memoForm.id);
+      const url = isEdit
+        ? `${API_BASE}/panel/v1/private-reminders/${encodeURIComponent(memoForm.id)}`
+        : `${API_BASE}/panel/v1/private-reminders`;
+      const res = await fetch(url, {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt, fromFull, toFull, note }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setActionMsg(
+          typeof data?.error === "string"
+            ? `Notiz fehlgeschlagen (${data.error}).`
+            : "Notiz konnte nicht gespeichert werden.",
+        );
+        return;
+      }
+      const row = data.reminder;
+      if (row?.id) {
+        setReminders((prev) => {
+          const without = prev.filter((r) => r.id !== row.id);
+          return [...without, row];
+        });
+      } else {
+        void loadReminders(true);
+      }
+      setMemoFormOpen(false);
+      setMemoForm(emptyMemoForm());
+      setActionMsg(isEdit ? "Notiz aktualisiert." : "Notiz angelegt.");
+      if (segment === "aktuell") setSegment("zukunft");
+    } catch {
+      setActionMsg("Notiz konnte nicht gespeichert werden.");
+    } finally {
+      setActionBusy("");
+    }
+  }, [token, canManageMemos, memoForm, loadReminders, segment]);
+
+  const deleteMemo = useCallback(
+    async (reminderId) => {
+      if (!token || !canManageMemos) return;
+      if (!window.confirm("Diese private Notiz wirklich löschen?")) return;
+      setActionBusy(`memo-${reminderId}`);
+      setActionMsg("");
+      try {
+        const res = await fetch(
+          `${API_BASE}/panel/v1/private-reminders/${encodeURIComponent(reminderId)}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          setActionMsg("Löschen fehlgeschlagen.");
+          return;
+        }
+        setReminders((prev) => prev.filter((r) => r.id !== reminderId));
+        if (expandedId === `memo-${reminderId}`) setExpandedId(null);
+        setActionMsg("Notiz gelöscht.");
+      } catch {
+        setActionMsg("Löschen fehlgeschlagen.");
+      } finally {
+        setActionBusy("");
+      }
+    },
+    [token, canManageMemos, expandedId],
+  );
+
   const onExportCsv = useCallback(() => {
     const header = [
       "id",
@@ -477,7 +709,9 @@ export default function PartnerRidesListPage({ variant }) {
   const lead =
     variant === "history"
       ? "Abgeschlossene, stornierte und abgelehnte Fahrten."
-      : "Aktuelle Disposition, geplante Termine und abgelaufene Fahrten — mit Suche und Datum.";
+      : canManageMemos
+        ? "Aktuelle Disposition, geplante Termine und private Notizen — mit Suche und Datum."
+        : "Aktuelle Disposition, geplante Termine und abgelaufene Fahrten — mit Suche und Datum.";
 
   return (
     <div className="panel-page panel-page--rides partner-rides-page partner-rides-page--modern">
@@ -496,6 +730,11 @@ export default function PartnerRidesListPage({ variant }) {
         <button type="button" className="panel-btn-primary partner-rides-toolbar__refresh" disabled={loading} onClick={() => void loadRides()}>
           ↻ Aktualisieren
         </button>
+        {canManageMemos ? (
+          <button type="button" className="panel-btn-secondary" onClick={openMemoCreate}>
+            + Notiz
+          </button>
+        ) : null}
         <button
           type="button"
           className="panel-btn-secondary"
@@ -597,22 +836,41 @@ export default function PartnerRidesListPage({ variant }) {
       )}
 
       {loading ? <p className="panel-page__lead">Lade …</p> : null}
-      {!loading && filteredRides.length === 0 && !err ? (
+      {!loading && filteredFeed.length === 0 && !err ? (
         <p className="panel-page__lead">
-          {displayedRides.length === 0
+          {displayedRides.length === 0 && displayedReminders.length === 0
             ? "Noch keine Fahrten in dieser Ansicht."
             : searchQuery.trim() || dateFilter
-              ? "Keine Fahrten für Suche oder Datum."
+              ? "Keine Einträge für Suche oder Datum."
               : activeSegment === "aktuell"
                 ? "Keine laufenden Fahrten — geplante Termine unter „Offene“."
                 : activeSegment === "zukunft"
-                  ? "Keine geplanten Fahrten."
-                  : "Keine abgelaufenen Fahrten in dieser Ansicht."}
+                  ? "Keine geplanten Fahrten oder Notizen."
+                  : "Keine abgelaufenen Fahrten oder Notizen in dieser Ansicht."}
         </p>
       ) : null}
 
       <div className="partner-rides-list partner-rides-list--modern">
-        {filteredRides.map((ride) => {
+        {filteredFeed.map((item) => {
+          if (item.kind === "memo") {
+            const reminder = item.reminder;
+            const memoKey = `memo-${reminder.id}`;
+            const open = expandedId === memoKey;
+            return (
+              <PartnerPrivateReminderCard
+                key={memoKey}
+                reminder={reminder}
+                open={open}
+                onToggle={() => setExpandedId(open ? null : memoKey)}
+                canEdit={canManageMemos}
+                actionBusy={actionBusy}
+                onEdit={() => openMemoEdit(reminder)}
+                onDelete={() => void deleteMemo(reminder.id)}
+              />
+            );
+          }
+
+          const ride = item.ride;
           const open = expandedId === ride.id;
           const note = getDriverNote(ride);
           const bill = billingSummary(ride);
@@ -687,6 +945,75 @@ export default function PartnerRidesListPage({ variant }) {
                 className="panel-btn-primary"
                 disabled={actionBusy === `note-${noteRideId}`}
                 onClick={() => void saveNote()}
+              >
+                Speichern
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {memoFormOpen ? (
+        <div className="partner-memo-modal" role="dialog" aria-modal="true" aria-labelledby="partner-memo-title">
+          <div className="partner-memo-modal__panel">
+            <h3 id="partner-memo-title" className="partner-memo-modal__title">
+              {memoForm.id ? "Notiz bearbeiten" : "Private Notiz"}
+            </h3>
+            <p className="partner-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: "0.88rem" }}>
+              Nur für Owner/Manager Ihres Unternehmens — kein Fahrer, kein Matching.
+            </p>
+            <label className="partner-memo-modal__field">
+              <span>Wann</span>
+              <input
+                type="datetime-local"
+                value={memoForm.scheduledAtLocal}
+                onChange={(e) => setMemoForm((f) => ({ ...f, scheduledAtLocal: e.target.value }))}
+              />
+            </label>
+            <label className="partner-memo-modal__field">
+              <span>Von (optional)</span>
+              <input
+                type="text"
+                value={memoForm.fromFull}
+                onChange={(e) => setMemoForm((f) => ({ ...f, fromFull: e.target.value }))}
+                placeholder="Start / Ort"
+              />
+            </label>
+            <label className="partner-memo-modal__field">
+              <span>Nach (optional)</span>
+              <input
+                type="text"
+                value={memoForm.toFull}
+                onChange={(e) => setMemoForm((f) => ({ ...f, toFull: e.target.value }))}
+                placeholder="Ziel"
+              />
+            </label>
+            <label className="partner-memo-modal__field">
+              <span>Notiz</span>
+              <textarea
+                rows={3}
+                maxLength={2000}
+                value={memoForm.note}
+                onChange={(e) => setMemoForm((f) => ({ ...f, note: e.target.value.slice(0, 2000) }))}
+                placeholder="z. B. Rückruf Hotel, Stammtisch 20 Uhr …"
+              />
+            </label>
+            <div className="partner-memo-modal__actions">
+              <button
+                type="button"
+                className="panel-btn-secondary"
+                onClick={() => {
+                  setMemoFormOpen(false);
+                  setMemoForm(emptyMemoForm());
+                }}
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                className="panel-btn-primary"
+                disabled={actionBusy === "memo-new" || (memoForm.id && actionBusy === `memo-${memoForm.id}`)}
+                onClick={() => void saveMemo()}
               >
                 Speichern
               </button>

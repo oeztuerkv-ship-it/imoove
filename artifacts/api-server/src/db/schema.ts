@@ -1788,6 +1788,23 @@ export const securityBanEventsTable = pgTable("security_ban_events", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Private Merkliste Taxi-Panel (kein Dispatch). */
+export const partnerPrivateRemindersTable = pgTable("partner_private_reminders", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
+  scheduled_at: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+  from_full: text("from_full").notNull().default(""),
+  to_full: text("to_full").notNull().default(""),
+  note: text("note").notNull().default(""),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Idempotenz Partner-Monatsreport (E-Mail am 1. des Monats). */
 export const partnerMonthlyReportSendsTable = pgTable(
   "partner_monthly_report_sends",
