@@ -109,6 +109,41 @@ export function remainingAlongPolyline(
   return { remainingM, totalM: n.totalM, fractionLeft };
 }
 
+/** Meter entlang der Polyline vom Start bis zur Projektion. */
+function progressAlongPolylineM(n: NearestOnPolyline): number {
+  let done = 0;
+  for (let i = 0; i < n.bestSeg; i++) done += n.segLens[i]!;
+  done += n.bestT * (n.segLens[n.bestSeg] ?? 0);
+  return done;
+}
+
+/**
+ * Restdistanz entlang der Route vom aktuellen Standort bis zum Manöver-Punkt
+ * (OSRM-Step lat/lon). Fallback: Luftlinie, wenn Polyline zu kurz.
+ */
+export function distanceAlongPolylineToPointM(
+  polyline: LatLon[],
+  current: LatLon,
+  target: LatLon,
+): number | null {
+  if (!Number.isFinite(target.lat) || !Number.isFinite(target.lon)) return null;
+  if (polyline.length < 2) {
+    const air = haversineM(current, target);
+    return Number.isFinite(air) ? Math.max(0, Math.round(air)) : null;
+  }
+  const from = nearestOnPolyline(polyline, current);
+  const to = nearestOnPolyline(polyline, target);
+  if (!from || !to) {
+    const air = haversineM(current, target);
+    return Number.isFinite(air) ? Math.max(0, Math.round(air)) : null;
+  }
+  const a = progressAlongPolylineM(from);
+  const b = progressAlongPolylineM(to);
+  if (b >= a - 2) return Math.max(0, Math.round(b - a));
+  // Manöver hinter der Projektion (gerade passiert) → 0
+  return 0;
+}
+
 /** Anzeige-Distanz/ETA skaliert auf autoritative Gesamtmesswerte (z. B. Google Matrix). */
 export function scaleRemainingToAuthoritative(
   along: RemainingAlongRoute,

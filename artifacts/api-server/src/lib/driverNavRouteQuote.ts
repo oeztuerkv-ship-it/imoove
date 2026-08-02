@@ -5,7 +5,12 @@ const OSRM_BASE = "https://router.project-osrm.org";
 const FETCH_TIMEOUT_MS = 12_000;
 
 export type DriverNavRouteStep = {
+  /** Volltext (rückwärtskompatibel), z. B. „Rechts abbiegen auf Hauptstraße“. */
   instruction: string;
+  /** Kurzes Manöver ohne Straßenname, z. B. „Rechts abbiegen“. */
+  maneuver: string;
+  /** Straßenname aus OSRM `name`, sonst null. */
+  roadName: string | null;
   distanceM: number;
   lat: number;
   lon: number;
@@ -48,26 +53,52 @@ async function fetchJson(url: string): Promise<unknown> {
   }
 }
 
-function maneuverToGerman(type: string, modifier?: string, name?: string): string {
-  const road = name ? ` auf ${name}` : "";
+function maneuverActionToGerman(type: string, modifier?: string): string {
   if (type === "arrive") return "Ziel erreicht";
-  if (type === "depart") return `Fahrt beginnen${road}`;
-  if (type === "continue") return `Geradeaus weiter${road}`;
-  if (type === "merge") return `Einfahren${road}`;
-  if (type === "on ramp") return `Auffahrt nehmen${road}`;
-  if (type === "off ramp") return `Ausfahrt nehmen`;
-  if (type === "roundabout" || type === "rotary") return `Kreisverkehr${road}`;
+  if (type === "depart") return "Fahrt beginnen";
+  if (type === "continue") return "Geradeaus weiter";
+  if (type === "merge") return "Einfahren";
+  if (type === "on ramp") return "Auffahrt nehmen";
+  if (type === "off ramp") return "Ausfahrt nehmen";
+  if (type === "roundabout" || type === "rotary") return "Kreisverkehr";
   if (type === "turn") {
-    if (modifier === "right") return `Rechts abbiegen${road}`;
-    if (modifier === "left") return `Links abbiegen${road}`;
-    if (modifier === "straight") return `Geradeaus${road}`;
-    if (modifier === "sharp right") return `Scharf rechts${road}`;
-    if (modifier === "sharp left") return `Scharf links${road}`;
+    if (modifier === "right") return "Rechts abbiegen";
+    if (modifier === "left") return "Links abbiegen";
+    if (modifier === "straight") return "Geradeaus";
+    if (modifier === "sharp right") return "Scharf rechts";
+    if (modifier === "sharp left") return "Scharf links";
     if (modifier === "uturn") return "Wenden";
-    if (modifier === "slight right") return `Leicht rechts${road}`;
-    if (modifier === "slight left") return `Leicht links${road}`;
+    if (modifier === "slight right") return "Leicht rechts";
+    if (modifier === "slight left") return "Leicht links";
   }
-  return `Weiterfahren${road}`;
+  return "Weiterfahren";
+}
+
+function maneuverToGerman(type: string, modifier?: string, name?: string): string {
+  const action = maneuverActionToGerman(type, modifier);
+  const road = name?.trim();
+  if (!road) return action;
+  if (type === "arrive") return action;
+  if (type === "off ramp") return action;
+  if (type === "turn" && modifier === "uturn") return action;
+  return `${action} auf ${road}`;
+}
+
+function mapOsrmStepToDriverNav(s: {
+  maneuver: { type: string; modifier?: string; location: [number, number] };
+  distance: number;
+  name?: string;
+}): DriverNavRouteStep {
+  const roadName = s.name?.trim() || null;
+  const maneuver = maneuverActionToGerman(s.maneuver.type, s.maneuver.modifier);
+  return {
+    instruction: maneuverToGerman(s.maneuver.type, s.maneuver.modifier, s.name),
+    maneuver,
+    roadName,
+    distanceM: Math.round(s.distance),
+    lat: s.maneuver.location[1],
+    lon: s.maneuver.location[0],
+  };
 }
 
 async function osrmGeometryWithSteps(
@@ -102,12 +133,7 @@ async function osrmGeometryWithSteps(
       name?: string;
     };
     const rawSteps: OsrmStep[] = (route.legs?.[0]?.steps as OsrmStep[]) ?? [];
-    const steps: DriverNavRouteStep[] = rawSteps.map((s) => ({
-      instruction: maneuverToGerman(s.maneuver.type, s.maneuver.modifier, s.name),
-      distanceM: Math.round(s.distance),
-      lat: s.maneuver.location[1],
-      lon: s.maneuver.location[0],
-    }));
+    const steps: DriverNavRouteStep[] = rawSteps.map((s) => mapOsrmStepToDriverNav(s));
     return { polyline, steps };
   } catch {
     return null;

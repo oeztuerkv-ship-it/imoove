@@ -79,7 +79,21 @@ export async function fetchDriverNavRoute(
     throw Object.assign(new Error("nav_route_source_error"), { routingSource: "error" as const });
   }
   const polyline = Array.isArray(body.polyline) ? body.polyline : [];
-  const steps = Array.isArray(body.steps) ? body.steps : [];
+  const rawSteps = Array.isArray(body.steps) ? body.steps : [];
+  const steps: RouteStep[] = rawSteps.map((s) => {
+    const instruction = typeof s?.instruction === "string" ? s.instruction : "";
+    const maneuver = typeof s?.maneuver === "string" && s.maneuver.trim() ? s.maneuver.trim() : undefined;
+    const roadName =
+      typeof s?.roadName === "string" && s.roadName.trim() ? s.roadName.trim() : null;
+    return {
+      instruction,
+      ...(maneuver ? { maneuver } : {}),
+      roadName: roadName ?? null,
+      distanceM: Math.max(0, Math.round(Number(s?.distanceM ?? 0))),
+      lat: Number(s?.lat ?? 0),
+      lon: Number(s?.lon ?? 0),
+    };
+  });
   return {
     distanceKm: Number(body.distanceKm ?? 0),
     durationMinutes: Math.max(1, Number(body.durationMinutes ?? 1)),

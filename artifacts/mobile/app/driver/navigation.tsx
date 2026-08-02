@@ -93,10 +93,16 @@ import {
 import type { RouteStep } from "@/utils/routing";
 import { fetchDriverNavRoute, type DriverNavRouteResult } from "@/utils/driverNavRouteApi";
 import {
+  distanceAlongPolylineToPointM,
   distanceToPolylineM,
   remainingAlongPolyline,
   scaleRemainingToAuthoritative,
 } from "@/utils/routeRemainingAlongPolyline";
+import {
+  formatNavTurnCue,
+  formatNavTurnDistanceLabel,
+  splitNavStepParts,
+} from "@/utils/navTurnDistanceCue";
 import {
   canStartReroute,
   createOffRouteTrackerState,
@@ -146,10 +152,11 @@ const PICKUP_AUX_ICON_RED = "#FF3B30";
 const PICKUP_AUX_BORDER_LIGHT_RED = "#FECACA";
 const PICKUP_AUX_PRESSED_BG = "#FFF1F2";
 const DRIVE_SHEET_GRAB_H = 32;
-const DRIVE_SHEET_STATUS_H = 76;
-const DRIVE_SHEET_DETAILS_CONTENT_H = 220;
+/** Persistentes Trip-Footer (km / min / ETA) — immer sichtbar. */
+const DRIVE_SHEET_TRIP_FOOTER_H = 64;
+const DRIVE_SHEET_DETAILS_CONTENT_H = 180;
 const DRIVE_SHEET_ACTIONS_H = 56;
-const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_STATUS_H + 12;
+const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_TRIP_FOOTER_H + 12;
 const DRIVE_SHEET_EXPANDED_H =
   DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
 const DRIVE_SHEET_DETAILS_H = DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
@@ -512,6 +519,8 @@ export default function DriverNavigationScreen() {
   const [initialEtaMin, setInitialEtaMin] = useState(0);
   const [remainingDistM, setRemainingDistM] = useState(0);
   const [remainingMin, setRemainingMin]     = useState(0);
+  /** Live-Meter bis zum aktuellen Manöver-Punkt (entlang Polyline). */
+  const [distToManeuverM, setDistToManeuverM] = useState(0);
 
   const [driverLat, setDriverLat] = useState(fromLat || 48.7394);
   const [driverLon, setDriverLon] = useState(fromLon || 9.3114);
@@ -1038,8 +1047,21 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     if (!steps.length || stepIdx === prevStepIdx.current) return;
     prevStepIdx.current = stepIdx;
-    const instr = steps[stepIdx]?.instruction ?? "";
-    if (instr && instr !== "Fahrt beginnen") trySpeak(instr, soundRef.current);
+    const step = steps[stepIdx];
+    const instr = step?.instruction ?? "";
+    if (!instr || instr === "Fahrt beginnen") return;
+    const liveM =
+      step && isValidMapCoord(step.lat, step.lon)
+        ? distanceAlongPolylineToPointM(
+            polylineLatLonRef.current,
+            { lat: driverLatRef.current, lon: driverLonRef.current },
+            { lat: step.lat, lon: step.lon },
+          )
+        : null;
+    const m =
+      liveM ??
+      (typeof step?.distanceM === "number" && step.distanceM > 0 ? step.distanceM : 0);
+    trySpeak(formatNavTurnCue(m > 0 ? m : 25, instr), soundRef.current);
   }, [stepIdx, steps]);
 
   const distToPickup = haversine(driverLat, driverLon, pickupLat, pickupLon);
@@ -1917,6 +1939,25 @@ export default function DriverNavigationScreen() {
             if (minD < 30 && closest < routeSteps.length - 1) {
               setStepIdx(Math.min(closest + 1, routeSteps.length - 1));
             }
+            const activeIdx =
+              minD < 30 && closest < routeSteps.length - 1
+                ? Math.min(closest + 1, routeSteps.length - 1)
+                : curStepIdx;
+            const activeStep = routeSteps[activeIdx];
+            if (activeStep && isValidMapCoord(activeStep.lat, activeStep.lon)) {
+              const liveM = distanceAlongPolylineToPointM(
+                polylineLatLonRef.current,
+                { lat: latitude, lon: longitude },
+                { lat: activeStep.lat, lon: activeStep.lon },
+              );
+              if (liveM != null) {
+                setDistToManeuverM(liveM);
+              } else {
+                setDistToManeuverM(
+                  Math.max(0, Math.round(haversine(latitude, longitude, activeStep.lat, activeStep.lon))),
+                );
+              }
+            }
           }
 
           const navRouteReady = initialRouteMetricsRef.current.distM > 0;
@@ -2042,16 +2083,26 @@ export default function DriverNavigationScreen() {
 
   const currentStep = steps[stepIdx] ?? null;
   const nextStep    = steps[stepIdx + 1] ?? null;
-  const streetName  = currentStep?.instruction ?? (isPickupPhase ? pickupName : destName);
-  /** Nach „Angekommen“: grüner Balken wie Google Maps — Fokus auf Start, nicht auf ersten Routing-Schritt. */
-  const topPrimaryText =
-    isPickupPhase && hasArrived ? "Fahrt beginnen" : streetName;
-  const topDistanceText =
+  const currentParts = currentStep
+    ? splitNavStepParts(currentStep)
+    : { maneuver: isPickupPhase ? pickupName : destName, roadName: null as string | null };
+  const nextParts = nextStep ? splitNavStepParts(nextStep) : null;
+  const streetName = currentStep?.instruction ?? (isPickupPhase ? pickupName : destName);
+  const liveTurnDistM =
     isPickupPhase && hasArrived && distToPickup > 0
-      ? `in ${fmtDist(distToPickup)}`
-      : currentStep && currentStep.distanceM > 0
-        ? `in ${fmtDist(currentStep.distanceM)}`
-        : "";
+      ? distToPickup
+      : distToManeuverM > 0
+        ? distToManeuverM
+        : currentStep && currentStep.distanceM > 0
+          ? currentStep.distanceM
+          : null;
+  const topDistancePrimary =
+    liveTurnDistM != null ? formatNavTurnDistanceLabel(liveTurnDistM) : "";
+  /** Manöver-Zeile (ohne Straße); bei Ankunft am Pickup Sonderfall. */
+  const topManeuverText =
+    isPickupPhase && hasArrived ? "Fahrt beginnen" : currentParts.maneuver || streetName;
+  const topRoadName =
+    isPickupPhase && hasArrived ? null : currentParts.roadName;
 
   const bottomInset = Math.max(insets.bottom, 16);
   const PICKUP_BOTTOM_PANEL_EST_H = 380;
@@ -2094,6 +2145,37 @@ export default function DriverNavigationScreen() {
     resolvedBookingPartnerName,
   );
 
+  const navTripFooterBar = (
+    <View
+      style={styles.navTripFooter}
+      accessibilityRole="summary"
+      accessibilityLabel={`Noch ${remainingMin > 0 ? `${remainingMin} Minuten` : "unbekannt"}, ${
+        remainingDistM > 0 ? fmtDist(remainingDistM) : "Distanz unbekannt"
+      }, Ankunft ${remainingMin > 0 ? fmtArrival(remainingMin) : "unbekannt"}`}
+    >
+      <View style={styles.navTripFooterCell}>
+        <Text style={[styles.navTripFooterValue, navAppleFont("bold")]} numberOfLines={1}>
+          {remainingMin > 0 ? `${remainingMin} min` : "—"}
+        </Text>
+        <Text style={[styles.navTripFooterLabel, navAppleFont("medium")]}>Fahrzeit</Text>
+      </View>
+      <View style={styles.navTripFooterSep} />
+      <View style={styles.navTripFooterCell}>
+        <Text style={[styles.navTripFooterValue, navAppleFont("bold")]} numberOfLines={1}>
+          {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
+        </Text>
+        <Text style={[styles.navTripFooterLabel, navAppleFont("medium")]}>Distanz</Text>
+      </View>
+      <View style={styles.navTripFooterSep} />
+      <View style={styles.navTripFooterCell}>
+        <Text style={[styles.navTripFooterValue, navAppleFont("bold")]} numberOfLines={1}>
+          {remainingMin > 0 ? fmtArrival(remainingMin) : "—"}
+        </Text>
+        <Text style={[styles.navTripFooterLabel, navAppleFont("medium")]}>Ankunft</Text>
+      </View>
+    </View>
+  );
+
   const rideDetailsBlock = (
     <View style={styles.rideInfoCard}>
       {partnerName ? (
@@ -2130,31 +2212,9 @@ export default function DriverNavigationScreen() {
             </Text>
           ) : null}
         </View>
-        <View style={styles.rideInfoRouteDist}>
-          <Text style={[styles.rideInfoRouteDistValue, navAppleFont("bold")]} numberOfLines={1}>
-            {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
-          </Text>
-          <Text style={[styles.rideInfoRouteDistLabel, navAppleFont("medium")]}>Entfernung</Text>
-        </View>
       </View>
 
       <View style={styles.rideInfoStatsBlock}>
-        <View style={styles.rideInfoMetric}>
-          <Feather name="clock" size={15} color="#8E8E93" />
-          <Text style={[styles.rideInfoMetricLabel, navAppleFont("medium")]}>Ankunft</Text>
-          <Text style={[styles.rideInfoMetricValue, navAppleFont("semibold")]} numberOfLines={1}>
-            {remainingMin > 0 ? fmtArrival(remainingMin) : "—"}
-          </Text>
-        </View>
-        <View style={styles.rideInfoMetricSep} />
-        <View style={styles.rideInfoMetric}>
-          <Feather name="watch" size={15} color="#8E8E93" />
-          <Text style={[styles.rideInfoMetricLabel, navAppleFont("medium")]}>Fahrzeit</Text>
-          <Text style={[styles.rideInfoMetricValue, navAppleFont("semibold")]} numberOfLines={1}>
-            {remainingMin > 0 ? `${remainingMin} min` : "—"}
-          </Text>
-        </View>
-        <View style={styles.rideInfoMetricSep} />
         <View style={styles.rideInfoMetricPay}>
           <View
             style={[
@@ -2313,55 +2373,62 @@ export default function DriverNavigationScreen() {
         {polyline.length > 1 ? <NavRouteGlowPolyline coordinates={polyline} /> : null}
       </MapView>
 
-      {/* Top instruction card — Google Maps green */}
+      {/* Top instruction card — Google Maps green (auch Privatauftrag: volle Abbiege-Hinweise) */}
       <View
         pointerEvents="box-none"
         style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}
       >
-        {isPrivateMemo ? (
-          <View style={styles.privateMemoTopBar}>
-            <Pressable
-              style={styles.privateMemoExitBtn}
-              onPress={exitPrivateMemoNav}
-              accessibilityLabel="Navi beenden"
-              hitSlop={12}
-            >
-              <Feather name="x" size={22} color="#111827" />
-            </Pressable>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.privateMemoTopTitle}>Privatauftrag</Text>
-              <Text style={styles.privateMemoTopSub} numberOfLines={1}>
-                {remainingMin > 0 ? `${remainingMin} min` : "Route"} · {pickupName}
-              </Text>
-            </View>
-            <Pressable style={styles.privateMemoExitTextBtn} onPress={exitPrivateMemoNav}>
-              <Text style={styles.privateMemoExitText}>Beenden</Text>
-            </Pressable>
-          </View>
-        ) : (
         <View style={styles.topNavCluster}>
           <View style={styles.topCard}>
             <View style={styles.topMain}>
               <Animated.View style={{ opacity: pulseAnim }}>
-                <MaterialCommunityIcons name={maneuverIcon(currentStep?.instruction ?? "") as any} size={32} color="#fff" />
+                <MaterialCommunityIcons name={maneuverIcon(currentParts.maneuver || currentStep?.instruction || "") as any} size={32} color="#fff" />
               </Animated.View>
               <View style={styles.topText}>
-                <Text style={styles.topLabel}>Richtung</Text>
-                <Text style={[styles.topStreet, !isPickupPhase && styles.topStreetDriving]} numberOfLines={2}>
-                  {topPrimaryText}
+                {topDistancePrimary ? (
+                  <Text
+                    style={[styles.topStreet, !isPickupPhase && styles.topStreetDriving]}
+                    numberOfLines={1}
+                    allowFontScaling={false}
+                  >
+                    {topDistancePrimary}
+                  </Text>
+                ) : (
+                  <Text style={styles.topLabel}>Richtung</Text>
+                )}
+                <Text
+                  style={topDistancePrimary ? styles.topManeuver : [styles.topStreet, !isPickupPhase && styles.topStreetDriving]}
+                  numberOfLines={2}
+                >
+                  {topManeuverText}
                 </Text>
-                {topDistanceText ? <Text style={styles.topDist}>{topDistanceText}</Text> : null}
+                {topRoadName ? (
+                  <Text style={styles.topRoadName} numberOfLines={1}>
+                    {topRoadName}
+                  </Text>
+                ) : null}
               </View>
             </View>
           </View>
-          {nextStep ? (
+          {nextStep && nextParts ? (
             <View style={styles.dannCard}>
-              <MaterialCommunityIcons name={maneuverIcon(nextStep.instruction) as any} size={20} color="#374151" />
-              <Text style={styles.dannText} numberOfLines={1}>Dann: {nextStep.instruction}</Text>
+              <View style={styles.dannIconWrap}>
+                <MaterialCommunityIcons name={maneuverIcon(nextParts.maneuver) as any} size={22} color="#1B6B3A" />
+              </View>
+              <View style={styles.dannTextCol}>
+                <Text style={styles.dannLabel}>Dann</Text>
+                <Text style={styles.dannManeuver} numberOfLines={1}>
+                  {nextParts.maneuver}
+                </Text>
+                {nextParts.roadName ? (
+                  <Text style={styles.dannRoad} numberOfLines={1}>
+                    {nextParts.roadName}
+                  </Text>
+                ) : null}
+              </View>
             </View>
           ) : null}
         </View>
-        )}
       </View>
 
       {/* Floating button column — Karte/Navi über dem unteren Panel */}
@@ -2404,6 +2471,7 @@ export default function DriverNavigationScreen() {
 
       {isPrivateMemo ? (
         <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
+          {navTripFooterBar}
           <View style={styles.privateMemoPanel}>
             <View style={styles.privateMemoMainRow}>
               <View style={styles.privateMemoRouteCol}>
@@ -2422,14 +2490,6 @@ export default function DriverNavigationScreen() {
                     </Text>
                   </View>
                 </View>
-              </View>
-              <View style={styles.privateMemoStatsBox}>
-                <Text style={[styles.privateMemoStatKm, navAppleFont("bold")]}>
-                  {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
-                </Text>
-                <Text style={[styles.privateMemoStatMin, navAppleFont("semibold")]}>
-                  {remainingMin > 0 ? `${remainingMin} min` : "—"}
-                </Text>
               </View>
             </View>
           </View>
@@ -2458,15 +2518,7 @@ export default function DriverNavigationScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.driveStartedBanner}>
-            <View style={styles.driveStartedBannerInner}>
-              <MaterialCommunityIcons name="car-arrow-right" size={20} color="#16A34A" />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[styles.driveStartedTitle, navAppleFont("semibold")]}>Die Fahrt hat begonnen</Text>
-                <Text style={[styles.driveStartedSub, navAppleFont("regular")]}>Kunde wird abgesetzt</Text>
-              </View>
-            </View>
-          </View>
+          {navTripFooterBar}
 
           <Animated.View style={{ maxHeight: driveDetailsHeight, opacity: driveSheetAnim, overflow: "hidden" }}>
             <View style={styles.driveDetailsWrap}>
@@ -2477,6 +2529,7 @@ export default function DriverNavigationScreen() {
         </Animated.View>
       ) : (
         <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
+          {navTripFooterBar}
           {rideDetailsBlock}
           <View style={styles.actionBlock}>
             <View style={styles.actionBtnWrapper}>{actionBtn}</View>
@@ -2913,7 +2966,20 @@ const styles = StyleSheet.create({
   topLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.78)" },
   topStreet: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 27 },
   topStreetDriving: { fontSize: 26, lineHeight: 31 },
-  topDist: { fontSize: 15, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.84)", marginTop: 3 },
+  topManeuver: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.95)",
+    marginTop: 2,
+    lineHeight: 22,
+  },
+  topRoadName: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.78)",
+    marginTop: 2,
+  },
+  topDist: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.92)", marginTop: 4, lineHeight: 22 },
   compassBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
@@ -2968,15 +3034,76 @@ const styles = StyleSheet.create({
   dannCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     backgroundColor: "#fff",
-    paddingHorizontal: 18,
-    paddingVertical: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#E5E7EB",
   },
+  dannIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#ECFDF3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dannTextCol: { flex: 1, minWidth: 0, gap: 1 },
+  dannLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  dannManeuver: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+    lineHeight: 20,
+  },
+  dannRoad: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    lineHeight: 17,
+  },
   dannText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#374151", flex: 1, lineHeight: 20 },
 
+  /* Persistent trip footer — Google-ähnlich: Restzeit / Distanz / ETA */
+  navTripFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 12,
+    marginBottom: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    backgroundColor: "#111827",
+  },
+  navTripFooterCell: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    minWidth: 0,
+  },
+  navTripFooterValue: {
+    fontSize: 17,
+    color: "#fff",
+    letterSpacing: -0.2,
+  },
+  navTripFooterLabel: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.62)",
+  },
+  navTripFooterSep: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    marginVertical: 4,
+  },
   /* Bottom bar — helles Panel (Angekommen / Fahrt beenden / Storno) */
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
@@ -3080,7 +3207,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0FDF4",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    minHeight: DRIVE_SHEET_STATUS_H - 12,
+    minHeight: DRIVE_SHEET_TRIP_FOOTER_H - 12,
     justifyContent: "center",
   },
   driveStartedBannerInner: {
@@ -3299,53 +3426,6 @@ const styles = StyleSheet.create({
   },
   actionBtnGreen: { backgroundColor: "#22C55E" },
   actionBtnDark: { backgroundColor: "#111827" },
-  privateMemoTopBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginHorizontal: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#111827",
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-  },
-  privateMemoExitBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  privateMemoTopTitle: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    color: "#111827",
-  },
-  privateMemoTopSub: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "#6B7280",
-    marginTop: 2,
-  },
-  privateMemoExitTextBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#111827",
-  },
-  privateMemoExitText: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
   privateMemoPanel: {
     paddingHorizontal: 2,
     marginBottom: 12,

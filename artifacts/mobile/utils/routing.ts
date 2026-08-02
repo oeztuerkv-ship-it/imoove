@@ -312,6 +312,10 @@ export async function getRouteThrough(ordered: GeoLocation[]): Promise<RouteResu
 
 export interface RouteStep {
   instruction: string;
+  /** Kurzes Manöver ohne Straße (optional, aus Server-Navi). */
+  maneuver?: string;
+  /** Straßenname (optional). */
+  roadName?: string | null;
   distanceM: number;
   lat: number;
   lon: number;

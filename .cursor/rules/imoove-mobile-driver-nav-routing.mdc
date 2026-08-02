@@ -11,6 +11,9 @@ alwaysApply: false
 - **Polyline / Abbiege-Hinweise:** OSRM (`geometrySource: "osrm"`). Distance Matrix liefert keine Geometrie — **keine Google Directions API** (Kosten).
 - **Mobile Aufruf:** `artifacts/mobile/utils/driverNavRouteApi.ts` → `fetchDriverNavRoute`.
 - **Anzeige Rest:** `routeRemainingAlongPolyline.ts` — Fortschritt entlang der Polyline, skaliert auf Matrix-/OSRM-Gesamtwerte. **Kein** Luftlinie × Anteils-Hack.
+- **Live bis Abbiegen:** `distanceAlongPolylineToPointM` → Meter zum aktuellen Step-Manöver; UI `formatNavTurnDistanceLabel` („In 200 m“ / „Jetzt“), TTS `formatNavTurnCue` („In 200 m rechts abbiegen …“). Smoke: `navTurnDistanceCue.selftest.ts`.
+- **Kopfzeile:** Distanz prominent; darunter Manöver + optional Straße (`maneuver` / `roadName` aus OSRM, Fallback `splitNavStepParts`). Dann-Preview: Icon + „Dann“ + Manöver + Straße.
+- **Trip-Footer:** immer sichtbar — Fahrzeit / Distanz / Ankunft (Pickup, Driving eingeklappt, Privatauftrag).
 - **Kunde (`status.tsx`):** Anzeige **nur** `etaMinutes` + `remainingDistM` vom Fahrer (WS `location:driver:update` / `GET …/driver-location`). **Kein** Haversine-Fallback für Minuten/km — sonst weichen Kunden- und Fahrer-Sicht ab. Bis die erste Navi-ETA da ist: „—“.
 - **Kunden-Kartenroute:** dieselbe Polyline wie Fahrer-Navi via WS `route:driver` → `route:driver:update` (nur bei Routenwechsel/Reroute, max. ~100 Punkte). Catch-up: `GET /rides/:id/driver-nav-route` + Join-Replay. Buchungs-OSRM/`route` aus `RideContext` nur Fallback, bis die Navi-Route da ist.
 
