@@ -1,5 +1,5 @@
 ---
-description: Fahrer-Navi — Server-Routing (Google Matrix / OSRM), Rest entlang Polyline
+description: Fahrer-Navi — Server-Routing (Google Matrix / OSRM), Rest entlang Polyline, Off-Route-Reroute
 alwaysApply: false
 ---
 
@@ -14,10 +14,17 @@ alwaysApply: false
 - **Kunde (`status.tsx`):** Anzeige **nur** `etaMinutes` + `remainingDistM` vom Fahrer (WS `location:driver:update` / `GET …/driver-location`). **Kein** Haversine-Fallback für Minuten/km — sonst weichen Kunden- und Fahrer-Sicht ab. Bis die erste Navi-ETA da ist: „—“.
 - **Kunden-Kartenroute:** dieselbe Polyline wie Fahrer-Navi via WS `route:driver` → `route:driver:update` (nur bei Routenwechsel/Reroute, max. ~100 Punkte). Catch-up: `GET /rides/:id/driver-nav-route` + Join-Replay. Buchungs-OSRM/`route` aus `RideContext` nur Fallback, bis die Navi-Route da ist.
 
+## Off-Route-Reroute (MVP)
+
+- Distanz: `distanceToPolylineM` in `routeRemainingAlongPolyline.ts`.
+- Bestätigung / Cooldown: `navOffRouteReroute.ts` — Schwelle **40 m**, **3 Fixes** oder **4 s**, Cooldown **20 s**, kein Parallel-Request.
+- Orchestrator in `navigation.tsx` (`requestNavRouteFrom` / `applyNavRouteResult`): bei Erfolg **atomar** Polyline + Steps + Metrics + Kunden-Share; bei Fehler alte Linie behalten, Cooldown trotzdem.
+- Smoke: `npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts`
+
 ## Was nicht tun
 
 - Kein direktes Client-OSRM für Fahrer-Navi-Metriken (Preis und Navi würden wieder auseinanderlaufen).
-- Kein Re-Call der Matrix bei jedem GPS-Tick — nur bei Ride/Phase-Wechsel (ggf. später Off-Route mit Throttle).
+- Kein Re-Call der Matrix bei **jedem** GPS-Tick — nur Ride/Phase-Wechsel **oder** bestätigtes Off-Route mit Throttle.
 - Keine Directions-API „nebenbei“ ohne explizite Kostenfreigabe.
 - Kunden-Live-ETA **nicht** aus Luftlinie (`estimatePickupEtaMinutes` / `formatPickupDistanceKm`) berechnen.
 - Kunden-Live-Route **nicht** separat über öffentliche OSRM-Demo neu berechnen (Rate-Limit → Luftlinie).
@@ -30,3 +37,6 @@ alwaysApply: false
 | API Route | `POST /fleet-driver/v1/nav-route` in `fleetDriverApi.ts` |
 | Metrics shared | `fixedPriceRouteQuote.ts` → `drivingRouteBetween` |
 | Mobile Navi | `artifacts/mobile/app/driver/navigation.tsx` |
+| Off-Route | `artifacts/mobile/utils/navOffRouteReroute.ts` |
+| Polyline-Distanz | `artifacts/mobile/utils/routeRemainingAlongPolyline.ts` |
+---

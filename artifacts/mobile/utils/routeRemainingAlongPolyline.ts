@@ -37,6 +37,50 @@ function projectOnSegment(p: LatLon, a: LatLon, b: LatLon): {
   return { point, t, distM: haversineM(p, point) };
 }
 
+type NearestOnPolyline = {
+  bestDistM: number;
+  bestSeg: number;
+  bestT: number;
+  segLens: number[];
+  totalM: number;
+};
+
+function nearestOnPolyline(polyline: LatLon[], current: LatLon): NearestOnPolyline | null {
+  if (polyline.length < 2) return null;
+  if (!Number.isFinite(current.lat) || !Number.isFinite(current.lon)) return null;
+
+  const segLens: number[] = [];
+  let totalM = 0;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const len = haversineM(polyline[i]!, polyline[i + 1]!);
+    segLens.push(len);
+    totalM += len;
+  }
+  if (totalM <= 0) return null;
+
+  let bestDistM = Infinity;
+  let bestSeg = 0;
+  let bestT = 0;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const proj = projectOnSegment(current, polyline[i]!, polyline[i + 1]!);
+    if (proj.distM < bestDistM) {
+      bestDistM = proj.distM;
+      bestSeg = i;
+      bestT = proj.t;
+    }
+  }
+  if (!Number.isFinite(bestDistM)) return null;
+  return { bestDistM, bestSeg, bestT, segLens, totalM };
+}
+
+/**
+ * Querabstand (m) zur nächsten Polyline-Kante — für Off-Route-Erkennung.
+ */
+export function distanceToPolylineM(polyline: LatLon[], current: LatLon): number | null {
+  const n = nearestOnPolyline(polyline, current);
+  return n ? n.bestDistM : null;
+}
+
 export type RemainingAlongRoute = {
   remainingM: number;
   totalM: number;
@@ -52,38 +96,17 @@ export function remainingAlongPolyline(
   polyline: LatLon[],
   current: LatLon,
 ): RemainingAlongRoute | null {
-  if (polyline.length < 2) return null;
-  if (!Number.isFinite(current.lat) || !Number.isFinite(current.lon)) return null;
+  const n = nearestOnPolyline(polyline, current);
+  if (!n) return null;
 
-  const segLens: number[] = [];
-  let totalM = 0;
-  for (let i = 0; i < polyline.length - 1; i++) {
-    const len = haversineM(polyline[i]!, polyline[i + 1]!);
-    segLens.push(len);
-    totalM += len;
-  }
-  if (totalM <= 0) return null;
-
-  let bestDist = Infinity;
-  let bestSeg = 0;
-  let bestT = 0;
-  for (let i = 0; i < polyline.length - 1; i++) {
-    const proj = projectOnSegment(current, polyline[i]!, polyline[i + 1]!);
-    if (proj.distM < bestDist) {
-      bestDist = proj.distM;
-      bestSeg = i;
-      bestT = proj.t;
-    }
+  let remainingM = (1 - n.bestT) * (n.segLens[n.bestSeg] ?? 0);
+  for (let i = n.bestSeg + 1; i < n.segLens.length; i++) {
+    remainingM += n.segLens[i]!;
   }
 
-  let remainingM = (1 - bestT) * (segLens[bestSeg] ?? 0);
-  for (let i = bestSeg + 1; i < segLens.length; i++) {
-    remainingM += segLens[i]!;
-  }
-
-  remainingM = Math.max(0, Math.min(totalM, remainingM));
-  const fractionLeft = Math.max(0, Math.min(1, remainingM / totalM));
-  return { remainingM, totalM, fractionLeft };
+  remainingM = Math.max(0, Math.min(n.totalM, remainingM));
+  const fractionLeft = Math.max(0, Math.min(1, remainingM / n.totalM));
+  return { remainingM, totalM: n.totalM, fractionLeft };
 }
 
 /** Anzeige-Distanz/ETA skaliert auf autoritative Gesamtmesswerte (z. B. Google Matrix). */

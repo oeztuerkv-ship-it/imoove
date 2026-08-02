@@ -91,11 +91,18 @@ import {
   logDriverNavigationRouteResult,
 } from "@/utils/driverNavigationDiagnostics";
 import type { RouteStep } from "@/utils/routing";
-import { fetchDriverNavRoute } from "@/utils/driverNavRouteApi";
+import { fetchDriverNavRoute, type DriverNavRouteResult } from "@/utils/driverNavRouteApi";
 import {
+  distanceToPolylineM,
   remainingAlongPolyline,
   scaleRemainingToAuthoritative,
 } from "@/utils/routeRemainingAlongPolyline";
+import {
+  canStartReroute,
+  createOffRouteTrackerState,
+  noteOffRouteSample,
+  type OffRouteTrackerState,
+} from "@/utils/navOffRouteReroute";
 import {
   defaultDriverFareInputForCompletion,
   defaultFinalFareForDriverCompletion,
@@ -489,6 +496,10 @@ export default function DriverNavigationScreen() {
   const programmaticCameraUntilRef = useRef(0);
   /** Heading: Speed-Gate + EMA/Deadband/Rate-Limit (nicht Roh-GPS). */
   const navHeadingSmootherRef = useRef<NavHeadingSmootherState>(createNavHeadingSmootherState());
+  /** Off-Route → Reroute (Debounce + Cooldown). */
+  const offRouteTrackerRef = useRef<OffRouteTrackerState>(createOffRouteTrackerState());
+  const rerouteInFlightRef = useRef(false);
+  const lastRerouteAtMsRef = useRef<number | null>(null);
   const driverArrivingSentRef = useRef(false);
 
   const [polyline, setPolyline] = useState<{ latitude: number; longitude: number }[]>([]);
@@ -813,6 +824,9 @@ export default function DriverNavigationScreen() {
     navCameraInitializedRef.current = false;
     navFollowEnabledRef.current = true;
     navHeadingSmootherRef.current = createNavHeadingSmootherState();
+    offRouteTrackerRef.current = createOffRouteTrackerState();
+    rerouteInFlightRef.current = false;
+    lastRerouteAtMsRef.current = null;
     setStepIdx(0);
     prevStepIdx.current = -1;
   }, [params.rideId, phase]);
@@ -822,32 +836,18 @@ export default function DriverNavigationScreen() {
     focusNavigationCamera({ animated: true, force: true });
   }, [phase, navigationTarget.lat, navigationTarget.lon, focusNavigationCamera]);
 
-  // Load route once per ride/phase via API (Google Matrix → OSRM) — never on every GPS tick.
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-
-    let fLat = driverLatRef.current;
-    let fLon = driverLonRef.current;
-    if (!isValidMapCoord(fLat, fLon)) {
-      fLat = isPickupPhase ? fromLat : pickupLat || fromLat;
-      fLon = isPickupPhase ? fromLon : pickupLon || fromLon;
-    }
-    const tLat = navigationTarget.lat;
-    const tLon = navigationTarget.lon;
-    if (!isValidMapCoord(fLat, fLon) || !isValidMapCoord(tLat, tLon)) return;
-
-    const destLabel = isPickupPhase ? pickupName : destName;
-    const shareRouteWithCustomer = (
+  const shareRouteWithCustomer = useCallback(
+    (
       points: { lat: number; lon: number }[],
       metrics: { etaMinutes: number; remainingDistM: number },
     ) => {
       if (isPrivateMemo) return;
       const sampled = downsampleRoutePolyline(points);
       if (sampled.length < 2) return;
-      const polyline = polylinePairsFromLatLon(sampled);
+      const polylinePairs = polylinePairsFromLatLon(sampled);
       const navPhase = isPickupPhase ? ("pickup" as const) : ("destination" as const);
       sendDriverNavRoute({
-        polyline,
+        polyline: polylinePairs,
         etaMinutes: metrics.etaMinutes,
         remainingDistM: metrics.remainingDistM,
         navPhase,
@@ -861,7 +861,7 @@ export default function DriverNavigationScreen() {
             method: "POST",
             headers,
             body: JSON.stringify({
-              polyline,
+              polyline: polylinePairs,
               etaMinutes: metrics.etaMinutes,
               remainingDistM: metrics.remainingDistM,
               navPhase,
@@ -871,93 +871,153 @@ export default function DriverNavigationScreen() {
           /* ignore */
         }
       })();
-    };
+    },
+    [isPrivateMemo, isPickupPhase, params.rideId],
+  );
 
-    let cancelled = false;
-    fetchDriverNavRoute(
-      { lat: fLat, lon: fLon, displayName: params.fromName ?? "Start" },
-      { lat: tLat, lon: tLon, displayName: destLabel },
-    )
-      .then((result) => {
-        if (cancelled) return;
-        const coords = (result.polyline ?? []).map(([lat, lon]) => ({ latitude: lat, longitude: lon }));
-        const latLon = coords.map((c) => ({ lat: c.latitude, lon: c.longitude }));
+  const applyNavRouteResult = useCallback(
+    (
+      result: DriverNavRouteResult,
+      fallbackFrom: { lat: number; lon: number },
+      fallbackTo: { lat: number; lon: number },
+      opts?: { refocusCamera?: boolean },
+    ) => {
+      const coords = (result.polyline ?? []).map(([lat, lon]) => ({
+        latitude: lat,
+        longitude: lon,
+      }));
+      const latLon = coords.map((c) => ({ lat: c.latitude, lon: c.longitude }));
+      const appliedCoords =
+        coords.length >= 2
+          ? coords
+          : [
+              { latitude: fallbackFrom.lat, longitude: fallbackFrom.lon },
+              { latitude: fallbackTo.lat, longitude: fallbackTo.lon },
+            ];
+      polylineLatLonRef.current =
+        latLon.length >= 2
+          ? latLon
+          : [
+              { lat: fallbackFrom.lat, lon: fallbackFrom.lon },
+              { lat: fallbackTo.lat, lon: fallbackTo.lon },
+            ];
+      setPolyline(appliedCoords);
+      setSteps(result.steps);
+      setStepIdx(0);
+      prevStepIdx.current = -1;
+      const distM = (result.distanceKm ?? 0) * 1000;
+      const etaMin = result.durationMinutes ?? 0;
+      setInitialDistM(distM);
+      setInitialEtaMin(etaMin);
+      const lat = isValidMapCoord(driverLatRef.current, driverLonRef.current)
+        ? driverLatRef.current
+        : fallbackFrom.lat;
+      const lon = isValidMapCoord(driverLatRef.current, driverLonRef.current)
+        ? driverLonRef.current
+        : fallbackFrom.lon;
+      let remDist = distM;
+      let remMin = Math.max(1, etaMin);
+      const along = remainingAlongPolyline(polylineLatLonRef.current, { lat, lon });
+      if (along && distM > 0) {
+        const scaled = scaleRemainingToAuthoritative(along, distM, etaMin);
+        remDist = scaled.remainingDistM;
+        remMin = scaled.remainingMin;
+        setRemainingDistM(remDist);
+        setRemainingMin(remMin);
+      } else {
+        setRemainingDistM(distM);
+        setRemainingMin(Math.max(1, etaMin));
+      }
+      offRouteTrackerRef.current = createOffRouteTrackerState();
+      if (opts?.refocusCamera !== false) {
+        focusNavigationCamera({ lat, lon, animated: false, force: true });
+      }
+      shareRouteWithCustomer(polylineLatLonRef.current, {
+        etaMinutes: remMin,
+        remainingDistM: Math.round(remDist),
+      });
+    },
+    [focusNavigationCamera, shareRouteWithCustomer],
+  );
+
+  const requestNavRouteFrom = useCallback(
+    async (
+      from: { lat: number; lon: number },
+      reason: "initial" | "reroute",
+      isCancelled?: () => boolean,
+    ): Promise<boolean> => {
+      const target = navTargetRef.current;
+      if (!isValidMapCoord(from.lat, from.lon) || !isValidMapCoord(target.lat, target.lon)) {
+        return false;
+      }
+      const destLabel = isPickupPhaseRef.current ? pickupName : destName;
+      try {
+        const result = await fetchDriverNavRoute(
+          { lat: from.lat, lon: from.lon, displayName: params.fromName ?? "Start" },
+          { lat: target.lat, lon: target.lon, displayName: destLabel },
+        );
+        if (isCancelled?.()) return false;
         logDriverNavigationRouteResult({
           ok: true,
           source: result.routingSource,
           distanceKm: result.distanceKm,
           durationMinutes: result.durationMinutes,
           stepCount: result.steps.length,
-          polylinePoints: coords.length,
+          polylinePoints: (result.polyline ?? []).length,
         });
-        const appliedCoords =
-          coords.length >= 2
-            ? coords
-            : [
-                { latitude: fLat, longitude: fLon },
-                { latitude: tLat, longitude: tLon },
-              ];
-        polylineLatLonRef.current =
-          latLon.length >= 2
-            ? latLon
-            : [
-                { lat: fLat, lon: fLon },
-                { lat: tLat, lon: tLon },
-              ];
-        setPolyline(appliedCoords);
-        setSteps(result.steps);
-        setStepIdx(0);
-        prevStepIdx.current = -1;
-        const distM = (result.distanceKm ?? 0) * 1000;
-        const etaMin = result.durationMinutes ?? 0;
-        setInitialDistM(distM);
-        setInitialEtaMin(etaMin);
-        const lat = isValidMapCoord(driverLatRef.current, driverLonRef.current)
-          ? driverLatRef.current
-          : fLat;
-        const lon = isValidMapCoord(driverLatRef.current, driverLonRef.current)
-          ? driverLonRef.current
-          : fLon;
-        let remDist = distM;
-        let remMin = Math.max(1, etaMin);
-        const along = remainingAlongPolyline(polylineLatLonRef.current, { lat, lon });
-        if (along && distM > 0) {
-          const scaled = scaleRemainingToAuthoritative(along, distM, etaMin);
-          remDist = scaled.remainingDistM;
-          remMin = scaled.remainingMin;
-          setRemainingDistM(remDist);
-          setRemainingMin(remMin);
-        } else {
-          setRemainingDistM(distM);
-          setRemainingMin(Math.max(1, etaMin));
-        }
-        focusNavigationCamera({ lat, lon, animated: false, force: true });
-        shareRouteWithCustomer(polylineLatLonRef.current, {
-          etaMinutes: remMin,
-          remainingDistM: Math.round(remDist),
+        applyNavRouteResult(result, from, target, {
+          refocusCamera: reason === "initial",
         });
-      })
-      .catch((e) => {
-        if (cancelled) return;
+        lastRerouteAtMsRef.current = Date.now();
+        return true;
+      } catch (e) {
+        if (isCancelled?.()) return false;
         logDriverNavigationRouteResult({
           ok: false,
           source: "error",
           error: e instanceof Error ? e.message : String(e),
         });
-        const fallbackCoords = [
-          { latitude: fLat, longitude: fLon },
-          { latitude: tLat, longitude: tLon },
-        ];
-        polylineLatLonRef.current = [
-          { lat: fLat, lon: fLon },
-          { lat: tLat, lon: tLon },
-        ];
-        setPolyline(fallbackCoords);
-        shareRouteWithCustomer(polylineLatLonRef.current, {
-          etaMinutes: Math.max(1, remainingMinRef.current || 1),
-          remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)),
-        });
-      });
+        if (reason === "initial") {
+          const fallbackCoords = [
+            { latitude: from.lat, longitude: from.lon },
+            { latitude: target.lat, longitude: target.lon },
+          ];
+          polylineLatLonRef.current = [
+            { lat: from.lat, lon: from.lon },
+            { lat: target.lat, lon: target.lon },
+          ];
+          setPolyline(fallbackCoords);
+          shareRouteWithCustomer(polylineLatLonRef.current, {
+            etaMinutes: Math.max(1, remainingMinRef.current || 1),
+            remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)),
+          });
+        }
+        // Cooldown auch bei Fehler — kein Request-Sturm.
+        lastRerouteAtMsRef.current = Date.now();
+        return false;
+      }
+    },
+    [applyNavRouteResult, destName, params.fromName, pickupName, shareRouteWithCustomer],
+  );
+
+  // Load route once per ride/phase; Off-Route-Reroute separat im GPS-Callback (Throttle).
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    let fLat = driverLatRef.current;
+    let fLon = driverLonRef.current;
+    if (!isValidMapCoord(fLat, fLon)) {
+      fLat = isPickupPhase ? fromLat : pickupLat || fromLat;
+      fLon = isPickupPhase ? fromLon : pickupLon || fromLon;
+    }
+    const tLat = navigationTarget.lat;
+    const tLon = navigationTarget.lon;
+    if (!isValidMapCoord(fLat, fLon) || !isValidMapCoord(tLat, tLon)) return;
+
+    let cancelled = false;
+    void (async () => {
+      await requestNavRouteFrom({ lat: fLat, lon: fLon }, "initial", () => cancelled);
+    })();
     return () => {
       cancelled = true;
     };
@@ -971,11 +1031,7 @@ export default function DriverNavigationScreen() {
     pickupLon,
     navigationTarget.lat,
     navigationTarget.lon,
-    pickupName,
-    destName,
-    params.fromName,
-    focusNavigationCamera,
-    isPrivateMemo,
+    requestNavRouteFrom,
   ]);
 
   // Speak on step change — skip "Fahrt beginnen" (depart) instructions
@@ -1899,6 +1955,28 @@ export default function DriverNavigationScreen() {
           }
 
           const now = Date.now();
+
+          // Off-Route: Querabstand zur Polyline → bestätigt → Reroute (Cooldown).
+          const distToRouteM = distanceToPolylineM(polylineLatLonRef.current, {
+            lat: latitude,
+            lon: longitude,
+          });
+          const offSample = noteOffRouteSample(offRouteTrackerRef.current, distToRouteM, now);
+          offRouteTrackerRef.current = offSample.state;
+          if (
+            offSample.confirmedOffRoute &&
+            canStartReroute({
+              inFlight: rerouteInFlightRef.current,
+              lastRerouteAtMs: lastRerouteAtMsRef.current,
+              nowMs: now,
+            })
+          ) {
+            rerouteInFlightRef.current = true;
+            void requestNavRouteFrom({ lat: latitude, lon: longitude }, "reroute").finally(() => {
+              rerouteInFlightRef.current = false;
+            });
+          }
+
           const fallbackBearing = resolveNavFallbackBearing(latitude, longitude, {
             steps: stepsRef.current,
             stepIdx: stepIdxRef.current,
@@ -1932,7 +2010,7 @@ export default function DriverNavigationScreen() {
     return () => {
       sub?.remove();
     };
-  }, [params.rideId, focusNavigationCamera]);
+  }, [params.rideId, focusNavigationCamera, requestNavRouteFrom]);
   const handleMapReady = useCallback(() => {
     mapReady.current = true;
     logMapsRuntimeDiagnosticsOnce("DriverNavigation.onMapReady");
