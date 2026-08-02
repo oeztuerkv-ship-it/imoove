@@ -1,6 +1,6 @@
 /**
  * ONRODA Billing — zentrale Marke & Rechnungssteller (PDF + spätere UI-Referenz).
- * Änderungen hier wirken auf alle Mandanten-Typen (Hotel, Corporate, Medical, …).
+ * Änderungen hier wirken auf alle Mandanten-Typen (Hotel, Corporate, Medical, Taxi-Provision, …).
  */
 
 export const ONRODA_INVOICE_BRAND = {
@@ -24,6 +24,21 @@ export const ONRODA_INVOICE_SELLER = {
   country: "Deutschland",
   iban: "DE88 6115 0020 0104 7668 93",
   taxId: "97076/11679",
+  /** Optional — leer = auf PDF auslassen. */
+  phone: "",
+  email: "info@onroda.de",
+} as const;
+
+/**
+ * Steuerliche Ausweisung auf dem PDF.
+ * Bei Kleinunternehmer (§ 19 UStG): nur Gesamtbetrag + Pflicht-Hinweis, kein Netto/USt-Block.
+ * Wenn doch USt. > 0 in den Daten steht: zusätzlich Kurzzeile „Enthaltene USt.“ (Absicherung).
+ */
+export const ONRODA_INVOICE_TAX = {
+  regime: "kleinunternehmer" as const,
+  kleinunternehmerNote: "Gemäß § 19 Abs. 1 UStG wird keine Umsatzsteuer berechnet.",
+  paymentMethodLabel: "Überweisung",
+  introText: "Für die folgende Leistung stellen wir Ihnen den nachstehenden Betrag in Rechnung.",
 } as const;
 
 export function sellerAddressLines(): string[] {

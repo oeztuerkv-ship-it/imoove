@@ -1,22 +1,26 @@
 import PDFDocument from "pdfkit";
-import { ONRODA_INVOICE_SELLER, sellerAddressLines } from "./invoiceBrand";
+import { ONRODA_INVOICE_TAX } from "./invoiceBrand";
 import {
   createPdfContext,
-  INVOICE_LAYOUT,
   remainingHeight,
   type InvoicePdfContext,
 } from "./invoiceLayout";
 import {
-  drawBankSection,
+  defaultSellerInfo,
+  drawGrossTotalOnly,
+  drawIntroText,
   drawInvoiceFooterOnCurrentPage,
-  drawInvoiceMetaBar,
   drawInvoicePageHeader,
   drawInvoiceTableHeader,
   drawInvoiceTableRow,
-  drawInvoiceTotalsCard,
-  drawPartyColumns,
+  drawIssuerAndMetaBox,
+  drawPaymentInfoSection,
+  drawRecipientBlock,
+  drawTaxNote,
   measureTableRowHeight,
+  standardInvoiceTableColumns,
   type InvoiceHeaderMeta,
+  type InvoiceSellerInfo,
   type InvoiceTableColumn,
   type InvoiceTableRow,
 } from "./invoicePdfComponents";
@@ -48,8 +52,12 @@ export type PartnerInvoicePdfDocumentInput = {
   totalGross: number;
   taxRatePercent?: number;
   notes?: string | null;
+  /** @deprecated — nicht mehr im Layout (einheitliches Design). */
   segmentLabel?: string;
   paymentReference: string;
+  /** Optional: anderer Aussteller (z. B. Taxi bei Kranken-Sammelrechnung). */
+  seller?: InvoiceSellerInfo;
+  introText?: string | null;
 };
 
 function fmtDateDe(iso: string): string {
@@ -69,36 +77,35 @@ function fmtMoney(n: number): string {
   return `${roundMoneyEur(n).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 }
 
+function serviceDateLabel(periodFrom: string, periodTo: string): string {
+  const a = fmtDateDe(periodFrom);
+  const b = fmtDateDe(periodTo);
+  if (a === "—" && b === "—") return "—";
+  if (a === b || a === "—") return b;
+  if (b === "—") return a;
+  return `${a} – ${b}`;
+}
+
 function buildHeaderMeta(input: PartnerInvoicePdfDocumentInput): InvoiceHeaderMeta {
   return {
     invoiceNumber: input.invoiceNumber,
     statusLabel: input.statusLabel,
     issueDateLabel: fmtDateDe(input.issueDate),
-    periodLabel: `${fmtDateDe(input.periodFrom)} – ${fmtDateDe(input.periodTo)}`,
+    periodLabel: serviceDateLabel(input.periodFrom, input.periodTo),
     dueDateLabel: input.dueDate ? fmtDateDe(input.dueDate) : "—",
+    paymentMethodLabel: ONRODA_INVOICE_TAX.paymentMethodLabel,
   };
 }
 
-function tableColumns(contentWidth: number): InvoiceTableColumn[] {
-  const posW = 28;
-  const amtW = 72;
-  const qtyW = 44;
-  const descW = contentWidth - posW - qtyW - amtW;
-  return [
-    { key: "pos", title: "Pos.", width: posW, align: "left" },
-    { key: "description", title: "Beschreibung", width: descW, align: "left" },
-    { key: "qty", title: "Menge", width: qtyW, align: "right" },
-    { key: "gross", title: "Betrag", width: amtW, align: "right" },
-  ];
-}
-
 function lineItemToRow(item: PartnerInvoicePdfLineItem): InvoiceTableRow {
+  const qty = item.quantity > 0 ? item.quantity : 1;
+  const unit = roundMoneyEur(item.lineGross / qty);
   return {
     cells: {
-      pos: String(item.position),
       description: item.description,
-      qty: item.quantity % 1 === 0 ? String(item.quantity) : item.quantity.toFixed(2),
-      gross: fmtMoney(item.lineGross),
+      qty: qty % 1 === 0 ? String(qty) : qty.toFixed(2),
+      unit: fmtMoney(unit),
+      total: fmtMoney(item.lineGross),
     },
     subline: item.subline,
   };
@@ -120,9 +127,9 @@ function addPage(state: PageState, compact: boolean): void {
   state.ctx.y = drawInvoicePageHeader(state.ctx, state.headerMeta, { compact });
 }
 
-function ensureSpace(state: PageState, needed: number, compactHeader = true): void {
+function ensureSpace(state: PageState, needed: number): void {
   if (remainingHeight(state.ctx) >= needed) return;
-  addPage(state, compactHeader);
+  addPage(state, true);
   state.ctx.y = drawInvoiceTableHeader(state.ctx, state.columns);
 }
 
@@ -135,6 +142,10 @@ export function renderPartnerInvoicePdf(input: PartnerInvoicePdfDocumentInput): 
   return renderPartnerInvoicePdfWithMeta(input).then((r) => r.buffer);
 }
 
+/**
+ * Einheitliches ONRODA-Rechnungs-PDF (Referenz-Layout 2026-0521-001).
+ * Nummernformat unverändert: ONR-{PREFIX}-YYYY-MM-SEQ.
+ */
 export function renderPartnerInvoicePdfWithMeta(
   input: PartnerInvoicePdfDocumentInput,
 ): Promise<PartnerInvoicePdfRenderResult> {
@@ -162,30 +173,16 @@ export function renderPartnerInvoicePdfWithMeta(
     doc.addPage({ size: "A4", margin: 0 });
     state.pageCount = 1;
     state.ctx = createPdfContext(doc, 0);
-    state.columns = tableColumns(state.ctx.contentWidth);
+    state.columns = standardInvoiceTableColumns(state.ctx.contentWidth);
 
     state.ctx.y = drawInvoicePageHeader(state.ctx, headerMeta, { compact: false });
-    state.ctx.y = drawInvoiceMetaBar(state.ctx, headerMeta);
-
-    state.ctx.y = drawPartyColumns(
-      state.ctx,
-      {
-        title: "Rechnungssteller",
-        name: ONRODA_INVOICE_SELLER.legalName,
-        lines: sellerAddressLines(),
-      },
-      {
-        title: "Rechnungsempfänger",
-        name: input.recipientName,
-        lines: input.recipientLines.filter(Boolean),
-      },
-    );
-
-    if (input.segmentLabel?.trim()) {
-      doc.font("Helvetica").fontSize(9).fillColor("#6B7280");
-      doc.text(`Leistungsart: ${input.segmentLabel.trim()}`, state.ctx.contentLeft, state.ctx.y);
-      state.ctx.y += 18;
-    }
+    state.ctx.y = drawIssuerAndMetaBox(state.ctx, headerMeta, input.seller ?? defaultSellerInfo());
+    state.ctx.y = drawRecipientBlock(state.ctx, {
+      title: "Rechnungsempfänger",
+      name: input.recipientName,
+      lines: input.recipientLines.filter(Boolean),
+    });
+    state.ctx.y = drawIntroText(state.ctx, input.introText);
 
     state.ctx.y = drawInvoiceTableHeader(state.ctx, state.columns);
 
@@ -194,46 +191,40 @@ export function renderPartnerInvoicePdfWithMeta(
       : [
           {
             cells: {
-              pos: "—",
               description: "Keine Positionen erfasst",
               qty: "—",
-              gross: fmtMoney(0),
+              unit: "—",
+              total: fmtMoney(0),
             },
           },
         ];
 
     for (const row of rows) {
-      const rowH =
-        row.rowHeight ??
-        measureTableRowHeight(state.doc, row, state.columns);
-      ensureSpace(state, rowH + 8, true);
+      const rowH = row.rowHeight ?? measureTableRowHeight(state.doc, row, state.columns);
+      ensureSpace(state, rowH + 8);
       state.ctx.y = drawInvoiceTableRow(state.ctx, state.columns, { ...row, rowHeight: rowH });
     }
 
-    const taxPct =
-      input.taxRatePercent ??
-      (input.subtotalNet > 0 ? Math.round((input.vatTotal / input.subtotalNet) * 10000) / 100 : 19);
-
-    ensureSpace(state, 100, true);
-    state.ctx.y += 8;
-    state.ctx.y = drawInvoiceTotalsCard(state.ctx, {
-      netLabel: "Nettobetrag",
-      net: fmtMoney(input.subtotalNet),
-      vatLabel: `USt. ${taxPct.toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`,
-      vat: fmtMoney(input.vatTotal),
-      grossLabel: "Gesamtbetrag",
-      gross: fmtMoney(input.totalGross),
+    ensureSpace(state, 120);
+    state.ctx.y += 6;
+    state.ctx.y = drawGrossTotalOnly(state.ctx, "Gesamtbetrag", fmtMoney(input.totalGross));
+    state.ctx.y = drawTaxNote(state.ctx, {
+      vatTotal: input.vatTotal,
+      vatFormatted: fmtMoney(input.vatTotal),
+      taxRatePercent: input.taxRatePercent,
     });
 
-    ensureSpace(state, 80, true);
-    state.ctx.y = drawBankSection(state.ctx, {
+    ensureSpace(state, 140);
+    state.ctx.y = drawPaymentInfoSection(state.ctx, {
       paymentReference: input.paymentReference,
       invoiceNumber: input.invoiceNumber,
+      dueDateLabel: headerMeta.dueDateLabel,
       notes: input.notes,
+      accountHolder: input.seller?.name,
+      iban: input.seller?.iban,
     });
 
     drawInvoiceFooterOnCurrentPage(state.ctx, state.pageCount, state.pageCount);
-
     doc.end();
   });
 }

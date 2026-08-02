@@ -82,14 +82,15 @@ Datenzugriff: `db/adminFinanceData.ts`
 - `POST /api/admin/invoices/generate` — Monatslauf aus `ride_financials` + abgeschlossenen Fahrten
 - `POST /api/admin/invoices/:id/mark-paid` — Status + optional `payments`-Zeile
 
-## PDF (Corporate B2B-Layout)
+## PDF (einheitliches Referenz-Layout)
 
 - **Nur serverseitig** — `pdfkit` + modulare Komponenten unter `artifacts/api-server/src/lib/invoice/`
-- **Referenz-Optik:** Admin `InvoicesPage` Print-View (ONRODA-Wortmarke, Karten, rote Summe, Tabellenzeilen)
-- **Zentral:** `invoiceBrand.ts` (Rechnungssteller Vedat Öztürk, IBAN, St.-Nr., Farben)
-- **Komponenten:** `invoicePdfComponents.ts` (Kopf, Meta-Leiste, Parteien, Tabelle, Summen, Bank, Footer)
-- **Mehrseitig:** `partnerInvoicePdf.ts` — Tabellenzeilen mit Seitenumbruch + kompakter Folgekopf
-- Partner-Download: gespeichertes PDF (`pdf_storage_key`) oder on-the-fly + optional Disk-Cache
+- **Referenz-Optik:** Layout analog Rechnung `2026-0521-001` — Aussteller links + Meta-Box rechts, Tabelle Beschreibung/Menge/Einzelpreis/Gesamt, nur Gesamtbetrag, Block „Zahlungsinformationen“
+- **Ein Layout für alle:** Partner-Monatsrechnung, Provisionsnachzahlung (P6), Kranken-Sammelrechnung (`partnerInvoicePdf` / `krankenInvoicePdf`)
+- **Nummern:** unverändert `ONR-{PREFIX}-YYYY-MM-SEQ` (kein Zurück zu `YYYY-MMDD-SEQ`)
+- **USt.:** Standard Kleinunternehmer-Hinweis § 19 UStG (`invoiceBrand.ONRODA_INVOICE_TAX`); bei `vatTotal > 0` zusätzlich Kurzzeile „Enthaltene USt.“
+- **Zentral:** `invoiceBrand.ts` (Rechnungssteller, IBAN, Steuernr., Farben, Steuer-Hinweis)
+- Partner-Download: gespeichertes PDF (`pdf_storage_key`) oder on-the-fly + Disk-Cache
 - **Kein** dauerhaftes Frontend-Fake-PDF (Hotel-Demo nur Übergang)
 
 Lokale Probe-PDF: `pnpm --filter @workspace/api-server run test:invoice-pdf-sample`  
