@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import {
   createPartnerPrivateReminder,
   deletePartnerPrivateReminder,
-  listPartnerPrivateReminders,
+  listPartnerPrivateRemindersForPanel,
   updatePartnerPrivateReminder,
 } from "../db/partnerPrivateRemindersData";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
@@ -34,7 +34,7 @@ router.get("/panel/v1/private-reminders", requirePanelAuth, async (req, res, nex
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
     if (!denyUnlessTaxiOwnerOrManager(res, ctx.profile)) return;
-    const reminders = await listPartnerPrivateReminders(ctx.claims.companyId);
+    const reminders = await listPartnerPrivateRemindersForPanel(ctx.claims.companyId);
     res.json({ ok: true, reminders });
   } catch (e) {
     next(e);
@@ -52,6 +52,7 @@ router.post("/panel/v1/private-reminders", requirePanelAuth, async (req, res, ne
     const out = await createPartnerPrivateReminder({
       companyId: ctx.claims.companyId,
       panelUserId: ctx.claims.panelUserId,
+      fleetDriverId: null,
       scheduledAt: body.scheduledAt,
       fromFull: body.fromFull,
       toFull: body.toFull,
@@ -83,6 +84,7 @@ router.patch("/panel/v1/private-reminders/:id", requirePanelAuth, async (req, re
     const out = await updatePartnerPrivateReminder({
       companyId: ctx.claims.companyId,
       reminderId: id,
+      fleetDriverId: null,
       scheduledAt: body.scheduledAt,
       fromFull: body.fromFull,
       toFull: body.toFull,
@@ -110,7 +112,7 @@ router.delete("/panel/v1/private-reminders/:id", requirePanelAuth, async (req, r
       res.status(400).json({ error: "id_required" });
       return;
     }
-    const out = await deletePartnerPrivateReminder(ctx.claims.companyId, id);
+    const out = await deletePartnerPrivateReminder(ctx.claims.companyId, id, null);
     if (!out.ok) {
       res.status(out.error === "not_found" ? 404 : 400).json({ error: out.error });
       return;

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { getDb } from "./client";
 import { partnerPrivateRemindersTable } from "./schema";
 
@@ -7,6 +7,7 @@ export type PartnerPrivateReminderRow = {
   id: string;
   companyId: string;
   createdByPanelUserId: string | null;
+  fleetDriverId: string | null;
   scheduledAt: string;
   fromFull: string;
   toFull: string;
@@ -20,6 +21,7 @@ function mapRow(r: typeof partnerPrivateRemindersTable.$inferSelect): PartnerPri
     id: r.id,
     companyId: r.company_id,
     createdByPanelUserId: r.created_by_panel_user_id ?? null,
+    fleetDriverId: r.fleet_driver_id ?? null,
     scheduledAt: r.scheduled_at.toISOString(),
     fromFull: r.from_full ?? "",
     toFull: r.to_full ?? "",
@@ -36,7 +38,8 @@ function parseScheduledAt(raw: unknown): Date | null {
   return d;
 }
 
-export async function listPartnerPrivateReminders(
+/** Panel-Merkliste: nur Einträge ohne fleet_driver_id (nicht Fahrer-privat). */
+export async function listPartnerPrivateRemindersForPanel(
   companyId: string,
 ): Promise<PartnerPrivateReminderRow[]> {
   const db = getDb();
@@ -44,26 +47,65 @@ export async function listPartnerPrivateReminders(
   const rows = await db
     .select()
     .from(partnerPrivateRemindersTable)
-    .where(eq(partnerPrivateRemindersTable.company_id, companyId))
+    .where(
+      and(
+        eq(partnerPrivateRemindersTable.company_id, companyId),
+        isNull(partnerPrivateRemindersTable.fleet_driver_id),
+      ),
+    )
     .orderBy(asc(partnerPrivateRemindersTable.scheduled_at));
   return rows.map(mapRow);
 }
 
-export async function getPartnerPrivateReminder(
+/** Fahrer-Merkliste: nur eigene Notizen. */
+export async function listPartnerPrivateRemindersForFleetDriver(
   companyId: string,
-  reminderId: string,
-): Promise<PartnerPrivateReminderRow | null> {
+  fleetDriverId: string,
+): Promise<PartnerPrivateReminderRow[]> {
   const db = getDb();
-  if (!db) return null;
+  if (!db || !companyId.trim() || !fleetDriverId.trim()) return [];
   const rows = await db
     .select()
     .from(partnerPrivateRemindersTable)
     .where(
       and(
-        eq(partnerPrivateRemindersTable.id, reminderId),
         eq(partnerPrivateRemindersTable.company_id, companyId),
+        eq(partnerPrivateRemindersTable.fleet_driver_id, fleetDriverId),
       ),
     )
+    .orderBy(asc(partnerPrivateRemindersTable.scheduled_at));
+  return rows.map(mapRow);
+}
+
+/** @deprecated Alias — Panel nutzt listPartnerPrivateRemindersForPanel. */
+export async function listPartnerPrivateReminders(
+  companyId: string,
+): Promise<PartnerPrivateReminderRow[]> {
+  return listPartnerPrivateRemindersForPanel(companyId);
+}
+
+export async function getPartnerPrivateReminder(
+  companyId: string,
+  reminderId: string,
+  scope?: { fleetDriverId: string | null },
+): Promise<PartnerPrivateReminderRow | null> {
+  const db = getDb();
+  if (!db) return null;
+  const parts = [
+    eq(partnerPrivateRemindersTable.id, reminderId),
+    eq(partnerPrivateRemindersTable.company_id, companyId),
+  ];
+  if (scope) {
+    if (scope.fleetDriverId) {
+      parts.push(eq(partnerPrivateRemindersTable.fleet_driver_id, scope.fleetDriverId));
+    } else {
+      parts.push(isNull(partnerPrivateRemindersTable.fleet_driver_id));
+    }
+  }
+  const rows = await db
+    .select()
+    .from(partnerPrivateRemindersTable)
+    .where(and(...parts))
     .limit(1);
   return rows[0] ? mapRow(rows[0]) : null;
 }
@@ -72,6 +114,8 @@ export async function createPartnerPrivateReminder(input: {
   companyId: string;
   /** Panel-User; bei Fleet-Anlage null. */
   panelUserId: string | null;
+  /** Fleet-Fahrer; bei Panel-Anlage null. */
+  fleetDriverId: string | null;
   scheduledAt: unknown;
   fromFull: unknown;
   toFull: unknown;
@@ -93,10 +137,15 @@ export async function createPartnerPrivateReminder(input: {
     typeof input.panelUserId === "string" && input.panelUserId.trim()
       ? input.panelUserId.trim()
       : null;
+  const fleetDriverId =
+    typeof input.fleetDriverId === "string" && input.fleetDriverId.trim()
+      ? input.fleetDriverId.trim()
+      : null;
   await db.insert(partnerPrivateRemindersTable).values({
     id,
     company_id: input.companyId,
     created_by_panel_user_id: panelUserId,
+    fleet_driver_id: fleetDriverId,
     scheduled_at: scheduledAt,
     from_full: fromFull.slice(0, 500),
     to_full: toFull.slice(0, 500),
@@ -104,7 +153,7 @@ export async function createPartnerPrivateReminder(input: {
     created_at: now,
     updated_at: now,
   });
-  const row = await getPartnerPrivateReminder(input.companyId, id);
+  const row = await getPartnerPrivateReminder(input.companyId, id, { fleetDriverId });
   if (!row) return { ok: false, error: "create_failed" };
   return { ok: true, reminder: row };
 }
@@ -112,6 +161,8 @@ export async function createPartnerPrivateReminder(input: {
 export async function updatePartnerPrivateReminder(input: {
   companyId: string;
   reminderId: string;
+  /** null = Panel-Scope; string = nur dieser Fahrer. */
+  fleetDriverId: string | null;
   scheduledAt?: unknown;
   fromFull?: unknown;
   toFull?: unknown;
@@ -119,7 +170,8 @@ export async function updatePartnerPrivateReminder(input: {
 }): Promise<{ ok: true; reminder: PartnerPrivateReminderRow } | { ok: false; error: string }> {
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
-  const existing = await getPartnerPrivateReminder(input.companyId, input.reminderId);
+  const scope = { fleetDriverId: input.fleetDriverId };
+  const existing = await getPartnerPrivateReminder(input.companyId, input.reminderId, scope);
   if (!existing) return { ok: false, error: "not_found" };
 
   const patch: Partial<typeof partnerPrivateRemindersTable.$inferInsert> = {
@@ -134,16 +186,21 @@ export async function updatePartnerPrivateReminder(input: {
   if (typeof input.toFull === "string") patch.to_full = input.toFull.trim().slice(0, 500);
   if (typeof input.note === "string") patch.note = input.note.trim().slice(0, 2000);
 
+  const whereParts = [
+    eq(partnerPrivateRemindersTable.id, input.reminderId),
+    eq(partnerPrivateRemindersTable.company_id, input.companyId),
+  ];
+  if (input.fleetDriverId) {
+    whereParts.push(eq(partnerPrivateRemindersTable.fleet_driver_id, input.fleetDriverId));
+  } else {
+    whereParts.push(isNull(partnerPrivateRemindersTable.fleet_driver_id));
+  }
+
   await db
     .update(partnerPrivateRemindersTable)
     .set(patch)
-    .where(
-      and(
-        eq(partnerPrivateRemindersTable.id, input.reminderId),
-        eq(partnerPrivateRemindersTable.company_id, input.companyId),
-      ),
-    );
-  const row = await getPartnerPrivateReminder(input.companyId, input.reminderId);
+    .where(and(...whereParts));
+  const row = await getPartnerPrivateReminder(input.companyId, input.reminderId, scope);
   if (!row) return { ok: false, error: "update_failed" };
   return { ok: true, reminder: row };
 }
@@ -151,18 +208,21 @@ export async function updatePartnerPrivateReminder(input: {
 export async function deletePartnerPrivateReminder(
   companyId: string,
   reminderId: string,
+  fleetDriverId: string | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
-  const existing = await getPartnerPrivateReminder(companyId, reminderId);
+  const existing = await getPartnerPrivateReminder(companyId, reminderId, { fleetDriverId });
   if (!existing) return { ok: false, error: "not_found" };
-  await db
-    .delete(partnerPrivateRemindersTable)
-    .where(
-      and(
-        eq(partnerPrivateRemindersTable.id, reminderId),
-        eq(partnerPrivateRemindersTable.company_id, companyId),
-      ),
-    );
+  const whereParts = [
+    eq(partnerPrivateRemindersTable.id, reminderId),
+    eq(partnerPrivateRemindersTable.company_id, companyId),
+  ];
+  if (fleetDriverId) {
+    whereParts.push(eq(partnerPrivateRemindersTable.fleet_driver_id, fleetDriverId));
+  } else {
+    whereParts.push(isNull(partnerPrivateRemindersTable.fleet_driver_id));
+  }
+  await db.delete(partnerPrivateRemindersTable).where(and(...whereParts));
   return { ok: true };
 }

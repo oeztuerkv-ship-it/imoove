@@ -4919,7 +4919,7 @@ export default function DriverDashboard() {
                 </View>
 
                 {(ordersView === "anfragen" || ordersView === "angenommen") && (
-                  <DriverPrivateRemindersSection enabled={driver.isOwner === true} />
+                  <DriverPrivateRemindersSection enabled />
                 )}
 
                 {(ordersView === "anfragen" || ordersView === "angenommen") && (

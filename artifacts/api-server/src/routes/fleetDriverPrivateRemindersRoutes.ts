@@ -5,7 +5,7 @@ import { findFleetDriverInCompany } from "../db/fleetDriversData";
 import {
   createPartnerPrivateReminder,
   deletePartnerPrivateReminder,
-  listPartnerPrivateReminders,
+  listPartnerPrivateRemindersForFleetDriver,
   updatePartnerPrivateReminder,
 } from "../db/partnerPrivateRemindersData";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
@@ -13,10 +13,10 @@ import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middlewa
 const router: IRouter = Router();
 
 /**
- * Private Merkliste — gleiche Tabelle wie Panel.
- * Gate: Taxi-Mandant + fleet_drivers.is_owner (nicht Panel-Role).
+ * Private Merkliste pro Fahrer — gleiche Tabelle wie Panel.
+ * Gate: Taxi-Mandant + aktiver Fleet-Fahrer; Scope nur eigene `fleet_driver_id`.
  */
-async function denyUnlessTaxiOwnerDriver(
+async function denyUnlessTaxiFleetDriver(
   res: Response,
   fleetDriverId: string,
   companyId: string,
@@ -35,10 +35,6 @@ async function denyUnlessTaxiOwnerDriver(
     res.status(401).json({ error: "not_found" });
     return false;
   }
-  if (!Boolean(row.is_owner)) {
-    res.status(403).json({ error: "owner_required" });
-    return false;
-  }
   return true;
 }
 
@@ -49,8 +45,8 @@ router.get("/fleet-driver/v1/private-reminders", requireFleetDriverAuth, async (
       res.status(401).json({ error: "unauthorized" });
       return;
     }
-    if (!(await denyUnlessTaxiOwnerDriver(res, a.fleetDriverId, a.companyId))) return;
-    const reminders = await listPartnerPrivateReminders(a.companyId);
+    if (!(await denyUnlessTaxiFleetDriver(res, a.fleetDriverId, a.companyId))) return;
+    const reminders = await listPartnerPrivateRemindersForFleetDriver(a.companyId, a.fleetDriverId);
     res.json({ ok: true, reminders });
   } catch (e) {
     next(e);
@@ -64,11 +60,12 @@ router.post("/fleet-driver/v1/private-reminders", requireFleetDriverAuth, async 
       res.status(401).json({ error: "unauthorized" });
       return;
     }
-    if (!(await denyUnlessTaxiOwnerDriver(res, a.fleetDriverId, a.companyId))) return;
+    if (!(await denyUnlessTaxiFleetDriver(res, a.fleetDriverId, a.companyId))) return;
     const body = (req.body ?? {}) as Record<string, unknown>;
     const out = await createPartnerPrivateReminder({
       companyId: a.companyId,
       panelUserId: null,
+      fleetDriverId: a.fleetDriverId,
       scheduledAt: body.scheduledAt,
       fromFull: body.fromFull,
       toFull: body.toFull,
@@ -91,7 +88,7 @@ router.patch("/fleet-driver/v1/private-reminders/:id", requireFleetDriverAuth, a
       res.status(401).json({ error: "unauthorized" });
       return;
     }
-    if (!(await denyUnlessTaxiOwnerDriver(res, a.fleetDriverId, a.companyId))) return;
+    if (!(await denyUnlessTaxiFleetDriver(res, a.fleetDriverId, a.companyId))) return;
     const id = String(req.params.id ?? "").trim();
     if (!id) {
       res.status(400).json({ error: "id_required" });
@@ -101,6 +98,7 @@ router.patch("/fleet-driver/v1/private-reminders/:id", requireFleetDriverAuth, a
     const out = await updatePartnerPrivateReminder({
       companyId: a.companyId,
       reminderId: id,
+      fleetDriverId: a.fleetDriverId,
       scheduledAt: body.scheduledAt,
       fromFull: body.fromFull,
       toFull: body.toFull,
@@ -123,13 +121,13 @@ router.delete("/fleet-driver/v1/private-reminders/:id", requireFleetDriverAuth, 
       res.status(401).json({ error: "unauthorized" });
       return;
     }
-    if (!(await denyUnlessTaxiOwnerDriver(res, a.fleetDriverId, a.companyId))) return;
+    if (!(await denyUnlessTaxiFleetDriver(res, a.fleetDriverId, a.companyId))) return;
     const id = String(req.params.id ?? "").trim();
     if (!id) {
       res.status(400).json({ error: "id_required" });
       return;
     }
-    const out = await deletePartnerPrivateReminder(a.companyId, id);
+    const out = await deletePartnerPrivateReminder(a.companyId, id, a.fleetDriverId);
     if (!out.ok) {
       res.status(out.error === "not_found" ? 404 : 400).json({ error: out.error });
       return;

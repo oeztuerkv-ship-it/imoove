@@ -1788,7 +1788,7 @@ export const securityBanEventsTable = pgTable("security_ban_events", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Private Merkliste Taxi-Panel (kein Dispatch). */
+/** Private Merkliste: Panel (fleet_driver_id null) oder Fahrer-eigene Notiz. */
 export const partnerPrivateRemindersTable = pgTable("partner_private_reminders", {
   id: text("id").primaryKey(),
   company_id: text("company_id")
@@ -1796,6 +1796,10 @@ export const partnerPrivateRemindersTable = pgTable("partner_private_reminders",
     .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
   created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
     onDelete: "set null",
+  }),
+  /** Gesetzt = nur dieser Fleet-Fahrer; NULL = Panel-Firmen-Merkliste. */
+  fleet_driver_id: text("fleet_driver_id").references(() => fleetDriversTable.id, {
+    onDelete: "cascade",
   }),
   scheduled_at: timestamp("scheduled_at", { withTimezone: true }).notNull(),
   from_full: text("from_full").notNull().default(""),

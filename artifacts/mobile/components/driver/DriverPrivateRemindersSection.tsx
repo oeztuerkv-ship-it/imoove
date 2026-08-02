@@ -62,7 +62,7 @@ type Props = {
 };
 
 /**
- * Private Merkliste für Fleet-Inhaber (`is_owner`) — kein Dispatch.
+ * Private Merkliste pro Fahrer (`fleet_driver_id`) — kein Dispatch, nicht geteilt.
  */
 export function DriverPrivateRemindersSection({ enabled }: Props) {
   const colors = useColors();
@@ -82,7 +82,7 @@ export function DriverPrivateRemindersSection({ enabled }: Props) {
     const out = await listFleetPrivateReminders();
     setLoading(false);
     if (out.ok) setReminders(out.reminders);
-    else if (out.error !== "owner_required" && out.error !== "taxi_only") {
+    else if (out.error !== "taxi_only") {
       /* still usable without toast spam */
     }
   }, [enabled]);
@@ -178,7 +178,7 @@ export function DriverPrivateRemindersSection({ enabled }: Props) {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Private Notizen</Text>
-          <Text style={styles.headerSub}>Nur für Inhaber — kein Fahrer-Matching</Text>
+          <Text style={styles.headerSub}>Nur für Sie — kein Matching, nicht geteilt</Text>
         </View>
         <Pressable onPress={openCreate} style={styles.addBtn} hitSlop={8}>
           <Feather name="plus" size={16} color="#FFFFFF" />

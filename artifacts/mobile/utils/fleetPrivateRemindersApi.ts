@@ -8,6 +8,7 @@ export type FleetPrivateReminder = {
   id: string;
   companyId: string;
   createdByPanelUserId: string | null;
+  fleetDriverId: string | null;
   scheduledAt: string;
   fromFull: string;
   toFull: string;
