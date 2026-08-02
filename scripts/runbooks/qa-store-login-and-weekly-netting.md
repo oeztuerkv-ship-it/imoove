@@ -92,6 +92,21 @@ Erwartung der Verifikation im SQL-Output:
 - 3× `completed` + `payment_method=cash`
 - Summe `operator_payout_amount` **&lt; 0** (typisch ca. **−24 €** bei 3× 8 € Provision)
 
+### 1.3b `company_code` prüfen (nach Fix: Auto-Ensure + Migration 137)
+
+Leerer `company_code` führte früher zu `company_code_required` beim Wochenlauf. Ab Fix: Nummervergabe setzt fehlende Codes nach; Deploy inkl. Migration **137** backfüllt Bestandsfirmen.
+
+```bash
+psql "$DATABASE_URL" -c "
+SELECT
+  count(*) FILTER (WHERE trim(coalesce(company_code, '')) = '') AS missing_company_code,
+  count(*) AS total_companies
+FROM admin_companies;
+"
+```
+
+Erwartung nach Deploy/Migration: `missing_company_code = 0` (oder der Live-Lauf setzt den Code beim ersten Debt-Invoice).
+
 ### 1.4 Dry-Run (sollte `created_debt_invoice` vorschlagen)
 
 Token **nur lokal auf dem Server** aus `.env` — nicht kopieren/chatten:

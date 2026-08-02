@@ -59,6 +59,17 @@ SEED_TAG="${SEED_TAG:-netting-qa-$(date +%Y%m%d)}"
 echo "MODE=$MODE COMPANY_ID=$COMPANY_ID PERIOD=${PERIOD_START}..${PERIOD_END} SEED_TAG=$SEED_TAG"
 echo "(Token wird nicht ausgegeben.)"
 
+# company_code-Lücke (Onboarding): Überblick vor dem Lauf
+psql "$DATABASE_URL" -v company_id="$COMPANY_ID" -c "
+SELECT
+  count(*) FILTER (WHERE trim(coalesce(company_code, '')) = '') AS missing_company_code,
+  count(*) AS total_companies
+FROM admin_companies;
+SELECT id, name, company_code
+FROM admin_companies
+WHERE id = :'company_id';
+"
+
 run_seed() {
   psql "$DATABASE_URL" \
     -v company_id="$COMPANY_ID" \

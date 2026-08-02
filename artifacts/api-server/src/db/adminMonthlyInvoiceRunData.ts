@@ -347,23 +347,7 @@ export async function runAdminMonthlyInvoiceRun(input: {
       continue;
     }
 
-    if (!companyCode) {
-      errorCount += 1;
-      results.push({
-        companyId,
-        companyName,
-        companyKind,
-        companyCode,
-        outcome: "error",
-        rideCount: rides.length,
-        subtotalNet: previewTotals.subtotalNet,
-        vatTotal: previewTotals.vatTotal,
-        totalGross: previewTotals.totalGross,
-        error: "company_code_required",
-      });
-      continue;
-    }
-
+    // company_code: bei Bedarf in allocatePartnerInvoiceNumberInTx nachgezogen (Onboarding-Lücke)
     try {
       await ensureCompanyInvoicePrefixFromKind(companyId);
 

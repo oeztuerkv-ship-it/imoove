@@ -1,9 +1,11 @@
-import { sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { getDb } from "./client";
 import {
+  allocateUniqueCompanyCode,
   billingPeriodYearMonth,
   formatInvoiceNumber,
   resolveCompanyInvoicePrefix,
+  suggestCompanyCodeBase,
   type InvoiceNumberParts,
 } from "../lib/invoiceNumbering.js";
 import { adminCompaniesTable } from "./schema";
@@ -16,8 +18,48 @@ export type AllocateInvoiceNumberInput = {
 };
 
 /**
+ * Setzt company_code, wenn leer (Onboarding-Lücke). Muss mit FOR UPDATE auf der Firma laufen.
+ */
+export async function ensureCompanyCodeInTx(tx: ExecDb, companyId: string): Promise<string> {
+  const id = companyId.trim();
+  if (!id) throw Object.assign(new Error("company_required"), { code: "company_required" });
+
+  const rows = await tx
+    .select({
+      name: adminCompaniesTable.name,
+      company_code: adminCompaniesTable.company_code,
+    })
+    .from(adminCompaniesTable)
+    .where(eq(adminCompaniesTable.id, id))
+    .for("update")
+    .limit(1);
+  const company = rows[0];
+  if (!company) throw Object.assign(new Error("company_not_found"), { code: "company_not_found" });
+
+  const existing = String(company.company_code ?? "").trim();
+  if (existing) return existing;
+
+  const takenRows = await tx
+    .select({ company_code: adminCompaniesTable.company_code })
+    .from(adminCompaniesTable)
+    .where(and(ne(adminCompaniesTable.id, id), sql`trim(${adminCompaniesTable.company_code}) <> ''`));
+  const taken = new Set(
+    takenRows.map((r) => String(r.company_code ?? "").trim().toUpperCase()).filter(Boolean),
+  );
+
+  const code = allocateUniqueCompanyCode(suggestCompanyCodeBase(id, company.name), (candidate) =>
+    taken.has(candidate.toUpperCase()),
+  );
+
+  await tx.update(adminCompaniesTable).set({ company_code: code }).where(eq(adminCompaniesTable.id, id));
+
+  return code;
+}
+
+/**
  * Vergibt die nächste Rechnungsnummer atomar (Zeile pro prefix + Monat).
  * Muss innerhalb einer DB-Transaction aufgerufen werden.
+ * Leerer company_code wird hier analog zu invoice_prefix nachgezogen (nicht Teil der Nummer).
  */
 export async function allocatePartnerInvoiceNumberInTx(
   tx: ExecDb,
@@ -26,23 +68,18 @@ export async function allocatePartnerInvoiceNumberInTx(
   const companyId = input.companyId.trim();
   if (!companyId) throw Object.assign(new Error("company_required"), { code: "company_required" });
 
+  const companyCode = await ensureCompanyCodeInTx(tx, companyId);
+
   const rows = await tx
     .select({
       company_kind: adminCompaniesTable.company_kind,
       invoice_prefix: adminCompaniesTable.invoice_prefix,
-      company_code: adminCompaniesTable.company_code,
     })
     .from(adminCompaniesTable)
-    .where(sql`${adminCompaniesTable.id} = ${companyId}`)
-    .for("update")
+    .where(eq(adminCompaniesTable.id, companyId))
     .limit(1);
   const company = rows[0];
   if (!company) throw Object.assign(new Error("company_not_found"), { code: "company_not_found" });
-
-  const companyCode = String(company.company_code ?? "").trim();
-  if (!companyCode) {
-    throw Object.assign(new Error("company_code_required"), { code: "company_code_required" });
-  }
 
   const invoicePrefix = resolveCompanyInvoicePrefix(company.invoice_prefix, company.company_kind);
   const periodYm = billingPeriodYearMonth(input.billingPeriodEnd);

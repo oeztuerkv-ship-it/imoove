@@ -103,6 +103,44 @@ export function validateCompanyCode(raw: string): { ok: true; code: string } | {
   return { ok: true, code };
 }
 
+/**
+ * Vorschlag für leeren company_code (Onboarding/Invoice-Ensure).
+ * Preferiert lesbaren Namen; Fallback aus company_id (wie Migration 080: ohne `co-`).
+ */
+export function suggestCompanyCodeBase(companyId: string, companyName?: string | null): string {
+  const fromName = normalizeCompanyCode(String(companyName ?? "").replace(/\s+/g, ""));
+  if (fromName.length >= 2) return fromName.slice(0, 16);
+
+  const idCore = String(companyId ?? "")
+    .trim()
+    .replace(/^co-/i, "")
+    .replace(/-/g, "");
+  const fromId = normalizeCompanyCode(idCore);
+  if (fromId.length >= 2) return fromId.slice(0, 16);
+  return "COXX";
+}
+
+/** Eindeutigen Code erzeugen: Basis, bei Kollision Basis[-n] (max. 16 Zeichen). */
+export function allocateUniqueCompanyCode(
+  baseRaw: string,
+  isTaken: (candidate: string) => boolean,
+): string {
+  const base = (() => {
+    const v = validateCompanyCode(baseRaw);
+    return v.ok ? v.code : "COXX";
+  })();
+  if (!isTaken(base)) return base;
+  for (let n = 2; n <= 99; n++) {
+    const suffix = `-${n}`;
+    const candidate = `${base.slice(0, Math.max(2, 16 - suffix.length))}${suffix}`;
+    const v = validateCompanyCode(candidate);
+    if (v.ok && !isTaken(v.code)) return v.code;
+  }
+  const fallback = normalizeCompanyCode(`C${Date.now().toString(36)}`).slice(0, 16);
+  const v = validateCompanyCode(fallback.length >= 2 ? fallback : "COXX");
+  return v.ok ? v.code : "COXX";
+}
+
 export function validateInvoicePrefix(raw: string): { ok: true; prefix: string } | { ok: false; error: string } {
   const prefix = normalizeInvoicePrefix(raw);
   if (prefix.length < 2) return { ok: false, error: "invoice_prefix_too_short" };

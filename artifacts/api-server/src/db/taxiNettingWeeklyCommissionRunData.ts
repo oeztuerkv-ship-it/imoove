@@ -197,20 +197,7 @@ export async function runTaxiNettingWeeklyCommissionRun(input: {
         continue;
       }
 
-      const companyCode = String(company.company_code ?? "").trim();
-      if (direction === "partner_pays_platform" && !companyCode) {
-        errorCount += 1;
-        results.push({
-          companyId,
-          companyName,
-          outcome: "error",
-          payoutAmount,
-          direction,
-          error: "company_code_required",
-        });
-        continue;
-      }
-
+      // company_code: bei Bedarf in allocatePartnerInvoiceNumberInTx nachgezogen (Onboarding-Lücke)
       if (direction === "partner_pays_platform") {
         await ensureCompanyInvoicePrefixFromKind(companyId);
       }

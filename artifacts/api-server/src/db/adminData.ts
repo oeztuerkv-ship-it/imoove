@@ -11,8 +11,10 @@ import {
 } from "./schema";
 import { normalizeStoredPanelModules } from "../domain/panelModules";
 import {
+  allocateUniqueCompanyCode,
   defaultInvoicePrefixForCompanyKind,
   normalizeInvoicePrefix,
+  suggestCompanyCodeBase,
   validateCompanyCode,
   validateInvoicePrefix,
 } from "../lib/invoiceNumbering.js";
@@ -974,14 +976,42 @@ export async function insertAdminCompany(
     medical_transport_enabled: false,
     feature_kk_module: false,
     feature_kk_module_since: null,
+    company_code: "",
+    invoice_prefix: "",
+    invoice_sequence_next: 1,
   };
   const next = applyAdminCompanyPatch(base, body);
+  if (!String(next.invoice_prefix ?? "").trim()) {
+    next.invoice_prefix = defaultInvoicePrefixForCompanyKind(next.company_kind);
+  }
 
   const db = getDb();
   if (!db) {
+    if (!String(next.company_code ?? "").trim()) {
+      const taken = new Set(
+        memCompanies.map((c) => String(c.company_code ?? "").trim().toUpperCase()).filter(Boolean),
+      );
+      next.company_code = allocateUniqueCompanyCode(suggestCompanyCodeBase(id, name), (candidate) =>
+        taken.has(candidate.toUpperCase()),
+      );
+    }
     memCompanies = [...memCompanies, next];
     return next;
   }
+
+  if (!String(next.company_code ?? "").trim()) {
+    const takenRows = await db
+      .select({ company_code: adminCompaniesTable.company_code })
+      .from(adminCompaniesTable)
+      .where(sql`trim(${adminCompaniesTable.company_code}) <> ''`);
+    const taken = new Set(
+      takenRows.map((r) => String(r.company_code ?? "").trim().toUpperCase()).filter(Boolean),
+    );
+    next.company_code = allocateUniqueCompanyCode(suggestCompanyCodeBase(id, name), (candidate) =>
+      taken.has(candidate.toUpperCase()),
+    );
+  }
+
   try {
     await db.insert(adminCompaniesTable).values(companyRowToDbValues(next));
   } catch (err: unknown) {
