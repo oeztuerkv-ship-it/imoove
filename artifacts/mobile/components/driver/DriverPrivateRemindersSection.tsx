@@ -5,6 +5,7 @@ import {
   Alert,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -59,19 +60,23 @@ function emptyForm(): FormState {
 
 type Props = {
   enabled: boolean;
+  /** Unterkante FAB = Abstand vom Bildschirmboden (direkt über Tab-Bar). */
+  bottomInset?: number;
 };
 
 /**
- * Private Merkliste pro Fahrer (`fleet_driver_id`) — kein Dispatch, nicht geteilt.
+ * Private Merkliste: grünes Plus-FAB über der Bottom-Nav (Aufträge-Tab).
+ * Beeinflusst kein Layout im ScrollView (nur absolute Position).
  */
-export function DriverPrivateRemindersSection({ enabled }: Props) {
+export function DriverPrivateRemindersSection({ enabled, bottomInset = 64 }: Props) {
   const colors = useColors();
   const [reminders, setReminders] = useState<FleetPrivateReminder[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!enabled) {
@@ -82,9 +87,6 @@ export function DriverPrivateRemindersSection({ enabled }: Props) {
     const out = await listFleetPrivateReminders();
     setLoading(false);
     if (out.ok) setReminders(out.reminders);
-    else if (out.error !== "taxi_only") {
-      /* still usable without toast spam */
-    }
   }, [enabled]);
 
   useEffect(() => {
@@ -139,6 +141,7 @@ export function DriverPrivateRemindersSection({ enabled }: Props) {
     });
     setFormOpen(false);
     setForm(emptyForm());
+    setListOpen(true);
   };
 
   const onDelete = (r: FleetPrivateReminder) => {
@@ -174,56 +177,74 @@ export function DriverPrivateRemindersSection({ enabled }: Props) {
   );
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Private Notizen</Text>
-          <Text style={styles.headerSub}>Nur für Sie — kein Matching, nicht geteilt</Text>
-        </View>
-        <Pressable onPress={openCreate} style={styles.addBtn} hitSlop={8}>
-          <Feather name="plus" size={16} color="#FFFFFF" />
-          <Text style={styles.addBtnText}>Notiz</Text>
-        </Pressable>
-      </View>
+    <>
+      <Pressable
+        accessibilityLabel="Private Notiz"
+        onPress={() => {
+          void load();
+          setListOpen(true);
+        }}
+        style={[styles.fab, { bottom: bottomInset }]}
+      >
+        <Feather name="plus" size={26} color="#FFFFFF" />
+      </Pressable>
 
-      {loading ? (
-        <ActivityIndicator style={{ marginVertical: 12 }} color="#6366F1" />
-      ) : sorted.length === 0 ? (
-        <Text style={styles.empty}>Noch keine Notizen. Tippen Sie auf „Notiz“.</Text>
-      ) : (
-        sorted.map((r) => (
-          <Pressable key={r.id} style={styles.card} onPress={() => openEdit(r)}>
-            <View style={styles.cardTop}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Notiz</Text>
-              </View>
-              <Text style={styles.cardTime}>{fmtDateTime(r.scheduledAt)}</Text>
-            </View>
-            <Text style={styles.cardRoute} numberOfLines={2}>
-              {(r.fromFull || "—").trim()} → {(r.toFull || "—").trim()}
-            </Text>
-            {r.note?.trim() ? (
-              <Text style={styles.cardNote} numberOfLines={2}>
-                {r.note.trim()}
-              </Text>
-            ) : null}
-            <View style={styles.cardActions}>
-              <Pressable onPress={() => openEdit(r)} hitSlop={6}>
-                <Text style={styles.link}>Bearbeiten</Text>
-              </Pressable>
-              <Pressable onPress={() => onDelete(r)} hitSlop={6} disabled={busy}>
-                <Text style={[styles.link, { color: "#B91C1C" }]}>Löschen</Text>
+      <Modal visible={listOpen} animationType="slide" transparent onRequestClose={() => setListOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Private Notizen</Text>
+              <Pressable onPress={() => setListOpen(false)} hitSlop={10}>
+                <Feather name="x" size={22} color="#6B7280" />
               </Pressable>
             </View>
-          </Pressable>
-        ))
-      )}
+
+            <Pressable style={styles.newBtn} onPress={openCreate}>
+              <Feather name="plus" size={18} color="#FFFFFF" />
+              <Text style={styles.newBtnText}>Neue Notiz</Text>
+            </Pressable>
+
+            <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
+              {loading ? (
+                <ActivityIndicator style={{ marginTop: 24 }} color="#22C55E" />
+              ) : sorted.length === 0 ? null : (
+                sorted.map((r) => {
+                  const route = `${(r.fromFull || "—").trim()} → ${(r.toFull || "—").trim()}`;
+                  const sub = r.note?.trim()
+                    ? `${fmtDateTime(r.scheduledAt)} · ${r.note.trim()}`
+                    : fmtDateTime(r.scheduledAt);
+                  return (
+                    <Pressable
+                      key={r.id}
+                      style={styles.listRow}
+                      onPress={() => openEdit(r)}
+                      onLongPress={() => onDelete(r)}
+                    >
+                      <View style={styles.listRowIcon}>
+                        <Feather name="file-text" size={17} color="#111827" />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.listRowTitle} numberOfLines={1}>
+                          {route}
+                        </Text>
+                        <Text style={styles.listRowSub} numberOfLines={2}>
+                          {sub}
+                        </Text>
+                      </View>
+                      <Feather name="chevron-right" size={18} color="#9CA3AF" />
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={formOpen} animationType="slide" transparent onRequestClose={() => setFormOpen(false)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalPanel}>
-            <Text style={styles.modalTitle}>{form.id ? "Notiz bearbeiten" : "Private Notiz"}</Text>
-            <Text style={styles.modalHint}>Kein Auftrag — nur Merkliste für Ihr Unternehmen.</Text>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>{form.id ? "Notiz bearbeiten" : "Private Notiz"}</Text>
 
             <Text style={styles.label}>Wann</Text>
             <Pressable style={styles.dtField} onPress={() => setPickerOpen(true)}>
@@ -261,6 +282,20 @@ export function DriverPrivateRemindersSection({ enabled }: Props) {
             />
 
             <View style={styles.modalActions}>
+              {form.id ? (
+                <Pressable
+                  style={styles.btnDanger}
+                  onPress={() => {
+                    const r = reminders.find((x) => x.id === form.id);
+                    if (r) onDelete(r);
+                  }}
+                  disabled={busy}
+                >
+                  <Text style={styles.btnDangerText}>Löschen</Text>
+                </Pressable>
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
               <Pressable
                 style={styles.btnSecondary}
                 onPress={() => {
@@ -294,65 +329,83 @@ export function DriverPrivateRemindersSection({ enabled }: Props) {
           setPickerOpen(false);
         }}
       />
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 16 },
-  header: { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 10 },
-  headerTitle: { fontFamily: "Inter_700Bold", fontSize: 15, color: "#111827" },
-  headerSub: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#6B7280", marginTop: 2 },
-  addBtn: {
-    flexDirection: "row",
+  fab: {
+    position: "absolute",
+    right: 16,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#22C55E",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    justifyContent: "center",
+    zIndex: 200,
+    elevation: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
-  addBtnText: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: "#FFFFFF" },
-  empty: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#6B7280", marginBottom: 4 },
-  card: {
-    borderWidth: 1,
-    borderColor: "#C7D2FE",
-    borderLeftWidth: 3,
-    borderLeftColor: "#6366F1",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-  },
-  cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  badge: {
-    backgroundColor: "#EEF2FF",
-    borderWidth: 1,
-    borderColor: "#C7D2FE",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeText: { fontFamily: "Inter_700Bold", fontSize: 11, color: "#3730A3" },
-  cardTime: { fontFamily: "Inter_500Medium", fontSize: 12, color: "#4B5563" },
-  cardRoute: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#111827" },
-  cardNote: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#4B5563", marginTop: 4 },
-  cardActions: { flexDirection: "row", gap: 16, marginTop: 10 },
-  link: { fontFamily: "Inter_600SemiBold", fontSize: 13, color: "#4F46E5" },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(15,23,42,0.45)",
     justifyContent: "flex-end",
   },
-  modalPanel: {
+  sheet: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 20,
     paddingBottom: 28,
+    maxHeight: "85%",
   },
-  modalTitle: { fontFamily: "Inter_700Bold", fontSize: 18, color: "#111827" },
-  modalHint: { fontFamily: "Inter_400Regular", fontSize: 13, color: "#6B7280", marginTop: 4, marginBottom: 14 },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  sheetTitle: { fontFamily: "Inter_700Bold", fontSize: 18, color: "#111827" },
+  newBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#22C55E",
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 14,
+  },
+  newBtnText: { fontFamily: "Inter_700Bold", fontSize: 15, color: "#FFFFFF" },
+  listScroll: { maxHeight: 360 },
+  listRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FAFAFA",
+  },
+  listRowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listRowTitle: { fontFamily: "Inter_700Bold", fontSize: 14, color: "#111827" },
+  listRowSub: { fontFamily: "Inter_400Regular", fontSize: 12, color: "#6B7280", marginTop: 2 },
   label: { fontFamily: "Inter_600SemiBold", fontSize: 12, color: "#6B7280", marginBottom: 4, marginTop: 8 },
   input: {
     borderWidth: 1,
@@ -376,7 +429,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dtFieldText: { fontFamily: "Inter_500Medium", fontSize: 15, color: "#111827" },
-  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 18 },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 18,
+  },
   btnSecondary: {
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -389,9 +448,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#22C55E",
     minWidth: 110,
     alignItems: "center",
   },
   btnPrimaryText: { fontFamily: "Inter_700Bold", fontSize: 14, color: "#FFFFFF" },
+  btnDanger: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginRight: "auto",
+  },
+  btnDangerText: { fontFamily: "Inter_600SemiBold", fontSize: 14, color: "#B91C1C" },
 });

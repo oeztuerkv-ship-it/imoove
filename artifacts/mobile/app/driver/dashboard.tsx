@@ -4919,10 +4919,6 @@ export default function DriverDashboard() {
                 </View>
 
                 {(ordersView === "anfragen" || ordersView === "angenommen") && (
-                  <DriverPrivateRemindersSection enabled />
-                )}
-
-                {(ordersView === "anfragen" || ordersView === "angenommen") && (
                     <Pressable
                       onPress={() => setShowPrebookGuidelines(true)}
                       style={{
@@ -5167,6 +5163,11 @@ export default function DriverDashboard() {
           );
         })}
       </View>
+
+      {/* Notizen-FAB: absolute, verschiebt Anfragen/Angenommen/Reserv. nicht */}
+      {activeTab === "auftraege" ? (
+        <DriverPrivateRemindersSection enabled bottomInset={bottomPad + 72} />
+      ) : null}
 
       <DriverPrebookGuidelinesModal
         visible={showPrebookGuidelines}
