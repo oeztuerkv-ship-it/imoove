@@ -3,7 +3,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
-import { getPanelInvoiceForCompany, listPanelInvoicesForCompany } from "../db/panelInvoicesData";
+import {
+  getPanelInvoiceForCompany,
+  listPanelInvoicesForCompany,
+  setPanelInvoicePdfStorageKey,
+  WEEKLY_COMMISSION_INVOICE_SOURCE,
+} from "../db/panelInvoicesData";
 import { invoicePdfNeutralStatusLabel } from "../lib/invoiceWorkflow.js";
 import { mapPanelInvoiceItemsForPdf } from "../lib/invoice/mapInvoiceItemForPdf.js";
 import { buildPartnerMonthlyInvoicePdf } from "../lib/invoicePdfServer.js";
@@ -98,6 +103,7 @@ router.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, re
         invoice.subtotalNet > 0
           ? Math.round((invoice.vatTotal / invoice.subtotalNet) * 10000) / 100
           : 19;
+      const isWeeklyCommission = invoice.metadataSource === WEEKLY_COMMISSION_INVOICE_SOURCE;
       pdfBuffer = await buildPartnerMonthlyInvoicePdf({
         invoiceNumber: invoice.invoiceNumber,
         statusLabel: invoicePdfNeutralStatusLabel(),
@@ -113,13 +119,17 @@ router.get("/panel/v1/invoices/:invoiceId/pdf", requirePanelAuth, async (req, re
         totalGross: invoice.totalGross,
         taxRatePercent,
         notes: invoice.notes,
+        segmentLabel: isWeeklyCommission ? "Provisionsnachzahlung (Cash/Card-Netting)" : undefined,
         paymentReference: invoice.paymentReference,
       });
       if (!storageKey) {
         storageKey = defaultMonthlyPdfKey(ctx.claims.companyId, invoice.invoiceNumber);
-        const absPath = invoicePdfAbsPath(storageKey);
-        await mkdir(path.dirname(absPath), { recursive: true });
-        await writeFile(absPath, pdfBuffer);
+      }
+      const absPath = invoicePdfAbsPath(storageKey);
+      await mkdir(path.dirname(absPath), { recursive: true });
+      await writeFile(absPath, pdfBuffer);
+      if (!invoice.pdfStorageKey.trim()) {
+        await setPanelInvoicePdfStorageKey(ctx.claims.companyId, invoiceId, storageKey);
       }
     }
 

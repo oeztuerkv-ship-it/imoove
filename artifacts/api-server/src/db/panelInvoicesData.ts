@@ -135,7 +135,8 @@ function mapSummary(row: typeof invoicesTable.$inferSelect, itemCount: number): 
     totalGross: Number(row.total_gross),
     issueDate: String(row.issue_date),
     dueDate,
-    pdfAvailable: Boolean(row.pdf_storage_key?.trim()),
+    // PDF via GET …/pdf on-demand (partnerInvoicePdf); pdf_storage_key ist nur Cache.
+    pdfAvailable: row.status !== "cancelled",
     itemCount,
     paymentReference,
     statusLabelDe: workflowStatusLabelDe(workflowStatus),
@@ -210,6 +211,22 @@ export async function getOpenCommissionDebtForCompany(
     statusLabelDe: workflowStatusLabelDe(workflowStatus),
     openCount: rows.length,
   };
+}
+
+/** Persistiert den Storage-Key nach on-demand-PDF-Erzeugung (Partner-Panel). */
+export async function setPanelInvoicePdfStorageKey(
+  companyId: string,
+  invoiceId: string,
+  storageKey: string,
+): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  const key = storageKey.trim();
+  if (!key) return;
+  await db
+    .update(invoicesTable)
+    .set({ pdf_storage_key: key, updated_at: new Date() })
+    .where(and(eq(invoicesTable.id, invoiceId), eq(invoicesTable.company_id, companyId)));
 }
 
 export async function getPanelInvoiceForCompany(
