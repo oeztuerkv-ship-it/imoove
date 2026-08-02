@@ -6,6 +6,8 @@
 --
 -- Pro Fahrt: Brutto 40 €, Provision 8 €, operator_payout = −8 € (Bar).
 -- Summe payout ≈ −24 € → Wochenlauf soll Provisionsrechnung erzeugen.
+-- billing_mode: CHECK erlaubt nur direct|invoice|voucher|insurance|manual
+-- (wie deriveBillingMode für passenger_direct → "direct").
 
 \set ON_ERROR_STOP on
 
@@ -77,7 +79,7 @@ SELECT
   'rf-qa-net-' || :'seed_tag' || '-' || g.n,
   'REQ-QA-NET-' || :'seed_tag' || '-' || g.n,
   'passenger',
-  'cash_card_netting',
+  'direct',
   :'company_id',
   NULL,
   40.0,
