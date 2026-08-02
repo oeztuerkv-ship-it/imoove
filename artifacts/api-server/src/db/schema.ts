@@ -224,6 +224,10 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   p_schein_number: text("p_schein_number").notNull().default(""),
   p_schein_expiry: date("p_schein_expiry"),
   p_schein_doc_storage_key: text("p_schein_doc_storage_key"),
+  /** Profilfoto unter FLEET_UPLOAD_DIR (relativer Key). */
+  avatar_storage_key: text("avatar_storage_key"),
+  /** Privacy: Foto dem Kunden bei zugewiesener Fahrt zeigen. */
+  avatar_show_to_customer: boolean("avatar_show_to_customer").notNull().default(false),
   /** Privat-/Meldeadresse (optional, Pflege durch Unternehmer). */
   home_address: text("home_address").notNull().default(""),
   drivers_license_number: text("drivers_license_number").notNull().default(""),

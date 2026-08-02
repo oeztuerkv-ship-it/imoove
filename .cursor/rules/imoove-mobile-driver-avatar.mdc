@@ -1,0 +1,28 @@
+# Mobile: Fahrer-Avatar (Server + Kundenanzeige)
+
+## Invarianten
+
+1. **Upload:** `POST /api/fleet-driver/v1/avatar` (Fleet-JWT, Base64 JPEG/PNG, max ~2 MB).
+2. **Consent:** `PATCH /api/fleet-driver/v1/avatar` mit `{ showToCustomer: boolean }` — Default **`false`**. Ohne Consent kein Kundenfoto.
+3. **Löschen:** `DELETE /api/fleet-driver/v1/avatar` entfernt Datei und setzt Consent zurück.
+4. **Kunde:** `assignedDriver.photoUrl` nur wenn Consent + Storage-Key; sonst **`null`** → App zeigt **Initialen** (alte Clients ohne Feld bleiben kompatibel).
+5. **Öffentliche Auslieferung:** `GET /api/fleet-driver/v1/public-avatar/:driverId` — **ohne Auth**, nur bei Consent; sonst 404.
+6. **Fahrer-Preview:** `GET /api/fleet-driver/v1/me/avatar` — mit Bearer, auch ohne Consent.
+
+## Dateien
+
+| Schicht | Pfad |
+|--------|------|
+| Migration | `142_fleet_drivers_avatar.sql` (`avatar_storage_key`, `avatar_show_to_customer`) |
+| Lib | `artifacts/api-server/src/lib/fleetDriverAvatar.ts` |
+| Kunden-Map | `assignedDriverForCustomer.ts` → `photoUrl` |
+| API | `fleetDriverApi.ts` |
+| Mobile Fahrer | `utils/driverAvatarApi.ts`, Profil-Tab in `dashboard.tsx` |
+| Mobile Kunde | `status.tsx` (Live-Sheet Avatar) |
+
+## Abnahme
+
+- Upload ohne Consent → Kunde sieht Initialen.
+- Consent an → `photoUrl` gesetzt, Status zeigt Foto.
+- Consent aus / Delete → wieder Initialen.
+- Alte App ohne Foto-UI: fehlt `photoUrl` oder `null` → Initialen.

@@ -43,6 +43,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-mobile-destination-navigation.mdc` — **Mobile:** Orte → Ziel → `/ride-select` (keine URL-Params auf `/`)
 - `.cursor/rules/imoove-mobile-customer-oauth-session.mdc` — **Mobile Kunden-OAuth:** Session-Persistenz, Legal-Gate, Apple „200 aber Login-Screen“
 - `.cursor/rules/imoove-mobile-live-ride-flows.mdc` — **Mobile:** Live-Fahrt Kunde (`/status`) + Fahrer-Navi (Stack `dismissTo`, Session-Restore, Debug-Tabelle)
+- `.cursor/rules/imoove-mobile-driver-avatar.mdc` — **Mobile:** Fahrer-Avatar Upload, Kunden-Consent, `photoUrl` / Initialen-Fallback
 - `.cursor/rules/imoove-mobile-customer-live-driver-map.mdc` — **Mobile Kunde:** Live-Fahrer-Marker Interpolation + Bearing-Rotation + soft Camera-Follow (`RealMapView`)
 - `.cursor/rules/imoove-mobile-intro-splash-lottie.mdc` — **Mobile Intro:** Splash Pin→Taxi→Kreis→Wordmark (`IntroSplash`, RN Animated)
 - `.cursor/rules/imoove-mobile-driver-nav-routing.mdc` — **Fahrer-Navi:** km/ETA via Server (`nav-route`, Google Matrix → OSRM), Rest entlang Polyline, keine Directions-API

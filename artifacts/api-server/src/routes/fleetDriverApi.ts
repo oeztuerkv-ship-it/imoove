@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
 import {
+  findFleetDriverGlobal,
   findFleetDriverInCompany,
   fleetDriverTableRowToList,
   getFleetDriverDispatchPriority,
   getFleetDriverMarketOnline,
+  patchFleetDriverProfile,
   setFleetDriverMarketOnline,
   touchFleetDriverHeartbeat,
   updateFleetDriverMarketLocation,
@@ -84,8 +86,48 @@ import {
   verifyPassengerRidePinForRide,
 } from "../lib/customerRideVerifyPin";
 import { isOpenInstantRideForDispatch } from "../lib/dispatchPriorityTier";
+import {
+  avatarMimeFromStorageKey,
+  buildCustomerVisibleDriverAvatarUrl,
+  decodeValidatedDriverAvatarImage,
+  deleteFleetDriverAvatarFile,
+  resolvePublicApiOrigin,
+  writeFleetDriverAvatarFile,
+} from "../lib/fleetDriverAvatar";
+import { streamAdminFleetUploadToResponse } from "../lib/adminFleetUploadFile";
 
 const router: IRouter = Router();
+
+/** Öffentliches Profilfoto nur mit Consent — für Kunden-Image (ohne Bearer). */
+router.get("/fleet-driver/v1/public-avatar/:driverId", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(404).end();
+      return;
+    }
+    const driverId = String(req.params.driverId ?? "").trim();
+    if (!driverId) {
+      res.status(404).end();
+      return;
+    }
+    const row = await findFleetDriverGlobal(driverId);
+    if (!row || !row.avatar_show_to_customer) {
+      res.status(404).end();
+      return;
+    }
+    const key = (row.avatar_storage_key ?? "").trim();
+    if (!key) {
+      res.status(404).end();
+      return;
+    }
+    res.setHeader("Cache-Control", "private, max-age=300");
+    if (!streamAdminFleetUploadToResponse(key, res, { downloadName: "avatar" })) {
+      res.status(404).end();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
@@ -158,6 +200,18 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       findActiveFleetDriverCancellationSuspension(a.fleetDriverId),
       countFleetDriverPostAcceptCancellationsInWindow(a.fleetDriverId, a.companyId),
     ]);
+    const avatarHasPhoto = Boolean((listRow.avatarStorageKey ?? "").trim());
+    const avatarShowToCustomer = Boolean(listRow.avatarShowToCustomer);
+    const apiOrigin = resolvePublicApiOrigin(req);
+    const avatarPreviewUrl = avatarHasPhoto
+      ? `${apiOrigin}/api/fleet-driver/v1/me/avatar`
+      : null;
+    const avatarCustomerUrl = buildCustomerVisibleDriverAvatarUrl({
+      driverId: a.fleetDriverId,
+      avatarStorageKey: listRow.avatarStorageKey,
+      avatarShowToCustomer,
+      req,
+    });
     res.json({
       ok: true,
       einsatzbereit,
@@ -193,6 +247,10 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
         threshold: FLEET_DRIVER_CANCELLATION_THRESHOLD,
       },
       ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
+      avatarHasPhoto,
+      avatarShowToCustomer,
+      avatarPreviewUrl,
+      avatarCustomerUrl,
       driver: {
         id: row.id,
         companyId: row.company_id,
@@ -222,6 +280,187 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       "[fleet-driver/v1/me] unhandled error",
     );
     res.status(500).json({ ok: false, error: "me_internal_error" });
+  }
+});
+
+/** Eigenes Avatar (mit Bearer) — Preview auch ohne Kunden-Consent. */
+router.get("/fleet-driver/v1/me/avatar", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    const key = (row?.avatar_storage_key ?? "").trim();
+    if (!key) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.setHeader("Cache-Control", "private, no-store");
+    if (!streamAdminFleetUploadToResponse(key, res, { downloadName: "avatar" })) {
+      res.status(404).json({ error: "not_found" });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Profilfoto hochladen (Base64 JPEG/PNG). Consent bleibt unverändert (Default: nicht für Kunden sichtbar). */
+router.post("/fleet-driver/v1/avatar", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body as { imageBase64?: unknown };
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    if (!imageBase64.trim()) {
+      res.status(400).json({ ok: false, error: "image_base64_required" });
+      return;
+    }
+    const decoded = decodeValidatedDriverAvatarImage(imageBase64);
+    if (!decoded.ok) {
+      res.status(400).json({ ok: false, error: decoded.error });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!row) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    const written = await writeFleetDriverAvatarFile(
+      a.companyId,
+      a.fleetDriverId,
+      decoded.buffer,
+      decoded.ext,
+    );
+    if (!written.ok) {
+      res.status(500).json({ ok: false, error: written.error });
+      return;
+    }
+    const prevKey = (row.avatar_storage_key ?? "").trim();
+    if (prevKey && prevKey !== written.storageKey) {
+      await deleteFleetDriverAvatarFile(prevKey);
+    }
+    const patched = await patchFleetDriverProfile(a.fleetDriverId, a.companyId, {
+      avatarStorageKey: written.storageKey,
+    });
+    if (!patched.ok) {
+      res.status(500).json({ ok: false, error: patched.error });
+      return;
+    }
+    const showToCustomer = Boolean(row.avatar_show_to_customer);
+    const apiOrigin = resolvePublicApiOrigin(req);
+    res.json({
+      ok: true,
+      avatarHasPhoto: true,
+      avatarShowToCustomer: showToCustomer,
+      avatarPreviewUrl: `${apiOrigin}/api/fleet-driver/v1/me/avatar`,
+      avatarCustomerUrl: buildCustomerVisibleDriverAvatarUrl({
+        driverId: a.fleetDriverId,
+        avatarStorageKey: written.storageKey,
+        avatarShowToCustomer: showToCustomer,
+        req,
+      }),
+      mime: avatarMimeFromStorageKey(written.storageKey),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Kundenanzeige-Einwilligung (Privacy). Ohne Consent: photoUrl beim Kunden bleibt null. */
+router.patch("/fleet-driver/v1/avatar", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body as { showToCustomer?: unknown };
+    if (typeof body.showToCustomer !== "boolean") {
+      res.status(400).json({ ok: false, error: "show_to_customer_required" });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!row) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (body.showToCustomer === true && !(row.avatar_storage_key ?? "").trim()) {
+      res.status(400).json({ ok: false, error: "avatar_required" });
+      return;
+    }
+    const patched = await patchFleetDriverProfile(a.fleetDriverId, a.companyId, {
+      avatarShowToCustomer: body.showToCustomer,
+    });
+    if (!patched.ok) {
+      res.status(500).json({ ok: false, error: patched.error });
+      return;
+    }
+    const hasPhoto = Boolean((row.avatar_storage_key ?? "").trim());
+    const apiOrigin = resolvePublicApiOrigin(req);
+    res.json({
+      ok: true,
+      avatarHasPhoto: hasPhoto,
+      avatarShowToCustomer: body.showToCustomer,
+      avatarPreviewUrl: hasPhoto ? `${apiOrigin}/api/fleet-driver/v1/me/avatar` : null,
+      avatarCustomerUrl: buildCustomerVisibleDriverAvatarUrl({
+        driverId: a.fleetDriverId,
+        avatarStorageKey: row.avatar_storage_key,
+        avatarShowToCustomer: body.showToCustomer,
+        req,
+      }),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/fleet-driver/v1/avatar", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!row) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    await deleteFleetDriverAvatarFile(row.avatar_storage_key);
+    const patched = await patchFleetDriverProfile(a.fleetDriverId, a.companyId, {
+      avatarStorageKey: null,
+      avatarShowToCustomer: false,
+    });
+    if (!patched.ok) {
+      res.status(500).json({ ok: false, error: patched.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      avatarHasPhoto: false,
+      avatarShowToCustomer: false,
+      avatarPreviewUrl: null,
+      avatarCustomerUrl: null,
+    });
+  } catch (err) {
+    next(err);
   }
 });
 

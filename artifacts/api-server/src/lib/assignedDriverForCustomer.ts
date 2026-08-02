@@ -1,9 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import { listAssignmentsForCompany } from "../db/fleetAssignmentsData";
 import { findFleetDriverInCompany } from "../db/fleetDriversData";
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { averageFleetDriverRating } from "./fleetDriverRatings";
+import { buildCustomerVisibleDriverAvatarUrl } from "./fleetDriverAvatar";
 
 export type CustomerAssignedDriverView = {
   id: string;
@@ -106,7 +106,11 @@ export async function buildAssignedDriverMapForCustomerRides(
       vehicleModel,
       vehicleLabel,
       rating: averageFleetDriverRating(ratingSum, ratingCount),
-      photoUrl: null,
+      photoUrl: buildCustomerVisibleDriverAvatarUrl({
+        driverId,
+        avatarStorageKey: driver.avatar_storage_key,
+        avatarShowToCustomer: driver.avatar_show_to_customer,
+      }),
       initials: driverInitials(firstName, lastName, displayName),
       phone,
     });

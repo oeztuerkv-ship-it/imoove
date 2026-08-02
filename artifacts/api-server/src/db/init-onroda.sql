@@ -319,6 +319,8 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   p_schein_number TEXT NOT NULL DEFAULT '',
   p_schein_expiry DATE,
   p_schein_doc_storage_key TEXT,
+  avatar_storage_key TEXT,
+  avatar_show_to_customer BOOLEAN NOT NULL DEFAULT FALSE,
   home_address TEXT NOT NULL DEFAULT '',
   drivers_license_number TEXT NOT NULL DEFAULT '',
   drivers_license_expiry DATE,

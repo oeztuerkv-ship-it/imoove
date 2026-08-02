@@ -317,6 +317,16 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
       : prev.ratingCount;
   const ratingAverage =
     typeof d.ratingAverage === "number" && Number.isFinite(d.ratingAverage) ? d.ratingAverage : null;
+  const avatarHasPhoto = me.avatarHasPhoto === true;
+  const avatarShowToCustomer = me.avatarShowToCustomer === true;
+  const avatarPreviewUrl =
+    typeof me.avatarPreviewUrl === "string" && me.avatarPreviewUrl.trim()
+      ? me.avatarPreviewUrl.trim()
+      : null;
+  const avatarCustomerUrl =
+    typeof me.avatarCustomerUrl === "string" && me.avatarCustomerUrl.trim()
+      ? me.avatarCustomerUrl.trim()
+      : null;
   return {
     ...prev,
     id: String(d.id ?? prev.id ?? ""),
@@ -354,6 +364,10 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     ratingCount,
     offerStats: normalizeOfferStatsFromMe(me.offerStats),
     cancellationSuspension: normalizeCancellationSuspensionFromMe(me.cancellationSuspension),
+    avatarHasPhoto,
+    avatarShowToCustomer,
+    avatarPreviewUrl,
+    avatarCustomerUrl,
     meSyncError: "",
   };
 }
@@ -395,6 +409,16 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     kkModuleAuthorized: p.kkModuleAuthorized === true,
     dispatchPriority:
       p.dispatchPriority === "A" || p.dispatchPriority === "B" ? p.dispatchPriority : "B",
+    avatarHasPhoto: p.avatarHasPhoto === true,
+    avatarShowToCustomer: p.avatarShowToCustomer === true,
+    avatarPreviewUrl:
+      typeof p.avatarPreviewUrl === "string" && p.avatarPreviewUrl.trim()
+        ? p.avatarPreviewUrl.trim()
+        : null,
+    avatarCustomerUrl:
+      typeof p.avatarCustomerUrl === "string" && p.avatarCustomerUrl.trim()
+        ? p.avatarCustomerUrl.trim()
+        : null,
     meSyncError: typeof p.meSyncError === "string" ? p.meSyncError : "",
   };
 }
@@ -463,6 +487,14 @@ export interface DriverProfile {
   kkModuleAuthorized: boolean;
   /** Premium-Dispatch A/B/C (Admin). */
   dispatchPriority: "A" | "B";
+  /** Server-Profilfoto vorhanden. */
+  avatarHasPhoto: boolean;
+  /** Privacy: Foto dem Kunden bei aktiver Fahrt zeigen. */
+  avatarShowToCustomer: boolean;
+  /** Eigenes Preview (GET /fleet-driver/v1/me/avatar, Bearer nötig). */
+  avatarPreviewUrl: string | null;
+  /** Öffentliche Kunden-URL nur bei Consent; sonst null. */
+  avatarCustomerUrl: string | null;
   /** Gesetzt, wenn GET /fleet-driver/v1/me nach Login/Refresh fehlschlägt (≠ Freigabe-Block). */
   meSyncError: string;
 }
@@ -478,6 +510,12 @@ interface DriverContextValue {
     plate?: string;
     konzessionNumber?: string;
     car?: string;
+  }) => void;
+  patchDriverAvatarState: (snap: {
+    avatarHasPhoto: boolean;
+    avatarShowToCustomer: boolean;
+    avatarPreviewUrl: string | null;
+    avatarCustomerUrl: string | null;
   }) => void;
   login: (
     email: string,
@@ -501,6 +539,7 @@ const DriverContext = createContext<DriverContextValue>({
   driver: null,
   refreshEinsatzbereit: async () => null,
   patchAssignedVehicleSnapshot: () => {},
+  patchDriverAvatarState: () => {},
   login: async () => ({ ok: false, error: "Anmeldung fehlgeschlagen." }),
   changePassword: async () => ({ ok: false, error: "Passwortänderung fehlgeschlagen." }),
   logout: async () => {},
@@ -648,6 +687,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         isOwner: false,
         kkModuleAuthorized: false,
         dispatchPriority: "B",
+        avatarHasPhoto: false,
+        avatarShowToCustomer: false,
+        avatarPreviewUrl: null,
+        avatarCustomerUrl: null,
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
@@ -824,6 +867,29 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const patchDriverAvatarState = useCallback(
+    (snap: {
+      avatarHasPhoto: boolean;
+      avatarShowToCustomer: boolean;
+      avatarPreviewUrl: string | null;
+      avatarCustomerUrl: string | null;
+    }) => {
+      setDriver((prev) => {
+        if (!prev) return prev;
+        const next = {
+          ...prev,
+          avatarHasPhoto: snap.avatarHasPhoto,
+          avatarShowToCustomer: snap.avatarShowToCustomer,
+          avatarPreviewUrl: snap.avatarPreviewUrl,
+          avatarCustomerUrl: snap.avatarCustomerUrl,
+        };
+        patchStoredDriver(next);
+        return next;
+      });
+    },
+    [],
+  );
+
   const setAvailable = useCallback(async (v: boolean): Promise<void> => {
     if (!driver?.authToken) return;
     if (v && !driver.einsatzbereit) return;
@@ -953,6 +1019,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         driver,
         refreshEinsatzbereit,
         patchAssignedVehicleSnapshot,
+        patchDriverAvatarState,
         login,
         changePassword,
         logout,

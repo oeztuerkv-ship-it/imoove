@@ -21,6 +21,7 @@ import {
   Text,
   TextInput,
   TextStyle,
+  Image,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -840,6 +841,14 @@ export default function StatusScreen() {
   const driverRating = assignedDriver?.rating ?? null;
   const driverPhone = assignedDriver?.phone?.trim() ?? "";
   const driverInitials = assignedDriver?.initials ?? driverFirstName.slice(0, 2).toUpperCase();
+  const driverPhotoUrl =
+    typeof assignedDriver?.photoUrl === "string" && assignedDriver.photoUrl.trim()
+      ? assignedDriver.photoUrl.trim()
+      : null;
+  const [driverPhotoFailed, setDriverPhotoFailed] = useState(false);
+  useEffect(() => {
+    setDriverPhotoFailed(false);
+  }, [driverPhotoUrl]);
 
   const completedRideForRating = completedForCurrentRide ?? effectiveAcceptedRequest;
 
@@ -2249,9 +2258,18 @@ export default function StatusScreen() {
           <View style={styles.trackingDriverInfo}>
             <View style={styles.trackingDriverAvatarWrap}>
               <View style={styles.trackingDriverAvatar}>
-                <Text style={styles.trackingDriverAvatarText} allowFontScaling={false}>
-                  {driverInitials}
-                </Text>
+                {driverPhotoUrl && !driverPhotoFailed ? (
+                  <Image
+                    source={{ uri: driverPhotoUrl }}
+                    style={styles.trackingDriverAvatarImage}
+                    onError={() => setDriverPhotoFailed(true)}
+                    accessibilityLabel={`Foto von ${driverName}`}
+                  />
+                ) : (
+                  <Text style={styles.trackingDriverAvatarText} allowFontScaling={false}>
+                    {driverInitials}
+                  </Text>
+                )}
               </View>
               <View
                 style={styles.trackingDriverOnlineDot}
@@ -2857,6 +2875,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#111827",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  trackingDriverAvatarImage: {
+    width: rs(44),
+    height: rs(44),
   },
   trackingDriverAvatarWrap: {
     width: rs(44),

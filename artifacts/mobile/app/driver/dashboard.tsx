@@ -13,12 +13,14 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -118,6 +120,11 @@ import {
   type MedicalScanSuccess,
 } from "@/utils/medicalScanApi";
 import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
+import {
+  patchDriverAvatarConsent,
+  promptDriverAvatarActions,
+  type DriverAvatarState,
+} from "@/utils/driverAvatarApi";
 import {
   customerTransportScanAmpelLabel,
   customerTransportScanFromPartnerMeta,
@@ -1773,6 +1780,7 @@ function TabProfil({
   offersTeaserBody,
   onOpenVehiclePicker,
   inboxUnreadCount,
+  onAvatarUpdated,
 }: {
   driver: DriverProfile;
   fleetAuthToken?: string;
@@ -1781,6 +1789,7 @@ function TabProfil({
   offersTeaserBody: string;
   onOpenVehiclePicker: () => void;
   inboxUnreadCount: number;
+  onAvatarUpdated: (state: DriverAvatarState) => void;
 }) {
   const colors = useColors();
   const email = driver.email?.trim() || "—";
@@ -1792,6 +1801,50 @@ function TabProfil({
     stats.acceptanceRatePercent != null ? `${stats.acceptanceRatePercent} %` : "—";
   const rejectionLabel =
     stats.rejectionRatePercent != null ? `${stats.rejectionRatePercent} %` : "—";
+  const [avatarRev, setAvatarRev] = useState(0);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [driver.avatarPreviewUrl, avatarRev]);
+
+  const applyAvatarState = (state: DriverAvatarState | null) => {
+    if (!state) return;
+    onAvatarUpdated(state);
+    setAvatarRev((n) => n + 1);
+    setAvatarLoadFailed(false);
+    void Haptics.selectionAsync();
+  };
+
+  const openAvatarPicker = () => {
+    const token = (fleetAuthToken ?? driver.authToken ?? "").trim();
+    if (!token) {
+      Alert.alert("Profilfoto", "Fahrer-Session fehlt.");
+      return;
+    }
+    promptDriverAvatarActions(token, driver.avatarHasPhoto, applyAvatarState);
+  };
+
+  const onConsentChange = (value: boolean) => {
+    const token = (fleetAuthToken ?? driver.authToken ?? "").trim();
+    if (!token || consentBusy) return;
+    if (value && !driver.avatarHasPhoto) {
+      Alert.alert("Profilfoto", "Bitte zuerst ein Foto hochladen.");
+      return;
+    }
+    setConsentBusy(true);
+    void (async () => {
+      const state = await patchDriverAvatarConsent(token, value);
+      setConsentBusy(false);
+      applyAvatarState(state);
+    })();
+  };
+
+  const previewUri = driver.avatarPreviewUrl
+    ? `${driver.avatarPreviewUrl}${driver.avatarPreviewUrl.includes("?") ? "&" : "?"}r=${avatarRev}`
+    : null;
+  const showPhoto = Boolean(previewUri) && !avatarLoadFailed;
 
   return (
     <ScrollView
@@ -1819,9 +1872,60 @@ function TabProfil({
       ) : null}
 
       <View style={{ alignItems: "center", paddingVertical: 24, gap: 6 }}>
-        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EF1D26", alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: "#fff", fontSize: 28, fontFamily: "Inter_700Bold" }}>{driver.name?.[0] ?? "F"}</Text>
-        </View>
+        <Pressable
+          onPress={openAvatarPicker}
+          accessibilityLabel="Profilfoto ändern"
+          style={{ alignItems: "center", position: "relative" }}
+        >
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: "#EF1D26",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+            }}
+          >
+            {showPhoto && previewUri ? (
+              <Image
+                source={{
+                  uri: previewUri,
+                  headers: (fleetAuthToken ?? driver.authToken)
+                    ? { Authorization: `Bearer ${(fleetAuthToken ?? driver.authToken)!.trim()}` }
+                    : undefined,
+                }}
+                style={{ width: 72, height: 72 }}
+                onError={() => setAvatarLoadFailed(true)}
+              />
+            ) : (
+              <Text style={{ color: "#fff", fontSize: 28, fontFamily: "Inter_700Bold" }}>
+                {driver.name?.[0] ?? "F"}
+              </Text>
+            )}
+          </View>
+          <View
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: "#111827",
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 2,
+              borderColor: "#fff",
+            }}
+          >
+            <Feather name="camera" size={14} color="#fff" />
+          </View>
+        </Pressable>
+        <Text style={{ color: "#8E8E93", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 }}>
+          Tippen zum Ändern · auf Server gespeichert
+        </Text>
         <Text style={{ color: "#000", fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 }}>{driver.name}</Text>
         <Text style={[styles.profilEmail, { color: colors.mutedForeground }]}>{email}</Text>
         <Text style={{ color: "#8E8E93", fontSize: 13, fontFamily: "Inter_400Regular" }}>
@@ -1834,6 +1938,30 @@ function TabProfil({
           <Text style={[styles.profilRatingText, { color: colors.foreground }]}>
             {formatDriverRatingLabel(driver.rating, driver.ratingCount)}
           </Text>
+        </View>
+      </View>
+
+      <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>PROFILFOTO</Text>
+        <View style={[styles.profilRow, { alignItems: "center" }]}>
+          <View style={[styles.profilIconBg, { backgroundColor: "#FEF2F2" }]}>
+            <Feather name="eye" size={20} color="#EF1D26" />
+          </View>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={{ color: colors.foreground, fontSize: 15, fontFamily: "Inter_600SemiBold" }}>
+              Für Kunden sichtbar
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+              Nur mit Ihrer Zustimmung bei aktiver Fahrt
+            </Text>
+          </View>
+          <Switch
+            value={driver.avatarShowToCustomer}
+            onValueChange={onConsentChange}
+            disabled={consentBusy || !driver.avatarHasPhoto}
+            trackColor={{ false: "#D1D5DB", true: "#FECACA" }}
+            thumbColor={driver.avatarShowToCustomer ? "#EF1D26" : "#f4f3f4"}
+          />
         </View>
       </View>
 
@@ -3425,7 +3553,7 @@ export default function DriverDashboard() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { t } = useTranslation();
-  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, refreshEinsatzbereit, patchAssignedVehicleSnapshot } = useDriver();
+  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, refreshEinsatzbereit, patchAssignedVehicleSnapshot, patchDriverAvatarState } = useDriver();
   const { config: appPlatformConfig } = useOnrodaAppConfig();
   const allowDriverApp = (appPlatformConfig.system as { allowDriverApp?: boolean } | undefined)?.allowDriverApp !== false;
   const offersTeaserTitle =
@@ -5147,6 +5275,7 @@ export default function DriverDashboard() {
                 offersTeaserBody={offersTeaserBody}
                 onOpenVehiclePicker={openVehiclePicker}
                 inboxUnreadCount={0}
+                onAvatarUpdated={patchDriverAvatarState}
               />
             )}
           </>

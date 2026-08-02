@@ -132,6 +132,8 @@ export interface FleetDriverListRow {
   pScheinNumber: string;
   pScheinExpiry: string | null;
   pScheinDocStorageKey: string | null;
+  avatarStorageKey: string | null;
+  avatarShowToCustomer: boolean;
   /** Anschrift (optional, durch Unternehmer gepflegt). */
   homeAddress: string;
   driversLicenseNumber: string;
@@ -211,6 +213,8 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     pScheinNumber: r.p_schein_number,
     pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
     pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    avatarStorageKey: r.avatar_storage_key ?? null,
+    avatarShowToCustomer: Boolean(r.avatar_show_to_customer),
     homeAddress: r.home_address ?? "",
     driversLicenseNumber: r.drivers_license_number ?? "",
     driversLicenseExpiry: r.drivers_license_expiry ? String(r.drivers_license_expiry) : null,
@@ -439,6 +443,8 @@ export async function patchFleetDriverProfile(
     pScheinNumber: string;
     pScheinExpiry: string | null;
     pScheinDocStorageKey: string | null;
+    avatarStorageKey: string | null;
+    avatarShowToCustomer: boolean;
     vehicleLegalType: FleetVehicleLegalType;
     vehicleClass: FleetVehicleClass;
     homeAddress: string;
@@ -494,6 +500,8 @@ export async function patchFleetDriverProfile(
     set.p_schein_expiry = raw ? raw : null;
   }
   if (patch.pScheinDocStorageKey !== undefined) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
+  if (patch.avatarStorageKey !== undefined) set.avatar_storage_key = patch.avatarStorageKey;
+  if (patch.avatarShowToCustomer !== undefined) set.avatar_show_to_customer = patch.avatarShowToCustomer;
   if (patch.vehicleLegalType !== undefined) set.vehicle_legal_type = patch.vehicleLegalType;
   if (patch.vehicleClass !== undefined) set.vehicle_class = patch.vehicleClass;
   if (patch.homeAddress !== undefined) set.home_address = patch.homeAddress.trim();

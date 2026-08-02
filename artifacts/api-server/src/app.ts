@@ -166,7 +166,8 @@ function isMedicalLargeJsonPost(pathname: string): boolean {
   return (
     /\/fleet-driver\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) ||
     /\/customer\/v1\/medical\/scan(?:-test)?\/?$/.test(pathname) ||
-    (/\/rides\/[^/]+\/medical\/(?:transport-document|signature)\/?$/.test(pathname))
+    (/\/rides\/[^/]+\/medical\/(?:transport-document|signature)\/?$/.test(pathname)) ||
+    /\/fleet-driver\/v1\/avatar\/?$/.test(pathname)
   );
 }
 
