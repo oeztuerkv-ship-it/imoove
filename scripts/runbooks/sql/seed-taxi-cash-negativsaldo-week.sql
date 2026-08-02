@@ -9,19 +9,16 @@
 
 \set ON_ERROR_STOP on
 
--- Guard als PL/pgSQL (echtes Short-Circuit). Nicht CASE + SELECT 1/0 —
--- Postgres kann unkorrelierte Skalar-Unterabfragen im THEN als InitPlan vorab auswerten.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM admin_companies c
-    WHERE c.id = :'company_id'
-      AND lower(trim(c.company_kind)) = 'taxi'
-      AND c.is_active IS TRUE
-  ) THEN
-    RAISE EXCEPTION 'company % is not an active taxi company', :'company_id';
-  END IF;
-END $$;
+-- Guard: 1/0 nur wenn keine gültige Taxi-Firma — Ausdruck pro Ergebniszeile,
+-- nicht als CASE/THEN-InitPlan und nicht in $$…$$ (dort interpoliert psql :'var' nicht).
+SELECT 1 / 0
+FROM (SELECT 1) AS guard(x)
+WHERE NOT EXISTS (
+  SELECT 1 FROM admin_companies c
+  WHERE c.id = :'company_id'
+    AND lower(trim(c.company_kind)) = 'taxi'
+    AND c.is_active IS TRUE
+);
 
 DELETE FROM ride_financials
 WHERE ride_id LIKE 'REQ-QA-NET-' || :'seed_tag' || '-%';
