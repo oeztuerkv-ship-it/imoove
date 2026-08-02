@@ -41,7 +41,7 @@ export default function PartnerPrivateReminderCard({
         <div className="partner-ride-card__phase partner-memo-card__phase" aria-hidden />
         <div className="partner-ride-card__head-main">
           <div className="partner-ride-card__title-row">
-            <span className="partner-pill partner-pill--memo">Notiz</span>
+            <span className="partner-pill partner-pill--memo">Privatauftrag</span>
             <span className="partner-ride-card__time">{fmtDateTime(reminder.scheduledAt)}</span>
           </div>
           <p className="partner-ride-card__route">
@@ -50,7 +50,7 @@ export default function PartnerPrivateReminderCard({
           {reminder.note?.trim() ? (
             <p className="partner-memo-card__preview partner-muted">{reminder.note.trim()}</p>
           ) : (
-            <p className="partner-muted partner-memo-card__preview">Private Merknotiz (kein Auftrag)</p>
+            <p className="partner-muted partner-memo-card__preview">Privatauftrag (kein Dispatch)</p>
           )}
         </div>
         <span className="partner-ride-card__chevron" aria-hidden>

@@ -1805,6 +1805,8 @@ export const partnerPrivateRemindersTable = pgTable("partner_private_reminders",
   from_full: text("from_full").notNull().default(""),
   to_full: text("to_full").notNull().default(""),
   note: text("note").notNull().default(""),
+  /** NULL = offen; gesetzt = erledigt (ohne Löschen). */
+  completed_at: timestamp("completed_at", { withTimezone: true }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

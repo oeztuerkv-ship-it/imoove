@@ -3,6 +3,8 @@ import { router } from "expo-router";
 
 import { isDriverPushKind } from "@/utils/notificationAudience";
 import { requestDriverPushMarketRefresh } from "@/utils/driverPushMarketRefresh";
+import { PRIVATE_PICKUP_REMINDER_KIND } from "@/utils/privateReminderLocalNotifications";
+import { requestOpenPrivateReminder } from "@/utils/privateReminderOpenRequest";
 
 const HANDLED_PUSH_RESPONSE_IDS_KEY = "@onroda/handledPushResponseIds";
 const MAX_HANDLED_PUSH_IDS = 50;
@@ -30,6 +32,12 @@ function rideIdFromPushData(data: unknown): string | null {
   return typeof rideId === "string" && rideId.trim().length > 0 ? rideId.trim() : null;
 }
 
+function reminderIdFromPushData(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const reminderId = (data as { reminderId?: unknown }).reminderId;
+  return typeof reminderId === "string" && reminderId.trim().length > 0 ? reminderId.trim() : null;
+}
+
 function kindFromPushData(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const kind = (data as { kind?: unknown }).kind;
@@ -53,8 +61,13 @@ async function shouldHandlePushResponse(
   }
 }
 
-function navigateForPush(kind: string | null, rideId: string | null): void {
+function navigateForPush(kind: string | null, rideId: string | null, reminderId: string | null): void {
   if (!kind) return;
+  if (kind === PRIVATE_PICKUP_REMINDER_KIND) {
+    if (reminderId) requestOpenPrivateReminder(reminderId);
+    router.push("/driver/dashboard");
+    return;
+  }
   if (isDriverPushKind(kind)) {
     requestDriverPushMarketRefresh();
     router.push("/driver/dashboard");
@@ -72,20 +85,20 @@ function navigateForPush(kind: string | null, rideId: string | null): void {
   router.push("/status");
 }
 
-/** Tap auf Push → passende App-Route (Kunde /status, Fahrer Dashboard). */
+/** Tap auf Push → passende App-Route (Kunde /status, Fahrer Dashboard / private Notiz). */
 export function setupExpoPushResponseRouting(): () => void {
   let sub: { remove: () => void } | null = null;
   void import("expo-notifications").then(async (Notifications) => {
     const last = await Notifications.getLastNotificationResponseAsync();
     if (last && (await shouldHandlePushResponse(last))) {
       const data = last.notification.request.content.data;
-      navigateForPush(kindFromPushData(data), rideIdFromPushData(data));
+      navigateForPush(kindFromPushData(data), rideIdFromPushData(data), reminderIdFromPushData(data));
     }
     sub = Notifications.addNotificationResponseReceivedListener((response) => {
       void shouldHandlePushResponse(response).then((ok) => {
         if (!ok) return;
         const data = response.notification.request.content.data;
-        navigateForPush(kindFromPushData(data), rideIdFromPushData(data));
+        navigateForPush(kindFromPushData(data), rideIdFromPushData(data), reminderIdFromPushData(data));
       });
     });
   });

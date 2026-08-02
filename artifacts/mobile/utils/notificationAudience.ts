@@ -18,6 +18,7 @@ const DRIVER_PUSH_KINDS = new Set([
   "reservation_missed_activation",
   "ride_cancelled_by_customer",
   "ride_destination_changed",
+  "private_pickup_reminder",
 ]);
 
 export function isDriverPushKind(kind: unknown): boolean {

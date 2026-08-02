@@ -114,6 +114,14 @@ import {
   subscribeDriverDestinationChanged,
   subscribeDriverRideCancelledByCustomer,
 } from "@/utils/driverLiveNavigation";
+import {
+  NAV_CAMERA_FOLLOW_DURATION_MS,
+  NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS,
+  createNavHeadingSmootherState,
+  isUsableCourse,
+  tickNavHeading,
+  type NavHeadingSmootherState,
+} from "@/utils/navHeadingSmoother";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   driverRidePaymentLooksLikeCash,
@@ -275,21 +283,16 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number): num
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-function isUsableDeviceHeading(heading?: number | null): heading is number {
-  return heading != null && Number.isFinite(heading) && heading >= 0 && heading <= 360;
-}
-
-function resolveNavHeading(
+/** Fallback-Bearing (Step/Ziel) — ohne Device-Kurs; Glättung läuft über navHeadingSmoother. */
+function resolveNavFallbackBearing(
   lat: number,
   lon: number,
   opts: {
-    deviceHeading?: number | null;
     steps?: RouteStep[];
     stepIdx?: number;
     target?: { lat: number; lon: number };
   },
 ): number {
-  if (isUsableDeviceHeading(opts.deviceHeading)) return opts.deviceHeading;
   const step = opts.steps?.[opts.stepIdx ?? 0];
   if (step && isValidMapCoord(step.lat, step.lon)) {
     return bearingDeg(lat, lon, step.lat, step.lon);
@@ -359,7 +362,26 @@ export default function DriverNavigationScreen() {
     xlFixedSurchargeEur?: string;
     driverId: string;
     arrived?: string;
+    /** "1" = private Merkliste, kein Auftrags-API. */
+    privateMemo?: string | string[];
   }>();
+
+  const privateMemoRaw = Array.isArray(params.privateMemo)
+    ? params.privateMemo[0]
+    : params.privateMemo;
+  const rideIdRaw = (Array.isArray(params.rideId) ? params.rideId[0] : params.rideId)?.trim() ?? "";
+  /** Private Merkliste — auch Fallback über ppr- ID, falls Param verloren geht. */
+  const isPrivateMemo =
+    privateMemoRaw === "1" ||
+    privateMemoRaw === "true" ||
+    rideIdRaw.startsWith("ppr-");
+  const isPrivateMemoRef = useRef(isPrivateMemo);
+  isPrivateMemoRef.current = isPrivateMemo;
+
+  const exitPrivateMemoNav = useCallback(() => {
+    // Immer replace — kein dismissTo, kein Storno/Status.
+    router.replace("/driver/dashboard" as Href);
+  }, []);
 
   const { driverCancelRequest, requests, driverMarketRequests, scheduledPoolRequests, driverMarketScheduledPool } = useRideRequests();
   const { driver, refreshEinsatzbereit } = useDriver();
@@ -368,10 +390,12 @@ export default function DriverNavigationScreen() {
     async (activeRideId?: string | null) => {
       await syncDriverPresenceState({
         isMarketOnline: driverMarketOnline,
-        activeRideId: activeRideId ?? params.rideId?.trim() ?? null,
+        activeRideId: isPrivateMemo
+          ? null
+          : (activeRideId ?? params.rideId?.trim() ?? null),
       });
     },
-    [driverMarketOnline, params.rideId],
+    [driverMarketOnline, params.rideId, isPrivateMemo],
   );
   const activeRide = useMemo(() => {
     const id = (params.rideId ?? "").trim();
@@ -387,8 +411,8 @@ export default function DriverNavigationScreen() {
   const stackCollapsedForRideRef = useRef<string | null>(null);
 
   const phase = params.phase ?? "pickup";
-  const isPickupPhase = phase === "pickup";
-  const isDrivingPhase = !isPickupPhase;
+  const isPickupPhase = isPrivateMemo || phase === "pickup";
+  const isDrivingPhase = !isPrivateMemo && !isPickupPhase;
 
   const fromLat = parseFloat(params.fromLat ?? "0");
   const fromLon = parseFloat(params.fromLon ?? "0");
@@ -426,7 +450,7 @@ export default function DriverNavigationScreen() {
   const initialNavCamera = useMemo(() => {
     const lat = isValidMapCoord(fromLat, fromLon) ? fromLat : 48.7394;
     const lon = isValidMapCoord(fromLat, fromLon) ? fromLon : 9.3114;
-    const heading = resolveNavHeading(lat, lon, { target: navigationTarget });
+    const heading = resolveNavFallbackBearing(lat, lon, { target: navigationTarget });
     return buildNavCamera(lat, lon, heading);
   }, [fromLat, fromLon, navigationTarget.lat, navigationTarget.lon]);
 
@@ -463,6 +487,8 @@ export default function DriverNavigationScreen() {
   const navFollowEnabledRef = useRef(true);
   /** Ignore region-change events briefly after animateCamera / fitToCoordinates. */
   const programmaticCameraUntilRef = useRef(0);
+  /** Heading: Speed-Gate + EMA/Deadband/Rate-Limit (nicht Roh-GPS). */
+  const navHeadingSmootherRef = useRef<NavHeadingSmootherState>(createNavHeadingSmootherState());
   const driverArrivingSentRef = useRef(false);
 
   const [polyline, setPolyline] = useState<{ latitude: number; longitude: number }[]>([]);
@@ -544,7 +570,11 @@ export default function DriverNavigationScreen() {
     clearUnread: clearChatUnread,
     markReadFromMessages,
     notifyIncoming: notifyChatIncoming,
-  } = useFleetRideChatUnread(params.rideId?.trim() ?? "", rideChatEnabled, chatOpen);
+  } = useFleetRideChatUnread(
+    isPrivateMemo ? "" : (params.rideId?.trim() ?? ""),
+    isPrivateMemo ? false : rideChatEnabled,
+    chatOpen,
+  );
   const rideChatCanSend = isRideChatSendAllowed(
     (activeRide?.status ?? rideFleetStatus) as RequestStatus,
     rideChatEnabled,
@@ -701,19 +731,35 @@ export default function DriverNavigationScreen() {
       const lon = opts?.lon ?? driverLonRef.current;
       if (!isValidMapCoord(lat, lon)) return;
 
-      const heading = resolveNavHeading(lat, lon, {
-        deviceHeading: opts?.heading,
-        steps: stepsRef.current,
-        stepIdx: stepIdxRef.current,
-        target: navTargetRef.current,
-      });
+      let heading: number;
+      if (isUsableCourse(opts?.heading)) {
+        heading = opts.heading;
+      } else {
+        const fallback = resolveNavFallbackBearing(lat, lon, {
+          steps: stepsRef.current,
+          stepIdx: stepIdxRef.current,
+          target: navTargetRef.current,
+        });
+        const ticked = tickNavHeading(navHeadingSmootherRef.current, {
+          speedMps: 0,
+          courseDeg: null,
+          fallbackBearingDeg: fallback,
+        });
+        navHeadingSmootherRef.current = ticked.state;
+        heading = ticked.heading ?? fallback;
+      }
 
       if (!mapReady.current || !mapRef.current) {
         pendingNavCameraRef.current = { lat, lon, heading };
         return;
       }
 
-      const duration = opts?.animated === false ? 0 : navCameraInitializedRef.current ? 280 : 0;
+      const duration =
+        opts?.animated === false
+          ? 0
+          : navCameraInitializedRef.current
+            ? NAV_CAMERA_FOLLOW_DURATION_MS
+            : 0;
       markProgrammaticCamera(duration);
       mapRef.current.animateCamera(buildNavCamera(lat, lon, heading), { duration });
       navCameraInitializedRef.current = true;
@@ -726,16 +772,35 @@ export default function DriverNavigationScreen() {
     void (async () => {
       let lat = driverLatRef.current;
       let lon = driverLonRef.current;
-      let heading: number | undefined;
+      let speedMps: number | null = null;
+      let courseDeg: number | null = null;
       const fresh = await getCurrentPositionSafe({ accuracy: Location.Accuracy.BestForNavigation });
       if (fresh && isValidMapCoord(fresh.coords.latitude, fresh.coords.longitude)) {
         lat = fresh.coords.latitude;
         lon = fresh.coords.longitude;
-        if (isUsableDeviceHeading(fresh.coords.heading)) heading = fresh.coords.heading;
+        speedMps = fresh.coords.speed;
+        courseDeg = fresh.coords.heading;
         setDriverLat(lat);
         setDriverLon(lon);
       }
-      focusNavigationCamera({ lat, lon, heading, animated: true, force: true });
+      const fallback = resolveNavFallbackBearing(lat, lon, {
+        steps: stepsRef.current,
+        stepIdx: stepIdxRef.current,
+        target: navTargetRef.current,
+      });
+      const ticked = tickNavHeading(navHeadingSmootherRef.current, {
+        speedMps,
+        courseDeg,
+        fallbackBearingDeg: fallback,
+      });
+      navHeadingSmootherRef.current = ticked.state;
+      focusNavigationCamera({
+        lat,
+        lon,
+        heading: ticked.heading ?? undefined,
+        animated: true,
+        force: true,
+      });
     })();
   }, [focusNavigationCamera]);
 
@@ -747,6 +812,7 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     navCameraInitializedRef.current = false;
     navFollowEnabledRef.current = true;
+    navHeadingSmootherRef.current = createNavHeadingSmootherState();
     setStepIdx(0);
     prevStepIdx.current = -1;
   }, [params.rideId, phase]);
@@ -775,6 +841,7 @@ export default function DriverNavigationScreen() {
       points: { lat: number; lon: number }[],
       metrics: { etaMinutes: number; remainingDistM: number },
     ) => {
+      if (isPrivateMemo) return;
       const sampled = downsampleRoutePolyline(points);
       if (sampled.length < 2) return;
       const polyline = polylinePairsFromLatLon(sampled);
@@ -908,6 +975,7 @@ export default function DriverNavigationScreen() {
     destName,
     params.fromName,
     focusNavigationCamera,
+    isPrivateMemo,
   ]);
 
   // Speak on step change — skip "Fahrt beginnen" (depart) instructions
@@ -931,6 +999,7 @@ export default function DriverNavigationScreen() {
       finalFarePlausibilityAck?: boolean,
     ) => {
       if (!params.rideId) return;
+      if (isPrivateMemo) return;
       const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
         method: "PATCH",
         headers: await fleetAuthHeadersJson(),
@@ -960,7 +1029,7 @@ export default function DriverNavigationScreen() {
         throw err;
       }
     },
-    [params.rideId, driverLat, driverLon],
+    [params.rideId, driverLat, driverLon, isPrivateMemo],
   );
 
   const handleAngekommen = useCallback(async () => {
@@ -1208,6 +1277,7 @@ export default function DriverNavigationScreen() {
   exitAfterCustomerCancelRef.current = exitAfterCustomerCancel;
 
   const probeFleetRideCancel = useCallback(async () => {
+    if (isPrivateMemo) return;
     if (!params.rideId || cancelHandledRef.current) return;
     const rideId = params.rideId.trim();
     const headers = await fleetAuthHeadersJson();
@@ -1242,9 +1312,10 @@ export default function DriverNavigationScreen() {
         /* try next */
       }
     }
-  }, [exitAfterCustomerCancel, params.rideId]);
+  }, [exitAfterCustomerCancel, params.rideId, isPrivateMemo]);
 
   useEffect(() => {
+    if (isPrivateMemo) return;
     if (activeRide) hadActiveRideInListRef.current = true;
     const id = params.rideId?.trim() ?? "";
     if (!id) return;
@@ -1263,22 +1334,28 @@ export default function DriverNavigationScreen() {
     exitAfterCustomerCancel,
     params.rideId,
     probeFleetRideCancel,
+    isPrivateMemo,
   ]);
 
   useEffect(() => {
+    if (isPrivateMemo) {
+      setDriverLiveNavigationRideId(null);
+      return;
+    }
     const rideId = params.rideId?.trim() ?? "";
     setDriverLiveNavigationRideId(rideId || null);
     return () => setDriverLiveNavigationRideId(null);
-  }, [params.rideId]);
+  }, [params.rideId, isPrivateMemo]);
 
   useEffect(() => {
+    if (isPrivateMemo) return;
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId) return;
     return subscribeDriverRideCancelledByCustomer((cancelledId, cancelReason) => {
       if (cancelledId !== rideId) return;
       exitAfterCustomerCancelRef.current(cancelReason);
     });
-  }, [params.rideId]);
+  }, [params.rideId, isPrivateMemo]);
 
   const lastDestinationAlertKeyRef = useRef("");
   const applyCustomerDestinationChange = useCallback(
@@ -1716,11 +1793,22 @@ export default function DriverNavigationScreen() {
         const { latitude, longitude } = boot.coords;
         setDriverLat(latitude);
         setDriverLon(longitude);
+        const bootFallback = resolveNavFallbackBearing(latitude, longitude, {
+          steps: stepsRef.current,
+          stepIdx: stepIdxRef.current,
+          target: navTargetRef.current,
+        });
+        const bootTick = tickNavHeading(navHeadingSmootherRef.current, {
+          speedMps: boot.coords.speed,
+          courseDeg: boot.coords.heading,
+          fallbackBearingDeg: bootFallback,
+        });
+        navHeadingSmootherRef.current = bootTick.state;
         if (mapReady.current) {
           focusNavigationCamera({
             lat: latitude,
             lon: longitude,
-            heading: boot.coords.heading ?? undefined,
+            heading: bootTick.heading ?? undefined,
             animated: false,
             force: true,
           });
@@ -1776,14 +1864,16 @@ export default function DriverNavigationScreen() {
           }
 
           const navRouteReady = initialRouteMetricsRef.current.distM > 0;
-          socketSendDriver(latitude, longitude, {
-            ...(navRouteReady ? { etaMinutes: Math.max(0, remainingMinRef.current) } : {}),
-            ...(navRouteReady
-              ? { remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)) }
-              : {}),
-            navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
-          });
-          if (params.rideId) {
+          if (!isPrivateMemoRef.current) {
+            socketSendDriver(latitude, longitude, {
+              ...(navRouteReady ? { etaMinutes: Math.max(0, remainingMinRef.current) } : {}),
+              ...(navRouteReady
+                ? { remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)) }
+                : {}),
+              navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
+            });
+          }
+          if (params.rideId && !isPrivateMemoRef.current) {
             void (async () => {
               try {
                 const fix = acceptDriverGpsFix(latitude, longitude);
@@ -1808,17 +1898,32 @@ export default function DriverNavigationScreen() {
             })();
           }
 
+          const now = Date.now();
+          const fallbackBearing = resolveNavFallbackBearing(latitude, longitude, {
+            steps: stepsRef.current,
+            stepIdx: stepIdxRef.current,
+            target: navTargetRef.current,
+          });
+          const headingTick = tickNavHeading(navHeadingSmootherRef.current, {
+            speedMps: loc.coords.speed,
+            courseDeg: loc.coords.heading,
+            fallbackBearingDeg: fallbackBearing,
+            nowMs: now,
+          });
+          navHeadingSmootherRef.current = headingTick.state;
+
           if (!navFollowEnabledRef.current) return;
 
-          const now = Date.now();
-          // Kamera max. ~4×/s — Marker folgt jedem GPS-Tick; weniger animateCamera-Kampf auf iOS.
-          if (now - lastCameraFollowAt < 250 && navCameraInitializedRef.current) return;
+          // C: Kamera ~2×/s — Heading bereits geglättet; Dauer ≈ Intervall.
+          if (now - lastCameraFollowAt < NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS && navCameraInitializedRef.current) {
+            return;
+          }
           lastCameraFollowAt = now;
 
           focusNavigationCamera({
             lat: latitude,
             lon: longitude,
-            heading: loc.coords.heading ?? undefined,
+            heading: headingTick.heading ?? undefined,
             animated: navCameraInitializedRef.current,
           });
         },
@@ -2011,7 +2116,17 @@ export default function DriverNavigationScreen() {
 
   // ─── Bottom action button ───────────────────────────────────────────────────
   let actionBtn: React.ReactNode;
-  if (isPickupPhase) {
+  if (isPrivateMemo) {
+    actionBtn = (
+      <Pressable
+        style={[styles.actionBtn, styles.actionBtnDark]}
+        onPress={exitPrivateMemoNav}
+        accessibilityLabel="Navi beenden"
+      >
+        <Text style={styles.actionBtnText}>Navi beenden</Text>
+      </Pressable>
+    );
+  } else if (isPickupPhase) {
     if (!hasArrived) {
       // Step 1: "Angekommen" — locked until < 300m
       const locked = !isNearPickup;
@@ -2125,6 +2240,27 @@ export default function DriverNavigationScreen() {
         pointerEvents="box-none"
         style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}
       >
+        {isPrivateMemo ? (
+          <View style={styles.privateMemoTopBar}>
+            <Pressable
+              style={styles.privateMemoExitBtn}
+              onPress={exitPrivateMemoNav}
+              accessibilityLabel="Navi beenden"
+              hitSlop={12}
+            >
+              <Feather name="x" size={22} color="#111827" />
+            </Pressable>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.privateMemoTopTitle}>Privatauftrag</Text>
+              <Text style={styles.privateMemoTopSub} numberOfLines={1}>
+                {remainingMin > 0 ? `${remainingMin} min` : "Route"} · {pickupName}
+              </Text>
+            </View>
+            <Pressable style={styles.privateMemoExitTextBtn} onPress={exitPrivateMemoNav}>
+              <Text style={styles.privateMemoExitText}>Beenden</Text>
+            </Pressable>
+          </View>
+        ) : (
         <View style={styles.topNavCluster}>
           <View style={styles.topCard}>
             <View style={styles.topMain}>
@@ -2147,6 +2283,7 @@ export default function DriverNavigationScreen() {
             </View>
           ) : null}
         </View>
+        )}
       </View>
 
       {/* Floating button column — Karte/Navi über dem unteren Panel */}
@@ -2187,7 +2324,42 @@ export default function DriverNavigationScreen() {
         ) : null}
       </View>
 
-      {isDrivingPhase ? (
+      {isPrivateMemo ? (
+        <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
+          <View style={styles.privateMemoPanel}>
+            <View style={styles.privateMemoMainRow}>
+              <View style={styles.privateMemoRouteCol}>
+                <View style={styles.privateMemoRouteRow}>
+                  <View style={styles.privateMemoRail}>
+                    <View style={styles.privateMemoDotGreen} />
+                    <View style={styles.privateMemoLine} />
+                    <View style={styles.privateMemoDotRed} />
+                  </View>
+                  <View style={styles.privateMemoPlaces}>
+                    <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
+                      {pickupName}
+                    </Text>
+                    <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
+                      {destName}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.privateMemoStatsBox}>
+                <Text style={[styles.privateMemoStatKm, navAppleFont("bold")]}>
+                  {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
+                </Text>
+                <Text style={[styles.privateMemoStatMin, navAppleFont("semibold")]}>
+                  {remainingMin > 0 ? `${remainingMin} min` : "—"}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.actionBlock}>
+            <View style={styles.actionBtnWrapper}>{actionBtn}</View>
+          </View>
+        </View>
+      ) : isDrivingPhase ? (
         <Animated.View
           style={[
             styles.driveBottomSheet,
@@ -3048,6 +3220,116 @@ const styles = StyleSheet.create({
     borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, gap: 8,
   },
   actionBtnGreen: { backgroundColor: "#22C55E" },
+  actionBtnDark: { backgroundColor: "#111827" },
+  privateMemoTopBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginHorizontal: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#111827",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
+  },
+  privateMemoExitBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  privateMemoTopTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  privateMemoTopSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  privateMemoExitTextBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#111827",
+  },
+  privateMemoExitText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  privateMemoPanel: {
+    paddingHorizontal: 2,
+    marginBottom: 12,
+  },
+  privateMemoMainRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 12,
+  },
+  privateMemoRouteCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  privateMemoRouteRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+  },
+  privateMemoRail: {
+    width: 14,
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  privateMemoDotGreen: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#22C55E",
+  },
+  privateMemoLine: {
+    flex: 1,
+    width: 2,
+    minHeight: 16,
+    backgroundColor: "#D1D5DB",
+    marginVertical: 4,
+  },
+  privateMemoDotRed: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#DC2626",
+  },
+  privateMemoPlaces: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "space-between",
+    gap: 14,
+    paddingVertical: 1,
+  },
+  privateMemoValue: { fontSize: 15, color: "#111827", lineHeight: 20 },
+  privateMemoStatsBox: {
+    minWidth: 78,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  privateMemoStatKm: { fontSize: 15, color: "#111827" },
+  privateMemoStatMin: { fontSize: 13, color: "#6B7280" },
   actionBtnGray:  { backgroundColor: "#374151" },
   actionBtnBlue:  { backgroundColor: "#2563EB" },
   actionBtnRed:   { backgroundColor: "#EA4335" },

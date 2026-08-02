@@ -12,6 +12,8 @@ export type PartnerPrivateReminderRow = {
   fromFull: string;
   toFull: string;
   note: string;
+  /** ISO oder null = offen. */
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -26,6 +28,7 @@ function mapRow(r: typeof partnerPrivateRemindersTable.$inferSelect): PartnerPri
     fromFull: r.from_full ?? "",
     toFull: r.to_full ?? "",
     note: r.note ?? "",
+    completedAt: r.completed_at ? r.completed_at.toISOString() : null,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
   };
@@ -150,6 +153,7 @@ export async function createPartnerPrivateReminder(input: {
     from_full: fromFull.slice(0, 500),
     to_full: toFull.slice(0, 500),
     note,
+    completed_at: null,
     created_at: now,
     updated_at: now,
   });
@@ -167,6 +171,12 @@ export async function updatePartnerPrivateReminder(input: {
   fromFull?: unknown;
   toFull?: unknown;
   note?: unknown;
+  /**
+   * true = erledigt (completed_at jetzt);
+   * false = wieder öffnen;
+   * fehlend = unverändert (rückwärtskompatibel).
+   */
+  completed?: unknown;
 }): Promise<{ ok: true; reminder: PartnerPrivateReminderRow } | { ok: false; error: string }> {
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
@@ -185,6 +195,11 @@ export async function updatePartnerPrivateReminder(input: {
   if (typeof input.fromFull === "string") patch.from_full = input.fromFull.trim().slice(0, 500);
   if (typeof input.toFull === "string") patch.to_full = input.toFull.trim().slice(0, 500);
   if (typeof input.note === "string") patch.note = input.note.trim().slice(0, 2000);
+  if (input.completed === true) {
+    patch.completed_at = new Date();
+  } else if (input.completed === false) {
+    patch.completed_at = null;
+  }
 
   const whereParts = [
     eq(partnerPrivateRemindersTable.id, input.reminderId),

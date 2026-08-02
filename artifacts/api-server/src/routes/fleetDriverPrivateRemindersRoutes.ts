@@ -103,6 +103,7 @@ router.patch("/fleet-driver/v1/private-reminders/:id", requireFleetDriverAuth, a
       fromFull: body.fromFull,
       toFull: body.toFull,
       note: body.note,
+      completed: body.completed,
     });
     if (!out.ok) {
       res.status(out.error === "not_found" ? 404 : 400).json({ error: out.error });

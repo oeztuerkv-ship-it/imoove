@@ -605,8 +605,8 @@ export default function PartnerRidesListPage({ variant }) {
       if (!res.ok || !data?.ok) {
         setActionMsg(
           typeof data?.error === "string"
-            ? `Notiz fehlgeschlagen (${data.error}).`
-            : "Notiz konnte nicht gespeichert werden.",
+            ? `Privatauftrag fehlgeschlagen (${data.error}).`
+            : "Privatauftrag konnte nicht gespeichert werden.",
         );
         return;
       }
@@ -621,10 +621,10 @@ export default function PartnerRidesListPage({ variant }) {
       }
       setMemoFormOpen(false);
       setMemoForm(emptyMemoForm());
-      setActionMsg(isEdit ? "Notiz aktualisiert." : "Notiz angelegt.");
+      setActionMsg(isEdit ? "Privatauftrag aktualisiert." : "Privatauftrag angelegt.");
       if (segment === "aktuell") setSegment("zukunft");
     } catch {
-      setActionMsg("Notiz konnte nicht gespeichert werden.");
+      setActionMsg("Privatauftrag konnte nicht gespeichert werden.");
     } finally {
       setActionBusy("");
     }
@@ -633,7 +633,7 @@ export default function PartnerRidesListPage({ variant }) {
   const deleteMemo = useCallback(
     async (reminderId) => {
       if (!token || !canManageMemos) return;
-      if (!window.confirm("Diese private Notiz wirklich löschen?")) return;
+      if (!window.confirm("Diesen Privatauftrag wirklich löschen?")) return;
       setActionBusy(`memo-${reminderId}`);
       setActionMsg("");
       try {
@@ -651,7 +651,7 @@ export default function PartnerRidesListPage({ variant }) {
         }
         setReminders((prev) => prev.filter((r) => r.id !== reminderId));
         if (expandedId === `memo-${reminderId}`) setExpandedId(null);
-        setActionMsg("Notiz gelöscht.");
+        setActionMsg("Privatauftrag gelöscht.");
       } catch {
         setActionMsg("Löschen fehlgeschlagen.");
       } finally {
@@ -710,7 +710,7 @@ export default function PartnerRidesListPage({ variant }) {
     variant === "history"
       ? "Abgeschlossene, stornierte und abgelehnte Fahrten."
       : canManageMemos
-        ? "Aktuelle Disposition, geplante Termine und private Notizen — mit Suche und Datum."
+        ? "Aktuelle Disposition, geplante Termine und Privataufträge — mit Suche und Datum."
         : "Aktuelle Disposition, geplante Termine und abgelaufene Fahrten — mit Suche und Datum.";
 
   return (
@@ -732,7 +732,7 @@ export default function PartnerRidesListPage({ variant }) {
         </button>
         {canManageMemos ? (
           <button type="button" className="panel-btn-secondary" onClick={openMemoCreate}>
-            + Notiz
+            + Privatauftrag
           </button>
         ) : null}
         <button
@@ -845,8 +845,8 @@ export default function PartnerRidesListPage({ variant }) {
               : activeSegment === "aktuell"
                 ? "Keine laufenden Fahrten — geplante Termine unter „Offene“."
                 : activeSegment === "zukunft"
-                  ? "Keine geplanten Fahrten oder Notizen."
-                  : "Keine abgelaufenen Fahrten oder Notizen in dieser Ansicht."}
+                  ? "Keine geplanten Fahrten oder Privataufträge."
+                  : "Keine abgelaufenen Fahrten oder Privataufträge in dieser Ansicht."}
         </p>
       ) : null}
 
@@ -957,7 +957,7 @@ export default function PartnerRidesListPage({ variant }) {
         <div className="partner-memo-modal" role="dialog" aria-modal="true" aria-labelledby="partner-memo-title">
           <div className="partner-memo-modal__panel">
             <h3 id="partner-memo-title" className="partner-memo-modal__title">
-              {memoForm.id ? "Notiz bearbeiten" : "Private Notiz"}
+              {memoForm.id ? "Privatauftrag bearbeiten" : "Privatauftrag"}
             </h3>
             <p className="partner-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: "0.88rem" }}>
               Nur für Owner/Manager Ihres Unternehmens — kein Fahrer, kein Matching.

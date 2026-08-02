@@ -89,6 +89,7 @@ router.patch("/panel/v1/private-reminders/:id", requirePanelAuth, async (req, re
       fromFull: body.fromFull,
       toFull: body.toFull,
       note: body.note,
+      completed: body.completed,
     });
     if (!out.ok) {
       res.status(out.error === "not_found" ? 404 : 400).json({ error: out.error });

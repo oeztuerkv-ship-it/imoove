@@ -128,8 +128,8 @@ export default function DriverCreateReservationScreen() {
         <Text style={styles.title}>Reservierung anlegen</Text>
         <View style={{ width: 24 }} />
       </View>
+      <Text style={styles.hint}>Abholzeit frühestens in 60 Minuten.</Text>
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
-        <Text style={styles.hint}>Walk-in / Telefon — mindestens 60 Minuten Vorlauf.</Text>
         <Text style={styles.label}>Kundenname *</Text>
         <TextInput style={styles.input} value={customerName} onChangeText={setCustomerName} />
         <Text style={styles.label}>Telefon (optional)</Text>
@@ -201,8 +201,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#111" },
+  hint: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
   form: { paddingHorizontal: 16, paddingBottom: 32, gap: 6 },
-  hint: { fontSize: 13, color: "#6B7280", marginBottom: 8, fontFamily: "Inter_400Regular" },
   label: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#374151", marginTop: 8 },
   input: {
     backgroundColor: "#fff",

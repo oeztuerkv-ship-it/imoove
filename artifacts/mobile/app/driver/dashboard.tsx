@@ -32,8 +32,16 @@ import { DriverRideChatModal } from "@/components/driver/DriverRideChatModal";
 import { DriverPrebookGuidelinesModal } from "@/components/driver/DriverPrebookGuidelinesModal";
 import { DriverAssignedPrebookTabHint } from "@/components/driver/DriverAssignedPrebookTabHint";
 import { DriverPassengerPinModal } from "@/components/driver/DriverPassengerPinModal";
-import { DriverPrivateRemindersSection } from "@/components/driver/DriverPrivateRemindersSection";
+import { DriverPrivateReminderCard } from "@/components/driver/DriverPrivateReminderCard";
+import {
+  DriverPrivateRemindersSection,
+  type DriverPrivateRemindersHandle,
+} from "@/components/driver/DriverPrivateRemindersSection";
 import { fetchRidePassengerPinStatus } from "@/utils/driverVerifyPassengerPinApi";
+import type { FleetPrivateReminder } from "@/utils/fleetPrivateRemindersApi";
+import { isPrivateReminderOpen } from "@/utils/fleetPrivateRemindersApi";
+import { openPrivateReminderInAppNav } from "@/utils/openPrivateReminderInAppNav";
+import { setPrivateReminderOpenHandler } from "@/utils/privateReminderOpenRequest";
 import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
 import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
@@ -3477,12 +3485,26 @@ export default function DriverDashboard() {
   const [adminMessage, setAdminMessage] = useState<DriverAdminMessage | null>(null);
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
+  const [privateReminders, setPrivateReminders] = useState<FleetPrivateReminder[]>([]);
+  const privateRemindersRef = useRef<DriverPrivateRemindersHandle | null>(null);
   const [showPrebookGuidelines, setShowPrebookGuidelines] = useState(false);
   const [prebookGuidelinesAccepted, setPrebookGuidelinesAccepted] = useState(false);
   const prebookGuidelinesAcceptedRef = useRef(false);
   const pendingAfterPrebookGuidelinesRef = useRef<{ kind: "accept" | "activate"; id: string } | null>(
     null,
   );
+
+  /** Notification-Tap „Private Abholung“ → Angenommen + Bearbeiten. */
+  useEffect(() => {
+    setPrivateReminderOpenHandler((reminderId) => {
+      setActiveTab("auftraege");
+      setOrdersView("angenommen");
+      setTimeout(() => {
+        void privateRemindersRef.current?.openEditById(reminderId);
+      }, 120);
+    });
+    return () => setPrivateReminderOpenHandler(null);
+  }, []);
   const [releaseBusyId, setReleaseBusyId] = useState<string | null>(null);
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
@@ -4575,6 +4597,29 @@ export default function DriverDashboard() {
 
   const scheduledOpenRequests = scheduledPool.filter((r) => r.status === "scheduled");
   const scheduledAssignedRequests = scheduledPool.filter((r) => r.status === "scheduled_assigned");
+  const openPrivateReminders = useMemo(
+    () => privateReminders.filter(isPrivateReminderOpen),
+    [privateReminders],
+  );
+  const angenommenCount = scheduledAssignedRequests.length + openPrivateReminders.length;
+  const angenommenFeed = useMemo(() => {
+    const rides = scheduledAssignedRequests.map((req) => {
+      const raw = req.scheduledAt;
+      const at =
+        typeof raw === "string"
+          ? Date.parse(raw)
+          : raw instanceof Date
+            ? raw.getTime()
+            : 0;
+      return { kind: "ride" as const, at: Number.isFinite(at) ? at : 0, req };
+    });
+    const memos = openPrivateReminders.map((reminder) => ({
+      kind: "memo" as const,
+      at: Date.parse(reminder.scheduledAt) || 0,
+      reminder,
+    }));
+    return [...rides, ...memos].sort((a, b) => a.at - b.at);
+  }, [scheduledAssignedRequests, openPrivateReminders]);
   const nextAssignedPrebook =
     scheduledAssignedRequests.length > 0
       ? [...scheduledAssignedRequests].sort(
@@ -4584,7 +4629,8 @@ export default function DriverDashboard() {
   const showAssignedPrebookTabHint = Boolean(nextAssignedPrebook && !activeDriverRequest);
   const sofortCount = pendingRequests.length;
   const vorbestellungCount = scheduledPool.length;
-  const totalPending = sofortCount + vorbestellungCount;
+  const privateReminderCount = openPrivateReminders.length;
+  const totalPending = sofortCount + vorbestellungCount + privateReminderCount;
 
   const tabs: { id: Tab; label: string; icon: string; badge?: number }[] = [
     { id: "uebersicht", label: "Übersicht", icon: "map", badge: sofortCount > 0 ? sofortCount : undefined },
@@ -4775,8 +4821,8 @@ export default function DriverDashboard() {
         </View>
       )}
 
-      {/* Content */}
-      <View style={{ flex: 1, paddingTop: topPad + 75 }}>
+      {/* Content — Aufträge etwas höher (weniger Abstand unter Header) */}
+      <View style={{ flex: 1, paddingTop: topPad + (activeTab === "auftraege" ? 62 : 75) }}>
         {adminMessage && !activeDriverRequest ? (
           <DriverAdminMessageBanner message={adminMessage} onDismiss={() => void dismissAdminMessage()} />
         ) : null}
@@ -4809,8 +4855,11 @@ export default function DriverDashboard() {
               />
             )}
             {activeTab === "auftraege" && (
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-                <View style={{ flexDirection: "row", marginBottom: 18, backgroundColor: colors.muted, borderRadius: 12, padding: 3 }}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[styles.tabScroll, { paddingTop: 10 }]}
+              >
+                <View style={{ flexDirection: "row", marginBottom: 14, backgroundColor: colors.muted, borderRadius: 12, padding: 3 }}>
                   <Pressable
                     onPress={() => setOrdersView("anfragen")}
                     style={{
@@ -4859,7 +4908,7 @@ export default function DriverDashboard() {
                         fontSize: 14,
                       }}
                     >
-                      Angenommene{scheduledAssignedRequests.length > 0 ? ` (${scheduledAssignedRequests.length})` : ""}
+                      Angenommene{angenommenCount > 0 ? ` (${angenommenCount})` : ""}
                     </Text>
                   </Pressable>
 
@@ -5015,19 +5064,44 @@ export default function DriverDashboard() {
                   )
                 ) : (
                   <>
-                    {scheduledAssignedRequests.length === 0 ? (
-                    <View style={styles.emptyCenter}>
-                      <MaterialCommunityIcons name="calendar-check" size={56} color="#9CA3AF" />
-                      <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine angenommenen Fahrten</Text>
-                      <Text style={[styles.emptySub, { color: "#6B7280", textAlign: "center" }]}>
-                        Angenommene Reservierungen erscheinen hier.
-                      </Text>
-                    </View>
-                  ) : (
-                    <>
-                      {[...scheduledAssignedRequests]
-                        .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
-                        .map((req) => (
+                    {angenommenFeed.length === 0 ? (
+                      <View style={styles.emptyCenter}>
+                        <MaterialCommunityIcons name="calendar-check" size={56} color="#9CA3AF" />
+                        <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine angenommenen Fahrten</Text>
+                        <Text style={[styles.emptySub, { color: "#6B7280", textAlign: "center" }]}>
+                          Angenommene Reservierungen und Privataufträge erscheinen hier.
+                        </Text>
+                      </View>
+                    ) : (
+                      angenommenFeed.map((item) => {
+                        if (item.kind === "memo") {
+                          return (
+                            <DriverPrivateReminderCard
+                              key={`memo-${item.reminder.id}`}
+                              reminder={item.reminder}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setOrdersView("angenommen");
+                                privateRemindersRef.current?.openEdit(item.reminder);
+                              }}
+                              onNavigate={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                void openPrivateReminderInAppNav({
+                                  reminderId: item.reminder.id,
+                                  fromFull: item.reminder.fromFull,
+                                  toFull: item.reminder.toFull,
+                                  driverId: driver.id,
+                                  driverPos,
+                                });
+                              }}
+                              onComplete={() => {
+                                void privateRemindersRef.current?.markComplete(item.reminder.id);
+                              }}
+                            />
+                          );
+                        }
+                        const req = item.req;
+                        return (
                           <ScheduledCard
                             key={req.id}
                             req={req}
@@ -5041,9 +5115,9 @@ export default function DriverDashboard() {
                             onActivate={() => handleActivateScheduled(req.id)}
                             onCancelAssigned={() => handleCancelScheduled(req)}
                           />
-                        ))}
-                    </>
-                  )}
+                        );
+                      })
+                    )}
                   </>
                 )}
               </ScrollView>
@@ -5164,10 +5238,14 @@ export default function DriverDashboard() {
         })}
       </View>
 
-      {/* Notizen-FAB: absolute, verschiebt Anfragen/Angenommen/Reserv. nicht */}
-      {activeTab === "auftraege" ? (
-        <DriverPrivateRemindersSection enabled bottomInset={bottomPad + 72} />
-      ) : null}
+      {/* Private Notizen: immer laden für Tab-Badge; FAB nur auf Aufträge */}
+      <DriverPrivateRemindersSection
+        ref={privateRemindersRef}
+        enabled
+        showFab={activeTab === "auftraege"}
+        bottomInset={bottomPad + 72}
+        onRemindersChange={setPrivateReminders}
+      />
 
       <DriverPrebookGuidelinesModal
         visible={showPrebookGuidelines}

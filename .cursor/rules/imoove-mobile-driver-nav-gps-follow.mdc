@@ -1,5 +1,5 @@
 ---
-description: Fahrer-Navi iOS — Live-GPS Follow, distanceInterval, kein onRegionChange-Kill
+description: Fahrer-Navi iOS — Live-GPS Follow, Heading-Glättung, distanceInterval
 globs: artifacts/mobile/app/driver/navigation.tsx
 alwaysApply: false
 ---
@@ -10,21 +10,34 @@ alwaysApply: false
 
 Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig nach. Karte folgt nicht flüssig.
 
+**Richtung „spinnt“ / springt vor-zurück:** oft ungefilterter GPS-Kurs → siehe Heading unten.
+
 ## Ursachen (Repo)
 
 1. **`onRegionChange` schaltete Auto-Follow aus** — `animateCamera` (Follow) löst Region-Events aus; nach kurzem Puffer → `navFollowEnabledRef = false` → keine Kamera-Updates mehr bis „Navigation folgen“.
 2. **`timeInterval` ist Android-only** (expo-location). Auf iOS zählt **`distanceInterval`**. Vorher 5 m + totes Follow → wahrgenommenes Springen.
 3. Background-Task (`isIosBackgroundLocationEnabled`) ist getrennt; Foreground-Navi nutzt `watchPositionAsync` in `navigation.tsx`.
+4. **Roh-`coords.heading` → Kamera** ohne Glättung/Speed-Gate → Zittern an Ampel/Stau.
+
+## Heading (A+B+C)
+
+- Utility: `artifacts/mobile/utils/navHeadingSmoother.ts` (EMA + Deadband + Rate-Limit; Speed-Gate ~2 m/s).
+- **Fahrend:** GPS-Kurs glätten; sonst Fallback Bearing (Step/Ziel).
+- **Stehend / Speed unbekannt:** letztes Heading **halten** (kein Kurs-Jitter).
+- Kamera-Follow: min. **~450 ms**, `animateCamera` **~420 ms**.
+- Smoke: `npx tsx artifacts/mobile/utils/navHeadingSmoother.selftest.ts`
+- **Noch nicht:** Polyline-Segment-Tangente (D), Snap-to-Road.
 
 ## Invarianten
 
 - Follow nur bei **Nutzer-Pan** (`onPanDrag`) aus — **nicht** bei `onRegionChange`.
 - GPS Navi: `Accuracy.BestForNavigation`, `distanceInterval: 1` (iOS), `timeInterval: 1000` (Android).
-- Marker: jedes GPS-Tick `setDriverLat/Lon`; Kamera Follow gedrosselt (~250 ms).
+- Marker: jedes GPS-Tick `setDriverLat/Lon`; Kamera Follow gedrosselt; Heading nur über Smoother.
 - `followsUserLocation={false}` — eigenes Puck + `focusNavigationCamera`.
 - Overview-Button (`fitRoute`) darf Follow absichtlich aus machen; Recenter erzwingt Follow wieder (`force: true`).
 
-## Datei
+## Dateien
 
-`artifacts/mobile/app/driver/navigation.tsx`
+- `artifacts/mobile/app/driver/navigation.tsx`
+- `artifacts/mobile/utils/navHeadingSmoother.ts`
 ---
