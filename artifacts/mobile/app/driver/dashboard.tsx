@@ -32,6 +32,7 @@ import { DriverRideChatModal } from "@/components/driver/DriverRideChatModal";
 import { DriverPrebookGuidelinesModal } from "@/components/driver/DriverPrebookGuidelinesModal";
 import { DriverAssignedPrebookTabHint } from "@/components/driver/DriverAssignedPrebookTabHint";
 import { DriverPassengerPinModal } from "@/components/driver/DriverPassengerPinModal";
+import { DriverPrivateRemindersSection } from "@/components/driver/DriverPrivateRemindersSection";
 import { fetchRidePassengerPinStatus } from "@/utils/driverVerifyPassengerPinApi";
 import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
@@ -4916,6 +4917,10 @@ export default function DriverDashboard() {
                     </Text>
                   </Pressable>
                 </View>
+
+                {(ordersView === "anfragen" || ordersView === "angenommen") && (
+                  <DriverPrivateRemindersSection enabled={driver.isOwner === true} />
+                )}
 
                 {(ordersView === "anfragen" || ordersView === "angenommen") && (
                     <Pressable

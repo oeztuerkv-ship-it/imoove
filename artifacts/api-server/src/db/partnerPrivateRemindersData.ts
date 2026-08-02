@@ -70,7 +70,8 @@ export async function getPartnerPrivateReminder(
 
 export async function createPartnerPrivateReminder(input: {
   companyId: string;
-  panelUserId: string;
+  /** Panel-User; bei Fleet-Anlage null. */
+  panelUserId: string | null;
   scheduledAt: unknown;
   fromFull: unknown;
   toFull: unknown;
@@ -88,10 +89,14 @@ export async function createPartnerPrivateReminder(input: {
   }
   const id = `ppr-${randomUUID().replace(/-/g, "").slice(0, 22)}`;
   const now = new Date();
+  const panelUserId =
+    typeof input.panelUserId === "string" && input.panelUserId.trim()
+      ? input.panelUserId.trim()
+      : null;
   await db.insert(partnerPrivateRemindersTable).values({
     id,
     company_id: input.companyId,
-    created_by_panel_user_id: input.panelUserId,
+    created_by_panel_user_id: panelUserId,
     scheduled_at: scheduledAt,
     from_full: fromFull.slice(0, 500),
     to_full: toFull.slice(0, 500),
