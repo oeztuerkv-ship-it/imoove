@@ -9,16 +9,21 @@
 
 \set ON_ERROR_STOP on
 
--- Guard: 1/0 nur wenn keine gültige Taxi-Firma — Ausdruck pro Ergebniszeile,
--- nicht als CASE/THEN-InitPlan und nicht in $$…$$ (dort interpoliert psql :'var' nicht).
-SELECT 1 / 0
-FROM (SELECT 1) AS guard(x)
-WHERE NOT EXISTS (
+-- Guard über psql-Kontrollfluss (kein SQL 1/0 — Postgres faltet Literale vorzeitig).
+SELECT EXISTS (
   SELECT 1 FROM admin_companies c
   WHERE c.id = :'company_id'
     AND lower(trim(c.company_kind)) = 'taxi'
     AND c.is_active IS TRUE
-);
+) AS company_ok
+\gset
+
+\if :company_ok
+\echo 'Guard OK: gültiges aktives Taxi-Unternehmen.'
+\else
+\echo 'ERROR: company_id ist kein aktives Taxi-Unternehmen.'
+\quit 1
+\endif
 
 DELETE FROM ride_financials
 WHERE ride_id LIKE 'REQ-QA-NET-' || :'seed_tag' || '-%';
