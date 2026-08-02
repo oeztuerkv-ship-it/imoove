@@ -1787,3 +1787,27 @@ export const securityBanEventsTable = pgTable("security_ban_events", {
   meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Idempotenz Partner-Monatsreport (E-Mail am 1. des Monats). */
+export const partnerMonthlyReportSendsTable = pgTable(
+  "partner_monthly_report_sends",
+  {
+    id: text("id").primaryKey(),
+    company_id: text("company_id")
+      .notNull()
+      .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+    period_ym: text("period_ym").notNull(),
+    sent_at: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+    recipients_json: jsonb("recipients_json").$type<string[]>().notNull().default([]),
+    open_invoice_count: integer("open_invoice_count").notNull().default(0),
+    open_kranken_invoice_count: integer("open_kranken_invoice_count").notNull().default(0),
+    mail_status: text("mail_status").notNull().default("sent"),
+    actor_label: text("actor_label").notNull().default(""),
+  },
+  (t) => ({
+    companyPeriodUidx: uniqueIndex("partner_monthly_report_sends_company_period_uidx").on(
+      t.company_id,
+      t.period_ym,
+    ),
+  }),
+);

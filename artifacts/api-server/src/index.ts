@@ -57,4 +57,22 @@ httpServer.listen(port, () => {
     void runReservationLifecycleTick();
   }, 2 * 60 * 1000);
 
+  // Partner-Monatsreport: 1. des Monats 08:00 Europe/Berlin (Tick alle 15 Min, Idempotenz in DB)
+  const runPartnerMonthlyReportTick = async () => {
+    try {
+      const { runPartnerMonthlyReportCronTick } = await import("./jobs/partnerMonthlyReportCron.js");
+      await runPartnerMonthlyReportCronTick(new Date());
+    } catch (err) {
+      logger.error({ err }, "[Cron] partnerMonthlyReport failed");
+    }
+  };
+  logger.info(
+    { intervalMs: 15 * 60 * 1000 },
+    "[Cron] partnerMonthlyReport armed (1. des Monats 08:00 Europe/Berlin)",
+  );
+  void runPartnerMonthlyReportTick();
+  setInterval(() => {
+    void runPartnerMonthlyReportTick();
+  }, 15 * 60 * 1000);
+
 });

@@ -1868,6 +1868,42 @@ adminJson.post("/finance/settlements/create", async (req, res, next) => {
 });
 
 /**
+ * Partner-Monatsreport E-Mail (Vormonat + offene Rechnungen live).
+ * dryRun Standard true. Optional companyId, force (erneut trotz Tracker).
+ */
+adminJson.post("/finance/partner-monthly-report-run", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = (req.body ?? {}) as {
+      dryRun?: unknown;
+      companyId?: unknown;
+      force?: unknown;
+    };
+    const dryRun = body.dryRun !== false;
+    const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
+    const force = body.force === true;
+    const { runPartnerMonthlyReport } = await import("../db/partnerMonthlyReportData.js");
+    const out = await runPartnerMonthlyReport({
+      dryRun,
+      companyId: companyId || undefined,
+      force,
+      actorLabel: `admin_console:${role}`,
+    });
+    if (!out.ok) {
+      res.status(400).json({ error: out.error });
+      return;
+    }
+    res.json(out);
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
  * Phase B: Wochenlauf Taxi-Netting — Settlement mit Richtung;
  * Negativsaldo → Provisionsrechnung (invoices, 14 Tage Zahlungsziel).
  * Default-Periode: letzte abgeschlossene Kalenderwoche (Mo–So Berlin).
