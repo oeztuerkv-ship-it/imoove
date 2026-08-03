@@ -44,6 +44,12 @@ import type { FleetPrivateReminder } from "@/utils/fleetPrivateRemindersApi";
 import { isPrivateReminderOpen } from "@/utils/fleetPrivateRemindersApi";
 import { openPrivateReminderInAppNav } from "@/utils/openPrivateReminderInAppNav";
 import { setPrivateReminderOpenHandler } from "@/utils/privateReminderOpenRequest";
+import {
+  buildPrivateReminderBody,
+  isPrivateReminderDueForInAppAlert,
+  presentPrivateReminderInAppAlert,
+  PRIVATE_PICKUP_REMINDER_KIND,
+} from "@/utils/privateReminderLocalNotifications";
 import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
 import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
@@ -3738,17 +3744,35 @@ export default function DriverDashboard() {
     ]),
   );
 
-  // Foreground-Push: Posteingang + Sofortfahrt-Markt
+  // Foreground-Push: Posteingang + Sofortfahrt-Markt + Privatauftrag In-App
   useEffect(() => {
     let sub: { remove: () => void } | null = null;
     import("expo-notifications").then((Notifications) => {
       sub = Notifications.addNotificationReceivedListener((notification) => {
-        const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
+        const data = notification.request.content.data as
+          | { kind?: unknown; reminderId?: unknown; rideId?: unknown }
+          | undefined;
+        const kind = data?.kind;
+        if (kind === PRIVATE_PICKUP_REMINDER_KIND) {
+          const reminderId = typeof data?.reminderId === "string" ? data.reminderId.trim() : "";
+          if (reminderId) {
+            void presentPrivateReminderInAppAlert({
+              reminderId,
+              title:
+                typeof notification.request.content.title === "string"
+                  ? notification.request.content.title
+                  : "Privatauftrag",
+              body:
+                typeof notification.request.content.body === "string"
+                  ? notification.request.content.body
+                  : undefined,
+            });
+          }
+          return;
+        }
         if (kind === "instant_ride_offer" || kind === "follow_up_offer") {
           const rideId =
-            typeof (notification.request.content.data as { rideId?: unknown })?.rideId === "string"
-              ? (notification.request.content.data as { rideId: string }).rideId.trim()
-              : "";
+            typeof data?.rideId === "string" ? data.rideId.trim() : "";
           if (rideId) {
             void ringForDriverInstantOffer({ rideId });
           }
@@ -3763,6 +3787,17 @@ export default function DriverDashboard() {
       sub?.remove();
     };
   }, [refreshInboxState, refreshDriverMarket, driverPos, loadFollowUpSuggestion]);
+
+  /** Privatauftrag T−1h: auch ohne Notification-Tap eine In-App-Meldung mit OK. */
+  useEffect(() => {
+    const due = privateReminders.find(isPrivateReminderDueForInAppAlert);
+    if (!due) return;
+    void presentPrivateReminderInAppAlert({
+      reminderId: due.id,
+      title: "Privatauftrag",
+      body: buildPrivateReminderBody(due),
+    });
+  }, [privateReminders]);
 
   const dismissAdminMessage = useCallback(async () => {
     if (!adminMessage) return;
