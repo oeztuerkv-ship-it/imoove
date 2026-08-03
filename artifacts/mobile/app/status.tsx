@@ -1423,6 +1423,12 @@ export default function StatusScreen() {
       } else {
         console.log("[CancelFlow] No cancel ID resolved; finishing locally");
       }
+      // Mid-Trip-Abbruch: blockierende Meldung in ride_cancelled-Effect — erst nach OK zur Startseite.
+      if (customerPhase === "driving") {
+        setCancelModalOpen(false);
+        setCancelReason("");
+        return;
+      }
       finishCancelLocally();
     } catch (e) {
       const code = e instanceof Error ? e.message.trim() : "";
@@ -1569,7 +1575,7 @@ export default function StatusScreen() {
   }, [customerPhase, currentRideId, requests, rideMatchingCurrentId]);
 
   /**
-   * Endgültiges Storno — Live-Navi beenden, zur Startseite (nicht Szenario C / searching_driver).
+   * Live-Fahrt beendet / Mid-Trip-Abbruch — blockierende Meldung; ohne OK kein Weiter zur Startseite.
    */
   useEffect(() => {
     if (customerPhase !== "ride_cancelled") return;
@@ -1583,6 +1589,8 @@ export default function StatusScreen() {
     stickyAcceptedRef.current = null;
     disconnectSocket();
     setDriverMarker(null);
+    setCancelModalOpen(false);
+    setCancelReason("");
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const reason =
       typeof ride.cancelReason === "string" && ride.cancelReason.trim().length > 0
@@ -1610,8 +1618,19 @@ export default function StatusScreen() {
         ? `Die Fahrt wurde vom System beendet.\n\nGrund: ${reason}`
         : "Die Fahrt wurde vom System beendet.";
     }
-    finishCancelLocally();
-    Alert.alert(title, message, [{ text: "OK" }], { cancelable: false });
+    Alert.alert(
+      title,
+      message,
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            finishCancelLocally();
+          },
+        },
+      ],
+      { cancelable: false },
+    );
   }, [customerPhase, currentRideId, requests, rideMatchingCurrentId]);
 
   useEffect(() => {
@@ -1619,11 +1638,14 @@ export default function StatusScreen() {
       customerPhase === "searching" ||
       customerPhase === "reserved" ||
       customerPhase === "reservation_unfulfilled" ||
-      customerPhase === "ride_cancelled" ||
       customerPhase === "completed"
     )
       return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (customerPhase === "ride_cancelled") {
+        // Blockierend bis Alert-OK — kein Zurück zur Startseite ohne Bestätigung.
+        return true;
+      }
       Alert.alert(
         "Fahrt aktiv",
         "Bitte die Fahrt nicht über Zurück verlassen. Nutzen Sie bei Bedarf die Storno-Aktion.",
@@ -2116,7 +2138,7 @@ export default function StatusScreen() {
     return (
       <View style={[styles.container, styles.cancelExitWrap]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.cancelExitText}>Fahrt wird beendet…</Text>
+        <Text style={styles.cancelExitText}>Bitte die Meldung mit OK bestätigen…</Text>
       </View>
     );
   }

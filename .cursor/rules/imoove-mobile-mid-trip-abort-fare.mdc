@@ -62,6 +62,7 @@ ADMIN_API_BEARER_TOKEN=… FINAL_FARE_EUR=5.00 \
 - Kunde storniert während `in_progress` → Pending, nicht sofort terminal ohne Fare
 - Fahrer sieht Alert + muss Betrag eingeben; 0 € wird auf Mindestfahrpreis angehoben
 - Kurzstrecke-Abbruch: Taxameter ≪ Buchungsschätzung darf durchgehen (GPS-Expected oder no-GPS-Cap)
+- Kunde: Abbruch-Meldung blockierend (`Alert` + OK); ohne OK kein `replace("/")`
 - pm2: nach Abbruch Logzeile `[expo-push] mid-trip-abort sending` (oder `skipped: no expo tokens`)
 - Admin: Filter „Storno nach Fahrtantritt“, Gruppierung nach Fahrer
 - Selftest: `pnpm --filter @workspace/api-server run test:mid-trip-abort-fare`
