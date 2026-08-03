@@ -121,6 +121,7 @@ Sobald die Fahrt gestartet ist (PIN / Status `in_progress`):
 * Status: `customer_abort_pending_fare` (Fahrer muss Taxameter-Endpreis eingeben)
 * Endstatus: `cancelled_by_customer` mit `finalFare` (mind. Mindestfahrpreis)
 * Fahrer erhält sofort Push/In-App: Abbruch + Bitte um Taxameter-Eingabe
+* Plausibilität/Tarif-Korridor gegen **Ist-Strecke bis Abort** (GPS), nicht gegen volle Buchungsschätzung; ohne GPS nur Min-Fare + Absolute-Cap
 * Details: `.cursor/rules/imoove-mobile-mid-trip-abort-fare.mdc`
 
 ---

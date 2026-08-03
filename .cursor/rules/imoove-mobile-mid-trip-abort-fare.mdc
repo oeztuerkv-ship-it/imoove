@@ -22,20 +22,21 @@ Nach PIN / Status `in_progress` ist die Fahrt gestartet. Kunden-Abbruch ist **ke
 2. Fahrer-Push `ride_aborted_awaiting_fare` — Navi **bleibt offen**, Fare-Modal
 3. Fahrer tippt Taxameter → `cancelled_by_customer` + `finalFare`
 4. Untergrenze: `max(Eingabe, Mindestfahrpreis)` (`resolveRideMinimumFareEur`)
-5. Plausibilität wie Abschluss (`evaluateFinalFarePlausibility`); GPS-Mindestbeförderung **nicht** blockierend; Tarif-Korridor nur wenn GPS-Track da
+5. **Fare-Checks (Variante B):** Expected aus Tarif-Engine mit **Ist-km/Ist-min** im GPS-Fenster `driverTripStartedAt` → `customer_mid_trip_abort_at` (Fallback: jetzt). Plausibilität/Korridor (±25 %) gegen **diesen** Expected — **nicht** gegen die volle Buchungs-`estimatedFare`. Ohne brauchbaren GPS-Track: nur Mindestfahrpreis + Absolute-Obergrenze (`midTripAbortAbsoluteFareCapEur`), kein harter Vollstrecken-Korridor. GPS-Mindestbeförderung **nicht** blockierend.
 
 ## Dateien
 
 | Pfad | Rolle |
 |------|--------|
 | Migration `143_rides_customer_mid_trip_abort.sql` | Spalte `customer_mid_trip_abort_at` |
-| `lib/rideMidTripAbortFare.ts` | Min-Fare Floor |
+| `lib/rideMidTripAbortFare.ts` | Min-Fare, GPS-Fenster, Taximeter-Eval |
 | `cancelRideForVerifiedCustomerSession` / PATCH status | Zwei-Phasen-Flow |
 | `notifyAssignedDriverRideAbortedAwaitingFare` | Push (+ company resolve, Token-Fallback, Logs) |
 | Mobile `navigation.tsx` | Modal statt Exit; Poll `live-status` |
 | `RideRequestContext.cancelRequest` | Optimistic `customer_abort_pending_fare` + lokale Abort-Notify |
 | Admin `midTripAbort=1` / `groupBy=driver` | Monitoring |
 | `scripts/finalize-mid-trip-abort-ride.sh` | Ops: hängende Pending-Fahrten abschließen |
+| `scripts/midTripAbortFareSelftest.ts` | Kurzstrecke vs. Vollschätzung |
 
 ## Postmortem (Push „fehlt“ / Navi ohne Modal)
 
@@ -60,5 +61,7 @@ ADMIN_API_BEARER_TOKEN=… FINAL_FARE_EUR=5.00 \
 
 - Kunde storniert während `in_progress` → Pending, nicht sofort terminal ohne Fare
 - Fahrer sieht Alert + muss Betrag eingeben; 0 € wird auf Mindestfahrpreis angehoben
+- Kurzstrecke-Abbruch: Taxameter ≪ Buchungsschätzung darf durchgehen (GPS-Expected oder no-GPS-Cap)
 - pm2: nach Abbruch Logzeile `[expo-push] mid-trip-abort sending` (oder `skipped: no expo tokens`)
 - Admin: Filter „Storno nach Fahrtantritt“, Gruppierung nach Fahrer
+- Selftest: `pnpm --filter @workspace/api-server run test:mid-trip-abort-fare`

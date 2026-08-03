@@ -52,8 +52,16 @@ export async function computeRideCompletionGpsMetrics(
   rideId: string,
   cur: RideRequest,
   tripStartWaitingPatch?: Partial<RideRequest>,
+  opts?: { windowEndAt?: Date | string | null },
 ): Promise<{ distanceKm: number; durationMinutes: number } | null> {
-  const completedAt = new Date();
+  let completedAt = new Date();
+  const endRaw = opts?.windowEndAt;
+  if (endRaw instanceof Date && !Number.isNaN(endRaw.getTime())) {
+    completedAt = endRaw;
+  } else if (typeof endRaw === "string" && endRaw.trim()) {
+    const parsed = new Date(endRaw.trim());
+    if (!Number.isNaN(parsed.getTime())) completedAt = parsed;
+  }
   const tripStartedAtSource =
     cur.driverTripStartedAt ??
     (typeof tripStartWaitingPatch?.driverTripStartedAt === "string"

@@ -113,6 +113,10 @@ import {
 } from "../lib/driverRideExpoPush";
 import {
   applyMinimumFareFloorEur,
+  evaluateMidTripAbortTaximeterFare,
+  isUsableMidTripGpsTrack,
+  MID_TRIP_ABORT_CORRIDOR_RATIO,
+  resolveMidTripAbortGpsWindowEnd,
   resolveRideMinimumFareEur,
 } from "../lib/rideMidTripAbortFare";
 import { findFollowUpOfferForDriver } from "../db/fleetFollowUpOfferData";
@@ -2515,6 +2519,11 @@ export async function patchRideStatusRoute(
     const isMidTripAbortFinalize =
       nextStatus === "cancelled_by_customer" && cur.status === "customer_abort_pending_fare";
 
+    /** Mid-Trip: GPS-Fenster bis Abort-Zeit (für Fare-Check + Persistenz). */
+    let midTripGpsMetrics: { distanceKm: number; durationMinutes: number } | null = null;
+    let midTripFareEvalMode: "gps_corridor" | "no_gps_abs_cap" | null = null;
+    let midTripFareExpectedEur: number | null = null;
+
     if (nextStatus === "customer_abort_pending_fare") {
       // Kein Flat-Fee — Fahrer gibt später Taxameter ein
       finalFareForPatch = undefined;
@@ -2538,24 +2547,59 @@ export async function patchRideStatusRoute(
           return;
         }
         const minFare = resolveRideMinimumFareEur(cur);
-        const floored = applyMinimumFareFloorEur(parsedFinalFare, minFare);
-        const plausibility = evaluateFinalFarePlausibility(cur.estimatedFare ?? 0, floored);
-        if (!plausibility.ok && !plausibilityAck) {
+        const abortWindowEnd = resolveMidTripAbortGpsWindowEnd(cur.customerMidTripAbortAt);
+        midTripGpsMetrics = await computeRideCompletionGpsMetrics(id, cur, undefined, {
+          windowEndAt: abortWindowEnd,
+        });
+        const flooredPreview = applyMinimumFareFloorEur(parsedFinalFare, minFare);
+        let corridorForMidTrip: ReturnType<typeof evaluateRideCompletionTariffCorridor> | null = null;
+        if (isUsableMidTripGpsTrack(midTripGpsMetrics)) {
+          const opPayloadCorridor = await getOperationalConfigPayload();
+          const regionsCorridor = await listServiceRegionsForApi();
+          corridorForMidTrip = evaluateRideCompletionTariffCorridor({
+            ride: cur,
+            driverEnteredFareEur: flooredPreview,
+            actualDistanceKm: midTripGpsMetrics!.distanceKm,
+            actualDurationMinutes: midTripGpsMetrics!.durationMinutes,
+            opPayload: opPayloadCorridor,
+            regions: regionsCorridor,
+            corridorRatio: MID_TRIP_ABORT_CORRIDOR_RATIO,
+          });
+        }
+        const taximeter = evaluateMidTripAbortTaximeterFare({
+          enteredEur: parsedFinalFare,
+          minFareEur: minFare,
+          bookingEstimatedFareEur: cur.estimatedFare ?? 0,
+          gpsMetrics: midTripGpsMetrics,
+          plausibilityAck,
+          corridor: corridorForMidTrip,
+        });
+        if (!taximeter.ok) {
           res.status(400).json({
-            error: "final_fare_plausibility_failed",
-            message: `Der eingegebene Preis weicht stark von der Schätzung (${Number(cur.estimatedFare ?? 0).toFixed(2)} €) ab. Max. ohne Bestätigung: ${plausibility.maxAllowedEur.toFixed(2)} €. Taxameter-Preis erneut prüfen oder bestätigen.`,
-            estimatedFareEur: cur.estimatedFare ?? null,
-            maxAllowedFinalFareEur: plausibility.maxAllowedEur,
-            ratio: plausibility.ratio,
-            minimumFareEur: minFare,
-            appliedFinalFareEur: floored,
+            error: taximeter.error,
+            message: taximeter.message,
+            estimatedFareEur: taximeter.bookingEstimatedFareEur || null,
+            expectedFareEur: taximeter.expectedFareEur,
+            minAllowedFinalFareEur: taximeter.minAllowedFinalFareEur,
+            maxAllowedFinalFareEur: taximeter.maxAllowedFinalFareEur,
+            baseFareEur: taximeter.baseFareEur,
+            ratio: taximeter.ratio,
+            minimumFareEur: taximeter.minimumFareEur,
+            appliedFinalFareEur: taximeter.flooredEur,
+            actualDistanceKm: taximeter.actualDistanceKm,
+            actualDurationMinutes: taximeter.actualDurationMinutes,
+            midTripAbortFareMode: corridorForMidTrip ? "gps_corridor" : "no_gps_abs_cap",
           });
           return;
         }
+        midTripFareEvalMode = taximeter.mode;
+        midTripFareExpectedEur = taximeter.expectedFareEur;
         const waitingSurcharge = Number(cur.waitingChargeEur ?? 0);
         finalFareForPatch =
-          Math.round((floored + (Number.isFinite(waitingSurcharge) ? waitingSurcharge : 0) + Number.EPSILON) * 100) /
-          100;
+          Math.round(
+            (taximeter.flooredEur + (Number.isFinite(waitingSurcharge) ? waitingSurcharge : 0) + Number.EPSILON) *
+              100,
+          ) / 100;
       }
     } else if (nextStatus === "cancelled_by_customer") {
       const opPayloadCancel = await getOperationalConfigPayload();
@@ -2665,7 +2709,9 @@ export async function patchRideStatusRoute(
 
     let gpsActualPatch: Partial<Pick<RideRequest, "actualDistanceKm" | "actualDurationMinutes">> = {};
     if (nextStatus === "completed" || isMidTripAbortFinalize) {
-      const completionGpsMetrics = await computeRideCompletionGpsMetrics(id, cur, tripStartWaitingPatch);
+      const completionGpsMetrics = isMidTripAbortFinalize
+        ? midTripGpsMetrics
+        : await computeRideCompletionGpsMetrics(id, cur, tripStartWaitingPatch);
       if (completionGpsMetrics) {
         gpsActualPatch = {
           actualDistanceKm: completionGpsMetrics.distanceKm,
@@ -2696,25 +2742,21 @@ export async function patchRideStatusRoute(
       }
 
       // Taxameter: Tarif-Korridor aus Ist-km/Ist-Min. (hart, kein Ack-Bypass). Festpreis ausgenommen.
-      // Mid-Trip-Abbruch: nur wenn GPS-Track vorhanden (sonst nicht blockieren).
-      const corridorFromStatus =
-        (nextStatus === "completed" && cur.status === "in_progress") || isMidTripAbortFinalize;
+      // Mid-Trip-Abbruch: bereits oben geprüft (GPS-Fenster bis Abort + Expected aus Ist-Strecke).
       if (
-        corridorFromStatus &&
+        nextStatus === "completed" &&
+        cur.status === "in_progress" &&
         !isRideFixedPrice(cur.pricingMode) &&
         parsedFinalFare != null &&
         Number.isFinite(parsedFinalFare) &&
         parsedFinalFare > 0.009 &&
         completionGpsMetrics
       ) {
-        const flooredForCorridor = isMidTripAbortFinalize
-          ? applyMinimumFareFloorEur(parsedFinalFare, resolveRideMinimumFareEur(cur))
-          : parsedFinalFare;
         const opPayloadCorridor = await getOperationalConfigPayload();
         const regionsCorridor = await listServiceRegionsForApi();
         const corridor = evaluateRideCompletionTariffCorridor({
           ride: cur,
-          driverEnteredFareEur: flooredForCorridor,
+          driverEnteredFareEur: parsedFinalFare,
           actualDistanceKm: completionGpsMetrics.distanceKm,
           actualDurationMinutes: completionGpsMetrics.durationMinutes,
           opPayload: opPayloadCorridor,
@@ -2738,10 +2780,19 @@ export async function patchRideStatusRoute(
     }
 
     let finalFarePlausibilityAudit:
-      | { flagged: boolean; estimatedFareEur: number; finalFareEur: number; acknowledged: boolean }
+      | {
+          flagged: boolean;
+          estimatedFareEur: number;
+          finalFareEur: number;
+          acknowledged: boolean;
+          midTripAbort?: boolean;
+          midTripExpectedFareEur?: number | null;
+          midTripFareMode?: string | null;
+        }
       | null = null;
     if (
-      ((nextStatus === "completed" && cur.status === "in_progress") || isMidTripAbortFinalize) &&
+      nextStatus === "completed" &&
+      cur.status === "in_progress" &&
       finalFareForPatch != null &&
       Number.isFinite(finalFareForPatch)
     ) {
@@ -2754,6 +2805,21 @@ export async function patchRideStatusRoute(
           acknowledged: plausibilityAck,
         };
       }
+    } else if (
+      isMidTripAbortFinalize &&
+      finalFareForPatch != null &&
+      Number.isFinite(finalFareForPatch) &&
+      (plausibilityAck || midTripFareEvalMode === "gps_corridor")
+    ) {
+      finalFarePlausibilityAudit = {
+        flagged: plausibilityAck,
+        estimatedFareEur: Number(midTripFareExpectedEur ?? cur.estimatedFare ?? 0),
+        finalFareEur: finalFareForPatch,
+        acknowledged: plausibilityAck,
+        midTripAbort: true,
+        midTripExpectedFareEur: midTripFareExpectedEur,
+        midTripFareMode: midTripFareEvalMode,
+      };
     }
 
     const atomicAccept =

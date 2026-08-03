@@ -85,6 +85,8 @@ export function evaluateDriverFinalFareTariffCorridor(args: {
   applyAirportFlat: boolean;
   passengerCount?: number;
   merged: Record<string, unknown>;
+  /** Default: FINAL_FARE_TARIFF_CORRIDOR_RATIO (±18 %). Mid-Trip nutzt oft einen etwas weiteren Band. */
+  corridorRatio?: number;
 }): TariffCorridorResult {
   const entered = n(args.driverEnteredFareEur, NaN);
   if (!Number.isFinite(entered) || entered < 0) {
@@ -113,10 +115,16 @@ export function evaluateDriverFinalFareTariffCorridor(args: {
     passengerCount: args.passengerCount,
   });
 
+  const ratioRaw = args.corridorRatio;
+  const ratio =
+    typeof ratioRaw === "number" && Number.isFinite(ratioRaw) && ratioRaw > 0 && ratioRaw < 1
+      ? ratioRaw
+      : FINAL_FARE_TARIFF_CORRIDOR_RATIO;
+
   const expected = roundMoney(est.finalRounded);
   const baseFare = roundMoney(Math.max(0, n(est.breakdown.baseFare, 0)));
-  const corridorMin = roundMoney(expected * (1 - FINAL_FARE_TARIFF_CORRIDOR_RATIO));
-  const corridorMax = roundMoney(expected * (1 + FINAL_FARE_TARIFF_CORRIDOR_RATIO));
+  const corridorMin = roundMoney(expected * (1 - ratio));
+  const corridorMax = roundMoney(expected * (1 + ratio));
   /** Untergrenze: mind. Grundpreis und untere Korridorgrenze (was strenger ist). */
   const minAllowed = roundMoney(Math.max(baseFare, corridorMin));
   const maxAllowed = corridorMax;
@@ -174,6 +182,7 @@ export function evaluateRideCompletionTariffCorridor(args: {
   actualDurationMinutes: number;
   opPayload: Record<string, unknown>;
   regions: ServiceRegionPublic[];
+  corridorRatio?: number;
 }): TariffCorridorResult {
   const snap = args.ride.tariffSnapshot ?? null;
   const { merged: liveMerged } = resolveMergedTariff(
@@ -208,5 +217,6 @@ export function evaluateRideCompletionTariffCorridor(args: {
     applyHolidaySurcharge: inferBookingHolidaySurcharge(snap),
     applyAirportFlat: inferBookingAirportFlat(snap),
     merged,
+    corridorRatio: args.corridorRatio,
   });
 }
