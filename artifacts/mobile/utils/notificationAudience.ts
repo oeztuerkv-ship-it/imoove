@@ -35,6 +35,8 @@ export function shouldPresentDriverRideOfferNotification(): boolean {
 
 /** Expo foreground handler: Fahrer-Markt nur auf Fahrer-Oberfläche; Kunde nur Kunden-Pushes. */
 export function shouldShowExpoNotification(data: { kind?: unknown } | undefined): boolean {
+  // Lokale Geräte-Erinnerung — immer anzeigen (sonst „mal so mal so“ je nach Tab/Session).
+  if (data?.kind === "private_pickup_reminder") return true;
   const driverKind = isDriverPushKind(data?.kind);
   if (driverKind) return shouldPresentDriverRideOfferNotification();
   return !driverSurfaceActive;

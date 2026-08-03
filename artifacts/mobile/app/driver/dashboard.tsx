@@ -5,7 +5,7 @@ import { useKeepAwake } from "expo-keep-awake";
 import { type Href, router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import SignatureScreen from "react-native-signature-canvas";
@@ -35,6 +35,7 @@ import { DriverPrebookGuidelinesModal } from "@/components/driver/DriverPrebookG
 import { DriverAssignedPrebookTabHint } from "@/components/driver/DriverAssignedPrebookTabHint";
 import { DriverPassengerPinModal } from "@/components/driver/DriverPassengerPinModal";
 import { DriverPrivateReminderCard } from "@/components/driver/DriverPrivateReminderCard";
+import { DriverPrivateReminderDueModal } from "@/components/driver/DriverPrivateReminderDueModal";
 import {
   DriverPrivateRemindersSection,
   type DriverPrivateRemindersHandle,
@@ -46,9 +47,14 @@ import { openPrivateReminderInAppNav } from "@/utils/openPrivateReminderInAppNav
 import { setPrivateReminderOpenHandler } from "@/utils/privateReminderOpenRequest";
 import {
   buildPrivateReminderBody,
+  clearPrivateReminderInAppInflight,
   isPrivateReminderDueForInAppAlert,
+  markPrivateReminderInAppAlertShown,
   presentPrivateReminderInAppAlert,
+  privateReminderRouteLine,
+  setPrivateReminderInAppPresenter,
   PRIVATE_PICKUP_REMINDER_KIND,
+  PRIVATE_REMINDER_PUSH_TITLE,
 } from "@/utils/privateReminderLocalNotifications";
 import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
@@ -3599,6 +3605,36 @@ export default function DriverDashboard() {
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
   const [privateReminders, setPrivateReminders] = useState<FleetPrivateReminder[]>([]);
   const privateRemindersRef = useRef<DriverPrivateRemindersHandle | null>(null);
+  const privateRemindersListRef = useRef<FleetPrivateReminder[]>([]);
+  privateRemindersListRef.current = privateReminders;
+  const [privateReminderDueModal, setPrivateReminderDueModal] = useState<{
+    reminderId: string;
+    routeLine: string;
+  } | null>(null);
+
+  /** Custom-Modal: Presenter früh setzen; Inflight bei Unmount leeren (Strict Mode / Restart). */
+  useLayoutEffect(() => {
+    setPrivateReminderInAppPresenter((input) => {
+      const fromList = privateRemindersListRef.current.find((r) => r.id === input.reminderId);
+      const route =
+        (input.routeLine ?? (fromList ? privateReminderRouteLine(fromList) : "")).trim() ||
+        (() => {
+          const body = (input.body ?? "").trim();
+          const lines = body.split("\n").map((l) => l.trim()).filter(Boolean);
+          const last = lines[lines.length - 1] ?? "";
+          return last.includes("→") ? last : "";
+        })();
+      setPrivateReminderDueModal({
+        reminderId: input.reminderId,
+        routeLine: route,
+      });
+    });
+    return () => {
+      setPrivateReminderInAppPresenter(null);
+      clearPrivateReminderInAppInflight();
+    };
+  }, []);
+
   const [showPrebookGuidelines, setShowPrebookGuidelines] = useState(false);
   const [prebookGuidelinesAccepted, setPrebookGuidelinesAccepted] = useState(false);
   const prebookGuidelinesAcceptedRef = useRef(false);
@@ -3761,7 +3797,7 @@ export default function DriverDashboard() {
               title:
                 typeof notification.request.content.title === "string"
                   ? notification.request.content.title
-                  : "Privatauftrag",
+                  : PRIVATE_REMINDER_PUSH_TITLE,
               body:
                 typeof notification.request.content.body === "string"
                   ? notification.request.content.body
@@ -3794,8 +3830,9 @@ export default function DriverDashboard() {
     if (!due) return;
     void presentPrivateReminderInAppAlert({
       reminderId: due.id,
-      title: "Privatauftrag",
+      title: PRIVATE_REMINDER_PUSH_TITLE,
       body: buildPrivateReminderBody(due),
+      routeLine: privateReminderRouteLine(due),
     });
   }, [privateReminders]);
 
@@ -5467,6 +5504,16 @@ export default function DriverDashboard() {
         showFab={activeTab === "auftraege"}
         bottomInset={bottomPad + 72}
         onRemindersChange={setPrivateReminders}
+      />
+
+      <DriverPrivateReminderDueModal
+        visible={privateReminderDueModal != null}
+        routeLine={privateReminderDueModal?.routeLine}
+        onOk={() => {
+          const id = privateReminderDueModal?.reminderId;
+          setPrivateReminderDueModal(null);
+          if (id) void markPrivateReminderInAppAlertShown(id);
+        }}
       />
 
       <DriverPrebookGuidelinesModal
