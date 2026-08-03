@@ -118,7 +118,7 @@ async function failCompletedRideCapture(
   error: string,
   stripePaymentIntentId?: string | null,
 ): Promise<CaptureRideStripePaymentResult> {
-  if (ride.status === "completed") {
+  if (ride.status === "completed" || ride.status === "cancelled_by_customer") {
     await markRidePaymentCaptureFailed(ride, error, stripePaymentIntentId);
   }
   return { ok: false, error };
@@ -143,7 +143,9 @@ export async function captureRideStripePaymentIntent(
     return { ok: true, capturedAmountCents: 0, cappedToAuthorization: false };
   }
 
-  const isPaymentRetry = paymentStatus === "failed" && ride.status === "completed";
+  const isPaymentRetry =
+    paymentStatus === "failed" &&
+    (ride.status === "completed" || ride.status === "cancelled_by_customer");
   if (!isPaymentRetry && paymentStatus !== "authorized" && paymentStatus !== "pending") {
     return { ok: false, error: `ride_payment_status_${paymentStatus}` };
   }

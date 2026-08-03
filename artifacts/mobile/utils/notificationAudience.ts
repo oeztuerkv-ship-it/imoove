@@ -17,6 +17,7 @@ const DRIVER_PUSH_KINDS = new Set([
   "reservation_activate_reminder",
   "reservation_missed_activation",
   "ride_cancelled_by_customer",
+  "ride_aborted_awaiting_fare",
   "ride_destination_changed",
   "private_pickup_reminder",
 ]);

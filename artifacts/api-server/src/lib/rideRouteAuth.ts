@@ -123,6 +123,25 @@ export function authorizePatchRideStatusForActor(
   if (actor.kind === "admin") return { ok: true };
 
   if (nextStatus === "cancelled_by_customer") {
+    if (actor.kind === "customer_session") {
+      const p = cur.passengerId?.trim();
+      if (!p || p !== actor.passengerGoogleId) {
+        return { ok: false, status: 403, code: "customer_not_passenger_for_ride" };
+      }
+      return { ok: true };
+    }
+    // Fahrer finalisiert Mid-Trip-Abbruch mit Taxameter-Endpreis
+    if (actor.kind === "fleet_session" && cur.status === "customer_abort_pending_fare") {
+      const assignedDriver = (cur.driverId ?? "").trim();
+      if (!assignedDriver || assignedDriver !== actor.fleetDriverId) {
+        return { ok: false, status: 403, code: "fleet_driver_assignment_mismatch" };
+      }
+      return { ok: true };
+    }
+    return { ok: false, status: 403, code: "patch_status_requires_customer_session" };
+  }
+
+  if (nextStatus === "customer_abort_pending_fare") {
     if (actor.kind !== "customer_session") {
       return { ok: false, status: 403, code: "patch_status_requires_customer_session" };
     }

@@ -229,6 +229,7 @@ import {
   listAdminPartnerDayStats,
   listAdminRidesAgendaForDay,
   listAdminRideEventsByRideId,
+  listMidTripAbortGroupedByDriver,
   listRidesAdminPage,
   parseAdminDashboardDayBounds,
   updateRide,
@@ -425,6 +426,8 @@ function parseAdminRideListQuery(req: Request): { ok: true; query: AdminRideList
   }
   if (typeof q.driverId === "string" && q.driverId.trim()) query.driverId = q.driverId.trim();
   if (typeof q.q === "string" && q.q.trim()) query.q = q.q.trim();
+  const midRaw = typeof q.midTripAbort === "string" ? q.midTripAbort.trim().toLowerCase() : "";
+  if (midRaw === "1" || midRaw === "true" || midRaw === "yes") query.midTripAbort = true;
   const sortRaw = typeof q.sortCreated === "string" ? q.sortCreated.trim().toLowerCase() : "";
   if (sortRaw === "asc") query.sortCreated = "asc";
   else if (sortRaw === "desc") query.sortCreated = "desc";
@@ -6383,6 +6386,13 @@ adminJson.get("/rides", async (req, res, next) => {
     }
     const role = adminConsoleRole(req);
     const scopedQuery = mergeAdminRideListQueryForPrincipal(role, req.adminAuth?.scopeCompanyId, parsed.query);
+    const groupBy =
+      typeof req.query.groupBy === "string" ? req.query.groupBy.trim().toLowerCase() : "";
+    if (groupBy === "driver" && scopedQuery.midTripAbort) {
+      const groups = await listMidTripAbortGroupedByDriver(scopedQuery, 100);
+      res.json({ ok: true, groupBy: "driver", groups });
+      return;
+    }
     const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
     const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
     const offset = (page - 1) * pageSize;

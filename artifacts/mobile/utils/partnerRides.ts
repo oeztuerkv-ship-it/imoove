@@ -29,6 +29,7 @@ const TERMINAL_STATUSES = new Set([
   "cancelled_by_customer",
   "cancelled_by_driver",
   "cancelled_by_system",
+  "customer_abort_pending_fare",
   "expired",
   "rejected",
 ]);

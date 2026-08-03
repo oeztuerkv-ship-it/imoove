@@ -167,6 +167,7 @@ function StatusBadge({ status, scheduledAt }: { status: string; scheduledAt?: Da
     driver_waiting: { label: "Fahrer wartet", bg: "#16A34A22", fg: "#16A34A" },
     passenger_onboard: { label: "Kunde an Bord", bg: "#2563EB22", fg: "#2563EB" },
     in_progress: { label: "Fahrt läuft",      bg: "#2563EB22", fg: "#2563EB" },
+    customer_abort_pending_fare: { label: "Abgebrochen – Abrechnung", bg: "#EF444422", fg: "#EF4444" },
     completed:   { label: "Abgeschlossen",    bg: "#F3F4F6", fg: "#6B7280" },
     cancelled_by_customer: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },
     cancelled_by_driver: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },

@@ -156,6 +156,27 @@ export async function notifyDriverRideCancelledByCustomer(
   );
 }
 
+/**
+ * Kunde brach eine laufende Fahrt ab — Fahrer muss Taxameter-Endpreis eingeben (Navi bleibt offen).
+ */
+export async function notifyDriverRideAbortedAwaitingFare(
+  fleetDriverId: string,
+  companyId: string,
+  rideId: string,
+): Promise<void> {
+  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Kunde hat abgebrochen",
+      body: "Bitte den Betrag vom Taxameter eingeben.",
+      priority: "high",
+      data: { kind: "ride_aborted_awaiting_fare", rideId },
+    })),
+  );
+}
+
 /** Zugewiesener Fahrer: Kunde hat das Ziel während der aktiven Fahrt geändert. */
 export async function notifyDriverDestinationChanged(
   fleetDriverId: string,

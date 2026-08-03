@@ -680,6 +680,8 @@ export const ridesTable = pgTable("rides", {
   passenger_id: text("passenger_id"),
   /** Fahrer hat Kunden-PIN bei Ankunft bestätigt (nur App-Direktfahrten). */
   passenger_pin_verified_at: timestamp("passenger_pin_verified_at", { withTimezone: true }),
+  /** Kunden-Abbruch während in_progress (Audit; bleibt nach Fare-Finalisierung). */
+  customer_mid_trip_abort_at: timestamp("customer_mid_trip_abort_at", { withTimezone: true }),
   driver_id: text("driver_id"),
   from_label: text("from_label").notNull(),
   from_full: text("from_full").notNull(),

@@ -196,6 +196,8 @@ export interface RideRequest {
     | "passenger_onboard"
     | "arrived"
     | "in_progress"
+    /** Kunde brach nach Fahrtstart ab — Fahrer muss Taxameter-Endpreis eingeben. */
+    | "customer_abort_pending_fare"
     | "cancelled_by_customer"
     | "cancelled_by_driver"
     | "cancelled_by_system"
@@ -209,6 +211,8 @@ export interface RideRequest {
   noShowCountdownStartedAt?: string | null;
   noShowEvidenceAt?: string | null;
   driverTripStartedAt?: string | null;
+  /** ISO — Kunden-Abbruch während laufender Fahrt (Audit / Admin-Filter). */
+  customerMidTripAbortAt?: string | null;
   waitingMinutesBilled?: number | null;
   waitingChargeEur?: number | null;
   paymentStatus?: "pending" | "authorized" | "paid" | "failed" | "refunded" | null;

@@ -7,6 +7,7 @@ const LIVE_STATUSES = new Set([
   "passenger_onboard",
   "arrived",
   "in_progress",
+  "customer_abort_pending_fare",
 ]);
 
 const SEARCH_STATUSES = new Set([
@@ -31,6 +32,7 @@ const STATUS_LABELS = {
   passenger_onboard: "Fahrgast an Bord",
   arrived: "Vor Ort",
   in_progress: "Unterwegs",
+  customer_abort_pending_fare: "Abbruch · Taxameter ausstehend",
   rejected: "Abgelehnt",
   cancelled: "Storniert",
   cancelled_by_customer: "Storniert (Kund*in)",

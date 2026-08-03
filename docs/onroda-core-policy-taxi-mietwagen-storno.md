@@ -109,6 +109,19 @@ Vor Release MUSS geprüft werden:
 * falsche Annahme → wird mit 409 geblockt
 * kein Fahrzeug → saubere Fehlermeldung
 * Storno während Suche → sofortiger Abbruch + korrekt in Verlauf
+* Abbruch während `in_progress` → Fahrer gibt Taxameter ein (nicht Flat-Fee)
+
+---
+
+## 6b. Storno nach Fahrtstart (`in_progress`)
+
+Sobald die Fahrt gestartet ist (PIN / Status `in_progress`):
+
+* Kunden-Aktion = **Abbruch**, nicht Flat-Fee-Storno
+* Status: `customer_abort_pending_fare` (Fahrer muss Taxameter-Endpreis eingeben)
+* Endstatus: `cancelled_by_customer` mit `finalFare` (mind. Mindestfahrpreis)
+* Fahrer erhält sofort Push/In-App: Abbruch + Bitte um Taxameter-Eingabe
+* Details: `.cursor/rules/imoove-mobile-mid-trip-abort-fare.mdc`
 
 ---
 

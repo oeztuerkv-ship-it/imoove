@@ -7,7 +7,7 @@ export function isDriverPreTripStatus(status: string): boolean {
 
 /** Fahrt zum Ziel läuft — Endpreis > 0 erlaubt. */
 export function isDriverTripInProgressStatus(status: string): boolean {
-  return status === "in_progress";
+  return status === "in_progress" || status === "customer_abort_pending_fare";
 }
 
 /** Nur dann Schätzpreis anzeigen / als Voreinstellung — nach Slide „Fahrt beginnen“ (Status in_progress). */

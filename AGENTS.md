@@ -48,6 +48,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-mobile-intro-splash-lottie.mdc` — **Mobile Intro:** Splash Pin→Taxi→Kreis→Wordmark (`IntroSplash`, RN Animated)
 - `.cursor/rules/imoove-mobile-driver-nav-routing.mdc` — **Fahrer-Navi:** km/ETA via Server (`nav-route`, Google Matrix → OSRM), Rest entlang Polyline, keine Directions-API
 - `.cursor/rules/imoove-mobile-customer-ride-pin.mdc` — **Abhol-PIN:** Auto-Vergabe, nur App-Direktfahrten, Verify vor `in_progress`
+- `.cursor/rules/imoove-mobile-mid-trip-abort-fare.mdc` — **Mid-Trip-Abbruch:** nach Fahrtstart → Taxameter durch Fahrer, kein Flat-Fee
 - `.cursor/rules/imoove-invoice-billing-architecture.mdc` — **Rechnungen/Abrechnung:** `invoices`/`invoice_items` (028), Panel-PDF-API, kein `onroda_invoices`-WIP; **`docs/onroda-invoice-billing-architecture.md`**
 - `.cursor/rules/imoove-driver-final-fare-tariff-corridor.mdc` — **Taxameter-Abschluss:** Tarif-Korridor ±18 % vs. Ist-km/Ist-Min., GPS-Mindestbeförderung, Schätzungs-Cap
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds

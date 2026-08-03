@@ -70,7 +70,17 @@ function billingStatusToneClass(status) {
 
 /** Status-Filter: „Alle“ zuerst, danach A–Z nach deutscher Bezeichnung. */
 const RIDE_STATUS_FILTER_OPTIONS = (() => {
-  const ids = ["pending", "accepted", "arrived", "in_progress", "completed", "cancelled", "rejected"];
+  const ids = [
+    "pending",
+    "accepted",
+    "arrived",
+    "in_progress",
+    "customer_abort_pending_fare",
+    "completed",
+    "cancelled",
+    "cancelled_by_customer",
+    "rejected",
+  ];
   const rest = ids.map((value) => ({ value, label: rideStatusLabelDe(value) }));
   rest.sort((a, b) => a.label.localeCompare(b.label, "de", { sensitivity: "base" }));
   return [{ value: "all", label: "Alle" }, ...rest];
@@ -159,6 +169,9 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
   const [createdFrom, setCreatedFrom] = useState("");
   const [createdTo, setCreatedTo] = useState("");
   const [driverFilter, setDriverFilter] = useState("");
+  const [midTripAbortOnly, setMidTripAbortOnly] = useState(false);
+  const [midTripGroupByDriver, setMidTripGroupByDriver] = useState(false);
+  const [midTripDriverGroups, setMidTripDriverGroups] = useState([]);
   const [ridesSort, setRidesSort] = useState("desc");
   const [exportBusy, setExportBusy] = useState(false);
 
@@ -247,7 +260,31 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
         if (createdFrom.trim()) params.set("createdFrom", createdFrom.trim());
         if (createdTo.trim()) params.set("createdTo", createdTo.trim());
         if (driverFilter.trim()) params.set("driverId", driverFilter.trim());
+        if (midTripAbortOnly) params.set("midTripAbort", "1");
         params.set("sortCreated", ridesSort === "asc" ? "asc" : "desc");
+
+        if (midTripAbortOnly && midTripGroupByDriver) {
+          params.set("groupBy", "driver");
+          const res = await fetch(`${RIDES_URL}?${params.toString()}`, {
+            headers: adminApiHeaders(),
+          });
+          if (!res.ok) {
+            if (res.status === 401 || res.status === 503) {
+              throw new Error("Zugriff verweigert. Bitte prüfen Sie die Anmeldung an der Plattform.");
+            }
+            throw new Error(`Fahrten konnten nicht geladen werden (${res.status}).`);
+          }
+          const data = await res.json();
+          if (!data?.ok || !Array.isArray(data.groups)) {
+            throw new Error("Ungültige Antwort");
+          }
+          setMidTripDriverGroups(data.groups);
+          setRides([]);
+          setTotal(data.groups.reduce((s, g) => s + (Number(g.abortCount) || 0), 0));
+          return;
+        }
+
+        setMidTripDriverGroups([]);
 
         const res = await fetch(`${RIDES_URL}?${params.toString()}`, {
           headers: adminApiHeaders(),
@@ -271,12 +308,13 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
       } catch (err) {
         setError(err.message || "Fahrten konnten nicht geladen werden.");
         setRides([]);
+        setMidTripDriverGroups([]);
         setTotal(0);
       } finally {
         if (showLoader) setLoading(false);
       }
     },
-    [page, debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter, ridesSort],
+    [page, debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter, ridesSort, midTripAbortOnly, midTripGroupByDriver],
   );
 
   useEffect(() => {
@@ -292,7 +330,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter, ridesSort]);
+  }, [debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter, ridesSort, midTripAbortOnly, midTripGroupByDriver]);
 
   async function exportRidesCsv() {
     setExportBusy(true);
@@ -658,6 +696,30 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
             </div>
 
             <div className="admin-filter-item">
+              <label className="admin-field-label">Missbrauch</label>
+              <label className="admin-checkbox-row" style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={midTripAbortOnly}
+                  onChange={(e) => {
+                    setMidTripAbortOnly(e.target.checked);
+                    if (!e.target.checked) setMidTripGroupByDriver(false);
+                  }}
+                />
+                <span>Storno nach Fahrtantritt</span>
+              </label>
+              <label className="admin-checkbox-row" style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={midTripGroupByDriver}
+                  disabled={!midTripAbortOnly}
+                  onChange={(e) => setMidTripGroupByDriver(e.target.checked)}
+                />
+                <span>Nach Fahrer gruppieren</span>
+              </label>
+            </div>
+
+            <div className="admin-filter-item">
               <label className="admin-field-label">Erstellt von</label>
               <input
                 type="date"
@@ -700,7 +762,52 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
           <div className="admin-pagination admin-pagination--inset">{renderPagination()}</div>
         </div>
 
-        {rides.length === 0 ? (
+        {midTripAbortOnly && midTripGroupByDriver ? (
+          midTripDriverGroups.length === 0 ? (
+            <div className="admin-section-block__inset">
+              <div className="admin-info-banner admin-info-banner--inline">Keine Mid-Trip-Abbrüche für die aktuelle Filterung.</div>
+            </div>
+          ) : (
+            <div className="admin-rides-table-wrap">
+              <table className="admin-rides-table admin-rides-table--modern">
+                <thead>
+                  <tr>
+                    <th>Fahrer-ID</th>
+                    <th>Abbrüche</th>
+                    <th>Taxameter ausstehend</th>
+                    <th>Summe Endpreise</th>
+                    <th className="admin-rides-table__col-actions">Aktion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {midTripDriverGroups.map((g) => (
+                    <tr key={g.driverId} className="admin-rides-table__row">
+                      <td>
+                        <code className={rideCodeChipClass(g.driverId)}>{g.driverId}</code>
+                      </td>
+                      <td className="admin-crisp-numeric">{g.abortCount}</td>
+                      <td className="admin-crisp-numeric">{g.pendingFareCount}</td>
+                      <td className="admin-crisp-numeric">{Number(g.finalFareSumEur || 0).toFixed(2)} €</td>
+                      <td className="admin-rides-table__col-actions">
+                        <button
+                          type="button"
+                          className="admin-c-btn-sec"
+                          onClick={() => {
+                            setDriverFilter(g.driverId === "(ohne Fahrer)" ? "" : g.driverId);
+                            setMidTripGroupByDriver(false);
+                            setMidTripAbortOnly(true);
+                          }}
+                        >
+                          Fahrten zeigen
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : rides.length === 0 ? (
           <div className="admin-section-block__inset">
             <div className="admin-info-banner admin-info-banner--inline">Keine Fahrten für die aktuelle Filterung.</div>
           </div>
@@ -786,6 +893,11 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                         </td>
                         <td>
                           <RideStatusPill status={ride.status} />
+                          {ride.customerMidTripAbortAt ? (
+                            <div className="admin-muted" style={{ fontSize: 11, marginTop: 4 }}>
+                              Nach Fahrtantritt
+                            </div>
+                          ) : null}
                           <div className="admin-table-sub">{formatMoney(ride.estimatedFare)}</div>
                         </td>
                         <td>

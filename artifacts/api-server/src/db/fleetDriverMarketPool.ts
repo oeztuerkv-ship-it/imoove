@@ -116,7 +116,8 @@ export async function listMarketRidesForFleetDriver(
         ride.status === "driver_waiting" ||
         ride.status === "passenger_onboard" ||
         ride.status === "arrived" ||
-        ride.status === "in_progress"
+        ride.status === "in_progress" ||
+        ride.status === "customer_abort_pending_fare"
       );
     }
     if ((ride.rejectedBy ?? []).includes(fleetDriverId)) return false;

@@ -121,10 +121,11 @@ import {
 } from "@/utils/driverRideCompletion";
 import { CUSTOMER_FIXED_PRICE_LABEL } from "@/utils/customerFareDisplay";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
-import { isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
+import { isCustomerAbortPendingFareStatus, isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
 import {
   setDriverLiveNavigationRideId,
   subscribeDriverDestinationChanged,
+  subscribeDriverRideAbortedAwaitingFare,
   subscribeDriverRideCancelledByCustomer,
 } from "@/utils/driverLiveNavigation";
 import {
@@ -1354,6 +1355,30 @@ export default function DriverNavigationScreen() {
 
   exitAfterCustomerCancelRef.current = exitAfterCustomerCancel;
 
+  const enterAbortAwaitingFare = useCallback(() => {
+    if (cancelHandledRef.current) return;
+    setRideFleetStatus("customer_abort_pending_fare");
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    trySpeak("Kunde hat die Fahrt abgebrochen. Bitte Taxameter-Preis eingeben.", soundRef.current);
+    setFareInput(
+      defaultDriverFareInputForCompletion(
+        "customer_abort_pending_fare",
+        activeRide?.estimatedFare ?? estimatedFare,
+        activeRide?.pricingMode,
+      ),
+    );
+    setShowFareModal(true);
+    Alert.alert(
+      "Kunde hat abgebrochen",
+      "Bitte den Betrag vom Taxameter eingeben.",
+      [{ text: "OK" }],
+      { cancelable: false },
+    );
+  }, [activeRide?.estimatedFare, activeRide?.pricingMode, estimatedFare]);
+
+  const enterAbortAwaitingFareRef = useRef(enterAbortAwaitingFare);
+  enterAbortAwaitingFareRef.current = enterAbortAwaitingFare;
+
   const probeFleetRideCancel = useCallback(async () => {
     if (isPrivateMemo) return;
     if (!params.rideId || cancelHandledRef.current) return;
@@ -1378,6 +1403,10 @@ export default function DriverNavigationScreen() {
         if (typeof payload.chatEnabled === "boolean") {
           setRideChatEnabledLive(payload.chatEnabled);
         }
+        if (typeof payload.status === "string" && isCustomerAbortPendingFareStatus(payload.status)) {
+          enterAbortAwaitingFareRef.current();
+          return;
+        }
         if (
           typeof payload.status === "string" &&
           isCustomerFinalCancelledStatus(payload.status as RequestStatus)
@@ -1399,7 +1428,9 @@ export default function DriverNavigationScreen() {
     if (!id) return;
     const listedStatus = activeRide?.status ?? null;
     const prev = prevListedRideRef.current;
-    if (listedStatus && isCustomerFinalCancelledStatus(listedStatus)) {
+    if (listedStatus && isCustomerAbortPendingFareStatus(listedStatus)) {
+      enterAbortAwaitingFareRef.current();
+    } else if (listedStatus && isCustomerFinalCancelledStatus(listedStatus)) {
       exitAfterCustomerCancel(activeRide?.cancelReason ?? null);
     } else if (prev && !listedStatus && hadActiveRideInListRef.current) {
       void probeFleetRideCancel();
@@ -1429,10 +1460,18 @@ export default function DriverNavigationScreen() {
     if (isPrivateMemo) return;
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId) return;
-    return subscribeDriverRideCancelledByCustomer((cancelledId, cancelReason) => {
+    const unsubCancel = subscribeDriverRideCancelledByCustomer((cancelledId, cancelReason) => {
       if (cancelledId !== rideId) return;
       exitAfterCustomerCancelRef.current(cancelReason);
     });
+    const unsubAbort = subscribeDriverRideAbortedAwaitingFare((abortedId) => {
+      if (abortedId !== rideId) return;
+      enterAbortAwaitingFareRef.current();
+    });
+    return () => {
+      unsubCancel();
+      unsubAbort();
+    };
   }, [params.rideId, isPrivateMemo]);
 
   const lastDestinationAlertKeyRef = useRef("");
@@ -1509,6 +1548,12 @@ export default function DriverNavigationScreen() {
           toLat?: unknown;
           toLon?: unknown;
         };
+        if (data.kind === "ride_aborted_awaiting_fare") {
+          if (typeof data.rideId === "string" && data.rideId.trim() === rideId) {
+            enterAbortAwaitingFareRef.current();
+          }
+          return;
+        }
         if (data.kind === "ride_cancelled_by_customer") {
           if (typeof data.rideId === "string" && data.rideId.trim() === rideId) {
             exitAfterCustomerCancelRef.current(null);
@@ -1551,6 +1596,10 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     if (!params.rideId || cancelHandledRef.current || !hadActiveRideInListRef.current) return;
     if (activeRide) return;
+    if (isCustomerAbortPendingFareStatus(rideFleetStatus)) {
+      enterAbortAwaitingFareRef.current();
+      return;
+    }
     if (isCustomerFinalCancelledStatus(rideFleetStatus as RequestStatus)) {
       exitAfterCustomerCancel(null);
       return;
@@ -1562,7 +1611,9 @@ export default function DriverNavigationScreen() {
     if (msg.type === "ride:status:update" && typeof msg.status === "string") {
       const next = msg.status as RequestStatus;
       setRideFleetStatus(next);
-      if (isCustomerFinalCancelledStatus(next)) {
+      if (isCustomerAbortPendingFareStatus(next)) {
+        enterAbortAwaitingFareRef.current();
+      } else if (isCustomerFinalCancelledStatus(next)) {
         exitAfterCustomerCancelRef.current(null);
       }
       return;
@@ -1799,11 +1850,19 @@ export default function DriverNavigationScreen() {
   const completeRideWithFare = async (fare: number, plausibilityAck = false) => {
     setCompletingRide(true);
     try {
-      await patchStatus("completed", fare, undefined, undefined, plausibilityAck);
+      const targetStatus = isCustomerAbortPendingFareStatus(rideFleetStatus)
+        ? "cancelled_by_customer"
+        : "completed";
+      await patchStatus(targetStatus, fare, undefined, undefined, plausibilityAck);
       await syncNavPresence(null);
       setShowFareModal(false);
       disconnectSocket();
-      trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);
+      trySpeak(
+        targetStatus === "cancelled_by_customer"
+          ? "Abbruch abgeschlossen. Vielen Dank."
+          : "Fahrt abgeschlossen. Vielen Dank.",
+        soundRef.current,
+      );
       if (driverRidePaymentLooksLikeCash(params.paymentMethod)) {
         setShowCashConfirmModal(true);
         return;
@@ -2619,18 +2678,35 @@ export default function DriverNavigationScreen() {
       />
 
       {/* Fare Modal */}
-      <Modal visible={showFareModal} transparent animationType="slide" onRequestClose={() => setShowFareModal(false)}>
+      <Modal
+        visible={showFareModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (!isCustomerAbortPendingFareStatus(rideFleetStatus)) setShowFareModal(false);
+        }}
+      >
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Fahrt beenden</Text>
+              <Text style={styles.modalTitle}>
+                {isCustomerAbortPendingFareStatus(rideFleetStatus)
+                  ? "Abbruch – Taxameter"
+                  : "Fahrt beenden"}
+              </Text>
             </View>
             {driverMayBillPositiveFare(rideFleetStatus) && isFixedPriceRide ? (
               <Text style={styles.modalSubtitle}>
                 Vereinbarter Festpreis — keine manuelle Eingabe nötig.
               </Text>
             ) : driverMayBillPositiveFare(rideFleetStatus) ? (
-              <DriverFareEntryLegalHints
+              <>
+                {isCustomerAbortPendingFareStatus(rideFleetStatus) ? (
+                  <Text style={styles.modalSubtitle}>
+                    Kunde hat die Fahrt abgebrochen. Bitte den Betrag vom Taxameter eingeben.
+                  </Text>
+                ) : null}
+                <DriverFareEntryLegalHints
                 vehicle={params.vehicle}
                 mayBillPositive
                 snapshotVehicleClassMultiplier={
@@ -2644,6 +2720,7 @@ export default function DriverNavigationScreen() {
                     : null
                 }
               />
+              </>
             ) : (
               <Text style={styles.modalSubtitle}>
                 Keine Fahrt zum Ziel — bitte 0,00 € bestätigen (Kunde wird nicht belastet).
@@ -2710,9 +2787,11 @@ export default function DriverNavigationScreen() {
               </View>
             ) : null}
             <View style={styles.modalBtns}>
-              <Pressable style={styles.cancelBtn} onPress={() => setShowFareModal(false)}>
-                <Text style={styles.cancelBtnText}>Abbrechen</Text>
-              </Pressable>
+              {!isCustomerAbortPendingFareStatus(rideFleetStatus) ? (
+                <Pressable style={styles.cancelBtn} onPress={() => setShowFareModal(false)}>
+                  <Text style={styles.cancelBtnText}>Abbrechen</Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 style={[styles.submitBtn, completingRide && { opacity: 0.65 }]}
                 onPress={handleConfirmFare}

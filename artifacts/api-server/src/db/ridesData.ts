@@ -176,6 +176,9 @@ export function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     passengerPinVerifiedAt: r.passenger_pin_verified_at
       ? new Date(r.passenger_pin_verified_at).toISOString()
       : null,
+    customerMidTripAbortAt: r.customer_mid_trip_abort_at
+      ? new Date(r.customer_mid_trip_abort_at).toISOString()
+      : null,
     driverId: r.driver_id,
     from: r.from_label,
     fromFull: r.from_full,
@@ -284,6 +287,7 @@ function rideToUpdate(r: RideRequest) {
     customer_phone: r.customerPhone ?? null,
     passenger_id: r.passengerId ?? null,
     passenger_pin_verified_at: r.passengerPinVerifiedAt ? new Date(r.passengerPinVerifiedAt) : null,
+    customer_mid_trip_abort_at: r.customerMidTripAbortAt ? new Date(r.customerMidTripAbortAt) : null,
     driver_id: r.driverId ?? null,
     from_label: r.from,
     from_full: r.fromFull,
@@ -362,6 +366,7 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     customer_phone: r.customerPhone ?? null,
     passenger_id: r.passengerId ?? null,
     passenger_pin_verified_at: r.passengerPinVerifiedAt ? new Date(r.passengerPinVerifiedAt) : null,
+    customer_mid_trip_abort_at: r.customerMidTripAbortAt ? new Date(r.customerMidTripAbortAt) : null,
     driver_id: r.driverId ?? null,
     from_label: r.from,
     from_full: r.fromFull,
@@ -813,6 +818,8 @@ export type AdminRideListQuery = {
   q?: string;
   /** Standard: neueste zuerst (`desc`). */
   sortCreated?: "asc" | "desc";
+  /** true = nur Fahrten mit Kunden-Abbruch nach Fahrtstart (`customer_mid_trip_abort_at`). */
+  midTripAbort?: boolean;
 };
 
 export type AdminRideRow = RideRequest & { companyName: string | null };
@@ -844,6 +851,9 @@ function buildAdminRideConditions(query: AdminRideListQuery): SQL[] {
   if (query.driverId?.trim()) {
     cond.push(eq(ridesTable.driver_id, query.driverId.trim()));
   }
+  if (query.midTripAbort === true) {
+    cond.push(sql`${ridesTable.customer_mid_trip_abort_at} IS NOT NULL`);
+  }
   if (query.q?.trim()) {
     const raw = escapeIlikePattern(query.q.trim());
     const p = `%${raw}%`;
@@ -871,6 +881,7 @@ function matchesAdminMemoryQuery(r: RideRequest, query: AdminRideListQuery): boo
   if (query.rideKind && r.rideKind !== query.rideKind) return false;
   if (query.payerKind && r.payerKind !== query.payerKind) return false;
   if (query.driverId?.trim() && String(r.driverId ?? "") !== query.driverId.trim()) return false;
+  if (query.midTripAbort === true && !r.customerMidTripAbortAt) return false;
   if (query.q?.trim()) {
     const q = query.q.trim().toLowerCase();
     const hay = [
@@ -937,6 +948,67 @@ export async function listRidesAdminPage(
   return rows.map((x) => ({
     ...rowToRide(x.ride),
     companyName: x.companyName ?? null,
+  }));
+}
+
+export type MidTripAbortDriverGroupRow = {
+  driverId: string;
+  abortCount: number;
+  finalFareSumEur: number;
+  pendingFareCount: number;
+};
+
+/** Missbrauchs-Monitoring: Mid-Trip-Abbrüche gruppiert nach Fahrer. */
+export async function listMidTripAbortGroupedByDriver(
+  query: Omit<AdminRideListQuery, "midTripAbort">,
+  limit = 100,
+): Promise<MidTripAbortDriverGroupRow[]> {
+  const db = getDb();
+  const base: AdminRideListQuery = { ...query, midTripAbort: true };
+  if (!db) {
+    const filtered = memoryRides.filter((r) => matchesAdminMemoryQuery(r, base));
+    const map = new Map<string, MidTripAbortDriverGroupRow>();
+    for (const r of filtered) {
+      const did = (r.driverId ?? "").trim() || "(ohne Fahrer)";
+      const cur = map.get(did) ?? {
+        driverId: did,
+        abortCount: 0,
+        finalFareSumEur: 0,
+        pendingFareCount: 0,
+      };
+      cur.abortCount += 1;
+      if (r.status === "customer_abort_pending_fare") cur.pendingFareCount += 1;
+      const fare = Number(r.finalFare);
+      if (Number.isFinite(fare) && fare > 0) cur.finalFareSumEur += fare;
+      map.set(did, cur);
+    }
+    return [...map.values()]
+      .sort((a, b) => b.abortCount - a.abortCount)
+      .slice(0, limit)
+      .map((row) => ({
+        ...row,
+        finalFareSumEur: Math.round((row.finalFareSumEur + Number.EPSILON) * 100) / 100,
+      }));
+  }
+  const cond = buildAdminRideConditions(base);
+  const whereSql = cond.length ? and(...cond) : undefined;
+  const rows = await db
+    .select({
+      driverId: ridesTable.driver_id,
+      abortCount: sql<number>`count(*)::int`,
+      finalFareSumEur: sql<string>`coalesce(sum(${ridesTable.final_fare}), 0)`,
+      pendingFareCount: sql<number>`count(*) FILTER (WHERE ${ridesTable.status} = 'customer_abort_pending_fare')::int`,
+    })
+    .from(ridesTable)
+    .where(whereSql)
+    .groupBy(ridesTable.driver_id)
+    .orderBy(sql`count(*) DESC`)
+    .limit(limit);
+  return rows.map((r) => ({
+    driverId: (r.driverId ?? "").trim() || "(ohne Fahrer)",
+    abortCount: Number(r.abortCount) || 0,
+    finalFareSumEur: Math.round((Number(r.finalFareSumEur) || 0) * 100) / 100,
+    pendingFareCount: Number(r.pendingFareCount) || 0,
   }));
 }
 

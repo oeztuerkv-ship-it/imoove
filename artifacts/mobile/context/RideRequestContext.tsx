@@ -17,12 +17,13 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 import {
   countCustomerReservationBadge,
+  isCustomerAbortPendingFareStatus,
   isCustomerActiveRide,
   isCustomerCancelledStatus,
   isCustomerFinalCancelledStatus,
   isCustomerRideRequest,
 } from "@/utils/customerRideListFilters";
-import { notifyDriverRideCancelledByCustomer } from "@/utils/driverLiveNavigation";
+import { notifyDriverRideAbortedAwaitingFare, notifyDriverRideCancelledByCustomer } from "@/utils/driverLiveNavigation";
 import {
   filterDriverInstantMarketOffers,
   filterDriverScheduledOpenOffers,
@@ -63,6 +64,7 @@ export type RequestStatus =
   | "passenger_onboard"
   | "arrived"
   | "in_progress"
+  | "customer_abort_pending_fare"
   | "cancelled_by_customer"
   | "cancelled_by_driver"
   | "cancelled_by_system"
@@ -1245,7 +1247,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const id = rideId.trim();
       const next = status.trim() as RequestStatus;
       if (!id || !next) return;
-      if (isCustomerFinalCancelledStatus(next)) {
+      if (isCustomerAbortPendingFareStatus(next)) {
+        notifyDriverRideAbortedAwaitingFare(id);
+      } else if (isCustomerFinalCancelledStatus(next)) {
         notifyDriverRideCancelledByCustomer(id);
       }
       const applyStatus = (prev: RideRequest[]) => {
@@ -1956,7 +1960,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       r.status === "driver_waiting" ||
       r.status === "passenger_onboard" ||
       r.status === "arrived" ||
-      r.status === "in_progress"
+      r.status === "in_progress" ||
+      r.status === "customer_abort_pending_fare"
     ) ?? null;
   const completedRequest =
     requests.filter((r) => r.status === "completed").slice(-1)[0] ?? null;
@@ -1973,7 +1978,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
               r.status === "driver_waiting" ||
               r.status === "passenger_onboard" ||
               r.status === "arrived" ||
-              r.status === "in_progress"),
+              r.status === "in_progress" ||
+              r.status === "customer_abort_pending_fare"),
         );
         if (candidates.length === 0) return null;
         const lastId = lastAddedRequestId?.trim();

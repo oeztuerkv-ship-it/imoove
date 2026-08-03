@@ -5,6 +5,9 @@ let activeNavigationRideId: string | null = null;
 type CancelListener = (rideId: string, cancelReason: string | null) => void;
 const cancelListeners = new Set<CancelListener>();
 
+type AbortAwaitingFareListener = (rideId: string) => void;
+const abortAwaitingFareListeners = new Set<AbortAwaitingFareListener>();
+
 type DestinationChangedListener = (
   rideId: string,
   destination: { toFull: string; toLat: number; toLon: number },
@@ -34,6 +37,25 @@ export function notifyDriverRideCancelledByCustomer(rideId: string, cancelReason
   cancelListeners.forEach((cb) => {
     try {
       cb(id, reason && reason.length > 0 ? reason : null);
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+export function subscribeDriverRideAbortedAwaitingFare(listener: AbortAwaitingFareListener): () => void {
+  abortAwaitingFareListeners.add(listener);
+  return () => {
+    abortAwaitingFareListeners.delete(listener);
+  };
+}
+
+export function notifyDriverRideAbortedAwaitingFare(rideId: string): void {
+  const id = rideId.trim();
+  if (!id) return;
+  abortAwaitingFareListeners.forEach((cb) => {
+    try {
+      cb(id);
     } catch {
       /* ignore */
     }

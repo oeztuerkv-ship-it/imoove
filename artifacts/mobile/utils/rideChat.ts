@@ -23,6 +23,7 @@ const CHAT_TERMINAL_STATUSES = new Set<RequestStatus>([
   "cancelled_by_customer",
   "cancelled_by_driver",
   "cancelled_by_system",
+  "customer_abort_pending_fare",
   "cancelled",
   "rejected",
   "expired",

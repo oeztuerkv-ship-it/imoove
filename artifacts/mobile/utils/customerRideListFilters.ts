@@ -26,6 +26,7 @@ export const CUSTOMER_CANCELLED_STATUSES = new Set<RequestStatus>([
   "cancelled_by_customer",
   "cancelled_by_driver",
   "cancelled_by_system",
+  "customer_abort_pending_fare",
 ]);
 
 export function isCustomerCancelledStatus(status: RequestStatus): boolean {
@@ -44,6 +45,16 @@ export function isCustomerFinalCancelledStatus(status: RequestStatus): boolean {
     status === "cancelled_by_customer" ||
     status === "cancelled_by_system"
   );
+}
+
+/** Kunde brach nach Fahrtstart ab — Fahrer muss noch Taxameter eingeben. */
+export function isCustomerAbortPendingFareStatus(status: RequestStatus | string): boolean {
+  return status === "customer_abort_pending_fare";
+}
+
+/** Kunde verlässt Live-Status (final oder Mid-Trip-Pending mit Abrechnung folgt). */
+export function isCustomerLiveRideEndedStatus(status: RequestStatus): boolean {
+  return isCustomerFinalCancelledStatus(status) || isCustomerAbortPendingFareStatus(status);
 }
 
 function rideCreatedAtMs(createdAt: Date | string | undefined): number {
@@ -102,6 +113,7 @@ const TERMINAL_OR_PAST_STATUSES = new Set<RequestStatus>([
   "cancelled_by_customer",
   "cancelled_by_driver",
   "cancelled_by_system",
+  "customer_abort_pending_fare",
   "expired",
   "rejected",
 ]);

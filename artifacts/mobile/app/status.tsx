@@ -49,7 +49,8 @@ import {
   CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
 } from "@/utils/customerRideStatusLabel";
 import {
-  isCustomerFinalCancelledStatus,
+  isCustomerAbortPendingFareStatus,
+  isCustomerLiveRideEndedStatus,
   isCustomerOpenDispatchStatus,
 } from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -745,7 +746,7 @@ export default function StatusScreen() {
     }
     const live = requests.find((r) => r.id === currentRideId) ?? null;
     if (live) {
-      if (isCustomerFinalCancelledStatus(live.status)) {
+      if (isCustomerLiveRideEndedStatus(live.status)) {
         stickyAcceptedRef.current = null;
         return null;
       }
@@ -992,7 +993,7 @@ export default function StatusScreen() {
 
     const cur = rideMatchingCurrentId;
     if (currentRideId && cur?.id === currentRideId) {
-      if (isCustomerFinalCancelledStatus(cur.status)) return "ride_cancelled";
+      if (isCustomerLiveRideEndedStatus(cur.status)) return "ride_cancelled";
       if (isCustomerOpenDispatchStatus(cur.status)) return "searching";
       const st = cur.scheduledAt;
       const hasSched =
@@ -1577,7 +1578,7 @@ export default function StatusScreen() {
     if (handledRideCancelledRef.current === id) return;
     if (cancelFlowStartedRef.current) return;
     const ride = requests.find((r) => r.id === id) ?? rideMatchingCurrentId;
-    if (!ride || !isCustomerFinalCancelledStatus(ride.status)) return;
+    if (!ride || !isCustomerLiveRideEndedStatus(ride.status)) return;
     handledRideCancelledRef.current = id;
     stickyAcceptedRef.current = null;
     disconnectSocket();
@@ -1589,7 +1590,11 @@ export default function StatusScreen() {
         : null;
     let title = "Fahrt beendet";
     let message = "Die Fahrt wurde beendet.";
-    if (ride.status === "cancelled_by_driver") {
+    if (isCustomerAbortPendingFareStatus(ride.status)) {
+      title = "Fahrt abgebrochen";
+      message =
+        "Du hast die laufende Fahrt abgebrochen. Der Fahrer gibt den Taxameter-Endpreis ein — Abrechnung folgt.";
+    } else if (ride.status === "cancelled_by_driver") {
       title = "Fahrt beendet";
       message = reason
         ? `Die Fahrt wurde beendet.\n\nGrund: ${reason}`

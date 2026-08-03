@@ -107,9 +107,14 @@ import {
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
   notifyDriverFollowUpOffer,
+  notifyDriverRideAbortedAwaitingFare,
   notifyDriverRideCancelledByCustomer,
   notifyMarketOnlineDriversInstantRideOffer,
 } from "../lib/driverRideExpoPush";
+import {
+  applyMinimumFareFloorEur,
+  resolveRideMinimumFareEur,
+} from "../lib/rideMidTripAbortFare";
 import { findFollowUpOfferForDriver } from "../db/fleetFollowUpOfferData";
 import { maybeNotifyPassengerPickupEtaFromDriverLocation } from "../lib/rideEtaPassengerPush";
 import {
@@ -424,6 +429,7 @@ function normalizeStatusInput(raw: unknown): RideRequest["status"] | null {
     "passenger_onboard",
     "arrived",
     "in_progress",
+    "customer_abort_pending_fare",
     "completed",
     "no_show",
     "cancelled_by_customer",
@@ -2238,7 +2244,7 @@ export async function patchRideStatusRoute(
     const parsedFinalFare = parseOptionalFinalFareFromBody(req.body);
     const parsedActualDistanceKm = typeof req.body?.actualDistanceKm === "number" && Number.isFinite(req.body.actualDistanceKm) && req.body.actualDistanceKm > 0 ? req.body.actualDistanceKm : undefined;
     const parsedActualDurationMinutes = typeof req.body?.actualDurationMinutes === "number" && Number.isInteger(req.body.actualDurationMinutes) && req.body.actualDurationMinutes > 0 ? req.body.actualDurationMinutes : undefined;
-    const nextStatus = normalizeStatusInput(status);
+    let nextStatus = normalizeStatusInput(status);
     if (!nextStatus) {
       res.status(400).json({ error: "status_invalid" });
       return;
@@ -2267,23 +2273,33 @@ export async function patchRideStatusRoute(
       return;
     }
 
-    if (!canTransitionRideStatus(cur.status, nextStatus)) {
-      res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
-      return;
-    }
     const cancelReasonClean =
       typeof cancelReason === "string" && cancelReason.trim().length > 0
         ? cancelReason.trim()
         : "Storno durch Kunden-App (kein Grund übermittelt)";
     const bodyDriverIdTrim = typeof driverId === "string" ? driverId.trim() : "";
     const actor = await resolveRideMutateActor(req);
+
+    // Mid-Trip: Kunden-Storno → Taxameter-Pending (kein Flat-Fee-Storno)
+    if (
+      nextStatus === "cancelled_by_customer" &&
+      cur.status === "in_progress" &&
+      actor?.kind === "customer_session"
+    ) {
+      nextStatus = "customer_abort_pending_fare";
+    }
+
+    if (!canTransitionRideStatus(cur.status, nextStatus)) {
+      res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
+      return;
+    }
     const rideOriginKind = await getAdminCompanyKind(cur.companyId);
     const gate = authorizePatchRideStatusForActor(nextStatus, cur, actor, {
       bodyDriverId: bodyDriverIdTrim.length > 0 ? bodyDriverIdTrim : null,
       rideOriginCompanyKind: rideOriginKind,
     });
     if (!gate.ok) {
-      if (gate.status === 401 && nextStatus === "cancelled_by_customer") {
+      if (gate.status === 401 && (nextStatus === "cancelled_by_customer" || nextStatus === "customer_abort_pending_fare")) {
         const bearer = extractBearerAuthorization(req);
         if (!bearer) {
           res.status(401).json({
@@ -2496,7 +2512,52 @@ export async function patchRideStatusRoute(
 
     let finalFareForPatch: number | undefined = parsedFinalFare;
     let customerCancelFeeAudit: { feeEur: number; reason: string } | null = null;
-    if (nextStatus === "cancelled_by_customer") {
+    const isMidTripAbortFinalize =
+      nextStatus === "cancelled_by_customer" && cur.status === "customer_abort_pending_fare";
+
+    if (nextStatus === "customer_abort_pending_fare") {
+      // Kein Flat-Fee — Fahrer gibt später Taxameter ein
+      finalFareForPatch = undefined;
+    } else if (isMidTripAbortFinalize) {
+      if (isRideFixedPrice(cur.pricingMode)) {
+        const agreed = resolveFixedPriceAgreedEur(cur);
+        if (agreed == null) {
+          res.status(400).json({
+            error: "fixed_price_amount_missing",
+            message: "Der vereinbarte Festpreis fehlt. Abschluss nicht möglich.",
+          });
+          return;
+        }
+        finalFareForPatch = agreed;
+      } else {
+        if (parsedFinalFare === undefined || !Number.isFinite(parsedFinalFare) || parsedFinalFare < 0) {
+          res.status(400).json({
+            error: "final_fare_required",
+            message: "Bitte den Taxameter-Endpreis eingeben, nachdem der Kunde die Fahrt abgebrochen hat.",
+          });
+          return;
+        }
+        const minFare = resolveRideMinimumFareEur(cur);
+        const floored = applyMinimumFareFloorEur(parsedFinalFare, minFare);
+        const plausibility = evaluateFinalFarePlausibility(cur.estimatedFare ?? 0, floored);
+        if (!plausibility.ok && !plausibilityAck) {
+          res.status(400).json({
+            error: "final_fare_plausibility_failed",
+            message: `Der eingegebene Preis weicht stark von der Schätzung (${Number(cur.estimatedFare ?? 0).toFixed(2)} €) ab. Max. ohne Bestätigung: ${plausibility.maxAllowedEur.toFixed(2)} €. Taxameter-Preis erneut prüfen oder bestätigen.`,
+            estimatedFareEur: cur.estimatedFare ?? null,
+            maxAllowedFinalFareEur: plausibility.maxAllowedEur,
+            ratio: plausibility.ratio,
+            minimumFareEur: minFare,
+            appliedFinalFareEur: floored,
+          });
+          return;
+        }
+        const waitingSurcharge = Number(cur.waitingChargeEur ?? 0);
+        finalFareForPatch =
+          Math.round((floored + (Number.isFinite(waitingSurcharge) ? waitingSurcharge : 0) + Number.EPSILON) * 100) /
+          100;
+      }
+    } else if (nextStatus === "cancelled_by_customer") {
       const opPayloadCancel = await getOperationalConfigPayload();
       const ev = await evaluateCustomerCancellationFeeEur(
         {
@@ -2603,7 +2664,7 @@ export async function patchRideStatusRoute(
     }
 
     let gpsActualPatch: Partial<Pick<RideRequest, "actualDistanceKm" | "actualDurationMinutes">> = {};
-    if (nextStatus === "completed") {
+    if (nextStatus === "completed" || isMidTripAbortFinalize) {
       const completionGpsMetrics = await computeRideCompletionGpsMetrics(id, cur, tripStartWaitingPatch);
       if (completionGpsMetrics) {
         gpsActualPatch = {
@@ -2613,6 +2674,7 @@ export async function patchRideStatusRoute(
       }
 
       if (
+        nextStatus === "completed" &&
         cur.status === "in_progress" &&
         finalFareForPatch != null &&
         Number.isFinite(finalFareForPatch) &&
@@ -2634,19 +2696,25 @@ export async function patchRideStatusRoute(
       }
 
       // Taxameter: Tarif-Korridor aus Ist-km/Ist-Min. (hart, kein Ack-Bypass). Festpreis ausgenommen.
+      // Mid-Trip-Abbruch: nur wenn GPS-Track vorhanden (sonst nicht blockieren).
+      const corridorFromStatus =
+        (nextStatus === "completed" && cur.status === "in_progress") || isMidTripAbortFinalize;
       if (
-        cur.status === "in_progress" &&
+        corridorFromStatus &&
         !isRideFixedPrice(cur.pricingMode) &&
         parsedFinalFare != null &&
         Number.isFinite(parsedFinalFare) &&
         parsedFinalFare > 0.009 &&
         completionGpsMetrics
       ) {
+        const flooredForCorridor = isMidTripAbortFinalize
+          ? applyMinimumFareFloorEur(parsedFinalFare, resolveRideMinimumFareEur(cur))
+          : parsedFinalFare;
         const opPayloadCorridor = await getOperationalConfigPayload();
         const regionsCorridor = await listServiceRegionsForApi();
         const corridor = evaluateRideCompletionTariffCorridor({
           ride: cur,
-          driverEnteredFareEur: parsedFinalFare,
+          driverEnteredFareEur: flooredForCorridor,
           actualDistanceKm: completionGpsMetrics.distanceKm,
           actualDurationMinutes: completionGpsMetrics.durationMinutes,
           opPayload: opPayloadCorridor,
@@ -2673,8 +2741,7 @@ export async function patchRideStatusRoute(
       | { flagged: boolean; estimatedFareEur: number; finalFareEur: number; acknowledged: boolean }
       | null = null;
     if (
-      nextStatus === "completed" &&
-      cur.status === "in_progress" &&
+      ((nextStatus === "completed" && cur.status === "in_progress") || isMidTripAbortFinalize) &&
       finalFareForPatch != null &&
       Number.isFinite(finalFareForPatch)
     ) {
@@ -2730,7 +2797,8 @@ export async function patchRideStatusRoute(
         {
           status: nextStatus,
           ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
-          ...(nextStatus === "completed" && gpsActualPatch.actualDistanceKm != null
+          ...((nextStatus === "completed" || isMidTripAbortFinalize) &&
+          gpsActualPatch.actualDistanceKm != null
             ? {
                 actualDistanceKm: gpsActualPatch.actualDistanceKm,
                 actualDurationMinutes: gpsActualPatch.actualDurationMinutes,
@@ -2745,6 +2813,9 @@ export async function patchRideStatusRoute(
           ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
           ...(nextStatus === "driver_waiting" && cur.status !== "driver_waiting"
             ? { driverWaitingStartedAt: new Date().toISOString() }
+            : {}),
+          ...(nextStatus === "customer_abort_pending_fare" && !cur.customerMidTripAbortAt
+            ? { customerMidTripAbortAt: new Date().toISOString() }
             : {}),
           ...tripStartWaitingPatch,
         },
@@ -2786,10 +2857,11 @@ export async function patchRideStatusRoute(
         "cancelled_by_system",
         "rejected",
         "expired",
+        "customer_abort_pending_fare",
       ].includes(nextStatus);
       if (isCancel) {
         const crActor =
-          nextStatus === "cancelled_by_customer"
+          nextStatus === "cancelled_by_customer" || nextStatus === "customer_abort_pending_fare"
             ? {
                 actorType: "passenger" as const,
                 actorId:
@@ -2807,6 +2879,7 @@ export async function patchRideStatusRoute(
           payload: {
             reason: cancelReasonClean,
             nextStatus,
+            midTripAbort: nextStatus === "customer_abort_pending_fare" || isMidTripAbortFinalize,
             ...(nextStatus === "cancelled_by_customer" && customerCancelFeeAudit
               ? {
                   cancellationFeeEur: customerCancelFeeAudit.feeEur,
@@ -2814,18 +2887,25 @@ export async function patchRideStatusRoute(
                   appliedFinalFareEur: finalFareForPatch ?? null,
                 }
               : {}),
+            ...(isMidTripAbortFinalize
+              ? {
+                  appliedFinalFareEur: finalFareForPatch ?? null,
+                  minimumFareEur: resolveRideMinimumFareEur(cur),
+                }
+              : {}),
           },
         });
       }
     }
-    if (nextStatus === "cancelled_by_customer") {
+    if (nextStatus === "cancelled_by_customer" || nextStatus === "customer_abort_pending_fare") {
       customerCancelReasons.set(id, cancelReasonClean);
     }
     if (
-      nextStatus === "cancelled_by_customer" ||
-      nextStatus === "cancelled_by_driver" ||
-      nextStatus === "cancelled_by_system" ||
-      nextStatus === "cancelled"
+      (nextStatus === "cancelled_by_customer" ||
+        nextStatus === "cancelled_by_driver" ||
+        nextStatus === "cancelled_by_system" ||
+        nextStatus === "cancelled") &&
+      !isMidTripAbortFinalize
     ) {
       const opPayloadCf = await getOperationalConfigPayload();
       const regionsCf = await listServiceRegionsForApi();
@@ -2860,7 +2940,7 @@ export async function patchRideStatusRoute(
         payload: finalFarePlausibilityAudit,
       });
     }
-    if (nextStatus === "completed") {
+    if (nextStatus === "completed" || isMidTripAbortFinalize) {
       const opPayloadComplete = await getOperationalConfigPayload();
       const regionsComplete = await listServiceRegionsForApi();
       const pcComplete = await resolveFinancePricingContextForRide(
@@ -2871,7 +2951,9 @@ export async function patchRideStatusRoute(
       const finance = await upsertRideFinancialSnapshot({
         ride: updated,
         pricingContext: pcComplete,
-        reason: "ride_completed_status_transition",
+        reason: isMidTripAbortFinalize
+          ? "ride_mid_trip_abort_fare_finalized"
+          : "ride_completed_status_transition",
         actorType: mutActor.actorType,
         actorId: mutActor.actorId,
         forceRecalc: true, // Taxameter-Endpreis muss Finance überschreiben
@@ -2906,7 +2988,9 @@ export async function patchRideStatusRoute(
       if (!captureOutcome.ok) {
         logger.warn(
           { rideId: id, error: captureOutcome.error },
-          "[Stripe] capture after ride completed failed",
+          isMidTripAbortFinalize
+            ? "[Stripe] capture after mid-trip abort fare failed"
+            : "[Stripe] capture after ride completed failed",
         );
         await insertSupplementalRideEvent(id, {
           eventType: "stripe_capture_failed",
@@ -2914,7 +2998,7 @@ export async function patchRideStatusRoute(
           toStatus: nextStatus,
           actorType: mutActor.actorType,
           actorId: mutActor.actorId,
-          payload: { error: captureOutcome.error },
+          payload: { error: captureOutcome.error, midTripAbort: isMidTripAbortFinalize },
         });
       } else if (!captureOutcome.skipped) {
         await insertSupplementalRideEvent(id, {
@@ -2926,11 +3010,12 @@ export async function patchRideStatusRoute(
           payload: {
             capturedAmountCents: captureOutcome.capturedAmountCents,
             cappedToAuthorization: captureOutcome.cappedToAuthorization,
+            midTripAbort: isMidTripAbortFinalize,
           },
         });
       }
     }
-    if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
+    if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system" || isMidTripAbortFinalize) {
       customerCancelReasons.delete(id);
     }
     if (updated.status === "scheduled_assigned" && cur.status === "scheduled") {
@@ -3028,7 +3113,13 @@ export async function patchRideStatusRoute(
 
     if (cur.status !== nextStatus) {
       broadcastRideStatusChange(id, nextStatus, cur.status);
-      if (nextStatus === "cancelled_by_customer") {
+      if (nextStatus === "customer_abort_pending_fare") {
+        const fleetDriverId = (updated.driverId ?? cur.driverId ?? "").trim();
+        const companyId = (updated.companyId ?? cur.companyId ?? "").trim();
+        if (fleetDriverId && companyId) {
+          void notifyDriverRideAbortedAwaitingFare(fleetDriverId, companyId, id).catch(() => undefined);
+        }
+      } else if (nextStatus === "cancelled_by_customer" && !isMidTripAbortFinalize) {
         const fleetDriverId = (updated.driverId ?? cur.driverId ?? "").trim();
         const companyId = (updated.companyId ?? cur.companyId ?? "").trim();
         if (fleetDriverId && companyId) {
@@ -3099,6 +3190,62 @@ export async function cancelRideForVerifiedCustomerSession(
 
   const cur = await findRideForPassenger(id, pax);
   if (!cur) return { ok: false, status: 404, error: "not_found" };
+
+  // Mid-Trip: Abbruch → Pending (Fahrer gibt Taxameter ein)
+  if (cur.status === "in_progress") {
+    const nextPending = "customer_abort_pending_fare" as const;
+    if (!canTransitionRideStatus(cur.status, nextPending)) {
+      return {
+        ok: false,
+        status: 409,
+        error: "status_transition_invalid",
+        from: cur.status,
+        to: nextPending,
+      };
+    }
+    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+      return {
+        ok: false,
+        status: 403,
+        error: "reservation_storno_locked",
+        message:
+          "Bei Vorbestellungen ist ein Storno durch den Kunden nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
+      };
+    }
+    const mutActorPending: RideMutationPersistenceActor = { actorType: "passenger", actorId: pax };
+    const abortAt = new Date().toISOString();
+    const updatedPending = await updateRide(
+      id,
+      {
+        status: nextPending,
+        customerMidTripAbortAt: cur.customerMidTripAbortAt ?? abortAt,
+      },
+      { mutationActor: mutActorPending },
+    );
+    if (!updatedPending) return { ok: false, status: 500, error: "update_failed" };
+
+    await insertSupplementalRideEvent(id, {
+      eventType: "cancel_reason",
+      fromStatus: cur.status,
+      toStatus: nextPending,
+      actorType: "passenger",
+      actorId: pax,
+      payload: {
+        reason: cancelReasonClean,
+        nextStatus: nextPending,
+        midTripAbort: true,
+      },
+    });
+    customerCancelReasons.set(id, cancelReasonClean);
+    broadcastRideStatusChange(id, nextPending, cur.status);
+    const fleetDriverId = (updatedPending.driverId ?? cur.driverId ?? "").trim();
+    const companyId = (updatedPending.companyId ?? cur.companyId ?? "").trim();
+    if (fleetDriverId && companyId) {
+      void notifyDriverRideAbortedAwaitingFare(fleetDriverId, companyId, id).catch(() => undefined);
+    }
+    void evaluateCustomerCancellationSuspensionAfterCancel(pax).catch(() => undefined);
+    return { ok: true, ride: updatedPending, cancelReason: cancelReasonClean };
+  }
 
   const nextStatus = "cancelled_by_customer" as const;
   if (cur.status === nextStatus) {

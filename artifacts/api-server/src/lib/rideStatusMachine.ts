@@ -31,6 +31,7 @@ export const RIDE_PAYMENT_ALLOWED_STATUSES: ReadonlySet<RideRequest["status"]> =
   "passenger_onboard",
   "arrived",
   "in_progress",
+  "customer_abort_pending_fare",
 ]);
 
 export function isPaymentAllowedForRideStatus(status: RideRequest["status"]): boolean {
@@ -115,12 +116,14 @@ const TRANSITIONS: Partial<Record<RideRequest["status"], RideRequest["status"][]
   arrived: ["passenger_onboard", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
   in_progress: [
     "completed",
+    "customer_abort_pending_fare",
     "cancelled_by_system",
     "cancelled",
     "cancelled_by_customer",
     "cancelled_by_driver",
     "expired",
   ],
+  customer_abort_pending_fare: ["cancelled_by_customer", "cancelled_by_system"],
 };
 
 export function canTransitionRideStatus(from: RideRequest["status"], to: RideRequest["status"]): boolean {
@@ -144,6 +147,9 @@ export function supplementalEventForTransition(
   }
   if (to === "in_progress" && from !== "in_progress") {
     return { eventType: "trip_started" };
+  }
+  if (to === "customer_abort_pending_fare" && from !== "customer_abort_pending_fare") {
+    return { eventType: "customer_mid_trip_abort" };
   }
   if (to === "completed" && from !== "completed") {
     return { eventType: "ride_completed" };

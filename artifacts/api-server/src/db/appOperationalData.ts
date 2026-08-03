@@ -596,10 +596,14 @@ export async function evaluateCustomerCancellationFeeEur(
     "driver_arriving",
     "driver_waiting",
     "passenger_onboard",
-    "in_progress",
     "arrived",
   ]);
   if (post.has(ride.status)) return { feeEur: fee, reason: "post_driver_assignment_no_scheduled_pickup" };
+
+  // in_progress / customer_abort_pending_fare: Taxameter-Pfad, keine Flat-Fee
+  if (ride.status === "in_progress" || ride.status === "customer_abort_pending_fare") {
+    return { feeEur: 0, reason: "mid_trip_abort_awaits_taximeter" };
+  }
 
   return { feeEur: 0, reason: "terminal_or_unknown" };
 }
