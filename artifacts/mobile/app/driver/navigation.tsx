@@ -120,6 +120,7 @@ import {
   driverFinalFareNeedsAcknowledgement,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
+import { planAbortAwaitingFareEnter } from "@/utils/driverAbortAwaitingFareEnter";
 import { CUSTOMER_FIXED_PRICE_LABEL } from "@/utils/customerFareDisplay";
 import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
 import { isCustomerAbortPendingFareStatus, isCustomerFinalCancelledStatus } from "@/utils/customerRideListFilters";
@@ -1438,16 +1439,22 @@ export default function DriverNavigationScreen() {
   const enterAbortAwaitingFare = useCallback(() => {
     if (cancelHandledRef.current) return;
     setRideFleetStatus("customer_abort_pending_fare");
-    setFareInput(
-      defaultDriverFareInputForCompletion(
-        "customer_abort_pending_fare",
-        activeRide?.estimatedFare ?? estimatedFare,
-        activeRide?.pricingMode,
-      ),
-    );
     setShowFareModal(true);
-    if (abortFarePromptedRef.current) return;
-    abortFarePromptedRef.current = true;
+    // Poll/Socket rufen dies wiederholt auf — Fare-Input/Alert nur beim ersten Eintritt.
+    const plan = planAbortAwaitingFareEnter(abortFarePromptedRef.current);
+    if (plan.markPrompted) {
+      abortFarePromptedRef.current = true;
+    }
+    if (plan.seedFareInput) {
+      setFareInput(
+        defaultDriverFareInputForCompletion(
+          "customer_abort_pending_fare",
+          activeRide?.estimatedFare ?? estimatedFare,
+          activeRide?.pricingMode,
+        ),
+      );
+    }
+    if (!plan.promptDriver) return;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     trySpeak("Kunde hat die Fahrt abgebrochen. Bitte Taxameter-Preis eingeben.", soundRef.current);
     Alert.alert(
