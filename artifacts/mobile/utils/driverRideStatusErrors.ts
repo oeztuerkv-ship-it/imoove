@@ -32,10 +32,10 @@ export function driverRideStatusUserMessage(
     passenger_pin_invalid: "Falscher Code. Bitte erneut beim Fahrgast nachfragen.",
     passenger_pin_rate_limited: "Zu viele Fehlversuche. Bitte kurz warten und erneut versuchen.",
     status_transition_invalid: "Dieser Statuswechsel ist gerade nicht erlaubt.",
-    no_show_wait_too_short: "Bitte noch etwas am Abholort warten, bevor No-Show gestartet wird.",
-    no_show_countdown_not_started: "Bitte zuerst „Kunde nicht da“ starten.",
+    no_show_countdown_not_started: "No-Show-Countdown ist noch nicht aktiv (startet bei Fahrtannahme).",
     no_show_countdown_active: "Der No-Show-Countdown läuft noch.",
     no_show_invalid_status: "No-Show ist in diesem Fahrtstatus nicht möglich.",
+    no_show_wait_too_short: "Bitte noch etwas am Abholort warten.",
   };
   return map[errorCode];
 }

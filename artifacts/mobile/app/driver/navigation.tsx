@@ -168,6 +168,10 @@ const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_TRIP_FOOTER_H +
 const DRIVE_SHEET_EXPANDED_H =
   DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
 const DRIVE_SHEET_DETAILS_H = DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
+/** Ansage am Abholort — wiederholt sich bei Inaktivität. */
+const ARRIVED_PICKUP_SPEAK =
+  "Ziel erreicht. Bitte den Code vom Fahrgast nehmen und losfahren.";
+const ARRIVED_PICKUP_SPEAK_REPEAT_MS = 60_000;
 
 type NavPaymentUi = {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -344,12 +348,37 @@ function fmtArrival(remainingMin: number): string {
   return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 }
 
-function trySpeak(text: string, enabled: boolean) {
+/** Kurz Navi-Abbiege-Ansagen unterdrücken, damit Ankunfts-Ansage durchkommt. */
+let suppressNavSpeechUntilMs = 0;
+
+function trySpeak(
+  text: string,
+  enabled: boolean,
+  opts?: { priority?: boolean; onDone?: () => void },
+) {
   if (!enabled || Platform.OS === "web") return;
+  if (!opts?.priority && Date.now() < suppressNavSpeechUntilMs) return;
   try {
     Speech.stop();
-    Speech.speak(text, { language: "de-DE", rate: 0.95 });
-  } catch (_) {}
+    if (opts?.priority) {
+      suppressNavSpeechUntilMs = Date.now() + 10_000;
+    }
+    Speech.speak(text, {
+      language: "de-DE",
+      rate: 0.92,
+      onDone: () => {
+        opts?.onDone?.();
+      },
+      onStopped: () => {
+        opts?.onDone?.();
+      },
+      onError: () => {
+        opts?.onDone?.();
+      },
+    });
+  } catch (_) {
+    opts?.onDone?.();
+  }
 }
 
 function WebFallback() {
@@ -567,6 +596,10 @@ export default function DriverNavigationScreen() {
   const [pinRequired, setPinRequired] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
   const [showPassengerPinModal, setShowPassengerPinModal] = useState(false);
+  /** Nach 5 Min. Warten am Abholort: Hinweis Chat / losfahren */
+  const [showArrivedWaitHint, setShowArrivedWaitHint] = useState(false);
+  const arrivedWaitHintShownRef = useRef(false);
+  const pinModalAutoOpenedRef = useRef(false);
 
   // Ton Ein/Aus
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -1192,9 +1225,23 @@ export default function DriverNavigationScreen() {
   );
 
   const handleAngekommen = useCallback(async () => {
-    await patchStatus("driver_waiting");
-    trySpeak("Angekommen. Bitte Fahrt starten wenn der Kunde eingestiegen ist.", soundRef.current);
-    setHasArrived(true);   // ← stay on screen, button changes to "Fahrt beginnen"
+    // Ansage sofort — nicht hinter dem Status-PATCH warten (sonst oft „keine Ansage“).
+    trySpeak(ARRIVED_PICKUP_SPEAK, soundRef.current, { priority: true });
+    setHasArrived(true);
+    setShowArrivedWaitHint(false);
+    arrivedWaitHintShownRef.current = false;
+    pinModalAutoOpenedRef.current = false;
+    try {
+      await patchStatus("driver_waiting");
+    } catch (e) {
+      const msg =
+        e instanceof Error && typeof (e as Error & { userMessage?: string }).userMessage === "string"
+          ? (e as Error & { userMessage?: string }).userMessage
+          : e instanceof Error
+            ? e.message
+            : "Status konnte nicht gesetzt werden.";
+      Alert.alert("Angekommen", msg ?? "Status konnte nicht gesetzt werden.");
+    }
   }, [patchStatus]);
 
   const [noShowCountdownEndsAt, setNoShowCountdownEndsAt] = useState<number | null>(null);
@@ -1212,18 +1259,22 @@ export default function DriverNavigationScreen() {
       const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; message?: string };
       if (!res.ok || !body.ok) {
         const code = typeof body.error === "string" ? body.error : "no_show_finalize_failed";
+        // Countdown zu früh / noch nicht am Abholort — still weiterzählen, kein Alert-Spam
+        if (code === "no_show_countdown_active" || code === "no_show_invalid_status") {
+          return;
+        }
         Alert.alert("No-Show", driverRideStatusUserMessage(code, body) ?? code);
         return;
       }
       await syncNavPresence(null);
       disconnectSocket();
       trySpeak("Kunde nicht erschienen. Fahrt als No-Show abgeschlossen.", soundRef.current);
+      setNoShowCountdownEndsAt(null);
       replaceDriverStackExclusive({ pathname: "/driver/dashboard" } as Href);
     } catch {
       Alert.alert("No-Show", "Abschluss fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       setNoShowBusy(false);
-      setNoShowCountdownEndsAt(null);
     }
   }, [noShowBusy, params.rideId]);
 
@@ -1231,61 +1282,51 @@ export default function DriverNavigationScreen() {
     if (!noShowCountdownEndsAt) return;
     const id = setInterval(() => {
       setNoShowTick((t) => t + 1);
-      if (Date.now() >= noShowCountdownEndsAt) {
+      if (Date.now() >= noShowCountdownEndsAt && hasArrived) {
         void finalizeNoShow();
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [noShowCountdownEndsAt, finalizeNoShow]);
+  }, [noShowCountdownEndsAt, finalizeNoShow, hasArrived]);
 
   const noShowRemainingSec = noShowCountdownEndsAt
     ? Math.max(0, Math.ceil((noShowCountdownEndsAt - Date.now()) / 1000))
     : 0;
 
-  const handleNoShowStart = useCallback(async () => {
-    if (!params.rideId || noShowBusy) return;
-    Alert.alert(
-      "Kunde nicht da?",
-      "Nach dem Countdown wird eine No-Show-Gebühr berechnet und der Kunde benachrichtigt.",
-      [
-        { text: "Abbrechen", style: "cancel" },
-        {
-          text: "Countdown starten",
-          style: "destructive",
-          onPress: () => {
-            void (async () => {
-              setNoShowBusy(true);
-              try {
-                const res = await fetch(`${API_BASE}/rides/${params.rideId}/driver-no-show/start`, {
-                  method: "POST",
-                  headers: await fleetAuthHeadersJson(),
-                });
-                const body = (await res.json().catch(() => ({}))) as {
-                  ok?: boolean;
-                  error?: string;
-                  message?: string;
-                  finalizeAfterIso?: string;
-                };
-                if (!res.ok || !body.ok) {
-                  const code = typeof body.error === "string" ? body.error : "no_show_start_failed";
-                  Alert.alert("No-Show", driverRideStatusUserMessage(code, body) ?? code);
-                  return;
-                }
-                const endMs = body.finalizeAfterIso ? Date.parse(body.finalizeAfterIso) : Date.now() + 5 * 60_000;
-                setNoShowCountdownEndsAt(endMs);
-              } finally {
-                setNoShowBusy(false);
-              }
-            })();
-          },
-        },
-      ],
-    );
-  }, [noShowBusy, params.rideId]);
+  /** Countdown startet bei Annahme — hier nur Sync der Endzeit (kein „Kunde nicht da“-Button). */
+  useEffect(() => {
+    if (!params.rideId || isPrivateMemo || !isPickupPhase) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/rides/${params.rideId}/driver-no-show/start`, {
+          method: "POST",
+          headers: await fleetAuthHeadersJson(),
+        });
+        const body = (await res.json().catch(() => ({}))) as {
+          ok?: boolean;
+          finalizeAfterIso?: string;
+          countdownMinutes?: number;
+        };
+        if (cancelled || !res.ok || !body.ok) return;
+        const endMs = body.finalizeAfterIso
+          ? Date.parse(body.finalizeAfterIso)
+          : Date.now() + (Number(body.countdownMinutes) || 10) * 60_000;
+        if (Number.isFinite(endMs)) setNoShowCountdownEndsAt(endMs);
+      } catch {
+        /* optional Sync */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.rideId, isPrivateMemo, isPickupPhase]);
 
   const handleFahrtBeginnen = useCallback(async () => {
     try {
       await patchStatus("in_progress");
+      setNoShowCountdownEndsAt(null);
+      setShowArrivedWaitHint(false);
       trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
       setDriverNavigationPhaseParams({
         rideId: params.rideId,
@@ -1344,13 +1385,68 @@ export default function DriverNavigationScreen() {
       const required =
         s.required ||
         (activeRide ? rideRequiresPassengerPinClient(activeRide) : false);
+      const verified = s.verified || Boolean(activeRide?.passengerPinVerifiedAt);
       setPinRequired(required);
-      setPinVerified(s.verified || Boolean(activeRide?.passengerPinVerifiedAt));
+      setPinVerified(verified);
+      if (required && !verified && !pinModalAutoOpenedRef.current) {
+        pinModalAutoOpenedRef.current = true;
+        // Code-Modal erst nach der Ansage — sonst bricht iOS die Speech oft ab.
+        setTimeout(() => {
+          if (!cancelled) setShowPassengerPinModal(true);
+        }, 4500);
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [hasArrived, params.rideId, activeRide]);
+
+  /**
+   * Solange am Abholort nichts weitergeht (kein Losfahren): Ansage jede Minute wiederholen.
+   * Erste Ansage kommt bei „Angekommen“ — hier erst ab Minute 1.
+   */
+  useEffect(() => {
+    if (!hasArrived || !isPickupPhase || isPrivateMemo) return;
+    const id = setInterval(() => {
+      trySpeak(ARRIVED_PICKUP_SPEAK, soundRef.current, { priority: true });
+    }, ARRIVED_PICKUP_SPEAK_REPEAT_MS);
+    return () => clearInterval(id);
+  }, [hasArrived, isPickupPhase, isPrivateMemo]);
+
+  /** 5 Min. nach Ankunft: Meldung + Ansage (Chat / bitte losfahren). */
+  useEffect(() => {
+    if (!hasArrived || !isPickupPhase || isPrivateMemo) {
+      setShowArrivedWaitHint(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (arrivedWaitHintShownRef.current) return;
+      arrivedWaitHintShownRef.current = true;
+      setShowArrivedWaitHint(true);
+      trySpeak(
+        "Falls der Kunde nicht erscheint, können Sie im Chat schreiben. Bitte losfahren, wenn der Kunde da ist.",
+        soundRef.current,
+        { priority: true },
+      );
+      Alert.alert(
+        "Kunde nicht da?",
+        "Schreiben Sie dem Fahrgast im Chat. Wenn er da ist: Code nehmen und losfahren.",
+        rideChatEnabled
+          ? [
+              { text: "OK", style: "cancel" },
+              {
+                text: "Chat öffnen",
+                onPress: () => {
+                  clearChatUnread();
+                  setChatOpen(true);
+                },
+              },
+            ]
+          : [{ text: "OK" }],
+      );
+    }, 5 * 60_000);
+    return () => clearTimeout(timer);
+  }, [hasArrived, isPickupPhase, isPrivateMemo, clearChatUnread, rideChatEnabled]);
 
   const startRideBySlide = useCallback(async () => {
     if (hasTriggeredSlide.current) return;
@@ -2667,29 +2763,28 @@ export default function DriverNavigationScreen() {
                 <Feather name="x" size={22} color="#FFFFFF" />
               </Pressable>
             </View>
-            {isPickupPhase && hasArrived ? (
-              <>
-                {noShowCountdownEndsAt ? (
-                  <Text style={styles.noShowCountdownText}>
-                    No-Show in {Math.floor(noShowRemainingSec / 60)}:
-                    {String(noShowRemainingSec % 60).padStart(2, "0")} Min.
-                  </Text>
-                ) : null}
-                {!noShowCountdownEndsAt ? (
-                  <Pressable
-                    onPress={() => void handleNoShowStart()}
-                    disabled={noShowBusy}
-                    style={({ pressed }) => [
-                      styles.pickupAuxBtn,
-                      pressed && { backgroundColor: PICKUP_AUX_PRESSED_BG },
-                      noShowBusy && { opacity: 0.5 },
-                    ]}
-                  >
-                    <Feather name="user-x" size={18} color={PICKUP_AUX_ICON_RED} />
-                    <Text style={styles.pickupAuxBtnText}>Kunde nicht da</Text>
-                  </Pressable>
-                ) : null}
-              </>
+            {isPickupPhase && noShowCountdownEndsAt ? (
+              <Text style={styles.noShowCountdownText}>
+                {hasArrived ? "No-Show in" : "Wartezeit Kunde"}{" "}
+                {Math.floor(noShowRemainingSec / 60)}:
+                {String(noShowRemainingSec % 60).padStart(2, "0")} Min.
+                {!hasArrived && noShowRemainingSec <= 0 ? " — am Abholort tippen „Angekommen“" : ""}
+              </Text>
+            ) : null}
+            {isPickupPhase && hasArrived && showArrivedWaitHint ? (
+              <Pressable
+                onPress={() => {
+                  if (!rideChatEnabled) return;
+                  clearChatUnread();
+                  setChatOpen(true);
+                }}
+                style={styles.arrivedWaitHint}
+              >
+                <Feather name="message-circle" size={16} color="#B45309" />
+                <Text style={styles.arrivedWaitHintText}>
+                  Kunde nicht da? Im Chat schreiben — sonst Code nehmen und losfahren.
+                </Text>
+              </Pressable>
             ) : null}
           </View>
         </View>
@@ -3701,6 +3796,25 @@ const styles = StyleSheet.create({
     color: "#B45309",
     textAlign: "center",
     marginBottom: 2,
+  },
+  arrivedWaitHint: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFFBEB",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FCD34D",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  arrivedWaitHintText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#92400E",
+    lineHeight: 18,
   },
 
   /* Fare Modal */

@@ -65,8 +65,7 @@ export function DriverPassengerPinModal({ visible, rideId, onClose, onVerified }
             <Text style={styles.title}>Fahrgast-Code</Text>
           </View>
           <Text style={styles.hint}>
-            Bitte den 4-stelligen Code mündlich vom Fahrgast erfragen und hier eingeben. Erst danach
-            kann die Fahrt gestartet werden.
+            Bitte den 4-stelligen Code vom Fahrgast hier eingeben.
           </Text>
           <TextInput
             style={styles.input}
