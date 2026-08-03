@@ -3,9 +3,13 @@ import {
   listDriversEligibleForScheduledPoolOffer,
   listMarketOnlineDriversEligibleForInstantRide,
 } from "../db/fleetInstantRideMarketData";
-import { listFleetDriverExpoPushTokens } from "../db/fleetDriverExpoPushData";
-import { getFleetDriverMarketOnline } from "../db/fleetDriversData";
+import {
+  listFleetDriverExpoPushTokens,
+  listFleetDriverExpoPushTokensByDriverId,
+} from "../db/fleetDriverExpoPushData";
+import { findFleetDriverAuthRow, getFleetDriverMarketOnline } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "./dispatchStatus";
+import { logger } from "./logger";
 import { sendExpoPushMessages, type ExpoPushMessage } from "./expoPushGateway";
 
 /** Muss zu gebündeltem Sound in Mobile `app.json` → expo-notifications `sounds` passen. */
@@ -158,23 +162,72 @@ export async function notifyDriverRideCancelledByCustomer(
 
 /**
  * Kunde brach eine laufende Fahrt ab — Fahrer muss Taxameter-Endpreis eingeben (Navi bleibt offen).
+ * Loggt immer (auch bei 0 Tokens), damit pm2-grep „expo-push“ / „mid-trip-abort“ greift.
  */
 export async function notifyDriverRideAbortedAwaitingFare(
   fleetDriverId: string,
   companyId: string,
   rideId: string,
 ): Promise<void> {
-  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
-  if (tokens.length === 0) return;
+  const did = fleetDriverId.trim();
+  const cid = companyId.trim();
+  const rid = rideId.trim();
+  if (!did || !rid) {
+    logger.warn({ fleetDriverId: did, companyId: cid, rideId: rid }, "[expo-push] mid-trip-abort skipped: missing driver or ride");
+    return;
+  }
+
+  let tokens = cid ? await listFleetDriverExpoPushTokens(did, cid) : [];
+  let tokenSource: "company" | "driver_fallback" = "company";
+  if (tokens.length === 0) {
+    tokens = await listFleetDriverExpoPushTokensByDriverId(did);
+    tokenSource = "driver_fallback";
+  }
+
+  if (tokens.length === 0) {
+    logger.warn(
+      { fleetDriverId: did, companyId: cid || null, rideId: rid, tokenSource },
+      "[expo-push] mid-trip-abort skipped: no expo tokens for driver",
+    );
+    return;
+  }
+
+  logger.info(
+    { fleetDriverId: did, companyId: cid || null, rideId: rid, tokenCount: tokens.length, tokenSource },
+    "[expo-push] mid-trip-abort sending ride_aborted_awaiting_fare",
+  );
   await sendExpoPushMessages(
     tokens.map((to) => ({
       to,
       title: "Kunde hat abgebrochen",
       body: "Bitte den Betrag vom Taxameter eingeben.",
       priority: "high",
-      data: { kind: "ride_aborted_awaiting_fare", rideId },
+      data: { kind: "ride_aborted_awaiting_fare", rideId: rid },
     })),
   );
+  logger.info({ fleetDriverId: did, rideId: rid, tokenCount: tokens.length }, "[expo-push] mid-trip-abort send invoked");
+}
+
+/** company_id von der Fahrt oder aus fleet_drivers auflösen, dann Push. */
+export async function notifyAssignedDriverRideAbortedAwaitingFare(
+  ride: Pick<RideRequest, "id" | "driverId" | "companyId">,
+): Promise<void> {
+  const rideId = String(ride.id ?? "").trim();
+  const fleetDriverId = (ride.driverId ?? "").trim();
+  if (!rideId || !fleetDriverId) {
+    logger.warn({ rideId, fleetDriverId }, "[expo-push] mid-trip-abort skip: ride has no assigned driver");
+    return;
+  }
+  let companyId = (ride.companyId ?? "").trim();
+  if (!companyId) {
+    try {
+      const row = await findFleetDriverAuthRow(fleetDriverId);
+      companyId = (row?.company_id ?? "").trim();
+    } catch (err) {
+      logger.warn({ err, fleetDriverId, rideId }, "[expo-push] mid-trip-abort company resolve failed");
+    }
+  }
+  await notifyDriverRideAbortedAwaitingFare(fleetDriverId, companyId, rideId);
 }
 
 /** Zugewiesener Fahrer: Kunde hat das Ziel während der aktiven Fahrt geändert. */

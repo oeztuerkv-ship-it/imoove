@@ -584,6 +584,7 @@ export default function DriverNavigationScreen() {
   const [chatReplyTo, setChatReplyTo] = useState<RideChatReplyTarget | null>(null);
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
+  const abortFarePromptedRef = useRef(false);
 
   const rideChatEnabled = activeRide?.chatEnabled === true || rideChatEnabledLive;
   const {
@@ -1358,8 +1359,6 @@ export default function DriverNavigationScreen() {
   const enterAbortAwaitingFare = useCallback(() => {
     if (cancelHandledRef.current) return;
     setRideFleetStatus("customer_abort_pending_fare");
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    trySpeak("Kunde hat die Fahrt abgebrochen. Bitte Taxameter-Preis eingeben.", soundRef.current);
     setFareInput(
       defaultDriverFareInputForCompletion(
         "customer_abort_pending_fare",
@@ -1368,6 +1367,10 @@ export default function DriverNavigationScreen() {
       ),
     );
     setShowFareModal(true);
+    if (abortFarePromptedRef.current) return;
+    abortFarePromptedRef.current = true;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    trySpeak("Kunde hat die Fahrt abgebrochen. Bitte Taxameter-Preis eingeben.", soundRef.current);
     Alert.alert(
       "Kunde hat abgebrochen",
       "Bitte den Betrag vom Taxameter eingeben.",
@@ -1664,6 +1667,7 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     if (!params.rideId) return;
     cancelHandledRef.current = false;
+    abortFarePromptedRef.current = false;
     void probeFleetRideCancel();
     const timer = setInterval(() => void probeFleetRideCancel(), 2000);
     return () => clearInterval(timer);

@@ -4,7 +4,9 @@ globs:
   - artifacts/api-server/src/lib/rideMidTripAbortFare.ts
   - artifacts/api-server/src/lib/rideStatusMachine.ts
   - artifacts/api-server/src/routes/rides.ts
+  - artifacts/api-server/src/lib/driverRideExpoPush.ts
   - artifacts/mobile/app/driver/navigation.tsx
+  - artifacts/mobile/context/RideRequestContext.tsx
   - artifacts/mobile/utils/driverLiveNavigation.ts
   - artifacts/mobile/utils/customerRideListFilters.ts
 alwaysApply: false
@@ -29,12 +31,34 @@ Nach PIN / Status `in_progress` ist die Fahrt gestartet. Kunden-Abbruch ist **ke
 | Migration `143_rides_customer_mid_trip_abort.sql` | Spalte `customer_mid_trip_abort_at` |
 | `lib/rideMidTripAbortFare.ts` | Min-Fare Floor |
 | `cancelRideForVerifiedCustomerSession` / PATCH status | Zwei-Phasen-Flow |
-| `notifyDriverRideAbortedAwaitingFare` | Push |
-| Mobile `navigation.tsx` | Modal statt Exit |
+| `notifyAssignedDriverRideAbortedAwaitingFare` | Push (+ company resolve, Token-Fallback, Logs) |
+| Mobile `navigation.tsx` | Modal statt Exit; Poll `live-status` |
+| `RideRequestContext.cancelRequest` | Optimistic `customer_abort_pending_fare` + lokale Abort-Notify |
 | Admin `midTripAbort=1` / `groupBy=driver` | Monitoring |
+| `scripts/finalize-mid-trip-abort-ride.sh` | Ops: hängende Pending-Fahrten abschließen |
+
+## Postmortem (Push „fehlt“ / Navi ohne Modal)
+
+**Symptom:** Status korrekt `customer_abort_pending_fare`, aber kein pm2-Treffer für `ride_aborted_awaiting_fare`, Fahrer-Modal öffnet nicht.
+
+**Ursachen (kombiniert):**
+
+1. **Logging:** Erfolgreiche Expo-Sends loggten den Kind-String **nicht** — `grep ride_aborted_awaiting_fare` war auch bei erfolgreichem Push leer. Jetzt: immer `[expo-push] mid-trip-abort …`.
+2. **Push-Gate:** Aufruf nur bei `fleetDriverId && companyId` — fehlende `company_id` auf der Ride → Push **still übersprungen**. Fix: `notifyAssignedDriverRideAbortedAwaitingFare` resolved company aus `fleet_drivers`, Token-Fallback `listFleetDriverExpoPushTokensByDriverId`.
+3. **Gleiches Gerät Kunde+Fahrer:** `cancelRequest` setzte optimistisch `cancelled_by_customer` und rief `notifyDriverRideCancelledByCustomer` → Navi **Exit** statt Fare-Modal. Fix: Mid-Trip → optimistic Pending + `notifyDriverRideAbortedAwaitingFare`.
+
+**Abhängigkeiten:** API-Deploy vor erneutem Live-Test; Mobile-OTA für Context/Navi.
+
+## Ops: hängende Pending-Fahrt
+
+```bash
+ADMIN_API_BEARER_TOKEN=… FINAL_FARE_EUR=5.00 \
+  ./scripts/finalize-mid-trip-abort-ride.sh REQ-…
+```
 
 ## Abnahme
 
 - Kunde storniert während `in_progress` → Pending, nicht sofort terminal ohne Fare
 - Fahrer sieht Alert + muss Betrag eingeben; 0 € wird auf Mindestfahrpreis angehoben
+- pm2: nach Abbruch Logzeile `[expo-push] mid-trip-abort sending` (oder `skipped: no expo tokens`)
 - Admin: Filter „Storno nach Fahrtantritt“, Gruppierung nach Fahrer

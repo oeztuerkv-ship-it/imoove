@@ -85,6 +85,27 @@ export async function listFleetDriverExpoPushTokens(fleetDriverId: string, compa
   return rows.map((r) => r.t).filter((t) => typeof t === "string" && t.length > 0);
 }
 
+/** Fallback wenn company_id auf der Fahrt fehlt oder Token unter anderem Mandanten liegt. */
+export async function listFleetDriverExpoPushTokensByDriverId(fleetDriverId: string): Promise<string[]> {
+  const db = getDb();
+  if (!db) return [];
+  const did = fleetDriverId.trim();
+  if (!did) return [];
+  const rows = await db
+    .select({ t: fleetDriverExpoPushTokensTable.expo_push_token })
+    .from(fleetDriverExpoPushTokensTable)
+    .where(eq(fleetDriverExpoPushTokensTable.fleet_driver_id, did));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const t = typeof r.t === "string" ? r.t.trim() : "";
+    if (!t || seen.has(t) || !isLikelyExponentPushToken(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
 /** Logout / Abmelden: keine Fahrer-Pushes mehr an dieses Konto. */
 export async function deleteFleetDriverExpoPushTokens(
   fleetDriverId: string,

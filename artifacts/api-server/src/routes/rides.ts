@@ -107,7 +107,7 @@ import {
 import { initialDispatchTierFieldsForRide } from "../lib/dispatchPriorityTier";
 import {
   notifyDriverFollowUpOffer,
-  notifyDriverRideAbortedAwaitingFare,
+  notifyAssignedDriverRideAbortedAwaitingFare,
   notifyDriverRideCancelledByCustomer,
   notifyMarketOnlineDriversInstantRideOffer,
 } from "../lib/driverRideExpoPush";
@@ -3114,11 +3114,9 @@ export async function patchRideStatusRoute(
     if (cur.status !== nextStatus) {
       broadcastRideStatusChange(id, nextStatus, cur.status);
       if (nextStatus === "customer_abort_pending_fare") {
-        const fleetDriverId = (updated.driverId ?? cur.driverId ?? "").trim();
-        const companyId = (updated.companyId ?? cur.companyId ?? "").trim();
-        if (fleetDriverId && companyId) {
-          void notifyDriverRideAbortedAwaitingFare(fleetDriverId, companyId, id).catch(() => undefined);
-        }
+        void notifyAssignedDriverRideAbortedAwaitingFare(updated).catch((err) => {
+          logger.warn({ err, rideId: id }, "[expo-push] mid-trip-abort notify failed (status patch)");
+        });
       } else if (nextStatus === "cancelled_by_customer" && !isMidTripAbortFinalize) {
         const fleetDriverId = (updated.driverId ?? cur.driverId ?? "").trim();
         const companyId = (updated.companyId ?? cur.companyId ?? "").trim();
@@ -3238,11 +3236,9 @@ export async function cancelRideForVerifiedCustomerSession(
     });
     customerCancelReasons.set(id, cancelReasonClean);
     broadcastRideStatusChange(id, nextPending, cur.status);
-    const fleetDriverId = (updatedPending.driverId ?? cur.driverId ?? "").trim();
-    const companyId = (updatedPending.companyId ?? cur.companyId ?? "").trim();
-    if (fleetDriverId && companyId) {
-      void notifyDriverRideAbortedAwaitingFare(fleetDriverId, companyId, id).catch(() => undefined);
-    }
+    void notifyAssignedDriverRideAbortedAwaitingFare(updatedPending).catch((err) => {
+      logger.warn({ err, rideId: id }, "[expo-push] mid-trip-abort notify failed (customer cancel)");
+    });
     void evaluateCustomerCancellationSuspensionAfterCancel(pax).catch(() => undefined);
     return { ok: true, ride: updatedPending, cancelReason: cancelReasonClean };
   }

@@ -1623,24 +1623,30 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         typeof cancelReason === "string" && cancelReason.trim().length > 0
           ? cancelReason.trim()
           : "Storno durch Kunden-App";
+      const prev = requests.find((r) => r.id === id) ?? driverMarketRequests.find((r) => r.id === id);
+      const midTripAbort = prev?.status === "in_progress";
+      const optimisticStatus: RequestStatus = midTripAbort
+        ? "customer_abort_pending_fare"
+        : "cancelled_by_customer";
       // Optimistisch sofort aus "aktiv" rausnehmen, damit Such-UI direkt endet.
-      setRequests((prev) =>
-        prev.map((r) =>
+      // Mid-Trip: Pending (Fahrer tippt Taxameter) — nicht finales Storno.
+      setRequests((prevList) =>
+        prevList.map((r) =>
           r.id === id
             ? {
                 ...r,
-                status: "cancelled_by_customer",
+                status: optimisticStatus,
                 cancelReason: reason,
               }
             : r,
         ),
       );
-      setDriverMarketRequests((prev) =>
-        prev.map((r) =>
+      setDriverMarketRequests((prevList) =>
+        prevList.map((r) =>
           r.id === id
             ? {
                 ...r,
-                status: "cancelled_by_customer",
+                status: optimisticStatus,
                 cancelReason: reason,
               }
             : r,
@@ -1648,14 +1654,20 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       );
       try {
         await patchStatus(id, "cancelled_by_customer", finalFare, undefined, reason);
-        notifyDriverRideCancelledByCustomer(id, reason);
+        if (midTripAbort) {
+          // Gleiches Gerät Kunde+Fahrer: Fare-Modal öffnen, nicht Navi beenden.
+          notifyDriverRideAbortedAwaitingFare(id);
+        } else {
+          notifyDriverRideCancelledByCustomer(id, reason);
+        }
+        await fetchAll();
       } catch (err) {
         // Bei Fehler wieder vom Server synchronisieren, damit kein lokaler Zombie-State bleibt.
         await fetchAll();
         throw err;
       }
     },
-    [fetchAll, patchStatus],
+    [driverMarketRequests, fetchAll, patchStatus, requests],
   );
 
   const driverCancelRequest = useCallback(
