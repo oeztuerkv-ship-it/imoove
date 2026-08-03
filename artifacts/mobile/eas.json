@@ -41,7 +41,8 @@
       },
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
