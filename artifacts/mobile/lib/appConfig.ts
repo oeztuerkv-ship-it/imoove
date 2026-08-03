@@ -117,6 +117,18 @@ const DEFAULT: OnrodaAppConfig = {
       "Onroda vermittelt Fahrten zwischen Fahrgästen und unabhängigen Taxi- bzw. Mietwagenunternehmen. Der Beförderungsvertrag kommt ausschließlich zwischen dem Fahrgast und dem jeweiligen Beförderer zustande. Onroda ist nicht Vertragspartner der Beförderung und übernimmt keine Haftung für deren Durchführung.",
     minAppVersionHint: null,
     emergencyShutdown: false,
+    mobileApp: {
+      ios: {
+        recommendedVersion: "1.0.3",
+        minVersion: null,
+        storeUrl: "https://apps.apple.com/de/app/onroda/id6773487513",
+      },
+      android: {
+        recommendedVersion: "1.0.3",
+        minVersion: null,
+        storeUrl: "https://play.google.com/store/apps/details?id=com.vedat.Onroda",
+      },
+    },
   },
   medicalTransportAvailable: false,
 };

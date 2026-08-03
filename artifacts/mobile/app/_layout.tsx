@@ -24,6 +24,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AppUpdateCoordinator } from "@/components/AppUpdateCoordinator";
 import { IntroSplash, wasIntroSplashShownThisSession } from "@/components/IntroSplash";
 import { SessionRestoreCoordinator } from "@/components/SessionRestoreCoordinator";
 import { StripeRootProvider } from "@/components/StripeRootProvider";
@@ -157,6 +158,7 @@ export default function RootLayout() {
               <UserProvider>
                 <StripeRootProvider>
                   <AppConfigProvider>
+                    <AppUpdateCoordinator />
                     <DriverProvider>
                       <RideRequestProvider>
                         <RideProvider>

@@ -4,6 +4,22 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const URL = `${API_BASE}/admin/app-operational`;
 
+function platformFields(s, plat) {
+  const mobile = s.mobileApp && typeof s.mobileApp === "object" ? s.mobileApp : {};
+  const row = mobile[plat] && typeof mobile[plat] === "object" ? mobile[plat] : {};
+  return row;
+}
+
+function setPlatformField(setS, plat, key, value) {
+  setS((p) => {
+    const mobile = p.mobileApp && typeof p.mobileApp === "object" ? { ...p.mobileApp } : {};
+    const row = mobile[plat] && typeof mobile[plat] === "object" ? { ...mobile[plat] } : {};
+    row[key] = value;
+    mobile[plat] = row;
+    return { ...p, mobileApp: mobile };
+  });
+}
+
 export default function AppOperationalSystemPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,13 +59,16 @@ export default function AppOperationalSystemPage() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.ok) throw new Error(j?.error || "Speichern fehlgeschlagen");
-      setOk("System-Flags gespeichert. POST /rides und Health prüfen blockNewBookings, emergencyShutdown, Apps.");
+      setOk("System-Flags gespeichert. Mobile liest GET /app/config → system (inkl. mobileApp).");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
     }
   };
 
   if (loading) return <div className="admin-page"><p className="admin-table-sub">Laden …</p></div>;
+
+  const ios = platformFields(s, "ios");
+  const android = platformFields(s, "android");
 
   return (
     <div className="admin-page">
@@ -58,8 +77,8 @@ export default function AppOperationalSystemPage() {
       <div className="admin-panel-card">
         <div className="admin-panel-card__title">System / Wartung</div>
         <p className="admin-table-sub" style={{ lineHeight: 1.5 }}>
-          <code>emergencyShutdown</code> = harte Sperrung (wirkt wie 503/400 auf Buchungs-API, siehe Rides-Route).{" "}
-          <code>minAppVersionHint</code> = reiner Anzeigewert in der Kunden-App, Hard-Enforcement optional später.
+          <code>emergencyShutdown</code> = harte Sperrung.{" "}
+          <code>system.mobileApp</code> = Store-Versions-Hinweise (empfohlen / Pflicht) für iOS & Android — getrennt von OTA.
         </p>
         <div className="admin-form-vertical" style={{ maxWidth: 520, marginTop: 12 }}>
           {[
@@ -92,7 +111,7 @@ export default function AppOperationalSystemPage() {
             />
           </label>
           <label className="admin-form-label" style={{ display: "block", marginTop: 8 }}>
-            Mindest-App-Version (Hinweis, z. B. 1.0.0 — leer = kein)
+            Legacy: Mindest-App-Version (Hinweis, Fallback wenn mobileApp leer)
             <input
               className="admin-input"
               style={{ maxWidth: 200, marginTop: 4, display: "block" }}
@@ -104,11 +123,64 @@ export default function AppOperationalSystemPage() {
             />
           </label>
         </div>
+
+        <div className="admin-panel-card__title" style={{ marginTop: 28 }}>Mobile Store-Versionen</div>
+        <p className="admin-table-sub" style={{ lineHeight: 1.5 }}>
+          Empfohlen = Soft-Dialog (Später / Aktualisieren). Pflicht (<code>minVersion</code>) = blockierend.
+          Nach Store-Release hier die neue Versionsnummer setzen (z. B. 1.0.3).
+        </p>
+        {[
+          ["ios", "iOS", ios],
+          ["android", "Android", android],
+        ].map(([plat, label, row]) => (
+          <div key={plat} className="admin-form-vertical" style={{ maxWidth: 560, marginTop: 16 }}>
+            <strong>{label}</strong>
+            <label className="admin-form-label" style={{ display: "block", marginTop: 8 }}>
+              Empfohlene Version
+              <input
+                className="admin-input"
+                style={{ maxWidth: 160, marginTop: 4, display: "block" }}
+                value={row.recommendedVersion == null ? "" : String(row.recommendedVersion)}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  setPlatformField(setS, plat, "recommendedVersion", v === "" ? null : v);
+                }}
+                placeholder="1.0.3"
+              />
+            </label>
+            <label className="admin-form-label" style={{ display: "block", marginTop: 8 }}>
+              Pflicht-Mindestversion (leer = keine Pflicht)
+              <input
+                className="admin-input"
+                style={{ maxWidth: 160, marginTop: 4, display: "block" }}
+                value={row.minVersion == null ? "" : String(row.minVersion)}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  setPlatformField(setS, plat, "minVersion", v === "" ? null : v);
+                }}
+                placeholder="leer"
+              />
+            </label>
+            <label className="admin-form-label" style={{ display: "block", marginTop: 8 }}>
+              Store-URL
+              <input
+                className="admin-input"
+                style={{ marginTop: 4, display: "block", width: "100%" }}
+                value={row.storeUrl == null ? "" : String(row.storeUrl)}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  setPlatformField(setS, plat, "storeUrl", v === "" ? null : v);
+                }}
+              />
+            </label>
+          </div>
+        ))}
+
         <button type="button" className="admin-btn admin-btn--primary" style={{ marginTop: 20 }} onClick={save}>
           Speichern
         </button>
         <p className="admin-table-sub" style={{ marginTop: 8 }}>
-          <code>GET {API_BASE}/app/config</code> → <code>system</code> — Apps lesen, API erzwingt.
+          <code>GET {API_BASE}/app/config</code> → <code>system.mobileApp</code>
         </p>
       </div>
     </div>

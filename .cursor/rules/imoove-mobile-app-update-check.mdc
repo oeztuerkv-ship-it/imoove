@@ -1,0 +1,33 @@
+---
+description: Mobile — OTA-Hinweis + Store-Versions-Check beim App-Start
+globs:
+  - artifacts/mobile/utils/appUpdateCheck.ts
+  - artifacts/mobile/components/AppUpdateCoordinator.tsx
+  - artifacts/mobile/app/_layout.tsx
+  - artifacts/api-server/src/db/appOperationalData.ts
+  - artifacts/admin-panel/src/pages/AppOperationalSystemPage.jsx
+alwaysApply: false
+---
+
+# Mobile: Update-Check (OTA + Store)
+
+## OTA (gleiche `runtimeVersion` / appVersion)
+
+- `AppUpdateCoordinator` → `runOtaUpdateCheck` (`expo-updates`)
+- Nur Production (`!__DEV__`, `Updates.isEnabled`)
+- Flow: check → fetch → Alert „Update installiert…“ → `reloadAsync`
+
+## Store (neue Native-Version, z. B. 1.0.2 → 1.0.3)
+
+- Config: `GET /app/config` → `system.mobileApp.{ios|android}`
+  - `recommendedVersion` — Soft-Dialog (Später 24 h / Aktualisieren)
+  - `minVersion` — blockierend (nur Store-Button)
+  - `storeUrl` — App Store / Play Store
+- Vergleich: installierte `Constants.nativeAppVersion` vs. Config (semver-ähnlich)
+- Admin: **System / Wartung** → „Mobile Store-Versionen“
+
+## Nach Store-Release
+
+1. Native Build mit neuer `version` / `buildNumber` einreichen
+2. Nach Live-Schaltung: Admin `recommendedVersion` (und ggf. `minVersion`) anheben
+3. OTA bleibt für JS-Fixes auf derselben `appVersion`

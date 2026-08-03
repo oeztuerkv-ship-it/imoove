@@ -176,8 +176,25 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     allowCustomerApp: true,
     globalNoticeDe:
       "Onroda vermittelt Fahrten zwischen Fahrgästen und unabhängigen Taxi- bzw. Mietwagenunternehmen. Der Beförderungsvertrag kommt ausschließlich zwischen dem Fahrgast und dem jeweiligen Beförderer zustande. Onroda ist nicht Vertragspartner der Beförderung und übernimmt keine Haftung für deren Durchführung.",
+    /** @deprecated Nutze mobileApp.*.recommendedVersion — bleibt für alte Clients. */
     minAppVersionHint: null as string | null,
     emergencyShutdown: false,
+    /**
+     * Store-Versions-Hinweise (nicht OTA). Soft: recommendedVersion; hart: minVersion.
+     * Admin: System / Wartung.
+     */
+    mobileApp: {
+      ios: {
+        recommendedVersion: "1.0.3",
+        minVersion: null as string | null,
+        storeUrl: "https://apps.apple.com/de/app/onroda/id6773487513",
+      },
+      android: {
+        recommendedVersion: "1.0.3",
+        minVersion: null as string | null,
+        storeUrl: "https://play.google.com/store/apps/details?id=com.vedat.Onroda",
+      },
+    },
   },
 };
 
@@ -935,6 +952,20 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
   /** Kundensicht: Transportschein-Scan technisch nutzbar (nicht an Mandanten-KK-Freigabe gekoppelt). */
   const medicalTransportAvailable = isCustomerMedicalTransportScanAvailable();
 
+  const systemSec = section("system");
+  const defSys = DEFAULT_PAYLOAD.system as Record<string, unknown>;
+  const defMobile = isPlainObject(defSys.mobileApp) ? (defSys.mobileApp as Record<string, unknown>) : {};
+  const rawMobile = isPlainObject(systemSec.mobileApp) ? (systemSec.mobileApp as Record<string, unknown>) : {};
+  const mergePlatform = (plat: "ios" | "android") => {
+    const d = isPlainObject(defMobile[plat]) ? (defMobile[plat] as Record<string, unknown>) : {};
+    const o = isPlainObject(rawMobile[plat]) ? (rawMobile[plat] as Record<string, unknown>) : {};
+    return { ...d, ...o };
+  };
+  systemSec.mobileApp = {
+    ios: mergePlatform("ios"),
+    android: mergePlatform("android"),
+  };
+
   return {
     ok: true,
     version: typeof v === "number" && Number.isFinite(v) ? v : 1,
@@ -949,7 +980,7 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     features: section("features"),
     driverRules: section("driverRules"),
     bookingRules: section("bookingRules"),
-    system: section("system"),
+    system: systemSec,
     medicalTransportAvailable,
   };
 }
