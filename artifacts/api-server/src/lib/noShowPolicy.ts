@@ -28,3 +28,14 @@ export function resolveNoShowPolicy(opPayload: { bookingRules?: unknown }): NoSh
       : DEFAULT_NO_SHOW.feeEur;
   return { minWaitBeforeStartMinutes: minWait, countdownMinutes: countdown, feeEur: fee };
 }
+
+/** Gesamte No-Show-Wartezeit ab Fahrtannahme (früher: Wartezeit am Ort + Countdown). */
+export function noShowTotalMinutesFromAccept(policy: NoShowPolicy): number {
+  return Math.max(1, policy.minWaitBeforeStartMinutes + policy.countdownMinutes);
+}
+
+export function noShowFinalizeAfterIso(countdownStartedAtIso: string, policy: NoShowPolicy): string {
+  const startedMs = Date.parse(countdownStartedAtIso);
+  const base = Number.isFinite(startedMs) ? startedMs : Date.now();
+  return new Date(base + noShowTotalMinutesFromAccept(policy) * 60_000).toISOString();
+}

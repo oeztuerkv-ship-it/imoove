@@ -197,10 +197,13 @@ import {
   shouldNotifyPassengerReservationExpired,
 } from "../lib/passengerRideExpoPush";
 import { broadcastRideStatusChange, broadcastToRideRoom } from "../wsRideSocketHub";
-import { resolveNoShowPolicy } from "../lib/noShowPolicy";
+import {
+  noShowFinalizeAfterIso,
+  noShowTotalMinutesFromAccept,
+  resolveNoShowPolicy,
+} from "../lib/noShowPolicy";
 import {
   computeWaitingChargeForRide,
-  liveWaitingMinutesSince,
   resolveWaitingEurPerHour,
 } from "../lib/waitingTimeCharge";
 import { isSessionJwtConfigured, verifySessionJwt } from "../lib/sessionJwt";
@@ -1234,11 +1237,13 @@ router.post("/rides/:id/driver-no-show/start", requireFleetDriverAuth, async (re
       res.status(404).json({ ok: false, error: "not_found" });
       return;
     }
-    if (ride.status !== "driver_waiting") {
+    /** Countdown startet bei Annahme — Sync/Fallback in Pickup-Phasen. */
+    const allowed = new Set(["accepted", "driver_arriving", "driver_waiting"]);
+    if (!allowed.has(ride.status)) {
       res.status(409).json({
         ok: false,
         error: "no_show_invalid_status",
-        message: "No-Show nur möglich, wenn Sie am Abholort warten.",
+        message: "No-Show-Countdown nur während der Anfahrt / am Abholort.",
       });
       return;
     }
@@ -1249,38 +1254,25 @@ router.post("/rides/:id/driver-no-show/start", requireFleetDriverAuth, async (re
     }
     const opPayload = await getOperationalConfigPayload();
     const policy = resolveNoShowPolicy(opPayload);
-    const waitingSince = ride.driverWaitingStartedAt ?? null;
-    if (!waitingSince) {
-      res.status(409).json({ ok: false, error: "driver_waiting_since_missing" });
-      return;
+    let countdownStartedAt = ride.noShowCountdownStartedAt ?? null;
+    if (!countdownStartedAt) {
+      countdownStartedAt = new Date().toISOString();
+      const updated = await updateRide(
+        rideId,
+        { noShowCountdownStartedAt: countdownStartedAt },
+        { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
+      );
+      if (!updated) {
+        res.status(500).json({ ok: false, error: "update_failed" });
+        return;
+      }
     }
-    const waitedMin = liveWaitingMinutesSince(waitingSince);
-    if (waitedMin < policy.minWaitBeforeStartMinutes) {
-      res.status(409).json({
-        ok: false,
-        error: "no_show_wait_too_short",
-        message: `Bitte noch ${policy.minWaitBeforeStartMinutes - waitedMin} Min. am Abholort warten.`,
-        waitedMinutes: waitedMin,
-        requiredMinutes: policy.minWaitBeforeStartMinutes,
-      });
-      return;
-    }
-    const countdownStartedAt = new Date().toISOString();
-    const updated = await updateRide(
-      rideId,
-      { noShowCountdownStartedAt: countdownStartedAt },
-      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
-    );
-    if (!updated) {
-      res.status(500).json({ ok: false, error: "update_failed" });
-      return;
-    }
-    const finalizeAfterMs = Date.now() + policy.countdownMinutes * 60_000;
+    const finalizeAfterIso = noShowFinalizeAfterIso(countdownStartedAt, policy);
     res.json({
       ok: true,
       countdownStartedAt,
-      finalizeAfterIso: new Date(finalizeAfterMs).toISOString(),
-      countdownMinutes: policy.countdownMinutes,
+      finalizeAfterIso,
+      countdownMinutes: noShowTotalMinutesFromAccept(policy),
       feeEur: policy.feeEur,
     });
   } catch (e) {
@@ -1315,14 +1307,14 @@ router.post("/rides/:id/driver-no-show/finalize", requireFleetDriverAuth, async 
       res.status(409).json({
         ok: false,
         error: "no_show_countdown_not_started",
-        message: "Bitte zuerst „Kunde nicht da“ starten.",
+        message: "No-Show-Countdown ist noch nicht gestartet (startet bei Fahrtannahme).",
       });
       return;
     }
     const opPayload = await getOperationalConfigPayload();
     const policy = resolveNoShowPolicy(opPayload);
     const elapsedMs = Date.now() - Date.parse(countdownStarted);
-    const requiredMs = policy.countdownMinutes * 60_000;
+    const requiredMs = noShowTotalMinutesFromAccept(policy) * 60_000;
     if (!Number.isFinite(elapsedMs) || elapsedMs < requiredMs - 500) {
       const remainingSec = Math.max(1, Math.ceil((requiredMs - Math.max(0, elapsedMs)) / 1000));
       res.status(409).json({
@@ -2879,6 +2871,11 @@ export async function patchRideStatusRoute(
           ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
           ...(nextStatus === "driver_waiting" && cur.status !== "driver_waiting"
             ? { driverWaitingStartedAt: new Date().toISOString() }
+            : {}),
+          ...(nextStatus === "accepted" &&
+          cur.status !== "accepted" &&
+          !cur.noShowCountdownStartedAt
+            ? { noShowCountdownStartedAt: new Date().toISOString() }
             : {}),
           ...(nextStatus === "customer_abort_pending_fare" && !cur.customerMidTripAbortAt
             ? { customerMidTripAbortAt: new Date().toISOString() }

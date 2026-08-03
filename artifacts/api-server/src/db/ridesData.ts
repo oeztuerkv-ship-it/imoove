@@ -1706,6 +1706,9 @@ export async function tryFleetAcceptRideAtomic(input: {
       status: nextStatus,
       driverId,
       companyId: (cur.companyId ?? "").trim() || fleetDriverCompanyId || null,
+      ...(nextStatus === "accepted" && !cur.noShowCountdownStartedAt
+        ? { noShowCountdownStartedAt: new Date().toISOString() }
+        : {}),
     };
     memoryRides[idx] = next;
     const { applyRideChatOnFleetDriverAccept } = await import("./rideChatMessagesData.js");
@@ -1733,6 +1736,10 @@ export async function tryFleetAcceptRideAtomic(input: {
     .set({
       status: nextStatusExpr,
       driver_id: driverId,
+      no_show_countdown_started_at: sql`CASE
+        WHEN ${ridesTable.status} = 'scheduled' THEN ${ridesTable.no_show_countdown_started_at}
+        ELSE COALESCE(${ridesTable.no_show_countdown_started_at}, NOW())
+      END`,
       ...(existingRideCompanyId
         ? {}
         : { company_id: fleetDriverCompanyId }),
