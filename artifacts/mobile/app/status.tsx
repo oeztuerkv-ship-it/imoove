@@ -189,6 +189,8 @@ const SEARCH_RING_BORDER = 2.5;
 const NO_DRIVER_WAIT_MS = 60_000;
 /** Storno-Grund für API + Anzeige, wenn die Fahrersuche ohne Annahme endet. */
 const NO_DRIVER_CANCEL_REASON = "Kein Fahrer gefunden";
+/** Nach Fahrer-Absage: Buchung beenden, eine Kundenmeldung, zurück zum Menü. */
+const DRIVER_ABORTED_EXIT_REASON = "Fahrer hat abgesagt";
 
 function geoFromRideRequest(
   shortLabel: string,
@@ -1459,6 +1461,7 @@ export default function StatusScreen() {
   /**
    * Keine Fahrerannahme: nach Wartezeit automatisch stornieren (aus aktiven Fahrten raus),
    * Meldung „Kein Fahrer gefunden!“, dann zurück zur Startseite.
+   * Nicht nach Fahrer-Absage/Re-Suche (Szenario C) — dort gilt die Reassign-Meldung.
    */
   useEffect(() => {
     if (customerPhase !== "searching") return;
@@ -1471,11 +1474,15 @@ export default function StatusScreen() {
       const list = requestsRef.current;
       const ride = id ? list.find((r) => r.id === id) : undefined;
       if (!id || !ride) return;
+      // Nach Soft-Storno durch Fahrer (Szenario C): weiter suchen, kein „Kein Fahrer gefunden“.
+      if (handledDriverReassignedRef.current === id) return;
       const stillOpen = new Set<RideRequest["status"]>(["searching_driver", "offered", "requested", "pending"]);
       if (!stillOpen.has(ride.status)) return;
       void (async () => {
         try {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          // Verhindert zweites Alert aus ride_cancelled-Effect (gleicher Storno).
+          handledRideCancelledRef.current = id;
           await cancelRequestRef.current(id, undefined, NO_DRIVER_CANCEL_REASON);
           await refreshRequestsRef.current();
           finishCancelLocally();
@@ -1550,7 +1557,8 @@ export default function StatusScreen() {
   }, [currentRideId]);
 
   /**
-   * Szenario C: Fahrer hat abgesagt → DB `searching_driver`, Kunde bleibt auf Such-Screen.
+   * Szenario C: Fahrer hat abgesagt → eine Meldung, Buchung beenden, zurück zum Menü.
+   * Keine weitere Suche / keine zusätzlichen Storno-Alerts.
    */
   useEffect(() => {
     if (customerPhase !== "searching") return;
@@ -1560,18 +1568,35 @@ export default function StatusScreen() {
     const ride = requests.find((r) => r.id === id) ?? rideMatchingCurrentId;
     if (!ride || !isCustomerOpenDispatchStatus(ride.status)) return;
     handledDriverReassignedRef.current = id;
+    handledRideCancelledRef.current = id;
     hadDriverPhaseForRideRef.current = null;
     stickyAcceptedRef.current = null;
     disconnectSocket();
     setDriverMarker(null);
-    setDriverReassignedBanner(true);
+    setDriverReassignedBanner(false);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert(
-      "Neuer Fahrer gesucht",
-      "Fahrer hat abgesagt — wir suchen einen neuen Fahrer",
-      [{ text: "OK" }],
-      { cancelable: true },
-    );
+    void (async () => {
+      try {
+        await cancelRequestRef.current(id, undefined, DRIVER_ABORTED_EXIT_REASON);
+        await refreshRequestsRef.current();
+      } catch {
+        /* UI trotzdem beenden */
+      }
+      if (cancelFlowStartedRef.current) return;
+      Alert.alert(
+        "Fahrt storniert",
+        "Bitte starte die Suche erneut.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              finishCancelLocally();
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    })();
   }, [customerPhase, currentRideId, requests, rideMatchingCurrentId]);
 
   /**
@@ -1596,6 +1621,11 @@ export default function StatusScreen() {
       typeof ride.cancelReason === "string" && ride.cancelReason.trim().length > 0
         ? ride.cancelReason.trim()
         : null;
+    // Timeout- / Fahrer-Absage-Storno hat schon die einzige Kundenmeldung — kein zweites Alert.
+    if (reason === NO_DRIVER_CANCEL_REASON || reason === DRIVER_ABORTED_EXIT_REASON) {
+      finishCancelLocally();
+      return;
+    }
     let title = "Fahrt beendet";
     let message = "Die Fahrt wurde beendet.";
     if (isCustomerAbortPendingFareStatus(ride.status)) {
@@ -2088,7 +2118,7 @@ export default function StatusScreen() {
                 <Text style={styles.searchCardTitle}>Suche Fahrer...</Text>
                 <Text style={styles.searchCardSub}>
                   {driverReassignedBanner
-                    ? "Fahrer hat abgesagt — wir suchen einen neuen Fahrer"
+                    ? "Bitte starte die Suche erneut."
                     : "Deine Anfrage wird bearbeitet"}
                 </Text>
               </View>
