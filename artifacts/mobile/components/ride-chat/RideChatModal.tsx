@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
     padding: 16,
   },
   card: {
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     padding: 16,
     gap: 12,
-    maxHeight: "88%",
+    maxHeight: "78%",
   },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#111827" },

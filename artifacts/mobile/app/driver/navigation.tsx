@@ -45,7 +45,6 @@ import {
   setDriverNavigationPhaseParams,
 } from "@/utils/driverNavigationRoute";
 import { driverScheduledPassengerLines } from "@/utils/passengerDisplayLabel";
-import { driverPaymentMethodLabelDe } from "@/utils/driverPaymentMethodLabel";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import { RideChatModal } from "@/components/ride-chat/RideChatModal";
 import { RideChatReplyBanner } from "@/components/ride-chat/RideChatReplyBanner";
@@ -179,37 +178,37 @@ type NavPaymentUi = {
 
 function resolveNavPaymentUi(paymentMethod: string): NavPaymentUi {
   const pm = (paymentMethod ?? "").trim();
-  const lower = pm.toLowerCase();
-  if (lower.startsWith("krankenkasse") || lower.includes("kv") || lower.includes("voucher")) {
-    return { icon: "ticket-percent-outline", label: "Krankenkasse", iconColor: "#007AFF", chipBg: "#E8F2FF" };
+  const lower = pm.toLowerCase().replace(/_/g, " ");
+
+  if (lower.startsWith("krankenkasse") || lower.includes("kv") || lower.includes("voucher") || lower.includes("transportschein")) {
+    return { icon: "ticket-percent-outline", label: "KK", iconColor: "#007AFF", chipBg: "#F3F4F6" };
+  }
+  if (
+    lower === "app" ||
+    lower.includes("app zahl") ||
+    lower.includes("app-zahl") ||
+    lower.includes("apple") ||
+    lower.includes("google pay") ||
+    lower.includes("googlepay")
+  ) {
+    return { icon: "cellphone", label: "APP", iconColor: "#2563EB", chipBg: "#F3F4F6" };
+  }
+  if (lower === "paypal") {
+    return { icon: "wallet-outline", label: "PayPal", iconColor: "#0070BA", chipBg: "#F3F4F6" };
   }
   if (
     lower.includes("karte") ||
     lower.includes("card") ||
     lower.includes("kredit") ||
-    lower.includes("paypal") ||
-    lower.includes("apple") ||
-    lower.includes("google")
+    lower.includes("credit")
   ) {
-    return {
-      icon: lower.includes("paypal") ? "cellphone" : "credit-card-outline",
-      label: pm || "Karte",
-      iconColor: "#FF3B30",
-      chipBg: "#FFEBEA",
-    };
+    return { icon: "credit-card-outline", label: "KARTE", iconColor: "#FF3B30", chipBg: "#F3F4F6" };
   }
-  return { icon: "cash", label: pm || "Bar", iconColor: "#34C759", chipBg: "#E8F8EC" };
-}
-
-function splitRideAddress(value?: string | null) {
-  const parts = String(value || "")
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return {
-    place: parts[0] || "",
-    address: parts.slice(1).join(", ") || "",
-  };
+  if (lower.includes("rechnung") || lower === "invoice") {
+    return { icon: "file-document-outline", label: "RECHNUNG", iconColor: "#6B7280", chipBg: "#F3F4F6" };
+  }
+  // Bar / Default — gleiches Chip-Layout, grüne Farbe
+  return { icon: "currency-eur", label: "BAR", iconColor: "#16A34A", chipBg: "#F3F4F6" };
 }
 
 function navAppleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
@@ -2270,17 +2269,8 @@ export default function DriverNavigationScreen() {
     destName || activeRide?.toFull?.trim() || activeRide?.to?.trim() || "Ziel";
   const resolvedPickupRaw =
     pickupName || activeRide?.fromFull?.trim() || activeRide?.from?.trim() || "Abholort";
-  const routeAddress = splitRideAddress(isPickupPhase ? resolvedPickupRaw : resolvedDestRaw);
-  const routeHeaderLabel = isPickupPhase ? "Abholung" : "Ziel";
-  const routeIconName = isPickupPhase ? "map-pin" : "flag";
-  const routeIconColor = isPickupPhase ? "#16A34A" : "#DC2626";
 
   const paymentUi = resolveNavPaymentUi(resolvedPaymentMethod);
-  const isCashPayment = driverRidePaymentLooksLikeCash(resolvedPaymentMethod);
-  const paymentLabel = driverPaymentMethodLabelDe(resolvedPaymentMethod);
-  const payIconName = isCashPayment ? ("currency-eur" as const) : paymentUi.icon;
-  const payAccentColor = isCashPayment ? "#34C759" : paymentUi.iconColor;
-  const payIconSize = isCashPayment ? 20 : 18;
 
   const resolvedCustomerName =
     params.customerName?.trim() || activeRide?.customerName?.trim() || "";
@@ -2323,68 +2313,55 @@ export default function DriverNavigationScreen() {
     </View>
   );
 
+  /** Gleicher Aufbau wie Privatauftrag-Navi: Rail + Abhol-/Zieladresse. */
   const rideDetailsBlock = (
-    <View style={styles.rideInfoCard}>
-      {partnerName ? (
-        <View style={styles.rideInfoPartnerFrame}>
-          <View style={styles.rideInfoPartnerHead}>
-            <MaterialCommunityIcons name="domain" size={15} color="#374151" />
-            <Text style={[styles.rideInfoPartnerLabel, navAppleFont("semibold")]}>Auftraggeber</Text>
-          </View>
-          <Text style={[styles.rideInfoPartnerName, navAppleFont("bold")]} numberOfLines={2}>
-            {partnerName}
-          </Text>
-        </View>
-      ) : null}
-
+    <View style={styles.privateMemoPanel}>
       {passengerName ? (
-        <View style={styles.rideInfoCustomerRow}>
-          <Feather name="user" size={15} color="#6B7280" />
-          <Text style={[styles.rideInfoCustomerName, navAppleFont("medium")]} numberOfLines={1}>
-            {passengerName}
-          </Text>
-        </View>
+        <Text
+          style={[styles.privateMemoValue, navAppleFont("semibold"), { marginBottom: partnerName ? 4 : 10 }]}
+          numberOfLines={1}
+        >
+          {passengerName}
+        </Text>
       ) : null}
-
-      <View style={styles.rideInfoRouteRow}>
-        <Feather name={routeIconName} size={20} color={routeIconColor} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[styles.rideInfoRouteLabel, navAppleFont("medium")]}>{routeHeaderLabel}</Text>
-          <Text style={[styles.rideInfoRoutePlace, navAppleFont("semibold")]} numberOfLines={2}>
-            {routeAddress.place || (isPickupPhase ? resolvedPickupRaw : resolvedDestRaw)}
-          </Text>
-          {routeAddress.address ? (
-            <Text style={[styles.rideInfoRouteAddress, navAppleFont("regular")]} numberOfLines={2}>
-              {routeAddress.address}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-
-      <View style={styles.rideInfoStatsBlock}>
-        <View style={styles.rideInfoMetricPay}>
-          <View
-            style={[
-              styles.rideInfoPayInBlock,
-              isCashPayment && styles.rideInfoPayInBlockCash,
-              {
-                backgroundColor: isCashPayment ? "#E8F8EC" : paymentUi.chipBg,
-                borderColor: isCashPayment ? "#111827" : `${paymentUi.iconColor}55`,
-              },
-            ]}
-          >
-            <MaterialCommunityIcons name={payIconName} size={payIconSize} color={payAccentColor} />
-            <Text
-              style={[
-                isCashPayment ? styles.rideInfoPayPillTextCash : styles.rideInfoPayPillText,
-                navAppleFont("semibold"),
-                { color: payAccentColor },
-              ]}
-              numberOfLines={1}
-            >
-              {isCashPayment ? "BAR" : paymentLabel}
-            </Text>
+      {partnerName ? (
+        <Text
+          style={{ fontSize: 12, color: "#6B7280", marginBottom: 10, fontFamily: "Inter_500Medium" }}
+          numberOfLines={1}
+        >
+          {partnerName}
+        </Text>
+      ) : null}
+      <View style={styles.privateMemoMainRow}>
+        <View style={styles.privateMemoRouteCol}>
+          <View style={styles.privateMemoRouteRow}>
+            <View style={styles.privateMemoRail}>
+              <View style={styles.privateMemoDotGreen} />
+              <View style={styles.privateMemoLine} />
+              <View style={styles.privateMemoDotRed} />
+            </View>
+            <View style={styles.privateMemoPlaces}>
+              <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
+                {resolvedPickupRaw}
+              </Text>
+              <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
+                {resolvedDestRaw}
+              </Text>
+            </View>
           </View>
+        </View>
+        <View style={styles.navPayChip}>
+          <MaterialCommunityIcons
+            name={paymentUi.icon}
+            size={15}
+            color={paymentUi.iconColor}
+          />
+          <Text
+            style={[styles.navPayChipText, { color: paymentUi.iconColor }]}
+            numberOfLines={1}
+          >
+            {paymentUi.label}
+          </Text>
         </View>
       </View>
     </View>
@@ -2455,9 +2432,9 @@ export default function DriverNavigationScreen() {
   }
 
   const drivePhaseEndActions = (
-    <View style={styles.actionRow}>
+    <View style={styles.actionRowPickup}>
       <Pressable
-        style={[styles.actionBtn, styles.actionBtnGreen, styles.actionBtnFlex]}
+        style={[styles.actionBtn, styles.actionBtnGreen, styles.actionBtnPrimarySlot]}
         onPress={handleFahrtBeenden}
       >
         <Feather name="flag" size={20} color="#fff" />
@@ -2465,11 +2442,10 @@ export default function DriverNavigationScreen() {
       </Pressable>
       <Pressable
         onPress={() => setShowCancelReasonModal(true)}
-        style={({ pressed }) => [styles.actionCancelSide, pressed && { opacity: 0.9 }]}
+        style={({ pressed }) => [styles.actionCancelX, pressed && { opacity: 0.88 }]}
         accessibilityLabel="Fahrt stornieren"
       >
         <Feather name="x" size={22} color="#fff" />
-        <Text style={styles.actionCancelSideText}>Storno</Text>
       </Pressable>
     </View>
   );
@@ -2681,7 +2657,16 @@ export default function DriverNavigationScreen() {
           {navTripFooterBar}
           {rideDetailsBlock}
           <View style={styles.actionBlock}>
-            <View style={styles.actionBtnWrapper}>{actionBtn}</View>
+            <View style={styles.actionRowPickup}>
+              <View style={styles.actionBtnPrimarySlot}>{actionBtn}</View>
+              <Pressable
+                onPress={() => setShowCancelReasonModal(true)}
+                style={({ pressed }) => [styles.actionCancelX, pressed && { opacity: 0.88 }]}
+                accessibilityLabel="Fahrt stornieren"
+              >
+                <Feather name="x" size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
             {isPickupPhase && hasArrived ? (
               <>
                 {noShowCountdownEndsAt ? (
@@ -2690,46 +2675,22 @@ export default function DriverNavigationScreen() {
                     {String(noShowRemainingSec % 60).padStart(2, "0")} Min.
                   </Text>
                 ) : null}
-                <View style={styles.pickupAuxRow}>
-                  {!noShowCountdownEndsAt ? (
-                    <Pressable
-                      onPress={() => void handleNoShowStart()}
-                      disabled={noShowBusy}
-                      style={({ pressed }) => [
-                        styles.pickupAuxBtn,
-                        pressed && { backgroundColor: PICKUP_AUX_PRESSED_BG },
-                        noShowBusy && { opacity: 0.5 },
-                      ]}
-                    >
-                      <Feather name="user-x" size={18} color={PICKUP_AUX_ICON_RED} />
-                      <Text style={styles.pickupAuxBtnText}>Kunde nicht da</Text>
-                    </Pressable>
-                  ) : null}
+                {!noShowCountdownEndsAt ? (
                   <Pressable
-                    onPress={() => setShowCancelReasonModal(true)}
+                    onPress={() => void handleNoShowStart()}
+                    disabled={noShowBusy}
                     style={({ pressed }) => [
                       styles.pickupAuxBtn,
-                      noShowCountdownEndsAt ? styles.pickupAuxBtnFull : null,
                       pressed && { backgroundColor: PICKUP_AUX_PRESSED_BG },
+                      noShowBusy && { opacity: 0.5 },
                     ]}
                   >
-                    <Feather name="x-circle" size={18} color={PICKUP_AUX_ICON_RED} />
-                    <Text style={styles.pickupAuxBtnText}>Fahrt stornieren</Text>
+                    <Feather name="user-x" size={18} color={PICKUP_AUX_ICON_RED} />
+                    <Text style={styles.pickupAuxBtnText}>Kunde nicht da</Text>
                   </Pressable>
-                </View>
+                ) : null}
               </>
-            ) : (
-              <Pressable
-                onPress={() => setShowCancelReasonModal(true)}
-                style={({ pressed }) => [
-                  styles.actionBlockCancel,
-                  pressed && { backgroundColor: PICKUP_AUX_PRESSED_BG },
-                ]}
-              >
-                <Feather name="x-circle" size={18} color={PICKUP_AUX_ICON_RED} />
-                <Text style={styles.actionBlockCancelText}>Fahrt stornieren</Text>
-              </Pressable>
-            )}
+            ) : null}
           </View>
         </View>
       )}
@@ -3575,7 +3536,26 @@ const styles = StyleSheet.create({
   },
   actionBtnWrapper: { width: "100%" },
   actionRow: { flexDirection: "row", alignItems: "stretch", gap: 10 },
+  /** Angekommen / Beenden nimmt Restbreite, Storno nur kompaktes X (~10 %). */
+  actionRowPickup: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 8,
+  },
+  actionBtnPrimarySlot: {
+    flex: 1,
+    minWidth: 0,
+  },
   actionBtnFlex: { flex: 1 },
+  actionCancelX: {
+    width: 48,
+    flexGrow: 0,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    backgroundColor: "#DC2626",
+  },
   actionCancelSide: {
     flexDirection: "row",
     alignItems: "center",
@@ -3592,6 +3572,8 @@ const styles = StyleSheet.create({
   actionBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, gap: 8,
+    width: "100%",
+    alignSelf: "stretch",
   },
   actionBtnGreen: { backgroundColor: "#22C55E" },
   actionBtnDark: { backgroundColor: "#111827" },
@@ -3654,6 +3636,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
+  },
+  /** Kompakter Zahlungs-Chip (kein Grün-Hintergrund bei BAR). */
+  navPayChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 5,
+    minWidth: 0,
+    maxWidth: 96,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 9,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
+  },
+  navPayChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: Platform.OS === "ios" ? -0.1 : 0,
   },
   privateMemoStatKm: { fontSize: 15, color: "#111827" },
   privateMemoStatMin: { fontSize: 13, color: "#6B7280" },

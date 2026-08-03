@@ -625,23 +625,25 @@ function InstantCard({
               >
                 {reach ? `${reach.kmLabel} entfernt` : reachPendingLabel}
               </Text>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontFamily: "Inter_600SemiBold",
-                  color: "#0F172A",
-                  marginTop: 14,
-                  textAlign: "center",
-                }}
-                numberOfLines={2}
-              >
-                {passengerLabel}
-              </Text>
+              {!premiumRoute ? (
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontFamily: "Inter_600SemiBold",
+                    color: "#0F172A",
+                    marginTop: 14,
+                    textAlign: "center",
+                  }}
+                  numberOfLines={2}
+                >
+                  {passengerLabel}
+                </Text>
+              ) : null}
             </View>
 
             {premiumRoute ? (
               <View style={{ marginTop: 20, width: "100%" }}>
-                {/* Abholung / Ziel — gleicher Aufbau wie Live-/Vorbestellungs-Karte */}
+                {/* Abholung / Ziel — Name + Abholadresse in einer Zeile */}
                 <View style={{ flexDirection: "row" }}>
                   <View style={{ width: 48, alignItems: "center", marginRight: 14 }}>
                     <View
@@ -656,7 +658,7 @@ function InstantCard({
                         justifyContent: "center",
                       }}
                     >
-                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#22C55E" }} />
+                      <Feather name="map-pin" size={18} color="#DC2626" />
                     </View>
                     <View
                       style={{
@@ -685,19 +687,20 @@ function InstantCard({
                   </View>
 
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text
-                      style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#6B7280", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.4 }}
-                    >
-                      Abholung
-                    </Text>
-                    <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={2}>
-                      {fromAddress.place || req.from || "Abholung"}
-                    </Text>
-                    {fromAddress.address ? (
-                      <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
-                        {fromAddress.address}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 38 }}>
+                      <Text
+                        style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#111827", flexShrink: 0, maxWidth: "42%" }}
+                        numberOfLines={1}
+                      >
+                        {passengerLabel}
                       </Text>
-                    ) : null}
+                      <Text
+                        style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", flex: 1, minWidth: 0 }}
+                        numberOfLines={2}
+                      >
+                        {[fromAddress.place || req.from, fromAddress.address].filter(Boolean).join(", ") || "Abholort"}
+                      </Text>
+                    </View>
 
                     <View style={{ marginTop: 28 }}>
                       <Text
@@ -926,14 +929,14 @@ function ScheduledCard({
     <View style={[styles.reqCard, styles.reqCardScheduled, { borderRadius: 22, padding: 18 }]}>
       <View style={{ flexDirection: "row" }}>
         <View style={{ width: 48, alignItems: "center", marginRight: 14 }}>
-          <View style={{ width: 48, height: 38, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 25 }}>📍</Text>
+          <View style={{ width: 48, height: 38, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#000000", alignItems: "center", justifyContent: "center" }}>
+            <Feather name="map-pin" size={18} color="#DC2626" />
           </View>
 
           <View style={{ width: 1, height: 42, borderStyle: "dashed", borderWidth: 1, borderColor: "#D1D5DB", marginVertical: 2 }} />
 
           <View style={{ width: 48, height: 38, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 23 }}>🏁</Text>
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#DC2626" }} />
           </View>
         </View>
 
@@ -941,13 +944,23 @@ function ScheduledCard({
           {premiumRoute ? (
             <>
               <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
-                    {fromAddress.place || "Abholung"}
-                  </Text>
-                  <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
-                    {fromAddress.address}
-                  </Text>
+                <View style={{ flex: 1, minWidth: 0, minHeight: 38, justifyContent: "center" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    {passengerName ? (
+                      <Text
+                        style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#111827", flexShrink: 0, maxWidth: "42%" }}
+                        numberOfLines={1}
+                      >
+                        {passengerName}
+                      </Text>
+                    ) : null}
+                    <Text
+                      style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", flex: 1, minWidth: 0 }}
+                      numberOfLines={2}
+                    >
+                      {[fromAddress.place, fromAddress.address].filter(Boolean).join(", ") || req.from || "Abholort"}
+                    </Text>
+                  </View>
                 </View>
 
                 <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
@@ -963,7 +976,7 @@ function ScheduledCard({
               <View style={{ marginTop: 38, flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
-                    {toAddress.place || "Ziel"}
+                    {toAddress.place || req.to || "Ziel"}
                   </Text>
                   <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
                     {toAddress.address}
@@ -1119,7 +1132,7 @@ function ScheduledCard({
         </View>
       ) : null}
 
-      {passengerName ? (
+      {passengerName && !premiumRoute ? (
         <Text
           style={{
             fontSize: 14,
@@ -3063,7 +3076,7 @@ function ActiveRideScreen({
         {/* Route */}
         <View style={[activeStyles.routeCard, { backgroundColor: colors.muted }]}>
           <View style={activeStyles.routeRow}>
-            <View style={[activeStyles.routeDot, { backgroundColor: "#22C55E" }]} />
+            <View style={[activeStyles.routeDot, { backgroundColor: "#DC2626" }]} />
             <View style={{ flex: 1 }}>
               <Text style={[activeStyles.routeLabel, { color: colors.mutedForeground }]}>
                 {phase === "pickup" ? "Von (Dein Standort)" : "Von (Abholpunkt)"}
@@ -3076,13 +3089,30 @@ function ActiveRideScreen({
           <View style={[activeStyles.routeLine, { backgroundColor: colors.border }]} />
           <View style={activeStyles.routeRow}>
             <View style={[activeStyles.routeDot, { backgroundColor: "#DC2626" }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={[activeStyles.routeLabel, { color: colors.mutedForeground }]}>
-                {phase === "pickup" ? "Bis (Abholpunkt)" : "Bis (Ziel)"}
-              </Text>
-              <Text style={[activeStyles.routeAddr, { color: colors.foreground }]} numberOfLines={1}>
-                {phase === "pickup" ? req.fromFull : req.toFull}
-              </Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              {phase === "pickup" ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Text
+                    style={[activeStyles.routeAddr, { color: colors.foreground, flexShrink: 0, maxWidth: "38%" }]}
+                    numberOfLines={1}
+                  >
+                    {passengerLabel}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.mutedForeground, flex: 1, minWidth: 0 }}
+                    numberOfLines={2}
+                  >
+                    {req.fromFull || req.from || "Abholort"}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={[activeStyles.routeLabel, { color: colors.mutedForeground }]}>Bis (Ziel)</Text>
+                  <Text style={[activeStyles.routeAddr, { color: colors.foreground }]} numberOfLines={1}>
+                    {req.toFull}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
         </View>
