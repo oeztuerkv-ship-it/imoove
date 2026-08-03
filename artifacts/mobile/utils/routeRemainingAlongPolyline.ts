@@ -1,3 +1,5 @@
+import { bearingDegrees } from "./liveDriverMarkerMotion";
+
 /** Restdistanz entlang einer Straßen-Polyline (nicht Luftlinie). */
 
 export type LatLon = { lat: number; lon: number };
@@ -79,6 +81,36 @@ function nearestOnPolyline(polyline: LatLon[], current: LatLon): NearestOnPolyli
 export function distanceToPolylineM(polyline: LatLon[], current: LatLon): number | null {
   const n = nearestOnPolyline(polyline, current);
   return n ? n.bestDistM : null;
+}
+
+/**
+ * Fahrtrichtung entlang der nächsten Polyline-Kante (° von Norden).
+ * Nahe Segmentende: Blick aufs nächste Segment (wie echte Navis an Abbiegern).
+ */
+export function bearingAlongNearestPolylineSegmentDeg(
+  polyline: LatLon[],
+  current: LatLon,
+): number | null {
+  const n = nearestOnPolyline(polyline, current);
+  if (!n || polyline.length < 2) return null;
+  let i = n.bestSeg;
+  if (n.bestT > 0.85 && i + 2 < polyline.length) {
+    i += 1;
+  }
+  const a = polyline[i];
+  const b = polyline[i + 1];
+  if (!a || !b) return null;
+  if (haversineM(a, b) < 1.5) {
+    // Sehr kurzes Segment → weiter vorausschauen
+    for (let j = i + 1; j < polyline.length - 1; j++) {
+      const c = polyline[j]!;
+      const d = polyline[j + 1]!;
+      if (haversineM(c, d) >= 1.5) {
+        return bearingDegrees(c.lat, c.lon, d.lat, d.lon);
+      }
+    }
+  }
+  return bearingDegrees(a.lat, a.lon, b.lat, b.lon);
 }
 
 export type RemainingAlongRoute = {

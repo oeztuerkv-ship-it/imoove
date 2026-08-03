@@ -7,10 +7,12 @@ import {
   NAV_HEADING_MOVING_SPEED_MPS,
   applyNavHeadingSmooth,
   createNavHeadingSmootherState,
+  createNavPositionSmootherState,
   isMovingForNavHeading,
   isUsableCourse,
   pickNavHeadingRaw,
   tickNavHeading,
+  tickNavPosition,
 } from "./navHeadingSmoother";
 import { shortestRotationDelta } from "./liveDriverMarkerMotion";
 
@@ -27,7 +29,7 @@ assert(!isUsableCourse(null), "course null invalid");
 assert(isUsableCourse(0), "course 0 valid");
 assert(isUsableCourse(359), "course 359 valid");
 
-assert(!isMovingForNavHeading(1.5), "1.5 m/s still");
+assert(!isMovingForNavHeading(1.0), "1.0 m/s still");
 assert(isMovingForNavHeading(NAV_HEADING_MOVING_SPEED_MPS), "threshold moving");
 assert(!isMovingForNavHeading(-1), "speed -1 not moving");
 
@@ -54,9 +56,30 @@ assert(
   pickNavHeadingRaw({
     speedMps: 8,
     courseDeg: -1,
+    polylineBearingDeg: 45,
+    movementBearingDeg: 90,
+    fallbackBearingDeg: 200,
+  }) === 45,
+  "moving no course → poly before movement/fallback",
+);
+
+assert(
+  pickNavHeadingRaw({
+    speedMps: 8,
+    courseDeg: -1,
+    movementBearingDeg: 90,
+    fallbackBearingDeg: 200,
+  }) === 90,
+  "moving no course/poly → movement before fallback",
+);
+
+assert(
+  pickNavHeadingRaw({
+    speedMps: 8,
+    courseDeg: -1,
     fallbackBearingDeg: 200,
   }) === 200,
-  "moving no course → fallback",
+  "moving no course/poly/movement → fallback",
 );
 
 let state = createNavHeadingSmootherState();
@@ -97,5 +120,13 @@ out = tickNavHeading(state, {
   nowMs: 3200,
 });
 approx(out.heading ?? -1, 270, 1, "still keeps held despite noisy course");
+
+let pos = createNavPositionSmootherState();
+let posOut = tickNavPosition(pos, 52.5, 13.4);
+assert(posOut.lat === 52.5 && posOut.lon === 13.4, "pos first snap");
+pos = posOut.state;
+posOut = tickNavPosition(pos, 52.6, 13.5);
+assert(posOut.lat > 52.5 && posOut.lat < 52.6, "pos EMA between");
+assert(posOut.lon > 13.4 && posOut.lon < 13.5, "pos lon EMA between");
 
 console.log("navHeadingSmoother.selftest: OK");

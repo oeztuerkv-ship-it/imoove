@@ -24,6 +24,16 @@ alwaysApply: false
 - Orchestrator in `navigation.tsx` (`requestNavRouteFrom` / `applyNavRouteResult`): bei Erfolg **atomar** Polyline + Steps + Metrics + Kunden-Share; bei Fehler alte Linie behalten, Cooldown trotzdem.
 - Smoke: `npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts`
 
+## Kamera / Pfeil / Heading (eine Pipeline)
+
+- **Ein** GPS-Watch in `navigation.tsx` steuert Follow-Kamera; andere Watches (Dashboard/Markt) rufen **kein** Navi-`animateCamera`.
+- Jeder Fix → **`applyDriverNavFix`**: Positions-EMA (`tickNavPosition`) + Heading (`tickNavHeading` / `navHeadingSmoother.ts`).
+- Heading-Reihenfolge fahrend: **GPS-Kurs → Polyline-Tangente** (`bearingAlongNearestPolylineSegmentDeg`) **→ Bewegungsbearing → Step/Ziel-Fallback**; stehend: **gehaltenes** Heading.
+- **`focusNavigationCamera`** liest nur Pose / explizites Heading — **kein** zweites Picking mit `speedMps: 0`.
+- Marker: **`flat={false}`** (bildschirm-aufrecht) bei Heading-Up-Kamera; **kein** `rotation` nötig. `flat` ohne Rotation = Icon zeigt Karten-Norden und „dreht“ optisch falsch.
+- Follow: Intervall + Min-Move/Min-ΔHeading + `duration` unter Intervall → weniger überlappende `animateCamera`.
+- Smoke: `npx tsx artifacts/mobile/utils/navHeadingSmoother.selftest.ts`
+
 ## Was nicht tun
 
 - Kein direktes Client-OSRM für Fahrer-Navi-Metriken (Preis und Navi würden wieder auseinanderlaufen).
@@ -40,6 +50,7 @@ alwaysApply: false
 | API Route | `POST /fleet-driver/v1/nav-route` in `fleetDriverApi.ts` |
 | Metrics shared | `fixedPriceRouteQuote.ts` → `drivingRouteBetween` |
 | Mobile Navi | `artifacts/mobile/app/driver/navigation.tsx` |
+| Heading/Pose | `artifacts/mobile/utils/navHeadingSmoother.ts` |
 | Off-Route | `artifacts/mobile/utils/navOffRouteReroute.ts` |
 | Polyline-Distanz | `artifacts/mobile/utils/routeRemainingAlongPolyline.ts` |
 ---
