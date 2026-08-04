@@ -65,6 +65,7 @@ async function buildAll() {
       path.resolve(artifactDir, "src/scripts/marketLocationUpdateSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/funkDispatchMatchingSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/fleetLiveGpsFreshSelftest.ts"),
+      path.resolve(artifactDir, "src/scripts/dispatchTierTimeoutSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/retryRidePaymentCapture.ts"),
       path.resolve(artifactDir, "src/scripts/repairRideChatEnabled.ts"),
     ],

@@ -10,8 +10,10 @@
 ## Fahrt-Eskalation
 
 - Neue Sofort-/Pool-Fahrten starten auf **`rides.dispatch_tier = 'A'`**.
-- Nach Timeout (**Default 60 s**, `premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC` / Fallback in `getDispatchTierTimeoutSec`) → **B**, dann Stopp.
+- **Kein Premium-A market-online** (gleiche Mandanten-/Taxi-Sicht wie Markt) → **sofort A→B** (`reason: no_a_online`), ohne Timeout-Wartezeit.
+- Sonst nach Timeout (**Default 10 s**, `premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC` / Fallback in `getDispatchTierTimeoutSec`) → **B**, dann Stopp.
 - Freigabe durch A-Fahrer: ebenfalls A→B (`releaseRideDispatchOffer`).
+- Migration **145** setzt gespeichertes `dispatch.premiumTierTimeoutSeconds` auf **10** (falls zuvor 60).
 
 ## Ablehnungs-Streak (bleibt)
 

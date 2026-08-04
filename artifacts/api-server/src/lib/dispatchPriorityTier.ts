@@ -66,7 +66,8 @@ export function getDispatchTierTimeoutSec(dispatchConfig?: Record<string, unknow
   if (Number.isFinite(env) && env >= 5 && env <= 300) return Math.round(env);
   const cfg = Number(dispatchConfig?.premiumTierTimeoutSeconds);
   if (Number.isFinite(cfg) && cfg >= 5 && cfg <= 300) return Math.round(cfg);
-  return 60;
+  /** Default 10 s A→B (früher 60 s). */
+  return 10;
 }
 
 export function dispatchTierStartedMs(ride: Pick<RideRequest, "dispatchTierStartedAt" | "createdAt">): number {

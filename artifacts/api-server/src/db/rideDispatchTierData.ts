@@ -7,6 +7,7 @@ import { ridesTable } from "./schema";
 import {
   getDispatchTierTimeoutSec,
   isDispatchTierManagedRide,
+  isOpenInstantRideForDispatch,
   nextDispatchTier,
   normalizeDispatchPriority,
   shouldAdvanceDispatchTierByTimeout,
@@ -29,7 +30,7 @@ async function loadDispatchTimeoutSec(): Promise<number> {
 export async function advanceRideDispatchTier(opts: {
   rideId: string;
   nextTier: DispatchPriority;
-  reason: "timeout" | "released";
+  reason: "timeout" | "released" | "no_a_online";
   actorDriverId?: string;
 }): Promise<RideRequest | null> {
   if (!isPostgresConfigured()) return null;
@@ -73,7 +74,7 @@ export async function advanceRideDispatchTier(opts: {
   return updated;
 }
 
-/** Timeout A→B; bleibt auf B ohne weiteren Schritt. */
+/** Timeout A→B (Default 10 s); kein Markt-ONLINE-A → sofort B. */
 export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<{
   ride: RideRequest;
   advanced: boolean;
@@ -83,7 +84,18 @@ export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<
   if (tier === "B") return { ride, advanced: false };
 
   const timeoutSec = await loadDispatchTimeoutSec();
-  if (!shouldAdvanceDispatchTierByTimeout(ride, timeoutSec)) return { ride, advanced: false };
+  const byTimeout = shouldAdvanceDispatchTierByTimeout(ride, timeoutSec);
+
+  let byNoAOnline = false;
+  if (isOpenInstantRideForDispatch(ride)) {
+    const { countMarketOnlineDriversWithDispatchPriority } = await import(
+      "./fleetInstantRideMarketData.js"
+    );
+    const aOnline = await countMarketOnlineDriversWithDispatchPriority(ride, "A");
+    byNoAOnline = aOnline === 0;
+  }
+
+  if (!byTimeout && !byNoAOnline) return { ride, advanced: false };
 
   const nxt = nextDispatchTier(tier);
   if (!nxt) return { ride, advanced: false };
@@ -91,7 +103,7 @@ export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<
   const updated = await advanceRideDispatchTier({
     rideId: ride.id,
     nextTier: nxt,
-    reason: "timeout",
+    reason: byNoAOnline ? "no_a_online" : "timeout",
   });
   return { ride: updated ?? ride, advanced: Boolean(updated) };
 }

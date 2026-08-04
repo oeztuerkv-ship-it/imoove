@@ -25,6 +25,50 @@ const INSTANT_MARKET_STATUSES = new Set<RideRequest["status"]>([
 ]);
 
 /**
+ * Zählt Markt-ONLINE-Fahrer mit gegebener Dispatch-Prio (ohne Radius/Capability).
+ * Für A→B-Skip: kein Premium-A online → Sofort auf B.
+ */
+export async function countMarketOnlineDriversWithDispatchPriority(
+  ride: Pick<RideRequest, "companyId" | "rejectedBy">,
+  priority: "A" | "B",
+): Promise<number> {
+  const db = getDb();
+  if (!db || !isPostgresConfigured()) return 0;
+
+  const rideCompanyId = (ride.companyId ?? "").trim();
+  const rejected = new Set((ride.rejectedBy ?? []).map((id) => String(id).trim()).filter(Boolean));
+  const rideOriginKind = await getAdminCompanyKind(rideCompanyId);
+  const taxiOnlyDispatch = rideOriginUsesTaxiOnlyDispatch(rideOriginKind);
+  const prio = normalizeDispatchPriority(priority);
+
+  const conditions = [
+    eq(fleetDriversTable.is_market_online, true),
+    eq(fleetDriversTable.is_active, true),
+    eq(fleetDriversTable.access_status, "active"),
+    eq(fleetDriversTable.approval_status, "approved"),
+    eq(fleetDriversTable.dispatch_priority, prio),
+    eq(adminCompaniesTable.company_kind, "taxi"),
+  ];
+  if (taxiOnlyDispatch && rideCompanyId) {
+    conditions.push(eq(fleetDriversTable.company_id, rideCompanyId));
+  }
+
+  const rows = await db
+    .select({ id: fleetDriversTable.id })
+    .from(fleetDriversTable)
+    .innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id))
+    .where(and(...conditions));
+
+  let n = 0;
+  for (const row of rows) {
+    const id = String(row.id ?? "").trim();
+    if (!id || rejected.has(id)) continue;
+    n += 1;
+  }
+  return n;
+}
+
+/**
  * Fahrer mit Markt-ONLINE, Einsatzbereit und passendem Fahrzeug — gleiche Logik wie GET market-rides (Sofortpool).
  */
 export async function listMarketOnlineDriversEligibleForInstantRide(
