@@ -13,6 +13,7 @@ import { initialPanelRideStatus } from "./dispatchStatus";
 import { buildRouteDistanceQuote, geocodePartnerPanelAddressFull } from "./fixedPriceRouteQuote";
 import { computeRideBookingPricing } from "./rideBookingPricing";
 import { haversineDistanceKm } from "./serviceRegionMatch";
+import { finiteCoordOrNull } from "./funkDispatchCoords";
 
 function newRideId(): string {
   return `ride-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
@@ -53,10 +54,10 @@ async function resolveCoords(
   toLat: number | null;
   toLon: number | null;
 }> {
-  let fLat = fromLat ?? null;
-  let fLon = fromLon ?? null;
-  let tLat = toLat ?? null;
-  let tLon = toLon ?? null;
+  let fLat = finiteCoordOrNull(fromLat);
+  let fLon = finiteCoordOrNull(fromLon);
+  let tLat = finiteCoordOrNull(toLat);
+  let tLon = finiteCoordOrNull(toLon);
   if (fLat == null || fLon == null) {
     const pt = await geocodePartnerPanelAddressFull(fromFull);
     if (pt) {
@@ -71,7 +72,12 @@ async function resolveCoords(
       tLon = pt.lon;
     }
   }
-  return { fromLat: fLat, fromLon: fLon, toLat: tLat, toLon: tLon };
+  return {
+    fromLat: finiteCoordOrNull(fLat),
+    fromLon: finiteCoordOrNull(fLon),
+    toLat: finiteCoordOrNull(tLat),
+    toLon: finiteCoordOrNull(tLon),
+  };
 }
 
 export async function createFleetDriverFunkRide(
@@ -153,7 +159,9 @@ export async function createFleetDriverFunkRide(
     durationMinutes = Math.max(5, Math.round(distanceKm * 2.5));
   }
 
-  const vehicle = (input.vehicle ?? "standard").trim().toLowerCase() || "standard";
+  // Funk = Telefon-Weiterleitung: Standard-Fahrzeuganforderung.
+  // XL-/Rollstuhl-Fahrzeuge dürfen Standard-Fahrten annehmen (Matching).
+  const vehicle = "standard";
   const opPayload = await getOperationalConfigPayload();
   const regions = await listServiceRegionsForApi();
   const pricing = computeRideBookingPricing({

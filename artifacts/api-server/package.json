@@ -23,6 +23,7 @@
     "test:final-fare-tariff-corridor": "pnpm run build && node --enable-source-maps ./dist/scripts/driverFinalFareTariffCorridorSelftest.mjs",
     "test:mid-trip-abort-fare": "pnpm run build && node --enable-source-maps ./dist/scripts/midTripAbortFareSelftest.mjs",
     "test:market-location-update": "pnpm run build && node --enable-source-maps ./dist/scripts/marketLocationUpdateSelftest.mjs",
+    "test:funk-dispatch-matching": "pnpm run build && node --enable-source-maps ./dist/scripts/funkDispatchMatchingSelftest.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -1344,9 +1344,9 @@ router.post("/fleet-driver/v1/rides/funk", requireFleetDriverAuth, async (req, r
         : typeof body.driverNote === "string"
           ? body.driverNote.trim()
           : "";
-    const num = (k: string) => {
+    const optCoord = (k: string): number | null => {
       const v = body[k];
-      return typeof v === "number" && Number.isFinite(v) ? v : NaN;
+      return typeof v === "number" && Number.isFinite(v) ? v : null;
     };
     const result = await createFleetDriverFunkRide({
       fleetDriverId: a.fleetDriverId,
@@ -1358,10 +1358,10 @@ router.post("/fleet-driver/v1/rides/funk", requireFleetDriverAuth, async (req, r
       fromFull,
       to: to || toFull.split(",")[0]?.trim() || toFull,
       toFull,
-      fromLat: num("fromLat"),
-      fromLon: num("fromLon"),
-      toLat: num("toLat"),
-      toLon: num("toLon"),
+      fromLat: optCoord("fromLat"),
+      fromLon: optCoord("fromLon"),
+      toLat: optCoord("toLat"),
+      toLon: optCoord("toLon"),
       vehicle: typeof body.vehicle === "string" ? body.vehicle.trim() : undefined,
     });
     if (!result.ok) {

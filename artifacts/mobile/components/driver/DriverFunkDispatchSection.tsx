@@ -14,8 +14,17 @@ import {
   View,
 } from "react-native";
 
+import {
+  EMPTY_SELECTED_ADDRESS,
+  type SelectedAddress,
+} from "@/components/booking/selectedAddress";
+import {
+  DriverSheetAddressField,
+  selectedAddressHasCoords,
+} from "@/components/driver/DriverSheetAddressField";
 import { useDriver } from "@/context/DriverContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { buildFunkDispatchCreateBody } from "@/utils/funkDispatchCreateBody";
 
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
 
@@ -28,7 +37,7 @@ type Props = {
 
 /**
  * Funk-Zuweisung (Owner) — gleicher Einstieg wie Privatauftrag (FAB),
- * aber rot mit offenem Schloss.
+ * aber rot mit offenem Schloss. Start/Ziel per Places-Autocomplete inkl. lat/lon.
  */
 export function DriverFunkDispatchSection({
   enabled,
@@ -41,8 +50,8 @@ export function DriverFunkDispatchSection({
   const [customerName, setCustomerName] = useState("Telefonkunde");
   const [customerPhone, setCustomerPhone] = useState("");
   const [note, setNote] = useState("");
-  const [fromFull, setFromFull] = useState("");
-  const [toFull, setToFull] = useState("");
+  const [fromAddr, setFromAddr] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
+  const [toAddr, setToAddr] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
 
   const closeSheet = useCallback(() => {
     setOpen(false);
@@ -53,8 +62,8 @@ export function DriverFunkDispatchSection({
     setCustomerName("Telefonkunde");
     setCustomerPhone("");
     setNote("");
-    setFromFull("");
-    setToFull("");
+    setFromAddr(EMPTY_SELECTED_ADDRESS);
+    setToAddr(EMPTY_SELECTED_ADDRESS);
     setOpen(true);
   }, []);
 
@@ -63,10 +72,22 @@ export function DriverFunkDispatchSection({
       Alert.alert("Nicht angemeldet", "Bitte erneut als Fahrer anmelden.");
       return;
     }
-    const from = fromFull.trim();
-    const to = toFull.trim();
-    if (!from || !to) {
-      Alert.alert("Pflichtfelder", "Abholort und Ziel sind erforderlich.");
+    if (!selectedAddressHasCoords(fromAddr) || !selectedAddressHasCoords(toAddr)) {
+      Alert.alert(
+        "Adresse wählen",
+        "Bitte Start und Ziel aus der Vorschlagsliste wählen (Koordinaten erforderlich).",
+      );
+      return;
+    }
+    const body = buildFunkDispatchCreateBody({
+      customerName,
+      customerPhone,
+      note,
+      from: fromAddr,
+      to: toAddr,
+    });
+    if (!body) {
+      Alert.alert("Adresse wählen", "Start und Ziel müssen gültige Orte mit Koordinaten sein.");
       return;
     }
     setBusy(true);
@@ -77,15 +98,7 @@ export function DriverFunkDispatchSection({
           Authorization: `Bearer ${driver.authToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          customerName: customerName.trim() || "Telefonkunde",
-          customerPhone: customerPhone.trim() || undefined,
-          note: note.trim() || undefined,
-          from: from.split(",")[0]?.trim() || from,
-          fromFull: from,
-          to: to.split(",")[0]?.trim() || to,
-          toFull: to,
-        }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
@@ -117,7 +130,7 @@ export function DriverFunkDispatchSection({
     } finally {
       setBusy(false);
     }
-  }, [driver?.authToken, customerName, customerPhone, note, fromFull, toFull, closeSheet]);
+  }, [driver?.authToken, customerName, customerPhone, note, fromAddr, toAddr, closeSheet]);
 
   if (!enabled || !driver?.isOwner) return null;
 
@@ -181,24 +194,18 @@ export function DriverFunkDispatchSection({
                 keyboardType="phone-pad"
               />
 
-              <Text style={styles.label}>Start *</Text>
-              <TextInput
-                style={styles.input}
-                value={fromFull}
-                onChangeText={setFromFull}
-                placeholder="Abholort"
-                placeholderTextColor="#9CA3AF"
-                autoCorrect={false}
+              <DriverSheetAddressField
+                label="Start *"
+                placeholder="Abholort suchen …"
+                value={fromAddr}
+                onChange={setFromAddr}
               />
 
-              <Text style={styles.label}>Ziel *</Text>
-              <TextInput
-                style={styles.input}
-                value={toFull}
-                onChangeText={setToFull}
-                placeholder="Zielort"
-                placeholderTextColor="#9CA3AF"
-                autoCorrect={false}
+              <DriverSheetAddressField
+                label="Ziel *"
+                placeholder="Zielort suchen …"
+                value={toAddr}
+                onChange={setToAddr}
               />
 
               <Text style={styles.label}>Notiz</Text>

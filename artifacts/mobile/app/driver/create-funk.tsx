@@ -14,17 +14,19 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  EMPTY_SELECTED_ADDRESS,
+  type SelectedAddress,
+} from "@/components/booking/selectedAddress";
+import {
+  DriverSheetAddressField,
+  selectedAddressHasCoords,
+} from "@/components/driver/DriverSheetAddressField";
 import { useDriver } from "@/context/DriverContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { buildFunkDispatchCreateBody } from "@/utils/funkDispatchCreateBody";
 
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
-
-type FunkTimelineStep = {
-  at: string;
-  outcome: string;
-  driverId: string | null;
-  driverName: string | null;
-};
 
 export default function DriverCreateFunkScreen() {
   const insets = useSafeAreaInsets();
@@ -32,8 +34,8 @@ export default function DriverCreateFunkScreen() {
   const [customerName, setCustomerName] = useState("Telefonkunde");
   const [customerPhone, setCustomerPhone] = useState("");
   const [note, setNote] = useState("");
-  const [fromFull, setFromFull] = useState("");
-  const [toFull, setToFull] = useState("");
+  const [fromAddr, setFromAddr] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
+  const [toAddr, setToAddr] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
   const [busy, setBusy] = useState(false);
 
   if (!driver?.isOwner) {
@@ -52,10 +54,22 @@ export default function DriverCreateFunkScreen() {
       Alert.alert("Nicht angemeldet", "Bitte erneut als Fahrer anmelden.");
       return;
     }
-    const from = fromFull.trim();
-    const to = toFull.trim();
-    if (!from || !to) {
-      Alert.alert("Pflichtfelder", "Abholort und Ziel sind erforderlich.");
+    if (!selectedAddressHasCoords(fromAddr) || !selectedAddressHasCoords(toAddr)) {
+      Alert.alert(
+        "Adresse wählen",
+        "Bitte Start und Ziel aus der Vorschlagsliste wählen (Koordinaten erforderlich).",
+      );
+      return;
+    }
+    const body = buildFunkDispatchCreateBody({
+      customerName,
+      customerPhone,
+      note,
+      from: fromAddr,
+      to: toAddr,
+    });
+    if (!body) {
+      Alert.alert("Adresse wählen", "Start und Ziel müssen gültige Orte mit Koordinaten sein.");
       return;
     }
     setBusy(true);
@@ -66,21 +80,12 @@ export default function DriverCreateFunkScreen() {
           Authorization: `Bearer ${driver.authToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          customerName: customerName.trim() || "Telefonkunde",
-          customerPhone: customerPhone.trim() || undefined,
-          note: note.trim() || undefined,
-          from: from.split(",")[0]?.trim() || from,
-          fromFull: from,
-          to: to.split(",")[0]?.trim() || to,
-          toFull: to,
-        }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
         message?: string;
-        ride?: { id?: string; status?: string; offeredToDriverId?: string };
-        funkTimeline?: { summaryLine?: string; steps?: FunkTimelineStep[] };
+        funkTimeline?: { summaryLine?: string };
       };
       if (!res.ok) {
         const code = typeof data?.error === "string" ? data.error : "";
@@ -99,10 +104,7 @@ export default function DriverCreateFunkScreen() {
         return;
       }
       const summary =
-        data.funkTimeline?.summaryLine ||
-        (data.ride?.status === "offered"
-          ? "Nächstgelegener Fahrer wurde exklusiv angefragt."
-          : "Funk-Fahrt angelegt.");
+        data.funkTimeline?.summaryLine || "Nächstgelegener Fahrer wurde exklusiv angefragt.";
       Alert.alert("Funk-Fahrt angelegt", summary, [
         { text: "OK", onPress: () => router.replace("/driver/dashboard") },
       ]);
@@ -138,21 +140,17 @@ export default function DriverCreateFunkScreen() {
           onChangeText={setCustomerPhone}
           keyboardType="phone-pad"
         />
-        <Text style={styles.label}>Abholort *</Text>
-        <TextInput
-          style={styles.input}
-          value={fromFull}
-          onChangeText={setFromFull}
-          placeholder="Straße, PLZ Ort"
-          placeholderTextColor="#9CA3AF"
+        <DriverSheetAddressField
+          label="Abholort *"
+          placeholder="Abholort suchen …"
+          value={fromAddr}
+          onChange={setFromAddr}
         />
-        <Text style={styles.label}>Ziel *</Text>
-        <TextInput
-          style={styles.input}
-          value={toFull}
-          onChangeText={setToFull}
-          placeholder="Straße, PLZ Ort"
-          placeholderTextColor="#9CA3AF"
+        <DriverSheetAddressField
+          label="Ziel *"
+          placeholder="Zielort suchen …"
+          value={toAddr}
+          onChange={setToAddr}
         />
         <Text style={styles.label}>Notiz</Text>
         <TextInput
