@@ -18,20 +18,32 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 2. **`timeInterval` ist Android-only** (expo-location). Auf iOS zählt **`distanceInterval`**. Vorher 5 m + totes Follow → wahrgenommenes Springen.
 3. Background-Task (`isIosBackgroundLocationEnabled`) ist getrennt; Foreground-Navi nutzt `watchPositionAsync` in `navigation.tsx`.
 4. **Roh-`coords.heading` → Kamera** ohne Glättung/Speed-Gate → Zittern an Ampel/Stau.
+5. **`focusNavigationCamera` mit Roh-Fallback-Bearing** (Step/Ziel) wenn Pose-Heading fehlt — konkurriert mit geglätteten GPS-Ticks (Phasenwechsel / Routen-Laden / MapReady). **Fix:** Kamera-Heading nur aus `applyDriverNavFix` / `navPoseRef`; fehlendes Heading → einmal Bootstrap über denselben Smoother, nie Roh-Fallback in der Kamera.
 
 ## Heading (A+B+C)
 
-- Utility: `artifacts/mobile/utils/navHeadingSmoother.ts` (EMA + Deadband + Rate-Limit; Speed-Gate ~2 m/s).
-- **Fahrend:** GPS-Kurs glätten; sonst Fallback Bearing (Step/Ziel).
+- Utility: `artifacts/mobile/utils/navHeadingSmoother.ts` (EMA + Deadband + Rate-Limit; Speed-Gate ~1.4 m/s).
+- **Fahrend:** GPS-Kurs glätten; sonst Polyline → Bewegung → Fallback Bearing (Step/Ziel).
 - **Stehend / Speed unbekannt:** letztes Heading **halten** (kein Kurs-Jitter).
-- Kamera-Follow: min. **~450 ms**, `animateCamera` **~420 ms**.
+- Kamera-Follow: min. **~550 ms**, `animateCamera` **~480 ms**.
 - Smoke: `npx tsx artifacts/mobile/utils/navHeadingSmoother.selftest.ts`
-- **Noch nicht:** Polyline-Segment-Tangente (D), Snap-to-Road.
+
+## Aufrufstellen `focusNavigationCamera` (Invariante)
+
+| Stelle | Zweck | `force` | Heading-Quelle |
+|--------|--------|---------|----------------|
+| GPS boot / watch | Live-Follow | nein (boot: ja) | `applyDriverNavFix` → Pose |
+| Recenter-Button | Follow wieder an | ja | frisches Fix → `applyDriverNavFix` |
+| Phasen-/Zielwechsel | Neu ausrichten | ja | `navPoseRef` (ggf. Bootstrap im Focus) |
+| Route initial laden | Erste Kamera | ja | `navPoseRef` / Bootstrap |
+| MapReady (+ Pending) | Erste Map | ja | Pending oder `navPoseRef` |
+
+**Nicht** absichtlich: Roh-Kurs oder Step-Bearing direkt in `animateCamera` — auch nicht bei Recenter/Route.
 
 ## Invarianten
 
 - Follow nur bei **Nutzer-Pan** (`onPanDrag`) aus — **nicht** bei `onRegionChange`.
-- GPS Navi: `Accuracy.BestForNavigation`, `distanceInterval: 1` (iOS), `timeInterval: 1000` (Android).
+- GPS Navi: `Accuracy.BestForNavigation`, `distanceInterval: 2` (iOS), `timeInterval: 1000` (Android).
 - Marker: jedes GPS-Tick `setDriverLat/Lon`; Kamera Follow gedrosselt; Heading nur über Smoother.
 - `followsUserLocation={false}` — eigenes Puck + `focusNavigationCamera`.
 - Overview-Button (`fitRoute`) darf Follow absichtlich aus machen; Recenter erzwingt Follow wieder (`force: true`).
@@ -40,4 +52,3 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 
 - `artifacts/mobile/app/driver/navigation.tsx`
 - `artifacts/mobile/utils/navHeadingSmoother.ts`
----

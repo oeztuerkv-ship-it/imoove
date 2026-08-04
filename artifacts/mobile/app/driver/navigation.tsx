@@ -545,7 +545,7 @@ export default function DriverNavigationScreen() {
   /** Heading: Speed-Gate + EMA/Deadband/Rate-Limit (nicht Roh-GPS). */
   const navHeadingSmootherRef = useRef<NavHeadingSmootherState>(createNavHeadingSmootherState());
   const navPositionSmootherRef = useRef<NavPositionSmootherState>(createNavPositionSmootherState());
-  /** Einzige Pose für Kamera + Puck — nur GPS-/Recenter-Pipeline schreibt Heading. */
+  /** Einzige Pose für Kamera + Puck — Heading nur über applyDriverNavFix / Smoother. */
   const navPoseRef = useRef<{ lat: number; lon: number; heading: number | null }>({
     lat: fromLat || 48.7394,
     lon: fromLon || 9.3117,
@@ -794,62 +794,6 @@ export default function DriverNavigationScreen() {
     });
   }, [markProgrammaticCamera]);
 
-  const focusNavigationCamera = useCallback(
-    (opts?: { lat?: number; lon?: number; heading?: number; animated?: boolean; force?: boolean }) => {
-      if (opts?.force) {
-        navFollowEnabledRef.current = true;
-      } else if (!navFollowEnabledRef.current) {
-        return;
-      }
-
-      const pose = navPoseRef.current;
-      const lat = opts?.lat ?? pose.lat;
-      const lon = opts?.lon ?? pose.lon;
-      if (!isValidMapCoord(lat, lon)) return;
-
-      // Kein zweites Heading-Picking hier — nur die Pose-Pipeline schreibt Kurs.
-      let heading: number;
-      if (isUsableCourse(opts?.heading)) {
-        heading = opts.heading;
-      } else if (isUsableCourse(pose.heading)) {
-        heading = pose.heading;
-      } else {
-        heading = resolveNavFallbackBearing(lat, lon, {
-          steps: stepsRef.current,
-          stepIdx: stepIdxRef.current,
-          target: navTargetRef.current,
-        });
-      }
-
-      if (!opts?.force && lastCameraPoseRef.current && navCameraInitializedRef.current) {
-        const prev = lastCameraPoseRef.current;
-        const movedM = haversine(prev.lat, prev.lon, lat, lon);
-        const dHead = Math.abs(shortestRotationDelta(prev.heading, heading));
-        if (movedM < NAV_CAMERA_MIN_MOVE_M && dHead < NAV_CAMERA_MIN_HEADING_DELTA_DEG) {
-          return;
-        }
-      }
-
-      if (!mapReady.current || !mapRef.current) {
-        pendingNavCameraRef.current = { lat, lon, heading };
-        return;
-      }
-
-      const duration =
-        opts?.animated === false
-          ? 0
-          : navCameraInitializedRef.current
-            ? NAV_CAMERA_FOLLOW_DURATION_MS
-            : 0;
-      markProgrammaticCamera(duration);
-      mapRef.current.animateCamera(buildNavCamera(lat, lon, heading), { duration });
-      navCameraInitializedRef.current = true;
-      pendingNavCameraRef.current = null;
-      lastCameraPoseRef.current = { lat, lon, heading };
-    },
-    [markProgrammaticCamera],
-  );
-
   const applyDriverNavFix = useCallback(
     (input: {
       lat: number;
@@ -896,6 +840,70 @@ export default function DriverNavigationScreen() {
       return { lat, lon, heading: headingTick.heading };
     },
     [],
+  );
+
+  const focusNavigationCamera = useCallback(
+    (opts?: { lat?: number; lon?: number; heading?: number; animated?: boolean; force?: boolean }) => {
+      if (opts?.force) {
+        navFollowEnabledRef.current = true;
+      } else if (!navFollowEnabledRef.current) {
+        return;
+      }
+
+      const pose = navPoseRef.current;
+      let lat = opts?.lat ?? pose.lat;
+      let lon = opts?.lon ?? pose.lon;
+      if (!isValidMapCoord(lat, lon)) return;
+
+      /**
+       * Heading nur aus der Pose-Pipeline (applyDriverNavFix / Smoother).
+       * Kein Roh-Fallback hier — der konkurriert sonst mit geglätteten GPS-Ticks → Zittern.
+       */
+      let heading: number | null = null;
+      if (isUsableCourse(opts?.heading)) {
+        heading = opts.heading;
+      } else if (isUsableCourse(pose.heading)) {
+        heading = pose.heading;
+      } else {
+        const boot = applyDriverNavFix({
+          lat,
+          lon,
+          speedMps: 0,
+          courseDeg: null,
+        });
+        lat = boot.lat;
+        lon = boot.lon;
+        heading = boot.heading;
+      }
+      if (!isUsableCourse(heading)) return;
+
+      if (!opts?.force && lastCameraPoseRef.current && navCameraInitializedRef.current) {
+        const prev = lastCameraPoseRef.current;
+        const movedM = haversine(prev.lat, prev.lon, lat, lon);
+        const dHead = Math.abs(shortestRotationDelta(prev.heading, heading));
+        if (movedM < NAV_CAMERA_MIN_MOVE_M && dHead < NAV_CAMERA_MIN_HEADING_DELTA_DEG) {
+          return;
+        }
+      }
+
+      if (!mapReady.current || !mapRef.current) {
+        pendingNavCameraRef.current = { lat, lon, heading };
+        return;
+      }
+
+      const duration =
+        opts?.animated === false
+          ? 0
+          : navCameraInitializedRef.current
+            ? NAV_CAMERA_FOLLOW_DURATION_MS
+            : 0;
+      markProgrammaticCamera(duration);
+      mapRef.current.animateCamera(buildNavCamera(lat, lon, heading), { duration });
+      navCameraInitializedRef.current = true;
+      pendingNavCameraRef.current = null;
+      lastCameraPoseRef.current = { lat, lon, heading };
+    },
+    [applyDriverNavFix, markProgrammaticCamera],
   );
 
   const handleRecenterNav = useCallback(() => {
@@ -1057,7 +1065,15 @@ export default function DriverNavigationScreen() {
       }
       offRouteTrackerRef.current = createOffRouteTrackerState();
       if (opts?.refocusCamera !== false) {
-        focusNavigationCamera({ lat, lon, animated: false, force: true });
+        // Nur geglättete Pose — kein Roh-Heading (Smoother via focusNavigationCamera-Bootstrap).
+        const pose = navPoseRef.current;
+        focusNavigationCamera({
+          lat: isValidMapCoord(pose.lat, pose.lon) ? pose.lat : lat,
+          lon: isValidMapCoord(pose.lat, pose.lon) ? pose.lon : lon,
+          heading: pose.heading ?? undefined,
+          animated: false,
+          force: true,
+        });
       }
       shareRouteWithCustomer(polylineLatLonRef.current, {
         etaMinutes: remMin,
