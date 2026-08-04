@@ -31,6 +31,7 @@ export default function DriverCreateFunkScreen() {
   const { driver } = useDriver();
   const [customerName, setCustomerName] = useState("Telefonkunde");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [note, setNote] = useState("");
   const [fromFull, setFromFull] = useState("");
   const [toFull, setToFull] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,6 +69,7 @@ export default function DriverCreateFunkScreen() {
         body: JSON.stringify({
           customerName: customerName.trim() || "Telefonkunde",
           customerPhone: customerPhone.trim() || undefined,
+          note: note.trim() || undefined,
           from: from.split(",")[0]?.trim() || from,
           fromFull: from,
           to: to.split(",")[0]?.trim() || to,
@@ -151,6 +153,16 @@ export default function DriverCreateFunkScreen() {
           onChangeText={setToFull}
           placeholder="Straße, PLZ Ort"
           placeholderTextColor="#9CA3AF"
+        />
+        <Text style={styles.label}>Notiz</Text>
+        <TextInput
+          style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
+          value={note}
+          onChangeText={(t) => setNote(t.slice(0, 500))}
+          placeholder="Kurznotiz für den Fahrer …"
+          placeholderTextColor="#9CA3AF"
+          multiline
+          maxLength={500}
         />
         <Pressable style={[styles.submit, busy && { opacity: 0.6 }]} onPress={() => void submit()} disabled={busy}>
           <Text style={styles.submitText}>{busy ? "Zuweisen …" : "Nächsten Fahrer anfragen"}</Text>

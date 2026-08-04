@@ -1338,6 +1338,12 @@ router.post("/fleet-driver/v1/rides/funk", requireFleetDriverAuth, async (req, r
     const to = typeof body.to === "string" ? body.to.trim() : "";
     const toFull = typeof body.toFull === "string" ? body.toFull.trim() : to;
     const customerPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : "";
+    const note =
+      typeof body.note === "string"
+        ? body.note.trim()
+        : typeof body.driverNote === "string"
+          ? body.driverNote.trim()
+          : "";
     const num = (k: string) => {
       const v = body[k];
       return typeof v === "number" && Number.isFinite(v) ? v : NaN;
@@ -1347,6 +1353,7 @@ router.post("/fleet-driver/v1/rides/funk", requireFleetDriverAuth, async (req, r
       companyId: a.companyId,
       customerName: customerName || "Telefonkunde",
       customerPhone: customerPhone || undefined,
+      note: note || undefined,
       from: from || fromFull.split(",")[0]?.trim() || fromFull,
       fromFull,
       to: to || toFull.split(",")[0]?.trim() || toFull,

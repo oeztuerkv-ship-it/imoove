@@ -23,6 +23,8 @@ export type FleetDriverCreateFunkRideInput = {
   companyId: string;
   customerName: string;
   customerPhone?: string;
+  /** Freitext für den annehmenden Fahrer (wie Partner-Fahrer-Notiz). */
+  note?: string;
   from: string;
   fromFull: string;
   to: string;
@@ -168,6 +170,7 @@ export async function createFleetDriverFunkRide(
   });
 
   const customerPhone = (input.customerPhone ?? "").trim();
+  const driverNote = (input.note ?? "").trim().slice(0, 500);
   const ride: RideRequest = {
     id: newRideId(),
     companyId,
@@ -207,6 +210,7 @@ export async function createFleetDriverFunkRide(
       funk_no_billing: true,
       created_by_fleet_driver: true,
       fleet_driver_id: fleetDriverId,
+      ...(driverNote ? { customer_driver_note: driverNote } : {}),
     },
   };
 

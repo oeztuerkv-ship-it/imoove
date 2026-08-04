@@ -40,6 +40,7 @@ import {
   DriverPrivateRemindersSection,
   type DriverPrivateRemindersHandle,
 } from "@/components/driver/DriverPrivateRemindersSection";
+import { DriverFunkDispatchSection } from "@/components/driver/DriverFunkDispatchSection";
 import { fetchRidePassengerPinStatus } from "@/utils/driverVerifyPassengerPinApi";
 import type { FleetPrivateReminder } from "@/utils/fleetPrivateRemindersApi";
 import { isPrivateReminderOpen } from "@/utils/fleetPrivateRemindersApi";
@@ -5139,33 +5140,6 @@ export default function DriverDashboard() {
                     </Text>
                   </Pressable>
 
-                  {driver.isOwner ? (
-                    <Pressable
-                      onPress={() => router.push("/driver/create-funk" as Href)}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "transparent",
-                        borderRadius: 9,
-                        flexDirection: "row",
-                        gap: 4,
-                      }}
-                    >
-                      <Feather name="radio" size={13} color="#8E8E93" />
-                      <Text
-                        style={{
-                          fontFamily: "Inter_500Medium",
-                          color: "#8E8E93",
-                          fontSize: 14,
-                        }}
-                      >
-                        Funk
-                      </Text>
-                    </Pressable>
-                  ) : null}
-
                   <Pressable
                     onPress={() => {
                       setOrdersView("code");
@@ -5538,6 +5512,13 @@ export default function DriverDashboard() {
         showFab={activeTab === "auftraege"}
         bottomInset={bottomPad + 72}
         onRemindersChange={setPrivateReminders}
+      />
+
+      {/* Funk (Owner): rotes offenes Schloss über dem grünen Privatauftrag-FAB */}
+      <DriverFunkDispatchSection
+        enabled={Boolean(driver.isOwner)}
+        showFab={activeTab === "auftraege"}
+        bottomInset={bottomPad + 72 + 60}
       />
 
       <DriverPrivateReminderDueModal
