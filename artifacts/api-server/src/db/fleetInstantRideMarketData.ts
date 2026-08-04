@@ -30,6 +30,7 @@ const INSTANT_MARKET_STATUSES = new Set<RideRequest["status"]>([
 export async function listMarketOnlineDriversEligibleForInstantRide(
   ride: RideRequest,
 ): Promise<MarketOnlineDriverRef[]> {
+  if ((ride.dispatchMode ?? "market") === "funk") return [];
   if (!INSTANT_MARKET_STATUSES.has(ride.status)) return [];
   if (ride.driverId) return [];
 

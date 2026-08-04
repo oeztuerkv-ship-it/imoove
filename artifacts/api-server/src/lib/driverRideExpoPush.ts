@@ -42,6 +42,7 @@ export async function notifyDriverReservationActivationReminder(
 
 /** Sofortfahrt im Markt: Push an alle ONLINE + einsatzbereiten Fahrer mit passendem Fahrzeug. */
 export async function notifyMarketOnlineDriversInstantRideOffer(ride: RideRequest): Promise<void> {
+  if ((ride.dispatchMode ?? "market") === "funk") return;
   if (!INSTANT_OFFER_STATUSES.has(ride.status)) return;
   if (isFarFutureReservation(ride.scheduledAt ?? null)) return;
 
@@ -120,6 +121,32 @@ export async function notifyDriverFollowUpOffer(
       priority: "high",
       channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
       data: { kind: "follow_up_offer", rideId: ride.id, distanceKm },
+    })),
+  );
+}
+
+/** Funk-Dispatch: exclusives Angebot nur an einen Fahrer. */
+export async function notifyDriverFunkOffer(
+  fleetDriverId: string,
+  companyId: string,
+  rideId: string,
+  distanceKm: number,
+): Promise<void> {
+  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+  if (tokens.length === 0) return;
+  const km =
+    Number.isFinite(distanceKm) && distanceKm >= 0
+      ? ` · ca. ${distanceKm < 10 ? distanceKm.toFixed(1) : Math.round(distanceKm)} km`
+      : "";
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Funk-Auftrag",
+      body: `Direkte Zuweisung${km} — bitte annehmen.`,
+      sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
+      priority: "high",
+      channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
+      data: { kind: "funk_dispatch_offer", rideId, distanceKm },
     })),
   );
 }

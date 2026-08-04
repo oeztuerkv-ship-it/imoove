@@ -159,6 +159,7 @@ const PANEL_OPEN_RIDE_TERMINAL_STATUSES: ReadonlySet<RideRequest["status"]> = ne
   "cancelled_by_system",
   "expired",
   "rejected",
+  "no_driver",
 ]);
 
 function countPanelOpenRides(rides: RideRequest[]): number {
@@ -286,6 +287,7 @@ async function resolvePanelRideCoords(
 }
 
 function notifyDriversAfterPartnerRideSaved(ride: RideRequest): void {
+  if ((ride.dispatchMode ?? "market") === "funk") return;
   if (ride.status === "scheduled") {
     void notifyEligibleDriversScheduledPoolOffer(ride);
     return;
@@ -2226,6 +2228,25 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
 
       const scheduledRaw = optStr("scheduledAt");
       const passengerId = optStr("passengerId");
+      const wantFunkDispatch = body.funkDispatch === true || body.funkDispatch === "true";
+
+      if (wantFunkDispatch) {
+        if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.funk_dispatch")) return;
+        if (String(ctx.profile.companyKind ?? "").trim() !== "taxi") {
+          res.status(403).json({
+            error: "funk_dispatch_taxi_only",
+            message: "Funk-Zuweisung ist nur für Taxi-Unternehmen verfügbar.",
+          });
+          return;
+        }
+        if (scheduledRaw && scheduledRaw.length > 0) {
+          res.status(400).json({
+            error: "funk_dispatch_instant_only",
+            message: "Funk-Zuweisung gilt nur für Sofortfahrten, nicht für Reservierungen.",
+          });
+          return;
+        }
+      }
 
       const rawRk = body.rideKind;
       const rawPk = body.payerKind;
@@ -2379,6 +2400,9 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         status: initialPanelRideStatus(scheduledAtVal),
         rejectedBy: [],
         driverId: null,
+        dispatchMode: wantFunkDispatch ? "funk" : "market",
+        offeredToDriverId: null,
+        funkOfferStartedAt: null,
         ...initialDispatchTierFieldsForRide(scheduledAtVal),
         customerName,
         customerPhone: customerPhonePanel || null,
@@ -2437,11 +2461,16 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       if (saved) {
         savedForOut = await enablePartnerRideChatAfterSave(saved, ctx.claims.panelUserId);
         await upsertFinanceAfterPartnerRideCreated(savedForOut);
-        notifyDriversAfterPartnerRideSaved(savedForOut);
-        const { promoteReservationIfInActivationWindow } = await import("../jobs/reservationLifecycle.js");
-        void promoteReservationIfInActivationWindow(savedForOut.id).catch((err) => {
-          logger.warn({ err, rideId: savedForOut.id }, "promoteReservationIfInActivationWindow after panel create failed");
-        });
+        if ((savedForOut.dispatchMode ?? "market") === "funk") {
+          const { startFunkDispatch } = await import("../db/funkDispatchData.js");
+          savedForOut = await startFunkDispatch(savedForOut);
+        } else {
+          notifyDriversAfterPartnerRideSaved(savedForOut);
+          const { promoteReservationIfInActivationWindow } = await import("../jobs/reservationLifecycle.js");
+          void promoteReservationIfInActivationWindow(savedForOut.id).catch((err) => {
+            logger.warn({ err, rideId: savedForOut.id }, "promoteReservationIfInActivationWindow after panel create failed");
+          });
+        }
       }
       const rideOut = savedForOut
         ? toPartnerRideView((await enrichPanelRidesForResponse([savedForOut]))[0]!)
@@ -2450,17 +2479,25 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         id: randomUUID(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
-        action: "ride.created",
+        action: wantFunkDispatch ? "ride.created_funk" : "ride.created",
         subjectType: "ride",
         subjectId: newReq.id,
         meta: {
           customerName: rideOut.customerName,
           rideKind: rideOut.rideKind,
           payerKind: rideOut.payerKind,
-          authorizationSource: rideOut.authorizationSource,
-          accessCodeId: rideOut.accessCodeId ?? undefined,
+          dispatchMode: wantFunkDispatch ? "funk" : "market",
+          status: rideOut.status,
         },
       });
+      if (rideOut.status === "no_driver") {
+        res.status(409).json({
+          error: "no_available_driver",
+          message: "Kein verfügbarer Fahrer gefunden",
+          ride: rideOut,
+        });
+        return;
+      }
       res.status(201).json({ ok: true, ride: rideOut });
   } catch (e) {
     next(e);

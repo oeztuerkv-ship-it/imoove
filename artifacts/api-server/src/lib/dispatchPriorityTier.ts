@@ -53,10 +53,11 @@ export function isOpenReservationForDispatch(
   return true;
 }
 
-/** Sofort- oder Reservierungsangebot mit A→B-Stufen. */
+/** Sofort- oder Reservierungsangebot mit A→B-Stufen (nicht Funk). */
 export function isDispatchTierManagedRide(
-  ride: Pick<RideRequest, "status" | "driverId" | "scheduledAt">,
+  ride: Pick<RideRequest, "status" | "driverId" | "scheduledAt" | "dispatchMode">,
 ): boolean {
+  if ((ride.dispatchMode ?? "market") === "funk") return false;
   return isOpenInstantRideForDispatch(ride) || isOpenReservationForDispatch(ride);
 }
 

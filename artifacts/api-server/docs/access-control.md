@@ -25,8 +25,8 @@ Kurzüberblick über **drei getrennte Identitäten**: Plattform-Admin, Partner-P
 
 | Rolle    | Typische Nutzung |
 |----------|------------------|
-| `owner`  | Volle Partner-Rechte inkl. Nutzerverwaltung und Owner-Rolle vergeben. |
-| `manager`| Wie Owner außer: **kein** weiterer `owner`, keine Änderung zu `owner`. |
+| `owner`  | Volle Partner-Rechte inkl. Nutzerverwaltung, Owner-Rolle vergeben und **`rides.funk_dispatch`** (Funk-Zuweisung an nächstgelegenen Fahrer, nur Taxi). |
+| `manager`| Wie Owner außer: **kein** weiterer `owner`, keine Änderung zu `owner`, **kein** Funk-Dispatch. |
 | `staff`  | Disponent: Fahrten lesen/erstellen, Flotte lesen, Freigabe-Codes lesen; **kein** Nutzer-Listing (`users.read`), **keine** Stammdaten-Änderung (`company.update`); Anfragen an die Plattform: `support.read` / `support.write`. |
 | `readonly` | Lesen + Passwort ändern; Anfragen: `support.read` / `support.write`. |
 
@@ -43,6 +43,13 @@ Details: Konstante `ROLE_MATRIX` in `panelPermissions.ts`.
 - **Pfade:** `GET` `/api/admin/support/threads`, `GET` `/api/admin/support/threads/:threadId`, `POST` `…/messages`, `PATCH` `…/:threadId` — `src/routes/adminApi.ts`.
 - **Auth:** wie übrige geschützte Admin-JSON-Routen (`requireAdminApiBearer` + Admin-Session-JWT oder statischer Admin-Bearer).
 - **Rechte:** `canMutateAdminCompanies` — derzeit **admin** und **service** (gleiche Linie wie z. B. Unternehmensanfragen / Stammdaten-Freigaben).
+
+### Partner: Funk-Dispatch (Owner, Taxi)
+
+- **Recht:** `rides.funk_dispatch` nur Rolle **`owner`** (`panelPermissions.ts`).
+- **Create:** `POST /panel/v1/rides` mit `funkDispatch: true` (Sofortfahrt, `company_kind=taxi`).
+- **Verhalten:** exclusive Zuweisung an nächstgelegenen ONLINE-Fahrer (`dispatch_mode=funk`); Ablehnung/Timeout 45 s → Kette; Exhaustion → Status `no_driver` + `409 no_available_driver`.
+- **Kein** Markt-Pool / Tier A/B / Broadcast-Push.
 
 ### Partner-intern: Rolle zuweisen
 

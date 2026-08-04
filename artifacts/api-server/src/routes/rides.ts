@@ -3686,7 +3686,13 @@ router.post("/rides/:id/reject", requireFleetDriverAuth, async (req, res, next) 
         }
       }
     }
-    res.json(stripPartnerOnlyRideFields(updated));
+    let out = updated;
+    if ((updated.dispatchMode ?? "market") === "funk" && rejectIsNew) {
+      const { advanceFunkDispatch } = await import("../db/funkDispatchData.js");
+      const advanced = await advanceFunkDispatch(id, { reason: "reject", rejectingDriverId: driverId });
+      if (advanced) out = advanced;
+    }
+    res.json(stripPartnerOnlyRideFields(out));
   } catch (e) {
     next(e);
   }

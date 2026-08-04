@@ -83,6 +83,7 @@ export function statusLabel(status) {
     requested: "Angefragt",
     searching_driver: "Fahrersuche aktiv",
     offered: "An Fahrer angeboten",
+    no_driver: "Kein Fahrer",
     scheduled: "Reservierung geplant",
     scheduled_assigned: "Reservierung (Fahrer)",
     ready_for_dispatch: "Bereit zur Vergabe",
@@ -157,14 +158,20 @@ export function dispatchSteps(ride) {
     },
     {
       key: "search",
-      label: "Fahrersuche",
-      state: driverId ? "done" : status === "searching_driver" ? "active" : SEARCH_POOL_STATUSES.has(status) ? "wait" : "wait",
+      label: String(ride.dispatchMode ?? "") === "funk" ? "Funk-Zuweisung" : "Fahrersuche",
+      state: driverId ? "done" : status === "searching_driver" || status === "offered" ? "active" : SEARCH_POOL_STATUSES.has(status) ? "wait" : "wait",
       detail:
-        status === "searching_driver"
-          ? "Online-Fahrer werden benachrichtigt"
-          : rej > 0
-            ? `${rej} Ablehnung${rej > 1 ? "en" : ""} — Suche läuft weiter`
-            : "Wartet auf Annahme im Markt",
+        String(ride.dispatchMode ?? "") === "funk"
+          ? status === "offered"
+            ? "Nächstgelegener Fahrer wird exclusiv angeboten"
+            : rej > 0
+              ? `${rej} Ablehnung${rej > 1 ? "en" : ""} — nächster Fahrer`
+              : "Suche nächstgelegenen ONLINE-Fahrer"
+          : status === "searching_driver"
+            ? "Online-Fahrer werden benachrichtigt"
+            : rej > 0
+              ? `${rej} Ablehnung${rej > 1 ? "en" : ""} — Suche läuft weiter`
+              : "Wartet auf Annahme im Markt",
     },
     {
       key: "accepted",

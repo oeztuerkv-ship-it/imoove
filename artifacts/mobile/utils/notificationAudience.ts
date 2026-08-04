@@ -14,6 +14,7 @@ const DRIVER_PUSH_KINDS = new Set([
   "instant_ride_offer",
   "follow_up_offer",
   "scheduled_pool_offer",
+  "funk_dispatch_offer",
   "reservation_activate_reminder",
   "reservation_missed_activation",
   "ride_cancelled_by_customer",

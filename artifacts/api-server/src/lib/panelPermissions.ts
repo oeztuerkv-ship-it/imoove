@@ -9,6 +9,7 @@ import type { PanelRole } from "./panelJwt";
 export type PanelPermission =
   | "rides.read"
   | "rides.create"
+  | "rides.funk_dispatch"
   | "users.read"
   | "users.manage"
   | "users.reset_password"
@@ -25,6 +26,7 @@ const ROLE_MATRIX: Record<PanelRole, readonly PanelPermission[]> = {
   owner: [
     "rides.read",
     "rides.create",
+    "rides.funk_dispatch",
     "users.read",
     "users.manage",
     "users.reset_password",

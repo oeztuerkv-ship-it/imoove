@@ -1,6 +1,11 @@
 import { shouldShowExpoNotification, shouldPresentDriverRideOfferNotification } from "./notificationAudience";
 
-const DRIVER_OFFER_PUSH_KINDS = new Set(["instant_ride_offer", "follow_up_offer", "scheduled_pool_offer"]);
+const DRIVER_OFFER_PUSH_KINDS = new Set([
+  "instant_ride_offer",
+  "follow_up_offer",
+  "scheduled_pool_offer",
+  "funk_dispatch_offer",
+]);
 
 let configured = false;
 

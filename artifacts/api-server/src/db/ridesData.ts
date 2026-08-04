@@ -199,6 +199,9 @@ export function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     vehicle: r.vehicle,
     pricingMode: parsePricingModeFromDb(r.pricing_mode),
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
+    dispatchMode: r.dispatch_mode === "funk" ? "funk" : "market",
+    offeredToDriverId: r.offered_to_driver_id ?? null,
+    funkOfferStartedAt: r.funk_offer_started_at ? r.funk_offer_started_at.toISOString() : null,
     dispatchTier: (r.dispatch_tier as RideRequest["dispatchTier"]) ?? "A",
     dispatchTierStartedAt: r.dispatch_tier_started_at
       ? r.dispatch_tier_started_at.toISOString()
@@ -307,6 +310,9 @@ function rideToUpdate(r: RideRequest) {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
+    dispatch_mode: r.dispatchMode === "funk" ? "funk" : "market",
+    offered_to_driver_id: r.offeredToDriverId ?? null,
+    funk_offer_started_at: r.funkOfferStartedAt ? new Date(r.funkOfferStartedAt) : null,
     dispatch_tier: r.dispatchTier ?? "A",
     dispatch_tier_started_at: r.dispatchTierStartedAt ? new Date(r.dispatchTierStartedAt) : null,
     chat_enabled: r.chatEnabled ?? false,
@@ -386,6 +392,9 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
+    dispatch_mode: r.dispatchMode === "funk" ? "funk" : "market",
+    offered_to_driver_id: r.offeredToDriverId ?? null,
+    funk_offer_started_at: r.funkOfferStartedAt ? new Date(r.funkOfferStartedAt) : null,
     dispatch_tier: r.dispatchTier ?? "A",
     dispatch_tier_started_at: r.dispatchTierStartedAt ? new Date(r.dispatchTierStartedAt) : null,
     chat_enabled: r.chatEnabled ?? false,
@@ -1696,6 +1705,10 @@ export async function tryFleetAcceptRideAtomic(input: {
     }
     const assigned = (cur.driverId ?? "").trim();
     if (assigned && assigned !== driverId) return { ok: false, reason: "ride_already_claimed" };
+    if ((cur.dispatchMode ?? "market") === "funk") {
+      const offered = (cur.offeredToDriverId ?? "").trim();
+      if (offered && offered !== driverId) return { ok: false, reason: "ride_already_claimed" };
+    }
     const { assertFleetDriverMatchesRide } = await import("./fleetMatchingData.js");
     const capMem = await assertFleetDriverMatchesRide(cur, driverId, fleetDriverCompanyId);
     if (!capMem.ok) return { ok: false, reason: "no_matching_vehicle" };
@@ -1705,6 +1718,8 @@ export async function tryFleetAcceptRideAtomic(input: {
       ...cur,
       status: nextStatus,
       driverId,
+      offeredToDriverId: null,
+      funkOfferStartedAt: null,
       companyId: (cur.companyId ?? "").trim() || fleetDriverCompanyId || null,
       ...(nextStatus === "accepted" && !cur.noShowCountdownStartedAt
         ? { noShowCountdownStartedAt: new Date().toISOString() }
@@ -1725,6 +1740,11 @@ export async function tryFleetAcceptRideAtomic(input: {
   const prevSnapshot = await findRide(rideId);
   if (!prevSnapshot) return { ok: false, reason: "not_found" };
 
+  if ((prevSnapshot.dispatchMode ?? "market") === "funk") {
+    const offered = (prevSnapshot.offeredToDriverId ?? "").trim();
+    if (offered && offered !== driverId) return { ok: false, reason: "ride_already_claimed" };
+  }
+
   const { assertFleetDriverMatchesRide } = await import("./fleetMatchingData.js");
   const cap = await assertFleetDriverMatchesRide(prevSnapshot, driverId, fleetDriverCompanyId);
   if (!cap.ok) return { ok: false, reason: "no_matching_vehicle" };
@@ -1736,6 +1756,8 @@ export async function tryFleetAcceptRideAtomic(input: {
     .set({
       status: nextStatusExpr,
       driver_id: driverId,
+      offered_to_driver_id: null,
+      funk_offer_started_at: null,
       no_show_countdown_started_at: sql`CASE
         WHEN ${ridesTable.status} = 'scheduled' THEN ${ridesTable.no_show_countdown_started_at}
         ELSE COALESCE(${ridesTable.no_show_countdown_started_at}, NOW())
@@ -1749,6 +1771,11 @@ export async function tryFleetAcceptRideAtomic(input: {
         eq(ridesTable.id, rideId),
         inArray(ridesTable.status, ACCEPT_DISPATCH_STATUSES as unknown as string[]),
         sql`(COALESCE(trim(${ridesTable.driver_id}), '') = '' OR ${ridesTable.driver_id} = ${driverId})`,
+        sql`(
+          COALESCE(trim(${ridesTable.dispatch_mode}), 'market') <> 'funk'
+          OR COALESCE(trim(${ridesTable.offered_to_driver_id}), '') = ''
+          OR ${ridesTable.offered_to_driver_id} = ${driverId}
+        )`,
       ),
     )
     .returning();

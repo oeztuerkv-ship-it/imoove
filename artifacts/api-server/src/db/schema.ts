@@ -762,6 +762,10 @@ export const ridesTable = pgTable("rides", {
   /** Sofortfahrt: aktuelle Angebots-Stufe A→B. */
   dispatch_tier: text("dispatch_tier").notNull().default("A"),
   dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),
+  /** market | funk — exclusive Owner-Zuweisung ohne Markt-Pool. */
+  dispatch_mode: text("dispatch_mode").notNull().default("market"),
+  offered_to_driver_id: text("offered_to_driver_id"),
+  funk_offer_started_at: timestamp("funk_offer_started_at", { withTimezone: true }),
   /** Zwei-Wege-Chat (Snapshot bei Annahme durch A-Fahrer); strikt fahrtgebunden. */
   chat_enabled: boolean("chat_enabled").notNull().default(false),
   chat_enabled_at: timestamp("chat_enabled_at", { withTimezone: true }),

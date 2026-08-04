@@ -1221,7 +1221,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           if (
             (kind === "instant_ride_offer" ||
               kind === "follow_up_offer" ||
-              kind === "scheduled_pool_offer") &&
+              kind === "scheduled_pool_offer" ||
+              kind === "funk_dispatch_offer") &&
             typeof data?.rideId === "string" &&
             data.rideId.trim()
           ) {

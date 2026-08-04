@@ -1511,6 +1511,27 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'dispatch_mode'
+  ) THEN
+    errs := array_append(errs, 'rides.dispatch_mode (Migration 144)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'offered_to_driver_id'
+  ) THEN
+    errs := array_append(errs, 'rides.offered_to_driver_id (Migration 144)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'funk_offer_started_at'
+  ) THEN
+    errs := array_append(errs, 'rides.funk_offer_started_at (Migration 144)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'payment_capture_attempt_count'
   ) THEN
     errs := array_append(errs, 'rides.payment_capture_attempt_count (Migration 111)');

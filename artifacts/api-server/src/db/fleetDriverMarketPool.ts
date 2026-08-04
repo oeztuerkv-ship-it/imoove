@@ -125,6 +125,10 @@ export async function listMarketRidesForFleetDriver(
     const inMarket = OPEN_INSTANT_STATUSES.has(ride.status);
     if (!inMarket) return false;
     if (!marketOnline) return false;
+    // Funk: nur der aktuell angebotene Fahrer sieht die Anfrage (kein Pool).
+    if ((ride.dispatchMode ?? "market") === "funk") {
+      return (ride.offeredToDriverId ?? "").trim() === fleetDriverId;
+    }
     return isRideCompatibleWithCapability(ride, capability);
   });
 
@@ -133,6 +137,9 @@ export async function listMarketRidesForFleetDriver(
   const radiusKm = await getDispatchRadiusKmFromConfig();
   const driverLoc = await getFleetDriverMarketLocation(fleetDriverId, companyId);
   const marketRows = syncedRows.filter((ride) => {
+    if ((ride.dispatchMode ?? "market") === "funk") {
+      return (ride.offeredToDriverId ?? "").trim() === fleetDriverId;
+    }
     if (isOpenInstantRideForDispatch(ride)) {
       if (ride.fromLat == null || ride.fromLon == null) return false;
       const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");

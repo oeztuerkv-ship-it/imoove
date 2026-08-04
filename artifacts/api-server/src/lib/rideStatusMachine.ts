@@ -13,6 +13,7 @@ export const RIDE_TERMINAL_STATUSES: ReadonlySet<RideRequest["status"]> = new Se
   "cancelled",
   "rejected",
   "expired",
+  "no_driver",
 ]);
 
 /** Kartenzahlung (Stripe PaymentIntent): alle aktiven Buchungs-/Fahrt-Stati, nicht nur Terminal-Gegenteil. */
@@ -73,8 +74,8 @@ const TRANSITIONS: Partial<Record<RideRequest["status"], RideRequest["status"][]
     "expired",
   ],
   requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-  searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-  offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
+  searching_driver: ["offered", "accepted", "expired", "no_driver", "cancelled_by_customer", "cancelled", "cancelled_by_system"],
+  offered: ["accepted", "searching_driver", "expired", "no_driver", "cancelled_by_customer", "cancelled", "cancelled_by_system"],
   pending: [
     "accepted",
     "driver_arriving",

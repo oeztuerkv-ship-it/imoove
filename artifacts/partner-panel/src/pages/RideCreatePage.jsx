@@ -98,6 +98,15 @@ function mapCreateError(res, data) {
   if (code === "open_rides_limit_reached") {
     return "Zu viele offene Fahrten — bitte zuerst abschließen oder stornieren.";
   }
+  if (code === "no_available_driver") {
+    return msg || "Kein verfügbarer Fahrer gefunden";
+  }
+  if (code === "funk_dispatch_taxi_only") {
+    return "Funk-Zuweisung ist nur für Taxi-Unternehmen verfügbar.";
+  }
+  if (code === "funk_dispatch_instant_only") {
+    return "Funk-Zuweisung gilt nur für Sofortfahrten.";
+  }
   if (code === "ride_kind_invalid" || code === "payer_kind_invalid") {
     return "Fahrttyp oder Zahler ungültig.";
   }
@@ -131,10 +140,14 @@ export default function RideCreatePage({ onRideCreated }) {
   const { token, user } = usePanelAuth();
   const showAccessCode = hasPanelModule(user?.panelModules, "access_codes");
   const canCreate = hasPerm(user?.permissions, "rides.create");
+  const canFunkDispatch =
+    hasPerm(user?.permissions, "rides.funk_dispatch") &&
+    String(user?.companyKind ?? "").trim() === "taxi";
   const [creating, setCreating] = useState(false);
   const [routing, setRouting] = useState(false);
   const [createMsg, setCreateMsg] = useState("");
   const [scheduleMode, setScheduleMode] = useState("now");
+  const [funkDispatch, setFunkDispatch] = useState(false);
   const [forSomeoneElse, setForSomeoneElse] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [payerMode, setPayerMode] = useState("passenger");
@@ -434,6 +447,7 @@ export default function RideCreatePage({ onRideCreated }) {
         ...(scheduleMode === "reservation" && form.scheduledAt.trim()
           ? { scheduledAt: toIsoFromDatetimeLocal(form.scheduledAt) }
           : {}),
+        ...(scheduleMode === "now" && funkDispatch ? { funkDispatch: true } : {}),
         ...(forSomeoneElse && form.customerPhone.trim() ? { customerPhone: form.customerPhone.trim() } : {}),
         ...(form.driverNote.trim() ? { driverNote: form.driverNote.trim().slice(0, NOTE_MAX) } : {}),
         ...(form.voucherCode.trim() ? { voucherCode: form.voucherCode.trim() } : {}),
@@ -458,10 +472,14 @@ export default function RideCreatePage({ onRideCreated }) {
       const kind =
         scheduleMode === "reservation" || status === "scheduled"
           ? "Reservierung"
-          : "Sofort-Taxi";
+          : funkDispatch
+            ? "Funk-Zuweisung"
+            : "Sofort-Taxi";
       const dispatchHint =
         scheduleMode === "now"
-          ? " Fahrersuche startet — Status unter „Meine Fahrten“."
+          ? funkDispatch
+            ? " Nächstgelegener Fahrer wird exclusiv benachrichtigt."
+            : " Fahrersuche startet — Status unter „Meine Fahrten“."
           : " Termin gespeichert — im Fahrer-Planer sofort sichtbar.";
       const id = typeof ride.id === "string" ? ride.id : "";
       if (id) {
@@ -897,18 +915,36 @@ export default function RideCreatePage({ onRideCreated }) {
                 </header>
                 <div className="partner-booking-schedule partner-booking-schedule--saas">
                   <PartnerBookingChoiceCard
-                    active={scheduleMode === "now"}
+                    active={scheduleMode === "now" && !funkDispatch}
                     icon="⚡"
                     title="Sofort-Taxi"
                     description="Online-Fahrer werden benachrichtigt"
-                    onClick={() => setScheduleMode("now")}
+                    onClick={() => {
+                      setScheduleMode("now");
+                      setFunkDispatch(false);
+                    }}
                   />
+                  {canFunkDispatch ? (
+                    <PartnerBookingChoiceCard
+                      active={scheduleMode === "now" && funkDispatch}
+                      icon="📻"
+                      title="Funk-Zuweisung"
+                      description="Nächstgelegener ONLINE-Fahrer — exclusiv"
+                      onClick={() => {
+                        setScheduleMode("now");
+                        setFunkDispatch(true);
+                      }}
+                    />
+                  ) : null}
                   <PartnerBookingChoiceCard
                     active={scheduleMode === "reservation"}
                     icon="📅"
                     title="Reservierung"
                     description="60 Minuten bis max. 5 Tage im Voraus"
-                    onClick={() => setScheduleMode("reservation")}
+                    onClick={() => {
+                      setScheduleMode("reservation");
+                      setFunkDispatch(false);
+                    }}
                   />
                 </div>
                 {scheduleMode === "reservation" ? (
@@ -928,6 +964,11 @@ export default function RideCreatePage({ onRideCreated }) {
                       />
                     </span>
                   </label>
+                ) : funkDispatch ? (
+                  <p className="partner-ops-hint">
+                    Funk: nur der nächstgelegene verfügbare Fahrer erhält die Anfrage. Bei Ablehnung
+                    automatisch der Nächste. Kein Markt-Pool.
+                  </p>
                 ) : (
                   <p className="partner-ops-hint">
                     Nach dem Buchen: Status „Fahrersuche“ in Meine Fahrten — Annahme und Ablehnungen dort sichtbar.

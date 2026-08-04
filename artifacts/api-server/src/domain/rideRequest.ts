@@ -175,6 +175,15 @@ export interface RideRequest {
   passengerPinVerifiedAt?: string | null;
   driverId?: string | null;
   rejectedBy: string[];
+  /**
+   * Disposition: `market` = normaler Pool/Tier A/B; `funk` = exclusive Owner-Zuweisung (nächstgelegen).
+   * @default market
+   */
+  dispatchMode?: "market" | "funk" | null;
+  /** Funk: aktuell angebotener Fleet-Fahrer (soft-offer, noch nicht accepted). */
+  offeredToDriverId?: string | null;
+  /** Funk: Startzeit des aktuellen Exclusive-Angebots (Timeout 45 s). */
+  funkOfferStartedAt?: string | null;
   /** Sofortfahrt: aktuelle Dispatch-Stufe (A→B). */
   dispatchTier?: "A" | "B" | null;
   dispatchTierStartedAt?: string | null;
@@ -205,7 +214,9 @@ export interface RideRequest {
     | "rejected"
     | "cancelled"
     | "completed"
-    | "no_show";
+    | "no_show"
+    /** Funk-Kette erschöpft / kein verfügbarer Fahrer. */
+    | "no_driver";
 
   driverWaitingStartedAt?: string | null;
   noShowCountdownStartedAt?: string | null;

@@ -75,4 +75,19 @@ httpServer.listen(port, () => {
     void runPartnerMonthlyReportTick();
   }, 15 * 60 * 1000);
 
+  // Funk-Dispatch: Angebot-Timeout 45 s → nächster Fahrer (Tick alle 10 s)
+  const runFunkDispatchTick = async () => {
+    try {
+      const { runFunkDispatchTimeoutTick } = await import("./db/funkDispatchData.js");
+      await runFunkDispatchTimeoutTick(new Date());
+    } catch (err) {
+      logger.error({ err }, "[Cron] funkDispatch timeout tick failed");
+    }
+  };
+  logger.info({ intervalMs: 10_000 }, "[Cron] funkDispatch armed (45s exclusive offer timeout)");
+  void runFunkDispatchTick();
+  setInterval(() => {
+    void runFunkDispatchTick();
+  }, 10_000);
+
 });
