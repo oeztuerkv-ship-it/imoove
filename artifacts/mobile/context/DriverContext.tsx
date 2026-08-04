@@ -485,7 +485,7 @@ export interface DriverProfile {
   isOwner: boolean;
   /** Effektiver KK-Modul-Zugriff (Scan/Upload). */
   kkModuleAuthorized: boolean;
-  /** Premium-Dispatch A/B/C (Admin). */
+  /** Premium-Dispatch A/B (Admin). */
   dispatchPriority: "A" | "B";
   /** Server-Profilfoto vorhanden. */
   avatarHasPhoto: boolean;

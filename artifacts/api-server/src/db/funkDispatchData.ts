@@ -13,6 +13,7 @@ import { fleetDriversTable, ridesTable } from "./schema";
 import { listFleetDriversForCompany } from "./fleetDriversData";
 import { notifyDriverFunkOffer } from "../lib/driverRideExpoPush";
 import { logger } from "../lib/logger";
+import { funkCreatorFleetDriverId } from "../lib/funkDispatchCoords";
 
 export const FUNK_OFFER_TIMEOUT_MS = 45_000;
 /** GPS älter als 3 Min. zählt nicht als „nächstgelegen“. */
@@ -40,6 +41,8 @@ const FUNK_BUSY_STATUSES = new Set<string>([
 export function isFunkDispatchRide(ride: Pick<RideRequest, "dispatchMode">): boolean {
   return (ride.dispatchMode ?? "market") === "funk";
 }
+
+export { funkCreatorFleetDriverId } from "../lib/funkDispatchCoords";
 
 export type FunkCandidate = {
   fleetDriverId: string;
@@ -88,6 +91,9 @@ export async function listFunkCandidatesRanked(ride: RideRequest): Promise<FunkC
   if (!Number.isFinite(pickupLat) || !Number.isFinite(pickupLon)) return [];
 
   const rejected = new Set((ride.rejectedBy ?? []).map((id) => String(id).trim()).filter(Boolean));
+  /** Owner, der den Funk-Auftrag angelegt hat — nie anbieten (kein Eigen-Klingeln). */
+  const creatorId = funkCreatorFleetDriverId(ride);
+  if (creatorId) rejected.add(creatorId);
   const busy = await listBusyDriverIds(companyId);
   const now = Date.now();
 

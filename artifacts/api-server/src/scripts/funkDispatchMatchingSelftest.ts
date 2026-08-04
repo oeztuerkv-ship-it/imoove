@@ -9,7 +9,7 @@ import {
   rideRequiredVehicleClass,
   type DriverRideCapability,
 } from "../db/fleetMatchingData";
-import { finiteCoordOrNull, funkRideRequiresCoords } from "../lib/funkDispatchCoords";
+import { finiteCoordOrNull, funkCreatorFleetDriverId, funkRideRequiresCoords } from "../lib/funkDispatchCoords";
 
 function baseRide(over: Partial<RideRequest> = {}): RideRequest {
   return {
@@ -81,5 +81,14 @@ assert.equal(
   isRideCompatibleWithCapability(baseRide({ vehicle: "xl" }), cap({ vehicleClass: "wheelchair", vehicleType: "wheelchair" })),
   true,
 );
+
+assert.equal(
+  funkCreatorFleetDriverId({
+    partnerBookingMeta: { fleet_driver_id: "fd-owner-1", funk_dispatch: true },
+  }),
+  "fd-owner-1",
+);
+assert.equal(funkCreatorFleetDriverId({ partnerBookingMeta: null }), null);
+assert.equal(funkCreatorFleetDriverId({ partnerBookingMeta: { fleet_driver_id: "  " } }), null);
 
 console.log("OK funkDispatchMatchingSelftest (coords + XL/standard matching)");

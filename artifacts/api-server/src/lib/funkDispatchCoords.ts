@@ -13,3 +13,15 @@ export function funkRideRequiresCoords(ride: {
 }): boolean {
   return finiteCoordOrNull(ride.fromLat) != null && finiteCoordOrNull(ride.fromLon) != null;
 }
+
+/** Fleet-Owner, der den Funk-Auftrag aus der App angelegt hat. */
+export function funkCreatorFleetDriverId(ride: {
+  partnerBookingMeta?: unknown;
+}): string | null {
+  const meta = ride.partnerBookingMeta;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  const raw = (meta as Record<string, unknown>).fleet_driver_id;
+  if (typeof raw !== "string") return null;
+  const id = raw.trim();
+  return id.length > 0 ? id : null;
+}

@@ -484,6 +484,7 @@ function canReleaseDispatchOffer(
   req: RideRequest,
   driverPriority?: DriverProfile["dispatchPriority"],
 ): boolean {
+  if ((req.dispatchMode ?? "market") === "funk") return false;
   if (driverPriority !== "A") return false;
   if (req.driverId) return false;
   return (req.dispatchTier ?? "A") === "A";
@@ -816,7 +817,7 @@ function InstantCard({
               ]}
             >
               <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
-                {releaseBusy ? "Freigabe …" : "Freigeben für Stufe B/C"}
+                {releaseBusy ? "Freigabe …" : "Freigeben"}
               </Text>
             </Pressable>
           ) : null}
@@ -1254,7 +1255,7 @@ function ScheduledCard({
               ]}
             >
               <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
-                {releaseBusy ? "Freigabe …" : "Freigeben für Stufe B/C"}
+                {releaseBusy ? "Freigabe …" : "Freigeben"}
               </Text>
             </Pressable>
           ) : null}
