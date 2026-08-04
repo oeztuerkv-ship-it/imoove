@@ -24,6 +24,7 @@
     "test:mid-trip-abort-fare": "pnpm run build && node --enable-source-maps ./dist/scripts/midTripAbortFareSelftest.mjs",
     "test:market-location-update": "pnpm run build && node --enable-source-maps ./dist/scripts/marketLocationUpdateSelftest.mjs",
     "test:funk-dispatch-matching": "pnpm run build && node --enable-source-maps ./dist/scripts/funkDispatchMatchingSelftest.mjs",
+    "test:fleet-live-gps-fresh": "pnpm run build && node --enable-source-maps ./dist/scripts/fleetLiveGpsFreshSelftest.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

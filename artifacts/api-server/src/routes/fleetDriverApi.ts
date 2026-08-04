@@ -50,6 +50,7 @@ import { releaseInstantRideDispatchOffer, syncDispatchTiersForRides } from "../d
 import { listRides, listRidesForDriver, findRide, updateRide } from "../db/ridesData";
 import { getCustomerCancelReasonForRide } from "./rides";
 import { buildFunkDispatchTimeline, isFunkDispatchRide } from "../db/funkDispatchData.js";
+import { listFleetLiveDriversForCompany } from "../db/fleetLiveData.js";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import {
   toDriverMissedRideView,
@@ -1437,6 +1438,33 @@ router.get("/fleet-driver/v1/rides/:rideId/funk-timeline", requireFleetDriverAut
     }
     const timeline = await buildFunkDispatchTimeline(rideId);
     res.json({ ok: true, ...timeline });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Owner: Live-Flotte (Online-Zahl + Market-GPS der eigenen Firma).
+ * Nicht-Owner → 403. Keine sensiblen Felder.
+ */
+router.get("/fleet-driver/v1/fleet-live", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const driver = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!driver?.is_owner) {
+      res.status(403).json({ error: "owner_only" });
+      return;
+    }
+    const drivers = await listFleetLiveDriversForCompany(a.companyId);
+    res.json({
+      ok: true,
+      onlineCount: drivers.length,
+      drivers,
+    });
   } catch (e) {
     next(e);
   }

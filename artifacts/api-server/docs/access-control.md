@@ -74,6 +74,7 @@ Details: Konstante `ROLE_MATRIX` in `panelPermissions.ts`.
 - **Mandant:** nur `admin_companies.company_kind = 'taxi'`; Login per E-Mail nur für aktive Zeilen (`access_status = active`, `is_active`).
 - **Sperre:** Unternehmer setzt im Partner-Panel „Sperren“ → `session_version` wird erhöht; bestehende Tokens scheitern am nächsten API-Call mit `401 token_revoked` bzw. `403 driver_suspended`.
 - **Verwaltung:** Partner-Routen unter `/api/panel/v1/fleet/*` — Rechte `fleet.read` / `fleet.manage` in `panelPermissions.ts`, Modul-Whitelist `taxi_fleet` (`domain/panelModules.ts`). **Kein** globaler Zugriff: alle Queries an `company_id` des Panel-JWT gebunden.
+- **Owner Live-Flotte:** `GET /api/fleet-driver/v1/fleet-live` — nur `fleet_drivers.is_owner`; Response `onlineCount` + Market-GPS der online Kollegen derselben `company_id` (Frische wie Funk, 3 Min.). Nicht-Owner → `403 owner_only`.
 
 ## 5. WebSocket Fahrt-Room (`/ws`)
 

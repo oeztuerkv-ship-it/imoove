@@ -62,8 +62,9 @@ import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
 import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
 import { DriverRideEarningsModal } from "@/components/DriverRideEarningsModal";
 import { RealMapView } from "@/components/RealMapView";
-import MapView from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import { nativeMapViewProps } from "@/utils/nativeMapProvider";
+import { fetchFleetLive, type FleetLiveDriver } from "@/utils/fleetLiveApi";
 import { useTranslation } from "@/context/LanguageContext";
 import { type DriverProfile, useDriver } from "@/context/DriverContext";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
@@ -1310,21 +1311,54 @@ function sortInstantMarketOffers(
 }
 
 /* ─── Tab: Übersicht — Live-Karte (Angebote als Vollbild-Overlay) ─── */
+const FLEET_LIVE_POLL_MS = 4_000;
+
 function TabUebersicht({
   pendingRequests,
   driverPos,
   isAvailable,
   marketLoading,
+  isOwner = false,
 }: {
   pendingRequests: RideRequest[];
   driverPos?: { lat: number; lon: number } | null;
   isAvailable: boolean;
   marketLoading?: boolean;
+  /** Owner: Live-Flotten-Chip + Marker (gleiche company). */
+  isOwner?: boolean;
 }) {
   const instantCount = useMemo(
     () => sortInstantMarketOffers(pendingRequests, driverPos).length,
     [pendingRequests, driverPos],
   );
+
+  const [fleetDrivers, setFleetDrivers] = useState<FleetLiveDriver[]>([]);
+  const [fleetOnlineCount, setFleetOnlineCount] = useState(0);
+
+  useEffect(() => {
+    if (!isOwner) {
+      setFleetDrivers([]);
+      setFleetOnlineCount(0);
+      return;
+    }
+    let cancelled = false;
+    const tick = async () => {
+      const res = await fetchFleetLive();
+      if (cancelled) return;
+      if (res.ok) {
+        setFleetDrivers(res.snapshot.drivers);
+        setFleetOnlineCount(res.snapshot.onlineCount);
+      }
+    };
+    void tick();
+    const id = setInterval(() => {
+      void tick();
+    }, FLEET_LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isOwner]);
 
   const mapLat = driverPos?.lat ?? 48.7394;
   const mapLon = driverPos?.lon ?? 9.3114;
@@ -1341,6 +1375,11 @@ function TabUebersicht({
             {instantCount} Anfrage{instantCount === 1 ? "" : "n"} — siehe Overlay
           </Text>
         ) : null}
+        {isOwner ? (
+          <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#16A34A" }}>
+            Flotte online: {fleetOnlineCount}
+          </Text>
+        ) : null}
       </View>
     );
   }
@@ -1355,7 +1394,22 @@ function TabUebersicht({
         showsCompass={false}
         initialRegion={{ latitude: mapLat, longitude: mapLon, latitudeDelta: 0.04, longitudeDelta: 0.04 }}
         region={driverPos ? { latitude: driverPos.lat, longitude: driverPos.lon, latitudeDelta: 0.04, longitudeDelta: 0.04 } : undefined}
-      />
+      >
+        {isOwner
+          ? fleetDrivers.map((d) => (
+              <Marker
+                key={d.id}
+                coordinate={{ latitude: d.lat, longitude: d.lon }}
+                anchor={{ x: 0.5, y: 0.5 }}
+                tracksViewChanges={false}
+              >
+                <View style={styles.fleetLiveMarker}>
+                  <MaterialCommunityIcons name="taxi" size={18} color="#fff" />
+                </View>
+              </Marker>
+            ))
+          : null}
+      </MapView>
 
       <View style={styles.mapStatusChip}>
         <View style={[styles.mapStatusDot, { backgroundColor: isAvailable ? "#22C55E" : "#6B7280" }]} />
@@ -1369,6 +1423,16 @@ function TabUebersicht({
               : "Offline"}
         </Text>
       </View>
+
+      {isOwner ? (
+        <View style={styles.fleetLiveChip} accessibilityLabel={`Flotte online ${fleetOnlineCount}`}>
+          <MaterialCommunityIcons name="car-multiple" size={16} color="#fff" />
+          <Text style={styles.fleetLiveChipLabel}>Flotte</Text>
+          <View style={styles.fleetLiveBadge}>
+            <Text style={styles.fleetLiveBadgeText}>{fleetOnlineCount}</Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -5055,6 +5119,7 @@ export default function DriverDashboard() {
                 driverPos={driverPos}
                 isAvailable={driver.einsatzbereit && driver.isAvailable}
                 marketLoading={marketRefreshing}
+                isOwner={Boolean(driver.isOwner)}
               />
             )}
             {activeTab === "auftraege" && (
@@ -6068,6 +6133,39 @@ const styles = StyleSheet.create({
   },
   mapStatusDot: { width: 10, height: 10, borderRadius: 5 },
   mapStatusText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  fleetLiveChip: {
+    position: "absolute",
+    top: 52,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  fleetLiveChipLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  fleetLiveBadge: {
+    backgroundColor: "#22C55E",
+    borderRadius: 9,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fleetLiveBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
+  fleetLiveMarker: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#16A34A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
   liveOfferFocusRoot: {
     flex: 1,
     justifyContent: "center",
