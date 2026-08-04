@@ -411,6 +411,8 @@ export default function DriverNavigationScreen() {
     vehicle?: string;
     vehicleClassMultiplier?: string;
     xlFixedSurchargeEur?: string;
+    /** "funk" = Telefon-Weiterleitung ohne Abrechnung/PIN. */
+    dispatchMode?: string;
     driverId: string;
     arrived?: string;
     /** "1" = private Merkliste, kein Auftrags-API. */
@@ -477,7 +479,9 @@ export default function DriverNavigationScreen() {
   const destLon    = parseFloat(params.destLon ?? "0");
   const destName   = params.destName ?? params.toName ?? "Ziel";
   const estimatedFare = parseFloat(params.estimatedFare ?? "0");
-  const isFixedPriceRide = driverSkipsManualFareEntry(activeRide?.pricingMode);
+  const isFunkDispatch =
+    params.dispatchMode === "funk" || activeRide?.dispatchMode === "funk";
+  const isFixedPriceRide = !isFunkDispatch && driverSkipsManualFareEntry(activeRide?.pricingMode);
   const agreedFixedPriceEur = useMemo(
     () =>
       driverAgreedFixedPriceEur({
@@ -1950,6 +1954,10 @@ export default function DriverNavigationScreen() {
   }, [rideFleetStatus, activeRide?.estimatedFare, activeRide?.pricingMode, estimatedFare]);
 
   const handleFahrtBeenden = () => {
+    if (isFunkDispatch) {
+      void completeRideWithFare(0, false);
+      return;
+    }
     if (driverRidePaymentLooksLikeCash(params.paymentMethod)) {
       afterCashPaymentWarnRef.current = openFareModalAfterRideEnd;
       setShowCashPaymentWarn(true);
@@ -2038,16 +2046,22 @@ export default function DriverNavigationScreen() {
       const targetStatus = isCustomerAbortPendingFareStatus(rideFleetStatus)
         ? "cancelled_by_customer"
         : "completed";
-      await patchStatus(targetStatus, fare, undefined, undefined, plausibilityAck);
+      await patchStatus(targetStatus, isFunkDispatch ? 0 : fare, undefined, undefined, plausibilityAck);
       await syncNavPresence(null);
       setShowFareModal(false);
       disconnectSocket();
       trySpeak(
         targetStatus === "cancelled_by_customer"
           ? "Abbruch abgeschlossen. Vielen Dank."
-          : "Fahrt abgeschlossen. Vielen Dank.",
+          : isFunkDispatch
+            ? "Funk-Fahrt abgeschlossen."
+            : "Fahrt abgeschlossen. Vielen Dank.",
         soundRef.current,
       );
+      if (isFunkDispatch) {
+        goToDashboardAfterRide();
+        return;
+      }
       if (driverRidePaymentLooksLikeCash(params.paymentMethod)) {
         setShowCashConfirmModal(true);
         return;
@@ -2534,7 +2548,7 @@ export default function DriverNavigationScreen() {
         onPress={handleFahrtBeenden}
       >
         <Feather name="flag" size={20} color="#fff" />
-        <Text style={styles.actionBtnText}>Fahrt beenden</Text>
+        <Text style={styles.actionBtnText}>{isFunkDispatch ? "Angekommen" : "Fahrt beenden"}</Text>
       </Pressable>
       <Pressable
         onPress={() => setShowCancelReasonModal(true)}

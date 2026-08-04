@@ -2639,7 +2639,8 @@ function ActiveRideScreen({
   }, [showPriceModal, req.status, req.estimatedFare, req.pricingMode]);
 
   const isKK = isKrankenkasseRide(req.paymentMethod);
-  const isFixedPrice = driverSkipsManualFareEntry(req.pricingMode);
+  const isFunkDispatch = req.dispatchMode === "funk";
+  const isFixedPrice = !isFunkDispatch && driverSkipsManualFareEntry(req.pricingMode);
   const agreedFixedPriceEur = driverAgreedFixedPriceEur(req);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
@@ -2849,6 +2850,10 @@ function ActiveRideScreen({
   };
 
   const handleFinishTap = () => {
+    if (isFunkDispatch) {
+      void onComplete(0);
+      return;
+    }
     if (driverRidePaymentLooksLikeCash(req.paymentMethod)) {
       setShowCashPaymentWarn(true);
       return;
@@ -3287,7 +3292,9 @@ function ActiveRideScreen({
             <View style={activeStyles.endActionRow}>
               <Pressable style={[activeStyles.completeBtn, { flex: 1 }]} onPress={handleFinishTap}>
                 <Feather name="flag" size={20} color="#fff" />
-                <Text style={activeStyles.completeBtnText}>Fahrt beenden</Text>
+                <Text style={activeStyles.completeBtnText}>
+                  {isFunkDispatch ? "Angekommen" : "Fahrt beenden"}
+                </Text>
               </Pressable>
               <Pressable
                 style={activeStyles.stornoBtnSide}
@@ -5131,6 +5138,33 @@ export default function DriverDashboard() {
                       Reserv.
                     </Text>
                   </Pressable>
+
+                  {driver.isOwner ? (
+                    <Pressable
+                      onPress={() => router.push("/driver/create-funk" as Href)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "transparent",
+                        borderRadius: 9,
+                        flexDirection: "row",
+                        gap: 4,
+                      }}
+                    >
+                      <Feather name="radio" size={13} color="#8E8E93" />
+                      <Text
+                        style={{
+                          fontFamily: "Inter_500Medium",
+                          color: "#8E8E93",
+                          fontSize: 14,
+                        }}
+                      >
+                        Funk
+                      </Text>
+                    </Pressable>
+                  ) : null}
 
                   <Pressable
                     onPress={() => {

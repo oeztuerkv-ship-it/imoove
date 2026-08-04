@@ -180,6 +180,8 @@ export interface RideRequest {
   status: RequestStatus;
   /** Premium-Dispatch-Stufe (Sofort/Reservierung am Markt). */
   dispatchTier?: "A" | "B" | null;
+  /** `funk` = Telefon-Weiterleitung ohne Abrechnung/PIN. */
+  dispatchMode?: "market" | "funk" | null;
   /** Zwei-Wege-Chat aktiv (nur A-Fahrer nach Annahme). */
   chatEnabled?: boolean;
 }
@@ -666,6 +668,12 @@ function normalizeRequest(r: any): RideRequest {
         .trim()
         .toUpperCase();
       return t === "A" || t === "B" ? t : "A";
+    })(),
+    dispatchMode: (() => {
+      const m = String(r.dispatchMode ?? r.dispatch_mode ?? "market")
+        .trim()
+        .toLowerCase();
+      return m === "funk" ? "funk" : "market";
     })(),
     chatEnabled: Boolean(r.chatEnabled ?? r.chat_enabled),
   } as RideRequest;

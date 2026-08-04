@@ -8,8 +8,9 @@ import { haversineDistanceKm } from "../lib/serviceRegionMatch";
 import { getDb, isPostgresConfigured } from "./client";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "./fleetMatchingData";
 import { getFleetDriverReadinessById } from "./fleetDriverReadiness";
-import { findRide, insertSupplementalRideEvent, listRides, updateRide } from "./ridesData";
+import { findRide, insertSupplementalRideEvent, listAdminRideEventsByRideId, listRides, updateRide } from "./ridesData";
 import { fleetDriversTable, ridesTable } from "./schema";
+import { listFleetDriversForCompany } from "./fleetDriversData";
 import { notifyDriverFunkOffer } from "../lib/driverRideExpoPush";
 import { logger } from "../lib/logger";
 
@@ -228,6 +229,21 @@ export async function advanceFunkDispatch(
   if (ride.driverId && ride.status === "accepted") return ride;
 
   const rejectingId = (opts?.rejectingDriverId ?? ride.offeredToDriverId ?? "").trim();
+  if (opts?.reason === "timeout" && rejectingId) {
+    await insertSupplementalRideEvent(ride.id, {
+      eventType: "funk_timeout",
+      fromStatus: ride.status,
+      toStatus: ride.status,
+      actorType: "system",
+      actorId: rejectingId,
+      payload: {
+        driverId: rejectingId,
+        outcome: "timeout",
+        timeoutMs: FUNK_OFFER_TIMEOUT_MS,
+      },
+    });
+  }
+
   let rejectedBy = [...(ride.rejectedBy ?? [])];
   if (rejectingId && !rejectedBy.includes(rejectingId)) {
     rejectedBy = [...rejectedBy, rejectingId];
@@ -288,4 +304,124 @@ export async function runFunkDispatchTimeoutTick(now: Date = new Date()): Promis
     }
   }
   return n;
+}
+
+export type FunkTimelineStep = {
+  at: string;
+  outcome: "offered" | "rejected" | "timeout" | "accepted" | "exhausted";
+  driverId: string | null;
+  driverName: string | null;
+  distanceKm: number | null;
+};
+
+function driverDisplayName(firstName: string, lastName: string, fallbackId: string): string {
+  const name = `${firstName} ${lastName}`.trim();
+  return name || fallbackId;
+}
+
+/**
+ * Funk-Verlauf aus `ride_events` (kein neues Schema).
+ * Kette: angeboten → abgelehnt/Timeout → … → angenommen | erschöpft.
+ */
+export async function buildFunkDispatchTimeline(rideId: string): Promise<{
+  steps: FunkTimelineStep[];
+  summaryLine: string;
+}> {
+  const ride = await findRide(rideId);
+  if (!ride || !isFunkDispatchRide(ride)) {
+    return { steps: [], summaryLine: "" };
+  }
+  const companyId = (ride.companyId ?? "").trim();
+  const nameById = new Map<string, string>();
+  if (companyId) {
+    for (const d of await listFleetDriversForCompany(companyId)) {
+      nameById.set(d.id, driverDisplayName(d.firstName, d.lastName, d.id));
+    }
+  }
+  const events = await listAdminRideEventsByRideId(rideId);
+  const steps: FunkTimelineStep[] = [];
+  for (const ev of events) {
+    const payload = ev.payload ?? {};
+    const payloadDriver =
+      typeof payload.driverId === "string"
+        ? payload.driverId.trim()
+        : typeof ev.actorId === "string"
+          ? ev.actorId.trim()
+          : "";
+    if (ev.eventType === "funk_offer" || ev.eventType === "funk_fallback") {
+      const distanceKm =
+        typeof payload.distanceKm === "number" && Number.isFinite(payload.distanceKm)
+          ? payload.distanceKm
+          : null;
+      steps.push({
+        at: ev.createdAt,
+        outcome: "offered",
+        driverId: payloadDriver || null,
+        driverName: payloadDriver ? (nameById.get(payloadDriver) ?? payloadDriver) : null,
+        distanceKm,
+      });
+      continue;
+    }
+    if (ev.eventType === "driver_rejected") {
+      steps.push({
+        at: ev.createdAt,
+        outcome: "rejected",
+        driverId: payloadDriver || null,
+        driverName: payloadDriver ? (nameById.get(payloadDriver) ?? payloadDriver) : null,
+        distanceKm: null,
+      });
+      continue;
+    }
+    if (ev.eventType === "funk_timeout") {
+      steps.push({
+        at: ev.createdAt,
+        outcome: "timeout",
+        driverId: payloadDriver || null,
+        driverName: payloadDriver ? (nameById.get(payloadDriver) ?? payloadDriver) : null,
+        distanceKm: null,
+      });
+      continue;
+    }
+    if (ev.eventType === "funk_exhausted") {
+      steps.push({
+        at: ev.createdAt,
+        outcome: "exhausted",
+        driverId: null,
+        driverName: null,
+        distanceKm: null,
+      });
+      continue;
+    }
+    if (
+      ev.eventType === "ride_status_changed" &&
+      ev.toStatus === "accepted" &&
+      (ev.actorType === "driver" || Boolean((ride.driverId ?? "").trim()))
+    ) {
+      const did = (payloadDriver || (ride.driverId ?? "").trim()) || null;
+      steps.push({
+        at: ev.createdAt,
+        outcome: "accepted",
+        driverId: did,
+        driverName: did ? (nameById.get(did) ?? did) : null,
+        distanceKm: null,
+      });
+    }
+  }
+
+  const parts = steps.map((s) => {
+    const t = new Date(s.at);
+    const clock = Number.isNaN(t.getTime())
+      ? ""
+      : t.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    const name = s.driverName ?? s.driverId ?? "—";
+    if (s.outcome === "offered") return `${name} (angeboten${clock ? `, ${clock}` : ""})`;
+    if (s.outcome === "rejected") return `${name} (abgelehnt${clock ? `, ${clock}` : ""})`;
+    if (s.outcome === "timeout") return `${name} (keine Reaktion${clock ? `, ${clock}` : ""})`;
+    if (s.outcome === "accepted") return `${name} (angenommen${clock ? `, ${clock}` : ""})`;
+    return `Keine Fahrer${clock ? ` (${clock})` : ""}`;
+  });
+  return {
+    steps,
+    summaryLine: parts.length > 0 ? `Funk-Verlauf: ${parts.join(" → ")}` : "Funk-Verlauf: noch keine Schritte",
+  };
 }

@@ -58,7 +58,7 @@ Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in 
 | Event | Funktion | An wen |
 |-------|----------|--------|
 | Neue Sofortfahrt erstellt | `notifyMarketOnlineDriversInstantRideOffer` | Online-Fahrer mit passendem Fahrzeug + aktuellem Dispatch-Tier |
-| **Funk-Dispatch (Partner-Owner, Taxi)** | `notifyDriverFunkOffer` / `funkDispatchData.ts` | Nur **ein** nächstgelegener ONLINE-Fahrer (`kind=funk_dispatch_offer`); Ablehnung/Timeout 45 s → Kette; Exhaustion → `no_driver` |
+| **Funk-Dispatch (Partner-Owner / Mobile-Owner, Taxi)** | `notifyDriverFunkOffer` / `funkDispatchData.ts` | Nur **ein** nächstgelegener ONLINE-Fahrer (`kind=funk_dispatch_offer`); Ablehnung/Timeout 45 s → Kette; Exhaustion → `no_driver`. Create: Panel oder `POST /fleet-driver/v1/rides/funk`. |
 | Neue Reservierung / Vorbestellung (`status=scheduled`) | `notifyEligibleDriversScheduledPoolOffer` (via `insertRide` + Panel) | Einsatzbereite Fahrer mit passendem Fahrzeug + **gleichem** Dispatch-Tier A/B/C (auch Markt-OFFLINE) — Titel **„Neue Reservierung“**, `kind=scheduled_pool_offer` |
 | Tier A→B / B→C (Timeout oder Freigabe) | `advanceRideDispatchTier` → Sofort- **und** Reservierungs-Notify | Nur Fahrer der **neuen** Stufe (beide Helfer filtern früh) |
 | Verpasste Fahrten (Fahrer „Meine Fahrten“) | `GET /fleet-driver/v1/missed-rides` | Offer in `ride_driver_dispatch_offers` ohne `accepted_at`, Chance vorbei (`rejected` / `taken_by_other` / `closed`); Anzeige Tier **A** = Strecke, **B** = grober Ort (`toDriverMissedRideView`) |

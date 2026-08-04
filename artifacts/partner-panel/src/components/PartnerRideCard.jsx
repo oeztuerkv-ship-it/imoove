@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePanelAuth } from "../context/PanelAuthContext.jsx";
+import { API_BASE } from "../lib/apiBase.js";
 import {
   billingSummary,
   dispatchHeadline,
@@ -104,6 +106,74 @@ function SummaryChip({ icon, label, value }) {
         <span className="partner-ride-summary-chip__value">{value}</span>
       </div>
     </div>
+  );
+}
+
+function FunkDispatchHistory({ rideId, open }) {
+  const { token } = usePanelAuth();
+  const [summaryLine, setSummaryLine] = useState("");
+  const [steps, setSteps] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open || !token || !rideId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/panel/v1/rides/${encodeURIComponent(rideId)}/funk-timeline`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(typeof data.error === "string" ? data.error : "Verlauf nicht ladbar");
+          return;
+        }
+        setError("");
+        setSummaryLine(typeof data.summaryLine === "string" ? data.summaryLine : "");
+        setSteps(Array.isArray(data.steps) ? data.steps : []);
+      } catch {
+        if (!cancelled) setError("Netzwerkfehler");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, token, rideId]);
+
+  const outcomeLabel = (o) => {
+    if (o === "offered") return "angeboten";
+    if (o === "rejected") return "abgelehnt";
+    if (o === "timeout") return "keine Reaktion";
+    if (o === "accepted") return "angenommen";
+    if (o === "exhausted") return "keine Fahrer";
+    return o;
+  };
+
+  return (
+    <section className="partner-ride-ops-panel partner-ride-ops-panel--glass" style={{ marginTop: 12 }}>
+      <h4 className="partner-ride-ops-panel__title">Funk-Verlauf</h4>
+      {error ? <p className="partner-muted">{error}</p> : null}
+      {summaryLine ? <p className="partner-ride-billing-headline">{summaryLine}</p> : null}
+      {steps.length > 0 ? (
+        <ol className="partner-dispatch-timeline__steps" style={{ marginTop: 8 }}>
+          {steps.map((s, idx) => (
+            <li key={`${s.at}-${s.outcome}-${idx}`} className="partner-dispatch-timeline__item">
+              <span className="partner-dispatch-timeline__dot" aria-hidden />
+              <div className="partner-dispatch-timeline__copy">
+                <strong>
+                  {s.driverName || s.driverId || "—"} · {outcomeLabel(s.outcome)}
+                </strong>
+                <span>{fmtDateTime(s.at)}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : !error ? (
+        <p className="partner-muted">Noch keine Schritte.</p>
+      ) : null}
+    </section>
   );
 }
 
@@ -328,6 +398,10 @@ export default function PartnerRideCard({
               ) : null}
             </section>
           </div>
+
+          {String(ride.dispatchMode ?? "") === "funk" ? (
+            <FunkDispatchHistory rideId={String(ride.id ?? "")} open={open} />
+          ) : null}
 
           <div className="partner-ride-driver-note-box">
             <p className="partner-ride-driver-note-box__title">Notiz für Fahrer</p>

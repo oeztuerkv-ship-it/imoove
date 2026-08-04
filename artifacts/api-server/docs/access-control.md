@@ -47,8 +47,11 @@ Details: Konstante `ROLE_MATRIX` in `panelPermissions.ts`.
 ### Partner: Funk-Dispatch (Owner, Taxi)
 
 - **Recht:** `rides.funk_dispatch` nur Rolle **`owner`** (`panelPermissions.ts`).
-- **Create:** `POST /panel/v1/rides` mit `funkDispatch: true` (Sofortfahrt, `company_kind=taxi`).
+- **Create (Panel):** `POST /panel/v1/rides` mit `funkDispatch: true` (Sofortfahrt, `company_kind=taxi`).
+- **Create (Mobile Owner):** `POST /fleet-driver/v1/rides/funk` — Fleet-JWT + `fleet_drivers.is_owner`; gleiche Assigner-Kette.
 - **Verhalten:** exclusive Zuweisung an nächstgelegenen ONLINE-Fahrer (`dispatch_mode=funk`); Ablehnung/Timeout 45 s → Kette; Exhaustion → Status `no_driver` + `409 no_available_driver`.
+- **Ohne Abrechnung:** kein PIN, kein Taxameter/`final_fare`, kein `ride_financials` / Provision (Telefon-Weiterleitung).
+- **Verlauf:** `GET /panel/v1/rides/:rideId/funk-timeline` (Owner-Recht) bzw. `GET /fleet-driver/v1/rides/:rideId/funk-timeline` (Owner-Fleet).
 - **Kein** Markt-Pool / Tier A/B / Broadcast-Push.
 
 ### Partner-intern: Rolle zuweisen

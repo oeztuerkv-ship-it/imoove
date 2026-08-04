@@ -32,6 +32,7 @@ export const TERMINAL_STATUSES = new Set([
 
 /** Preis auf Karten/Homepage erst nach abgeschlossener Fahrt (keine Schätzung bei Anfrage/Disposition). */
 export function partnerRideShowsFare(ride) {
+  if (String(ride?.dispatchMode ?? "") === "funk") return false;
   return String(ride?.status ?? "") === "completed";
 }
 
@@ -236,6 +237,14 @@ export function dispatchHeadline(ride) {
  */
 export function billingSummary(ride) {
   if (!ride) return { headline: "—", detail: "", tone: "muted" };
+  if (String(ride.dispatchMode ?? "") === "funk") {
+    return {
+      headline: "Funk — ohne Abrechnung",
+      detail: "Telefon-Weiterleitung, keine Provision / keine Rechnung",
+      tone: "muted",
+      canCreateInvoice: false,
+    };
+  }
   const ci = ride.companyInvoice && typeof ride.companyInvoice === "object" ? ride.companyInvoice : null;
   if (ci?.invoiceId) {
     return {

@@ -1,6 +1,6 @@
 import type { RideRequest } from "@/context/RideRequestContext";
 
-/** Spiegelt Server `rideRequiresPassengerPin` — nur echte App-Direktfahrten. */
+/** Spiegelt Server `rideRequiresPassengerPin` — nur echte App-Direktfahrten (nicht Funk). */
 export function rideRequiresPassengerPinClient(
   ride: Pick<
     RideRequest,
@@ -11,8 +11,10 @@ export function rideRequiresPassengerPinClient(
     | "payerKind"
     | "voucherCode"
     | "passengerPinRequired"
+    | "dispatchMode"
   > & { createdByPanelUserId?: string | null },
 ): boolean {
+  if ((ride.dispatchMode ?? "market") === "funk") return false;
   if (typeof ride.passengerPinRequired === "boolean") return ride.passengerPinRequired;
   const pid = (ride.passengerId ?? "").trim();
   if (!pid) return false;

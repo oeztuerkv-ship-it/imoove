@@ -16,7 +16,7 @@ export function isValidCustomerRidePin(pin: string): boolean {
   return PIN_RE.test(String(pin ?? "").trim());
 }
 
-/** Echte App-Kundenfahrt — nicht Partner-/KK-/Gutschein-/Code-Buchung. */
+/** Echte App-Kundenfahrt — nicht Partner-/KK-/Gutschein-/Code-/Funk-Buchung. */
 export function rideRequiresPassengerPin(ride: Pick<
   RideRequest,
   | "passengerId"
@@ -26,7 +26,9 @@ export function rideRequiresPassengerPin(ride: Pick<
   | "rideKind"
   | "payerKind"
   | "voucherCode"
+  | "dispatchMode"
 >): boolean {
+  if ((ride.dispatchMode ?? "market") === "funk") return false;
   const pid = (ride.passengerId ?? "").trim();
   if (!pid) return false;
   if ((ride.createdByPanelUserId ?? "").trim()) return false;

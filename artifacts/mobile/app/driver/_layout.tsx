@@ -32,6 +32,22 @@ export default function DriverLayout() {
         }}
       />
       <Stack.Screen
+        name="create-reservation"
+        options={{
+          gestureEnabled: true,
+          fullScreenGestureEnabled: false,
+          animation: "slide_from_right",
+        }}
+      />
+      <Stack.Screen
+        name="create-funk"
+        options={{
+          gestureEnabled: true,
+          fullScreenGestureEnabled: false,
+          animation: "slide_from_right",
+        }}
+      />
+      <Stack.Screen
         name="navigation"
         options={{
           gestureEnabled: false,

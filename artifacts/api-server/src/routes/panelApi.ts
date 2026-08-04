@@ -1513,6 +1513,36 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   }
 });
 
+/** Owner: Funk-Verlauf (Ablehnungs-Kette) für Firmenfahrt. */
+router.get("/panel/v1/rides/:rideId/funk-timeline", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.funk_dispatch")) return;
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride || (ride.companyId ?? "").trim() !== ctx.claims.companyId) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if ((ride.dispatchMode ?? "market") !== "funk") {
+      res.status(400).json({ error: "not_funk_dispatch" });
+      return;
+    }
+    const { buildFunkDispatchTimeline } = await import("../db/funkDispatchData.js");
+    const timeline = await buildFunkDispatchTimeline(rideId);
+    res.json({ ok: true, ...timeline });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.post("/panel/v1/rides/:rideId/cancel", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
@@ -2460,7 +2490,10 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       let savedForOut = saved;
       if (saved) {
         savedForOut = await enablePartnerRideChatAfterSave(saved, ctx.claims.panelUserId);
-        await upsertFinanceAfterPartnerRideCreated(savedForOut);
+        // Funk: bewusst ohne ride_financials / Provision (Telefon-Weiterleitung).
+        if ((savedForOut.dispatchMode ?? "market") !== "funk") {
+          await upsertFinanceAfterPartnerRideCreated(savedForOut);
+        }
         if ((savedForOut.dispatchMode ?? "market") === "funk") {
           const { startFunkDispatch } = await import("../db/funkDispatchData.js");
           savedForOut = await startFunkDispatch(savedForOut);

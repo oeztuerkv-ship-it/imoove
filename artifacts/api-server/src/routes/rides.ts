@@ -2619,68 +2619,76 @@ export async function patchRideStatusRoute(
         finalFareForPatch = Math.min(Math.max(chosen, ev.feeEur), cap);
       }
     } else if (nextStatus === "completed") {
-      if (cur.tariffSnapshot) {
-        const v = Number(cur.tariffSnapshot.finalPriceEur);
-        if (!Number.isFinite(v) || v < 0) {
-          res.status(400).json({ error: "tariff_snapshot_invalid" });
-          return;
-        }
-      }
-      const preTripComplete = cur.status === "accepted" || cur.status === "driver_arriving" || cur.status === "driver_waiting";
-      if (preTripComplete) {
-        if (parsedFinalFare !== undefined && parsedFinalFare > 0.009) {
-          res.status(400).json({
-            error: "complete_without_trip_start",
-            message:
-              "Ohne Fahrtbeginn zum Ziel ist kein Fahrpreis zulässig. Bitte 0,00 € oder die Fahrt stornieren.",
-          });
-          return;
-        }
+      // Funk-Dispatch: bewusst ohne Abrechnung (kein Taxameter, kein final_fare > 0).
+      if ((cur.dispatchMode ?? "market") === "funk") {
         finalFareForPatch = 0;
-      } else if (cur.status === "passenger_onboard") {
-        if (parsedFinalFare !== undefined && parsedFinalFare > 0.009) {
-          res.status(400).json({
-            error: "complete_trip_not_started",
-            message: "Bitte die Fahrt zum Ziel starten, bevor ein Fahrpreis abgerechnet wird.",
-          });
-          return;
-        }
-        finalFareForPatch =
-          parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare) ? parsedFinalFare : 0;
-      } else if (isRideFixedPrice(cur.pricingMode)) {
-        const agreed = resolveFixedPriceAgreedEur(cur);
-        if (agreed == null) {
-          res.status(400).json({
-            error: "fixed_price_amount_missing",
-            message: "Der vereinbarte Festpreis fehlt. Abschluss nicht möglich.",
-          });
-          return;
-        }
-        finalFareForPatch = agreed;
       } else {
-        // in_progress → completed: finalFare vom Fahrer ist Pflicht (Taxameter)
-        if (parsedFinalFare === undefined || !Number.isFinite(parsedFinalFare) || parsedFinalFare < 0) {
-          res.status(400).json({
-            error: "final_fare_required",
-            message: "Bitte den Taxameter-Endpreis eingeben, bevor die Fahrt abgeschlossen wird.",
-          });
-          return;
+        if (cur.tariffSnapshot) {
+          const v = Number(cur.tariffSnapshot.finalPriceEur);
+          if (!Number.isFinite(v) || v < 0) {
+            res.status(400).json({ error: "tariff_snapshot_invalid" });
+            return;
+          }
         }
-        const plausibility = evaluateFinalFarePlausibility(cur.estimatedFare ?? 0, parsedFinalFare);
-        if (!plausibility.ok && !plausibilityAck) {
-          res.status(400).json({
-            error: "final_fare_plausibility_failed",
-            message: `Der eingegebene Preis weicht stark von der Schätzung (${Number(cur.estimatedFare ?? 0).toFixed(2)} €) ab. Max. ohne Bestätigung: ${plausibility.maxAllowedEur.toFixed(2)} €. Taxameter-Preis erneut prüfen oder bestätigen.`,
-            estimatedFareEur: cur.estimatedFare ?? null,
-            maxAllowedFinalFareEur: plausibility.maxAllowedEur,
-            ratio: plausibility.ratio,
-          });
-          return;
+        const preTripComplete =
+          cur.status === "accepted" || cur.status === "driver_arriving" || cur.status === "driver_waiting";
+        if (preTripComplete) {
+          if (parsedFinalFare !== undefined && parsedFinalFare > 0.009) {
+            res.status(400).json({
+              error: "complete_without_trip_start",
+              message:
+                "Ohne Fahrtbeginn zum Ziel ist kein Fahrpreis zulässig. Bitte 0,00 € oder die Fahrt stornieren.",
+            });
+            return;
+          }
+          finalFareForPatch = 0;
+        } else if (cur.status === "passenger_onboard") {
+          if (parsedFinalFare !== undefined && parsedFinalFare > 0.009) {
+            res.status(400).json({
+              error: "complete_trip_not_started",
+              message: "Bitte die Fahrt zum Ziel starten, bevor ein Fahrpreis abgerechnet wird.",
+            });
+            return;
+          }
+          finalFareForPatch =
+            parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare) ? parsedFinalFare : 0;
+        } else if (isRideFixedPrice(cur.pricingMode)) {
+          const agreed = resolveFixedPriceAgreedEur(cur);
+          if (agreed == null) {
+            res.status(400).json({
+              error: "fixed_price_amount_missing",
+              message: "Der vereinbarte Festpreis fehlt. Abschluss nicht möglich.",
+            });
+            return;
+          }
+          finalFareForPatch = agreed;
+        } else {
+          // in_progress → completed: finalFare vom Fahrer ist Pflicht (Taxameter)
+          if (parsedFinalFare === undefined || !Number.isFinite(parsedFinalFare) || parsedFinalFare < 0) {
+            res.status(400).json({
+              error: "final_fare_required",
+              message: "Bitte den Taxameter-Endpreis eingeben, bevor die Fahrt abgeschlossen wird.",
+            });
+            return;
+          }
+          const plausibility = evaluateFinalFarePlausibility(cur.estimatedFare ?? 0, parsedFinalFare);
+          if (!plausibility.ok && !plausibilityAck) {
+            res.status(400).json({
+              error: "final_fare_plausibility_failed",
+              message: `Der eingegebene Preis weicht stark von der Schätzung (${Number(cur.estimatedFare ?? 0).toFixed(2)} €) ab. Max. ohne Bestätigung: ${plausibility.maxAllowedEur.toFixed(2)} €. Taxameter-Preis erneut prüfen oder bestätigen.`,
+              estimatedFareEur: cur.estimatedFare ?? null,
+              maxAllowedFinalFareEur: plausibility.maxAllowedEur,
+              ratio: plausibility.ratio,
+            });
+            return;
+          }
+          const waitingSurcharge = Number(cur.waitingChargeEur ?? 0);
+          finalFareForPatch =
+            Math.round(
+              (parsedFinalFare + (Number.isFinite(waitingSurcharge) ? waitingSurcharge : 0) + Number.EPSILON) *
+                100,
+            ) / 100;
         }
-        const waitingSurcharge = Number(cur.waitingChargeEur ?? 0);
-        finalFareForPatch =
-          Math.round((parsedFinalFare + (Number.isFinite(waitingSurcharge) ? waitingSurcharge : 0) + Number.EPSILON) * 100) /
-          100;
       }
     }
 
@@ -3003,7 +3011,10 @@ export async function patchRideStatusRoute(
         payload: finalFarePlausibilityAudit,
       });
     }
-    if (nextStatus === "completed" || isMidTripAbortFinalize) {
+    if (
+      (nextStatus === "completed" || isMidTripAbortFinalize) &&
+      (updated.dispatchMode ?? "market") !== "funk"
+    ) {
       const opPayloadComplete = await getOperationalConfigPayload();
       const regionsComplete = await listServiceRegionsForApi();
       const pcComplete = await resolveFinancePricingContextForRide(

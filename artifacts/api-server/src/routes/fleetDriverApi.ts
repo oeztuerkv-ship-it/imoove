@@ -45,9 +45,11 @@ import {
 } from "../db/fleetDriverCancellationSuspensionData.js";
 import { buildFleetDriverCancellationSuspensionMessage } from "../lib/fleetDriverCancellationSuspensionPolicy.js";
 import { createFleetDriverReservation } from "../lib/fleetDriverCreateReservation.js";
+import { createFleetDriverFunkRide } from "../lib/fleetDriverCreateFunkRide.js";
 import { releaseInstantRideDispatchOffer, syncDispatchTiersForRides } from "../db/rideDispatchTierData";
 import { listRides, listRidesForDriver, findRide, updateRide } from "../db/ridesData";
 import { getCustomerCancelReasonForRide } from "./rides";
+import { buildFunkDispatchTimeline, isFunkDispatchRide } from "../db/funkDispatchData.js";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import {
   toDriverMissedRideView,
@@ -1313,6 +1315,121 @@ router.post("/fleet-driver/v1/reservations", requireFleetDriverAuth, async (req,
       return;
     }
     res.status(201).json({ ok: true, ride: stripPartnerOnlyRideFields(result.ride) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Owner: Funk-Sofortfahrt anlegen (Telefon-Weiterleitung) — gleiche Kette wie Panel `funkDispatch`.
+ * Ohne Abrechnung / PIN / Taxameter.
+ */
+router.post("/fleet-driver/v1/rides/funk", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
+    const from = typeof body.from === "string" ? body.from.trim() : "";
+    const fromFull = typeof body.fromFull === "string" ? body.fromFull.trim() : from;
+    const to = typeof body.to === "string" ? body.to.trim() : "";
+    const toFull = typeof body.toFull === "string" ? body.toFull.trim() : to;
+    const customerPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : "";
+    const num = (k: string) => {
+      const v = body[k];
+      return typeof v === "number" && Number.isFinite(v) ? v : NaN;
+    };
+    const result = await createFleetDriverFunkRide({
+      fleetDriverId: a.fleetDriverId,
+      companyId: a.companyId,
+      customerName: customerName || "Telefonkunde",
+      customerPhone: customerPhone || undefined,
+      from: from || fromFull.split(",")[0]?.trim() || fromFull,
+      fromFull,
+      to: to || toFull.split(",")[0]?.trim() || toFull,
+      toFull,
+      fromLat: num("fromLat"),
+      fromLon: num("fromLon"),
+      toLat: num("toLat"),
+      toLon: num("toLon"),
+      vehicle: typeof body.vehicle === "string" ? body.vehicle.trim() : undefined,
+    });
+    if (!result.ok) {
+      const status =
+        result.error === "owner_only" || result.error === "funk_dispatch_taxi_only"
+          ? 403
+          : result.error === "no_available_driver"
+            ? 409
+            : result.error === "from_not_found" ||
+                result.error === "to_not_found" ||
+                result.error === "route_fields_required"
+              ? 400
+              : 400;
+      if (result.error === "no_available_driver") {
+        res.status(409).json({
+          error: result.error,
+          message: result.message ?? "Kein verfügbarer Fahrer gefunden",
+        });
+        return;
+      }
+      res.status(status).json({
+        error: result.error,
+        ...(result.message ? { message: result.message } : {}),
+      });
+      return;
+    }
+    const ride = result.ride;
+    if (ride.status === "no_driver") {
+      res.status(409).json({
+        error: "no_available_driver",
+        message: "Kein verfügbarer Fahrer gefunden",
+        ride: stripPartnerOnlyRideFields(ride),
+      });
+      return;
+    }
+    const timeline = await buildFunkDispatchTimeline(ride.id);
+    res.status(201).json({
+      ok: true,
+      ride: stripPartnerOnlyRideFields(ride),
+      funkTimeline: timeline,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Owner: Funk-Verlauf einer Firmenfahrt (Ablehnungs-Kette / Annahme). */
+router.get("/fleet-driver/v1/rides/:rideId/funk-timeline", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const driver = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!driver?.is_owner) {
+      res.status(403).json({ error: "owner_only" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride || (ride.companyId ?? "").trim() !== a.companyId) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!isFunkDispatchRide(ride)) {
+      res.status(400).json({ error: "not_funk_dispatch" });
+      return;
+    }
+    const timeline = await buildFunkDispatchTimeline(rideId);
+    res.json({ ok: true, ...timeline });
   } catch (e) {
     next(e);
   }
