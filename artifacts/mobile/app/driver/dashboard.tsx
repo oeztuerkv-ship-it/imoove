@@ -1533,8 +1533,8 @@ function TabFahrten({
 
   return (
     <>
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-      <View style={[styles.filterRow, { backgroundColor: colors.muted }]}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabScroll, { paddingTop: 10 }]}>
+      <View style={[styles.filterRow, { backgroundColor: colors.muted, marginBottom: 14 }]}>
         {(["heute", "woche", "alle", "verpasst"] as const).map((f) => (
           <Pressable
             key={f}
@@ -3806,7 +3806,7 @@ export default function DriverDashboard() {
           }
           return;
         }
-        if (kind === "instant_ride_offer" || kind === "follow_up_offer") {
+        if (kind === "instant_ride_offer" || kind === "follow_up_offer" || kind === "funk_dispatch_offer") {
           const rideId =
             typeof data?.rideId === "string" ? data.rideId.trim() : "";
           if (rideId) {
@@ -5024,8 +5024,8 @@ export default function DriverDashboard() {
         </View>
       )}
 
-      {/* Content — Aufträge etwas höher (weniger Abstand unter Header) */}
-      <View style={{ flex: 1, paddingTop: topPad + (activeTab === "auftraege" ? 62 : 75) }}>
+      {/* Content — Aufträge & Meine Fahrten gleich hoch unter dem Header */}
+      <View style={{ flex: 1, paddingTop: topPad + (activeTab === "auftraege" || activeTab === "fahrten" ? 62 : 75) }}>
         {adminMessage && !activeDriverRequest ? (
           <DriverAdminMessageBanner message={adminMessage} onDismiss={() => void dismissAdminMessage()} />
         ) : null}
