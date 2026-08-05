@@ -1,13 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Easing,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Phase = "prompt" | "progress";
 
@@ -16,16 +8,19 @@ type Props = {
   onContinue: () => void;
 };
 
-const PROGRESS_MS = 1400;
+const PROGRESS_MS = 1600;
+const TICK_MS = 32;
 
 /**
  * Nach OTA-Download: Hinweis → „Weiter“ → Fortschrittsbalken 0–100 % → Reload (Caller).
+ * Fortschritt per Timer (kein Animated-width/%) — zuverlässig auf iOS/Android.
  */
 export function OtaUpdateInstalledModal({ visible, onContinue }: Props) {
   const [phase, setPhase] = useState<Phase>("prompt");
   const [percent, setPercent] = useState(0);
-  const widthAnim = useRef(new Animated.Value(0)).current;
+  const [trackWidth, setTrackWidth] = useState(0);
   const startedRef = useRef(false);
+  const finishedRef = useRef(false);
   const onContinueRef = useRef(onContinue);
   onContinueRef.current = onContinue;
 
@@ -33,35 +28,35 @@ export function OtaUpdateInstalledModal({ visible, onContinue }: Props) {
     if (!visible) {
       setPhase("prompt");
       setPercent(0);
-      widthAnim.setValue(0);
       startedRef.current = false;
+      finishedRef.current = false;
     }
-  }, [visible, widthAnim]);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible || phase !== "progress") return;
-    widthAnim.setValue(0);
+
+    finishedRef.current = false;
     setPercent(0);
-    const id = widthAnim.addListener(({ value }) => {
-      setPercent(Math.min(100, Math.round(value)));
-    });
-    Animated.timing(widthAnim, {
-      toValue: 100,
-      duration: PROGRESS_MS,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      widthAnim.removeListener(id);
-      if (finished) {
-        setPercent(100);
-        onContinueRef.current();
+    const startedAt = Date.now();
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const next = Math.min(100, Math.round((elapsed / PROGRESS_MS) * 100));
+      setPercent(next);
+      if (next >= 100) {
+        clearInterval(timer);
+        if (finishedRef.current) return;
+        finishedRef.current = true;
+        // Kurz 100 % sichtbar lassen, dann neu starten.
+        setTimeout(() => {
+          onContinueRef.current();
+        }, 200);
       }
-    });
-    return () => {
-      widthAnim.stopAnimation();
-      widthAnim.removeListener(id);
-    };
-  }, [visible, phase, widthAnim]);
+    }, TICK_MS);
+
+    return () => clearInterval(timer);
+  }, [visible, phase]);
 
   const handleWeiter = () => {
     if (startedRef.current) return;
@@ -69,10 +64,7 @@ export function OtaUpdateInstalledModal({ visible, onContinue }: Props) {
     setPhase("progress");
   };
 
-  const barWidth = widthAnim.interpolate({
-    inputRange: [0, 100],
-    outputRange: ["0%", "100%"],
-  });
+  const fillWidth = trackWidth > 0 ? (trackWidth * percent) / 100 : 0;
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
@@ -92,8 +84,14 @@ export function OtaUpdateInstalledModal({ visible, onContinue }: Props) {
             </Pressable>
           ) : (
             <View style={styles.progressBlock}>
-              <View style={styles.track}>
-                <Animated.View style={[styles.fill, { width: barWidth }]} />
+              <View
+                style={styles.track}
+                onLayout={(e) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (w > 0 && Math.abs(w - trackWidth) > 0.5) setTrackWidth(w);
+                }}
+              >
+                <View style={[styles.fill, { width: fillWidth }]} />
               </View>
               <Text style={styles.percent}>{percent}%</Text>
             </View>
@@ -152,23 +150,25 @@ const styles = StyleSheet.create({
   progressBlock: {
     marginTop: 8,
     gap: 10,
-    alignItems: "center",
+    alignItems: "stretch",
+    width: "100%",
   },
   track: {
     width: "100%",
-    height: 10,
-    borderRadius: 5,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "#e8e8e8",
     overflow: "hidden",
   },
   fill: {
     height: "100%",
-    borderRadius: 5,
+    borderRadius: 6,
     backgroundColor: "#111",
   },
   percent: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
     color: "#111",
+    textAlign: "center",
   },
 });

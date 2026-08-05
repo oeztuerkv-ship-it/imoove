@@ -15,7 +15,7 @@ alwaysApply: false
 
 - `AppUpdateCoordinator` → `runOtaUpdateCheck` (`expo-updates`)
 - Nur Production (`!__DEV__`, `Updates.isEnabled`)
-- Flow: check → fetch → Modal „Update erfolgreich installiert“ → **Weiter** → Balken 0–100 % → `reloadAsync` (`OtaUpdateInstalledModal`)
+- Flow: check → fetch → Modal „Update erfolgreich installiert“ → **Weiter** → Timer-Balken 0–100 % (Pixel-Breite) → `reloadAsync` (`OtaUpdateInstalledModal`)
 
 ## Store (neue Native-Version, z. B. 1.0.2 → 1.0.3)
 

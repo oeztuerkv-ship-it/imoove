@@ -10,14 +10,13 @@ export function AppUpdateCoordinator() {
   const { config, loading } = useOnrodaAppConfig();
   const ranRef = useRef(false);
   const [otaReady, setOtaReady] = useState(false);
+  const reloadingRef = useRef(false);
 
   useEffect(() => {
     if (loading || ranRef.current) return;
     ranRef.current = true;
-    let cancelled = false;
     void (async () => {
       const updateReady = await runOtaUpdateCheck();
-      if (cancelled) return;
       if (updateReady) {
         setOtaReady(true);
         return;
@@ -28,12 +27,11 @@ export function AppUpdateCoordinator() {
           : null,
       );
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [loading, config.system]);
 
   const handleOtaContinue = useCallback(() => {
+    if (reloadingRef.current) return;
+    reloadingRef.current = true;
     void reloadAfterOtaUpdate();
   }, []);
 
