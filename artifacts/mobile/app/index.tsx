@@ -37,7 +37,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/components/CustomerPasswordFields";
-import { LoginLogoTaxiDrive } from "@/components/LoginLogoTaxiDrive";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import {
   BottomTabBar,
@@ -2634,7 +2633,6 @@ export default function HomeScreen() {
       {/* ── OBLIGATORISCHES ONBOARDING OVERLAY ── */}
       {showOnboarding && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: "#FFFFFF" }]}>
-          <LoginLogoTaxiDrive />
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
