@@ -179,7 +179,7 @@ export default function DriverLoginScreen() {
               safeHaptic(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
               Alert.alert(
                 "Als Fahrer bewerben",
-                "Interesse als Fahrer bei ONRODA zu arbeiten?\n\n✉ onroda@mail.de\n🌐 www.onroda.de\n\nSchreib uns oder besuche unsere Website — wir melden uns zeitnah bei dir.",
+                "Interesse als Fahrer bei ONRODA zu arbeiten?\n\n✉ info@onroda.de\n🌐 www.onroda.de\n\nSchreib uns oder besuche unsere Website — wir melden uns zeitnah bei dir.",
                 [{ text: "OK" }]
               );
             }}

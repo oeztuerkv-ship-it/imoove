@@ -34,7 +34,7 @@ import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { rf, rs } from "@/utils/scale";
 
-const SUPPORT_EMAIL = "onroda@mail.de";
+const SUPPORT_EMAIL = "info@onroda.de";
 const COPY_FEEDBACK_MS = 2600;
 const API_BASE = getApiBaseUrl();
 const COMPOSE_ACCESSORY_ID = "help-compose-keyboard";

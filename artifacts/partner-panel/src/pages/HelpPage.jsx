@@ -75,7 +75,7 @@ export default function HelpPage({ onCreateRequest }) {
         </h2>
         <p className="partner-muted" style={{ margin: 0 }}>
           Für Rückfragen erreichst du uns auch per E-Mail unter{" "}
-          <a href="mailto:onroda@mail.de">onroda@mail.de</a>.
+          <a href="mailto:info@onroda.de">info@onroda.de</a>.
         </p>
       </section>
 

@@ -152,7 +152,7 @@ export const ONRODA_AGB_DOCUMENT: OnrodaLegalDocument = {
     {
       title: "§ 15 Kontakt",
       blocks: [
-        p(t("Bei Fragen zu diesen AGB: "), link("onroda@mail.de", "mailto:onroda@mail.de")),
+        p(t("Bei Fragen zu diesen AGB: "), link("info@onroda.de", "mailto:info@onroda.de")),
       ],
     },
   ],
@@ -168,7 +168,7 @@ export const ONRODA_DATENSCHUTZ_DOCUMENT: OnrodaLegalDocument = {
       blocks: [
         p(t("Vedat Öztürk\nOberdorfstr. 53\n70771 Leinfelden-Echterdingen\nDeutschland")),
         p(t("Telefon: "), link("+49 176 84229016", "tel:+4917684229016")),
-        p(t("E-Mail: "), link("onroda@mail.de", "mailto:onroda@mail.de")),
+        p(t("E-Mail: "), link("info@onroda.de", "mailto:info@onroda.de")),
       ],
     },
     {
@@ -307,7 +307,7 @@ export const ONRODA_DATENSCHUTZ_DOCUMENT: OnrodaLegalDocument = {
           "Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)",
           "Widerruf einer Einwilligung (Art. 7 Abs. 3 DSGVO)",
         ]),
-        p(t("Zur Ausübung Ihrer Rechte oder zur Kontolöschung wenden Sie sich an: "), link("onroda@mail.de", "mailto:onroda@mail.de")),
+        p(t("Zur Ausübung Ihrer Rechte oder zur Kontolöschung wenden Sie sich an: "), link("info@onroda.de", "mailto:info@onroda.de")),
       ],
     },
     {
