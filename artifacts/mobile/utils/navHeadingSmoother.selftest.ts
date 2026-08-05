@@ -5,9 +5,11 @@
 import {
   NAV_HEADING_DEADBAND_DEG,
   NAV_HEADING_MOVING_SPEED_MPS,
+  NAV_HEADING_TRUST_COURSE_SPEED_MPS,
   applyNavHeadingSmooth,
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
+  headingsAgreeDeg,
   isMovingForNavHeading,
   isUsableCourse,
   pickNavHeadingRaw,
@@ -33,6 +35,9 @@ assert(!isMovingForNavHeading(1.0), "1.0 m/s still");
 assert(isMovingForNavHeading(NAV_HEADING_MOVING_SPEED_MPS), "threshold moving");
 assert(!isMovingForNavHeading(-1), "speed -1 not moving");
 
+assert(headingsAgreeDeg(10, 20, 15), "agree within");
+assert(!headingsAgreeDeg(10, 100, 70), "disagree");
+
 assert(
   pickNavHeadingRaw({
     speedMps: 0.2,
@@ -47,9 +52,30 @@ assert(
   pickNavHeadingRaw({
     speedMps: 8,
     courseDeg: 90,
+    polylineBearingDeg: 95,
     heldHeadingDeg: 10,
   }) === 90,
-  "moving → course",
+  "moving + poly: course wins when agrees with poly",
+);
+
+assert(
+  pickNavHeadingRaw({
+    speedMps: 8,
+    courseDeg: 90,
+    polylineBearingDeg: 200,
+    heldHeadingDeg: 195,
+  }) === 200,
+  "moving + poly: poly wins when course disagrees",
+);
+
+assert(
+  pickNavHeadingRaw({
+    speedMps: NAV_HEADING_TRUST_COURSE_SPEED_MPS - 0.1,
+    courseDeg: 90,
+    polylineBearingDeg: 45,
+    heldHeadingDeg: 40,
+  }) === 45,
+  "moving slow: ignore untrusted course, use poly",
 );
 
 assert(
@@ -67,10 +93,22 @@ assert(
   pickNavHeadingRaw({
     speedMps: 8,
     courseDeg: -1,
+    polylineBearingDeg: 200,
+    heldHeadingDeg: 10,
+    movementBearingDeg: 15,
+  }) === 15,
+  "poly 180° flip vs held → reject poly, use movement",
+);
+
+assert(
+  pickNavHeadingRaw({
+    speedMps: 8,
+    courseDeg: -1,
     movementBearingDeg: 90,
     fallbackBearingDeg: 200,
+    heldHeadingDeg: 88,
   }) === 90,
-  "moving no course/poly → movement before fallback",
+  "moving no course/poly → movement before held",
 );
 
 assert(
@@ -78,8 +116,18 @@ assert(
     speedMps: 8,
     courseDeg: -1,
     fallbackBearingDeg: 200,
-  }) === 200,
-  "moving no course/poly/movement → fallback",
+    heldHeadingDeg: 40,
+  }) === 40,
+  "moving no course/poly/movement → hold, NOT destination fallback",
+);
+
+assert(
+  pickNavHeadingRaw({
+    speedMps: 8,
+    courseDeg: -1,
+    fallbackBearingDeg: 200,
+  }) === null,
+  "moving cold start without sources → null (no destination hunt)",
 );
 
 let state = createNavHeadingSmootherState();
@@ -111,7 +159,6 @@ out = tickNavHeading(state, {
   fallbackBearingDeg: 45,
   nowMs: 3000,
 });
-// still, no held → may take course once as bootstrap
 assert(out.heading === 270, "still bootstrap from course");
 state = out.state;
 out = tickNavHeading(state, {
