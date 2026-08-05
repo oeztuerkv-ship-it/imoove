@@ -398,6 +398,19 @@ export const panelPasswordResetsTable = pgTable("panel_password_resets", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Fleet-Fahrer Passwort-vergessen (6-stelliger Code, gehasht). */
+export const fleetDriverPasswordResetsTable = pgTable("fleet_driver_password_resets", {
+  id: text("id").primaryKey(),
+  fleet_driver_id: text("fleet_driver_id")
+    .notNull()
+    .references(() => fleetDriversTable.id, { onDelete: "cascade" }),
+  company_id: text("company_id").notNull(),
+  token_hash: text("token_hash").notNull(),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  used_at: timestamp("used_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Partner-Panel: Festpreis-Gutschein nach Stripe-Zahlung (Access-Code + PDF). */
 export const fixedPriceVoucherOrdersTable = pgTable("fixed_price_voucher_orders", {
   id: text("id").primaryKey(),

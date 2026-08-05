@@ -2,10 +2,16 @@ import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
 import { deleteFleetDriverExpoPushTokens } from "../db/fleetDriverExpoPushData";
 import {
+  createFleetDriverPasswordResetToken,
+  findOpenFleetDriverPasswordResetByHash,
+  markFleetDriverPasswordResetUsed,
+} from "../db/fleetDriverPasswordResetData";
+import {
   findFleetDriverByEmailNormalized,
   getCompanyKind,
   setFleetDriverMarketOnline,
   touchFleetDriverLogin,
+  updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import { findActivePanelUserByEmailNormalized } from "../db/panelAuthData";
 import {
@@ -17,15 +23,29 @@ import {
   PANEL_EMAIL_NOT_FLEET_DRIVER_MESSAGE_DE,
 } from "../lib/onrodaAccessMessages.js";
 import {
+  fleetPasswordResetCodesEqual,
+  fleetPasswordResetTtlMs,
+  generateFleetPasswordResetCode,
+  hashFleetPasswordResetCode,
+  sendFleetDriverPasswordResetMail,
+} from "../lib/fleetDriverPasswordResetMail";
+import {
   isFleetDriverJwtConfigured,
   signFleetDriverJwt,
   verifyFleetDriverJwt,
 } from "../lib/fleetDriverJwt";
 import { rateLimitFleetLogin } from "../lib/fleetLoginRateLimit";
-import { verifyPassword } from "../lib/password";
+import { logger } from "../lib/logger";
+import { hashPassword, verifyPassword } from "../lib/password";
 import { isPanelEmailAllowedForFleetDriver } from "../lib/fleetPanelEmailAllowlist";
 
 const router: IRouter = Router();
+
+const FLEET_PASSWORD_RESET_REQUEST_GENERIC = {
+  ok: true as const,
+  message:
+    "Wenn ein aktiver Fahrer-Zugang zu dieser E-Mail existiert, erhältst du in Kürze eine E-Mail mit einem Code zum Zurücksetzen.",
+};
 
 router.post("/fleet-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
@@ -153,6 +173,171 @@ router.post("/fleet-auth/logout", async (req, res) => {
       /* abgelaufenes Token — trotzdem ok */
     }
   }
+  res.json({ ok: true });
+});
+
+/**
+ * Passwort vergessen (Fahrer-App): 6-stelliger Code per E-Mail.
+ * Antwort immer neutral (kein User-Leak), außer Rate-Limit / DB down.
+ */
+router.post("/fleet-auth/password-reset/request", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitFleetLogin(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  if (!email || !email.includes("@")) {
+    res.status(400).json({ error: "email_required" });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  if (!isFleetDriverJwtConfigured()) {
+    res.status(503).json({
+      error: "fleet_jwt_not_configured",
+      hint: "Set FLEET_DRIVER_JWT_SECRET or PANEL_JWT_SECRET (needed to hash reset codes).",
+    });
+    return;
+  }
+
+  const row = await findFleetDriverByEmailNormalized(email);
+  if (
+    !row ||
+    !row.is_active ||
+    String(row.access_status ?? "").toLowerCase() !== "active"
+  ) {
+    res.json(FLEET_PASSWORD_RESET_REQUEST_GENERIC);
+    return;
+  }
+
+  const code = generateFleetPasswordResetCode();
+  const tokenHash = hashFleetPasswordResetCode(email, code);
+  const expiresAt = new Date(Date.now() + fleetPasswordResetTtlMs());
+  const created = await createFleetDriverPasswordResetToken({
+    fleetDriverId: row.id,
+    companyId: row.company_id,
+    tokenHash,
+    expiresAt,
+  });
+  if (!created) {
+    logger.warn(
+      { event: "fleet.auth.password_reset_request.store_failed", fleetDriverId: row.id },
+      "fleet password reset token store failed",
+    );
+    res.json(FLEET_PASSWORD_RESET_REQUEST_GENERIC);
+    return;
+  }
+
+  const mailResult = await sendFleetDriverPasswordResetMail({
+    to: row.email,
+    code,
+    expiresAt,
+  });
+  logger.info(
+    {
+      event: "fleet.auth.password_reset_requested",
+      fleetDriverId: row.id,
+      companyId: row.company_id,
+      mailSent: mailResult.ok,
+      ...(mailResult.ok ? {} : { mailFailureReason: mailResult.reason }),
+    },
+    "fleet password reset requested",
+  );
+
+  if (!mailResult.ok) {
+    res.status(503).json({
+      ok: false,
+      error: "mail_send_failed",
+      reason: mailResult.reason,
+      message:
+        mailResult.reason === "smtp_not_configured"
+          ? "E-Mail-Versand ist auf dem Server nicht konfiguriert. Bitte den Betrieb oder Support kontaktieren."
+          : "Die E-Mail konnte nicht versendet werden. Bitte später erneut versuchen.",
+    });
+    return;
+  }
+
+  res.json(FLEET_PASSWORD_RESET_REQUEST_GENERIC);
+});
+
+router.post("/fleet-auth/password-reset/confirm", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitFleetLogin(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const codeRaw = typeof req.body?.code === "string" ? req.body.code : "";
+  const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  const code = codeRaw.replace(/\D/g, "").slice(0, 6);
+
+  if (!email || !email.includes("@") || code.length !== 6 || newPassword.length < 10) {
+    res.status(400).json({
+      error: "reset_payload_invalid",
+      hint: "email + code(6 digits) + newPassword(min10)",
+    });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+
+  const tokenHash = hashFleetPasswordResetCode(email, code);
+  const reset = await findOpenFleetDriverPasswordResetByHash(tokenHash);
+  if (!reset) {
+    res.status(400).json({ error: "invalid_or_expired_reset_code" });
+    return;
+  }
+
+  const row = await findFleetDriverByEmailNormalized(email);
+  if (
+    !row ||
+    row.id !== reset.fleetDriverId ||
+    row.company_id !== reset.companyId ||
+    !row.is_active ||
+    String(row.access_status ?? "").toLowerCase() !== "active"
+  ) {
+    res.status(400).json({ error: "invalid_or_expired_reset_code" });
+    return;
+  }
+
+  // Timing-safe Vergleich der gespeicherten Hashes (bereits über Lookup gefunden).
+  if (!fleetPasswordResetCodesEqual(reset.tokenHash, tokenHash)) {
+    res.status(400).json({ error: "invalid_or_expired_reset_code" });
+    return;
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  const updated = await updateFleetDriverPassword(row.id, row.company_id, passwordHash, false);
+  const marked = await markFleetDriverPasswordResetUsed(reset.id);
+  if (!updated || !marked) {
+    res.status(500).json({ error: "password_update_failed" });
+    return;
+  }
+
+  await deleteFleetDriverExpoPushTokens(row.id, row.company_id);
+  await setFleetDriverMarketOnline(row.id, row.company_id, false).catch(() => undefined);
+
+  logger.info(
+    {
+      event: "fleet.auth.password_reset_completed",
+      fleetDriverId: row.id,
+      companyId: row.company_id,
+      resetId: reset.id,
+    },
+    "fleet password reset completed",
+  );
+
   res.json({ ok: true });
 });
 

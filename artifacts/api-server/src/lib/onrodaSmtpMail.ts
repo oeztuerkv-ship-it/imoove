@@ -10,15 +10,25 @@ export function escapeHtmlMail(s: string): string {
 }
 
 /**
- * Produktiver SMTP-Stack (ein Transport für Admin-Reset, Partner-Freigabe, Rechnungs-Erinnerung).
- * Reihenfolge: ADMIN_AUTH_MAIL_* → PARTNER_REGISTRATION_* (wie Passwort-Reset).
+ * Produktiver SMTP-Stack (Admin-Reset, Partner-Freigabe, Fleet-Reset, Rechnungs-Erinnerung).
+ * Reihenfolge: ADMIN_AUTH_MAIL_* → PARTNER_REGISTRATION_* → MAIL_FROM / SMTP_URL.
  */
 export function resolveOnrodaSmtpUrl(): string {
-  return (process.env.ADMIN_AUTH_MAIL_SMTP_URL ?? process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+  return (
+    process.env.ADMIN_AUTH_MAIL_SMTP_URL ??
+    process.env.PARTNER_REGISTRATION_SMTP_URL ??
+    process.env.SMTP_URL ??
+    ""
+  ).trim();
 }
 
 export function resolveOnrodaMailFrom(): string {
-  return (process.env.ADMIN_AUTH_MAIL_FROM ?? process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+  return (
+    process.env.ADMIN_AUTH_MAIL_FROM ??
+    process.env.PARTNER_REGISTRATION_MAIL_FROM ??
+    process.env.MAIL_FROM ??
+    ""
+  ).trim();
 }
 
 export function isOnrodaSmtpConfigured(): boolean {

@@ -45,6 +45,7 @@
 --   107 → fleet_drivers.last_market_lat/lon (Dispatch-Radius)
 --   132 → fleet_drivers.last_market_at (Outlier-Max-Age / ONLINE-Reset)
 --   142 → fleet_drivers.avatar_storage_key, avatar_show_to_customer (Profilfoto + Consent)
+--   146 → fleet_driver_password_resets (Fahrer Passwort-vergessen)
 --   057 → app_news_items (Mobile Neuigkeiten, Admin-CMS)
 --   059 → ride_support_tickets erweitert (company_id, priority, source, Actor-Felder)
 --   060 → medical_document_extractions (OCR-Struktur ohne API-Pflicht)
@@ -171,6 +172,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'panel_password_resets'
   ) THEN
     errs := array_append(errs, 'table panel_password_resets (Migration 092)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'fleet_driver_password_resets'
+  ) THEN
+    errs := array_append(errs, 'table fleet_driver_password_resets (Migration 146)');
   END IF;
 
   IF NOT EXISTS (
