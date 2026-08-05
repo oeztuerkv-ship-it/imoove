@@ -1,4 +1,8 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
+import {
+  buildOnrodaPasswordResetMailHtml,
+  ONRODA_PASSWORD_RESET_SECURITY_NOTE_DE,
+} from "./onrodaPasswordResetMailLayout.js";
 import { escapeHtmlMail, sendOnrodaMail } from "./onrodaSmtpMail.js";
 
 const CODE_PEPPER_PREFIX = "fleet-driver-password-reset-v1";
@@ -42,8 +46,8 @@ export function fleetPasswordResetTtlMs(): number {
 }
 
 /**
- * Reset-Code-Mail über denselben SMTP-Stack wie Admin/Partner
- * (`ADMIN_AUTH_MAIL_*` → `PARTNER_REGISTRATION_*` → `MAIL_FROM`/`SMTP_URL`).
+ * Reset-Code-Mail: gleiches Layout wie Partner-Panel (`onrodaPasswordResetMailLayout`),
+ * SMTP wie Admin/Partner (`ADMIN_AUTH_*` → `PARTNER_REGISTRATION_*` → `MAIL_FROM`/`SMTP_URL`).
  */
 export async function sendFleetDriverPasswordResetMail(input: {
   to: string;
@@ -57,37 +61,34 @@ export async function sendFleetDriverPasswordResetMail(input: {
 
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
-  const codeEsc = escapeHtmlMail(input.code);
+  const untilEsc = escapeHtmlMail(until);
+  const securityNote = ONRODA_PASSWORD_RESET_SECURITY_NOTE_DE;
 
-  const subject = "Passwort zurücksetzen (Fahrer-App)";
+  const subject = "Onroda Fahrer-App: Passwort zurücksetzen";
   const text = [
-    "Du hast eine Anfrage zum Zurücksetzen deines ONRODA-Fahrer-Passworts gestellt.",
+    "Guten Tag,",
     "",
-    `Dein Code: ${input.code}`,
+    "Sie haben ein neues Passwort für die Onroda-Fahrer-App angefordert.",
     "",
-    `Gib den Code in der Fahrer-App ein. Er ist etwa ${ttlMinutes} Minuten gültig (bis ${until}, Europe/Berlin).`,
+    `Ihr Code: ${input.code}`,
     "",
-    "Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.",
+    `Geben Sie den Code in der Fahrer-App ein. Er ist etwa ${ttlMinutes} Minuten gültig (bis ${until}, Europe/Berlin).`,
+    "",
+    securityNote,
   ].join("\n");
 
-  const html = `<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
-<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
-  <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
-    <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
-      <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:28px;font-weight:800;letter-spacing:0.02em;line-height:1.2;">
-          <span style="color:#e30613;">On</span><span style="color:#111111;">roda</span>
-        </div>
-      </div>
-      <p style="font-size:16px;color:#111;line-height:1.5;">Du hast eine Anfrage zum Zurücksetzen deines <strong>Fahrer-App</strong>-Passworts gestellt.</p>
-      <p style="font-size:14px;color:#444;line-height:1.5;margin:20px 0 8px;">Dein Code:</p>
-      <p style="font-size:32px;font-weight:800;letter-spacing:0.2em;text-align:center;color:#111;margin:8px 0 20px;">${codeEsc}</p>
-      <p style="font-size:13px;color:#666;line-height:1.5;">Gültig ca. ${ttlMinutes} Minuten (bis ${escapeHtmlMail(until)}, Europe/Berlin). Gib den Code in der Fahrer-App ein und wähle ein neues Passwort.</p>
-      <p style="font-size:12px;color:#999;margin-top:24px;">Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.</p>
-    </div>
-  </div>
-</body></html>`;
+  const html = buildOnrodaPasswordResetMailHtml({
+    preheader: "Passwort zurücksetzen für die Onroda-Fahrer-App — Code nur begrenzt gültig.",
+    introHtml:
+      "Sie haben ein neues Passwort für die <strong>Onroda-Fahrer-App</strong> angefordert. Geben Sie den folgenden Code in der App ein.",
+    action: {
+      kind: "code",
+      code: input.code,
+      caption: "Ihr Code",
+    },
+    metaHtml: `Dieser Code ist ${ttlMinutes} Minuten gültig (bis ${untilEsc}, Europe/Berlin).`,
+    securityNote,
+  });
 
   return sendOnrodaMail({
     to,
