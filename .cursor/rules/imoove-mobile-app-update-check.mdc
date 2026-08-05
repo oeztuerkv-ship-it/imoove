@@ -2,7 +2,7 @@
 description: Mobile — OTA-Hinweis + Store-Versions-Check beim App-Start
 globs:
   - artifacts/mobile/utils/appUpdateCheck.ts
-  - artifacts/mobile/components/AppUpdateCoordinator.tsx
+  - artifacts/mobile/components/OtaUpdateInstalledModal.tsx
   - artifacts/mobile/app/_layout.tsx
   - artifacts/api-server/src/db/appOperationalData.ts
   - artifacts/admin-panel/src/pages/AppOperationalSystemPage.jsx
@@ -15,7 +15,7 @@ alwaysApply: false
 
 - `AppUpdateCoordinator` → `runOtaUpdateCheck` (`expo-updates`)
 - Nur Production (`!__DEV__`, `Updates.isEnabled`)
-- Flow: check → fetch → Alert „Update installiert…“ → `reloadAsync`
+- Flow: check → fetch → Modal „Update erfolgreich installiert“ → **Weiter** → Balken 0–100 % → `reloadAsync` (`OtaUpdateInstalledModal`)
 
 ## Store (neue Native-Version, z. B. 1.0.2 → 1.0.3)
 

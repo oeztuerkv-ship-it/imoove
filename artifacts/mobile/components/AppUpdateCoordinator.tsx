@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { OtaUpdateInstalledModal } from "@/components/OtaUpdateInstalledModal";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
-import { runOtaUpdateCheck, runStoreVersionCheck } from "@/utils/appUpdateCheck";
+import { reloadAfterOtaUpdate, runOtaUpdateCheck, runStoreVersionCheck } from "@/utils/appUpdateCheck";
 
 /**
  * Einmal pro App-Session: OTA-Check, danach Store-Versions-Hinweis aus `/app/config` → system.mobileApp.
@@ -8,14 +9,19 @@ import { runOtaUpdateCheck, runStoreVersionCheck } from "@/utils/appUpdateCheck"
 export function AppUpdateCoordinator() {
   const { config, loading } = useOnrodaAppConfig();
   const ranRef = useRef(false);
+  const [otaReady, setOtaReady] = useState(false);
 
   useEffect(() => {
     if (loading || ranRef.current) return;
     ranRef.current = true;
     let cancelled = false;
     void (async () => {
-      const reloading = await runOtaUpdateCheck();
-      if (cancelled || reloading) return;
+      const updateReady = await runOtaUpdateCheck();
+      if (cancelled) return;
+      if (updateReady) {
+        setOtaReady(true);
+        return;
+      }
       await runStoreVersionCheck(
         config.system && typeof config.system === "object"
           ? (config.system as Record<string, unknown>)
@@ -27,5 +33,9 @@ export function AppUpdateCoordinator() {
     };
   }, [loading, config.system]);
 
-  return null;
+  const handleOtaContinue = useCallback(() => {
+    void reloadAfterOtaUpdate();
+  }, []);
+
+  return <OtaUpdateInstalledModal visible={otaReady} onContinue={handleOtaContinue} />;
 }

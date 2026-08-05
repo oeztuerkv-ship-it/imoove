@@ -101,9 +101,10 @@ async function openStoreUrl(url: string): Promise<void> {
 }
 
 /**
- * OTA: prüft Expo Updates, lädt herunter, kurzer Hinweis, dann Reload.
+ * OTA: prüft Expo Updates, lädt herunter.
+ * UI (Hinweis + Fortschritt + Reload) steuert der Aufrufer.
  * Dev / Expo Go / disabled → no-op.
- * @returns true wenn Reload ausgelöst wird (Aufrufer soll Store-Check skippen).
+ * @returns true wenn ein Update bereit ist und die App neu geladen werden soll.
  */
 export async function runOtaUpdateCheck(): Promise<boolean> {
   if (__DEV__) return false;
@@ -113,23 +114,18 @@ export async function runOtaUpdateCheck(): Promise<boolean> {
     const check = await Updates.checkForUpdateAsync();
     if (!check.isAvailable) return false;
     await Updates.fetchUpdateAsync();
-    await new Promise<void>((resolve) => {
-      Alert.alert(
-        "Update installiert",
-        "Ein Update wurde heruntergeladen. Die App wird neu geladen.",
-        [
-          {
-            text: "OK",
-            onPress: () => resolve(),
-          },
-        ],
-        { cancelable: false },
-      );
-    });
-    await Updates.reloadAsync();
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function reloadAfterOtaUpdate(): Promise<void> {
+  try {
+    const Updates = await import("expo-updates");
+    await Updates.reloadAsync();
+  } catch {
+    /* ignore — Aufrufer bleibt ggf. auf altem Bundle */
   }
 }
 
