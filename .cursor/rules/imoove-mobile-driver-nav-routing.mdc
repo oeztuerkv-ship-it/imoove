@@ -22,9 +22,9 @@ alwaysApply: false
 - Zoom-Bänder: Stadt **18.0** / Default **17.5** / Highway **16.3**.
 - **Pitch 45°** (moderne Navi-Apps); 62° zeigte starke 3D-Gebäude auf iOS.
 - `showsBuildings={false}` (Android; iOS MapKit begrenzt).
-- Off-Route: Heading ≥45° / U-Turn ≥100° bestätigt in ~0,3–0,4 s → sofort `confirmedOffRoute`; Cooldown **2 s**.
-- UI: orange Karte „Route wird neu geladen“ + Rest-Polyline ausblenden während Neuberechnung.
-- **Falschabbiegen-Crash:** kein Follow-`animateCamera` während Off-Route/Reroute; `setCamera` verzögert nach `setPolyline`.
+- Off-Route: **Position zuerst** (`forwardDistM`). Heading erzwingt nur bei Lateral ≥10 m (U-Turn ≥6 m) und längerem Confirm — kein Kreuzungs-Flicker.
+- UI: orange Karte „Route wird neu geladen“ nur während echter Neuberechnung (`guidanceStale` / inFlight).
+- Speech: nach Reroute/Recover keine sofortige Doppel-Ansage (`suppressManeuverSpeech`).
 
 | Log | Bedeutung |
 |-----|-----------|

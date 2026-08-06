@@ -1255,7 +1255,7 @@ export default function DriverNavigationScreen() {
       result: DriverNavRouteResult,
       fallbackFrom: { lat: number; lon: number },
       fallbackTo: { lat: number; lon: number },
-      opts?: { refocusCamera?: boolean },
+      opts?: { refocusCamera?: boolean; suppressManeuverSpeech?: boolean },
     ): boolean => {
       const coords = (result.polyline ?? []).map(([lat, lon]) => ({
         latitude: lat,
@@ -1277,7 +1277,13 @@ export default function DriverNavigationScreen() {
       setPolyline(coords);
       setSteps(result.steps);
       setStepIdx(0);
-      prevStepIdx.current = -1;
+      if (opts?.suppressManeuverSpeech) {
+        // Kein erneutes „In 50 m …“ nach Fehl-/Re-Reroute an Kreuzungen
+        prevStepIdx.current = 0;
+        suppressNavSpeechUntilMs = Date.now() + 4_500;
+      } else {
+        prevStepIdx.current = -1;
+      }
       navRouteReadyRef.current = true;
       setNavRouteLoadState("ready");
       const distM = (result.distanceKm ?? 0) * 1000;
@@ -1387,6 +1393,7 @@ export default function DriverNavigationScreen() {
         const applied = applyNavRouteResult(result, from, target, {
           // Auch nach Reroute: Heading an neue Rest-Route + Pitch halten
           refocusCamera: true,
+          suppressManeuverSpeech: reason !== "initial",
         });
         if (!applied) {
           logDriverNavigationRouteResult({
@@ -1477,9 +1484,14 @@ export default function DriverNavigationScreen() {
     requestNavRouteFrom,
   ]);
 
-  // Speak on step change — skip "Fahrt beginnen" (depart) instructions
+  // Speak on step change — skip "Fahrt beginnen"; nach Reroute kurz unterdrücken
   useEffect(() => {
+    if (guidanceStale) return;
     if (!steps.length || stepIdx === prevStepIdx.current) return;
+    if (Date.now() < suppressNavSpeechUntilMs) {
+      prevStepIdx.current = stepIdx;
+      return;
+    }
     prevStepIdx.current = stepIdx;
     const step = steps[stepIdx];
     const instr = step?.instruction ?? "";
@@ -1496,7 +1508,7 @@ export default function DriverNavigationScreen() {
       liveM ??
       (typeof step?.distanceM === "number" && step.distanceM > 0 ? step.distanceM : 0);
     trySpeak(formatNavTurnCue(m > 0 ? m : 25, instr), soundRef.current);
-  }, [stepIdx, steps]);
+  }, [stepIdx, steps, guidanceStale]);
 
   const distToPickup = haversine(driverLat, driverLon, pickupLat, pickupLon);
   const isNearPickup = distToPickup < 300;
@@ -2526,10 +2538,8 @@ export default function DriverNavigationScreen() {
         lon: output.filtered.lon,
         heading: output.heading,
       };
-      setGuidanceStale(
-        output.guidanceStale || output.confirmedOffRoute || rerouteInFlightRef.current,
-      );
-      if (!output.guidanceStale && !output.confirmedOffRoute && !rerouteInFlightRef.current) {
+      setGuidanceStale(output.guidanceStale || rerouteInFlightRef.current);
+      if (!output.guidanceStale && !rerouteInFlightRef.current) {
         setRemainingDistM(output.remainingDistM);
         setRemainingMin(output.remainingMin);
         setStepIdx(output.stepIdx);
@@ -2541,13 +2551,9 @@ export default function DriverNavigationScreen() {
         preferredZoomRef.current = output.cameraZoom;
       }
 
-      // Während Reroute/Off-Route: keine animateCamera-Flut — MapKit crasht sonst
-      // (Falschabbiegen → setPolyline + setCamera + laufende Animation).
-      if (
-        rerouteInFlightRef.current ||
-        output.guidanceStale ||
-        output.confirmedOffRoute
-      ) {
+      // Während Reroute: keine animateCamera-Flut — MapKit crasht sonst.
+      // confirmedOffRoute allein friert die Kamera nicht (nur echte Neuberechnung).
+      if (rerouteInFlightRef.current || output.guidanceStale) {
         if (!opts?.forceCamera) return;
       }
 

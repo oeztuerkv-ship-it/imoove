@@ -190,19 +190,47 @@ const lRoute = [
 }
 
 // ===========================================================================
-// 3) 180°-Wende
+// 3) 180°-Wende (mit Lateral — Heading allein nahe Route reicht nicht)
 // ===========================================================================
 {
-  confirmOff(5, "3 u-turn heading", {
+  confirmOff(8, "3 u-turn heading+lateral", {
     courseDeg: 180,
     routeBearingDeg: 0,
     speedMps: 6,
     ticks: [
       { dtMs: 0 },
       { dtMs: NAV_OFF_ROUTE_UTURN_CONFIRM_MS },
-      { dtMs: 100 },
+      { dtMs: 200 },
+      { dtMs: 200 },
     ],
   });
+}
+
+// ===========================================================================
+// Regression: Kreuzung/Kurve — Kurs wackelt, Position bleibt nah an Route
+// ===========================================================================
+{
+  let st = createOffRouteTrackerState();
+  let t = 80_000;
+  let confirmed = false;
+  let headingForced = false;
+  for (const dt of [0, 300, 300, 300, 300, 300, 300]) {
+    t += dt;
+    const ev = evaluateNavOffRouteSample({
+      state: st,
+      nowMs: t,
+      forwardDistM: 3,
+      committedProgressM: 120 + (t - 80_000) * 0.008,
+      courseDeg: 55,
+      routeBearingDeg: 0,
+      speedMps: 8,
+    });
+    st = ev.state;
+    if (ev.headingForced) headingForced = true;
+    if (ev.confirmedOffRoute) confirmed = true;
+  }
+  assert(!headingForced, "intersection: heading must not force while lateral 3m");
+  assert(!confirmed, "intersection: must not confirm off-route / reroute");
 }
 
 // ===========================================================================
@@ -277,8 +305,8 @@ const lRoute = [
   assert(!ev.headingForced && !ev.stallForced && !ev.confirmedOffRoute, "6 hold still ok");
   holdSt = ev.state;
 
-  // Anfahren in falsche Richtung → U-Turn-ähnlicher Mismatch bestätigt schnell
-  confirmOff(4, "6 after stop wrong direction", {
+  // Anfahren in falsche Richtung — braucht Lateral (nicht nur Kurs nahe Route)
+  confirmOff(8, "6 after stop wrong direction", {
     progressM: 80,
     courseDeg: 180,
     routeBearingDeg: 0,
@@ -286,7 +314,8 @@ const lRoute = [
     ticks: [
       { dtMs: 0 },
       { dtMs: NAV_OFF_ROUTE_UTURN_CONFIRM_MS },
-      { dtMs: 150 },
+      { dtMs: 200 },
+      { dtMs: 200 },
     ],
   });
 }

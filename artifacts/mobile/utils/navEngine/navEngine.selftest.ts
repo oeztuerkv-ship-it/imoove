@@ -81,10 +81,17 @@ r = tickNavEngine(
   lRoute,
 );
 state = r.state;
-t += 300;
+t += 500;
 r = tickNavEngine(
   state,
   { lat: 48.74035, lon: 9.31, speedMps: 8, courseDeg: 180, nowMs: t },
+  lRoute,
+);
+state = r.state;
+t += 500;
+r = tickNavEngine(
+  state,
+  { lat: 48.7403, lon: 9.31, speedMps: 8, courseDeg: 180, nowMs: t },
   lRoute,
 );
 assert(r.output.confirmedOffRoute, "missed turn → offRoute");
@@ -107,6 +114,6 @@ assert(r.output.maneuver == null, "no stale maneuver");
 assert(r.output.distToManeuverM === 0, "no stale distance");
 assert(r.output.diag != null, "diag present");
 
-assert(NAV_OFF_ROUTE_THRESHOLD_M === 10, "threshold wired");
+assert(NAV_OFF_ROUTE_THRESHOLD_M === 14, "threshold wired");
 
 console.log("navEngine.selftest: OK");

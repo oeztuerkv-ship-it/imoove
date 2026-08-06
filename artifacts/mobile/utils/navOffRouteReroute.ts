@@ -2,53 +2,60 @@
  * Off-Route-Bestätigung + Reroute-Cooldown (Fahrer-Navi MVP).
  * Distanz: bevorzugt `distanceToForwardPolylineM` (Rest-Route, nicht Abgefahrenes).
  *
- * Szenarien (Selftest):
- * 1. Früh falsch abbiegen (30–50 m vor Manöver)
- * 2. Parallel auf Nebenstraße (gleicher Kurs)
- * 3. 180°-Wende
- * 4. Kreisverkehr falsche Ausfahrt
- * 5. Autobahnausfahrt verpasst
- * 6. Kurz halten, dann andere Richtung
+ * Balance (Postmortem Kreuzungs-Fehl-Reroutes):
+ * - Heading allein reicht NICHT, solange Position nahe der Route bleibt.
+ * - Heading/U-Turn heben Distanz nur bei merklichem `forwardDistM` an.
+ * - Echtes Falschabbiegen: Lateral steigt → Distanz-Pfad; Parallel: Stall.
+ *
+ * Szenarien (Selftest): 1–6 + Regression „Kreuzungs-Kursflicker“.
  */
 
 import { shortestRotationDelta } from "./liveDriverMarkerMotion";
 import { isMovingForNavHeading, isUsableCourse } from "./navHeadingSmoother";
 
 /** Querabstand über dem die Position als abseits gilt (Rest-Route). */
-export const NAV_OFF_ROUTE_THRESHOLD_M = 10;
+export const NAV_OFF_ROUTE_THRESHOLD_M = 14;
 
 /** Mind. so viele aufeinanderfolgende Off-Fixes. */
 export const NAV_OFF_ROUTE_CONFIRM_FIXES = 2;
 
 /** Oder so lange durchgehend abseits (ms). */
-export const NAV_OFF_ROUTE_CONFIRM_MS = 500;
+export const NAV_OFF_ROUTE_CONFIRM_MS = 900;
 
 /** Mindestabstand zwischen Reroute-Versuchen (auch nach Fehler). */
-export const NAV_REROUTE_COOLDOWN_MS = 2_000;
+export const NAV_REROUTE_COOLDOWN_MS = 4_000;
 
 /**
- * Kurs weicht stark von Rest-Route ab → auch bei kleinem Querabstand Off-Route
- * (180°-Wende, falsche Kreisverkehr-Ausfahrt, nach Halt andere Richtung).
+ * Kurs weicht stark von Rest-Route ab — nur relevant mit Lateral-Boden
+ * (sonst Kreuzungs-/Kurven-Flicker → Fehl-Reroute).
  */
-export const NAV_OFF_ROUTE_HEADING_DELTA_DEG = 45;
+export const NAV_OFF_ROUTE_HEADING_DELTA_DEG = 75;
 
-/** Heading-Mismatch Standard-Bestätigung (ms). */
-export const NAV_OFF_ROUTE_HEADING_CONFIRM_MS = 400;
+/** Heading-Mismatch Standard-Bestätigung (ms) — länger als eine Kurve. */
+export const NAV_OFF_ROUTE_HEADING_CONFIRM_MS = 1_600;
 
-/** Sehr große Kursdrehung (≈ U-Turn) — schneller bestätigen. */
-export const NAV_OFF_ROUTE_UTURN_DELTA_DEG = 100;
-export const NAV_OFF_ROUTE_UTURN_CONFIRM_MS = 280;
+/** Sehr große Kursdrehung (≈ U-Turn). */
+export const NAV_OFF_ROUTE_UTURN_DELTA_DEG = 135;
+export const NAV_OFF_ROUTE_UTURN_CONFIRM_MS = 1_200;
 
 /** Nur bei dieser Mindest-Speed Heading-Mismatch werten. */
-export const NAV_OFF_ROUTE_HEADING_MIN_SPEED_MPS = 1.2;
+export const NAV_OFF_ROUTE_HEADING_MIN_SPEED_MPS = 1.5;
+
+/**
+ * Heading darf Off-Route nur erzwingen, wenn schon so weit von der Rest-Route weg.
+ * Darunter: normales Einlenken an Kreuzung/Kurve auf der richtigen Route.
+ */
+export const NAV_OFF_ROUTE_HEADING_MIN_LATERAL_M = 10;
+
+/** U-Turn: etwas niedrigerer Lateral-Boden (Gegenrichtung oft noch nahe Polyline). */
+export const NAV_OFF_ROUTE_UTURN_MIN_LATERAL_M = 6;
 
 /**
  * Fahrend, aber Fortschritt entlang der Route stockt (Parallelstraße / Ausfahrt verpasst).
- * Progress darf in dem Fenster mind. so viele Meter zunehmen — sonst Off-Route.
  */
-export const NAV_OFF_ROUTE_STALL_CONFIRM_MS = 1_500;
-export const NAV_OFF_ROUTE_STALL_MIN_SPEED_MPS = 2.2;
-export const NAV_OFF_ROUTE_STALL_MIN_PROGRESS_M = 6;
+export const NAV_OFF_ROUTE_STALL_CONFIRM_MS = 2_200;
+export const NAV_OFF_ROUTE_STALL_MIN_SPEED_MPS = 2.5;
+export const NAV_OFF_ROUTE_STALL_MIN_PROGRESS_M = 8;
 
 /** Wie weit hinter dem committed Progress die Rest-Route noch mitzählt (GPS-Jitter). */
 export const NAV_ROUTE_PROGRESS_BACKTRACK_M = 35;
@@ -76,7 +83,7 @@ export function createOffRouteTrackerState(): OffRouteTrackerState {
 
 /**
  * Effektive Off-Route-Distanz: Forward-Querabstand, ggf. angehoben bei
- * Heading-Mismatch oder Progress-Stall.
+ * Heading-Mismatch (nur mit Lateral) oder Progress-Stall.
  */
 export function effectiveOffRouteDistanceM(opts: {
   forwardDistM: number | null;
@@ -96,6 +103,10 @@ export function effectiveOffRouteDistanceM(opts: {
   const threshold = opts.thresholdM ?? NAV_OFF_ROUTE_THRESHOLD_M;
   const speed =
     opts.speedMps != null && Number.isFinite(opts.speedMps) ? opts.speedMps : null;
+  const lateral =
+    opts.forwardDistM != null && Number.isFinite(opts.forwardDistM)
+      ? opts.forwardDistM
+      : null;
 
   const movingForHeading =
     speed != null &&
@@ -122,9 +133,21 @@ export function effectiveOffRouteDistanceM(opts: {
     headingDisagreeSinceMs = null;
   }
 
-  const headingForced =
+  const headingTimeOk =
     headingDisagreeSinceMs != null &&
     opts.nowMs - headingDisagreeSinceMs >= headingConfirmMs;
+
+  // Kreuzung/Kurve: Kurs kann kurz abweichen, Position bleibt auf der Route → kein Force.
+  let headingForced = false;
+  if (headingTimeOk) {
+    if (uturn) {
+      headingForced =
+        lateral == null || lateral >= NAV_OFF_ROUTE_UTURN_MIN_LATERAL_M;
+    } else {
+      headingForced =
+        lateral != null && lateral >= NAV_OFF_ROUTE_HEADING_MIN_LATERAL_M;
+    }
+  }
 
   // Progress-Stall: fahren ohne Fortschritt auf der Route (Parallel / Ausfahrt verpasst)
   let stallAnchorProgressM = opts.state.stallAnchorProgressM;
@@ -234,9 +257,8 @@ export function evaluateNavOffRouteSample(opts: {
   const noted = noteOffRouteSample(eff.state, eff.distanceM, opts.nowMs);
   return {
     state: noted.state,
-    // Heading-/Stall-Force: sofort bestätigen (Gegenrichtung auf derselben Straße).
-    confirmedOffRoute:
-      noted.confirmedOffRoute || eff.headingForced || eff.stallForced,
+    // Kein Soft-Confirm nur über Heading — sonst Kreuzungs-Flicker.
+    confirmedOffRoute: noted.confirmedOffRoute,
     distanceM: eff.distanceM,
     headingForced: eff.headingForced,
     stallForced: eff.stallForced,
