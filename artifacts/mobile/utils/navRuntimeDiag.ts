@@ -1,13 +1,18 @@
 /**
  * Laufzeit-Diagnose Fahrer-Navi ([NavDiag]).
- * Beantwortet: wer tickt GPS, wer steuert Kamera, wer reroutet — mit Messwerten.
- * Keine Verhaltens-„Optimierung“ — nur Logs + Crash-Guards.
+ *
+ * Wichtig (iOS Store/OTA): `console.log` erscheint in Konsole.app oft NICHT.
+ * Deshalb: Ring-Buffer + In-App-Overlay (Subscribe) + optional AsyncStorage.
+ * `console.log` bleibt für Metro / Android logcat.
  */
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { shortestRotationDelta } from "./liveDriverMarkerMotion";
 
 const TAG = "[NavDiag]";
+const MAX_LINES = 250;
+const STORAGE_KEY = "@onroda/nav_diag_ring_v1";
 
 let gpsTickCount = 0;
 let cameraCallCount = 0;
@@ -17,6 +22,99 @@ let sessionStartedAtMs = Date.now();
 let lastRerouteRequestAtMs: number | null = null;
 let offRouteTrueSinceMs: number | null = null;
 
+const lines: string[] = [];
+const listeners = new Set<() => void>();
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let storageHydrated = false;
+
+function notify(): void {
+  listeners.forEach((cb) => {
+    try {
+      cb();
+    } catch {
+      /* ignore subscriber errors */
+    }
+  });
+}
+
+function schedulePersist(): void {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    void AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        at: new Date().toISOString(),
+        lines: lines.slice(-MAX_LINES),
+      }),
+    ).catch(() => {});
+  }, 1500);
+}
+
+function pushLine(kind: string, payload: Record<string, unknown> | object): void {
+  const ts = new Date().toISOString().slice(11, 23);
+  const line = `${ts} ${kind} ${safeJson(payload)}`;
+  lines.push(line);
+  while (lines.length > MAX_LINES) lines.shift();
+  // Metro / Android logcat — iOS Release Unified Log oft leer → Overlay nutzen
+  console.log(TAG, kind, payload);
+  notify();
+  schedulePersist();
+}
+
+function safeJson(payload: unknown): string {
+  try {
+    return JSON.stringify(payload);
+  } catch {
+    return '"[unserializable]"';
+  }
+}
+
+/** Hydrate ring from last session (z. B. nach Crash / App-Neustart). */
+export async function navDiagHydrateFromStorage(): Promise<void> {
+  if (storageHydrated) return;
+  storageHydrated = true;
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { lines?: unknown };
+    if (!Array.isArray(parsed.lines)) return;
+    const restored = parsed.lines
+      .filter((x): x is string => typeof x === "string")
+      .slice(-MAX_LINES);
+    if (restored.length === 0) return;
+    // Voranstellen, aktuelle Session danach weiter
+    lines.unshift(...restored.map((l) => `(prev) ${l}`));
+    while (lines.length > MAX_LINES) lines.shift();
+    notify();
+  } catch {
+    /* ignore */
+  }
+}
+
+export function subscribeNavDiag(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function getNavDiagLines(): string[] {
+  return lines.slice();
+}
+
+export function getNavDiagTranscript(): string {
+  return [
+    `${TAG} transcript platform=${Platform.OS} lines=${lines.length} at=${new Date().toISOString()}`,
+    ...lines,
+  ].join("\n");
+}
+
+export function clearNavDiagBuffer(reason = "manual_clear"): void {
+  lines.length = 0;
+  pushLine("buffer_cleared", { reason });
+}
+
 export function navDiagResetSession(reason: string): void {
   gpsTickCount = 0;
   cameraCallCount = 0;
@@ -25,11 +123,11 @@ export function navDiagResetSession(reason: string): void {
   sessionStartedAtMs = Date.now();
   lastRerouteRequestAtMs = null;
   offRouteTrueSinceMs = null;
-  console.log(TAG, "session_reset", { reason, platform: Platform.OS, at: new Date().toISOString() });
+  pushLine("session_reset", { reason, platform: Platform.OS, at: new Date().toISOString() });
 }
 
 export function navDiagGpsEffect(event: "mount" | "unmount", detail?: Record<string, unknown>): void {
-  console.log(TAG, `gps_watch_${event}`, {
+  pushLine(`gps_watch_${event}`, {
     ...detail,
     sessionAgeMs: Date.now() - sessionStartedAtMs,
   });
@@ -80,7 +178,7 @@ export function navDiagEngineTick(input: NavDiagTickInput): void {
   if (!force) return;
   lastGpsLogMs = now;
 
-  console.log(TAG, "gps_tick", {
+  pushLine("gps_tick", {
     n: gpsTickCount,
     source: input.source,
     tickNavEngine: input.engineCalled,
@@ -120,7 +218,6 @@ export function navDiagEngineTick(input: NavDiagTickInput): void {
 }
 
 export type NavDiagCameraInput = {
-  /** Datei/Funktion die den Call auslöst */
   caller: string;
   method: "setCamera" | "animateCamera" | "skipped" | "error";
   reason?: string;
@@ -146,7 +243,7 @@ export function navDiagCamera(input: NavDiagCameraInput): void {
     now - lastCameraLogMs >= 800;
   if (!force) return;
   lastCameraLogMs = now;
-  console.log(TAG, "camera", {
+  pushLine("camera", {
     n: cameraCallCount,
     perSecApprox: cameraCallCount / Math.max(1, (now - sessionStartedAtMs) / 1000),
     caller: input.caller,
@@ -175,7 +272,7 @@ export function navDiagRerouteDecision(input: {
   cooldownLeftMs?: number;
   from?: { lat: number; lon: number };
 }): void {
-  console.log(TAG, "reroute_decision", {
+  pushLine("reroute_decision", {
     ...input,
     from: input.from
       ? { lat: round6(input.from.lat), lon: round6(input.from.lon) }
@@ -192,7 +289,7 @@ export function navDiagRerouteRequestStarted(input: {
   offRouteTrueForMs?: number | null;
 }): void {
   lastRerouteRequestAtMs = Date.now();
-  console.log(TAG, "reroute_request_start", {
+  pushLine("reroute_request_start", {
     reason: input.reason,
     from: { lat: round6(input.from.lat), lon: round6(input.from.lon) },
     offRouteTrueForMs: input.offRouteTrueForMs ?? null,
@@ -206,11 +303,11 @@ export function navDiagRerouteRequestDone(input: {
   elapsedMs: number;
   error?: string;
 }): void {
-  console.log(TAG, "reroute_request_done", input);
+  pushLine("reroute_request_done", input);
 }
 
 export function navDiagPipelineOwners(): void {
-  console.log(TAG, "pipeline_owners", {
+  pushLine("pipeline_owners", {
     gpsTick: "navigation.tsx watchPositionSafe → tickNavEngine (navEngine/NavigationEngine.ts)",
     headingPitchZoom:
       "Heading: tickNavHeading via Engine; Pitch: NAV_CAMERA_PITCH_NAV (62) in focusNavigationCamera; Zoom: tickNavCameraZoom via Engine → preferredZoomRef",
@@ -222,6 +319,8 @@ export function navDiagPipelineOwners(): void {
       "Engine output.confirmedOffRoute → navigation.tsx canStartReroute → requestNavRouteFrom",
     dashboardGps:
       "dashboard.tsx may keep a separate watchPositionSafe if screen still mounted under stack",
+    logSink:
+      "In-App Overlay + AsyncStorage ring; console.log only for Metro/Android — iOS Release ≠ Konsole.app",
   });
 }
 

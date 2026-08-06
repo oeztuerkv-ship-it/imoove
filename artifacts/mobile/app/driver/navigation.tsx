@@ -52,6 +52,7 @@ import { RideChatModal } from "@/components/ride-chat/RideChatModal";
 import { RideChatReplyBanner } from "@/components/ride-chat/RideChatReplyBanner";
 import { DriverChatBlinkIcon } from "@/components/driver/DriverChatBlinkIcon";
 import { DriverPassengerPinModal } from "@/components/driver/DriverPassengerPinModal";
+import { NavDiagOverlay } from "@/components/driver/NavDiagOverlay";
 import { fetchRidePassengerPinStatus } from "@/utils/driverVerifyPassengerPinApi";
 import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
 import { useFleetRideChatUnread } from "@/hooks/useFleetRideChatUnread";
@@ -96,6 +97,7 @@ import {
   navDiagCamera,
   navDiagEngineTick,
   navDiagGpsEffect,
+  navDiagHydrateFromStorage,
   navDiagPipelineOwners,
   navDiagRerouteDecision,
   navDiagRerouteRequestDone,
@@ -667,6 +669,8 @@ export default function DriverNavigationScreen() {
   // Ton Ein/Aus
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundRef = useRef(true);
+  /** In-App [NavDiag] — iOS Store/OTA zeigt console.log oft nicht in Konsole.app */
+  const [navDiagVisible, setNavDiagVisible] = useState(false);
 
   // fare modal
   const [rideFleetStatus, setRideFleetStatus] = useState("accepted");
@@ -1161,6 +1165,10 @@ export default function DriverNavigationScreen() {
     preferredZoomRef.current = NAV_CAMERA_ZOOM;
     preferredAltitudeRef.current = null;
   }, [params.rideId]);
+
+  useEffect(() => {
+    void navDiagHydrateFromStorage();
+  }, []);
 
   useEffect(() => {
     navDiagResetSession(`ride=${params.rideId ?? "?"};phase=${phase}`);
@@ -3194,8 +3202,13 @@ export default function DriverNavigationScreen() {
       <View style={{ position: "absolute", right: 12, bottom: floatingControlsBottom, gap: 10 }}>
         <Pressable
           style={styles.compassBtn}
-          accessibilityLabel="Navigation folgen"
+          accessibilityLabel="Navigation folgen. Long-Press: NavDiag-Logs"
           onPress={() => handleRecenterNav()}
+          onLongPress={() => {
+            void Haptics.selectionAsync();
+            setNavDiagVisible(true);
+          }}
+          delayLongPress={450}
         >
           <Feather name="navigation" size={18} color="#1B6B3A" />
         </Pressable>
@@ -3686,6 +3699,8 @@ export default function DriverNavigationScreen() {
         }
         emptyHint="Noch keine Nachricht. Vorlage unten antippen oder selbst tippen."
       />
+
+      <NavDiagOverlay visible={navDiagVisible} onClose={() => setNavDiagVisible(false)} />
     </View>
   );
 }

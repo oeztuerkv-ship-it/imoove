@@ -7,18 +7,25 @@ alwaysApply: false
 
 ## Laufzeit-Diagnose (`[NavDiag]`)
 
-Metro/Xcode/Logcat nach Tag **`[NavDiag]`** filtern. Datei: `artifacts/mobile/utils/navRuntimeDiag.ts`.
+**iOS Store/OTA:** `console.log` erscheint in **Konsole.app oft nicht** — Logs nur zuverlässig über **In-App-Overlay**.
+
+| Zugang | Wie |
+|--------|-----|
+| Overlay öffnen | **Long-Press** auf den Navi-/Follow-Button (rechts) |
+| Export | Overlay → **Copy** / **Share** → Text hierher |
+| Persistenz | Ring-Buffer + AsyncStorage (nach Crash: `(prev)`-Zeilen) |
+
+Datei: `artifacts/mobile/utils/navRuntimeDiag.ts`, UI: `NavDiagOverlay.tsx`.
 
 | Log | Bedeutung |
 |-----|-----------|
-| `pipeline_owners` | Wer berechnet Heading/Pitch/Zoom/Reroute (einmal pro Ride/Phase) |
-| `gps_watch_mount` / `unmount` | GPS-Listener in `navigation.tsx` (Doppel-Mount = Effect neu) |
-| `gps_tick` | `tickNavEngine: true/false`, raw vs display (snap), `forwardDistM`, `headingDeltaDeg`, `progressM`, `confirmedOffRoute` |
-| `camera` | `setCamera` / `animateCamera` / `skipped` / `error` + caller |
-| `reroute_decision` | Wird Server-Reroute gestartet? Warum blockiert? |
-| `reroute_request_start` / `done` | HTTP-Reroute + `elapsedMs` |
+| `pipeline_owners` | Wer berechnet Heading/Pitch/Zoom/Reroute |
+| `gps_watch_mount` / `unmount` | GPS-Listener |
+| `gps_tick` | Engine, Snap, Off-Route-Messwerte |
+| `camera` | setCamera / animateCamera / error |
+| `reroute_decision` / `reroute_request_*` | Server-Reroute |
 
-**Crash-Guards:** `tickNavEngine` in try/catch; Kamera nur bei finiten Args; `setCamera`/`animateCamera` try/catch (sonst nativer Map-Crash).
+**Crash-Guards:** try/catch Engine + Kamera; finite Camera-Args.
 
 ## Zielarchitektur (inkrementell)
 
