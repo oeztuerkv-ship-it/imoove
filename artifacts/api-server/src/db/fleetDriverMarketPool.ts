@@ -7,9 +7,8 @@ import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medic
 import { listRides } from "./ridesData";
 import { syncDispatchTiersForRides } from "./rideDispatchTierData";
 import {
-  driverMatchesDispatchTier,
+  driverMatchesDispatchOffer,
   isOpenInstantRideForDispatch,
-  normalizeDispatchPriority,
 } from "../lib/dispatchPriorityTier";
 import { getDispatchRadiusKmFromConfig, isWithinDispatchRadiusKm } from "../lib/dispatchRadius";
 import {
@@ -140,10 +139,9 @@ export async function listMarketRidesForFleetDriver(
     if ((ride.dispatchMode ?? "market") === "funk") {
       return (ride.offeredToDriverId ?? "").trim() === fleetDriverId;
     }
-    if (isOpenInstantRideForDispatch(ride)) {
+      if (isOpenInstantRideForDispatch(ride)) {
       if (ride.fromLat == null || ride.fromLon == null) return false;
-      const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
-      if (!driverMatchesDispatchTier(driverPriority, rideTier)) return false;
+      if (!driverMatchesDispatchOffer(driverPriority, ride)) return false;
       if (!driverLoc) {
         // Fahrer ONLINE ohne GPS-Ping: Mandanten-Fahrten trotzdem anzeigen (sonst leerer Markt).
         return true;

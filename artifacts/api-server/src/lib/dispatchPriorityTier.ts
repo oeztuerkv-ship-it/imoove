@@ -6,7 +6,7 @@ export type DispatchPriority = "A" | "B";
 
 /**
  * Fahrt-Eskalation (Market):
- * trio_a (0–10s, nur A) → pool_1 (10–20s, alle B) → pool_2 (20–30s, alle B) → open (ab 30s, Markt).
+ * trio_a (0–10s, nur Trio A) → pool_1 / pool_2 / open (alle verfügbaren: Trio A + Pool B).
  */
 export type DispatchPhase = "trio_a" | "pool_1" | "pool_2" | "open";
 
@@ -41,7 +41,7 @@ export function normalizeDispatchPhase(raw: unknown): DispatchPhase {
   return "trio_a";
 }
 
-/** Sichtbarkeits-Tier für die Phase (A = Trio, B = Pool). */
+/** DB-Flag: A während Trio-Exklusivphase, sonst B (Legacy/Anzeige). Matching nutzt die Phase. */
 export function dispatchTierForPhase(phase: DispatchPhase): DispatchPriority {
   return phase === "trio_a" ? "A" : "B";
 }
@@ -58,6 +58,27 @@ export function nextDispatchTier(tier: DispatchPriority): DispatchPriority | nul
   return null;
 }
 
+/**
+ * Sichtbarkeit am Markt:
+ * - `trio_a`: nur Trio-A-Fahrer
+ * - `pool_1` / `pool_2` / `open`: alle verfügbaren (Trio A + Pool B)
+ */
+export function driverEligibleForDispatchPhase(
+  driverPriority: DispatchPriority,
+  phase: DispatchPhase,
+): boolean {
+  if (phase === "trio_a") return driverPriority === "A";
+  return true;
+}
+
+export function driverMatchesDispatchOffer(
+  driverPriority: DispatchPriority,
+  ride: Pick<RideRequest, "dispatchPhase" | "dispatchTier">,
+): boolean {
+  return driverEligibleForDispatchPhase(driverPriority, resolveRideDispatchPhase(ride));
+}
+
+/** @deprecated Prefer driverMatchesDispatchOffer (phasenbewusst). Exact A|B equality. */
 export function driverMatchesDispatchTier(
   driverPriority: DispatchPriority,
   rideTier: DispatchPriority,

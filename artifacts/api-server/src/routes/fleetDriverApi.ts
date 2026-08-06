@@ -58,7 +58,7 @@ import {
   toDriverOpenReservationView,
 } from "../lib/driverMarketOfferView.js";
 import { attachBookingPartnerNamesToRides } from "../lib/rideBookingPartnerName.js";
-import { driverMatchesDispatchTier, normalizeDispatchPriority } from "../lib/dispatchPriorityTier.js";
+import { driverMatchesDispatchOffer } from "../lib/dispatchPriorityTier.js";
 import {
   fleetDriverAssignedVehiclePayload,
   resolveFleetDriverKonzessionForMe,
@@ -814,8 +814,7 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
     const tierFiltered = syncedPool.filter((ride) => {
       if (ride.status === "scheduled_assigned" && ride.driverId === a.fleetDriverId) return true;
       if (ride.status === "scheduled" && !ride.driverId) {
-        const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
-        return driverMatchesDispatchTier(driverPriority, rideTier);
+        return driverMatchesDispatchOffer(driverPriority, ride);
       }
       return false;
     });

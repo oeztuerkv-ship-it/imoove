@@ -7,7 +7,11 @@ import { getCompanyFeatureKkModule } from "../lib/kkModuleAccess.js";
 import { resolveMedicalTransportAuthorizationForFleetDriver } from "../lib/medical/medicalTransportAuthorization";
 import { adminCompaniesTable, fleetDriversTable } from "./schema";
 import { ensureRideDispatchTierCurrent } from "./rideDispatchTierData";
-import { driverMatchesDispatchTier, normalizeDispatchPriority } from "../lib/dispatchPriorityTier";
+import {
+  driverMatchesDispatchOffer,
+  normalizeDispatchPriority,
+  resolveRideDispatchPhase,
+} from "../lib/dispatchPriorityTier";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { getDispatchRadiusKmFromConfig, isWithinDispatchRadiusKm } from "../lib/dispatchRadius";
 import {
@@ -81,7 +85,7 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
   const { ride: syncedRide } = await ensureRideDispatchTierCurrent(ride);
   ride = syncedRide;
 
-  const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
+  const phase = resolveRideDispatchPhase(ride);
   const radiusKm = await getDispatchRadiusKmFromConfig();
   const pickupLat = ride.fromLat;
   const pickupLon = ride.fromLon;
@@ -99,9 +103,12 @@ export async function listMarketOnlineDriversEligibleForInstantRide(
     eq(fleetDriversTable.is_active, true),
     eq(fleetDriversTable.access_status, "active"),
     eq(fleetDriversTable.approval_status, "approved"),
-    eq(fleetDriversTable.dispatch_priority, rideTier),
     eq(adminCompaniesTable.company_kind, "taxi"),
   ];
+  // Trio-A-Phase: nur A. Pool/Open: alle (A+B) — kein Priority-Filter.
+  if (phase === "trio_a") {
+    conditions.push(eq(fleetDriversTable.dispatch_priority, "A"));
+  }
   if (taxiOnlyDispatch && rideCompanyId) {
     conditions.push(eq(fleetDriversTable.company_id, rideCompanyId));
   }
@@ -163,7 +170,7 @@ export async function listDriversEligibleForScheduledPoolOffer(
   const { ride: syncedRide } = await ensureRideDispatchTierCurrent(ride);
   ride = syncedRide;
 
-  const rideTier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
+  const phase = resolveRideDispatchPhase(ride);
 
   const db = getDb();
   if (!db || !isPostgresConfigured()) return [];
@@ -177,9 +184,11 @@ export async function listDriversEligibleForScheduledPoolOffer(
     eq(fleetDriversTable.is_active, true),
     eq(fleetDriversTable.access_status, "active"),
     eq(fleetDriversTable.approval_status, "approved"),
-    eq(fleetDriversTable.dispatch_priority, rideTier),
     eq(adminCompaniesTable.company_kind, "taxi"),
   ];
+  if (phase === "trio_a") {
+    conditions.push(eq(fleetDriversTable.dispatch_priority, "A"));
+  }
   if (taxiOnlyDispatch && rideCompanyId) {
     conditions.push(eq(fleetDriversTable.company_id, rideCompanyId));
   }
@@ -202,7 +211,7 @@ export async function listDriversEligibleForScheduledPoolOffer(
     if (rejected.has(fleetDriverId)) continue;
 
     const driverTier = normalizeDispatchPriority(row.dispatchPriority ?? "A");
-    if (!driverMatchesDispatchTier(driverTier, rideTier)) continue;
+    if (!driverMatchesDispatchOffer(driverTier, ride)) continue;
 
     const readiness = await getFleetDriverReadinessById(fleetDriverId, companyId);
     if ("error" in readiness || !readiness.ready) continue;

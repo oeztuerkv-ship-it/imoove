@@ -3,20 +3,22 @@
 ## Produktlinie
 
 - **Trio A:** fest zugewiesene Premium-Fahrer — **nur manuell** im Admin (`DriversOverviewPage` → PATCH `dispatchPriority: A`). Entspricht DB `fleet_drivers.dispatch_priority = 'A'`.
-- **Pool:** alle übrigen Fahrer (`dispatch_priority = 'B'`, Default für neue Fahrer).
+- **Pool B:** alle übrigen Fahrer (`dispatch_priority = 'B'`, Default für neue Fahrer).
 - **Kein Tier C**, kein Auto-A per E-Mail.
 
 ## Fahrt-Eskalation (Market, nicht Funk)
 
 Neue Sofort-/Pool-Fahrten starten mit `dispatch_phase = trio_a`, `dispatch_tier = A`.
 
-| Zeit | Phase (`rides.dispatch_phase`) | Sichtbarkeit (`dispatch_tier`) | Klingeln |
-|------|--------------------------------|--------------------------------|----------|
-| 0–10 s | `trio_a` | A (nur Trio A) | gleichzeitig an alle ONLINE Trio-A |
-| 10–20 s | `pool_1` | B (Pool) | gleichzeitig alle verfügbaren Pool-Fahrer |
-| 20–30 s | `pool_2` | B | **zweite Chance** — erneut Push an alle verfügbaren Pool-Fahrer |
-| ab 30 s | `open` | B | Markt bleibt offen bis Ghost-Ride-Expiry (~8 h) — keine weitere Timed-Eskalation |
+| Zeit | Phase (`rides.dispatch_phase`) | Wer sieht / klingelt |
+|------|--------------------------------|----------------------|
+| 0–10 s | `trio_a` | **nur Trio A** (exklusiv) |
+| 10–20 s | `pool_1` | **alle verfügbaren** (Trio A + Pool B) |
+| 20–30 s | `pool_2` | **alle verfügbaren** erneut (2. Chance, inkl. Trio A) |
+| ab 30 s | `open` | alle verfügbaren bis Ghost-Ride-Expiry (~8 h) |
 
+- Matching: `driverEligibleForDispatchPhase` / `driverMatchesDispatchOffer` — **nicht** nur `dispatch_tier === driverPriority` (sonst fallen Trio-A-Fahrer nach 10 s raus).
+- `dispatch_tier` bleibt A während `trio_a`, sonst B (Legacy/Anzeige); **entscheidend ist `dispatch_phase`**.
 - Timeout je Phase: **Default 10 s** (`premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC`).
 - **Kein Trio-A online** → sofort `trio_a` → `pool_1` (`reason: no_a_online`).
 - Freigabe durch Trio-A-Fahrer → `pool_1` (`releaseRideDispatchOffer`).

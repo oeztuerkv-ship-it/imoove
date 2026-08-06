@@ -1,6 +1,7 @@
 import type { RideRequest } from "../domain/rideRequest";
 import {
   dispatchTierForPhase,
+  driverEligibleForDispatchPhase,
   getDispatchTierTimeoutSec,
   nextDispatchPhase,
   resolveRideDispatchPhase,
@@ -22,9 +23,16 @@ assert(nextDispatchPhase("trio_a") === "pool_1", "trio → pool_1");
 assert(nextDispatchPhase("pool_1") === "pool_2", "pool_1 → pool_2");
 assert(nextDispatchPhase("pool_2") === "open", "pool_2 → open");
 assert(nextDispatchPhase("open") === null, "open has no next");
-assert(dispatchTierForPhase("trio_a") === "A", "trio visible as A");
-assert(dispatchTierForPhase("pool_1") === "B", "pool_1 visible as B");
-assert(dispatchTierForPhase("open") === "B", "open visible as B");
+assert(dispatchTierForPhase("trio_a") === "A", "trio stores tier A");
+assert(dispatchTierForPhase("pool_1") === "B", "pool_1 stores tier B");
+assert(dispatchTierForPhase("open") === "B", "open stores tier B");
+
+assert(driverEligibleForDispatchPhase("A", "trio_a"), "A sees trio");
+assert(!driverEligibleForDispatchPhase("B", "trio_a"), "B does not see trio");
+assert(driverEligibleForDispatchPhase("A", "pool_1"), "A sees pool_1 (2nd chance)");
+assert(driverEligibleForDispatchPhase("B", "pool_1"), "B sees pool_1");
+assert(driverEligibleForDispatchPhase("A", "pool_2"), "A sees pool_2");
+assert(driverEligibleForDispatchPhase("B", "open"), "B sees open");
 
 const base = {
   id: "r1",
