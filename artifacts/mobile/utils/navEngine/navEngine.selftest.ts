@@ -105,6 +105,7 @@ r = tickNavEngine(
 assert(r.output.guidanceStale, "stale during reroute");
 assert(r.output.maneuver == null, "no stale maneuver");
 assert(r.output.distToManeuverM === 0, "no stale distance");
+assert(r.output.diag != null, "diag present");
 
 assert(NAV_OFF_ROUTE_THRESHOLD_M === 12, "threshold wired");
 

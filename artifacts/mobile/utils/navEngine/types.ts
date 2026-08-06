@@ -74,6 +74,15 @@ export type NavEngineOutput = {
   confirmedOffRoute: boolean;
   cameraZoom: number;
   cameraPitch: number;
+  /** Laufzeit-Diagnose (Falschabbiegen / Off-Route). */
+  diag: {
+    forwardDistM: number | null;
+    routeBearingDeg: number | null;
+    courseForOffDeg: number | null;
+    headingDeltaDeg: number | null;
+    headingForced: boolean;
+    stallForced: boolean;
+  };
 };
 
 export type NavTickResult = {

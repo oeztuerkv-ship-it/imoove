@@ -1,63 +1,34 @@
 ---
-description: Fahrer-Navi — NavigationEngine, Server-Routing, Rest-Route, Off-Route-Reroute
+description: Fahrer-Navi — NavigationEngine, Server-Routing, Rest-Route, Off-Route-Reroute, NavDiag
 alwaysApply: false
 ---
 
 # Mobile Fahrer-Navigation: Routing & NavigationEngine
 
+## Laufzeit-Diagnose (`[NavDiag]`)
+
+Metro/Xcode/Logcat nach Tag **`[NavDiag]`** filtern. Datei: `artifacts/mobile/utils/navRuntimeDiag.ts`.
+
+| Log | Bedeutung |
+|-----|-----------|
+| `pipeline_owners` | Wer berechnet Heading/Pitch/Zoom/Reroute (einmal pro Ride/Phase) |
+| `gps_watch_mount` / `unmount` | GPS-Listener in `navigation.tsx` (Doppel-Mount = Effect neu) |
+| `gps_tick` | `tickNavEngine: true/false`, raw vs display (snap), `forwardDistM`, `headingDeltaDeg`, `progressM`, `confirmedOffRoute` |
+| `camera` | `setCamera` / `animateCamera` / `skipped` / `error` + caller |
+| `reroute_decision` | Wird Server-Reroute gestartet? Warum blockiert? |
+| `reroute_request_start` / `done` | HTTP-Reroute + `elapsedMs` |
+
+**Crash-Guards:** `tickNavEngine` in try/catch; Kamera nur bei finiten Args; `setCamera`/`animateCamera` try/catch (sonst nativer Map-Crash).
+
 ## Zielarchitektur (inkrementell)
 
 GPS → PositionFilter → MapMatcher → HeadingEngine → RouteProgress → RerouteEngine → ManeuverEngine → EtaEngine → CameraController → UI.
 
-- **Tick (kein React):** `artifacts/mobile/utils/navEngine/` — `tickNavEngine`, Typen, Modul-Fassaden.
-- **Screen:** `navigation.tsx` — UI, Lifecycle, Side-Effects (API-Reroute, Socket, `animateCamera`/`setCamera`).
-- Während **`guidanceStale` / Reroute:** keine veralteten „In 300 m …“-Hinweise — UI zeigt „Route wird neu berechnet“.
+- **Tick:** `artifacts/mobile/utils/navEngine/` — `tickNavEngine`
+- **Screen:** `navigation.tsx` — UI + Side-Effects
+- **Legacy parallel:** `applyDriverNavFix` noch in `focusNavigationCamera` (heading null) + Recenter — in `pipeline_owners` geloggt
 
-Smoke: `npx tsx artifacts/mobile/utils/navEngine/navEngine.selftest.ts`
+## Quelle / Off-Route / Kamera
 
-## Quelle (verbindlich)
-
-- **km / ETA:** Server `POST /api/fleet-driver/v1/nav-route` → **Google Distance Matrix primär**, **OSRM Fallback**.
-- **Polyline / Steps:** OSRM (`geometrySource: "osrm"`). **Keine Google Directions API**.
-- **Mobile Aufruf:** `driverNavRouteApi.ts` → `fetchDriverNavRoute`.
-- **Anzeige Rest:** Fortschritt entlang Polyline, skaliert auf Matrix-/OSRM-Gesamtwerte.
-- **Live bis Abbiegen:** `ManeuverEngine` / `distanceAlongPolylineToPointM`; Distanz **10‑m-Aufrundung** (`roundNavDisplayMeters`).
-- **Route-Zeichnung:** `splitPolylineAtProgress` — abgefahren blau, Rest Glow.
-- **Kopfzeile:** Distanz + Manöver + Straße; „Dann“-Preview; bei Reroute stale.
-- **Kunde:** ETA/km nur vom Fahrer-Navi (WS); Kunden-Polyline via `route:driver:update`.
-
-## Off-Route-Reroute
-
-- Distanz: **`distanceToForwardPolylineM`** (Rest ab Fortschritt), nicht volle Polyline.
-- Fortschritt nur bei Lateral ≤ **20 m**; Backtrack **35 m**.
-- Schwelle **12 m**, **2 Fixes** / **0,8 s**, Cooldown **3 s**.
-- Heading-Mismatch ≥60° (U-Turn ≥120° in **0,6 s**), Progress-Stall (**2,5 s**).
-- Selftest inkl. 6 Szenarien: `navOffRouteReroute.selftest.ts`.
-- Marker: Snap max. **45 m**; Off-Route mit Roh/EMA; Display-Pose = Snap.
-
-## Kamera / Pfeil / Heading
-
-- GPS-Watch → **`tickNavEngine`** → Follow-Kamera; andere Watches kein Navi-`animateCamera`.
-- **Pitch 62°** (`NAV_CAMERA_PITCH_NAV`); Speed-Zoom mit Hysterese (`navCameraZoom.ts`, Update ~2,5 s).
-- Padding: Puck im **unteren Drittel**.
-- Follow: `setCamera` bei force/Stillstand, sonst `animateCamera`; `pitchEnabled={false}`.
-- Heading: Kurs zuerst ab ~2,5 m/s; langsam weichere Rate; Start/neue Route = Poly-Lookahead.
-- Postmortem iOS `speed=-1`: immer `resolveNavSpeedMps`.
-- Postmortem Falschabbiegen: Forward-Distanz + Heading/Stall.
-
-## Dateien
-
-| Layer | Pfad |
-|-------|------|
-| Engine | `artifacts/mobile/utils/navEngine/` |
-| Screen | `artifacts/mobile/app/driver/navigation.tsx` |
-| Heading | `navHeadingSmoother.ts` |
-| Off-Route | `navOffRouteReroute.ts` |
-| Polyline | `routeRemainingAlongPolyline.ts` |
-| API | `POST /fleet-driver/v1/nav-route` |
-
-## Was nicht tun
-
-- Kein Client-OSRM für Navi-Metriken; keine Luftlinien-Polyline; kein Directions-SDK nebenbei.
-- Kein Big-Bang-Rewrite der Sheet/Completion-UI in `navigation.tsx`.
+Siehe vorherige Abschnitte (Matrix+OSRM, Forward-Distanz, Pitch 62°, Speed-Zoom). Smoke: `navEngine.selftest.ts`, `navOffRouteReroute.selftest.ts`.
 ---

@@ -26,7 +26,7 @@ import {
   scaleRemainingToAuthoritative,
   snapLatLonToPolyline,
 } from "../routeRemainingAlongPolyline";
-import { bearingDegrees } from "../liveDriverMarkerMotion";
+import { bearingDegrees, shortestRotationDelta } from "../liveDriverMarkerMotion";
 import { buildManeuverOut } from "./ManeuverEngine";
 import {
   createNavCameraZoomState,
@@ -156,6 +156,10 @@ export function tickNavEngine(
   let confirmedOffRoute = false;
   let remainingDistM = 0;
   let remainingMin = 1;
+  let forwardDistM: number | null = null;
+  let courseForOffDeg: number | null = null;
+  let headingForced = false;
+  let stallForced = false;
 
   if (route && polyline.length >= 2) {
     // 5 Progress
@@ -163,8 +167,8 @@ export function tickNavEngine(
       maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
     });
     const fromProg = Math.max(0, routeProgressM - NAV_ROUTE_PROGRESS_BACKTRACK_M);
-    const forwardDistM = distanceToForwardPolylineM(polyline, filtered, fromProg);
-    const courseForOff =
+    forwardDistM = distanceToForwardPolylineM(polyline, filtered, fromProg);
+    courseForOffDeg =
       fix.courseDeg != null && Number.isFinite(fix.courseDeg)
         ? fix.courseDeg
         : headingTick.heading;
@@ -176,12 +180,14 @@ export function tickNavEngine(
         nowMs: now,
         forwardDistM,
         committedProgressM: routeProgressM,
-        courseDeg: courseForOff,
+        courseDeg: courseForOffDeg,
         routeBearingDeg: polyBearing,
         speedMps: effectiveSpeed,
       });
       offRoute = offEval.state;
       confirmedOffRoute = offEval.confirmedOffRoute;
+      headingForced = offEval.headingForced;
+      stallForced = offEval.stallForced;
     }
 
     const along = remainingAlongPolyline(polyline, filtered);
@@ -225,6 +231,16 @@ export function tickNavEngine(
     rerouteInFlight: state.rerouteInFlight,
   };
 
+  let headingDelta: number | null = null;
+  if (
+    courseForOffDeg != null &&
+    polyBearing != null &&
+    Number.isFinite(courseForOffDeg) &&
+    Number.isFinite(polyBearing)
+  ) {
+    headingDelta = Math.abs(shortestRotationDelta(courseForOffDeg, polyBearing));
+  }
+
   const output: NavEngineOutput = {
     filtered,
     display,
@@ -241,6 +257,14 @@ export function tickNavEngine(
     confirmedOffRoute,
     cameraZoom: zoomTick.zoom,
     cameraPitch: NAV_CAMERA_PITCH_NAV,
+    diag: {
+      forwardDistM,
+      routeBearingDeg: polyBearing,
+      courseForOffDeg,
+      headingDeltaDeg: headingDelta,
+      headingForced,
+      stallForced,
+    },
   };
 
   return { state: nextState, output };
