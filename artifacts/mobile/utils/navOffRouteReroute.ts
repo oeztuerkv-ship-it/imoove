@@ -4,16 +4,16 @@
  */
 
 /** Querabstand über dem die Position als abseits gilt. */
-export const NAV_OFF_ROUTE_THRESHOLD_M = 40;
+export const NAV_OFF_ROUTE_THRESHOLD_M = 25;
 
 /** Mind. so viele aufeinanderfolgende Off-Fixes. */
-export const NAV_OFF_ROUTE_CONFIRM_FIXES = 3;
+export const NAV_OFF_ROUTE_CONFIRM_FIXES = 2;
 
 /** Oder so lange durchgehend abseits (ms). */
-export const NAV_OFF_ROUTE_CONFIRM_MS = 4000;
+export const NAV_OFF_ROUTE_CONFIRM_MS = 2000;
 
 /** Mindestabstand zwischen Reroute-Versuchen (auch nach Fehler). */
-export const NAV_REROUTE_COOLDOWN_MS = 20_000;
+export const NAV_REROUTE_COOLDOWN_MS = 7_000;
 
 export type OffRouteTrackerState = {
   consecutiveOffFixes: number;

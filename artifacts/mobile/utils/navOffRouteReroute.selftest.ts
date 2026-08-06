@@ -43,10 +43,7 @@ r = noteOffRouteSample(st, NAV_OFF_ROUTE_THRESHOLD_M + 5, 2000);
 assert(!r.confirmedOffRoute && r.state.consecutiveOffFixes === 1, "first off");
 st = r.state;
 r = noteOffRouteSample(st, NAV_OFF_ROUTE_THRESHOLD_M + 5, 2100);
-assert(!r.confirmedOffRoute, "second off not enough");
-st = r.state;
-r = noteOffRouteSample(st, NAV_OFF_ROUTE_THRESHOLD_M + 5, 2200);
-assert(r.confirmedOffRoute && r.state.consecutiveOffFixes >= NAV_OFF_ROUTE_CONFIRM_FIXES, "third confirms");
+assert(r.confirmedOffRoute && r.state.consecutiveOffFixes >= NAV_OFF_ROUTE_CONFIRM_FIXES, "second confirms");
 
 st = createOffRouteTrackerState();
 r = noteOffRouteSample(st, 80, 5000);

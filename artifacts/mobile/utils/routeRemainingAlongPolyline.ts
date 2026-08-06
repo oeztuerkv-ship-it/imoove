@@ -84,6 +84,26 @@ export function distanceToPolylineM(polyline: LatLon[], current: LatLon): number
 }
 
 /**
+ * Lateral auf die Route snappen (nur Anzeige). Null wenn zu weit abseits / keine Route.
+ * Off-Route-Messung weiterhin mit Roh-/EMA-GPS, nicht mit dem Snapped-Punkt.
+ */
+export function snapLatLonToPolyline(
+  polyline: LatLon[],
+  current: LatLon,
+  maxLateralM: number = 28,
+): LatLon | null {
+  const n = nearestOnPolyline(polyline, current);
+  if (!n || !Number.isFinite(n.bestDistM) || n.bestDistM > maxLateralM) return null;
+  if (n.bestSeg < 0 || n.bestSeg >= polyline.length - 1) return null;
+  const a = polyline[n.bestSeg]!;
+  const b = polyline[n.bestSeg + 1]!;
+  return {
+    lat: a.lat + n.bestT * (b.lat - a.lat),
+    lon: a.lon + n.bestT * (b.lon - a.lon),
+  };
+}
+
+/**
  * Fahrtrichtung entlang der Route: Bearing vom Projizierten Punkt zu einem
  * Punkt ~`lookaheadM` voraus (nicht Einzel-Segment-Tangente).
  * Stabiler an kurzen Kurven/Kreuzungen — verhindert Kamera-Flip-Flop.
@@ -91,7 +111,7 @@ export function distanceToPolylineM(polyline: LatLon[], current: LatLon): number
 export function bearingAlongPolylineLookaheadDeg(
   polyline: LatLon[],
   current: LatLon,
-  lookaheadM: number = 45,
+  lookaheadM: number = 70,
 ): number | null {
   const n = nearestOnPolyline(polyline, current);
   if (!n || polyline.length < 2) return null;

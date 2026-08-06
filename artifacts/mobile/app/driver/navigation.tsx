@@ -99,6 +99,7 @@ import {
   distanceToPolylineM,
   remainingAlongPolyline,
   scaleRemainingToAuthoritative,
+  snapLatLonToPolyline,
 } from "@/utils/routeRemainingAlongPolyline";
 import {
   formatNavTurnCue,
@@ -138,6 +139,8 @@ import {
   NAV_CAMERA_MIN_HEADING_DELTA_DEG,
   NAV_CAMERA_MIN_MOVE_M,
   NAV_CAMERA_STILL_MIN_MOVE_M,
+  NAV_MARKER_SNAP_MAX_LATERAL_M,
+  NAV_POLY_LOOKAHEAD_M,
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
   isMovingForNavHeading,
@@ -853,10 +856,11 @@ export default function DriverNavigationScreen() {
 
       const effectiveSpeed = resolveNavSpeedMps(input.speedMps, derivedSpeedMps);
 
-      const polyBearing = bearingAlongPolylineLookaheadDeg(polylineLatLonRef.current, {
-        lat,
-        lon,
-      });
+      const polyBearing = bearingAlongPolylineLookaheadDeg(
+        polylineLatLonRef.current,
+        { lat, lon },
+        NAV_POLY_LOOKAHEAD_M,
+      );
       const fallback = resolveNavFallbackBearing(lat, lon, {
         steps: stepsRef.current,
         stepIdx: stepIdxRef.current,
@@ -933,7 +937,7 @@ export default function DriverNavigationScreen() {
         }
       }
 
-      if (opts?.resetZoom || opts?.force) {
+      if (opts?.resetZoom) {
         preferredZoomRef.current = NAV_CAMERA_ZOOM;
         preferredAltitudeRef.current = null;
       }
@@ -956,6 +960,7 @@ export default function DriverNavigationScreen() {
         buildNavCamera(lat, lon, heading, {
           zoom: preferredZoomRef.current,
           altitude: preferredAltitudeRef.current,
+          pitch: NAV_CAMERA_PITCH,
         }),
         { duration },
       );
@@ -1033,13 +1038,13 @@ export default function DriverNavigationScreen() {
       lon: driverLonRef.current,
       heading: null,
     };
+    preferredZoomRef.current = NAV_CAMERA_ZOOM;
+    preferredAltitudeRef.current = null;
   }, [params.rideId]);
 
   useEffect(() => {
     navCameraInitializedRef.current = false;
     navFollowEnabledRef.current = true;
-    preferredZoomRef.current = NAV_CAMERA_ZOOM;
-    preferredAltitudeRef.current = null;
     offRouteTrackerRef.current = createOffRouteTrackerState();
     rerouteInFlightRef.current = false;
     lastRerouteAtMsRef.current = null;
@@ -1050,6 +1055,7 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     if (!mapReady.current) return;
     const pose = navPoseRef.current;
+    // force = Follow wieder an + Pitch; Zoom bewusst nicht resetten (Stabilität).
     focusNavigationCamera({
       lat: pose.lat,
       lon: pose.lon,
@@ -2302,12 +2308,19 @@ export default function DriverNavigationScreen() {
           speedMps: boot.coords.speed,
           courseDeg: boot.coords.heading,
         });
-        setDriverLat(pose.lat);
-        setDriverLon(pose.lon);
+        const snapped = snapLatLonToPolyline(
+          polylineLatLonRef.current,
+          { lat: pose.lat, lon: pose.lon },
+          NAV_MARKER_SNAP_MAX_LATERAL_M,
+        );
+        const dLat = snapped?.lat ?? pose.lat;
+        const dLon = snapped?.lon ?? pose.lon;
+        setDriverLat(dLat);
+        setDriverLon(dLon);
         if (mapReady.current) {
           focusNavigationCamera({
-            lat: pose.lat,
-            lon: pose.lon,
+            lat: dLat,
+            lon: dLon,
             heading: pose.heading ?? undefined,
             animated: false,
             force: true,
@@ -2332,8 +2345,15 @@ export default function DriverNavigationScreen() {
             courseDeg: loc.coords.heading,
             nowMs: now,
           });
-          setDriverLat(pose.lat);
-          setDriverLon(pose.lon);
+          const snapped = snapLatLonToPolyline(
+            polylineLatLonRef.current,
+            { lat: pose.lat, lon: pose.lon },
+            NAV_MARKER_SNAP_MAX_LATERAL_M,
+          );
+          const dLat = snapped?.lat ?? pose.lat;
+          const dLon = snapped?.lon ?? pose.lon;
+          setDriverLat(dLat);
+          setDriverLon(dLon);
 
           const { distM, etaMin } = initialRouteMetricsRef.current;
           const along = remainingAlongPolyline(polylineLatLonRef.current, {
@@ -2496,8 +2516,8 @@ export default function DriverNavigationScreen() {
           lastCameraFollowAt = now;
 
           focusNavigationCamera({
-            lat: pose.lat,
-            lon: pose.lon,
+            lat: dLat,
+            lon: dLon,
             heading: pose.heading ?? undefined,
             animated: navCameraInitializedRef.current && !still,
             still,
@@ -2779,7 +2799,7 @@ export default function DriverNavigationScreen() {
         zoomEnabled
         zoomTapEnabled
         rotateEnabled
-        pitchEnabled
+        pitchEnabled={false}
         followsUserLocation={false}
         mapPadding={NAV_MAP_PADDING}
         onMapReady={handleMapReady}
