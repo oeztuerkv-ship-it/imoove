@@ -12,6 +12,7 @@ import {
 import {
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
+  deriveNavSpeedMps,
   NAV_MARKER_SNAP_MAX_LATERAL_M,
   NAV_POLY_LOOKAHEAD_M,
   resolveNavSpeedMps,
@@ -115,19 +116,22 @@ export function tickNavEngine(
 
   let movementBearing: number | null = null;
   let derivedSpeedMps: number | null = null;
+  let fixDtMs: number | null = null;
   const prevRaw = state.lastRawFix;
   if (prevRaw) {
     const moved = haversineM(
       { lat: prevRaw.lat, lon: prevRaw.lon },
       { lat: fix.lat, lon: fix.lon },
     );
-    const dtSec = Math.max(0.05, (now - prevRaw.atMs) / 1000);
-    if (moved >= 1) derivedSpeedMps = moved / dtSec;
-    if (moved >= 3) {
+    fixDtMs = now - prevRaw.atMs;
+    derivedSpeedMps = deriveNavSpeedMps(moved, fixDtMs);
+    if (moved >= 3 && fixDtMs >= 200) {
       movementBearing = bearingDegrees(prevRaw.lat, prevRaw.lon, fix.lat, fix.lon);
     }
   }
 
+  const gpsSpeedForDiag =
+    fix.speedMps != null && Number.isFinite(fix.speedMps) ? fix.speedMps : null;
   const effectiveSpeed = resolveNavSpeedMps(fix.speedMps, derivedSpeedMps);
   const polyline = route?.polyline ?? [];
 
@@ -264,6 +268,9 @@ export function tickNavEngine(
       headingDeltaDeg: headingDelta,
       headingForced,
       stallForced,
+      gpsSpeedMps: gpsSpeedForDiag,
+      derivedSpeedMps,
+      fixDtMs,
     },
   };
 

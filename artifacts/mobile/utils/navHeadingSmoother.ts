@@ -98,8 +98,33 @@ export function isUsableGpsSpeedMps(speedMps?: number | null): speedMps is numbe
 }
 
 /**
- * Effektive Speed für Heading-Gates: GPS wenn brauchbar, sonst / zusätzlich
- * aus Fix-zu-Fix (wenn GPS -1 oder zu niedrig trotz klarer Bewegung).
+ * Mindest-Δt für Fix-zu-Fix-Speed.
+ * iOS liefert bei `distanceInterval` oft Bursts mit Δt≪1s; Clamp 50ms →
+ * moved≈2m / 0.05s ≈ 40 m/s (Bug: 4 m/s GPS → „36 m/s“ effektiv).
+ */
+export const NAV_DERIVED_SPEED_MIN_DT_MS = 400;
+
+/** Unphysikalische Ableitung verwerfen (~200 km/h). */
+export const NAV_DERIVED_SPEED_MAX_MPS = 55;
+
+export const NAV_DERIVED_SPEED_MIN_MOVED_M = 1;
+
+/**
+ * Fix-zu-Fix-Geschwindigkeit (m/s) oder null wenn Δt/Distanz unbrauchbar.
+ */
+export function deriveNavSpeedMps(movedM: number, dtMs: number): number | null {
+  if (!Number.isFinite(movedM) || !Number.isFinite(dtMs)) return null;
+  if (movedM < NAV_DERIVED_SPEED_MIN_MOVED_M) return null;
+  if (dtMs < NAV_DERIVED_SPEED_MIN_DT_MS) return null;
+  const v = movedM / (dtMs / 1000);
+  if (!Number.isFinite(v) || v < 0 || v > NAV_DERIVED_SPEED_MAX_MPS) return null;
+  return v;
+}
+
+/**
+ * Effektive Speed: brauchbares GPS hat Vorrang.
+ * Derived nur wenn GPS fehlt/-1 oder GPS „kriecht“ trotz klarer Bewegung.
+ * Nie `max(gps, derived*0.5)` — das hat gute GPS-Werte mit Burst-Artefakten aufgeblasen.
  */
 export function resolveNavSpeedMps(
   gpsSpeedMps?: number | null,
@@ -107,15 +132,23 @@ export function resolveNavSpeedMps(
 ): number | null {
   const gps = isUsableGpsSpeedMps(gpsSpeedMps) ? gpsSpeedMps : null;
   const derived =
-    derivedSpeedMps != null && Number.isFinite(derivedSpeedMps) && derivedSpeedMps >= 0
+    derivedSpeedMps != null &&
+    Number.isFinite(derivedSpeedMps) &&
+    derivedSpeedMps >= 0 &&
+    derivedSpeedMps <= NAV_DERIVED_SPEED_MAX_MPS
       ? derivedSpeedMps
       : null;
-  if (gps != null && derived != null) {
-    // Wenn GPS „kriecht“ aber Fixes klar fahren: Ableitung gewinnen lassen.
-    if (gps < NAV_HEADING_TRUST_COURSE_SPEED_MPS && derived >= NAV_HEADING_TRUST_COURSE_SPEED_MPS) {
-      return derived;
-    }
-    return Math.max(gps, derived * 0.5);
+
+  if (gps != null && gps >= NAV_HEADING_TRUST_COURSE_SPEED_MPS) {
+    return gps;
+  }
+  if (
+    gps != null &&
+    gps < NAV_HEADING_TRUST_COURSE_SPEED_MPS &&
+    derived != null &&
+    derived >= NAV_HEADING_TRUST_COURSE_SPEED_MPS
+  ) {
+    return derived;
   }
   return gps ?? derived;
 }

@@ -14,6 +14,12 @@ alwaysApply: false
 | Overlay öffnen | **Long-Press** auf den Navi-/Follow-Button (rechts) |
 | Export | Overlay → **Copy** / **Share** → Text hierher |
 | Persistenz | Ring-Buffer + AsyncStorage (nach Crash: `(prev)`-Zeilen) |
+| Heartbeat | alle 2 s `heartbeat` — Lücke vor Crash sichtbar |
+
+### Bekannter Bugfix (Speed)
+
+`resolveNavSpeedMps` darf brauchbares GPS **nicht** mit `max(gps, derived*0.5)` aufblasen.  
+Derived nur bei GPS -1/fehlend oder GPS-Kriechen; `deriveNavSpeedMps` verwirft Δt < 400 ms und v > 55 m/s.
 
 Datei: `artifacts/mobile/utils/navRuntimeDiag.ts`, UI: `NavDiagOverlay.tsx`.
 

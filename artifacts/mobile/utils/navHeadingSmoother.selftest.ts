@@ -3,12 +3,14 @@
  *   npx tsx artifacts/mobile/utils/navHeadingSmoother.selftest.ts
  */
 import {
+  NAV_DERIVED_SPEED_MIN_DT_MS,
   NAV_HEADING_DEADBAND_DEG,
   NAV_HEADING_MOVING_SPEED_MPS,
   NAV_HEADING_TRUST_COURSE_SPEED_MPS,
   applyNavHeadingSmooth,
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
+  deriveNavSpeedMps,
   headingsAgreeDeg,
   isMovingForNavHeading,
   isUsableCourse,
@@ -43,6 +45,23 @@ assert(
   (resolveNavSpeedMps(0.5, 8) ?? 0) >= NAV_HEADING_TRUST_COURSE_SPEED_MPS,
   "derived wins when gps crawls",
 );
+// Bug1-Regression: brauchbares GPS darf nicht durch Burst-Derived aufgeblasen werden
+assert(
+  Math.abs((resolveNavSpeedMps(4.359, 72.88) ?? -1) - 4.359) < 1e-6,
+  "trust gps 4.359 over absurd derived 72.88",
+);
+assert(
+  Math.abs((resolveNavSpeedMps(4.518, 43.94) ?? -1) - 4.518) < 1e-6,
+  "trust gps 4.518 over inflated derived",
+);
+
+assert(deriveNavSpeedMps(2, 50) == null, "reject derived when dt 50ms (burst)");
+assert(deriveNavSpeedMps(2, NAV_DERIVED_SPEED_MIN_DT_MS - 1) == null, "reject dt under min");
+assert(
+  deriveNavSpeedMps(2, 1000) != null && Math.abs(deriveNavSpeedMps(2, 1000)! - 2) < 1e-6,
+  "derived 2m/1s = 2 m/s",
+);
+assert(deriveNavSpeedMps(100, 1000) == null, "reject > max mps");
 
 assert(!isMovingForNavHeading(1.0), "1.0 m/s still");
 assert(isMovingForNavHeading(NAV_HEADING_MOVING_SPEED_MPS), "threshold moving");

@@ -82,6 +82,11 @@ export type NavEngineOutput = {
     headingDeltaDeg: number | null;
     headingForced: boolean;
     stallForced: boolean;
+    /** Roh-GPS Speed (kann -1 sein). */
+    gpsSpeedMps: number | null;
+    /** Fix-zu-Fix Ableitung (null wenn Δt/Distanz verworfen). */
+    derivedSpeedMps: number | null;
+    fixDtMs: number | null;
   };
 };
 

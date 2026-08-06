@@ -126,6 +126,15 @@ export function navDiagResetSession(reason: string): void {
   pushLine("session_reset", { reason, platform: Platform.OS, at: new Date().toISOString() });
 }
 
+export function navDiagHeartbeat(detail?: Record<string, unknown>): void {
+  pushLine("heartbeat", {
+    sessionAgeMs: Date.now() - sessionStartedAtMs,
+    gpsTickCount,
+    cameraCallCount,
+    ...detail,
+  });
+}
+
 export function navDiagGpsEffect(event: "mount" | "unmount", detail?: Record<string, unknown>): void {
   pushLine(`gps_watch_${event}`, {
     ...detail,
@@ -157,6 +166,9 @@ export type NavDiagTickInput = {
   polylinePoints?: number;
   stepIdx?: number;
   rerouteInFlight?: boolean;
+  gpsSpeedMps?: number | null;
+  derivedSpeedMps?: number | null;
+  fixDtMs?: number | null;
 };
 
 /** Jeder GPS-Tick (gedrosselt ~1/s für ausführliche Zeile; Off-Route/Fehler immer). */
@@ -214,6 +226,9 @@ export function navDiagEngineTick(input: NavDiagTickInput): void {
     polylinePoints: input.polylinePoints ?? 0,
     stepIdx: input.stepIdx ?? null,
     rerouteInFlight: input.rerouteInFlight ?? false,
+    gpsSpeedMps: input.gpsSpeedMps ?? null,
+    derivedSpeedMps: input.derivedSpeedMps ?? null,
+    fixDtMs: input.fixDtMs ?? null,
   });
 }
 

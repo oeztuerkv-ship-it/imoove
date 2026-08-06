@@ -97,6 +97,7 @@ import {
   navDiagCamera,
   navDiagEngineTick,
   navDiagGpsEffect,
+  navDiagHeartbeat,
   navDiagHydrateFromStorage,
   navDiagPipelineOwners,
   navDiagRerouteDecision,
@@ -166,6 +167,7 @@ import {
   NAV_POLY_LOOKAHEAD_M,
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
+  deriveNavSpeedMps,
   isMovingForNavHeading,
   isUsableCourse,
   resolveNavSpeedMps,
@@ -877,11 +879,9 @@ export default function DriverNavigationScreen() {
       const prevRaw = lastRawFixRef.current;
       if (prevRaw && isValidMapCoord(prevRaw.lat, prevRaw.lon)) {
         const moved = haversine(prevRaw.lat, prevRaw.lon, input.lat, input.lon);
-        const dtSec = Math.max(0.05, (now - prevRaw.atMs) / 1000);
-        if (moved >= 1) {
-          derivedSpeedMps = moved / dtSec;
-        }
-        if (moved >= 3) {
+        const dtMs = now - prevRaw.atMs;
+        derivedSpeedMps = deriveNavSpeedMps(moved, dtMs);
+        if (moved >= 3 && dtMs >= 200) {
           movementBearing = bearingDeg(prevRaw.lat, prevRaw.lon, input.lat, input.lon);
         }
       }
@@ -1170,8 +1170,16 @@ export default function DriverNavigationScreen() {
     void navDiagHydrateFromStorage();
   }, []);
 
+  const navSessionKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    navDiagResetSession(`ride=${params.rideId ?? "?"};phase=${phase}`);
+    const key = `${params.rideId ?? ""}|${phase}`;
+    const prev = navSessionKeyRef.current;
+    navSessionKeyRef.current = key;
+    navDiagResetSession(
+      prev == null
+        ? `mount ride=${params.rideId ?? "?"};phase=${phase}`
+        : `remount_or_phase prev=${prev} → ${key}`,
+    );
     navDiagPipelineOwners();
     navCameraInitializedRef.current = false;
     navFollowEnabledRef.current = true;
@@ -2455,6 +2463,10 @@ export default function DriverNavigationScreen() {
     let lastCameraFollowAt = 0;
     let cancelled = false;
     navDiagGpsEffect("mount", { rideId: params.rideId ?? null });
+    const heartbeatId = setInterval(() => {
+      if (cancelled) return;
+      navDiagHeartbeat({ rideId: params.rideId ?? null });
+    }, 5000);
 
     const buildRouteSnap = (): NavRouteSnapshot | null => {
       const poly = polylineLatLonRef.current;
@@ -2597,6 +2609,9 @@ export default function DriverNavigationScreen() {
         polylinePoints: polylineLatLonRef.current.length,
         stepIdx: out?.stepIdx,
         rerouteInFlight: navEngineRef.current.rerouteInFlight,
+        gpsSpeedMps: out?.diag.gpsSpeedMps,
+        derivedSpeedMps: out?.diag.derivedSpeedMps,
+        fixDtMs: out?.diag.fixDtMs,
       });
 
       return out;
@@ -2626,7 +2641,18 @@ export default function DriverNavigationScreen() {
         (loc) => {
           if (cancelled) return;
           const { latitude, longitude } = loc.coords;
-          const now = Date.now();
+          // Location.timestamp (GPS-Zeit) falls brauchbar — sonst Date.now().
+          // Burst-Fixes mit gleichem Date.now() → Fix-zu-Fix-Speed-Explosion.
+          const gpsTs =
+            typeof loc.timestamp === "number" && Number.isFinite(loc.timestamp)
+              ? loc.timestamp
+              : NaN;
+          const now =
+            Number.isFinite(gpsTs) && gpsTs > 1_000_000_000_000
+              ? gpsTs
+              : Number.isFinite(gpsTs) && gpsTs > 1_000_000_000
+                ? gpsTs * 1000
+                : Date.now();
           const out = runTick(
             "watch",
             latitude,
@@ -2761,6 +2787,7 @@ export default function DriverNavigationScreen() {
     })();
     return () => {
       cancelled = true;
+      clearInterval(heartbeatId);
       sub?.remove();
       navDiagGpsEffect("unmount", { rideId: params.rideId ?? null });
     };
