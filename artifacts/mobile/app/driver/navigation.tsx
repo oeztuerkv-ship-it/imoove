@@ -295,8 +295,8 @@ function toMapCoords(points: { lat: number; lon: number }[]) {
 }
 
 const NAV_CAMERA_ZOOM = 18;
-/** Etwas flacher = weniger „Kippen“-Gefühl bei Heading-Wechsel. */
-const NAV_CAMERA_PITCH = 50;
+/** Geneigte Course-Up-Ansicht (nicht Vogelperspektive). */
+const NAV_CAMERA_PITCH = 55;
 /** Unteres Padding → Puck sitzt im unteren Drittel, Kamera bleibt auf Fahrerposition. */
 const NAV_MAP_PADDING = { top: 140, right: 56, bottom: 200, left: 24 };
 
@@ -838,7 +838,7 @@ export default function DriverNavigationScreen() {
       speedMps?: number | null;
       courseDeg?: number | null;
       nowMs?: number;
-    }): { lat: number; lon: number; heading: number | null } => {
+    }): { lat: number; lon: number; heading: number | null; speedMps: number | null } => {
       const now = input.nowMs ?? Date.now();
       const posTick = tickNavPosition(navPositionSmootherRef.current, input.lat, input.lon);
       navPositionSmootherRef.current = posTick.state;
@@ -862,9 +862,15 @@ export default function DriverNavigationScreen() {
 
       const effectiveSpeed = resolveNavSpeedMps(input.speedMps, derivedSpeedMps);
 
-      const polyBearing = bearingAlongPolylineLookaheadDeg(
+      // Poly-Bearing vom gesnappten Punkt — sonst springt Tangente bei GPS neben der Straße.
+      const snapForBearing = snapLatLonToPolyline(
         polylineLatLonRef.current,
         { lat, lon },
+        NAV_MARKER_SNAP_MAX_LATERAL_M,
+      );
+      const polyBearing = bearingAlongPolylineLookaheadDeg(
+        polylineLatLonRef.current,
+        snapForBearing ?? { lat, lon },
         NAV_POLY_LOOKAHEAD_M,
       );
       const fallback = resolveNavFallbackBearing(lat, lon, {
@@ -882,7 +888,7 @@ export default function DriverNavigationScreen() {
       });
       navHeadingSmootherRef.current = headingTick.state;
       navPoseRef.current = { lat, lon, heading: headingTick.heading };
-      return { lat, lon, heading: headingTick.heading };
+      return { lat, lon, heading: headingTick.heading, speedMps: effectiveSpeed };
     },
     [],
   );
@@ -961,15 +967,18 @@ export default function DriverNavigationScreen() {
             : navCameraInitializedRef.current
               ? NAV_CAMERA_FOLLOW_DURATION_MS
               : 0;
-      markProgrammaticCamera(duration);
-      mapRef.current.animateCamera(
-        buildNavCamera(lat, lon, heading, {
-          zoom: preferredZoomRef.current,
-          altitude: preferredAltitudeRef.current,
-          pitch: NAV_CAMERA_PITCH,
-        }),
-        { duration },
-      );
+      const cam = buildNavCamera(lat, lon, heading, {
+        zoom: preferredZoomRef.current,
+        altitude: preferredAltitudeRef.current,
+        pitch: NAV_CAMERA_PITCH,
+      });
+      markProgrammaticCamera(Math.max(duration, opts?.force ? 400 : 0));
+      // force / erster Frame: setCamera setzt Pitch hart (Apple Maps verliert sonst oft den Tilt).
+      if (opts?.force || !navCameraInitializedRef.current || duration === 0) {
+        mapRef.current.setCamera(cam);
+      } else {
+        mapRef.current.animateCamera(cam, { duration });
+      }
       navCameraInitializedRef.current = true;
       pendingNavCameraRef.current = null;
       lastCameraPoseRef.current = { lat, lon, heading };
@@ -1019,6 +1028,10 @@ export default function DriverNavigationScreen() {
 
   const handleRegionChangeComplete = useCallback(() => {
     if (Date.now() < programmaticCameraUntilRef.current) return;
+    // Während Follow nur Zoom übernehmen, wenn der Nutzer gerade pinch/pannt —
+    // sonst speichert getCamera Zwischenhöhen der animateCamera → Zoom-Jagd.
+    const userGestureActive = Date.now() < userGestureCameraPauseUntilRef.current;
+    if (navFollowEnabledRef.current && !userGestureActive) return;
     void (async () => {
       try {
         const cam = await mapRef.current?.getCamera();
@@ -2512,7 +2525,9 @@ export default function DriverNavigationScreen() {
           if (!navFollowEnabledRef.current) return;
           if (Date.now() < userGestureCameraPauseUntilRef.current) return;
 
-          const still = !isMovingForNavHeading(loc.coords.speed);
+          // WICHTIG: nicht loc.coords.speed allein — iOS liefert oft -1 → sonst immer „still“,
+          // Kamera-Heading friert ein, Pitch/Course-Up wirken kaputt.
+          const still = !isMovingForNavHeading(pose.speedMps);
           const followInterval = still
             ? NAV_CAMERA_FOLLOW_MIN_INTERVAL_STILL_MS
             : NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS;

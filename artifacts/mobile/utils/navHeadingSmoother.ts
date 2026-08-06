@@ -39,32 +39,32 @@ export const NAV_HEADING_DEADBAND_DEG = 8;
 export const NAV_HEADING_EMA_ALPHA = 0.18;
 
 /** Max. Heading-Änderung pro Sekunde (°/s) — weichere Kurven, weniger „Ruck“. */
-export const NAV_HEADING_MAX_RATE_DEG_PER_S = 24;
+export const NAV_HEADING_MAX_RATE_DEG_PER_S = 28;
 
 /** Kamera-Follow Mindestabstand. */
-export const NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS = 1000;
+export const NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS = 900;
 
 /** Stehend: seltener Follow — verhindert animateCamera-Stau. */
 export const NAV_CAMERA_FOLLOW_MIN_INTERVAL_STILL_MS = 2200;
 
 /** animateCamera-Dauer bei Follow — unter Follow-Intervall, weniger Überlappung. */
-export const NAV_CAMERA_FOLLOW_DURATION_MS = 380;
+export const NAV_CAMERA_FOLLOW_DURATION_MS = 320;
 
 /** Position-EMA (0…1); höher = reaktiver. */
-export const NAV_POSITION_EMA_ALPHA = 0.32;
+export const NAV_POSITION_EMA_ALPHA = 0.38;
 
 /** Min. Kamera-Update: Position (m) / Heading (°). */
-export const NAV_CAMERA_MIN_MOVE_M = 2.5;
-export const NAV_CAMERA_MIN_HEADING_DELTA_DEG = 5.5;
+export const NAV_CAMERA_MIN_MOVE_M = 2.0;
+export const NAV_CAMERA_MIN_HEADING_DELTA_DEG = 4.5;
 
 /** Stehend: Kamera nur bei größerer Positionsdrift (GPS-Rauschen sonst „sammelt“ Animationen). */
 export const NAV_CAMERA_STILL_MIN_MOVE_M = 12;
 
 /** Polyline-Lookahead für Heading-Fallback (m) — länger = stabiler an Kurven. */
-export const NAV_POLY_LOOKAHEAD_M = 70;
+export const NAV_POLY_LOOKAHEAD_M = 80;
 
 /** Max. Querabstand (m) für UI-Snap des Pfeils auf die Route. */
-export const NAV_MARKER_SNAP_MAX_LATERAL_M = 28;
+export const NAV_MARKER_SNAP_MAX_LATERAL_M = 45;
 
 export type NavHeadingSmootherState = {
   heading: number | null;
