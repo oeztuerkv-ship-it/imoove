@@ -28,8 +28,9 @@ const MAP_CENTER_SHIFT_LON = 0.00044;
 
 const HOME_MAP_SHIFT_LAT = -0.0003;
 const HOME_MAP_SHIFT_LON = 0.00078;
-const HOME_MAP_PULL_DOWN_LAT = 0.00095;
-const HOME_CAMERA_ZOOM = 12.9;
+const HOME_MAP_PULL_DOWN_LAT = 0.00115;
+/** Etwas weiter rausgezoomt, damit der Standortpunkt über dem Bottom-Sheet klar sichtbar ist. */
+const HOME_CAMERA_ZOOM = 12.15;
 
 const FIT_PADDING_EXTRA_LEFT = 42;
 const FIT_PADDING_TOP_TRIM = 14;

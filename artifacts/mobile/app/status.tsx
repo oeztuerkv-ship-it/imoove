@@ -1437,10 +1437,9 @@ export default function StatusScreen() {
     stickyAcceptedRef.current = null;
     setCancelModalOpen(false);
     setCancelReason("");
+    // Sofort leeren (Polyline/Ziel), bevor die Startseite fokussiert — sonst bleibt die Navi-Linie kurz/ dauerhaft.
+    cancelRide();
     router.replace("/");
-    requestAnimationFrame(() => {
-      cancelRide();
-    });
   };
 
   const submitCancel = async (reasonOverride?: string) => {

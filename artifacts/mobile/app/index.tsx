@@ -1262,6 +1262,12 @@ export default function HomeScreen() {
     if (!destination) setBookingMode("immediate");
   }, [destination]);
 
+  /** Nach Storno/Reset: Kamera zurück auf Standort-Home (ohne Routen-Fit). */
+  useEffect(() => {
+    if (destination) return;
+    setMapCenterKey((k) => k + 1);
+  }, [destination]);
+
   /* ── Suchmaske: Fokus Abholort (nach Reservierungszeit) oder Ziel (Standard) ── */
   useEffect(() => {
     if (!isSearchActive) return;
@@ -1674,7 +1680,7 @@ export default function HomeScreen() {
           <RealMapView
             origin={origin}
             destination={destination}
-            polyline={route?.polyline}
+            polyline={destination ? route?.polyline : undefined}
             style={StyleSheet.absoluteFill}
             centerKey={mapCenterKey}
             edgePaddingTop={mapEdgePaddingTop}

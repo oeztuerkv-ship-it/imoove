@@ -256,6 +256,10 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
   const [history, setHistory] = useState<RideHistoryEntry[]>([]);
   const [wheelchairSelectCompleted, setWheelchairSelectCompleted] = useState(false);
   const pendingDestinationRef = useRef<GeoLocation | null>(null);
+  /** Invalidiert in-flight `fetchRoute`, damit nach Storno/reset keine alte Polyline zurückkommt. */
+  const routeFetchGenRef = useRef(0);
+  const destinationRef = useRef<GeoLocation | null>(null);
+  destinationRef.current = destination;
 
   const setPendingDestination = useCallback((loc: GeoLocation) => {
     pendingDestinationRef.current = loc;
@@ -364,10 +368,12 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
 
   const fetchRoute = useCallback(async () => {
     if (!destination) return;
+    const fetchGen = ++routeFetchGenRef.current;
+    const destSnapshot = destination;
     setIsLoadingRoute(true);
     setRouteError(null);
     try {
-      const chain = [origin, ...viaStops, destination];
+      const chain = [origin, ...viaStops, destSnapshot];
       const result = await fetchServerDrivingRouteChain(
         chain.map((p) => ({
           displayName: String(p.displayName ?? ""),
@@ -375,6 +381,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
           lon: p.lon,
         })),
       );
+      if (fetchGen !== routeFetchGenRef.current || destinationRef.current == null) return;
       if (!result.ok) {
         setRoute(null);
         setFareBreakdown(null);
@@ -387,6 +394,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
         lon: p.lon,
       }));
       const mapGeometry = await getRouteThrough(chainGeo);
+      if (fetchGen !== routeFetchGenRef.current || destinationRef.current == null) return;
       const fallbackPolyline: [number, number][] =
         chainGeo.length >= 2
           ? [
@@ -412,9 +420,12 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
       }
       await syncFareForVehicle(vehicle, routeResult);
     } catch {
+      if (fetchGen !== routeFetchGenRef.current) return;
       setRouteError("Route konnte nicht berechnet werden.");
     } finally {
-      setIsLoadingRoute(false);
+      if (fetchGen === routeFetchGenRef.current) {
+        setIsLoadingRoute(false);
+      }
     }
   }, [origin, destination, viaStops, syncFareForVehicle]);
 
@@ -474,6 +485,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
   );
 
   const resetRide = useCallback(() => {
+    routeFetchGenRef.current += 1;
     setViaStops([]);
     setDestination(null);
     setRoute(null);
@@ -483,6 +495,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
     setCustomerDriverNote("");
     setRideStatus("idle");
     setRouteError(null);
+    setIsLoadingRoute(false);
     setPaymentMethod(null);
     setSelectedVehicle(null);
     setSelectedServiceClass(null);
