@@ -29,12 +29,13 @@ alwaysApply: false
 - **Ein** GPS-Watch in `navigation.tsx` steuert Follow-Kamera; andere Watches (Dashboard/Markt) rufen **kein** Navi-`animateCamera`.
 - Jeder Fix → **`applyDriverNavFix`**: Positions-EMA (`tickNavPosition`) + Heading (`tickNavHeading` / `navHeadingSmoother.ts`).
 - **Kein Magnetometer** für Auto-Navi (Fahrzeug stört Kompass) — nur GPS-Kurs / Route / Bewegung (wie Apple „course“ vs „heading“, Mapbox `puckBearing: course`).
-- Heading-Reihenfolge **fahrend mit Route:** **Polyline-Tangente** → GPS-Kurs nur wenn Speed ≥ ~2,5 m/s **und** Kurs ≈ Poly (±70°) → Bewegungsbearing → **halten**. **Kein** Step/Ziel-Fallback während Fahrt (sonst dreht der Pfeil zum Waypoint).
-- Poly-180°-Flip vs. gehaltenem Heading → Poly für den Tick verwerfen (Segment-Jitter).
+- Heading-Reihenfolge **fahrend:** **GPS-Kurs zuerst** wenn Speed ≥ ~2,5 m/s (Speed auch aus Fix-zu-Fix, falls `coords.speed` = -1). Sonst Polyline-**Lookahead** (~45 m), dann Bewegung, dann halten. **Kein** Step/Ziel-Fallback während Fahrt.
+- Postmortem: Poly-**Segment**-Tangente zuerst (7668ef8a) → an Kurven/Kreuzungen Flip-Flop der Karte trotz 30 km/h; Pfeil blieb oben (`flat={false}`).
+- Poly-180°-Flip vs. gehaltenem Heading → Poly für den Tick verwerfen (nur Fallback).
 - Stehend: **gehaltenes** Heading.
 - **`focusNavigationCamera`** liest nur Pose / explizites Heading — **kein** zweites Picking mit `speedMps: 0`.
-- Marker: **`flat={false}`** (bildschirm-aufrecht) bei Heading-Up-Kamera; **kein** `rotation` nötig. `flat` ohne Rotation = Icon zeigt Karten-Norden und „dreht“ optisch falsch.
-- Follow: Intervall + Min-Move/Min-ΔHeading + `duration` unter Intervall → weniger überlappende `animateCamera`.
+- Marker: **`flat={false}`** (bildschirm-aufrecht) bei Heading-Up-Kamera.
+- Follow: Zoom/Altitude vom Nutzer merken (Pinch bleibt); Pan pausiert Follow; Stehend seltener/kein Heading-Spin.
 - Smoke: `npx tsx artifacts/mobile/utils/navHeadingSmoother.selftest.ts`
 
 ## Was nicht tun

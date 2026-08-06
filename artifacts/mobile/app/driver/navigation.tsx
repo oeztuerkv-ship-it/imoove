@@ -92,7 +92,7 @@ import {
 import type { RouteStep } from "@/utils/routing";
 import { fetchDriverNavRoute, type DriverNavRouteResult } from "@/utils/driverNavRouteApi";
 import {
-  bearingAlongNearestPolylineSegmentDeg,
+  bearingAlongPolylineLookaheadDeg,
   distanceAlongPolylineToPointM,
   distanceToPolylineM,
   remainingAlongPolyline,
@@ -132,11 +132,15 @@ import {
 import {
   NAV_CAMERA_FOLLOW_DURATION_MS,
   NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS,
+  NAV_CAMERA_FOLLOW_MIN_INTERVAL_STILL_MS,
   NAV_CAMERA_MIN_HEADING_DELTA_DEG,
   NAV_CAMERA_MIN_MOVE_M,
+  NAV_CAMERA_STILL_MIN_MOVE_M,
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
+  isMovingForNavHeading,
   isUsableCourse,
+  resolveNavSpeedMps,
   tickNavHeading,
   tickNavPosition,
   type NavHeadingSmootherState,
@@ -286,7 +290,8 @@ function fmtDist(m: number): string {
 }
 
 const NAV_CAMERA_ZOOM = 18;
-const NAV_CAMERA_PITCH = 58;
+/** Etwas flacher = weniger „Kippen“-Gefühl bei Heading-Wechsel. */
+const NAV_CAMERA_PITCH = 50;
 /** Unteres Padding → Puck sitzt im unteren Drittel, Kamera bleibt auf Fahrerposition. */
 const NAV_MAP_PADDING = { top: 140, right: 56, bottom: 200, left: 24 };
 
@@ -334,13 +339,24 @@ function zoomLevelToAltitudeMeters(zoom: number, latitude: number): number {
   return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
 }
 
-function buildNavCamera(lat: number, lon: number, heading: number) {
+function buildNavCamera(
+  lat: number,
+  lon: number,
+  heading: number,
+  opts?: { zoom?: number; altitude?: number | null; pitch?: number },
+) {
   const center = { latitude: lat, longitude: lon };
-  const base = { center, heading, pitch: NAV_CAMERA_PITCH };
+  const zoom = opts?.zoom ?? NAV_CAMERA_ZOOM;
+  const pitch = opts?.pitch ?? NAV_CAMERA_PITCH;
+  const base = { center, heading, pitch };
   if (usesGoogleMapTiles()) {
-    return { ...base, zoom: NAV_CAMERA_ZOOM };
+    return { ...base, zoom };
   }
-  return { ...base, altitude: zoomLevelToAltitudeMeters(NAV_CAMERA_ZOOM, lat) };
+  const altitude =
+    opts?.altitude != null && Number.isFinite(opts.altitude)
+      ? opts.altitude
+      : zoomLevelToAltitudeMeters(zoom, lat);
+  return { ...base, altitude };
 }
 
 function fmtArrival(remainingMin: number): string {
@@ -538,10 +554,15 @@ export default function DriverNavigationScreen() {
   const mapReady = useRef(false);
   const navCameraInitializedRef = useRef(false);
   const pendingNavCameraRef = useRef<{ lat: number; lon: number; heading?: number } | null>(null);
-  /** Auto-follow (GPS camera). Off after user pans/zooms; re-enabled via recenter button. */
+  /** Auto-follow (GPS camera). Off after user pans; pinch-zoom bleibt erlaubt und wird gemerkt. */
   const navFollowEnabledRef = useRef(true);
   /** Ignore region-change events briefly after animateCamera / fitToCoordinates. */
   const programmaticCameraUntilRef = useRef(0);
+  /** Nutzer-Zoom / Altitude merken — Follow darf Pinch nicht auf Default zurücksetzen. */
+  const preferredZoomRef = useRef(NAV_CAMERA_ZOOM);
+  const preferredAltitudeRef = useRef<number | null>(null);
+  /** Während Pinch/Pan: kurz keine Follow-animateCamera (sonst stirbt die Geste). */
+  const userGestureCameraPauseUntilRef = useRef(0);
   /** Heading: Speed-Gate + EMA/Deadband/Rate-Limit (nicht Roh-GPS). */
   const navHeadingSmootherRef = useRef<NavHeadingSmootherState>(createNavHeadingSmootherState());
   const navPositionSmootherRef = useRef<NavPositionSmootherState>(createNavPositionSmootherState());
@@ -551,7 +572,7 @@ export default function DriverNavigationScreen() {
     lon: fromLon || 9.3117,
     heading: null,
   });
-  const lastRawFixRef = useRef<{ lat: number; lon: number } | null>(null);
+  const lastRawFixRef = useRef<{ lat: number; lon: number; atMs: number } | null>(null);
   const lastCameraPoseRef = useRef<{ lat: number; lon: number; heading: number } | null>(null);
   /** Off-Route → Reroute (Debounce + Cooldown). */
   const offRouteTrackerRef = useRef<OffRouteTrackerState>(createOffRouteTrackerState());
@@ -809,16 +830,23 @@ export default function DriverNavigationScreen() {
       const lon = posTick.lon;
 
       let movementBearing: number | null = null;
+      let derivedSpeedMps: number | null = null;
       const prevRaw = lastRawFixRef.current;
       if (prevRaw && isValidMapCoord(prevRaw.lat, prevRaw.lon)) {
         const moved = haversine(prevRaw.lat, prevRaw.lon, input.lat, input.lon);
+        const dtSec = Math.max(0.05, (now - prevRaw.atMs) / 1000);
+        if (moved >= 1) {
+          derivedSpeedMps = moved / dtSec;
+        }
         if (moved >= 3) {
           movementBearing = bearingDeg(prevRaw.lat, prevRaw.lon, input.lat, input.lon);
         }
       }
-      lastRawFixRef.current = { lat: input.lat, lon: input.lon };
+      lastRawFixRef.current = { lat: input.lat, lon: input.lon, atMs: now };
 
-      const polyBearing = bearingAlongNearestPolylineSegmentDeg(polylineLatLonRef.current, {
+      const effectiveSpeed = resolveNavSpeedMps(input.speedMps, derivedSpeedMps);
+
+      const polyBearing = bearingAlongPolylineLookaheadDeg(polylineLatLonRef.current, {
         lat,
         lon,
       });
@@ -828,7 +856,7 @@ export default function DriverNavigationScreen() {
         target: navTargetRef.current,
       });
       const headingTick = tickNavHeading(navHeadingSmootherRef.current, {
-        speedMps: input.speedMps,
+        speedMps: effectiveSpeed,
         courseDeg: input.courseDeg,
         polylineBearingDeg: polyBearing,
         movementBearingDeg: movementBearing,
@@ -843,7 +871,16 @@ export default function DriverNavigationScreen() {
   );
 
   const focusNavigationCamera = useCallback(
-    (opts?: { lat?: number; lon?: number; heading?: number; animated?: boolean; force?: boolean }) => {
+    (opts?: {
+      lat?: number;
+      lon?: number;
+      heading?: number;
+      animated?: boolean;
+      force?: boolean;
+      /** Follow-Tick während Stillstand: Heading nicht mitdrehen. */
+      still?: boolean;
+      resetZoom?: boolean;
+    }) => {
       if (opts?.force) {
         navFollowEnabledRef.current = true;
       } else if (!navFollowEnabledRef.current) {
@@ -860,7 +897,9 @@ export default function DriverNavigationScreen() {
        * Kein Roh-Fallback hier — der konkurriert sonst mit geglätteten GPS-Ticks → Zittern.
        */
       let heading: number | null = null;
-      if (isUsableCourse(opts?.heading)) {
+      if (opts?.still && lastCameraPoseRef.current && isUsableCourse(lastCameraPoseRef.current.heading)) {
+        heading = lastCameraPoseRef.current.heading;
+      } else if (isUsableCourse(opts?.heading)) {
         heading = opts.heading;
       } else if (isUsableCourse(pose.heading)) {
         heading = pose.heading;
@@ -881,9 +920,15 @@ export default function DriverNavigationScreen() {
         const prev = lastCameraPoseRef.current;
         const movedM = haversine(prev.lat, prev.lon, lat, lon);
         const dHead = Math.abs(shortestRotationDelta(prev.heading, heading));
-        if (movedM < NAV_CAMERA_MIN_MOVE_M && dHead < NAV_CAMERA_MIN_HEADING_DELTA_DEG) {
+        const minMove = opts?.still ? NAV_CAMERA_STILL_MIN_MOVE_M : NAV_CAMERA_MIN_MOVE_M;
+        if (movedM < minMove && (opts?.still || dHead < NAV_CAMERA_MIN_HEADING_DELTA_DEG)) {
           return;
         }
+      }
+
+      if (opts?.resetZoom || opts?.force) {
+        preferredZoomRef.current = NAV_CAMERA_ZOOM;
+        preferredAltitudeRef.current = null;
       }
 
       if (!mapReady.current || !mapRef.current) {
@@ -894,11 +939,19 @@ export default function DriverNavigationScreen() {
       const duration =
         opts?.animated === false
           ? 0
-          : navCameraInitializedRef.current
-            ? NAV_CAMERA_FOLLOW_DURATION_MS
-            : 0;
+          : opts?.still
+            ? 0
+            : navCameraInitializedRef.current
+              ? NAV_CAMERA_FOLLOW_DURATION_MS
+              : 0;
       markProgrammaticCamera(duration);
-      mapRef.current.animateCamera(buildNavCamera(lat, lon, heading), { duration });
+      mapRef.current.animateCamera(
+        buildNavCamera(lat, lon, heading, {
+          zoom: preferredZoomRef.current,
+          altitude: preferredAltitudeRef.current,
+        }),
+        { duration },
+      );
       navCameraInitializedRef.current = true;
       pendingNavCameraRef.current = null;
       lastCameraPoseRef.current = { lat, lon, heading };
@@ -928,14 +981,40 @@ export default function DriverNavigationScreen() {
         heading: pose.heading ?? undefined,
         animated: true,
         force: true,
+        resetZoom: true,
       });
     })();
   }, [applyDriverNavFix, focusNavigationCamera]);
 
-  /** Nur echte Nutzer-Pan-Geste — nicht onRegionChange (sonst killt animateCamera das Follow auf iOS). */
+  /** Pan verschiebt den Fokus → Follow aus. Pinch-Zoom wird über Region gemerkt und bleibt im Follow. */
   const handleMapUserInteraction = useCallback(() => {
     if (Date.now() < programmaticCameraUntilRef.current) return;
     navFollowEnabledRef.current = false;
+    userGestureCameraPauseUntilRef.current = Date.now() + 1200;
+  }, []);
+
+  const handleRegionChange = useCallback(() => {
+    if (Date.now() < programmaticCameraUntilRef.current) return;
+    // Pinch startet oft ohne onPanDrag — Follow-Kamera kurz pausieren, Zoom behalten.
+    userGestureCameraPauseUntilRef.current = Date.now() + 900;
+  }, []);
+
+  const handleRegionChangeComplete = useCallback(() => {
+    if (Date.now() < programmaticCameraUntilRef.current) return;
+    void (async () => {
+      try {
+        const cam = await mapRef.current?.getCamera();
+        if (!cam) return;
+        if (typeof cam.zoom === "number" && Number.isFinite(cam.zoom)) {
+          preferredZoomRef.current = cam.zoom;
+        }
+        if (typeof cam.altitude === "number" && Number.isFinite(cam.altitude)) {
+          preferredAltitudeRef.current = cam.altitude;
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
   }, []);
   useEffect(() => {
     navHeadingSmootherRef.current = createNavHeadingSmootherState();
@@ -952,6 +1031,8 @@ export default function DriverNavigationScreen() {
   useEffect(() => {
     navCameraInitializedRef.current = false;
     navFollowEnabledRef.current = true;
+    preferredZoomRef.current = NAV_CAMERA_ZOOM;
+    preferredAltitudeRef.current = null;
     offRouteTrackerRef.current = createOffRouteTrackerState();
     rerouteInFlightRef.current = false;
     lastRerouteAtMsRef.current = null;
@@ -2203,24 +2284,43 @@ export default function DriverNavigationScreen() {
           const routeSteps = stepsRef.current;
           const curStepIdx = stepIdxRef.current;
           if (routeSteps.length > 0) {
+            const isDepartStep = (s: RouteStep | undefined) => {
+              const instr = (s?.instruction ?? "").trim().toLowerCase();
+              return (
+                instr === "fahrt beginnen" ||
+                instr.startsWith("fahrt beginnen") ||
+                instr === "depart" ||
+                instr.includes("abschließen der route")
+              );
+            };
+            // Depart-Steps überspringen — sonst hängt die Kopfzeile bei „Fahrt beginnen“ / 1.7 km.
+            let displayIdx = curStepIdx;
+            while (displayIdx < routeSteps.length - 1 && isDepartStep(routeSteps[displayIdx])) {
+              displayIdx += 1;
+            }
+
             let minD = Infinity;
-            let closest = curStepIdx;
-            routeSteps.forEach((s, i) => {
-              if (i < curStepIdx) return;
+            let closest = displayIdx;
+            for (let i = displayIdx; i < routeSteps.length; i++) {
+              const s = routeSteps[i]!;
+              if (!isValidMapCoord(s.lat, s.lon)) continue;
               const d = haversine(pose.lat, pose.lon, s.lat, s.lon);
               if (d < minD) {
                 minD = d;
                 closest = i;
               }
-            });
-            if (minD < 30 && closest < routeSteps.length - 1) {
-              setStepIdx(Math.min(closest + 1, routeSteps.length - 1));
             }
-            const activeIdx =
-              minD < 30 && closest < routeSteps.length - 1
-                ? Math.min(closest + 1, routeSteps.length - 1)
-                : curStepIdx;
-            const activeStep = routeSteps[activeIdx];
+            let nextIdx = displayIdx;
+            if (minD < 35 && closest < routeSteps.length - 1) {
+              nextIdx = Math.min(closest + 1, routeSteps.length - 1);
+              while (nextIdx < routeSteps.length - 1 && isDepartStep(routeSteps[nextIdx])) {
+                nextIdx += 1;
+              }
+            }
+            if (nextIdx !== curStepIdx) {
+              setStepIdx(nextIdx);
+            }
+            const activeStep = routeSteps[nextIdx];
             if (activeStep && isValidMapCoord(activeStep.lat, activeStep.lon)) {
               const liveM = distanceAlongPolylineToPointM(
                 polylineLatLonRef.current,
@@ -2294,8 +2394,13 @@ export default function DriverNavigationScreen() {
           }
 
           if (!navFollowEnabledRef.current) return;
+          if (Date.now() < userGestureCameraPauseUntilRef.current) return;
 
-          if (now - lastCameraFollowAt < NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS && navCameraInitializedRef.current) {
+          const still = !isMovingForNavHeading(loc.coords.speed);
+          const followInterval = still
+            ? NAV_CAMERA_FOLLOW_MIN_INTERVAL_STILL_MS
+            : NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS;
+          if (now - lastCameraFollowAt < followInterval && navCameraInitializedRef.current) {
             return;
           }
           lastCameraFollowAt = now;
@@ -2304,7 +2409,8 @@ export default function DriverNavigationScreen() {
             lat: pose.lat,
             lon: pose.lon,
             heading: pose.heading ?? undefined,
-            animated: navCameraInitializedRef.current,
+            animated: navCameraInitializedRef.current && !still,
+            still,
           });
         },
       );
@@ -2596,6 +2702,8 @@ export default function DriverNavigationScreen() {
         mapPadding={NAV_MAP_PADDING}
         onMapReady={handleMapReady}
         onPanDrag={handleMapUserInteraction}
+        onRegionChange={handleRegionChange}
+        onRegionChangeComplete={handleRegionChangeComplete}
         initialCamera={initialNavCamera}
       >
         {isValidMapCoord(driverLat, driverLon) ? (

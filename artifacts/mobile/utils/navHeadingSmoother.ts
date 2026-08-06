@@ -1,14 +1,15 @@
 /**
  * Fahrer-Navi Kamera-Heading: Speed-Gate + EMA + Deadband + Rate-Limit.
  *
- * Branchenüblich (Apple/Mapbox/Locus u. a.):
- * - Auto: **GPS-Kurs / Routenrichtung**, nicht Magnetometer (im Fahrzeug oft unbrauchbar).
- * - Kurs nur bei klarer Fahrt vertrauenswürdig; bei niedriger Speed halten.
- * - Mit bekannter Route: **Polyline-Tangente** ist stabiler als urbaner GPS-Kurs.
+ * Branchenüblich (Apple/Mapbox/Locus): Auto = **GPS-Kurs (course)**, nicht Kompass.
+ * Postmortem 7668ef8a: Poly-First ließ an Kurven/Kreuzungen die Segment-Tangente springen
+ * → Karte drehte hin und her, obwohl Speed ~30 km/h und Kurs brauchbar war.
  *
- * Quelle (fahrend, mit Route): Polyline → Kurs (nur wenn er zur Poly passt) → Bewegung → halten.
- * Ohne Route: Kurs (bei genug Speed) → Bewegung → halten. Kein Ziel-Bearing während Fahrt
- * (sonst „sucht“ der Pfeil den Waypoint und dreht).
+ * Quelle fahrend:
+ * 1. GPS-Kurs wenn Speed vertrauenswürdig (ggf. aus Fix-zu-Fix abgeleitet)
+ * 2. sonst Polyline-**Lookahead**-Bearing (stabiler als Einzel-Segment)
+ * 3. Bewegungsbearing → halten
+ * Kein Step/Ziel-Bearing während Fahrt.
  */
 
 import {
@@ -20,41 +21,44 @@ import {
 export const NAV_HEADING_MOVING_SPEED_MPS = 1.4;
 
 /**
- * GPS-Kurs erst ab dieser Speed vertrauen (~9 km/h).
- * Darunter liefert CoreLocation oft -1 oder „gültige“ aber springende Werte.
+ * GPS-Kurs ab dieser Speed vertrauen (~9 km/h).
+ * CoreLocation: speed oft -1 (ungültig) — dann Ableitung aus Fix-Abstand nutzen.
  */
 export const NAV_HEADING_TRUST_COURSE_SPEED_MPS = 2.5;
 
-/** Kurs darf Polyline nur überschreiben, wenn er ungefähr in dieselbe Richtung zeigt. */
-export const NAV_HEADING_COURSE_POLY_AGREE_DEG = 70;
-
 /**
- * Polyline-Segment-Sprung (z. B. falsche Kante): > dieser Δ zum gehaltenen Heading
- * → Poly für diesen Tick verwerfen (verhindert 180°-Flip-Flop).
+ * Polyline-Segment-Sprung vs. gehaltenem Heading → Poly verwerfen
+ * (nur relevant wenn Kurs fehlt und Poly Fallback ist).
  */
-export const NAV_HEADING_POLY_FLIP_REJECT_DEG = 135;
+export const NAV_HEADING_POLY_FLIP_REJECT_DEG = 110;
 
 /** Mikro-Jitter unter diesem Winkel nicht übernehmen. */
-export const NAV_HEADING_DEADBAND_DEG = 5;
+export const NAV_HEADING_DEADBAND_DEG = 6;
 
 /** EMA-Gewicht auf dem Shortest-Path-Delta (0…1). */
-export const NAV_HEADING_EMA_ALPHA = 0.18;
+export const NAV_HEADING_EMA_ALPHA = 0.22;
 
-/** Max. Heading-Änderung pro Sekunde (°/s) — weichere Kurven. */
-export const NAV_HEADING_MAX_RATE_DEG_PER_S = 40;
+/** Max. Heading-Änderung pro Sekunde (°/s) — weichere Kurven, weniger „Ruck“. */
+export const NAV_HEADING_MAX_RATE_DEG_PER_S = 32;
 
 /** Kamera-Follow Mindestabstand. */
-export const NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS = 550;
+export const NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS = 750;
+
+/** Stehend: seltener Follow — verhindert animateCamera-Stau. */
+export const NAV_CAMERA_FOLLOW_MIN_INTERVAL_STILL_MS = 2000;
 
 /** animateCamera-Dauer bei Follow — unter Follow-Intervall, weniger Überlappung. */
-export const NAV_CAMERA_FOLLOW_DURATION_MS = 480;
+export const NAV_CAMERA_FOLLOW_DURATION_MS = 320;
 
 /** Position-EMA (0…1); höher = reaktiver. */
 export const NAV_POSITION_EMA_ALPHA = 0.32;
 
 /** Min. Kamera-Update: Position (m) / Heading (°). */
-export const NAV_CAMERA_MIN_MOVE_M = 1.2;
-export const NAV_CAMERA_MIN_HEADING_DELTA_DEG = 3.5;
+export const NAV_CAMERA_MIN_MOVE_M = 2.0;
+export const NAV_CAMERA_MIN_HEADING_DELTA_DEG = 4.5;
+
+/** Stehend: Kamera nur bei größerer Positionsdrift (GPS-Rauschen sonst „sammelt“ Animationen). */
+export const NAV_CAMERA_STILL_MIN_MOVE_M = 12;
 
 export type NavHeadingSmootherState = {
   heading: number | null;
@@ -79,6 +83,34 @@ export function isUsableCourse(heading?: number | null): heading is number {
   return heading != null && Number.isFinite(heading) && heading >= 0 && heading <= 360;
 }
 
+/** GPS-Speed: ≥0 gültig; -1 / null = unbekannt (nicht als „stehend 0“ werten). */
+export function isUsableGpsSpeedMps(speedMps?: number | null): speedMps is number {
+  return speedMps != null && Number.isFinite(speedMps) && speedMps >= 0;
+}
+
+/**
+ * Effektive Speed für Heading-Gates: GPS wenn brauchbar, sonst / zusätzlich
+ * aus Fix-zu-Fix (wenn GPS -1 oder zu niedrig trotz klarer Bewegung).
+ */
+export function resolveNavSpeedMps(
+  gpsSpeedMps?: number | null,
+  derivedSpeedMps?: number | null,
+): number | null {
+  const gps = isUsableGpsSpeedMps(gpsSpeedMps) ? gpsSpeedMps : null;
+  const derived =
+    derivedSpeedMps != null && Number.isFinite(derivedSpeedMps) && derivedSpeedMps >= 0
+      ? derivedSpeedMps
+      : null;
+  if (gps != null && derived != null) {
+    // Wenn GPS „kriecht“ aber Fixes klar fahren: Ableitung gewinnen lassen.
+    if (gps < NAV_HEADING_TRUST_COURSE_SPEED_MPS && derived >= NAV_HEADING_TRUST_COURSE_SPEED_MPS) {
+      return derived;
+    }
+    return Math.max(gps, derived * 0.5);
+  }
+  return gps ?? derived;
+}
+
 export function isMovingForNavHeading(speedMps?: number | null): boolean {
   return (
     speedMps != null &&
@@ -93,8 +125,7 @@ export function headingsAgreeDeg(a: number, b: number, maxDeltaDeg: number): boo
 
 /**
  * Roh-Zielheading:
- * - fahrend + Route: Polyline zuerst; GPS-Kurs nur wenn er zur Poly passt und Speed hoch genug
- * - fahrend ohne Route: Kurs (Speed-Gate) → Bewegung → halten (kein Ziel-Fallback)
+ * - fahrend: **Kurs zuerst** (wenn Speed-Gate), sonst Poly-Lookahead → Bewegung → halten
  * - stehend: gehaltenes Heading; Bootstrap poly/kurs/fallback
  */
 export function pickNavHeadingRaw(input: {
@@ -130,7 +161,7 @@ export function pickNavHeadingRaw(input: {
     Number.isFinite(speed) &&
     speed >= NAV_HEADING_TRUST_COURSE_SPEED_MPS;
 
-  // Falsches Polyline-Segment (180°-Sprung) kurz verwerfen — sonst dreht der Pfeil im Kreis.
+  // Falsches Polyline-Segment nur für Fallback verwerfen.
   if (
     poly != null &&
     held != null &&
@@ -140,19 +171,14 @@ export function pickNavHeadingRaw(input: {
   }
 
   if (isMovingForNavHeading(speed)) {
-    if (poly != null) {
-      if (trustCourse && course != null && headingsAgreeDeg(course, poly, NAV_HEADING_COURSE_POLY_AGREE_DEG)) {
-        return course;
-      }
-      return poly;
-    }
+    // Wichtig: bei brauchbarem Kurs NICHT auf Poly warten/zwingen —
+    // Poly-Tangente springt an Kurven/Kreuzungen und dreht die Karte.
     if (trustCourse && course != null) return course;
+    if (poly != null) return poly;
     if (movement != null) return movement;
-    // Kein Step/Ziel-Bearing während Fahrt — der „sucht“ und dreht.
     return held;
   }
 
-  // Stehend: nicht auf Jitter-Kurs / Step-Sprünge wechseln.
   if (held != null) return held;
   return poly ?? course ?? fallback;
 }

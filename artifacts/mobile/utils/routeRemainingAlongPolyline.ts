@@ -84,8 +84,64 @@ export function distanceToPolylineM(polyline: LatLon[], current: LatLon): number
 }
 
 /**
+ * Fahrtrichtung entlang der Route: Bearing vom Projizierten Punkt zu einem
+ * Punkt ~`lookaheadM` voraus (nicht Einzel-Segment-Tangente).
+ * Stabiler an kurzen Kurven/Kreuzungen — verhindert Kamera-Flip-Flop.
+ */
+export function bearingAlongPolylineLookaheadDeg(
+  polyline: LatLon[],
+  current: LatLon,
+  lookaheadM: number = 45,
+): number | null {
+  const n = nearestOnPolyline(polyline, current);
+  if (!n || polyline.length < 2) return null;
+  const look = Math.max(15, lookaheadM);
+
+  const seg0 = polyline[n.bestSeg]!;
+  const seg1 = polyline[n.bestSeg + 1]!;
+  const start: LatLon = {
+    lat: seg0.lat + (seg1.lat - seg0.lat) * n.bestT,
+    lon: seg0.lon + (seg1.lon - seg0.lon) * n.bestT,
+  };
+
+  let remaining = look;
+  let i = n.bestSeg;
+  let t = n.bestT;
+  while (i < polyline.length - 1) {
+    const len = n.segLens[i] ?? haversineM(polyline[i]!, polyline[i + 1]!);
+    if (len < 0.5) {
+      i += 1;
+      t = 0;
+      continue;
+    }
+    const remOnSeg = (1 - t) * len;
+    if (remaining <= remOnSeg) {
+      const tEnd = t + remaining / len;
+      const a = polyline[i]!;
+      const b = polyline[i + 1]!;
+      const end: LatLon = {
+        lat: a.lat + (b.lat - a.lat) * tEnd,
+        lon: a.lon + (b.lon - a.lon) * tEnd,
+      };
+      if (haversineM(start, end) < 2) break;
+      return bearingDegrees(start.lat, start.lon, end.lat, end.lon);
+    }
+    remaining -= remOnSeg;
+    i += 1;
+    t = 0;
+  }
+
+  const last = polyline[polyline.length - 1]!;
+  if (haversineM(start, last) < 2) {
+    return bearingAlongNearestPolylineSegmentDeg(polyline, current);
+  }
+  return bearingDegrees(start.lat, start.lon, last.lat, last.lon);
+}
+
+/**
  * Fahrtrichtung entlang der nächsten Polyline-Kante (° von Norden).
- * Nahe Segmentende: Blick aufs nächste Segment (wie echte Navis an Abbiegern).
+ * Vorausschau aufs nächste Segment erst kurz vor dem Segmentende (~35 m).
+ * Für Kamera-Heading bevorzugt `bearingAlongPolylineLookaheadDeg` nutzen.
  */
 export function bearingAlongNearestPolylineSegmentDeg(
   polyline: LatLon[],
@@ -94,14 +150,15 @@ export function bearingAlongNearestPolylineSegmentDeg(
   const n = nearestOnPolyline(polyline, current);
   if (!n || polyline.length < 2) return null;
   let i = n.bestSeg;
-  if (n.bestT > 0.85 && i + 2 < polyline.length) {
+  const segLen = n.segLens[i] ?? 0;
+  const remOnSegM = Math.max(0, (1 - n.bestT) * segLen);
+  if (remOnSegM <= 35 && i + 2 < polyline.length) {
     i += 1;
   }
   const a = polyline[i];
   const b = polyline[i + 1];
   if (!a || !b) return null;
   if (haversineM(a, b) < 1.5) {
-    // Sehr kurzes Segment → weiter vorausschauen
     for (let j = i + 1; j < polyline.length - 1; j++) {
       const c = polyline[j]!;
       const d = polyline[j + 1]!;
