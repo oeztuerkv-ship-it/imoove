@@ -77,10 +77,88 @@ function nearestOnPolyline(polyline: LatLon[], current: LatLon): NearestOnPolyli
 
 /**
  * Querabstand (m) zur nächsten Polyline-Kante — für Off-Route-Erkennung.
+ * Achtung: misst gegen die **gesamte** Linie inkl. Abgefahrenem — für Reroute
+ * besser `distanceToForwardPolylineM` nutzen.
  */
 export function distanceToPolylineM(polyline: LatLon[], current: LatLon): number | null {
   const n = nearestOnPolyline(polyline, current);
   return n ? n.bestDistM : null;
+}
+
+/**
+ * Fortschritt (m) entlang der Polyline bis zur Projektion des aktuellen Punkts.
+ */
+export function progressAlongPolylineAt(polyline: LatLon[], current: LatLon): number | null {
+  const n = nearestOnPolyline(polyline, current);
+  if (!n) return null;
+  return progressAlongPolylineM(n);
+}
+
+/**
+ * Querabstand nur zur **Rest-Route** ab `fromProgressM` (nicht zur abgefahrenen Spur).
+ *
+ * Repro Falschabbiegen: Nach Abbiegen bleibt man oft nahe der alten Linie hinter dem
+ * Puck → `distanceToPolylineM` ≈ 0 und kein Reroute. Forward-only erkennt das.
+ *
+ * Wichtig: Bei Segmenten, die `fromProgressM` überdecken, nur den Teil **ab** fromProgress
+ * werten — sonst zählt die abgefahrene Hälfte des aktuellen Segments noch mit.
+ */
+export function distanceToForwardPolylineM(
+  polyline: LatLon[],
+  current: LatLon,
+  fromProgressM: number,
+): number | null {
+  if (polyline.length < 2) return null;
+  if (!Number.isFinite(current.lat) || !Number.isFinite(current.lon)) return null;
+  const minProg = Math.max(0, Number.isFinite(fromProgressM) ? fromProgressM : 0);
+
+  let cum = 0;
+  let bestDistM = Infinity;
+  let any = false;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const a = polyline[i]!;
+    const b = polyline[i + 1]!;
+    const len = haversineM(a, b);
+    const segStart = cum;
+    const segEnd = cum + len;
+    cum = segEnd;
+    if (segEnd < minProg - 0.5) continue;
+    any = true;
+    if (len < 0.5) continue;
+    if (segStart >= minProg - 0.5) {
+      const proj = projectOnSegment(current, a, b);
+      if (proj.distM < bestDistM) bestDistM = proj.distM;
+    } else {
+      // Nur Rest des Segments ab minProg
+      const t0 = Math.max(0, Math.min(1, (minProg - segStart) / len));
+      const a2: LatLon = {
+        lat: a.lat + (b.lat - a.lat) * t0,
+        lon: a.lon + (b.lon - a.lon) * t0,
+      };
+      const proj = projectOnSegment(current, a2, b);
+      if (proj.distM < bestDistM) bestDistM = proj.distM;
+    }
+  }
+  if (!any || !Number.isFinite(bestDistM)) return null;
+  return bestDistM;
+}
+
+/**
+ * Fortschritt nur vorwärts fortschreiben (kein Snap zurück auf abgefahrene Spur).
+ * Bei großem Querabstand Fortschritt nicht aus der Projektion übernehmen.
+ */
+export function advanceRouteProgressM(
+  committedProgressM: number,
+  polyline: LatLon[],
+  current: LatLon,
+  opts?: { maxLateralForAdvanceM?: number },
+): number {
+  const maxLat = opts?.maxLateralForAdvanceM ?? 40;
+  const n = nearestOnPolyline(polyline, current);
+  if (!n) return committedProgressM;
+  if (n.bestDistM > maxLat) return committedProgressM;
+  const p = progressAlongPolylineM(n);
+  return Math.max(committedProgressM, p);
 }
 
 /**

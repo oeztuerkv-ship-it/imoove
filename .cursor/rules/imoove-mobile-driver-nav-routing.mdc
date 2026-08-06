@@ -20,19 +20,22 @@ alwaysApply: false
 
 ## Off-Route-Reroute (MVP)
 
-- Distanz: `distanceToPolylineM` in `routeRemainingAlongPolyline.ts`.
-- Bestätigung / Cooldown: `navOffRouteReroute.ts` — Schwelle **18 m**, **2 Fixes** oder **1 s**, Cooldown **4 s**, kein Parallel-Request.
+- Distanz: bevorzugt **`distanceToForwardPolylineM`** (nur Rest ab Fortschritt) — **nicht** `distanceToPolylineM` auf die volle Linie (Postmortem: Falschabbiegen bleibt nahe der abgefahrenen Spur → kein Reroute).
+- Fortschritt: `advanceRouteProgressM` (nur vorwärts) + `NAV_ROUTE_PROGRESS_BACKTRACK_M` (40 m).
+- Bestätigung / Cooldown: `navOffRouteReroute.ts` — Schwelle **15 m**, **2 Fixes** oder **0,9 s**, Cooldown **3,5 s**; zusätzlich **Heading-Mismatch** ≥65° für ≥1,2 s erzwingt Off-Route.
 - Marker-Anzeige: `snapLatLonToPolyline` (max. **45 m** lateral) — Off-Route weiter mit Roh-/EMA-GPS.
 - Orchestrator in `navigation.tsx` (`requestNavRouteFrom` / `applyNavRouteResult`): bei Erfolg **atomar** Polyline + Steps + Metrics + Kunden-Share; bei Fehler **keine Luftlinie** — Auto-Retry (Backoff) + GPS-Recovery; alte gute Linie behalten.
 - **Nie** 2-Punkt Start→Ziel als Route zeichnen (wirkt wie Luftlinie / keine Auto-Navi-Sicht); nach Restart wirkte es „repariert“, weil der nächste `nav-route`-Call oft klappte.
-- Smoke: `npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts`
+- Smoke / Repro Falschabbiegen: `npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts`
 
 ## Kamera / Pfeil / Heading (eine Pipeline)
 
 - **Ein** GPS-Watch in `navigation.tsx` steuert Follow-Kamera; andere Watches (Dashboard/Markt) rufen **kein** Navi-`animateCamera`.
 - Jeder Fix → **`applyDriverNavFix`**: Positions-EMA (`tickNavPosition`) + Heading (`tickNavHeading` / `navHeadingSmoother.ts`).
-- **Pitch fest 55°**; Follow nutzt `setCamera` bei force/Stillstand (Apple Maps verliert sonst den Tilt), sonst `animateCamera`; `pitchEnabled={false}` — Zoom nur merken, **kein** Reset bei Phasenwechsel (`force` ≠ `resetZoom`).
+- **Pitch fest 55°**; Zoom-Default **16.5** (etwas Überblick); Follow nutzt `setCamera` bei force/Stillstand (Apple Maps verliert sonst den Tilt), sonst `animateCamera`; `pitchEnabled={false}` — Zoom nur merken, **kein** Reset bei Phasenwechsel (`force` ≠ `resetZoom`).
+- **Navi-Start / neue Route:** Heading sofort auf Polyline-Lookahead setzen (nicht auf altes GPS-Heading warten).
 - **Postmortem iOS speed=-1:** Follow-`still` darf **nicht** `loc.coords.speed` allein nutzen (CoreLocation oft -1) → Kamera-Heading friert, Vogelperspektive/Instabilität. Immer **`resolveNavSpeedMps` / `pose.speedMps`** (GPS + Fix-zu-Fix).
+- **Postmortem Falschabbiegen:** Off-Route gegen **volle** Polyline bleibt „on route“ nahe der Spur hinter dem Puck — immer Forward-Distanz + optional Heading-Force.
 - Zoom während Follow: `getCamera` in `onRegionChangeComplete` **nur** bei User-Geste übernehmen — sonst Zoom-Jagd durch Zwischenhöhen.
 - **Kein Magnetometer** für Auto-Navi (Fahrzeug stört Kompass) — nur GPS-Kurs / Route / Bewegung (wie Apple „course“ vs „heading“, Mapbox `puckBearing: course`).
 - Heading-Reihenfolge **fahrend:** **GPS-Kurs zuerst** wenn Speed ≥ ~2,5 m/s (Speed auch aus Fix-zu-Fix, falls `coords.speed` = -1). Sonst Polyline-**Lookahead** (~80 m vom Snap-Punkt), dann Bewegung, dann halten. **Kein** Step/Ziel-Fallback während Fahrt.

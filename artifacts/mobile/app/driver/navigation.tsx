@@ -94,9 +94,10 @@ import {
 import type { RouteStep } from "@/utils/routing";
 import { fetchDriverNavRoute, type DriverNavRouteResult } from "@/utils/driverNavRouteApi";
 import {
+  advanceRouteProgressM,
   bearingAlongPolylineLookaheadDeg,
   distanceAlongPolylineToPointM,
-  distanceToPolylineM,
+  distanceToForwardPolylineM,
   remainingAlongPolyline,
   scaleRemainingToAuthoritative,
   snapLatLonToPolyline,
@@ -111,7 +112,9 @@ import {
 import {
   canStartReroute,
   createOffRouteTrackerState,
+  effectiveOffRouteDistanceM,
   noteOffRouteSample,
+  NAV_ROUTE_PROGRESS_BACKTRACK_M,
   type OffRouteTrackerState,
 } from "@/utils/navOffRouteReroute";
 import {
@@ -294,7 +297,7 @@ function toMapCoords(points: { lat: number; lon: number }[]) {
   return points.map((p) => ({ latitude: p.lat, longitude: p.lon }));
 }
 
-const NAV_CAMERA_ZOOM = 18;
+const NAV_CAMERA_ZOOM = 16.5;
 /** Geneigte Course-Up-Ansicht (nicht Vogelperspektive). */
 const NAV_CAMERA_PITCH = 55;
 /** Unteres Padding → Puck sitzt im unteren Drittel, Kamera bleibt auf Fahrerposition. */
@@ -586,6 +589,8 @@ export default function DriverNavigationScreen() {
   const offRouteTrackerRef = useRef<OffRouteTrackerState>(createOffRouteTrackerState());
   const rerouteInFlightRef = useRef(false);
   const lastRerouteAtMsRef = useRef<number | null>(null);
+  /** Max. Fortschritt entlang der aktuellen Polyline (nur vorwärts) — für Forward-Off-Route. */
+  const routeProgressMRef = useRef(0);
   const driverArrivingSentRef = useRef(false);
 
   const [polyline, setPolyline] = useState<{ latitude: number; longitude: number }[]>([]);
@@ -1067,6 +1072,7 @@ export default function DriverNavigationScreen() {
     offRouteTrackerRef.current = createOffRouteTrackerState();
     rerouteInFlightRef.current = false;
     lastRerouteAtMsRef.current = null;
+    routeProgressMRef.current = 0;
     setStepIdx(0);
     prevStepIdx.current = -1;
   }, [params.rideId, phase]);
@@ -1178,13 +1184,27 @@ export default function DriverNavigationScreen() {
       }
       offRouteTrackerRef.current = createOffRouteTrackerState();
       navFollowEnabledRef.current = true;
+      // Neue Route: Fortschritt am aktuellen Standort, Heading sofort an Rest-Route ausrichten.
+      routeProgressMRef.current = advanceRouteProgressM(0, polylineLatLonRef.current, { lat, lon });
+      const routeBearing = bearingAlongPolylineLookaheadDeg(
+        polylineLatLonRef.current,
+        { lat, lon },
+        NAV_POLY_LOOKAHEAD_M,
+      );
+      if (routeBearing != null && Number.isFinite(routeBearing)) {
+        navHeadingSmootherRef.current = {
+          heading: routeBearing,
+          lastUpdateMs: Date.now(),
+        };
+        navPoseRef.current = { lat, lon, heading: routeBearing };
+      }
       if (opts?.refocusCamera !== false) {
-        // Nur geglättete Pose — kein Roh-Heading (Smoother via focusNavigationCamera-Bootstrap).
+        // Nur geglättete Pose — Heading nach Routen-Align (Straßenrichtung).
         const pose = navPoseRef.current;
         focusNavigationCamera({
           lat: isValidMapCoord(pose.lat, pose.lon) ? pose.lat : lat,
           lon: isValidMapCoord(pose.lat, pose.lon) ? pose.lon : lon,
-          heading: pose.heading ?? undefined,
+          heading: pose.heading ?? routeBearing ?? undefined,
           animated: false,
           force: true,
         });
@@ -1224,7 +1244,8 @@ export default function DriverNavigationScreen() {
           polylinePoints: (result.polyline ?? []).length,
         });
         const applied = applyNavRouteResult(result, from, target, {
-          refocusCamera: reason === "initial" || reason === "recover",
+          // Auch nach Reroute: Heading an neue Rest-Route + Pitch halten
+          refocusCamera: true,
         });
         if (!applied) {
           logDriverNavigationRouteResult({
@@ -2501,11 +2522,39 @@ export default function DriverNavigationScreen() {
               rerouteInFlightRef.current = false;
             });
           } else {
-            const distToRouteM = distanceToPolylineM(polylineLatLonRef.current, {
-              lat: pose.lat,
-              lon: pose.lon,
+            // Fortschritt nur vorwärts — sonst snapt Off-Route auf die abgefahrene Spur.
+            routeProgressMRef.current = advanceRouteProgressM(
+              routeProgressMRef.current,
+              polylineLatLonRef.current,
+              { lat: pose.lat, lon: pose.lon },
+            );
+            const fromProg = Math.max(
+              0,
+              routeProgressMRef.current - NAV_ROUTE_PROGRESS_BACKTRACK_M,
+            );
+            const forwardDistM = distanceToForwardPolylineM(
+              polylineLatLonRef.current,
+              { lat: pose.lat, lon: pose.lon },
+              fromProg,
+            );
+            const routeBearing = bearingAlongPolylineLookaheadDeg(
+              polylineLatLonRef.current,
+              { lat: pose.lat, lon: pose.lon },
+              NAV_POLY_LOOKAHEAD_M,
+            );
+            const courseForOff =
+              loc.coords.heading != null && Number.isFinite(loc.coords.heading)
+                ? loc.coords.heading
+                : pose.heading;
+            const eff = effectiveOffRouteDistanceM({
+              forwardDistM,
+              courseDeg: courseForOff,
+              routeBearingDeg: routeBearing,
+              speedMps: pose.speedMps,
+              nowMs: now,
+              state: offRouteTrackerRef.current,
             });
-            const offSample = noteOffRouteSample(offRouteTrackerRef.current, distToRouteM, now);
+            const offSample = noteOffRouteSample(eff.state, eff.distanceM, now);
             offRouteTrackerRef.current = offSample.state;
             if (
               offSample.confirmedOffRoute &&
