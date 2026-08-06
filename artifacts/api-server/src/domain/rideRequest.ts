@@ -184,9 +184,14 @@ export interface RideRequest {
   offeredToDriverId?: string | null;
   /** Funk: Startzeit des aktuellen Exclusive-Angebots (Timeout 45 s). */
   funkOfferStartedAt?: string | null;
-  /** Sofortfahrt: aktuelle Dispatch-Stufe (A→B). */
+  /** Sofortfahrt: aktuelle Dispatch-Stufe (A = Trio A, B = Pool). */
   dispatchTier?: "A" | "B" | null;
   dispatchTierStartedAt?: string | null;
+  /**
+   * Market-Eskalation: trio_a → pool_1 → pool_2 → open.
+   * Sichtbarkeit über dispatchTier (A nur trio_a, sonst B).
+   */
+  dispatchPhase?: "trio_a" | "pool_1" | "pool_2" | "open" | null;
   /** Zwei-Wege-Chat aktiv (Snapshot bei Annahme durch A-Fahrer); strikt fahrtgebunden. */
   chatEnabled?: boolean;
   chatEnabledAt?: string | null;

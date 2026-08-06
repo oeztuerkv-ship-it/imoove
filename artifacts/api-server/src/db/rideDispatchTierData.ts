@@ -5,13 +5,15 @@ import { getDb, isPostgresConfigured } from "./client";
 import { findRide, insertSupplementalRideEvent } from "./ridesData";
 import { ridesTable } from "./schema";
 import {
+  dispatchTierForPhase,
   getDispatchTierTimeoutSec,
   isDispatchTierManagedRide,
   isOpenInstantRideForDispatch,
-  nextDispatchTier,
+  nextDispatchPhase,
   normalizeDispatchPriority,
+  resolveRideDispatchPhase,
   shouldAdvanceDispatchTierByTimeout,
-  type DispatchPriority,
+  type DispatchPhase,
 } from "../lib/dispatchPriorityTier";
 import {
   notifyEligibleDriversScheduledPoolOffer,
@@ -27,9 +29,9 @@ async function loadDispatchTimeoutSec(): Promise<number> {
   return getDispatchTierTimeoutSec(dispatch);
 }
 
-export async function advanceRideDispatchTier(opts: {
+export async function advanceRideDispatchPhase(opts: {
   rideId: string;
-  nextTier: DispatchPriority;
+  nextPhase: DispatchPhase;
   reason: "timeout" | "released" | "no_a_online";
   actorDriverId?: string;
 }): Promise<RideRequest | null> {
@@ -42,52 +44,75 @@ export async function advanceRideDispatchTier(opts: {
   const cur = await findRide(rid);
   if (!cur || !isDispatchTierManagedRide(cur)) return cur;
 
+  const fromPhase = resolveRideDispatchPhase(cur);
+  const nextTier = dispatchTierForPhase(opts.nextPhase);
   const now = new Date();
   await db
     .update(ridesTable)
     .set({
-      dispatch_tier: opts.nextTier,
+      dispatch_phase: opts.nextPhase,
+      dispatch_tier: nextTier,
       dispatch_tier_started_at: now,
     })
     .where(eq(ridesTable.id, rid));
 
   void insertSupplementalRideEvent(rid, {
-    eventType: "dispatch_tier_advanced",
+    eventType: "dispatch_phase_advanced",
     fromStatus: cur.status,
     toStatus: cur.status,
     actorType: opts.reason === "released" ? "driver" : "system",
     actorId: opts.actorDriverId ?? null,
     payload: {
+      fromPhase,
+      toPhase: opts.nextPhase,
       fromTier: normalizeDispatchPriority(cur.dispatchTier ?? "A"),
-      toTier: opts.nextTier,
+      toTier: nextTier,
       reason: opts.reason,
     },
   });
 
   const updated = await findRide(rid);
   if (updated) {
-    // Sofort: ONLINE-Markt; Reservierung: Planer-Pool (gleiche Tier-Filter A/B).
-    // Beide Helfer no-open früh — sichere Doppelaufrufe.
+    // Jede neue Phase (inkl. pool_2 / open): erneut Push an aktuell sichtbare Fahrer.
     void notifyMarketOnlineDriversInstantRideOffer(updated);
     void notifyEligibleDriversScheduledPoolOffer(updated);
   }
   return updated;
 }
 
-/** Timeout A→B (Default 10 s); kein Markt-ONLINE-A → sofort B. */
+/** @deprecated Prefer advanceRideDispatchPhase — maps nextTier A|B onto phase. */
+export async function advanceRideDispatchTier(opts: {
+  rideId: string;
+  nextTier: "A" | "B";
+  reason: "timeout" | "released" | "no_a_online";
+  actorDriverId?: string;
+}): Promise<RideRequest | null> {
+  const nextPhase: DispatchPhase = opts.nextTier === "A" ? "trio_a" : "pool_1";
+  return advanceRideDispatchPhase({
+    rideId: opts.rideId,
+    nextPhase,
+    reason: opts.reason,
+    actorDriverId: opts.actorDriverId,
+  });
+}
+
+/**
+ * Trio A → Pool 1 → Pool 2 → open (je Default 10 s).
+ * Kein Trio-A online → sofort pool_1. Phase `open` stoppt die Timed-Eskalation.
+ */
 export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<{
   ride: RideRequest;
   advanced: boolean;
 }> {
   if (!isDispatchTierManagedRide(ride)) return { ride, advanced: false };
-  const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
-  if (tier === "B") return { ride, advanced: false };
+  const phase = resolveRideDispatchPhase(ride);
+  if (phase === "open") return { ride, advanced: false };
 
   const timeoutSec = await loadDispatchTimeoutSec();
   const byTimeout = shouldAdvanceDispatchTierByTimeout(ride, timeoutSec);
 
   let byNoAOnline = false;
-  if (isOpenInstantRideForDispatch(ride)) {
+  if (phase === "trio_a" && isOpenInstantRideForDispatch(ride)) {
     const { countMarketOnlineDriversWithDispatchPriority } = await import(
       "./fleetInstantRideMarketData.js"
     );
@@ -97,12 +122,12 @@ export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<
 
   if (!byTimeout && !byNoAOnline) return { ride, advanced: false };
 
-  const nxt = nextDispatchTier(tier);
+  const nxt = nextDispatchPhase(phase);
   if (!nxt) return { ride, advanced: false };
 
-  const updated = await advanceRideDispatchTier({
+  const updated = await advanceRideDispatchPhase({
     rideId: ride.id,
-    nextTier: nxt,
+    nextPhase: nxt,
     reason: byNoAOnline ? "no_a_online" : "timeout",
   });
   return { ride: updated ?? ride, advanced: Boolean(updated) };
@@ -137,7 +162,7 @@ export async function releaseInstantRideDispatchOffer(opts: {
   return releaseRideDispatchOffer(opts);
 }
 
-/** Premium A: Angebot freigeben → nächste Stufe (Sofortfahrt oder offene Reservierung). */
+/** Trio A: Angebot freigeben → Pool-Runde 1. */
 export async function releaseRideDispatchOffer(opts: {
   rideId: string;
   fleetDriverId: string;
@@ -155,19 +180,19 @@ export async function releaseRideDispatchOffer(opts: {
   if (!ride) return { ok: false, error: "not_found" };
   if (!isDispatchTierManagedRide(ride)) return { ok: false, error: "ride_not_open" };
 
-  const tier = normalizeDispatchPriority(ride.dispatchTier ?? "A");
-  if (tier !== "A") return { ok: false, error: "release_only_tier_a" };
+  const phase = resolveRideDispatchPhase(ride);
+  if (phase !== "trio_a") return { ok: false, error: "release_only_trio_a" };
 
   const { getFleetDriverDispatchPriority } = await import("./fleetDriversData.js");
   const priority = await getFleetDriverDispatchPriority(did, cid);
   if (priority !== "A") return { ok: false, error: "driver_not_priority_a" };
 
-  const nxt = nextDispatchTier("A");
-  if (!nxt) return { ok: false, error: "no_next_tier" };
+  const nxt = nextDispatchPhase("trio_a");
+  if (!nxt) return { ok: false, error: "no_next_phase" };
 
-  const updated = await advanceRideDispatchTier({
+  const updated = await advanceRideDispatchPhase({
     rideId: rid,
-    nextTier: nxt,
+    nextPhase: nxt,
     reason: "released",
     actorDriverId: did,
   });

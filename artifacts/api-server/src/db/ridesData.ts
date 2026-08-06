@@ -206,6 +206,7 @@ export function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     dispatchTierStartedAt: r.dispatch_tier_started_at
       ? r.dispatch_tier_started_at.toISOString()
       : null,
+    dispatchPhase: (r.dispatch_phase as RideRequest["dispatchPhase"]) ?? null,
     chatEnabled: r.chat_enabled ?? false,
     chatEnabledAt: r.chat_enabled_at ? r.chat_enabled_at.toISOString() : null,
     partnerBookingMeta: parsePartnerBookingMetaFromRow(r.partner_booking_meta, parsePartnerBookingMeta) ?? null,
@@ -315,6 +316,7 @@ function rideToUpdate(r: RideRequest) {
     funk_offer_started_at: r.funkOfferStartedAt ? new Date(r.funkOfferStartedAt) : null,
     dispatch_tier: r.dispatchTier ?? "A",
     dispatch_tier_started_at: r.dispatchTierStartedAt ? new Date(r.dispatchTierStartedAt) : null,
+    dispatch_phase: r.dispatchPhase ?? (r.dispatchTier === "B" ? "open" : "trio_a"),
     chat_enabled: r.chatEnabled ?? false,
     chat_enabled_at: r.chatEnabledAt ? new Date(r.chatEnabledAt) : null,
     partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson) as Record<
@@ -397,6 +399,7 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     funk_offer_started_at: r.funkOfferStartedAt ? new Date(r.funkOfferStartedAt) : null,
     dispatch_tier: r.dispatchTier ?? "A",
     dispatch_tier_started_at: r.dispatchTierStartedAt ? new Date(r.dispatchTierStartedAt) : null,
+    dispatch_phase: r.dispatchPhase ?? (r.dispatchTier === "B" ? "open" : "trio_a"),
     chat_enabled: r.chatEnabled ?? false,
     chat_enabled_at: r.chatEnabledAt ? new Date(r.chatEnabledAt) : null,
     partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson) as Record<

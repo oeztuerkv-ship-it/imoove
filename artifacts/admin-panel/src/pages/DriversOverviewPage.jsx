@@ -712,16 +712,16 @@ export default function DriversOverviewPage({ userRole = "admin" }) {
                   ) : null}
 
                   <label className="admin-field-label" style={{ display: "block", marginTop: 12 }}>
-                    Premium-Dispatch (A / B) — A nur manuell
+                    Dispatch: Trio A / Pool — Trio A nur manuell
                   </label>
                   <select
                     className="admin-input"
-                    style={{ maxWidth: 140, display: "block", marginTop: 4 }}
+                    style={{ maxWidth: 220, display: "block", marginTop: 4 }}
                     value={dispatchPriorityIn}
                     onChange={(e) => setDispatchPriorityIn(e.target.value)}
                   >
-                    <option value="A">A — zuerst am Markt</option>
-                    <option value="B">B — Standard</option>
+                    <option value="A">Trio A — zuerst (10 s exklusiv)</option>
+                    <option value="B">Pool — Standard</option>
                   </select>
                   <button
                     type="button"

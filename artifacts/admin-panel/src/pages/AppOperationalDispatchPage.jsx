@@ -99,7 +99,7 @@ export default function AppOperationalDispatchPage() {
           {b("autoReassignOnTimeout", "Automatische Weitergabe bei Timeout (Angebot)")}
           {b("blockAfterMultipleRejects", "Nach mehreren Ablehnungen sperren (Policy)")}
           {n("exclusiveSeconds", "Exklusivzeit (Sekunden) — Angebot nur an einen Fahrer n sec")}
-          {n("premiumTierTimeoutSeconds", "Premium-Stufen-Timeout (Sekunden) — A→B (Standard 10; kein A online → sofort B)")}
+          {n("premiumTierTimeoutSeconds", "Phasen-Timeout (Sekunden) — Trio A / Pool 1 / Pool 2 je Phase (Standard 10; kein Trio A online → sofort Pool)")}
           {n("radiusKm", "Dispatch-Umkreis (km) — max. Entfernung Fahrer zum Abholort (Standard 10)")}
           <label className="admin-form-label" style={{ display: "block", marginTop: 8 }}>Priorität (distance | fairness | —)</label>
           <input

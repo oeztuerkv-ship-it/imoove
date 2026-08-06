@@ -39,6 +39,7 @@ import { stopRideSound } from "@/utils/notifications";
 import { setRideStatusWsHandler } from "@/utils/socket";
 import {
   abandonInstantOfferWake,
+  clearInstantOfferSnooze,
   finishInstantOfferWake,
   getSoftMissStash,
   isInstantOfferSnoozed,
@@ -178,8 +179,11 @@ export interface RideRequest {
   cancelReason?: string | null;
   rejectedBy: string[];
   status: RequestStatus;
-  /** Premium-Dispatch-Stufe (Sofort/Reservierung am Markt). */
+  /** Dispatch-Sichtbarkeit: A = Trio A, B = Pool. */
   dispatchTier?: "A" | "B" | null;
+  /** Market-Phase: trio_a → pool_1 → pool_2 → open. */
+  dispatchPhase?: "trio_a" | "pool_1" | "pool_2" | "open" | null;
+  dispatchTierStartedAt?: string | null;
   /** `funk` = Telefon-Weiterleitung ohne Abrechnung/PIN. */
   dispatchMode?: "market" | "funk" | null;
   /** Zwei-Wege-Chat aktiv (nur A-Fahrer nach Annahme). */
@@ -669,6 +673,17 @@ function normalizeRequest(r: any): RideRequest {
         .toUpperCase();
       return t === "A" || t === "B" ? t : "A";
     })(),
+    dispatchPhase: (() => {
+      const p = String(r.dispatchPhase ?? r.dispatch_phase ?? "")
+        .trim()
+        .toLowerCase();
+      if (p === "trio_a" || p === "pool_1" || p === "pool_2" || p === "open") return p;
+      return null;
+    })(),
+    dispatchTierStartedAt: (() => {
+      const raw = r.dispatchTierStartedAt ?? r.dispatch_tier_started_at;
+      return raw != null ? String(raw) : null;
+    })(),
     dispatchMode: (() => {
       const m = String(r.dispatchMode ?? r.dispatch_mode ?? "market")
         .trim()
@@ -812,6 +827,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     if (!isDriverSurface) void stopRideSound();
   }, [isDriverSurface]);
   const driverMarketPrevPendingIdsRef = useRef<Set<string>>(new Set());
+  const driverMarketPrevDispatchKeyRef = useRef<Map<string, string>>(new Map());
   const driverMarketNotifyBootstrappedRef = useRef(false);
   const driverMarketOnlinePrevRef = useRef(Boolean(fleetDriver?.einsatzbereit && fleetDriver?.isAvailable));
   const driverMarketPrevScheduledOpenIdsRef = useRef<Set<string>>(new Set());
@@ -910,6 +926,20 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
   const applyDriverMarketPayload = useCallback(
     (marketRows: RideRequest[], scheduledRows: RideRequest[]) => {
+      const prevKeys = driverMarketPrevDispatchKeyRef.current;
+      const nextKeys = new Map<string, string>();
+      for (const r of marketRows) {
+        const key = `${r.dispatchPhase ?? ""}|${r.dispatchTierStartedAt ?? ""}|${r.dispatchTier ?? ""}`;
+        nextKeys.set(r.id, key);
+        const old = prevKeys.get(r.id);
+        // Neue Dispatch-Phase (z. B. pool_1 → pool_2): Soft-Miss beenden und erneut klingeln.
+        if (old != null && old !== key) {
+          clearInstantOfferSnooze(r.id);
+          clearDriverInstantOfferAlarmDedupe(r.id);
+          finishInstantOfferWake(r.id);
+        }
+      }
+      driverMarketPrevDispatchKeyRef.current = nextKeys;
       setDriverMarketRequests(marketRows);
       setDriverMarketScheduledPool(scheduledRows);
       if (isDriverSurfaceRef.current) {

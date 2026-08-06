@@ -264,6 +264,7 @@ export async function releaseMissedManualActivationReservations(
       status: "searching_driver",
       driver_id: null,
       dispatch_tier: "A",
+      dispatch_phase: "trio_a",
       dispatch_tier_started_at: now,
       push_driver_activation_reminder_at: null,
       push_customer_reservation_assigned_at: null,
@@ -337,6 +338,7 @@ export async function activateUnassignedReservationsToSearchingDriver(
     .set({
       status: "searching_driver",
       dispatch_tier: "A",
+      dispatch_phase: "trio_a",
       dispatch_tier_started_at: now,
       push_driver_activation_reminder_at: null,
     })
@@ -406,6 +408,7 @@ export async function activateAssignedReservationsToReadyForDispatch(
     .set({
       status: "ready_for_dispatch",
       dispatch_tier: "A",
+      dispatch_phase: "trio_a",
       dispatch_tier_started_at: now,
       push_driver_activation_reminder_at: null,
     })

@@ -1206,7 +1206,9 @@ router.post("/fleet-driver/v1/rides/:rideId/release-dispatch-offer", requireFlee
       const status =
         result.error === "not_found"
           ? 404
-          : result.error === "driver_not_priority_a" || result.error === "release_only_tier_a"
+          : result.error === "driver_not_priority_a" ||
+              result.error === "release_only_tier_a" ||
+              result.error === "release_only_trio_a"
             ? 403
             : 409;
       res.status(status).json({ error: result.error });

@@ -772,9 +772,11 @@ export const ridesTable = pgTable("rides", {
   passenger_rating: integer("passenger_rating"),
   /** Fahrer bewertet Kunde (1–5), einmalig nach Fahrtende. */
   driver_passenger_rating: integer("driver_passenger_rating"),
-  /** Sofortfahrt: aktuelle Angebots-Stufe A→B. */
+  /** Sofortfahrt: aktuelle Angebots-Stufe A (Trio) | B (Pool). */
   dispatch_tier: text("dispatch_tier").notNull().default("A"),
   dispatch_tier_started_at: timestamp("dispatch_tier_started_at", { withTimezone: true }),
+  /** trio_a | pool_1 | pool_2 | open — Timed-Eskalation (10s je Phase bis open). */
+  dispatch_phase: text("dispatch_phase").notNull().default("trio_a"),
   /** market | funk — exclusive Owner-Zuweisung ohne Markt-Pool. */
   dispatch_mode: text("dispatch_mode").notNull().default("market"),
   offered_to_driver_id: text("offered_to_driver_id"),

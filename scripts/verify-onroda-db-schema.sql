@@ -1390,6 +1390,23 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'dispatch_phase'
+  ) THEN
+    errs := array_append(errs, 'rides.dispatch_phase (Migration 147)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'rides_dispatch_phase_chk'
+      AND contype = 'c'
+      AND conrelid = 'public.rides'::regclass
+  ) THEN
+    errs := array_append(errs, 'rides_dispatch_phase_chk trio_a|pool_1|pool_2|open (Migration 147)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
     WHERE table_schema = 'public'
       AND table_name = 'fleet_drivers'
       AND column_name = 'dispatch_priority'

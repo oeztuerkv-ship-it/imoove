@@ -1,28 +1,36 @@
-# Dispatch-Tiers: nur A und B
+# Dispatch: Trio A → Pool-Runden → Open Market
 
 ## Produktlinie
 
-- **Tier A:** Premium — sieht Angebote zuerst. **Nur manuell** im Admin-Panel (`DriversOverviewPage` → PATCH `dispatchPriority`).
-- **Tier B:** Standard für **alle neuen Fahrer** (DB-Default `fleet_drivers.dispatch_priority = 'B'`).
-- **Kein Tier C** mehr (Migration **133**).
-- **Kein Auto-A** mehr per E-Mail / `admin_auth_users` / Env (`syncFleetDriverDispatchPriorityFromAdminEmail` entfernt).
+- **Trio A:** fest zugewiesene Premium-Fahrer — **nur manuell** im Admin (`DriversOverviewPage` → PATCH `dispatchPriority: A`). Entspricht DB `fleet_drivers.dispatch_priority = 'A'`.
+- **Pool:** alle übrigen Fahrer (`dispatch_priority = 'B'`, Default für neue Fahrer).
+- **Kein Tier C**, kein Auto-A per E-Mail.
 
-## Fahrt-Eskalation
+## Fahrt-Eskalation (Market, nicht Funk)
 
-- Neue Sofort-/Pool-Fahrten starten auf **`rides.dispatch_tier = 'A'`**.
-- **Kein Premium-A market-online** (gleiche Mandanten-/Taxi-Sicht wie Markt) → **sofort A→B** (`reason: no_a_online`), ohne Timeout-Wartezeit.
-- Sonst nach Timeout (**Default 10 s**, `premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC` / Fallback in `getDispatchTierTimeoutSec`) → **B**, dann Stopp.
-- Freigabe durch A-Fahrer: ebenfalls A→B (`releaseRideDispatchOffer`).
-- Migration **145** setzt gespeichertes `dispatch.premiumTierTimeoutSeconds` auf **10** (falls zuvor 60).
+Neue Sofort-/Pool-Fahrten starten mit `dispatch_phase = trio_a`, `dispatch_tier = A`.
 
-## Ablehnungs-Streak (bleibt)
+| Zeit | Phase (`rides.dispatch_phase`) | Sichtbarkeit (`dispatch_tier`) | Klingeln |
+|------|--------------------------------|--------------------------------|----------|
+| 0–10 s | `trio_a` | A (nur Trio A) | gleichzeitig an alle ONLINE Trio-A |
+| 10–20 s | `pool_1` | B (Pool) | gleichzeitig alle verfügbaren Pool-Fahrer |
+| 20–30 s | `pool_2` | B | **zweite Chance** — erneut Push an alle verfügbaren Pool-Fahrer |
+| ab 30 s | `open` | B | Markt bleibt offen bis Ghost-Ride-Expiry (~8 h) — keine weitere Timed-Eskalation |
 
-- 20 Markt-Ablehnungen in Folge (`DISPATCH_REJECT_STREAK_DOWNGRADE_THRESHOLD`): **A→B**.
-- Bereits **B**: kein weiterer Abstieg (`nextDispatchTier("B")` = null); Streak wird trotzdem zurückgesetzt. Sinnvoll als Anti-Spam für Premium-A.
+- Timeout je Phase: **Default 10 s** (`premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC`).
+- **Kein Trio-A online** → sofort `trio_a` → `pool_1` (`reason: no_a_online`).
+- Freigabe durch Trio-A-Fahrer → `pool_1` (`releaseRideDispatchOffer`).
+- Annahme eines Fahrers beendet den Ablauf (wie bisher).
+- Migration **147** (`dispatch_phase`); **145** Timeout-Default 10.
+
+## Ablehnungs-Streak (unverändert)
+
+- 20 Markt-Ablehnungen in Folge: Fahrer **A→B** (Trio → Pool). Streak-Reset auch wenn schon B.
 
 ## Code-Anker
 
-- `artifacts/api-server/src/lib/dispatchPriorityTier.ts`
-- `artifacts/api-server/src/db/rideDispatchTierData.ts`
-- `artifacts/api-server/src/db/fleetDriversData.ts` (`recordFleetDriverOfferRejectStreak`, `setFleetDriverDispatchPriorityForAdmin`)
-- Migration `133_dispatch_tiers_ab_only.sql`
+- `artifacts/api-server/src/lib/dispatchPriorityTier.ts` — Phasen, Timeout, Matching
+- `artifacts/api-server/src/db/rideDispatchTierData.ts` — Advance / Ensure / Release
+- `artifacts/api-server/src/db/fleetInstantRideMarketData.ts` / `fleetDriverMarketPool.ts` — Markt-Filter + Sync
+- Mobile: `RideRequestContext` re-ringt bei Phasenwechsel (`dispatchPhase` / `dispatchTierStartedAt`)
+- Admin: Trio-A-Label in `DriversOverviewPage`, Timeout-Copy in `AppOperationalDispatchPage`

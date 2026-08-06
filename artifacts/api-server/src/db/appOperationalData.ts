@@ -125,7 +125,7 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     autoReassignOnTimeout: true,
     priority: "distance",
     blockAfterMultipleRejects: false,
-    /** Premium-Fahrer: Sekunden A→B bevor Stufe B am Markt erscheint (kein A online → sofort B). */
+    /** Trio A / Pool 1 / Pool 2: Sekunden pro Phase bevor Eskalation (kein Trio A online → sofort Pool). */
     premiumTierTimeoutSeconds: 10,
   },
   features: {
