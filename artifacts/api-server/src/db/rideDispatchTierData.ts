@@ -73,9 +73,11 @@ export async function advanceRideDispatchPhase(opts: {
 
   const updated = await findRide(rid);
   if (updated) {
-    // Jede neue Phase (inkl. pool_2 / open): erneut Push an aktuell sichtbare Fahrer.
-    void notifyMarketOnlineDriversInstantRideOffer(updated);
-    void notifyEligibleDriversScheduledPoolOffer(updated);
+    // Nur bei timed Phasen pushen (trio→pool_1→pool_2). Übergang nach `open` = kein 4. Klingeln.
+    if (opts.nextPhase !== "open") {
+      void notifyMarketOnlineDriversInstantRideOffer(updated);
+      void notifyEligibleDriversScheduledPoolOffer(updated);
+    }
   }
   return updated;
 }
@@ -97,8 +99,8 @@ export async function advanceRideDispatchTier(opts: {
 }
 
 /**
- * Trio A → Pool 1 → Pool 2 → open (je Default 10 s).
- * Kein Trio-A online → sofort pool_1. Phase `open` stoppt die Timed-Eskalation.
+ * Trio A → Pool 1 → Pool 2 → open (je Default 20 s → 3 Klingeln in 60 s).
+ * Kein Trio-A online → sofort pool_1. Phase `open` stoppt Timed-Eskalation und Extra-Push.
  */
 export async function ensureRideDispatchTierCurrent(ride: RideRequest): Promise<{
   ride: RideRequest;

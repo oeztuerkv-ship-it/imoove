@@ -932,11 +932,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         const key = `${r.dispatchPhase ?? ""}|${r.dispatchTierStartedAt ?? ""}|${r.dispatchTier ?? ""}`;
         nextKeys.set(r.id, key);
         const old = prevKeys.get(r.id);
-        // Neue Dispatch-Phase (z. B. pool_1 → pool_2): Soft-Miss beenden und erneut klingeln.
+        // Neue timed Phase (pool_1 / pool_2): erneut klingeln. Übergang nach `open` = still, kein 4. Ton.
         if (old != null && old !== key) {
-          clearInstantOfferSnooze(r.id);
-          clearDriverInstantOfferAlarmDedupe(r.id);
-          finishInstantOfferWake(r.id);
+          const phase = String(r.dispatchPhase ?? "").trim().toLowerCase();
+          if (phase === "open") {
+            clearInstantOfferSnooze(r.id);
+          } else {
+            clearInstantOfferSnooze(r.id);
+            clearDriverInstantOfferAlarmDedupe(r.id);
+            finishInstantOfferWake(r.id);
+          }
         }
       }
       driverMarketPrevDispatchKeyRef.current = nextKeys;

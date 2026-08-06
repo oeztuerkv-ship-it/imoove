@@ -125,8 +125,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     autoReassignOnTimeout: true,
     priority: "distance",
     blockAfterMultipleRejects: false,
-    /** Trio A / Pool 1 / Pool 2: Sekunden pro Phase bevor Eskalation (kein Trio A online → sofort Pool). */
-    premiumTierTimeoutSeconds: 10,
+    /** Trio A / Pool 1 / Pool 2: Sekunden pro Phase (Default 20 → 3 Klingeln in 60 s). */
+    premiumTierTimeoutSeconds: 20,
   },
   features: {
     normalRide: true,

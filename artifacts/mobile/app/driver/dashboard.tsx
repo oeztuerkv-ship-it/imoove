@@ -411,7 +411,7 @@ function hasTaxiEstimateBadge(req: RideRequest): boolean {
   return vehicle.includes("onroda");
 }
 
-const INSTANT_OFFER_COUNTDOWN_SEC = 10;
+const INSTANT_OFFER_COUNTDOWN_SEC = 20;
 const DRIVER_KONZESSION_BORDER = "#B45309";
 const DRIVER_KONZESSION_BG = "#FEF3C7";
 const DRIVER_KONZESSION_TEXT = "#78350F";
@@ -4557,17 +4557,22 @@ export default function DriverDashboard() {
     }
   };
 
-  /** Countdown 10 s ohne Aktion: nicht rejecten — nach ~10 s erneut anbieten/klingeln (wiederholt). */
+  /** Countdown ohne Aktion: in timed Phasen warten auf nächste Phase; Soft-Miss-Loop erst ab `open`. */
   const handleMissTimeout = useCallback((id: string) => {
     const ride = allPendingRef.current.find((r) => r.id === id);
-    if (ride) stashSoftMissRide(ride);
+    const phase = String(ride?.dispatchPhase ?? "").trim().toLowerCase();
     clearInstantOfferDeadline(id);
-    snoozeInstantOfferAfterMiss(id);
+    if (phase === "open" || phase === "") {
+      if (ride) stashSoftMissRide(ride);
+      snoozeInstantOfferAfterMiss(id);
+    } else {
+      // trio_a / pool_1 / pool_2: kein Extra-Klingeln — nächster Phasenwechsel klingelt erneut.
+      if (ride) stashSoftMissRide(ride);
+    }
     stopRideSound().catch(() => {});
     if (bannerTimer.current) clearTimeout(bannerTimer.current);
     setBannerRide((cur) => (cur?.id === id ? null : cur));
     bannerAnim.setValue(-140);
-    // Sofort aus Prev, damit Snooze-Ende = „neu“.
     prevPendingIds.current.delete(id);
   }, []);
   const handleReleaseDispatch = async (id: string) => {

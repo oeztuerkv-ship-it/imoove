@@ -12,18 +12,19 @@ Neue Sofort-/Pool-Fahrten starten mit `dispatch_phase = trio_a`, `dispatch_tier 
 
 | Zeit | Phase (`rides.dispatch_phase`) | Wer sieht / klingelt |
 |------|--------------------------------|----------------------|
-| 0–10 s | `trio_a` | **nur Trio A** (exklusiv) |
-| 10–20 s | `pool_1` | **alle verfügbaren** (Trio A + Pool B) |
-| 20–30 s | `pool_2` | **alle verfügbaren** erneut (2. Chance, inkl. Trio A) |
-| ab 30 s | `open` | alle verfügbaren bis Ghost-Ride-Expiry (~8 h) |
+| 0–20 s | `trio_a` | **nur Trio A** — Klingeln **1** |
+| 20–40 s | `pool_1` | **alle verfügbaren** (A+B) — Klingeln **2** |
+| 40–60 s | `pool_2` | **alle verfügbaren** — Klingeln **3** |
+| ab 60 s | `open` | Markt offen bis Ghost-Expiry — **kein** Extra-Phasen-Push |
 
-- Matching: `driverEligibleForDispatchPhase` / `driverMatchesDispatchOffer` — **nicht** nur `dispatch_tier === driverPriority` (sonst fallen Trio-A-Fahrer nach 10 s raus).
+- **Abstand:** Default **20 s** pro Phase → **3 Klingeln in 60 s** (`premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC`, Migration **148**).
+- Matching: `driverEligibleForDispatchPhase` / `driverMatchesDispatchOffer` — Pool-Phasen inkl. Trio A.
 - `dispatch_tier` bleibt A während `trio_a`, sonst B (Legacy/Anzeige); **entscheidend ist `dispatch_phase`**.
-- Timeout je Phase: **Default 10 s** (`premiumTierTimeoutSeconds` / `ONRODA_DISPATCH_TIER_TIMEOUT_SEC`).
 - **Kein Trio-A online** → sofort `trio_a` → `pool_1` (`reason: no_a_online`).
 - Freigabe durch Trio-A-Fahrer → `pool_1` (`releaseRideDispatchOffer`).
+- Soft-Miss-Wiederholung (Mobile) erst ab Phase **`open`**; in timed Phasen wartet der Client auf den nächsten Phasenwechsel.
 - Annahme eines Fahrers beendet den Ablauf (wie bisher).
-- Migration **147** (`dispatch_phase`); **145** Timeout-Default 10.
+- Migration **147** (`dispatch_phase`); **145**/**148** Timeout (jetzt 20).
 
 ## Ablehnungs-Streak (unverändert)
 
@@ -32,7 +33,7 @@ Neue Sofort-/Pool-Fahrten starten mit `dispatch_phase = trio_a`, `dispatch_tier 
 ## Code-Anker
 
 - `artifacts/api-server/src/lib/dispatchPriorityTier.ts` — Phasen, Timeout, Matching
-- `artifacts/api-server/src/db/rideDispatchTierData.ts` — Advance / Ensure / Release
+- `artifacts/api-server/src/db/rideDispatchTierData.ts` — Advance / Ensure / Release (kein Push bei `open`)
 - `artifacts/api-server/src/db/fleetInstantRideMarketData.ts` / `fleetDriverMarketPool.ts` — Markt-Filter + Sync
-- Mobile: `RideRequestContext` re-ringt bei Phasenwechsel (`dispatchPhase` / `dispatchTierStartedAt`)
+- Mobile: Countdown 20 s; Phasenwechsel re-ring außer nach `open`
 - Admin: Trio-A-Label in `DriversOverviewPage`, Timeout-Copy in `AppOperationalDispatchPage`

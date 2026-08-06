@@ -15,9 +15,10 @@ function assert(cond: boolean, msg: string): void {
   }
 }
 
-assert(getDispatchTierTimeoutSec(undefined) === 10, "default timeout 10s");
+assert(getDispatchTierTimeoutSec(undefined) === 20, "default timeout 20s");
 assert(getDispatchTierTimeoutSec({ premiumTierTimeoutSeconds: 60 }) === 60, "config 60 honored");
 assert(getDispatchTierTimeoutSec({ premiumTierTimeoutSeconds: 10 }) === 10, "config 10 honored");
+assert(getDispatchTierTimeoutSec({ premiumTierTimeoutSeconds: 20 }) === 20, "config 20 honored");
 
 assert(nextDispatchPhase("trio_a") === "pool_1", "trio → pool_1");
 assert(nextDispatchPhase("pool_1") === "pool_2", "pool_1 → pool_2");

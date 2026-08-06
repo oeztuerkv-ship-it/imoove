@@ -118,8 +118,8 @@ export function getDispatchTierTimeoutSec(dispatchConfig?: Record<string, unknow
   if (Number.isFinite(env) && env >= 5 && env <= 300) return Math.round(env);
   const cfg = Number(dispatchConfig?.premiumTierTimeoutSeconds);
   if (Number.isFinite(cfg) && cfg >= 5 && cfg <= 300) return Math.round(cfg);
-  /** Default 10 s pro Phase (Trio A / Pool 1 / Pool 2). */
-  return 10;
+  /** Default 20 s pro Phase → 3 Klingeln in 60 s (trio / pool_1 / pool_2). */
+  return 20;
 }
 
 export function dispatchTierStartedMs(ride: Pick<RideRequest, "dispatchTierStartedAt" | "createdAt">): number {
