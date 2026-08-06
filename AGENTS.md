@@ -41,6 +41,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-dispatch-tiers-ab.mdc` — **Dispatch:** Trio A → Pool 1 → Pool 2 → open (je 20 s, 3 Klingeln / 60 s); Trio A manuell Admin; neue Fahrer = Pool B
 - `.cursor/rules/imoove-mobile-notifications-push-knowledge.mdc` — **Mobile Push/Banner/Ton:** Kunde vs Fahrer, Token-Exklusivität, `suppressDriverInstantOffer`
 - `.cursor/rules/imoove-mobile-destination-navigation.mdc` — **Mobile:** Orte → Ziel → `/ride-select` (keine URL-Params auf `/`)
+- `.cursor/rules/imoove-mobile-service-area-pickup-only.mdc` — **Servicegebiet nur Abholung;** bundesweite Ziele; `maxRouteKm` ≠ Servicegebiet
 - `.cursor/rules/imoove-mobile-customer-oauth-session.mdc` — **Mobile Kunden-OAuth:** Session-Persistenz, Legal-Gate, Apple „200 aber Login-Screen“
 - `.cursor/rules/imoove-mobile-live-ride-flows.mdc` — **Mobile:** Live-Fahrt Kunde (`/status`) + Fahrer-Navi (Stack `dismissTo`, Session-Restore, Debug-Tabelle)
 - `.cursor/rules/imoove-mobile-driver-avatar.mdc` — **Mobile:** Fahrer-Avatar Upload, Kunden-Consent, `photoUrl` / Initialen-Fallback

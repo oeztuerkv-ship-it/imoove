@@ -1,0 +1,39 @@
+---
+description: Servicegebiet nur Abholung; bundesweite Ziele; maxRouteKm ist separates Gate
+globs:
+  - artifacts/api-server/src/lib/serviceRegionMatch.ts
+  - artifacts/api-server/src/db/appOperationalData.ts
+  - artifacts/mobile/lib/appConfig.ts
+  - artifacts/api-server/src/routes/rides.ts
+alwaysApply: false
+---
+
+# Servicegebiet vs. Streckenlimit (nicht verwechseln)
+
+## Produktregel
+
+- **Servicegebiet / Einfahrt-Region:** nur der **Abholort** muss in einem aktiven Gebiet liegen.
+- **Ziel:** bundesweit erlaubt (kein Ziel-Match in `validateServiceAreaForRidePoints` / `clientCheckServiceArea`).
+
+## Symptome nach Pickup-only-Fix
+
+| Wortlaut | Typische Ursache |
+|----------|------------------|
+| „ONRODA ist in deiner Stadt…“ (`outOfServiceAreaDe`) | Abholung außerhalb / `service_area_not_covered` |
+| „Plattform-Regeln nicht zulässig“ (`operationalRuleDe`) | **nicht** Servicegebiet — oft `assertCustomerRideOperational` (z. B. früher `route_too_long` ohne eigene Meldung) |
+| „Diese Strecke ist zu lang (max. X km)“ | `route_too_long` — `bookingRules.maxRouteKm` |
+
+OTA aktualisiert nur Mobile; **API-Deploy** nötig für Server-Servicegebiet und `maxRouteKm`-Migration.
+
+## Wichtige Dateien
+
+- `artifacts/api-server/src/lib/serviceRegionMatch.ts` — `validateServiceAreaForRidePoints` (nur Pickup)
+- `artifacts/api-server/src/db/appOperationalData.ts` — `checkCustomerRideServiceArea`, `assertCustomerRideOperational`
+- `artifacts/mobile/lib/appConfig.ts` — `clientCheckServiceArea`
+- Admin: Buchungsregeln → `maxRouteKm` (Default 1200 nach Migration 149)
+
+## Abnahme
+
+1. Abholung im Gebiet, Ziel außerhalb Gebiet aber &lt; `maxRouteKm` → Buchung ok.
+2. Strecke &gt; `maxRouteKm` → klare km-Meldung, nicht generisches Plattform-Regeln.
+3. Abholung außerhalb → weiterhin `outOfServiceAreaDe`.

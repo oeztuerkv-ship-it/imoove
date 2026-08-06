@@ -101,7 +101,10 @@ export default function AppOperationalBookingRulesPage() {
         </p>
         <div className="admin-form-vertical" style={{ maxWidth: 420, marginTop: 12 }}>
           {num("minPrebookLeadMinutes", "Mindest-Vorlauf (Min.) für Termin / Vorbestellung")}
-          {num("maxRouteKm", "Maximale Route (km) in der Kunden-App (Schätzung, API prüft distanceKm).")}
+          {num(
+            "maxRouteKm",
+            "Max. Strecke (km) — API blockiert längere Buchungen (route_too_long). Servicegebiet gilt nur für Abholung; Ziel darf bundesweit sein (Default 1200).",
+          )}
           {num("maxWaitMinutes", "Max. Wartezeit-Annahme (Hinweis, optional)")}
           {num("cancellationWindowMinutes", "Storno: kostenloses / günstigstes Fenster in Min. vor Abholung (Hinweis) — Cancel-Logik in Bearbeitung")}
           {num("cancellationFeeAfterWindowEur", "Stornogebühr (EUR) — nach Fenster (Hinweis, Tarif-Parallel)")}

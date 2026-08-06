@@ -15,6 +15,7 @@ Der Nutzer erwartet: **nicht nur den aktuellen Diff**, sondern **bekanntes Syste
    - Fahrer-Markt/Ghost: `imoove-mobile-driver-ghost-orders.mdc`
    - Push/Banner/Ton: `imoove-mobile-notifications-push-knowledge.mdc`
    - Ziel/Orte→Buchung: `imoove-mobile-destination-navigation.mdc`
+   - Servicegebiet / „Plattform-Regeln“ bei Buchung: `imoove-mobile-service-area-pickup-only.mdc`
    - Live-Fahrt Kunde/Fahrer (Status, Navi, dismissTo, Restore): `imoove-mobile-live-ride-flows.mdc`
    - Rollen/API: `imoove-product-architecture.mdc`, `onroda-cross-impact.mdc`
    - Deploy/DB: `AGENTS.md`, `imoove-git-deployment-workflow.mdc`

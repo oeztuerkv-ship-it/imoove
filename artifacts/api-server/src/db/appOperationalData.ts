@@ -153,7 +153,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
   },
   bookingRules: {
     minPrebookLeadMinutes: 30,
-    maxRouteKm: 200,
+    /** Bundesweite Ziele: DE-Diagonale ~900 km; Puffer für Routing-Umwege. */
+    maxRouteKm: 1200,
     maxWaitMinutes: 20,
     requireName: true,
     requirePhone: false,
@@ -455,11 +456,20 @@ export function assertCustomerRideOperational(
   }
   const dist = Number(raw.distanceKm ?? raw.distance_km);
   if (!Number.isFinite(dist) || dist <= 0) {
-    return { ok: false, error: "distance_km_invalid", message: msgRuleDe(opPayload) };
+    return {
+      ok: false,
+      error: "distance_km_invalid",
+      message: "Strecke konnte nicht berechnet werden. Bitte Start und Ziel erneut wählen.",
+    };
   }
   const maxKm = typeof b.maxRouteKm === "number" && Number.isFinite(b.maxRouteKm) ? b.maxRouteKm : 99999;
   if (dist > maxKm) {
-    return { ok: false, error: "route_too_long", message: msgRuleDe(opPayload) };
+    const maxLabel = Number.isFinite(maxKm) ? Math.round(maxKm) : maxKm;
+    return {
+      ok: false,
+      error: "route_too_long",
+      message: `Diese Strecke ist zu lang (max. ${maxLabel} km). Bitte ein näheres Ziel wählen.`,
+    };
   }
   const est = Number(raw.estimatedFare ?? raw.estimated_fare);
   if (!Number.isFinite(est) || est < 0) {

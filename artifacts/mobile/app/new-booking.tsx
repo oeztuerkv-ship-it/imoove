@@ -981,6 +981,8 @@ export default function NewBookingScreen() {
       access_code_wrong_company: "Dieser Code passt nicht zu dieser Buchung.",
       reservation_lead_time_too_short:
         "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.",
+      route_too_long: "Diese Strecke ist zu lang. Bitte ein näheres Ziel wählen.",
+      distance_km_invalid: "Strecke konnte nicht berechnet werden. Bitte Start und Ziel erneut wählen.",
       request_failed: "Die Buchung konnte nicht gesendet werden.",
       medical_transport_scan_required: "Bitte zuerst den Transportschein scannen.",
       medical_transport_scan_rejected:

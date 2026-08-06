@@ -103,6 +103,8 @@ function accessCodeBookingErrorMessage(code: string): string {
     access_code_in_use: "Code ist gerade für eine andere Fahrt reserviert — bitte kurz warten oder später erneut versuchen.",
     reservation_lead_time_too_short:
       "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.",
+    route_too_long: "Diese Strecke ist zu lang. Bitte ein näheres Ziel wählen.",
+    distance_km_invalid: "Strecke konnte nicht berechnet werden. Bitte Start und Ziel erneut wählen.",
     request_failed: "Buchung konnte nicht gesendet werden.",
   };
   if (m[code]) return m[code];
