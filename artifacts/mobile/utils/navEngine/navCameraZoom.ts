@@ -2,9 +2,9 @@
  * Geschwindigkeitsabhängiger Navi-Zoom mit Hysterese — kein Pumpen pro GPS-Tick.
  */
 
-export const NAV_CAMERA_ZOOM_CITY = 17.2;
-export const NAV_CAMERA_ZOOM_DEFAULT = 16.5;
-export const NAV_CAMERA_ZOOM_HIGHWAY = 15.2;
+export const NAV_CAMERA_ZOOM_CITY = 18.0;
+export const NAV_CAMERA_ZOOM_DEFAULT = 17.5;
+export const NAV_CAMERA_ZOOM_HIGHWAY = 16.3;
 
 /** Pitch laut Zielarchitektur (60–65°). */
 export const NAV_CAMERA_PITCH_NAV = 62;

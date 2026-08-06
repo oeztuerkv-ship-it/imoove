@@ -14,14 +14,16 @@ alwaysApply: false
 | Overlay öffnen | **Long-Press** auf den Navi-/Follow-Button (rechts) |
 | Export | Overlay → **Copy** / **Share** → Text hierher |
 | Persistenz | Ring-Buffer + AsyncStorage (nach Crash: `(prev)`-Zeilen) |
-| Heartbeat | alle 2 s `heartbeat` — Lücke vor Crash sichtbar |
+| Heartbeat | alle 5 s `heartbeat` — Lücke vor Crash sichtbar |
 
-## Apple Maps Altitude (Crash-Postmortem)
+## Apple Maps Altitude / Zoom (Crash-Postmortem)
 
 `zoomLevelToAltitudeMeters` muss **Kamera-Höhe in Metern** liefern, nicht Web-Mercator-**m/px**.
 
-- Bug: `(156543*cos(lat))/2^zoom` ≈ **1,1 m** bei Zoom 16.5 → `setCamera({ altitude: 1.1, pitch: 62 })` → iOS-Absturz kurz nach Fahrtbeginn.
-- Fix: `artifacts/mobile/utils/navCameraAltitude.ts` — m/px × Viewport-Faktor, Clamp 150…20000 m; unplausible `getCamera`-Werte nicht cachen.
+- Bug: `(156543*cos(lat))/2^zoom` ≈ **1,1 m** bei Zoom 16.5 → `setCamera({ altitude: 1.1, pitch: 62 })` → iOS-Absturz.
+- Fix: `navCameraAltitude.ts` — m/px × **420** (Stadt ≈180–350 m), Clamp 120…12000 m; Follow-Altitude immer aus Zoom.
+- Zoom-Bänder: Stadt **18.0** / Default **17.5** / Highway **16.3**.
+- **Falschabbiegen-Crash:** während Off-Route/Reroute kein Follow-`animateCamera`; nach neuer Route `setCamera` um einen Frame verzögert (nicht im selben Tick wie `setPolyline`).
 
 | Log | Bedeutung |
 |-----|-----------|

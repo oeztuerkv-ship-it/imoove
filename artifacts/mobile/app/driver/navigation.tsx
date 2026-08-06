@@ -381,7 +381,7 @@ function buildNavCamera(
   if (usesGoogleMapTiles()) {
     return { ...base, zoom };
   }
-  // Nie m/px (~1 m) oder getCamera-Müll durchreichen — MapKit crasht bei altitude≈1 + Pitch.
+  // Follow: immer Zoom→Altitude. preferredAltitude nur nach Nutzer-Pinch (sonst Zoom-Drift).
   const altitude = isPlausibleNavCameraAltitudeM(opts?.altitude)
     ? clampNavCameraAltitudeM(opts.altitude)
     : zoomLevelToAltitudeMeters(zoom, lat);
@@ -966,6 +966,8 @@ export default function DriverNavigationScreen() {
         heading = boot.heading;
       }
       if (!isUsableCourse(heading)) return;
+      // MapKit reagiert empfindlich auf Heading außerhalb 0…360
+      heading = ((heading % 360) + 360) % 360;
 
       if (!opts?.force && lastCameraPoseRef.current && navCameraInitializedRef.current) {
         const prev = lastCameraPoseRef.current;
@@ -1007,14 +1009,12 @@ export default function DriverNavigationScreen() {
               ? NAV_CAMERA_FOLLOW_DURATION_MS
               : 0;
       const zoom = preferredZoomRef.current;
-      const altitude = preferredAltitudeRef.current;
       if (
         !isFiniteCameraNumber(lat) ||
         !isFiniteCameraNumber(lon) ||
         !isFiniteCameraNumber(heading) ||
         !isFiniteCameraNumber(NAV_CAMERA_PITCH) ||
-        !isFiniteCameraNumber(zoom) ||
-        (altitude != null && !isFiniteCameraNumber(altitude))
+        !isFiniteCameraNumber(zoom)
       ) {
         navDiagCamera({
           caller: "navigation.tsx:focusNavigationCamera",
@@ -1025,15 +1025,16 @@ export default function DriverNavigationScreen() {
           heading: heading ?? -1,
           pitch: NAV_CAMERA_PITCH,
           zoom,
-          altitude,
+          altitude: null,
           force: opts?.force,
           still: opts?.still,
         });
         return;
       }
+      // Altitude immer aus Zoom (nicht getCamera-Cache) — Pinch steuert preferredZoom.
       const cam = buildNavCamera(lat, lon, heading, {
         zoom,
-        altitude,
+        altitude: null,
         pitch: NAV_CAMERA_PITCH,
       });
       markProgrammaticCamera(Math.max(duration, opts?.force ? 400 : 0));
@@ -1330,12 +1331,22 @@ export default function DriverNavigationScreen() {
       }
       if (opts?.refocusCamera !== false) {
         const pose = navPoseRef.current;
-        focusNavigationCamera({
-          lat: isValidMapCoord(pose.lat, pose.lon) ? pose.lat : lat,
-          lon: isValidMapCoord(pose.lat, pose.lon) ? pose.lon : lon,
-          heading: pose.heading ?? routeBearing ?? undefined,
-          animated: false,
-          force: true,
+        const camLat = isValidMapCoord(pose.lat, pose.lon) ? pose.lat : lat;
+        const camLon = isValidMapCoord(pose.lat, pose.lon) ? pose.lon : lon;
+        const camHeading = pose.heading ?? routeBearing ?? undefined;
+        // Polyline-State zuerst committen; setCamera erst im nächsten Frame —
+        // gleichzeitiges setPolyline+setCamera war Crash-Kandidat bei Reroute.
+        markProgrammaticCamera(800);
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            focusNavigationCamera({
+              lat: camLat,
+              lon: camLon,
+              heading: camHeading,
+              animated: false,
+              force: true,
+            });
+          }, 64);
         });
       }
       shareRouteWithCustomer(polylineLatLonRef.current, {
@@ -1344,7 +1355,7 @@ export default function DriverNavigationScreen() {
       });
       return true;
     },
-    [focusNavigationCamera, shareRouteWithCustomer],
+    [focusNavigationCamera, shareRouteWithCustomer, markProgrammaticCamera],
   );
 
   const requestNavRouteFrom = useCallback(
@@ -2497,6 +2508,7 @@ export default function DriverNavigationScreen() {
         filtered: { lat: number; lon: number };
         heading: number | null;
         guidanceStale: boolean;
+        confirmedOffRoute: boolean;
         remainingDistM: number;
         remainingMin: number;
         stepIdx: number;
@@ -2524,6 +2536,16 @@ export default function DriverNavigationScreen() {
       }
       if (Date.now() >= userGestureCameraPauseUntilRef.current) {
         preferredZoomRef.current = output.cameraZoom;
+      }
+
+      // Während Reroute/Off-Route: keine animateCamera-Flut — MapKit crasht sonst
+      // (Falschabbiegen → setPolyline + setCamera + laufende Animation).
+      if (
+        rerouteInFlightRef.current ||
+        output.guidanceStale ||
+        output.confirmedOffRoute
+      ) {
+        if (!opts?.forceCamera) return;
       }
 
       if (!navFollowEnabledRef.current && !opts?.forceCamera) return;
