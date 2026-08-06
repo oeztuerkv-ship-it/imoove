@@ -2850,12 +2850,14 @@ function ActiveRideScreen({
       return;
     }
     const status = await fetchRidePassengerPinStatus(req.id);
-    const required = status.required || rideRequiresPassengerPinClient(req);
-    if (required && !status.verified) {
+    const required =
+      (status.ok ? status.required : false) || rideRequiresPassengerPinClient(req);
+    const verified = status.ok ? status.verified : false;
+    if (required && !verified) {
       setShowPassengerPinModal(true);
       return;
     }
-    if (status.verified) setPinVerified(true);
+    if (verified) setPinVerified(true);
     await runStartTrip();
   }, [req, startTripBusy, pinVerified, runStartTrip]);
 

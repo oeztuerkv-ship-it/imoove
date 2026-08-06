@@ -30,7 +30,8 @@ export function driverRideStatusUserMessage(
     passenger_pin_required:
       "Bitte zuerst den 4-stelligen Code vom Fahrgast eingeben — erst dann kann die Fahrt starten.",
     passenger_pin_invalid: "Falscher Code. Bitte erneut beim Fahrgast nachfragen.",
-    passenger_pin_rate_limited: "Zu viele Fehlversuche. Bitte kurz warten und erneut versuchen.",
+    passenger_pin_rate_limited: "Zu viele Fehlversuche beim Code. Bitte kurz warten und erneut versuchen.",
+    too_many_requests: "Zu viele Anfragen an den Server. Bitte kurz warten und erneut versuchen.",
     status_transition_invalid: "Dieser Statuswechsel ist gerade nicht erlaubt.",
     no_show_countdown_not_started: "No-Show-Countdown ist noch nicht aktiv (startet bei Fahrtannahme).",
     no_show_countdown_active: "Der No-Show-Countdown läuft noch.",

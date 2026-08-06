@@ -70,6 +70,8 @@ export async function verifyPassengerPinForRide(
 export async function fetchRidePassengerPinStatus(rideId: string): Promise<{
   required: boolean;
   verified: boolean;
+  /** false = Live-Status nicht geladen — Caller soll Client-Heuristik behalten. */
+  ok: boolean;
 }> {
   try {
     const res = await fetch(
@@ -81,12 +83,13 @@ export async function fetchRidePassengerPinStatus(rideId: string): Promise<{
       passengerPinRequired?: boolean;
       passengerPinVerified?: boolean;
     } | null;
-    if (!res.ok || !body?.ok) return { required: false, verified: false };
+    if (!res.ok || !body?.ok) return { required: false, verified: false, ok: false };
     return {
       required: body.passengerPinRequired === true,
       verified: body.passengerPinVerified === true,
+      ok: true,
     };
   } catch {
-    return { required: false, verified: false };
+    return { required: false, verified: false, ok: false };
   }
 }

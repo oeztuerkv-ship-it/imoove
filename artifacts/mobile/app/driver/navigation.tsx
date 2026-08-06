@@ -618,6 +618,8 @@ export default function DriverNavigationScreen() {
   const [hasArrived, setHasArrived] = useState(params.arrived === "1");
   const [pinRequired, setPinRequired] = useState(false);
   const [pinVerified, setPinVerified] = useState(false);
+  /** false bis live-status (oder Client-Heuristik bei Ankunft) die PIN-Pflicht geklärt hat. */
+  const [pinGateReady, setPinGateReady] = useState(params.arrived !== "1");
   const [showPassengerPinModal, setShowPassengerPinModal] = useState(false);
   /** Nach 5 Min. Warten am Abholort: Hinweis Chat / losfahren */
   const [showArrivedWaitHint, setShowArrivedWaitHint] = useState(false);
@@ -1306,7 +1308,7 @@ export default function DriverNavigationScreen() {
         }),
       });
       if (!res.ok) {
-        let code = "status_update_failed";
+        let code = res.status === 429 ? "too_many_requests" : "status_update_failed";
         let errorBody: unknown = null;
         try {
           errorBody = await res.json();
@@ -1315,7 +1317,8 @@ export default function DriverNavigationScreen() {
         } catch {
           // ignore
         }
-        const err = new Error(code) as Error & { userMessage?: string };
+        const err = new Error(code) as Error & { userMessage?: string; errorCode?: string };
+        err.errorCode = code;
         const hint = driverRideStatusUserMessage(code, errorBody);
         if (hint) err.userMessage = hint;
         throw err;
@@ -1331,6 +1334,12 @@ export default function DriverNavigationScreen() {
     setShowArrivedWaitHint(false);
     arrivedWaitHintShownRef.current = false;
     pinModalAutoOpenedRef.current = false;
+    setPinGateReady(false);
+    // Sofort Client-Heuristik: sonst kann Slide „Fahrt beginnen“ vor live-status pinRequired=false lassen.
+    if (activeRide && rideRequiresPassengerPinClient(activeRide)) {
+      setPinRequired(true);
+      setPinVerified(Boolean(activeRide.passengerPinVerifiedAt));
+    }
     try {
       await patchStatus("driver_waiting");
     } catch (e) {
@@ -1342,7 +1351,7 @@ export default function DriverNavigationScreen() {
             : "Status konnte nicht gesetzt werden.";
       Alert.alert("Angekommen", msg ?? "Status konnte nicht gesetzt werden.");
     }
-  }, [patchStatus]);
+  }, [patchStatus, activeRide]);
 
   const [noShowCountdownEndsAt, setNoShowCountdownEndsAt] = useState<number | null>(null);
   const [noShowBusy, setNoShowBusy] = useState(false);
@@ -1422,7 +1431,7 @@ export default function DriverNavigationScreen() {
     };
   }, [params.rideId, isPrivateMemo, isPickupPhase]);
 
-  const handleFahrtBeginnen = useCallback(async () => {
+  const handleFahrtBeginnen = useCallback(async (): Promise<boolean> => {
     try {
       await patchStatus("in_progress");
       setNoShowCountdownEndsAt(null);
@@ -1450,12 +1459,21 @@ export default function DriverNavigationScreen() {
         driverId: params.driverId ?? "",
         arrived: "0",
       });
+      return true;
     } catch (e) {
-      const err = e as Error & { userMessage?: string };
+      const err = e as Error & { userMessage?: string; errorCode?: string };
+      const code = err.errorCode ?? err.message;
+      if (code === "passenger_pin_required") {
+        setPinRequired(true);
+        setPinVerified(false);
+        setShowPassengerPinModal(true);
+        return false;
+      }
       Alert.alert(
         "Fahrtbeginn fehlgeschlagen",
         err.userMessage ?? err.message ?? "Status konnte nicht gesetzt werden.",
       );
+      return false;
     }
   }, [
     patchStatus,
@@ -1478,16 +1496,25 @@ export default function DriverNavigationScreen() {
   }, [sliderX]);
 
   useEffect(() => {
-    if (!hasArrived || !params.rideId) return;
+    if (!hasArrived || !params.rideId) {
+      if (!hasArrived) setPinGateReady(true);
+      return;
+    }
     let cancelled = false;
+    setPinGateReady(false);
     void fetchRidePassengerPinStatus(params.rideId).then((s) => {
       if (cancelled) return;
-      const required =
-        s.required ||
-        (activeRide ? rideRequiresPassengerPinClient(activeRide) : false);
-      const verified = s.verified || Boolean(activeRide?.passengerPinVerifiedAt);
+      const clientNeeds =
+        activeRide != null && rideRequiresPassengerPinClient(activeRide);
+      const required = s.ok
+        ? s.required || clientNeeds
+        : clientNeeds; // bei Fetch-Fehler: nicht „PIN optional“ vortäuschen
+      const verified = s.ok
+        ? s.verified || Boolean(activeRide?.passengerPinVerifiedAt)
+        : Boolean(activeRide?.passengerPinVerifiedAt);
       setPinRequired(required);
       setPinVerified(verified);
+      setPinGateReady(true);
       if (required && !verified && !pinModalAutoOpenedRef.current) {
         pinModalAutoOpenedRef.current = true;
         // Code-Modal erst nach der Ansage — sonst bricht iOS die Speech oft ab.
@@ -1550,6 +1577,13 @@ export default function DriverNavigationScreen() {
 
   const startRideBySlide = useCallback(async () => {
     if (hasTriggeredSlide.current) return;
+    if (!pinGateReady) {
+      resetSlide();
+      if (pinRequired && !pinVerified) {
+        setShowPassengerPinModal(true);
+      }
+      return;
+    }
     if (pinRequired && !pinVerified) {
       resetSlide();
       setShowPassengerPinModal(true);
@@ -1557,11 +1591,14 @@ export default function DriverNavigationScreen() {
     }
     hasTriggeredSlide.current = true;
     try {
-      await handleFahrtBeginnen();
+      const started = await handleFahrtBeginnen();
+      if (!started) hasTriggeredSlide.current = false;
+    } catch {
+      hasTriggeredSlide.current = false;
     } finally {
       resetSlide();
     }
-  }, [handleFahrtBeginnen, resetSlide, pinRequired, pinVerified]);
+  }, [handleFahrtBeginnen, resetSlide, pinRequired, pinVerified, pinGateReady]);
 
   const driveSheetPan = useMemo(
     () =>
@@ -2934,7 +2971,10 @@ export default function DriverNavigationScreen() {
           hasTriggeredSlide.current = true;
           void (async () => {
             try {
-              await handleFahrtBeginnen();
+              const started = await handleFahrtBeginnen();
+              if (!started) hasTriggeredSlide.current = false;
+            } catch {
+              hasTriggeredSlide.current = false;
             } finally {
               resetSlide();
             }

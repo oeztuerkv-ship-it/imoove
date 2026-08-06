@@ -13,6 +13,7 @@ alwaysApply: false
 4. **Nach Startcode / `in_progress`:** Kunden-Storno und -Abbruch **verboten** (`isCustomerCancelBlockedAfterTripStart`) — nur regulärer Fahrer-Abschluss.
 5. **Hart ab Deploy** — kein Feature-Flag.
 6. **Live-Status zeigt den Code** — während Tracking (`/status`) ist Profil/Menü nicht erreichbar; PIN daher in `status.tsx` (Ziel-Chip oben rechts + Sheet-Zeile, bei Ankunft im Banner), nicht nur unter Profil → Abhol-Code.
+7. **Fahrer-Navi Gate:** Nach „Angekommen“ sofort Client-Heuristik `rideRequiresPassengerPinClient` → `pinRequired`; Slide „Fahrt beginnen“ **nicht** `in_progress` patchen, solange PIN nötig und unverifiziert (`pinGateReady` + Modal). `passenger_pin_required` vom Server → Modal öffnen, kein irreführendes „fehlgeschlagen“. Live-Status-Fetch-Fehler **nicht** als „PIN optional“ werten.
 
 ## Speicher / API
 
