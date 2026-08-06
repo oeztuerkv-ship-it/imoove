@@ -3313,7 +3313,7 @@ export async function cancelRideForVerifiedCustomerSession(
     void notifyAssignedDriverRideAbortedAwaitingFare(updatedPending).catch((err) => {
       logger.warn({ err, rideId: id }, "[expo-push] mid-trip-abort notify failed (customer cancel)");
     });
-    void evaluateCustomerCancellationSuspensionAfterCancel(pax).catch(() => undefined);
+    void evaluateCustomerCancellationSuspensionAfterCancel(pax, cur.status).catch(() => undefined);
     return { ok: true, ride: updatedPending, cancelReason: cancelReasonClean };
   }
 
@@ -3419,7 +3419,7 @@ export async function cancelRideForVerifiedCustomerSession(
     }
   }
 
-  void evaluateCustomerCancellationSuspensionAfterCancel(pax).catch(() => undefined);
+  void evaluateCustomerCancellationSuspensionAfterCancel(pax, cur.status).catch(() => undefined);
 
   return { ok: true, ride: updated, cancelReason: cancelReasonClean };
 }

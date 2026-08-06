@@ -1,9 +1,8 @@
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   customerCancellationSuspensionTable,
   rideEventsTable,
-  ridesTable,
 } from "./schema";
 
 export type CustomerCancellationSuspensionRow = {
@@ -18,6 +17,23 @@ export type CustomerCancellationSuspensionRow = {
 const SUSPENSION_REASON_AUTO = "too_many_cancellations";
 const SUSPENSION_REASON_ADMIN = "admin_manual";
 
+/**
+ * Nur Stornos, nachdem ein Fahrer die Fahrt schon angenommen hat
+ * (unterwegs / am Abholort / Fahrt läuft) — nicht während Suche / „kein Fahrer“.
+ */
+export const CUSTOMER_CANCEL_SUSPENSION_FROM_STATUSES = [
+  "accepted",
+  "driver_arriving",
+  "driver_waiting",
+  "passenger_onboard",
+  "in_progress",
+] as const;
+
+export function customerCancelCountsTowardSuspension(fromStatus: string | null | undefined): boolean {
+  const s = String(fromStatus ?? "").trim();
+  return (CUSTOMER_CANCEL_SUSPENSION_FROM_STATUSES as readonly string[]).includes(s);
+}
+
 function mapRow(r: typeof customerCancellationSuspensionTable.$inferSelect): CustomerCancellationSuspensionRow {
   return {
     passengerId: r.passenger_id,
@@ -29,6 +45,11 @@ function mapRow(r: typeof customerCancellationSuspensionTable.$inferSelect): Cus
   };
 }
 
+/**
+ * Sperr-relevante Kunden-Stornos in 24h.
+ * Zählt nur `cancel_reason`-Events mit from_status nach Fahrer-Annahme —
+ * Suche/`open`/„kein Fahrer“-Abbrüche zählen nicht.
+ */
 export async function countPassengerCancellationsInLast24Hours(passengerId: string): Promise<number> {
   const db = getDb();
   if (!db) throw new Error("database_not_configured");
@@ -45,22 +66,57 @@ export async function countPassengerCancellationsInLast24Hours(passengerId: stri
         eq(rideEventsTable.actor_type, "passenger"),
         eq(rideEventsTable.actor_id, pax),
         gte(rideEventsTable.created_at, since),
+        inArray(rideEventsTable.from_status, [...CUSTOMER_CANCEL_SUSPENSION_FROM_STATUSES]),
+        inArray(rideEventsTable.to_status, ["cancelled_by_customer", "customer_abort_pending_fare"]),
       ),
     );
-  const fromEvents = Number(eventRows[0]?.c ?? 0);
-  if (fromEvents > 0) return fromEvents;
+  return Number(eventRows[0]?.c ?? 0);
+}
 
-  const rideRows = await db
-    .select({ c: sql<number>`count(*)::int` })
-    .from(ridesTable)
+/** Aktive Auto-Sperren, bei denen die korrigierte 24h-Zählung unter dem Threshold liegt (vermutlich Fehl-Sperre). */
+export async function listLikelyWrongfulCustomerCancellationSuspensions(threshold: number): Promise<
+  Array<{
+    passengerId: string;
+    suspendedAt: Date;
+    suspendedUntil: Date;
+    reason: string;
+    countableCancelsIn24h: number;
+  }>
+> {
+  const db = getDb();
+  if (!db) throw new Error("database_not_configured");
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(customerCancellationSuspensionTable)
     .where(
       and(
-        eq(ridesTable.passenger_id, pax),
-        eq(ridesTable.status, "cancelled_by_customer"),
-        gte(ridesTable.updated_at, since),
+        isNull(customerCancellationSuspensionTable.lifted_at),
+        gte(customerCancellationSuspensionTable.suspended_until, now),
+        eq(customerCancellationSuspensionTable.reason, SUSPENSION_REASON_AUTO),
       ),
     );
-  return Number(rideRows[0]?.c ?? 0);
+
+  const out: Array<{
+    passengerId: string;
+    suspendedAt: Date;
+    suspendedUntil: Date;
+    reason: string;
+    countableCancelsIn24h: number;
+  }> = [];
+  for (const r of rows) {
+    const countable = await countPassengerCancellationsInLast24Hours(r.passenger_id);
+    if (countable < threshold) {
+      out.push({
+        passengerId: r.passenger_id,
+        suspendedAt: r.suspended_at,
+        suspendedUntil: r.suspended_until,
+        reason: r.reason,
+        countableCancelsIn24h: countable,
+      });
+    }
+  }
+  return out;
 }
 
 export async function findActiveCustomerCancellationSuspension(

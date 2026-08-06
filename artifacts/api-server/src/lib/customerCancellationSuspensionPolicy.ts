@@ -1,5 +1,6 @@
 import {
   countPassengerCancellationsInLast24Hours,
+  customerCancelCountsTowardSuspension,
   findActiveCustomerCancellationSuspension,
   upsertCustomerCancellationSuspension,
 } from "../db/customerCancellationSuspensionData";
@@ -18,6 +19,8 @@ export const CUSTOMER_CANCELLATION_SUSPENSION_MESSAGE_DE =
 export const CUSTOMER_CANCELLATION_THRESHOLD = 4;
 export const CUSTOMER_CANCELLATION_WINDOW_HOURS = 24;
 export const CUSTOMER_CANCELLATION_SUSPENSION_HOURS = 24;
+
+export { customerCancelCountsTowardSuspension };
 
 /** Team-Testkonten: keine automatische Storno-Sperre (kommagetrennt, lowercase). */
 function customerCancellationSuspensionBypassEmails(): Set<string> {
@@ -73,10 +76,17 @@ export async function assertPassengerCanBook(passengerId: string): Promise<Passe
   return { ok: true };
 }
 
-/** Nach Kunden-Storno: bei ≥4 Stornos in 24h → 24h Sperre + Benachrichtigung (einmal pro Sperre). */
-export async function evaluateCustomerCancellationSuspensionAfterCancel(passengerId: string): Promise<void> {
+/**
+ * Nach Kunden-Storno: bei ≥4 sperr-relevanten Stornos in 24h → 24h Sperre.
+ * Sperr-relevant = Storno erst nach Fahrer-Annahme (accepted…in_progress), nicht während Suche.
+ */
+export async function evaluateCustomerCancellationSuspensionAfterCancel(
+  passengerId: string,
+  fromStatus?: string | null,
+): Promise<void> {
   const pax = passengerId.trim();
   if (!pax) return;
+  if (fromStatus != null && !customerCancelCountsTowardSuspension(fromStatus)) return;
   if (await isCustomerCancellationSuspensionBypassed(pax)) return;
 
   const count = await countPassengerCancellationsInLast24Hours(pax);
