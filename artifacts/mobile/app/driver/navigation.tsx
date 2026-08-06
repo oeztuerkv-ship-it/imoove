@@ -5,6 +5,7 @@ import * as Speech from "expo-speech";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   KeyboardAvoidingView,
@@ -583,6 +584,11 @@ export default function DriverNavigationScreen() {
   const [stepIdx, setStepIdx]   = useState(0);
   const prevStepIdx = useRef(-1);
   const polylineLatLonRef = useRef<{ lat: number; lon: number }[]>([]);
+  /** loading | retrying | ready | failed — nie dauerhaft Luftlinie als „Route“. */
+  const [navRouteLoadState, setNavRouteLoadState] = useState<
+    "loading" | "retrying" | "ready" | "failed"
+  >("loading");
+  const navRouteReadyRef = useRef(false);
 
   const [initialDistM, setInitialDistM] = useState(0);
   const [initialEtaMin, setInitialEtaMin] = useState(0);
@@ -1098,30 +1104,30 @@ export default function DriverNavigationScreen() {
       fallbackFrom: { lat: number; lon: number },
       fallbackTo: { lat: number; lon: number },
       opts?: { refocusCamera?: boolean },
-    ) => {
+    ): boolean => {
       const coords = (result.polyline ?? []).map(([lat, lon]) => ({
         latitude: lat,
         longitude: lon,
       }));
       const latLon = coords.map((c) => ({ lat: c.latitude, lon: c.longitude }));
-      const appliedCoords =
-        coords.length >= 2
-          ? coords
-          : [
-              { latitude: fallbackFrom.lat, longitude: fallbackFrom.lon },
-              { latitude: fallbackTo.lat, longitude: fallbackTo.lon },
-            ];
-      polylineLatLonRef.current =
-        latLon.length >= 2
-          ? latLon
-          : [
-              { lat: fallbackFrom.lat, lon: fallbackFrom.lon },
-              { lat: fallbackTo.lat, lon: fallbackTo.lon },
-            ];
-      setPolyline(appliedCoords);
+      // Keine 2-Punkt-Luftlinie: echte OSRM-Geometrie hat i. d. R. viele Punkte.
+      if (coords.length < 2 || latLon.length < 2) {
+        return false;
+      }
+      if (coords.length === 2) {
+        const a = latLon[0]!;
+        const b = latLon[1]!;
+        if (haversine(a.lat, a.lon, b.lat, b.lon) > 80) {
+          return false;
+        }
+      }
+      polylineLatLonRef.current = latLon;
+      setPolyline(coords);
       setSteps(result.steps);
       setStepIdx(0);
       prevStepIdx.current = -1;
+      navRouteReadyRef.current = true;
+      setNavRouteLoadState("ready");
       const distM = (result.distanceKm ?? 0) * 1000;
       const etaMin = result.durationMinutes ?? 0;
       setInitialDistM(distM);
@@ -1146,6 +1152,7 @@ export default function DriverNavigationScreen() {
         setRemainingMin(Math.max(1, etaMin));
       }
       offRouteTrackerRef.current = createOffRouteTrackerState();
+      navFollowEnabledRef.current = true;
       if (opts?.refocusCamera !== false) {
         // Nur geglättete Pose — kein Roh-Heading (Smoother via focusNavigationCamera-Bootstrap).
         const pose = navPoseRef.current;
@@ -1161,6 +1168,7 @@ export default function DriverNavigationScreen() {
         etaMinutes: remMin,
         remainingDistM: Math.round(remDist),
       });
+      return true;
     },
     [focusNavigationCamera, shareRouteWithCustomer],
   );
@@ -1168,7 +1176,7 @@ export default function DriverNavigationScreen() {
   const requestNavRouteFrom = useCallback(
     async (
       from: { lat: number; lon: number },
-      reason: "initial" | "reroute",
+      reason: "initial" | "reroute" | "recover",
       isCancelled?: () => boolean,
     ): Promise<boolean> => {
       const target = navTargetRef.current;
@@ -1190,9 +1198,19 @@ export default function DriverNavigationScreen() {
           stepCount: result.steps.length,
           polylinePoints: (result.polyline ?? []).length,
         });
-        applyNavRouteResult(result, from, target, {
-          refocusCamera: reason === "initial",
+        const applied = applyNavRouteResult(result, from, target, {
+          refocusCamera: reason === "initial" || reason === "recover",
         });
+        if (!applied) {
+          logDriverNavigationRouteResult({
+            ok: false,
+            source: "error",
+            error: "nav_route_polyline_rejected",
+            polylinePoints: (result.polyline ?? []).length,
+          });
+          lastRerouteAtMsRef.current = Date.now();
+          return false;
+        }
         lastRerouteAtMsRef.current = Date.now();
         return true;
       } catch (e) {
@@ -1202,47 +1220,60 @@ export default function DriverNavigationScreen() {
           source: "error",
           error: e instanceof Error ? e.message : String(e),
         });
-        if (reason === "initial") {
-          const fallbackCoords = [
-            { latitude: from.lat, longitude: from.lon },
-            { latitude: target.lat, longitude: target.lon },
-          ];
-          polylineLatLonRef.current = [
-            { lat: from.lat, lon: from.lon },
-            { lat: target.lat, lon: target.lon },
-          ];
-          setPolyline(fallbackCoords);
-          shareRouteWithCustomer(polylineLatLonRef.current, {
-            etaMinutes: Math.max(1, remainingMinRef.current || 1),
-            remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)),
-          });
-        }
-        // Cooldown auch bei Fehler — kein Request-Sturm.
+        // Niemals Luftlinie setzen — alte gute Polyline behalten, sonst leer lassen + Retry.
         lastRerouteAtMsRef.current = Date.now();
         return false;
       }
     },
-    [applyNavRouteResult, destName, params.fromName, pickupName, shareRouteWithCustomer],
+    [applyNavRouteResult, destName, params.fromName, pickupName],
   );
 
-  // Load route once per ride/phase; Off-Route-Reroute separat im GPS-Callback (Throttle).
+  // Load route once per ride/phase; bei Fehler Auto-Retry (kein Luftlinien-Fallback).
   useEffect(() => {
     if (Platform.OS === "web") return;
 
-    let fLat = driverLatRef.current;
-    let fLon = driverLonRef.current;
-    if (!isValidMapCoord(fLat, fLon)) {
-      fLat = isPickupPhase ? fromLat : pickupLat || fromLat;
-      fLon = isPickupPhase ? fromLon : pickupLon || fromLon;
-    }
     const tLat = navigationTarget.lat;
     const tLon = navigationTarget.lon;
-    if (!isValidMapCoord(fLat, fLon) || !isValidMapCoord(tLat, tLon)) return;
+    if (!isValidMapCoord(tLat, tLon)) return;
 
     let cancelled = false;
+    navRouteReadyRef.current = false;
+    setNavRouteLoadState("loading");
+    setPolyline([]);
+    polylineLatLonRef.current = [];
+    setSteps([]);
+
+    const delaysMs = [0, 1200, 2800, 5500, 10_000];
+
     void (async () => {
-      await requestNavRouteFrom({ lat: fLat, lon: fLon }, "initial", () => cancelled);
+      for (let attempt = 0; attempt < delaysMs.length; attempt++) {
+        if (cancelled) return;
+        const wait = delaysMs[attempt] ?? 0;
+        if (wait > 0) {
+          await new Promise((r) => setTimeout(r, wait));
+          if (cancelled) return;
+        }
+        if (attempt > 0) setNavRouteLoadState("retrying");
+
+        let fLat = driverLatRef.current;
+        let fLon = driverLonRef.current;
+        if (!isValidMapCoord(fLat, fLon)) {
+          fLat = isPickupPhase ? fromLat : pickupLat || fromLat;
+          fLon = isPickupPhase ? fromLon : pickupLon || fromLon;
+        }
+        if (!isValidMapCoord(fLat, fLon)) continue;
+
+        const ok = await requestNavRouteFrom(
+          { lat: fLat, lon: fLon },
+          attempt === 0 ? "initial" : "recover",
+          () => cancelled,
+        );
+        if (cancelled) return;
+        if (ok) return;
+      }
+      if (!cancelled) setNavRouteLoadState("failed");
     })();
+
     return () => {
       cancelled = true;
     };
@@ -2414,24 +2445,42 @@ export default function DriverNavigationScreen() {
           }
 
           // Off-Route: Querabstand zur Polyline → bestätigt → Reroute (Cooldown).
-          const distToRouteM = distanceToPolylineM(polylineLatLonRef.current, {
-            lat: pose.lat,
-            lon: pose.lon,
-          });
-          const offSample = noteOffRouteSample(offRouteTrackerRef.current, distToRouteM, now);
-          offRouteTrackerRef.current = offSample.state;
+          // Ohne echte Route: Recovery-Reroute (ersetzt frühere Luftlinien-Falle).
           if (
-            offSample.confirmedOffRoute &&
+            polylineLatLonRef.current.length < 2 &&
+            !navRouteReadyRef.current &&
             canStartReroute({
               inFlight: rerouteInFlightRef.current,
               lastRerouteAtMs: lastRerouteAtMsRef.current,
               nowMs: now,
+              cooldownMs: 8_000,
             })
           ) {
             rerouteInFlightRef.current = true;
-            void requestNavRouteFrom({ lat: pose.lat, lon: pose.lon }, "reroute").finally(() => {
+            setNavRouteLoadState((s) => (s === "ready" ? s : "retrying"));
+            void requestNavRouteFrom({ lat: pose.lat, lon: pose.lon }, "recover").finally(() => {
               rerouteInFlightRef.current = false;
             });
+          } else {
+            const distToRouteM = distanceToPolylineM(polylineLatLonRef.current, {
+              lat: pose.lat,
+              lon: pose.lon,
+            });
+            const offSample = noteOffRouteSample(offRouteTrackerRef.current, distToRouteM, now);
+            offRouteTrackerRef.current = offSample.state;
+            if (
+              offSample.confirmedOffRoute &&
+              canStartReroute({
+                inFlight: rerouteInFlightRef.current,
+                lastRerouteAtMs: lastRerouteAtMsRef.current,
+                nowMs: now,
+              })
+            ) {
+              rerouteInFlightRef.current = true;
+              void requestNavRouteFrom({ lat: pose.lat, lon: pose.lon }, "reroute").finally(() => {
+                rerouteInFlightRef.current = false;
+              });
+            }
           }
 
           if (!navFollowEnabledRef.current) return;
@@ -2824,6 +2873,36 @@ export default function DriverNavigationScreen() {
             </View>
           ) : null}
         </View>
+        {navRouteLoadState !== "ready" ? (
+          <Pressable
+            style={styles.navRouteStatusPill}
+            onPress={() => {
+              if (navRouteLoadState !== "failed") return;
+              const lat = driverLatRef.current;
+              const lon = driverLonRef.current;
+              if (!isValidMapCoord(lat, lon)) return;
+              setNavRouteLoadState("retrying");
+              void requestNavRouteFrom({ lat, lon }, "recover");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              navRouteLoadState === "failed" ? "Route erneut laden" : "Route wird geladen"
+            }
+          >
+            {navRouteLoadState === "failed" ? (
+              <Feather name="refresh-cw" size={14} color="#FDE68A" />
+            ) : (
+              <ActivityIndicator size="small" color="#FDE68A" />
+            )}
+            <Text style={styles.navRouteStatusText} numberOfLines={1}>
+              {navRouteLoadState === "failed"
+                ? "Route fehlt — tippen zum Laden"
+                : navRouteLoadState === "retrying"
+                  ? "Route wird erneut geladen…"
+                  : "Route wird geladen…"}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Floating button column — Karte/Navi über dem unteren Panel */}
@@ -3384,6 +3463,26 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   topDist: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.92)", marginTop: 4, lineHeight: 22 },
+  navRouteStatusPill: {
+    marginTop: 8,
+    marginHorizontal: 12,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(15, 23, 42, 0.88)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(253, 230, 138, 0.45)",
+  },
+  navRouteStatusText: {
+    color: "#FDE68A",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    maxWidth: 260,
+  },
   compassBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#fff", alignItems: "center", justifyContent: "center",

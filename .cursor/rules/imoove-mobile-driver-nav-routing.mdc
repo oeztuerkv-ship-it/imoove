@@ -21,7 +21,8 @@ alwaysApply: false
 
 - Distanz: `distanceToPolylineM` in `routeRemainingAlongPolyline.ts`.
 - Bestätigung / Cooldown: `navOffRouteReroute.ts` — Schwelle **40 m**, **3 Fixes** oder **4 s**, Cooldown **20 s**, kein Parallel-Request.
-- Orchestrator in `navigation.tsx` (`requestNavRouteFrom` / `applyNavRouteResult`): bei Erfolg **atomar** Polyline + Steps + Metrics + Kunden-Share; bei Fehler alte Linie behalten, Cooldown trotzdem.
+- Orchestrator in `navigation.tsx` (`requestNavRouteFrom` / `applyNavRouteResult`): bei Erfolg **atomar** Polyline + Steps + Metrics + Kunden-Share; bei Fehler **keine Luftlinie** — Auto-Retry (Backoff) + GPS-Recovery; alte gute Linie behalten.
+- **Nie** 2-Punkt Start→Ziel als Route zeichnen (wirkt wie Luftlinie / keine Auto-Navi-Sicht); nach Restart wirkte es „repariert“, weil der nächste `nav-route`-Call oft klappte.
 - Smoke: `npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts`
 
 ## Kamera / Pfeil / Heading (eine Pipeline)
@@ -41,7 +42,8 @@ alwaysApply: false
 ## Was nicht tun
 
 - Kein direktes Client-OSRM für Fahrer-Navi-Metriken (Preis und Navi würden wieder auseinanderlaufen).
-- Kein Re-Call der Matrix bei **jedem** GPS-Tick — nur Ride/Phase-Wechsel **oder** bestätigtes Off-Route mit Throttle.
+- Kein Re-Call der Matrix bei **jedem** GPS-Tick — nur Ride/Phase-Wechsel **oder** bestätigtes Off-Route mit Throttle **oder** Recovery wenn noch keine echte Polyline da ist.
+- **Keine Luftlinien-Polyline** als Ersatz bei `nav-route`-Fehler (weder Fahrer noch Kunde via Share).
 - Keine Directions-API „nebenbei“ ohne explizite Kostenfreigabe.
 - Kunden-Live-ETA **nicht** aus Luftlinie (`estimatePickupEtaMinutes` / `formatPickupDistanceKm`) berechnen.
 - Kunden-Live-Route **nicht** separat über öffentliche OSRM-Demo neu berechnen (Rate-Limit → Luftlinie).
