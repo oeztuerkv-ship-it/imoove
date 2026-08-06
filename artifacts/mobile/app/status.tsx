@@ -994,6 +994,19 @@ export default function StatusScreen() {
     | "completed" => {
     if (completedForCurrentRide) return "completed";
 
+    const pinPhaseOpts = (ride: RideRequest) => {
+      const pinRequired = rideRequiresPassengerPinClient(ride);
+      const pinVerified =
+        ride.passengerPinVerified === true ||
+        (typeof ride.passengerPinVerifiedAt === "string" && ride.passengerPinVerifiedAt.trim().length > 0);
+      return {
+        scheduledAt: ride.scheduledAt,
+        withinPickupHour,
+        passengerPinRequired: pinRequired,
+        passengerPinVerified: pinVerified,
+      };
+    };
+
     const cur = rideMatchingCurrentId;
     if (currentRideId && cur?.id === currentRideId) {
       if (isCustomerLiveRideEndedStatus(cur.status)) return "ride_cancelled";
@@ -1006,20 +1019,14 @@ export default function StatusScreen() {
         return "reservation_unfulfilled";
       }
       if (cur.status === "scheduled" || cur.status === "scheduled_assigned") return "reserved";
-      const ops = customerLivePhaseFromRideStatus(cur.status, {
-        scheduledAt: cur.scheduledAt,
-        withinPickupHour,
-      });
+      const ops = customerLivePhaseFromRideStatus(cur.status, pinPhaseOpts(cur));
       if (ops) return ops;
       return "searching";
     }
 
     const eff = effectiveAcceptedRequest;
     if (eff && (!currentRideId || eff.id === currentRideId)) {
-      const ops = customerLivePhaseFromRideStatus(eff.status, {
-        scheduledAt: eff.scheduledAt,
-        withinPickupHour,
-      });
+      const ops = customerLivePhaseFromRideStatus(eff.status, pinPhaseOpts(eff));
       if (ops) return ops;
     }
 
@@ -1035,14 +1042,17 @@ export default function StatusScreen() {
   const customerPhase = isCompleted ? "completed" : rawPhase;
 
   const customerCancelAllowed = useMemo(() => {
-    if (customerPhase === "driving" || customerPhase === "completed" || customerPhase === "ride_cancelled") {
+    if (customerPhase === "completed" || customerPhase === "ride_cancelled") {
       return false;
     }
-    if (effectiveAcceptedRequest && isCustomerCancelBlockedAfterTripStart(effectiveAcceptedRequest)) {
+    // Nicht pauschal über UI-Phase „driving“ sperren — bei PIN-Fahrten zählt nur Verify
+    // (sonst: irrtümliches in_progress / Banner „Fahrt gestartet“ blockiert Storno zu früh).
+    const ride = rideMatchingCurrentId ?? effectiveAcceptedRequest;
+    if (ride && isCustomerCancelBlockedAfterTripStart(ride)) {
       return false;
     }
     return true;
-  }, [customerPhase, effectiveAcceptedRequest]);
+  }, [customerPhase, rideMatchingCurrentId, effectiveAcceptedRequest]);
 
   /** Status-Polling auf Live-Screen — erkennt u. a. Fahrer-Storno (`cancelled_by_driver`). */
   useEffect(() => {
@@ -1380,7 +1390,7 @@ export default function StatusScreen() {
     if (!customerCancelAllowed) {
       Alert.alert(
         "Storno nicht möglich",
-        "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.",
+        "Der Startcode wurde bestätigt — Storno oder Abbruch ist nicht mehr möglich.",
       );
       return;
     }
@@ -1432,7 +1442,7 @@ export default function StatusScreen() {
     if (!customerCancelAllowed) {
       Alert.alert(
         "Storno nicht möglich",
-        "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.",
+        "Der Startcode wurde bestätigt — Storno oder Abbruch ist nicht mehr möglich.",
       );
       return;
     }
@@ -1461,10 +1471,10 @@ export default function StatusScreen() {
           "Storno nicht möglich",
           "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
         );
-      } else if (code === "customer_cancel_blocked_trip_started" || custom.includes("bereits gestartet")) {
+      } else if (code === "customer_cancel_blocked_trip_started" || custom.includes("Startcode") || custom.includes("bereits gestartet")) {
         Alert.alert(
           "Storno nicht möglich",
-          custom || "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.",
+          custom || "Der Startcode wurde bestätigt — Storno oder Abbruch ist nicht mehr möglich.",
         );
       } else if (custom) {
         console.log("Cancel Error (API):", e);
@@ -1602,7 +1612,15 @@ export default function StatusScreen() {
       try {
         await cancelRequestRef.current(id, undefined, DRIVER_ABORTED_EXIT_REASON);
         await refreshRequestsRef.current();
-      } catch {
+      } catch (e) {
+        const code = e instanceof Error ? e.message.trim() : "";
+        // Widerspruch vermeiden: „Suche erneut“ obwohl Storno wegen Fahrtstart gesperrt.
+        if (code === "customer_cancel_blocked_trip_started") {
+          handledDriverReassignedRef.current = null;
+          handledRideCancelledRef.current = null;
+          await refreshRequestsRef.current();
+          return;
+        }
         /* UI trotzdem beenden */
       }
       if (cancelFlowStartedRef.current) return;

@@ -16,7 +16,8 @@ alwaysApply: false
 
 ## Produktregel (Stand 2026-08)
 
-**Kunden** dürfen nach Startcode / `in_progress` **nicht mehr** abbrechen oder stornieren
+**Kunden** dürfen nach **Startcode-Verify** (PIN-pflichtige App-Direktfahrten) bzw. nach
+`in_progress` (Fahrten ohne PIN-Pflicht) **nicht mehr** abbrechen oder stornieren
 (`isCustomerCancelBlockedAfterTripStart` → 403 `customer_cancel_blocked_trip_started`).
 Neuer Kunden-Pfad erzeugt **kein** `customer_abort_pending_fare` mehr.
 

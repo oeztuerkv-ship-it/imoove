@@ -42,16 +42,33 @@ export function rideRequiresPassengerPin(ride: Pick<
 
 export const CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED = "customer_cancel_blocked_trip_started";
 export const CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED_MESSAGE_DE =
-  "Die Fahrt wurde bereits gestartet (Startcode bestätigt). Storno oder Abbruch ist nicht mehr möglich.";
+  "Der Startcode wurde bestätigt. Storno oder Abbruch ist nicht mehr möglich.";
 
 /**
- * Nach Startcode (`passenger_pin_verified_at`) bzw. Status `in_progress`/`passenger_onboard`:
- * Kunde darf nicht mehr stornieren oder abbrechen.
+ * Kunden-Storno/Abbruch gesperrt?
+ *
+ * - App-Direktfahrten mit PIN-Pflicht: **nur** nach Startcode (`passengerPinVerifiedAt`).
+ *   Status `in_progress` ohne Verify (Race) darf Storno **nicht** blockieren.
+ * - Sonstige Fahrten (Funk/Panel/…): Sperre ab `in_progress` / `passenger_onboard`.
  */
 export function isCustomerCancelBlockedAfterTripStart(
-  ride: Pick<RideRequest, "status" | "passengerPinVerifiedAt">,
+  ride: Pick<
+    RideRequest,
+    | "status"
+    | "passengerPinVerifiedAt"
+    | "passengerId"
+    | "createdByPanelUserId"
+    | "authorizationSource"
+    | "accessCodeId"
+    | "rideKind"
+    | "payerKind"
+    | "voucherCode"
+    | "dispatchMode"
+  >,
 ): boolean {
   if (ride.passengerPinVerifiedAt) return true;
+  // PIN-pflichtig: ohne Verify immer noch stornierbar (auch Anfahrt / Ankunft / irrtümliches in_progress).
+  if (rideRequiresPassengerPin(ride)) return false;
   const s = String(ride.status ?? "").trim();
   return s === "in_progress" || s === "passenger_onboard";
 }

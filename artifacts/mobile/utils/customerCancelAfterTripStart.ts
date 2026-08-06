@@ -1,12 +1,56 @@
+import { rideRequiresPassengerPinClient } from "@/utils/rideRequiresPassengerPin";
+import type { RideRequest } from "@/context/RideRequestContext";
+
 /** Nach Startcode / Fahrtstart: Kunde darf nicht mehr stornieren oder abbrechen. */
 
-export function isCustomerCancelBlockedAfterTripStart(ride: {
-  status?: string | null;
-  passengerPinVerifiedAt?: string | null;
-  passengerPinVerified?: boolean | null;
-}): boolean {
+type CancelGateRide = Partial<
+  Pick<
+    RideRequest,
+    | "status"
+    | "passengerPinVerifiedAt"
+    | "passengerPinVerified"
+    | "passengerId"
+    | "authorizationSource"
+    | "accessCodeId"
+    | "rideKind"
+    | "payerKind"
+    | "voucherCode"
+    | "passengerPinRequired"
+    | "dispatchMode"
+  >
+> & { createdByPanelUserId?: string | null };
+
+/**
+ * - App-Direkt + PIN: nur nach Verify (`passengerPinVerified` / `passengerPinVerifiedAt`).
+ * - Sonstige: Sperre ab `in_progress` / `passenger_onboard`.
+ */
+export function isCustomerCancelBlockedAfterTripStart(ride: CancelGateRide): boolean {
   if (ride.passengerPinVerified === true) return true;
-  if (ride.passengerPinVerifiedAt) return true;
+  if (typeof ride.passengerPinVerifiedAt === "string" && ride.passengerPinVerifiedAt.trim()) {
+    return true;
+  }
+
+  const pinRequired =
+    typeof ride.passengerPinRequired === "boolean"
+      ? ride.passengerPinRequired
+      : ride.authorizationSource != null &&
+          ride.rideKind != null &&
+          ride.payerKind != null &&
+          rideRequiresPassengerPinClient({
+            passengerId: ride.passengerId,
+            authorizationSource: ride.authorizationSource,
+            accessCodeId: ride.accessCodeId ?? null,
+            rideKind: ride.rideKind,
+            payerKind: ride.payerKind,
+            voucherCode: ride.voucherCode ?? null,
+            passengerPinRequired: ride.passengerPinRequired,
+            dispatchMode: ride.dispatchMode ?? "market",
+            createdByPanelUserId: ride.createdByPanelUserId,
+          });
+
+  // PIN-pflichtig: ohne Verify immer noch stornierbar (Anfahrt / Ankunft / in_progress-Race).
+  if (pinRequired) return false;
+
   const s = String(ride.status ?? "").trim();
   return s === "in_progress" || s === "passenger_onboard";
 }

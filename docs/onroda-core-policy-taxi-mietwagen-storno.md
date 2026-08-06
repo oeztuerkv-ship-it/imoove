@@ -109,18 +109,22 @@ Vor Release MUSS geprüft werden:
 * falsche Annahme → wird mit 409 geblockt
 * kein Fahrzeug → saubere Fehlermeldung
 * Storno während Suche → sofortiger Abbruch + korrekt in Verlauf
-* Nach Startcode / `in_progress` → **kein** Kunden-Storno/Abbruch mehr (nur Fahrer-Abschluss mit Taxameter)
+* Nach Startcode / Verify → **kein** Kunden-Storno/Abbruch mehr (nur Fahrer-Abschluss mit Taxameter)
+* Vor Startcode (auch Anfahrt/Ankunft): Storno gemäß bestehenden Regeln möglich
+* PIN-pflichtige App-Direktfahrten: Sperre **nur** bei `passenger_pin_verified_at` (nicht schon bei reinem `in_progress`-Race)
 
 ---
 
 ## 6b. Nach Fahrtstart (Startcode / `in_progress`)
 
-Sobald der Startcode verifiziert ist (`passenger_pin_verified_at`) bzw. Status `in_progress`:
+Sobald der Startcode verifiziert ist (`passenger_pin_verified_at`):
 
 * Kunden-**Storno und Abbruch sind gesperrt** (API 403 `customer_cancel_blocked_trip_started`, UI ohne Storno-Button)
 * Die Fahrt läuft normal weiter bis zum Fahrer-Abschluss
 * Fahrer beendet → Taxameter-Endpreis → Zahlung → Historie **„Abgeschlossen“** (nicht „Storniert“)
-* Vor Startcode: Storno gemäß bestehenden Regeln möglich
+* **Vor Startcode:** Storno bleibt möglich (Anfahrt, Ankunft, Warten) — auch wenn die Suche / Zuweisung noch „offen“ wirkt
+* **PIN-pflichtige App-Direktfahrten:** Sperre nur nach Verify; Status `in_progress` ohne Verify darf Storno **nicht** blockieren
+* **Ohne PIN-Pflicht** (Funk/Panel o. ä.): Sperre ab Status `in_progress` / `passenger_onboard`
 
 *(Ältere Mid-Trip-Abbruch-Logik `customer_abort_pending_fare` bleibt für Bestandsfälle / Fahrer-Side; neue Kunden-Abbrüche werden nicht mehr erzeugt.)*
 

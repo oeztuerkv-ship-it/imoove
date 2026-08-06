@@ -65,9 +65,20 @@ export function customerShowsTripEstimate(status: string, req: Pick<RideRequest,
 
 export function customerLivePhaseFromRideStatus(
   status: string,
-  opts: { scheduledAt: string | Date | null | undefined; withinPickupHour: boolean },
+  opts: {
+    scheduledAt: string | Date | null | undefined;
+    withinPickupHour: boolean;
+    /** App-Direkt + PIN: ohne Verify kein „driving“ / „Fahrt gestartet“ (auch bei in_progress-Race). */
+    passengerPinRequired?: boolean;
+    passengerPinVerified?: boolean;
+  },
 ): CustomerLiveRidePhase | null {
-  if (status === "in_progress") return "driving";
+  if (status === "in_progress") {
+    if (opts.passengerPinRequired === true && opts.passengerPinVerified !== true) {
+      return "arrived";
+    }
+    return "driving";
+  }
   if (status === "passenger_onboard" || status === "arrived" || status === "driver_waiting") return "arrived";
   if (
     opts.scheduledAt &&

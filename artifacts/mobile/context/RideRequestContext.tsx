@@ -771,7 +771,7 @@ function stornoErrorUserMessage(code: string): string | undefined {
     return "Bei Vorbestellungen ist ein Kunden-Storno nur bis 60 Minuten vor Abholung möglich.";
   }
   if (code === "customer_cancel_blocked_trip_started") {
-    return "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.";
+    return "Der Startcode wurde bestätigt — Storno oder Abbruch ist nicht mehr möglich.";
   }
   if (code === "status_transition_invalid") {
     return "Diese Fahrt kann im aktuellen Status nicht mehr storniert werden.";
