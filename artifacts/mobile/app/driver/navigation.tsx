@@ -164,16 +164,8 @@ const PICKUP_AUX_ICON_RED = "#FF3B30";
 const PICKUP_AUX_BORDER_LIGHT_RED = "#FECACA";
 const PICKUP_AUX_PRESSED_BG = "#FFF1F2";
 const DRIVE_SHEET_GRAB_H = 28;
-/** Persistentes Trip-Footer (km / min / ETA) — immer sichtbar. */
-const DRIVE_SHEET_TRIP_FOOTER_H = 64;
-const DRIVE_SHEET_DETAILS_CONTENT_H = 168;
-const DRIVE_SHEET_ACTIONS_H = 72;
-/** Eingeklappt: Grab + Metriken + Primäraktion — mehr Karte. */
-const DRIVE_SHEET_COLLAPSED_H =
-  DRIVE_SHEET_GRAB_H + DRIVE_SHEET_TRIP_FOOTER_H + DRIVE_SHEET_ACTIONS_H + 20;
-/** Ausgeklappt: + Adress-/Zahlungs-Details. */
-const DRIVE_SHEET_EXPANDED_H = DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_CONTENT_H + 8;
-const DRIVE_SHEET_DETAILS_H = DRIVE_SHEET_DETAILS_CONTENT_H + 8;
+/** Max-Höhe der ausklappbaren Detail-Sektion (Adressen/Zahlung) — Sheet selbst hugt Inhalt. */
+const DRIVE_SHEET_DETAILS_H = 200;
 /** Ansage am Abholort — wiederholt sich bei Inaktivität. */
 const ARRIVED_PICKUP_SPEAK =
   "Ziel erreicht. Bitte den Code vom Fahrgast nehmen und losfahren.";
@@ -1574,7 +1566,7 @@ export default function DriverNavigationScreen() {
         onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6,
         onPanResponderMove: (_, g) => {
           const base = driveSheetOpenRef.current ? 1 : 0;
-          const span = Math.max(1, DRIVE_SHEET_EXPANDED_H - DRIVE_SHEET_COLLAPSED_H);
+          const span = Math.max(1, DRIVE_SHEET_DETAILS_H);
           const next = Math.min(1, Math.max(0, base - g.dy / span));
           driveSheetAnim.setValue(next);
         },
@@ -2490,9 +2482,9 @@ export default function DriverNavigationScreen() {
   const topRoadName =
     isPickupPhase && hasArrived ? null : currentParts.roadName;
 
-  const bottomInset = Math.max(insets.bottom, 16);
-  const sheetBodyH = driveSheetOpen ? DRIVE_SHEET_EXPANDED_H : DRIVE_SHEET_COLLAPSED_H;
-  const floatingControlsBottom = bottomInset + sheetBodyH + 72;
+  const bottomInset = insets.bottom;
+  const [sheetLayoutH, setSheetLayoutH] = useState(168);
+  const floatingControlsBottom = sheetLayoutH + 12;
 
   const openRideChat = () => {
     clearChatUnread();
@@ -2603,10 +2595,6 @@ export default function DriverNavigationScreen() {
     </View>
   );
 
-  const driveSheetHeight = driveSheetAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [DRIVE_SHEET_COLLAPSED_H, DRIVE_SHEET_EXPANDED_H],
-  });
   const driveDetailsHeight = driveSheetAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, DRIVE_SHEET_DETAILS_H],
@@ -2835,12 +2823,13 @@ export default function DriverNavigationScreen() {
         ) : null}
       </View>
 
-      {/* Untere Leiste: Google-ähnlich — Drag-Handle, Metriken, Aktion; Details per Ziehen/Tippen */}
+      {/* Untere Leiste: Google-ähnlich — Drag-Handle; Höhe = Inhalt + Safe-Area (kein Leerraum) */}
       <Animated.View
-        style={[
-          styles.driveBottomSheet,
-          { paddingBottom: bottomInset, height: Animated.add(driveSheetHeight, bottomInset) },
-        ]}
+        style={[styles.driveBottomSheet, { paddingBottom: bottomInset + 8 }]}
+        onLayout={(e) => {
+          const h = Math.round(e.nativeEvent.layout.height);
+          if (h > 0) setSheetLayoutH(h);
+        }}
       >
         <View
           style={styles.sheetGrabRow}
@@ -3440,8 +3429,8 @@ const styles = StyleSheet.create({
   navTripFooter: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 12,
-    marginBottom: 10,
+    marginHorizontal: 0,
+    marginBottom: 8,
     paddingVertical: 10,
     paddingHorizontal: 6,
     borderRadius: 14,
@@ -3575,7 +3564,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0FDF4",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    minHeight: DRIVE_SHEET_TRIP_FOOTER_H - 12,
     justifyContent: "center",
   },
   driveStartedBannerInner: {
@@ -3595,7 +3583,7 @@ const styles = StyleSheet.create({
     letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
   },
   driveDetailsWrap: { paddingTop: 2, paddingBottom: 4 },
-  driveEndActionWrap: { marginTop: 4, marginBottom: 2 },
+  driveEndActionWrap: { marginTop: 4, marginBottom: 0 },
   rideInfoCard: {
     borderRadius: 14,
     backgroundColor: "#FFFFFF",
