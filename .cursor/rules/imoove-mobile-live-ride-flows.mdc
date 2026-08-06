@@ -75,6 +75,8 @@ flowchart TD
 | Kunde ändert Ziel | Push/WS/`activeRide` → `setDriverNavigationPhaseParams` (dest/to) → Route-Effect neu | `to*` auf Ride |
 | Navi-Route fertig | `sendDriverNavRoute` + `POST …/driver-nav-route` (downsample ≤100) | Kunden-Karte `route:driver:update` |
 
+**Untere Leiste (Google-ähnlich):** ein Bottom-Sheet mit grauem Drag-Handle (`driveBottomSheet` / `snapDriveSheet`). Eingeklappt: Metriken (km/min/ETA) + Primäraktion (Beenden / Angekommen / Slide). Ausgeklappt: Adress-/Zahlungs-Details, No-Show-Hinweis. Tippen oder Ziehen am Handle toggelt; Default nach Phasenwechsel = eingeklappt.
+
 **Stack nach App-Kill (iOS/Android):**
 
 - OS stellt oft **mehrere** `navigation`-Einträge mit verschiedenen Params wieder her.

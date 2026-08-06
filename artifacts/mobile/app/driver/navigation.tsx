@@ -163,15 +163,17 @@ const START_SLIDER_HANDLE = 52;
 const PICKUP_AUX_ICON_RED = "#FF3B30";
 const PICKUP_AUX_BORDER_LIGHT_RED = "#FECACA";
 const PICKUP_AUX_PRESSED_BG = "#FFF1F2";
-const DRIVE_SHEET_GRAB_H = 32;
+const DRIVE_SHEET_GRAB_H = 28;
 /** Persistentes Trip-Footer (km / min / ETA) — immer sichtbar. */
 const DRIVE_SHEET_TRIP_FOOTER_H = 64;
-const DRIVE_SHEET_DETAILS_CONTENT_H = 180;
-const DRIVE_SHEET_ACTIONS_H = 56;
-const DRIVE_SHEET_COLLAPSED_H = DRIVE_SHEET_GRAB_H + DRIVE_SHEET_TRIP_FOOTER_H + 12;
-const DRIVE_SHEET_EXPANDED_H =
-  DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
-const DRIVE_SHEET_DETAILS_H = DRIVE_SHEET_DETAILS_CONTENT_H + DRIVE_SHEET_ACTIONS_H + 16;
+const DRIVE_SHEET_DETAILS_CONTENT_H = 168;
+const DRIVE_SHEET_ACTIONS_H = 72;
+/** Eingeklappt: Grab + Metriken + Primäraktion — mehr Karte. */
+const DRIVE_SHEET_COLLAPSED_H =
+  DRIVE_SHEET_GRAB_H + DRIVE_SHEET_TRIP_FOOTER_H + DRIVE_SHEET_ACTIONS_H + 20;
+/** Ausgeklappt: + Adress-/Zahlungs-Details. */
+const DRIVE_SHEET_EXPANDED_H = DRIVE_SHEET_COLLAPSED_H + DRIVE_SHEET_DETAILS_CONTENT_H + 8;
+const DRIVE_SHEET_DETAILS_H = DRIVE_SHEET_DETAILS_CONTENT_H + 8;
 /** Ansage am Abholort — wiederholt sich bei Inaktivität. */
 const ARRIVED_PICKUP_SPEAK =
   "Ziel erreicht. Bitte den Code vom Fahrgast nehmen und losfahren.";
@@ -698,11 +700,12 @@ export default function DriverNavigationScreen() {
   );
 
   useEffect(() => {
-    if (!isDrivingPhase) return;
     snapDriveSheet(false);
-    setChatOpen(false);
-    clearChatUnread();
-  }, [clearChatUnread, isDrivingPhase, snapDriveSheet]);
+    if (isDrivingPhase) {
+      setChatOpen(false);
+      clearChatUnread();
+    }
+  }, [clearChatUnread, isDrivingPhase, isPrivateMemo, phase, snapDriveSheet]);
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
@@ -1567,22 +1570,27 @@ export default function DriverNavigationScreen() {
   const driveSheetPan = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => isDrivingPhase,
-        onMoveShouldSetPanResponder: (_, g) => isDrivingPhase && Math.abs(g.dy) > 8,
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6,
         onPanResponderMove: (_, g) => {
           const base = driveSheetOpenRef.current ? 1 : 0;
-          const span = DRIVE_SHEET_EXPANDED_H - DRIVE_SHEET_COLLAPSED_H;
+          const span = Math.max(1, DRIVE_SHEET_EXPANDED_H - DRIVE_SHEET_COLLAPSED_H);
           const next = Math.min(1, Math.max(0, base - g.dy / span));
           driveSheetAnim.setValue(next);
         },
         onPanResponderRelease: (_, g) => {
+          // Kurzer Tap auf den Handle → Toggle (Google-Maps-ähnlich)
+          if (Math.abs(g.dy) < 10 && Math.abs(g.vy) < 0.35) {
+            snapDriveSheet(!driveSheetOpenRef.current);
+            return;
+          }
           driveSheetAnim.stopAnimation((v) => {
             const open = v > 0.42 || g.vy < -0.45 ? true : g.vy > 0.45 ? false : v >= 0.5;
             snapDriveSheet(open);
           });
         },
       }),
-    [isDrivingPhase, driveSheetAnim, snapDriveSheet],
+    [driveSheetAnim, snapDriveSheet],
   );
 
   /** PanResponder muss bei neuer Track-Breite neu erstellt werden — sonst bleibt maxSlideX=0 „eingefroren“. */
@@ -2483,12 +2491,8 @@ export default function DriverNavigationScreen() {
     isPickupPhase && hasArrived ? null : currentParts.roadName;
 
   const bottomInset = Math.max(insets.bottom, 16);
-  const PICKUP_BOTTOM_PANEL_EST_H = 380;
-  const floatingControlsBottom =
-    bottomInset +
-    (isDrivingPhase
-      ? (driveSheetOpen ? DRIVE_SHEET_EXPANDED_H : DRIVE_SHEET_COLLAPSED_H) + 72
-      : PICKUP_BOTTOM_PANEL_EST_H);
+  const sheetBodyH = driveSheetOpen ? DRIVE_SHEET_EXPANDED_H : DRIVE_SHEET_COLLAPSED_H;
+  const floatingControlsBottom = bottomInset + sheetBodyH + 72;
 
   const openRideChat = () => {
     clearChatUnread();
@@ -2831,79 +2835,55 @@ export default function DriverNavigationScreen() {
         ) : null}
       </View>
 
-      {isPrivateMemo ? (
-        <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
-          {navTripFooterBar}
-          <View style={styles.privateMemoPanel}>
-            <View style={styles.privateMemoMainRow}>
-              <View style={styles.privateMemoRouteCol}>
-                <View style={styles.privateMemoRouteRow}>
-                  <View style={styles.privateMemoRail}>
-                    <View style={styles.privateMemoDotGreen} />
-                    <View style={styles.privateMemoLine} />
-                    <View style={styles.privateMemoDotRed} />
-                  </View>
-                  <View style={styles.privateMemoPlaces}>
-                    <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
-                      {pickupName}
-                    </Text>
-                    <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
-                      {destName}
-                    </Text>
+      {/* Untere Leiste: Google-ähnlich — Drag-Handle, Metriken, Aktion; Details per Ziehen/Tippen */}
+      <Animated.View
+        style={[
+          styles.driveBottomSheet,
+          { paddingBottom: bottomInset, height: Animated.add(driveSheetHeight, bottomInset) },
+        ]}
+      >
+        <View
+          style={styles.sheetGrabRow}
+          {...driveSheetPan.panHandlers}
+          accessibilityRole="button"
+          accessibilityLabel={driveSheetOpen ? "Leiste einklappen" : "Leiste ausklappen"}
+        >
+          <View style={styles.sheetGrabHit}>
+            <View style={styles.sheetGrabPill} />
+          </View>
+        </View>
+
+        {navTripFooterBar}
+
+        <Animated.View
+          style={{ maxHeight: driveDetailsHeight, opacity: driveSheetAnim, overflow: "hidden" }}
+        >
+          <View style={styles.driveDetailsWrap}>
+            {isPrivateMemo ? (
+              <View style={styles.privateMemoPanel}>
+                <View style={styles.privateMemoMainRow}>
+                  <View style={styles.privateMemoRouteCol}>
+                    <View style={styles.privateMemoRouteRow}>
+                      <View style={styles.privateMemoRail}>
+                        <View style={styles.privateMemoDotGreen} />
+                        <View style={styles.privateMemoLine} />
+                        <View style={styles.privateMemoDotRed} />
+                      </View>
+                      <View style={styles.privateMemoPlaces}>
+                        <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
+                          {pickupName}
+                        </Text>
+                        <Text style={[styles.privateMemoValue, navAppleFont("semibold")]} numberOfLines={2}>
+                          {destName}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
               </View>
-            </View>
-          </View>
-          <View style={styles.actionBlock}>
-            <View style={styles.actionBtnWrapper}>{actionBtn}</View>
-          </View>
-        </View>
-      ) : isDrivingPhase ? (
-        <Animated.View
-          style={[
-            styles.driveBottomSheet,
-            { paddingBottom: bottomInset, height: Animated.add(driveSheetHeight, bottomInset) },
-          ]}
-        >
-          <View style={styles.sheetGrabRow} {...driveSheetPan.panHandlers}>
-            <Pressable
-              style={styles.sheetGrabHit}
-              onPress={() => snapDriveSheet(!driveSheetOpen)}
-              accessibilityLabel={driveSheetOpen ? "Fahrtdetails einklappen" : "Fahrtdetails ausklappen"}
-            >
-              <View style={styles.sheetGrabPill} />
-            </Pressable>
-            <View style={{ flex: 1 }} />
-            <Pressable onPress={() => snapDriveSheet(!driveSheetOpen)} hitSlop={10} style={styles.sheetChevronBtn}>
-              <Feather name={driveSheetOpen ? "chevron-down" : "chevron-up"} size={22} color="#8E8E93" />
-            </Pressable>
-          </View>
-
-          {navTripFooterBar}
-
-          <Animated.View style={{ maxHeight: driveDetailsHeight, opacity: driveSheetAnim, overflow: "hidden" }}>
-            <View style={styles.driveDetailsWrap}>
-              {rideDetailsBlock}
-              <View style={styles.driveEndActionWrap}>{drivePhaseEndActions}</View>
-            </View>
-          </Animated.View>
-        </Animated.View>
-      ) : (
-        <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
-          {navTripFooterBar}
-          {rideDetailsBlock}
-          <View style={styles.actionBlock}>
-            <View style={styles.actionRowPickup}>
-              <View style={styles.actionBtnPrimarySlot}>{actionBtn}</View>
-              <Pressable
-                onPress={() => setShowCancelReasonModal(true)}
-                style={({ pressed }) => [styles.actionCancelX, pressed && { opacity: 0.88 }]}
-                accessibilityLabel="Fahrt stornieren"
-              >
-                <Feather name="x" size={22} color="#FFFFFF" />
-              </Pressable>
-            </View>
+            ) : (
+              rideDetailsBlock
+            )}
             {isPickupPhase && noShowCountdownEndsAt ? (
               <Text style={styles.noShowCountdownText}>
                 {hasArrived ? "No-Show in" : "Wartezeit Kunde"}{" "}
@@ -2928,8 +2908,27 @@ export default function DriverNavigationScreen() {
               </Pressable>
             ) : null}
           </View>
+        </Animated.View>
+
+        <View style={styles.driveEndActionWrap}>
+          {isPrivateMemo ? (
+            <View style={styles.actionBtnWrapper}>{actionBtn}</View>
+          ) : isDrivingPhase ? (
+            drivePhaseEndActions
+          ) : (
+            <View style={styles.actionRowPickup}>
+              <View style={styles.actionBtnPrimarySlot}>{actionBtn}</View>
+              <Pressable
+                onPress={() => setShowCancelReasonModal(true)}
+                style={({ pressed }) => [styles.actionCancelX, pressed && { opacity: 0.88 }]}
+                accessibilityLabel="Fahrt stornieren"
+              >
+                <Feather name="x" size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          )}
         </View>
-      )}
+      </Animated.View>
 
       <DriverPassengerPinModal
         visible={showPassengerPinModal}
@@ -3538,33 +3537,36 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: "#FFFFFF",
-    paddingTop: 8,
+    paddingTop: 4,
     paddingHorizontal: 16,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#E5E7EB",
     shadowColor: "#000",
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 18,
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 20,
     overflow: "hidden",
   },
   sheetGrabRow: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingBottom: 6,
+    justifyContent: "center",
+    paddingBottom: 4,
     minHeight: DRIVE_SHEET_GRAB_H,
   },
-  sheetGrabHit: { paddingVertical: 6, paddingHorizontal: 8, flex: 1, alignItems: "center" },
+  sheetGrabHit: {
+    paddingVertical: 8,
+    paddingHorizontal: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sheetGrabPill: {
-    width: 36,
+    width: 40,
     height: 5,
     borderRadius: 3,
     backgroundColor: "#C7C7CC",
   },
-  sheetChevronBtn: { paddingVertical: 4, paddingHorizontal: 4 },
   driveStartedBanner: {
     marginBottom: 6,
     borderWidth: 1.5,
@@ -3592,8 +3594,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: Platform.OS === "ios" ? -0.2 : 0,
   },
-  driveDetailsWrap: { paddingTop: 2, paddingBottom: 10 },
-  driveEndActionWrap: { marginTop: 12, marginBottom: 4 },
+  driveDetailsWrap: { paddingTop: 2, paddingBottom: 4 },
+  driveEndActionWrap: { marginTop: 4, marginBottom: 2 },
   rideInfoCard: {
     borderRadius: 14,
     backgroundColor: "#FFFFFF",
