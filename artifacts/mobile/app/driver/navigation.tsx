@@ -25,6 +25,11 @@ import * as Haptics from "expo-haptics";
 import { useKeepAwake } from "expo-keep-awake";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { nativeMapViewProps, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
+import {
+  clampNavCameraAltitudeM,
+  isPlausibleNavCameraAltitudeM,
+  zoomLevelToAltitudeMeters,
+} from "@/utils/navCameraAltitude";
 import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -363,10 +368,6 @@ function resolveNavFallbackBearing(
 }
 
 /** Apple Maps nutzt altitude (m), Google Maps zoom — zoom allein auf iOS wirkt nicht. */
-function zoomLevelToAltitudeMeters(zoom: number, latitude: number): number {
-  return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
-}
-
 function buildNavCamera(
   lat: number,
   lon: number,
@@ -380,10 +381,10 @@ function buildNavCamera(
   if (usesGoogleMapTiles()) {
     return { ...base, zoom };
   }
-  const altitude =
-    opts?.altitude != null && Number.isFinite(opts.altitude)
-      ? opts.altitude
-      : zoomLevelToAltitudeMeters(zoom, lat);
+  // Nie m/px (~1 m) oder getCamera-Müll durchreichen — MapKit crasht bei altitude≈1 + Pitch.
+  const altitude = isPlausibleNavCameraAltitudeM(opts?.altitude)
+    ? clampNavCameraAltitudeM(opts.altitude)
+    : zoomLevelToAltitudeMeters(zoom, lat);
   return { ...base, altitude };
 }
 
@@ -1145,7 +1146,10 @@ export default function DriverNavigationScreen() {
           preferredZoomRef.current = cam.zoom;
         }
         if (typeof cam.altitude === "number" && Number.isFinite(cam.altitude)) {
-          preferredAltitudeRef.current = cam.altitude;
+          // MapKit kann nach kaputtem setCamera ~1 m zurückgeben — nicht cachen.
+          preferredAltitudeRef.current = isPlausibleNavCameraAltitudeM(cam.altitude)
+            ? clampNavCameraAltitudeM(cam.altitude)
+            : null;
         }
       } catch {
         /* ignore */

@@ -16,12 +16,12 @@ alwaysApply: false
 | Persistenz | Ring-Buffer + AsyncStorage (nach Crash: `(prev)`-Zeilen) |
 | Heartbeat | alle 2 s `heartbeat` — Lücke vor Crash sichtbar |
 
-### Bekannter Bugfix (Speed)
+## Apple Maps Altitude (Crash-Postmortem)
 
-`resolveNavSpeedMps` darf brauchbares GPS **nicht** mit `max(gps, derived*0.5)` aufblasen.  
-Derived nur bei GPS -1/fehlend oder GPS-Kriechen; `deriveNavSpeedMps` verwirft Δt < 400 ms und v > 55 m/s.
+`zoomLevelToAltitudeMeters` muss **Kamera-Höhe in Metern** liefern, nicht Web-Mercator-**m/px**.
 
-Datei: `artifacts/mobile/utils/navRuntimeDiag.ts`, UI: `NavDiagOverlay.tsx`.
+- Bug: `(156543*cos(lat))/2^zoom` ≈ **1,1 m** bei Zoom 16.5 → `setCamera({ altitude: 1.1, pitch: 62 })` → iOS-Absturz kurz nach Fahrtbeginn.
+- Fix: `artifacts/mobile/utils/navCameraAltitude.ts` — m/px × Viewport-Faktor, Clamp 150…20000 m; unplausible `getCamera`-Werte nicht cachen.
 
 | Log | Bedeutung |
 |-----|-----------|
