@@ -1727,6 +1727,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           status: "searching_driver" as RequestStatus,
           driverId: null,
           rejectedBy,
+          passengerPinVerifiedAt: null,
+          passengerPinVerified: false,
         };
       };
       setRequests((prev) => prev.map(patchReleased));

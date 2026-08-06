@@ -1045,8 +1045,10 @@ export default function StatusScreen() {
     if (customerPhase === "completed" || customerPhase === "ride_cancelled") {
       return false;
     }
-    // Nicht pauschal über UI-Phase „driving“ sperren — bei PIN-Fahrten zählt nur Verify
-    // (sonst: irrtümliches in_progress / Banner „Fahrt gestartet“ blockiert Storno zu früh).
+    // Suche / Vorbestellung: Abbrechen immer möglich (auch nach Soft-Cancel).
+    if (customerPhase === "searching" || customerPhase === "reserved") {
+      return true;
+    }
     const ride = rideMatchingCurrentId ?? effectiveAcceptedRequest;
     if (ride && isCustomerCancelBlockedAfterTripStart(ride)) {
       return false;

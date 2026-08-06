@@ -47,8 +47,10 @@ export const CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED_MESSAGE_DE =
 /**
  * Kunden-Storno/Abbruch gesperrt?
  *
- * - App-Direktfahrten mit PIN-Pflicht: **nur** nach Startcode (`passengerPinVerifiedAt`).
- *   Status `in_progress` ohne Verify (Race) darf Storno **nicht** blockieren.
+ * - Zurück im Markt / Suche (`searching_driver` …): **immer** stornierbar
+ *   (auch nach Soft-Cancel, wenn Startcode vorher schon gesetzt war).
+ * - App-Direktfahrten mit PIN-Pflicht: **nur** nach Startcode (`passengerPinVerifiedAt`),
+ *   solange die Fahrt noch zugewiesen ist.
  * - Sonstige Fahrten (Funk/Panel/…): Sperre ab `in_progress` / `passenger_onboard`.
  */
 export function isCustomerCancelBlockedAfterTripStart(
@@ -66,10 +68,21 @@ export function isCustomerCancelBlockedAfterTripStart(
     | "dispatchMode"
   >,
 ): boolean {
+  const s = String(ride.status ?? "").trim();
+  // Soft-Cancel / Re-Dispatch: Kunde muss die Suche jederzeit abbrechen können.
+  if (
+    s === "pending" ||
+    s === "requested" ||
+    s === "searching_driver" ||
+    s === "offered" ||
+    s === "draft" ||
+    s === "scheduled"
+  ) {
+    return false;
+  }
   if (ride.passengerPinVerifiedAt) return true;
   // PIN-pflichtig: ohne Verify immer noch stornierbar (auch Anfahrt / Ankunft / irrtümliches in_progress).
   if (rideRequiresPassengerPin(ride)) return false;
-  const s = String(ride.status ?? "").trim();
   return s === "in_progress" || s === "passenger_onboard";
 }
 

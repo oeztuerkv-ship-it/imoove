@@ -21,10 +21,23 @@ type CancelGateRide = Partial<
 > & { createdByPanelUserId?: string | null };
 
 /**
- * - App-Direkt + PIN: nur nach Verify (`passengerPinVerified` / `passengerPinVerifiedAt`).
+ * - Suche / Soft-Cancel-Markt: immer stornierbar.
+ * - App-Direkt + PIN: nur nach Verify, solange zugewiesen.
  * - Sonstige: Sperre ab `in_progress` / `passenger_onboard`.
  */
 export function isCustomerCancelBlockedAfterTripStart(ride: CancelGateRide): boolean {
+  const s = String(ride.status ?? "").trim();
+  if (
+    s === "pending" ||
+    s === "requested" ||
+    s === "searching_driver" ||
+    s === "offered" ||
+    s === "draft" ||
+    s === "scheduled"
+  ) {
+    return false;
+  }
+
   if (ride.passengerPinVerified === true) return true;
   if (typeof ride.passengerPinVerifiedAt === "string" && ride.passengerPinVerifiedAt.trim()) {
     return true;
@@ -51,7 +64,6 @@ export function isCustomerCancelBlockedAfterTripStart(ride: CancelGateRide): boo
   // PIN-pflichtig: ohne Verify immer noch stornierbar (Anfahrt / Ankunft / in_progress-Race).
   if (pinRequired) return false;
 
-  const s = String(ride.status ?? "").trim();
   return s === "in_progress" || s === "passenger_onboard";
 }
 

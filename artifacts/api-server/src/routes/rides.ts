@@ -3716,6 +3716,8 @@ router.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res,
         status: revertStatus,
         driverId: null,
         rejectedBy,
+        // Neuer Markt-Versuch: alter Startcode darf Kunden-Storno in der Suche nicht blockieren.
+        passengerPinVerifiedAt: null,
       },
       { mutationActor: { actorType: "driver", actorId: driverId } },
     );
