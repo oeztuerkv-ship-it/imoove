@@ -598,11 +598,17 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!driver?.authToken || !driver.id || !driver.companyId) return;
     if (!driver.isAvailable || !driver.einsatzbereit) return;
-    void syncDriverExpoPushTokenWithRetry({
-      authToken: driver.authToken,
-      fleetDriverId: driver.id,
-      companyId: driver.companyId,
-    });
+    void (async () => {
+      const { ensureDriverRideOfferAndroidChannel } = await import(
+        "@/utils/ensureDriverRideOfferAndroidChannel"
+      );
+      await ensureDriverRideOfferAndroidChannel();
+      await syncDriverExpoPushTokenWithRetry({
+        authToken: driver.authToken,
+        fleetDriverId: driver.id,
+        companyId: driver.companyId,
+      });
+    })();
   }, [driver?.authToken, driver?.id, driver?.companyId, driver?.isAvailable, driver?.einsatzbereit]);
 
   useEffect(() => {

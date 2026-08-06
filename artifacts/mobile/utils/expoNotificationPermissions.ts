@@ -14,11 +14,28 @@ export async function hasExpoNotificationPermission(
   return perm.granted;
 }
 
+/**
+ * Best-effort: Sound + (iOS) Time-Sensitive anfragen — Critical Alerts brauchen Extra-Entitlement (Stufe B).
+ */
 export async function ensureExpoNotificationPermission(
   Notifications: NotificationsModule,
 ): Promise<boolean> {
   const existing = asPermissionResponse(await Notifications.getPermissionsAsync());
   if (existing.granted) return true;
-  const req = asPermissionResponse(await Notifications.requestPermissionsAsync());
-  return req.granted;
+  try {
+    const req = asPermissionResponse(
+      await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowDisplayInCarPlay: false,
+        },
+      }),
+    );
+    return req.granted;
+  } catch {
+    const req = asPermissionResponse(await Notifications.requestPermissionsAsync());
+    return req.granted;
+  }
 }

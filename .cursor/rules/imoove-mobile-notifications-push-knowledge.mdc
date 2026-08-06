@@ -97,14 +97,28 @@ Fahrer eingeloggt + Route `/status` → **`app/status.tsx`:** `isDriverLoggedIn`
 - `context/RideRequestContext.tsx` — Poll, Markt, Notification-Effect, `suppressDriverInstantOffer`
 - `app/driver/dashboard.tsx` — Banner, ONLINE-Flow, `suppressedMarketOfferIdsRef`
 - `utils/notificationAudience.ts`, `utils/notifications.ts`
-- `api-server/src/lib/driverRideExpoPush.ts`, `passengerRideExpoPush.ts`
+- `utils/ensureDriverRideOfferAndroidChannel.ts`, `constants/driverPushNotifications.ts`
+- `api-server/src/lib/driverRideExpoPush.ts`, `passengerRideExpoPush.ts`, `expoPushGateway.ts`
 - `api-server/src/routes/rides.ts` — `driver-cancel`, Status-Patch + Kunden-Push
+
+## Lock-Screen / Hintergrund (Stufe A vs B)
+
+| Stufe | Was | OTA / Build |
+|-------|-----|-------------|
+| **A (aktuell)** | Android-Kanal `ride-offers-v3` MAX + Custom-Sound + Ringtone-AudioAttributes; Expo-Push `priority=high`, `sound=ride_alert.caf`, `interruptionLevel=time-sensitive`, `channelId` | Mobile OTA + **API-Deploy** (kein CallKit) |
+| **B** | iOS PushKit+CallKit, Android Full-Screen Intent, durchgehendes Klingeln wie Anruf | **Native Build** zwingend |
+
+**Hinweis:** Gesperrtes Gerät spielt System-Notification-Sounds typisch **einmal** (Länge ≈ `ride_alert` ~26 s wenn Custom greift). Endlos-Loop = Stufe B. Kurzer Beep = oft Default-Sound (falscher Channel / Sound ohne `.caf` auf iOS).
+
+Kanal anlegen: `ensureDriverRideOfferAndroidChannel` + Sync in `syncDriverExpoPushToken` / `DriverContext` bei ONLINE.
 
 ## Abnahme (kurz)
 
 - [ ] Kunde auf Start/Status: **kein** „Neue Fahrt“ (Push + kein Fahrer-Ton)
 - [ ] Fahrer: eigener Abbruch → **kein** zweites Klingeln für dieselbe `rideId`
-- [ ] Echter neuer Marktauftrag → **einmal** Banner/Ton
+- [ ] Echter neuer Marktauftrag → **einmal** Banner/Ton (Vordergrund: Loop; Hintergrund: Custom-Sound ~26 s)
 - [ ] Nach Kunden-Login erneut Push-Sync (Token nur Passenger-DB)
+- [ ] Android Systemeinstellungen: Kanal „Neue Fahrtanfragen“ (v3) laut / nicht stumm
+- [ ] iOS gesperrt: kein kurzer Default-Beep, sondern `ride_alert` (soweit Focus erlaubt)
 
 **Bei Postmortem-Fix:** diese Regel + Ghost-Orders-Regel **aktualisieren**, nicht nur im Chat erwähnen.

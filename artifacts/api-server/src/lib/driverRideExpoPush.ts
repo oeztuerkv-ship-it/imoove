@@ -14,7 +14,26 @@ import { sendExpoPushMessages, type ExpoPushMessage } from "./expoPushGateway";
 
 /** Muss zu gebündeltem Sound in Mobile `app.json` → expo-notifications `sounds` passen. */
 export const DRIVER_RIDE_OFFER_PUSH_SOUND = "ride_alert";
-export const DRIVER_RIDE_OFFER_CHANNEL_ID = "ride-offers-v2";
+/** Expo Push iOS: Endung nötig — ohne oft nur kurzer Default-Beep. */
+export const DRIVER_RIDE_OFFER_PUSH_SOUND_IOS = "ride_alert.caf";
+/** Android-Kanal (Mobile `constants/driverPushNotifications.ts` muss gleich sein). */
+export const DRIVER_RIDE_OFFER_CHANNEL_ID = "ride-offers-v3";
+
+function driverOfferPushBase(
+  data: Record<string, unknown>,
+): Pick<
+  ExpoPushMessage,
+  "sound" | "priority" | "channelId" | "interruptionLevel" | "ttl" | "data"
+> {
+  return {
+    sound: DRIVER_RIDE_OFFER_PUSH_SOUND_IOS,
+    priority: "high",
+    channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
+    interruptionLevel: "time-sensitive",
+    ttl: 300,
+    data,
+  };
+}
 
 const INSTANT_OFFER_STATUSES = new Set<RideRequest["status"]>([
   "pending",
@@ -60,11 +79,8 @@ export async function notifyMarketOnlineDriversInstantRideOffer(ride: RideReques
       messages.push({
         to,
         title: "Neue Anfrage",
-        body: "\u200B",
-        sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
-        priority: "high",
-        channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
-        data: { kind: "instant_ride_offer", rideId: ride.id },
+        body: "Neue Fahrtanfrage — bitte annehmen.",
+        ...driverOfferPushBase({ kind: "instant_ride_offer", rideId: ride.id }),
       });
     }
   }
@@ -90,10 +106,7 @@ export async function notifyEligibleDriversScheduledPoolOffer(ride: RideRequest)
         to,
         title: "Neue Reservierung",
         body: fromLabel,
-        sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
-        priority: "high",
-        channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
-        data: { kind: "scheduled_pool_offer", rideId: ride.id },
+        ...driverOfferPushBase({ kind: "scheduled_pool_offer", rideId: ride.id }),
       });
     }
   }
@@ -117,10 +130,7 @@ export async function notifyDriverFollowUpOffer(
       to,
       title: "Nächste Fahrt in der Nähe",
       body: `${distLabel} entfernt · ${fromLabel}`,
-      sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
-      priority: "high",
-      channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
-      data: { kind: "follow_up_offer", rideId: ride.id, distanceKm },
+      ...driverOfferPushBase({ kind: "follow_up_offer", rideId: ride.id, distanceKm }),
     })),
   );
 }
@@ -143,10 +153,7 @@ export async function notifyDriverFunkOffer(
       to,
       title: "Funk-Auftrag",
       body: `Direkte Zuweisung${km} — bitte annehmen.`,
-      sound: DRIVER_RIDE_OFFER_PUSH_SOUND,
-      priority: "high",
-      channelId: DRIVER_RIDE_OFFER_CHANNEL_ID,
-      data: { kind: "funk_dispatch_offer", rideId, distanceKm },
+      ...driverOfferPushBase({ kind: "funk_dispatch_offer", rideId, distanceKm }),
     })),
   );
 }

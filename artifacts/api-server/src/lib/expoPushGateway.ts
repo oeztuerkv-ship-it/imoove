@@ -7,10 +7,17 @@ export type ExpoPushMessage = {
   title: string;
   body: string;
   data?: Record<string, unknown>;
-  /** iOS/Android: basename des gebündelten Custom-Sounds (z. B. `ride_alert`) oder `default`. */
+  /**
+   * iOS: Custom-Sound inkl. Dateiendung (z. B. `ride_alert.caf`), sonst oft nur System-Beep.
+   * Android: Ton kommt vom Notification-Channel (`channelId`).
+   */
   sound?: string | null;
   priority?: "default" | "normal" | "high";
   channelId?: string;
+  /** iOS 15+: Focus/Durchsage — `time-sensitive` best-effort ohne Critical-Entitlement. */
+  interruptionLevel?: "active" | "critical" | "passive" | "time-sensitive";
+  /** Sekunden TTL; hohe Priority + ausreichend TTL für Doze. */
+  ttl?: number;
 };
 
 /**
