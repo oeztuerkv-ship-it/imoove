@@ -2741,7 +2741,11 @@ export default function DriverNavigationScreen() {
           <View style={styles.topCard}>
             <View style={styles.topMain}>
               <Animated.View style={{ opacity: pulseAnim }}>
-                <MaterialCommunityIcons name={maneuverIcon(currentParts.maneuver || currentStep?.instruction || "") as any} size={32} color="#fff" />
+                <MaterialCommunityIcons
+                  name={maneuverIcon(currentParts.maneuver || currentStep?.instruction || "") as any}
+                  size={28}
+                  color="#fff"
+                />
               </Animated.View>
               <View style={styles.topText}>
                 {topDistancePrimary ? (
@@ -2756,8 +2760,12 @@ export default function DriverNavigationScreen() {
                   <Text style={styles.topLabel}>Richtung</Text>
                 )}
                 <Text
-                  style={topDistancePrimary ? styles.topManeuver : [styles.topStreet, !isPickupPhase && styles.topStreetDriving]}
-                  numberOfLines={2}
+                  style={
+                    topDistancePrimary
+                      ? styles.topManeuver
+                      : [styles.topStreet, !isPickupPhase && styles.topStreetDriving]
+                  }
+                  numberOfLines={1}
                 >
                   {topManeuverText}
                 </Text>
@@ -2770,21 +2778,16 @@ export default function DriverNavigationScreen() {
             </View>
           </View>
           {nextStep && nextParts ? (
-            <View style={styles.dannCard}>
-              <View style={styles.dannIconWrap}>
-                <MaterialCommunityIcons name={maneuverIcon(nextParts.maneuver) as any} size={22} color="#1B6B3A" />
-              </View>
-              <View style={styles.dannTextCol}>
-                <Text style={styles.dannLabel}>Dann</Text>
-                <Text style={styles.dannManeuver} numberOfLines={1}>
-                  {nextParts.maneuver}
-                </Text>
-                {nextParts.roadName ? (
-                  <Text style={styles.dannRoad} numberOfLines={1}>
-                    {nextParts.roadName}
-                  </Text>
-                ) : null}
-              </View>
+            <View style={styles.dannPill} accessibilityLabel={`Dann ${nextParts.maneuver}`}>
+              <MaterialCommunityIcons
+                name={maneuverIcon(nextParts.maneuver) as any}
+                size={26}
+                color="#1B6B3A"
+              />
+              <Text style={styles.dannLabel}>Dann</Text>
+              <Text style={styles.dannManeuver} numberOfLines={1}>
+                {nextParts.maneuver}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -3310,37 +3313,43 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  /* Top card */
+  /* Top card — kompakt wie Google Maps: schlanke Grün-Karte + „Dann“-Lasche links */
   topWrapper: { position: "absolute", top: 0, left: 0, right: 0 },
   topNavCluster: {
-    marginHorizontal: 12,
-    marginTop: 4,
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
+    marginHorizontal: 14,
+    marginTop: 2,
+    alignItems: "flex-start",
   },
-  topCard: { backgroundColor: "#1B6B3A", paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14 },
-  topMain: { flexDirection: "row", alignItems: "center", gap: 14 },
-  topText: { flex: 1 },
-  topLabel: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.78)" },
-  topStreet: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 27 },
-  topStreetDriving: { fontSize: 26, lineHeight: 31 },
+  topCard: {
+    alignSelf: "stretch",
+    backgroundColor: "#1B6B3A",
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 8,
+  },
+  topMain: { flexDirection: "row", alignItems: "center", gap: 12 },
+  topText: { flex: 1, minWidth: 0 },
+  topLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.78)" },
+  topStreet: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 24 },
+  topStreetDriving: { fontSize: 22, lineHeight: 26 },
   topManeuver: {
-    fontSize: 17,
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: "rgba(255,255,255,0.95)",
-    marginTop: 2,
-    lineHeight: 22,
+    marginTop: 1,
+    lineHeight: 19,
   },
   topRoadName: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.78)",
-    marginTop: 2,
+    marginTop: 1,
   },
   topDist: { fontSize: 17, fontFamily: "Inter_600SemiBold", color: "rgba(255,255,255,0.92)", marginTop: 4, lineHeight: 22 },
   compassBtn: {
@@ -3394,43 +3403,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#fff",
   },
-  dannCard: {
+  /** Google-ähnlich: kurze weiße Lasche unter der Grün-Karte, links angedockt */
+  dannPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    alignSelf: "flex-start",
+    maxWidth: "78%",
+    gap: 8,
+    marginTop: 6,
+    marginLeft: 10,
     backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E5E7EB",
+    paddingLeft: 10,
+    paddingRight: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
   },
-  dannIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#ECFDF3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dannTextCol: { flex: 1, minWidth: 0, gap: 1 },
   dannLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: "#374151",
   },
   dannManeuver: {
+    flexShrink: 1,
     fontSize: 15,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Inter_600SemiBold",
     color: "#111827",
-    lineHeight: 20,
-  },
-  dannRoad: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#6B7280",
-    lineHeight: 17,
+    lineHeight: 19,
   },
   dannText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#374151", flex: 1, lineHeight: 20 },
 
