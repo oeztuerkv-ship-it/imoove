@@ -27,7 +27,10 @@ export function formatDriverNavDistanceKm(remainingDistM: number, opts?: { toDes
   if (!Number.isFinite(m) || m < 0) return "";
   const km = m / 1000;
   const label = opts?.toDestination ? "zum Ziel" : "entfernt";
-  if (km < 0.1) return `ca. ${Math.round(m)} m ${label}`;
+  if (km < 0.1) {
+    const rounded = Math.max(10, Math.ceil(m / 10) * 10);
+    return `ca. ${rounded} m ${label}`;
+  }
   return `ca. ${km.toFixed(1).replace(".", ",")} km ${label}`;
 }
 

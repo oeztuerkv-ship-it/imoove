@@ -6,9 +6,13 @@ import {
   formatNavTurnCue,
   formatNavTurnDistanceLabel,
   lowerCaseGermanInstruction,
+  roundNavDisplayMeters,
   splitNavStepParts,
 } from "./navTurnDistanceCue";
-import { distanceAlongPolylineToPointM } from "./routeRemainingAlongPolyline";
+import {
+  distanceAlongPolylineToPointM,
+  splitPolylineAtProgress,
+} from "./routeRemainingAlongPolyline";
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -18,8 +22,13 @@ function approx(a: number, b: number, tol: number) {
   return Math.abs(a - b) <= tol;
 }
 
-// Wortlaut
+// Wortlaut + 10-m-Aufrundung
+assert(roundNavDisplayMeters(1) === 10, "ceil 1→10");
+assert(roundNavDisplayMeters(4) === 10, "ceil 4→10");
+assert(roundNavDisplayMeters(11) === 20, "ceil 11→20");
+assert(roundNavDisplayMeters(200) === 200, "200 stays");
 assert(formatNavTurnDistanceLabel(10) === "Jetzt", "jetzt");
+assert(formatNavTurnDistanceLabel(27) === "In 30 m", "27→30");
 assert(formatNavTurnDistanceLabel(200) === "In 200 m", "200m");
 assert(formatNavTurnDistanceLabel(1200) === "In 1.2 km", "1.2km");
 assert(lowerCaseGermanInstruction("Rechts abbiegen") === "rechts abbiegen", "lower");
@@ -60,5 +69,12 @@ assert(dPast === 0, `past maneuver → 0 got ${dPast}`);
 
 const dHalf = distanceAlongPolylineToPointM(poly, { lat: 48.0005, lon: 11.0 }, end);
 assert(dHalf != null && approx(dHalf, 167, 30), `half→end ~167 got ${dHalf}`);
+
+const splitMid = splitPolylineAtProgress(poly, mid);
+assert(!!splitMid && splitMid.traveled.length >= 2, "split traveled");
+assert(!!splitMid && splitMid.remaining.length >= 2, "split remaining");
+const splitStart = splitPolylineAtProgress(poly, atStart);
+assert(!!splitStart && splitStart.traveled.length === 0, "start: no traveled trail");
+assert(!!splitStart && splitStart.remaining.length >= 2, "start: remaining full");
 
 console.log("navTurnDistanceCue.selftest: ok");

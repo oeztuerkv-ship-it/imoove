@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useKeepAwake } from "expo-keep-awake";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import { nativeMapViewProps, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
 import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -100,10 +100,12 @@ import {
   remainingAlongPolyline,
   scaleRemainingToAuthoritative,
   snapLatLonToPolyline,
+  splitPolylineAtProgress,
 } from "@/utils/routeRemainingAlongPolyline";
 import {
   formatNavTurnCue,
   formatNavTurnDistanceLabel,
+  roundNavDisplayMeters,
   splitNavStepParts,
 } from "@/utils/navTurnDistanceCue";
 import {
@@ -284,8 +286,12 @@ function maneuverIcon(instruction: string): string {
 }
 
 function fmtDist(m: number): string {
-  if (m < 1000) return `${Math.round(m)} m`;
+  if (m < 1000) return `${roundNavDisplayMeters(m)} m`;
   return `${(m / 1000).toFixed(1)} km`;
+}
+
+function toMapCoords(points: { lat: number; lon: number }[]) {
+  return points.map((p) => ({ latitude: p.lat, longitude: p.lon }));
 }
 
 const NAV_CAMERA_ZOOM = 18;
@@ -2567,6 +2573,21 @@ export default function DriverNavigationScreen() {
     });
   }, [fromLat, fromLon, focusNavigationCamera, polyline.length, steps.length]);
 
+  const { traveledRouteCoords, remainingRouteCoords } = useMemo(() => {
+    if (polyline.length < 2 || !isValidMapCoord(driverLat, driverLon)) {
+      return { traveledRouteCoords: [] as { latitude: number; longitude: number }[], remainingRouteCoords: [] as { latitude: number; longitude: number }[] };
+    }
+    const latLon = polyline.map((p) => ({ lat: p.latitude, lon: p.longitude }));
+    const split = splitPolylineAtProgress(latLon, { lat: driverLat, lon: driverLon });
+    if (!split) {
+      return { traveledRouteCoords: [], remainingRouteCoords: polyline };
+    }
+    return {
+      traveledRouteCoords: toMapCoords(split.traveled),
+      remainingRouteCoords: toMapCoords(split.remaining),
+    };
+  }, [polyline, driverLat, driverLon]);
+
   if (Platform.OS === "web") return <WebFallback />;
 
   const currentStep = steps[stepIdx] ?? null;
@@ -2831,7 +2852,20 @@ export default function DriverNavigationScreen() {
             title={isPickupPhase ? pickupName : destName}
           />
         ) : null}
-        {polyline.length > 1 ? <NavRouteGlowPolyline coordinates={polyline} /> : null}
+        {traveledRouteCoords.length > 1 ? (
+          <Polyline
+            coordinates={traveledRouteCoords}
+            strokeColor="#4285F4"
+            strokeWidth={6}
+            lineCap="round"
+            lineJoin="round"
+          />
+        ) : null}
+        {remainingRouteCoords.length > 1 ? (
+          <NavRouteGlowPolyline coordinates={remainingRouteCoords} />
+        ) : polyline.length > 1 ? (
+          <NavRouteGlowPolyline coordinates={polyline} />
+        ) : null}
       </MapView>
 
       {/* Top instruction card — Google Maps green (auch Privatauftrag: volle Abbiege-Hinweise) */}

@@ -2,11 +2,22 @@
  * Navi-Kopf: Distanz-Wortlaut zur nächsten Abzweigung (ohne Google Navigation SDK).
  */
 
-/** „In 200 m“ / „In 1.2 km“ / „Jetzt“ (< 25 m). */
+/**
+ * Anzeige-Meter: immer auf 10 m aufrunden (1/2/4 m → 10 m), unter 1 km.
+ * Rohwert für Schwellen („Jetzt“) separat behalten.
+ */
+export function roundNavDisplayMeters(distanceM: number): number {
+  const m = Math.max(0, Number.isFinite(distanceM) ? distanceM : 0);
+  if (m <= 0) return 0;
+  if (m < 1000) return Math.max(10, Math.ceil(m / 10) * 10);
+  return Math.round(m);
+}
+
+/** „In 200 m“ / „In 1.2 km“ / „Jetzt“ (< 25 m). Meter unter 1 km in 10-m-Schritten. */
 export function formatNavTurnDistanceLabel(distanceM: number): string {
   const m = Math.max(0, Number.isFinite(distanceM) ? distanceM : 0);
   if (m < 25) return "Jetzt";
-  if (m < 1000) return `In ${Math.round(m)} m`;
+  if (m < 1000) return `In ${roundNavDisplayMeters(m)} m`;
   return `In ${(m / 1000).toFixed(1)} km`;
 }
 

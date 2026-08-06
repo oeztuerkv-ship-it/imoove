@@ -218,6 +218,42 @@ export function remainingAlongPolyline(
   return { remainingM, totalM: n.totalM, fractionLeft };
 }
 
+/**
+ * Route am Fahrer splitten: abgefahren (blau zurück) vs. Rest (Glow voraus).
+ */
+export function splitPolylineAtProgress(
+  polyline: LatLon[],
+  current: LatLon,
+): { traveled: LatLon[]; remaining: LatLon[] } | null {
+  const n = nearestOnPolyline(polyline, current);
+  if (!n || polyline.length < 2) return null;
+
+  const a = polyline[n.bestSeg]!;
+  const b = polyline[n.bestSeg + 1]!;
+  const snap: LatLon = {
+    lat: a.lat + n.bestT * (b.lat - a.lat),
+    lon: a.lon + n.bestT * (b.lon - a.lon),
+  };
+
+  const traveled: LatLon[] = [];
+  for (let i = 0; i <= n.bestSeg; i++) traveled.push(polyline[i]!);
+  if (n.bestT > 0.02) traveled.push(snap);
+  // Am Start: keine sichtbare Spur hinter dem Puck
+  if (n.bestSeg === 0 && n.bestT < 0.02) traveled.length = 0;
+
+  const remaining: LatLon[] = [snap];
+  for (let i = n.bestSeg + 1; i < polyline.length; i++) remaining.push(polyline[i]!);
+  // Am Ziel: Rest leer
+  if (n.bestSeg >= polyline.length - 2 && n.bestT > 0.98) {
+    remaining.length = 0;
+  }
+
+  return {
+    traveled: traveled.length >= 2 ? traveled : [],
+    remaining: remaining.length >= 2 ? remaining : [],
+  };
+}
+
 /** Meter entlang der Polyline vom Start bis zur Projektion. */
 function progressAlongPolylineM(n: NearestOnPolyline): number {
   let done = 0;

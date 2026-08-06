@@ -11,7 +11,8 @@ alwaysApply: false
 - **Polyline / Abbiege-Hinweise:** OSRM (`geometrySource: "osrm"`). Distance Matrix liefert keine Geometrie — **keine Google Directions API** (Kosten).
 - **Mobile Aufruf:** `artifacts/mobile/utils/driverNavRouteApi.ts` → `fetchDriverNavRoute`.
 - **Anzeige Rest:** `routeRemainingAlongPolyline.ts` — Fortschritt entlang der Polyline, skaliert auf Matrix-/OSRM-Gesamtwerte. **Kein** Luftlinie × Anteils-Hack.
-- **Live bis Abbiegen:** `distanceAlongPolylineToPointM` → Meter zum aktuellen Step-Manöver; UI `formatNavTurnDistanceLabel` („In 200 m“ / „Jetzt“), TTS `formatNavTurnCue` („In 200 m rechts abbiegen …“). Smoke: `navTurnDistanceCue.selftest.ts`.
+- **Live bis Abbiegen:** `distanceAlongPolylineToPointM` → Meter zum aktuellen Step-Manöver; UI `formatNavTurnDistanceLabel` („In 200 m“ / „Jetzt“), TTS `formatNavTurnCue` („In 200 m rechts abbiegen …“). Anzeige-Meter **aufrunden auf 10 m** (`roundNavDisplayMeters`). Smoke: `navTurnDistanceCue.selftest.ts`.
+- **Route-Zeichnung:** `splitPolylineAtProgress` — abgefahrener Teil bleibt **blau** hinter dem Puck; Rest mit `NavRouteGlowPolyline` (Glow/Impuls) voraus.
 - **Kopfzeile:** Distanz prominent; darunter Manöver + optional Straße (`maneuver` / `roadName` aus OSRM, Fallback `splitNavStepParts`). Dann-Preview: Icon + „Dann“ + Manöver + Straße.
 - **Trip-Footer:** immer sichtbar — Fahrzeit / Distanz / Ankunft (Pickup, Driving eingeklappt, Privatauftrag).
 - **Kunde (`status.tsx`):** Anzeige **nur** `etaMinutes` + `remainingDistM` vom Fahrer (WS `location:driver:update` / `GET …/driver-location`). **Kein** Haversine-Fallback für Minuten/km — sonst weichen Kunden- und Fahrer-Sicht ab. Bis die erste Navi-ETA da ist: „—“.
