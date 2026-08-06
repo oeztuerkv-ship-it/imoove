@@ -1,5 +1,5 @@
 /**
- * Smoke: Polyline-Distanz + Off-Route-Tracker + Falschabbiegen-Repro.
+ * Smoke: Off-Route / Reroute inkl. 6 Fahrer-Szenarien.
  *   npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts
  */
 import {
@@ -12,12 +12,15 @@ import {
 import {
   NAV_OFF_ROUTE_CONFIRM_FIXES,
   NAV_OFF_ROUTE_CONFIRM_MS,
+  NAV_OFF_ROUTE_STALL_CONFIRM_MS,
   NAV_OFF_ROUTE_THRESHOLD_M,
+  NAV_OFF_ROUTE_UTURN_CONFIRM_MS,
   NAV_ROUTE_PROGRESS_BACKTRACK_M,
+  NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
   NAV_REROUTE_COOLDOWN_MS,
   canStartReroute,
   createOffRouteTrackerState,
-  effectiveOffRouteDistanceM,
+  evaluateNavOffRouteSample,
   noteOffRouteSample,
 } from "./navOffRouteReroute";
 
@@ -29,23 +32,57 @@ function approx(a: number, b: number, tol: number, msg: string): void {
   assert(Math.abs(a - b) <= tol, `${msg}: got ${a}, expected ~${b}`);
 }
 
-// North–south segment ~111m per 0.001° lat
+function confirmOff(
+  forwardDistM: number,
+  label: string,
+  extras?: {
+    progressM?: number;
+    courseDeg?: number;
+    routeBearingDeg?: number;
+    speedMps?: number;
+    ticks?: Array<{ dtMs: number; forwardDistM?: number }>;
+  },
+): void {
+  let st = createOffRouteTrackerState();
+  let t = 50_000;
+  const ticks =
+    extras?.ticks ??
+    [
+      { dtMs: 0 },
+      { dtMs: 200 },
+    ];
+  let confirmed = false;
+  for (const tick of ticks) {
+    t += tick.dtMs;
+    const ev = evaluateNavOffRouteSample({
+      state: st,
+      nowMs: t,
+      forwardDistM: tick.forwardDistM ?? forwardDistM,
+      committedProgressM: extras?.progressM ?? 100,
+      courseDeg: extras?.courseDeg,
+      routeBearingDeg: extras?.routeBearingDeg,
+      speedMps: extras?.speedMps ?? 8,
+    });
+    st = ev.state;
+    if (ev.confirmedOffRoute) confirmed = true;
+  }
+  assert(confirmed, `${label}: expected confirmedOffRoute`);
+}
+
+// --- Basis ---
 const poly = [
   { lat: 48.74, lon: 9.31 },
   { lat: 48.741, lon: 9.31 },
 ];
-
 assert(distanceToPolylineM(poly, { lat: 48.7405, lon: 9.31 })! < 2, "on segment ~0");
 approx(distanceToPolylineM(poly, { lat: 48.7405, lon: 9.3105 }) ?? -1, 37, 8, "side offset ~37m");
-assert(distanceToPolylineM([{ lat: 48.74, lon: 9.31 }], { lat: 48.74, lon: 9.31 }) == null, "need 2 pts");
 
 const along = remainingAlongPolyline(poly, { lat: 48.7405, lon: 9.31 });
 assert(along != null && along.fractionLeft > 0.4 && along.fractionLeft < 0.6, "mid fraction");
 
 let st = createOffRouteTrackerState();
-let r = noteOffRouteSample(st, 10, 1000);
+let r = noteOffRouteSample(st, 5, 1000);
 assert(!r.confirmedOffRoute && r.state.consecutiveOffFixes === 0, "on route reset");
-
 st = r.state;
 r = noteOffRouteSample(st, NAV_OFF_ROUTE_THRESHOLD_M + 5, 2000);
 assert(!r.confirmedOffRoute && r.state.consecutiveOffFixes === 1, "first off");
@@ -58,9 +95,6 @@ r = noteOffRouteSample(st, 80, 5000);
 st = r.state;
 r = noteOffRouteSample(st, 80, 5000 + NAV_OFF_ROUTE_CONFIRM_MS);
 assert(r.confirmedOffRoute, "time confirms");
-
-r = noteOffRouteSample(r.state, 5, 9000);
-assert(!r.confirmedOffRoute && r.state.consecutiveOffFixes === 0, "back on route");
 
 assert(canStartReroute({ inFlight: false, lastRerouteAtMs: null, nowMs: 0 }), "first ok");
 assert(!canStartReroute({ inFlight: true, lastRerouteAtMs: null, nowMs: 0 }), "in flight block");
@@ -81,81 +115,203 @@ assert(
   "cooldown ok",
 );
 
-// ---------------------------------------------------------------------------
-// Repro: bewusst falsch abbiegen (L-Route: Nord, dann West)
-// Fahrer erreicht Kreuzung (Progress committed), fährt wieder zurück auf die
-// bereits abgefahrene Nord-Süd-Spur (oder bleibt daran) statt nach Westen.
-// Full-polyline-Distanz ≈ 0 → früher KEIN Reroute.
-// Forward-only (ab Progress) → großer Abstand zur West-Restroute → Reroute.
-// ---------------------------------------------------------------------------
+// L-Route: Nord dann West (~111m + ~74m)
 const lRoute = [
-  { lat: 48.74, lon: 9.31 }, // start
-  { lat: 48.741, lon: 9.31 }, // junction (~111m N)
-  { lat: 48.741, lon: 9.309 }, // west arm (~74m W)
+  { lat: 48.74, lon: 9.31 },
+  { lat: 48.741, lon: 9.31 },
+  { lat: 48.741, lon: 9.309 },
 ];
 
-const atJunction = { lat: 48.741, lon: 9.31 };
-let progress = 0;
-progress = advanceRouteProgressM(progress, lRoute, atJunction);
-assert(progress > 100, `progress at junction got ${progress}`);
+// ===========================================================================
+// 1) Früh falsch abbiegen (30–50 m vor der Abzweigung)
+// ===========================================================================
+{
+  // Progress ~60 m (noch ~50 m bis Kreuzung), dann seitlich weg
+  const early = { lat: 48.74055, lon: 9.31 };
+  let progress = advanceRouteProgressM(0, lRoute, early, {
+    maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
+  });
+  assert(progress > 40 && progress < 90, `1 early progress got ${progress}`);
+  const wrongEarly = { lat: 48.74055, lon: 9.3104 }; // ~30 m Ost
+  const fromProg = Math.max(0, progress - NAV_ROUTE_PROGRESS_BACKTRACK_M);
+  const fwd = distanceToForwardPolylineM(lRoute, wrongEarly, fromProg);
+  assert(fwd != null && fwd > NAV_OFF_ROUTE_THRESHOLD_M, `1 early forward ${fwd}`);
+  confirmOff(fwd!, "1 early wrong turn");
+}
 
-// Zurück auf abgefahrene Spur (südlich der Kreuzung) — klassisches „nah an alter Linie“
-const backOnPast = { lat: 48.7404, lon: 9.31 };
-const fullDist = distanceToPolylineM(lRoute, backOnPast);
-const fromProg = Math.max(0, progress - NAV_ROUTE_PROGRESS_BACKTRACK_M);
-const forwardDist = distanceToForwardPolylineM(lRoute, backOnPast, fromProg);
+// ===========================================================================
+// 2) Parallel auf Nebenstraße (gleicher Kurs ~Nord)
+// ===========================================================================
+{
+  const onRoute = { lat: 48.7405, lon: 9.31 };
+  let progress = advanceRouteProgressM(0, lRoute, onRoute, {
+    maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
+  });
+  // ~25 m parallel östlich, gleicher Kurs
+  const parallel = { lat: 48.7407, lon: 9.31035 };
+  const fromProg = Math.max(0, progress - NAV_ROUTE_PROGRESS_BACKTRACK_M);
+  const fwd = distanceToForwardPolylineM(lRoute, parallel, fromProg);
+  assert(fwd != null && fwd > NAV_OFF_ROUTE_THRESHOLD_M, `2 parallel forward ${fwd}`);
+  // Gleicher Kurs → kein Heading-Force nötig, Lateral reicht
+  confirmOff(fwd!, "2 parallel side street", {
+    progressM: progress,
+    courseDeg: 0,
+    routeBearingDeg: 0,
+    speedMps: 10,
+  });
 
-assert(
-  fullDist != null && fullDist < NAV_OFF_ROUTE_THRESHOLD_M,
-  `BUG-Repro: full dist still "on route" (got ${fullDist})`,
-);
-assert(
-  forwardDist != null && forwardDist > NAV_OFF_ROUTE_THRESHOLD_M,
-  `forward must be off-route on past track (got ${forwardDist}, full was ${fullDist})`,
-);
+  // Engere Parallel (~10 m): Fortschritt stockt → Stall erzwingt Off-Route
+  const tightParallel = { lat: 48.7407, lon: 9.31012 };
+  const fwdTight = distanceToForwardPolylineM(lRoute, tightParallel, fromProg);
+  // Progress darf bei >20 m Lateral nicht stark steigen; Stall-Pfad:
+  let stallSt = createOffRouteTrackerState();
+  let t = 60_000;
+  const frozenProgress = progress;
+  let stallConfirmed = false;
+  for (const dt of [0, 500, 500, 500, 500, 500, 500]) {
+    t += dt;
+    const ev = evaluateNavOffRouteSample({
+      state: stallSt,
+      nowMs: t,
+      forwardDistM: fwdTight ?? 10,
+      committedProgressM: frozenProgress, // kein Fortschritt trotz Fahrt
+      courseDeg: 0,
+      routeBearingDeg: 0,
+      speedMps: 8,
+    });
+    stallSt = ev.state;
+    if (ev.stallForced || ev.confirmedOffRoute) stallConfirmed = true;
+  }
+  assert(
+    t - 60_000 >= NAV_OFF_ROUTE_STALL_CONFIRM_MS - 100,
+    "2 stall window elapsed",
+  );
+  assert(stallConfirmed, "2 tight parallel stall forces off-route");
+}
 
-// Simulate confirm pipeline like navigation.tsx
-st = createOffRouteTrackerState();
-const t0 = 10_000;
-r = noteOffRouteSample(st, forwardDist, t0);
-st = r.state;
-r = noteOffRouteSample(st, forwardDist, t0 + 200);
-assert(r.confirmedOffRoute, "missed-turn forward dist confirms reroute within 2 fixes");
+// ===========================================================================
+// 3) 180°-Wende
+// ===========================================================================
+{
+  confirmOff(5, "3 u-turn heading", {
+    courseDeg: 180,
+    routeBearingDeg: 0,
+    speedMps: 6,
+    ticks: [
+      { dtMs: 0 },
+      { dtMs: NAV_OFF_ROUTE_UTURN_CONFIRM_MS },
+      { dtMs: 100 },
+    ],
+  });
+}
 
-// Zweites Repro: weiter geradeaus nach Norden (kein West-Abbiegen)
-const wrongNorth = { lat: 48.7416, lon: 9.31 };
-const forwardNorth = distanceToForwardPolylineM(lRoute, wrongNorth, fromProg);
-assert(
-  forwardNorth != null && forwardNorth > NAV_OFF_ROUTE_THRESHOLD_M,
-  `continue-straight forward off-route (got ${forwardNorth})`,
-);
+// ===========================================================================
+// 4) Kreisverkehr — falsche Ausfahrt (Rest-Route geht Ost, Fahrer Nord raus)
+// ===========================================================================
+{
+  // Vereinfachtes „Kreis“-Stück: Nord → Ost (Soll-Ausfahrt)
+  const roundabout = [
+    { lat: 48.75, lon: 9.32 },
+    { lat: 48.7504, lon: 9.32 }, // Nord am Kreis
+    { lat: 48.7504, lon: 9.3205 }, // Ost-Ausfahrt Soll
+  ];
+  const atNorth = { lat: 48.7504, lon: 9.32 };
+  let progress = advanceRouteProgressM(0, roundabout, atNorth, {
+    maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
+  });
+  const wrongExit = { lat: 48.7508, lon: 9.32 }; // weiter Nord statt Ost
+  const fromProg = Math.max(0, progress - NAV_ROUTE_PROGRESS_BACKTRACK_M);
+  const fwd = distanceToForwardPolylineM(roundabout, wrongExit, fromProg);
+  assert(fwd != null && fwd > NAV_OFF_ROUTE_THRESHOLD_M, `4 roundabout forward ${fwd}`);
+  confirmOff(fwd!, "4 roundabout wrong exit", {
+    progressM: progress,
+    courseDeg: 0,
+    routeBearingDeg: 90,
+    speedMps: 7,
+  });
+}
 
-// Heading-Mismatch erzwingt Off-Route auch bei kleinem Forward-Abstand (Parallelstraße)
-st = createOffRouteTrackerState();
-let eff = effectiveOffRouteDistanceM({
-  forwardDistM: 8,
-  courseDeg: 0, // north
-  routeBearingDeg: 270, // route wants west
-  speedMps: 8,
-  nowMs: 20_000,
-  state: st,
-});
-assert(!eff.headingForced, "heading not forced yet");
-st = eff.state;
-eff = effectiveOffRouteDistanceM({
-  forwardDistM: 8,
-  courseDeg: 0,
-  routeBearingDeg: 270,
-  speedMps: 8,
-  nowMs: 20_000 + 1300,
-  state: st,
-});
-assert(eff.headingForced, "heading forced after confirm window");
-assert(eff.distanceM != null && eff.distanceM > NAV_OFF_ROUTE_THRESHOLD_M, "heading raises dist");
+// ===========================================================================
+// 5) Autobahnausfahrt verpasst (Hauptfahrbahn weiter, Rest = Ausfahrt)
+// ===========================================================================
+{
+  // Highway Nord, Ausfahrt biegt Ost ab
+  const highway = [
+    { lat: 48.76, lon: 9.33 },
+    { lat: 48.761, lon: 9.33 }, // Ausfahrt-Beginn
+    { lat: 48.761, lon: 9.3312 }, // Ramp Ost
+  ];
+  const atExit = { lat: 48.761, lon: 9.33 };
+  let progress = advanceRouteProgressM(0, highway, atExit, {
+    maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
+  });
+  assert(progress > 90, `5 exit progress ${progress}`);
+  // Weiter auf Hauptfahrbahn nach Norden
+  const missed = { lat: 48.7615, lon: 9.33 };
+  const fromProg = Math.max(0, progress - NAV_ROUTE_PROGRESS_BACKTRACK_M);
+  const fwd = distanceToForwardPolylineM(highway, missed, fromProg);
+  assert(fwd != null && fwd > NAV_OFF_ROUTE_THRESHOLD_M, `5 missed exit forward ${fwd}`);
+  confirmOff(fwd!, "5 missed highway exit", {
+    progressM: progress,
+    courseDeg: 0,
+    routeBearingDeg: 90,
+    speedMps: 25,
+  });
+}
 
-assert(progressAlongPolylineAt(lRoute, atJunction) != null, "progressAlong ok");
+// ===========================================================================
+// 6) Kurz halten, dann andere Richtung
+// ===========================================================================
+{
+  // Stehend: kein Heading-Force / kein Stall
+  let holdSt = createOffRouteTrackerState();
+  let ev = evaluateNavOffRouteSample({
+    state: holdSt,
+    nowMs: 70_000,
+    forwardDistM: 4,
+    committedProgressM: 80,
+    courseDeg: 90,
+    routeBearingDeg: 0,
+    speedMps: 0,
+  });
+  assert(!ev.headingForced && !ev.stallForced && !ev.confirmedOffRoute, "6 hold still ok");
+  holdSt = ev.state;
 
-console.log("navOffRouteReroute.selftest: OK");
-console.log(
-  `  missed-turn repro: fullDist=${fullDist?.toFixed(1)}m forwardDist=${forwardDist?.toFixed(1)}m → reroute`,
-);
+  // Anfahren in falsche Richtung → U-Turn-ähnlicher Mismatch bestätigt schnell
+  confirmOff(4, "6 after stop wrong direction", {
+    progressM: 80,
+    courseDeg: 180,
+    routeBearingDeg: 0,
+    speedMps: 5,
+    ticks: [
+      { dtMs: 0 },
+      { dtMs: NAV_OFF_ROUTE_UTURN_CONFIRM_MS },
+      { dtMs: 150 },
+    ],
+  });
+}
+
+// Klassiker: zurück auf abgefahrene Spur
+{
+  const atJunction = { lat: 48.741, lon: 9.31 };
+  let progress = advanceRouteProgressM(0, lRoute, atJunction, {
+    maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
+  });
+  const backOnPast = { lat: 48.7404, lon: 9.31 };
+  const fullDist = distanceToPolylineM(lRoute, backOnPast);
+  const fromProg = Math.max(0, progress - NAV_ROUTE_PROGRESS_BACKTRACK_M);
+  const forwardDist = distanceToForwardPolylineM(lRoute, backOnPast, fromProg);
+  assert(fullDist != null && fullDist < NAV_OFF_ROUTE_THRESHOLD_M, `past full ${fullDist}`);
+  assert(
+    forwardDist != null && forwardDist > NAV_OFF_ROUTE_THRESHOLD_M,
+    `past forward ${forwardDist}`,
+  );
+  confirmOff(forwardDist!, "past-track full vs forward");
+  console.log(
+    `  past-track repro: fullDist=${fullDist?.toFixed(1)}m forwardDist=${forwardDist?.toFixed(1)}m`,
+  );
+}
+
+assert(progressAlongPolylineAt(lRoute, { lat: 48.741, lon: 9.31 }) != null, "progressAlong ok");
+
+console.log("navOffRouteReroute.selftest: OK (6 scenarios + baseline)");

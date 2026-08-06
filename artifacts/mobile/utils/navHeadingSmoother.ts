@@ -39,7 +39,10 @@ export const NAV_HEADING_DEADBAND_DEG = 8;
 export const NAV_HEADING_EMA_ALPHA = 0.18;
 
 /** Max. Heading-Änderung pro Sekunde (°/s) — weichere Kurven, weniger „Ruck“. */
-export const NAV_HEADING_MAX_RATE_DEG_PER_S = 28;
+export const NAV_HEADING_MAX_RATE_DEG_PER_S = 22;
+
+/** Bei langsamer Fahrt (< ~10 km/h): kleinere Rate → weniger Zittern. */
+export const NAV_HEADING_MAX_RATE_SLOW_DEG_PER_S = 14;
 
 /** Kamera-Follow Mindestabstand. */
 export const NAV_CAMERA_FOLLOW_MIN_INTERVAL_MS = 900;
@@ -196,6 +199,7 @@ export function applyNavHeadingSmooth(
   state: NavHeadingSmootherState,
   rawDeg: number | null,
   nowMs: number,
+  opts?: { maxRateDegPerS?: number },
 ): { state: NavHeadingSmootherState; heading: number | null } {
   if (rawDeg == null || !Number.isFinite(rawDeg)) {
     return { state, heading: state.heading };
@@ -218,7 +222,8 @@ export function applyNavHeadingSmooth(
 
   const dtSec = Math.max(0.016, (nowMs - state.lastUpdateMs) / 1000);
   let stepped = delta * NAV_HEADING_EMA_ALPHA;
-  const maxStep = NAV_HEADING_MAX_RATE_DEG_PER_S * dtSec;
+  const maxRate = opts?.maxRateDegPerS ?? NAV_HEADING_MAX_RATE_DEG_PER_S;
+  const maxStep = maxRate * dtSec;
   if (stepped > maxStep) stepped = maxStep;
   if (stepped < -maxStep) stepped = -maxStep;
 
@@ -249,7 +254,14 @@ export function tickNavHeading(
     fallbackBearingDeg: input.fallbackBearingDeg,
     heldHeadingDeg: state.heading,
   });
-  return applyNavHeadingSmooth(state, raw, input.nowMs ?? Date.now());
+  const speed = input.speedMps;
+  const slow =
+    speed == null ||
+    !Number.isFinite(speed) ||
+    speed < NAV_HEADING_TRUST_COURSE_SPEED_MPS;
+  return applyNavHeadingSmooth(state, raw, input.nowMs ?? Date.now(), {
+    maxRateDegPerS: slow ? NAV_HEADING_MAX_RATE_SLOW_DEG_PER_S : NAV_HEADING_MAX_RATE_DEG_PER_S,
+  });
 }
 
 /** Leichte Positions-EMA gegen GPS-Rauschen. */
