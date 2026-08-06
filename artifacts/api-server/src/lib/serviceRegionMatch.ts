@@ -108,22 +108,21 @@ export function anyActiveRegionRequiresClientCoordinates(regions: ServiceRegionM
 }
 
 /**
- * Beide Fahrtendpunkte müssen in mindestens je einem *aktiven* Gebiet matchen. Fail-open ohne aktive Gebiete.
+ * Nur der Abholort muss in mindestens einem *aktiven* Servicegebiet liegen.
+ * Das Ziel darf bundesweit außerhalb liegen. Fail-open ohne aktive Gebiete.
+ * (`toFull`/`toLat`/`toLng` bleiben in der Signatur für Aufrufer-Kompatibilität.)
  */
 export function validateServiceAreaForRidePoints(
   fromFull: string,
-  toFull: string,
+  _toFull: string,
   fromLat: number | null,
   fromLng: number | null,
-  toLat: number | null,
-  toLng: number | null,
+  _toLat: number | null,
+  _toLng: number | null,
   regions: ServiceRegionMatchable[],
 ): boolean {
   const fullFrom = String(fromFull ?? "").trim();
-  const fullTo = String(toFull ?? "").trim();
   const active = regions.filter((r) => r.isActive);
   if (active.length === 0) return true;
-  const fromOk = active.some((r) => pointMatchesServiceRegion(r, fullFrom, fromLat, fromLng));
-  const toOk = active.some((r) => pointMatchesServiceRegion(r, fullTo, toLat, toLng));
-  return fromOk && toOk;
+  return active.some((r) => pointMatchesServiceRegion(r, fullFrom, fromLat, fromLng));
 }

@@ -248,8 +248,15 @@ export default function AppOperationalRegionsPage() {
   const needCoords = anyActiveRadiusRegion(regions);
   let testResult = "Ohne aktive Gebiete: Regel greift nicht.";
   if (anyActive) {
-    if (needCoords && (fLat == null || fLng == null || tLat == null || tLng == null)) testResult = "Bitte Koordinaten ausfüllen für Radius-Prüfung.";
-    else testResult = fromOk && toOk ? "Buchung wäre zulässig." : `Nicht zulässig — Abholung: ${fromOk ? "ok" : "kein Treffer"} / Ziel: ${toOk ? "ok" : "kein Treffer"}`;
+    if (needCoords && (fLat == null || fLng == null)) {
+      testResult = "Bitte Abhol-Koordinaten ausfüllen für Radius-Prüfung.";
+    } else if (fromOk) {
+      testResult = toOk
+        ? "Buchung zulässig (Abholung im Gebiet)."
+        : "Buchung zulässig — nur Abholung muss im Gebiet liegen (Ziel außerhalb ist ok).";
+    } else {
+      testResult = "Nicht zulässig — Abholung liegt in keinem aktiven Gebiet.";
+    }
   }
 
   const activeCount = regions.filter((r) => r.isActive).length;
@@ -259,7 +266,8 @@ export default function AppOperationalRegionsPage() {
   return (
     <div className="admin-page admin-page--loose">
       <p className="admin-page-lead">
-        Wo gefahren wird (Matching), Tarif-Zuordnung, Radius/Text; Buchung nur in aktiven Gebieten.
+        Wo gefahren wird (Matching), Tarif-Zuordnung, Radius/Text; Buchung nur wenn der{" "}
+        <strong>Abholort</strong> in einem aktiven Gebiet liegt (Ziel darf außerhalb liegen).
       </p>
 
       {error || okMsg ? (
@@ -433,7 +441,7 @@ export default function AppOperationalRegionsPage() {
             </div>
           </div>
         </div>
-        <p className="admin-table-sub" style={{ marginTop: 12, fontWeight: 600, color: fromOk && toOk && anyActive ? "#16a34a" : "#dc2626" }}>
+        <p className="admin-table-sub" style={{ marginTop: 12, fontWeight: 600, color: fromOk && anyActive ? "#16a34a" : "#dc2626" }}>
           {testResult}
         </p>
       </CollapsibleCard>

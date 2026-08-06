@@ -1654,11 +1654,11 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
     const regions = await listServiceRegionsForApi();
     if (
       anyActiveRegionRequiresClientCoordinates(regions) &&
-      (fromLatB == null || fromLonB == null || toLatB == null || toLonB == null)
+      (fromLatB == null || fromLonB == null)
     ) {
       res.status(400).json({
         error: "ride_coordinates_required",
-        message: "Für Einfahrt-Regionen (Radius) sind fromLat, fromLon, toLat und toLon erforderlich.",
+        message: "Für Einfahrt-Regionen (Radius) sind fromLat und fromLon (Abholort) erforderlich.",
       });
       return;
     }

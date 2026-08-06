@@ -416,34 +416,25 @@ export function validateAddressCompletenessForBooking(
 
 export function clientCheckServiceArea(
   fromFull: string,
-  toFull: string,
+  _toFull: string,
   cfg: OnrodaAppConfig,
   loc?: { fromLat?: number | null; fromLon?: number | null; toLat?: number | null; toLon?: number | null } | null,
 ): { ok: true } | { ok: false; message: string } {
   const from = String(fromFull ?? "").trim();
-  const to = String(toFull ?? "").trim();
   const active = (cfg.serviceRegions || []).filter((r) => r.isActive);
   if (active.length === 0) {
     return { ok: true };
   }
+  // Nur Abholort muss im Servicegebiet liegen — Ziel darf bundesweit außerhalb sein.
   if (anyActiveServiceRegionRequiresCoordinates(cfg)) {
-    if (
-      loc == null ||
-      loc.fromLat == null ||
-      loc.fromLon == null ||
-      loc.toLat == null ||
-      loc.toLon == null
-    ) {
+    if (loc == null || loc.fromLat == null || loc.fromLon == null) {
       return { ok: false, message: MESSAGE_ADDRESS_PICK_SUGGESTION_DE };
     }
   }
   const fl = loc?.fromLat != null && Number.isFinite(Number(loc.fromLat)) ? Number(loc.fromLat) : null;
   const fn = loc?.fromLon != null && Number.isFinite(Number(loc.fromLon)) ? Number(loc.fromLon) : null;
-  const tl = loc?.toLat != null && Number.isFinite(Number(loc.toLat)) ? Number(loc.toLat) : null;
-  const tn = loc?.toLon != null && Number.isFinite(Number(loc.toLon)) ? Number(loc.toLon) : null;
   const startOk = active.some((r) => pointMatchesRegion(r, from, fl, fn));
-  const endOk = active.some((r) => pointMatchesRegion(r, to, tl, tn));
-  if (startOk && endOk) return { ok: true };
+  if (startOk) return { ok: true };
   return { ok: false, message: getOutOfServiceDe(cfg) };
 }
 

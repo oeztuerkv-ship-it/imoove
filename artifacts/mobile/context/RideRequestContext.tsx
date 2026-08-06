@@ -1679,6 +1679,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       }
       const optimisticStatus: RequestStatus = "cancelled_by_customer";
       // Optimistisch sofort aus "aktiv" rausnehmen, damit Such-UI direkt endet.
+      setLastAddedRequestId((prevId) => (prevId === id ? null : prevId));
       setRequests((prevList) =>
         prevList.map((r) =>
           r.id === id

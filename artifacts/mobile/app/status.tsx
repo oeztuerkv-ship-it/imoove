@@ -1352,6 +1352,11 @@ export default function StatusScreen() {
     setIsCompleted(false);
     setDriverReassignedBanner(false);
     setTrackingDetailsOpen(false);
+    // Latch nur bei neuer Fahrt zurücksetzen — nicht beim Leeren der ID nach Storno
+    // (sonst kann kurz nochmals der ride_cancelled-Alert feuern).
+    if (currentRideId) {
+      cancelFlowStartedRef.current = false;
+    }
     if (handledDriverReassignedRef.current && handledDriverReassignedRef.current !== currentRideId) {
       handledDriverReassignedRef.current = null;
     }
@@ -1429,6 +1434,7 @@ export default function StatusScreen() {
   const finishCancelLocally = () => {
     if (cancelFlowStartedRef.current) return;
     cancelFlowStartedRef.current = true;
+    stickyAcceptedRef.current = null;
     setCancelModalOpen(false);
     setCancelReason("");
     router.replace("/");
@@ -1649,8 +1655,13 @@ export default function StatusScreen() {
     if (customerPhase !== "ride_cancelled") return;
     const id = currentRideId;
     if (!id) return;
+    // Nach eigenem Storno ist der Latch schon gesetzt — kein hängender Spinner ohne Alert.
+    if (cancelFlowStartedRef.current) {
+      stickyAcceptedRef.current = null;
+      router.replace("/");
+      return;
+    }
     if (handledRideCancelledRef.current === id) return;
-    if (cancelFlowStartedRef.current) return;
     const ride = requests.find((r) => r.id === id) ?? rideMatchingCurrentId;
     if (!ride || !isCustomerLiveRideEndedStatus(ride.status)) return;
     handledRideCancelledRef.current = id;
