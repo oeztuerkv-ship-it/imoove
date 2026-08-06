@@ -109,20 +109,20 @@ Vor Release MUSS geprüft werden:
 * falsche Annahme → wird mit 409 geblockt
 * kein Fahrzeug → saubere Fehlermeldung
 * Storno während Suche → sofortiger Abbruch + korrekt in Verlauf
-* Abbruch während `in_progress` → Fahrer gibt Taxameter ein (nicht Flat-Fee)
+* Nach Startcode / `in_progress` → **kein** Kunden-Storno/Abbruch mehr (nur Fahrer-Abschluss mit Taxameter)
 
 ---
 
-## 6b. Storno nach Fahrtstart (`in_progress`)
+## 6b. Nach Fahrtstart (Startcode / `in_progress`)
 
-Sobald die Fahrt gestartet ist (PIN / Status `in_progress`):
+Sobald der Startcode verifiziert ist (`passenger_pin_verified_at`) bzw. Status `in_progress`:
 
-* Kunden-Aktion = **Abbruch**, nicht Flat-Fee-Storno
-* Status: `customer_abort_pending_fare` (Fahrer muss Taxameter-Endpreis eingeben)
-* Endstatus: `cancelled_by_customer` mit `finalFare` (mind. Mindestfahrpreis)
-* Fahrer erhält sofort Push/In-App: Abbruch + Bitte um Taxameter-Eingabe
-* Plausibilität/Tarif-Korridor gegen **Ist-Strecke bis Abort** (GPS), nicht gegen volle Buchungsschätzung; ohne GPS nur Min-Fare + Absolute-Cap
-* Details: `.cursor/rules/imoove-mobile-mid-trip-abort-fare.mdc`
+* Kunden-**Storno und Abbruch sind gesperrt** (API 403 `customer_cancel_blocked_trip_started`, UI ohne Storno-Button)
+* Die Fahrt läuft normal weiter bis zum Fahrer-Abschluss
+* Fahrer beendet → Taxameter-Endpreis → Zahlung → Historie **„Abgeschlossen“** (nicht „Storniert“)
+* Vor Startcode: Storno gemäß bestehenden Regeln möglich
+
+*(Ältere Mid-Trip-Abbruch-Logik `customer_abort_pending_fare` bleibt für Bestandsfälle / Fahrer-Side; neue Kunden-Abbrüche werden nicht mehr erzeugt.)*
 
 ---
 

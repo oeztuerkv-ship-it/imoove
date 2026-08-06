@@ -43,7 +43,12 @@ import {
   computeRideCompletionGpsMetrics,
   evaluateMinimumTransportForPositiveFare,
 } from "../lib/rideMinimumTransportGuard";
-import { rideRequiresPassengerPin } from "../lib/customerRideVerifyPin";
+import {
+  CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED,
+  CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED_MESSAGE_DE,
+  isCustomerCancelBlockedAfterTripStart,
+  rideRequiresPassengerPin,
+} from "../lib/customerRideVerifyPin";
 import { resolveReceiptDriverInfo, type ReceiptDriverInfo } from "../lib/receiptDriverInfo";
 import { validateRideStatusTransition } from "../lib/rideOpsTransitionGuards";
 import { markDispatchOfferAccepted } from "../db/rideDispatchOfferData";
@@ -2276,13 +2281,17 @@ export async function patchRideStatusRoute(
     const bodyDriverIdTrim = typeof driverId === "string" ? driverId.trim() : "";
     const actor = await resolveRideMutateActor(req);
 
-    // Mid-Trip: Kunden-Storno → Taxameter-Pending (kein Flat-Fee-Storno)
+    // Mid-Trip: Kunden-Storno nach Startcode / in_progress ist gesperrt (nur regulärer Abschluss).
     if (
-      nextStatus === "cancelled_by_customer" &&
-      cur.status === "in_progress" &&
-      actor?.kind === "customer_session"
+      actor?.kind === "customer_session" &&
+      (nextStatus === "cancelled_by_customer" || nextStatus === "customer_abort_pending_fare") &&
+      isCustomerCancelBlockedAfterTripStart(cur)
     ) {
-      nextStatus = "customer_abort_pending_fare";
+      res.status(403).json({
+        error: CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED,
+        message: CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED_MESSAGE_DE,
+      });
+      return;
     }
 
     if (!canTransitionRideStatus(cur.status, nextStatus)) {
@@ -3263,58 +3272,13 @@ export async function cancelRideForVerifiedCustomerSession(
   const cur = await findRideForPassenger(id, pax);
   if (!cur) return { ok: false, status: 404, error: "not_found" };
 
-  // Mid-Trip: Abbruch → Pending (Fahrer gibt Taxameter ein)
-  if (cur.status === "in_progress") {
-    const nextPending = "customer_abort_pending_fare" as const;
-    if (!canTransitionRideStatus(cur.status, nextPending)) {
-      return {
-        ok: false,
-        status: 409,
-        error: "status_transition_invalid",
-        from: cur.status,
-        to: nextPending,
-      };
-    }
-    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
-      return {
-        ok: false,
-        status: 403,
-        error: "reservation_storno_locked",
-        message:
-          "Bei Vorbestellungen ist ein Storno durch den Kunden nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
-      };
-    }
-    const mutActorPending: RideMutationPersistenceActor = { actorType: "passenger", actorId: pax };
-    const abortAt = new Date().toISOString();
-    const updatedPending = await updateRide(
-      id,
-      {
-        status: nextPending,
-        customerMidTripAbortAt: cur.customerMidTripAbortAt ?? abortAt,
-      },
-      { mutationActor: mutActorPending },
-    );
-    if (!updatedPending) return { ok: false, status: 500, error: "update_failed" };
-
-    await insertSupplementalRideEvent(id, {
-      eventType: "cancel_reason",
-      fromStatus: cur.status,
-      toStatus: nextPending,
-      actorType: "passenger",
-      actorId: pax,
-      payload: {
-        reason: cancelReasonClean,
-        nextStatus: nextPending,
-        midTripAbort: true,
-      },
-    });
-    customerCancelReasons.set(id, cancelReasonClean);
-    broadcastRideStatusChange(id, nextPending, cur.status);
-    void notifyAssignedDriverRideAbortedAwaitingFare(updatedPending).catch((err) => {
-      logger.warn({ err, rideId: id }, "[expo-push] mid-trip-abort notify failed (customer cancel)");
-    });
-    void evaluateCustomerCancellationSuspensionAfterCancel(pax, cur.status).catch(() => undefined);
-    return { ok: true, ride: updatedPending, cancelReason: cancelReasonClean };
+  if (isCustomerCancelBlockedAfterTripStart(cur)) {
+    return {
+      ok: false,
+      status: 403,
+      error: CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED,
+      message: CUSTOMER_CANCEL_BLOCKED_TRIP_STARTED_MESSAGE_DE,
+    };
   }
 
   const nextStatus = "cancelled_by_customer" as const;

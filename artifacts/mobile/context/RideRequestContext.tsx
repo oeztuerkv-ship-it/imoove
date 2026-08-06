@@ -23,6 +23,7 @@ import {
   isCustomerFinalCancelledStatus,
   isCustomerRideRequest,
 } from "@/utils/customerRideListFilters";
+import { isCustomerCancelBlockedAfterTripStart } from "@/utils/customerCancelAfterTripStart";
 import { notifyDriverRideAbortedAwaitingFare, notifyDriverRideCancelledByCustomer } from "@/utils/driverLiveNavigation";
 import {
   filterDriverInstantMarketOffers,
@@ -768,6 +769,9 @@ function stornoErrorUserMessage(code: string): string | undefined {
   }
   if (code === "reservation_storno_locked") {
     return "Bei Vorbestellungen ist ein Kunden-Storno nur bis 60 Minuten vor Abholung möglich.";
+  }
+  if (code === "customer_cancel_blocked_trip_started") {
+    return "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.";
   }
   if (code === "status_transition_invalid") {
     return "Diese Fahrt kann im aktuellen Status nicht mehr storniert werden.";
@@ -1668,12 +1672,13 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           ? cancelReason.trim()
           : "Storno durch Kunden-App";
       const prev = requests.find((r) => r.id === id) ?? driverMarketRequests.find((r) => r.id === id);
-      const midTripAbort = prev?.status === "in_progress";
-      const optimisticStatus: RequestStatus = midTripAbort
-        ? "customer_abort_pending_fare"
-        : "cancelled_by_customer";
+      if (prev && isCustomerCancelBlockedAfterTripStart(prev)) {
+        const err = new Error("customer_cancel_blocked_trip_started") as Error & { userMessage?: string };
+        err.userMessage = stornoErrorUserMessage("customer_cancel_blocked_trip_started");
+        throw err;
+      }
+      const optimisticStatus: RequestStatus = "cancelled_by_customer";
       // Optimistisch sofort aus "aktiv" rausnehmen, damit Such-UI direkt endet.
-      // Mid-Trip: Pending (Fahrer tippt Taxameter) — nicht finales Storno.
       setRequests((prevList) =>
         prevList.map((r) =>
           r.id === id
@@ -1698,12 +1703,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       );
       try {
         await patchStatus(id, "cancelled_by_customer", finalFare, undefined, reason);
-        if (midTripAbort) {
-          // Gleiches Gerät Kunde+Fahrer: Fare-Modal öffnen, nicht Navi beenden.
-          notifyDriverRideAbortedAwaitingFare(id);
-        } else {
-          notifyDriverRideCancelledByCustomer(id, reason);
-        }
+        notifyDriverRideCancelledByCustomer(id, reason);
         await fetchAll();
       } catch (err) {
         // Bei Fehler wieder vom Server synchronisieren, damit kein lokaler Zombie-State bleibt.

@@ -38,6 +38,7 @@ import {
   type SelectedAddress,
 } from "@/components/booking/selectedAddress";
 import { useDriver } from "@/context/DriverContext";
+import { isCustomerCancelBlockedAfterTripStart } from "@/utils/customerCancelAfterTripStart";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import type { GeoLocation } from "@/utils/routing";
@@ -1033,6 +1034,16 @@ export default function StatusScreen() {
 
   const customerPhase = isCompleted ? "completed" : rawPhase;
 
+  const customerCancelAllowed = useMemo(() => {
+    if (customerPhase === "driving" || customerPhase === "completed" || customerPhase === "ride_cancelled") {
+      return false;
+    }
+    if (effectiveAcceptedRequest && isCustomerCancelBlockedAfterTripStart(effectiveAcceptedRequest)) {
+      return false;
+    }
+    return true;
+  }, [customerPhase, effectiveAcceptedRequest]);
+
   /** Status-Polling auf Live-Screen — erkennt u. a. Fahrer-Storno (`cancelled_by_driver`). */
   useEffect(() => {
     if (!currentRideId) return;
@@ -1366,6 +1377,13 @@ export default function StatusScreen() {
   }, [completedForCurrentRide, isCompleted, completeRide]);
 
   const handleCancel = () => {
+    if (!customerCancelAllowed) {
+      Alert.alert(
+        "Storno nicht möglich",
+        "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.",
+      );
+      return;
+    }
     if (customerPhase === "searching" || customerPhase === "reserved") {
       void submitCancel(
         customerPhase === "reserved"
@@ -1391,9 +1409,7 @@ export default function StatusScreen() {
       r.status === "accepted" ||
       r.status === "driver_arriving" ||
       r.status === "driver_waiting" ||
-      r.status === "passenger_onboard" ||
-      r.status === "arrived" ||
-      r.status === "in_progress",
+      r.status === "arrived",
     );
     return active?.id ?? lastAddedRequestId ?? acceptedRequest?.id ?? null;
   };
@@ -1413,6 +1429,13 @@ export default function StatusScreen() {
     // IMPORTANT: Follow Onroda Core Policy
     // docs/onroda-core-policy-taxi-mietwagen-storno.md
     if (cancelSubmitting) return;
+    if (!customerCancelAllowed) {
+      Alert.alert(
+        "Storno nicht möglich",
+        "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.",
+      );
+      return;
+    }
     setCancelSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const finalReason = (reasonOverride ?? cancelReason).trim() || "Manueller Abbruch durch Nutzer";
@@ -1425,12 +1448,7 @@ export default function StatusScreen() {
       } else {
         console.log("[CancelFlow] No cancel ID resolved; finishing locally");
       }
-      // Mid-Trip-Abbruch: blockierende Meldung in ride_cancelled-Effect — erst nach OK zur Startseite.
-      if (customerPhase === "driving") {
-        setCancelModalOpen(false);
-        setCancelReason("");
-        return;
-      }
+      // Mid-Trip-Abbruch durch Kunden gibt es nicht mehr — Storno nur vor Fahrtstart.
       finishCancelLocally();
     } catch (e) {
       const code = e instanceof Error ? e.message.trim() : "";
@@ -1442,6 +1460,11 @@ export default function StatusScreen() {
         Alert.alert(
           "Storno nicht möglich",
           "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
+        );
+      } else if (code === "customer_cancel_blocked_trip_started" || custom.includes("bereits gestartet")) {
+        Alert.alert(
+          "Storno nicht möglich",
+          custom || "Die Fahrt wurde bereits gestartet. Storno oder Abbruch ist nicht mehr möglich.",
         );
       } else if (custom) {
         console.log("Cancel Error (API):", e);
@@ -2479,6 +2502,7 @@ export default function StatusScreen() {
             </Pressable>
           ) : null}
 
+          {customerCancelAllowed ? (
           <Pressable
             style={({ pressed }) => [
               styles.trackingOutlinePill,
@@ -2498,6 +2522,7 @@ export default function StatusScreen() {
               Stornieren
             </Text>
           </Pressable>
+          ) : null}
         </View>
       </View>
 
