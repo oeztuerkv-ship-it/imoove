@@ -129,6 +129,7 @@ import {
 import {
   canStartReroute,
   createOffRouteTrackerState,
+  NAV_REROUTE_COOLDOWN_MS,
   type OffRouteTrackerState,
 } from "@/utils/navOffRouteReroute";
 import {
@@ -2525,8 +2526,10 @@ export default function DriverNavigationScreen() {
         lon: output.filtered.lon,
         heading: output.heading,
       };
-      setGuidanceStale(output.guidanceStale);
-      if (!output.guidanceStale) {
+      setGuidanceStale(
+        output.guidanceStale || output.confirmedOffRoute || rerouteInFlightRef.current,
+      );
+      if (!output.guidanceStale && !output.confirmedOffRoute && !rerouteInFlightRef.current) {
         setRemainingDistM(output.remainingDistM);
         setRemainingMin(output.remainingMin);
         setStepIdx(output.stepIdx);
@@ -2662,7 +2665,7 @@ export default function DriverNavigationScreen() {
         {
           accuracy: Location.Accuracy.BestForNavigation,
           timeInterval: 1000,
-          distanceInterval: 2,
+          distanceInterval: 1,
         },
         (loc) => {
           if (cancelled) return;
@@ -2729,7 +2732,7 @@ export default function DriverNavigationScreen() {
               inFlight: rerouteInFlightRef.current,
               lastRerouteAtMs: lastRerouteAtMsRef.current,
               nowMs: now,
-              cooldownMs: 8_000,
+              cooldownMs: NAV_REROUTE_COOLDOWN_MS,
             });
             navDiagRerouteDecision({
               willRequest: can,
@@ -3107,6 +3110,9 @@ export default function DriverNavigationScreen() {
         showsUserLocation={false}
         showsMyLocationButton={false}
         showsCompass={false}
+        showsBuildings={false}
+        showsIndoors={false}
+        showsTraffic={false}
         toolbarEnabled={false}
         scrollEnabled
         zoomEnabled
@@ -3153,9 +3159,10 @@ export default function DriverNavigationScreen() {
             lineJoin="round"
           />
         ) : null}
-        {remainingRouteCoords.length > 1 ? (
+        {/* Während Neuberechnung Rest-Route ausblenden — klarer Reload-Effekt */}
+        {!guidanceStale && remainingRouteCoords.length > 1 ? (
           <NavRouteGlowPolyline coordinates={remainingRouteCoords} />
-        ) : polyline.length > 1 ? (
+        ) : !guidanceStale && polyline.length > 1 ? (
           <NavRouteGlowPolyline coordinates={polyline} />
         ) : null}
       </MapView>
@@ -3166,42 +3173,59 @@ export default function DriverNavigationScreen() {
         style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}
       >
         <View style={styles.topNavCluster}>
-          <View style={styles.topCard}>
+          <View style={[styles.topCard, guidanceStale && styles.topCardRecalc]}>
             <View style={styles.topMain}>
-              <Animated.View style={{ opacity: pulseAnim }}>
-                <MaterialCommunityIcons
-                  name={maneuverIcon(currentParts.maneuver || currentStep?.instruction || "") as any}
-                  size={28}
-                  color="#fff"
-                />
-              </Animated.View>
+              {guidanceStale ? (
+                <ActivityIndicator size="large" color="#fff" />
+              ) : (
+                <Animated.View style={{ opacity: pulseAnim }}>
+                  <MaterialCommunityIcons
+                    name={maneuverIcon(currentParts.maneuver || currentStep?.instruction || "") as any}
+                    size={28}
+                    color="#fff"
+                  />
+                </Animated.View>
+              )}
               <View style={styles.topText}>
-                {topDistancePrimary ? (
-                  <Text
-                    style={[styles.topStreet, !isPickupPhase && styles.topStreetDriving]}
-                    numberOfLines={1}
-                    allowFontScaling={false}
-                  >
-                    {topDistancePrimary}
-                  </Text>
+                {guidanceStale ? (
+                  <>
+                    <Text style={styles.topStreet} numberOfLines={1} allowFontScaling={false}>
+                      Route wird neu geladen
+                    </Text>
+                    <Text style={styles.topManeuver} numberOfLines={2}>
+                      Neue Route wird berechnet…
+                    </Text>
+                  </>
                 ) : (
-                  <Text style={styles.topLabel}>Richtung</Text>
+                  <>
+                    {topDistancePrimary ? (
+                      <Text
+                        style={[styles.topStreet, !isPickupPhase && styles.topStreetDriving]}
+                        numberOfLines={1}
+                        allowFontScaling={false}
+                      >
+                        {topDistancePrimary}
+                      </Text>
+                    ) : (
+                      <Text style={styles.topLabel}>Richtung</Text>
+                    )}
+                    <Text
+                      style={
+                        topDistancePrimary
+                          ? styles.topManeuver
+                          : [styles.topStreet, !isPickupPhase && styles.topStreetDriving]
+                      }
+                      numberOfLines={1}
+                    >
+                      {topManeuverText}
+                    </Text>
+                    {topRoadName ? (
+                      <Text style={styles.topRoadName} numberOfLines={1}>
+                        {topRoadName}
+                      </Text>
+                    ) : null}
+                  </>
                 )}
-                <Text
-                  style={
-                    topDistancePrimary
-                      ? styles.topManeuver
-                      : [styles.topStreet, !isPickupPhase && styles.topStreetDriving]
-                  }
-                  numberOfLines={1}
-                >
-                  {topManeuverText}
-                </Text>
-                {topRoadName ? (
-                  <Text style={styles.topRoadName} numberOfLines={1}>
-                    {topRoadName}
-                  </Text>
-                ) : null}
               </View>
             </View>
           </View>
@@ -3796,6 +3820,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 8,
+  },
+  topCardRecalc: {
+    backgroundColor: "#B45309",
   },
   topMain: { flexDirection: "row", alignItems: "center", gap: 12 },
   topText: { flex: 1, minWidth: 0 },

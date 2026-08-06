@@ -16,14 +16,15 @@ alwaysApply: false
 | Persistenz | Ring-Buffer + AsyncStorage (nach Crash: `(prev)`-Zeilen) |
 | Heartbeat | alle 5 s `heartbeat` — Lücke vor Crash sichtbar |
 
-## Apple Maps Altitude / Zoom (Crash-Postmortem)
+## Apple Maps Altitude / Zoom / Look
 
-`zoomLevelToAltitudeMeters` muss **Kamera-Höhe in Metern** liefern, nicht Web-Mercator-**m/px**.
-
-- Bug: `(156543*cos(lat))/2^zoom` ≈ **1,1 m** bei Zoom 16.5 → `setCamera({ altitude: 1.1, pitch: 62 })` → iOS-Absturz.
-- Fix: `navCameraAltitude.ts` — m/px × **420** (Stadt ≈180–350 m), Clamp 120…12000 m; Follow-Altitude immer aus Zoom.
+- Altitude: `navCameraAltitude.ts` — m/px × **420**, nie m/px allein (~1 m = Crash).
 - Zoom-Bänder: Stadt **18.0** / Default **17.5** / Highway **16.3**.
-- **Falschabbiegen-Crash:** während Off-Route/Reroute kein Follow-`animateCamera`; nach neuer Route `setCamera` um einen Frame verzögert (nicht im selben Tick wie `setPolyline`).
+- **Pitch 45°** (moderne Navi-Apps); 62° zeigte starke 3D-Gebäude auf iOS.
+- `showsBuildings={false}` (Android; iOS MapKit begrenzt).
+- Off-Route: Heading ≥45° / U-Turn ≥100° bestätigt in ~0,3–0,4 s → sofort `confirmedOffRoute`; Cooldown **2 s**.
+- UI: orange Karte „Route wird neu geladen“ + Rest-Polyline ausblenden während Neuberechnung.
+- **Falschabbiegen-Crash:** kein Follow-`animateCamera` während Off-Route/Reroute; `setCamera` verzögert nach `setPolyline`.
 
 | Log | Bedeutung |
 |-----|-----------|

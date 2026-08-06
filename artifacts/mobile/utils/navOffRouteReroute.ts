@@ -15,40 +15,40 @@ import { shortestRotationDelta } from "./liveDriverMarkerMotion";
 import { isMovingForNavHeading, isUsableCourse } from "./navHeadingSmoother";
 
 /** Querabstand über dem die Position als abseits gilt (Rest-Route). */
-export const NAV_OFF_ROUTE_THRESHOLD_M = 12;
+export const NAV_OFF_ROUTE_THRESHOLD_M = 10;
 
 /** Mind. so viele aufeinanderfolgende Off-Fixes. */
 export const NAV_OFF_ROUTE_CONFIRM_FIXES = 2;
 
 /** Oder so lange durchgehend abseits (ms). */
-export const NAV_OFF_ROUTE_CONFIRM_MS = 800;
+export const NAV_OFF_ROUTE_CONFIRM_MS = 500;
 
 /** Mindestabstand zwischen Reroute-Versuchen (auch nach Fehler). */
-export const NAV_REROUTE_COOLDOWN_MS = 3_000;
+export const NAV_REROUTE_COOLDOWN_MS = 2_000;
 
 /**
  * Kurs weicht stark von Rest-Route ab → auch bei kleinem Querabstand Off-Route
  * (180°-Wende, falsche Kreisverkehr-Ausfahrt, nach Halt andere Richtung).
  */
-export const NAV_OFF_ROUTE_HEADING_DELTA_DEG = 60;
+export const NAV_OFF_ROUTE_HEADING_DELTA_DEG = 45;
 
 /** Heading-Mismatch Standard-Bestätigung (ms). */
-export const NAV_OFF_ROUTE_HEADING_CONFIRM_MS = 1000;
+export const NAV_OFF_ROUTE_HEADING_CONFIRM_MS = 400;
 
 /** Sehr große Kursdrehung (≈ U-Turn) — schneller bestätigen. */
-export const NAV_OFF_ROUTE_UTURN_DELTA_DEG = 120;
-export const NAV_OFF_ROUTE_UTURN_CONFIRM_MS = 600;
+export const NAV_OFF_ROUTE_UTURN_DELTA_DEG = 100;
+export const NAV_OFF_ROUTE_UTURN_CONFIRM_MS = 280;
 
 /** Nur bei dieser Mindest-Speed Heading-Mismatch werten. */
-export const NAV_OFF_ROUTE_HEADING_MIN_SPEED_MPS = 1.8;
+export const NAV_OFF_ROUTE_HEADING_MIN_SPEED_MPS = 1.2;
 
 /**
  * Fahrend, aber Fortschritt entlang der Route stockt (Parallelstraße / Ausfahrt verpasst).
  * Progress darf in dem Fenster mind. so viele Meter zunehmen — sonst Off-Route.
  */
-export const NAV_OFF_ROUTE_STALL_CONFIRM_MS = 2_500;
-export const NAV_OFF_ROUTE_STALL_MIN_SPEED_MPS = 3.0;
-export const NAV_OFF_ROUTE_STALL_MIN_PROGRESS_M = 8;
+export const NAV_OFF_ROUTE_STALL_CONFIRM_MS = 1_500;
+export const NAV_OFF_ROUTE_STALL_MIN_SPEED_MPS = 2.2;
+export const NAV_OFF_ROUTE_STALL_MIN_PROGRESS_M = 6;
 
 /** Wie weit hinter dem committed Progress die Rest-Route noch mitzählt (GPS-Jitter). */
 export const NAV_ROUTE_PROGRESS_BACKTRACK_M = 35;
@@ -234,7 +234,9 @@ export function evaluateNavOffRouteSample(opts: {
   const noted = noteOffRouteSample(eff.state, eff.distanceM, opts.nowMs);
   return {
     state: noted.state,
-    confirmedOffRoute: noted.confirmedOffRoute,
+    // Heading-/Stall-Force: sofort bestätigen (Gegenrichtung auf derselben Straße).
+    confirmedOffRoute:
+      noted.confirmedOffRoute || eff.headingForced || eff.stallForced,
     distanceM: eff.distanceM,
     headingForced: eff.headingForced,
     stallForced: eff.stallForced,

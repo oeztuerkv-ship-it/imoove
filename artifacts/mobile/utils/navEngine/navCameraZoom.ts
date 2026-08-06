@@ -6,8 +6,8 @@ export const NAV_CAMERA_ZOOM_CITY = 18.0;
 export const NAV_CAMERA_ZOOM_DEFAULT = 17.5;
 export const NAV_CAMERA_ZOOM_HIGHWAY = 16.3;
 
-/** Pitch laut Zielarchitektur (60–65°). */
-export const NAV_CAMERA_PITCH_NAV = 62;
+/** Pitch: moderne Navi-Apps ~45°; 62° zeigte auf iOS starke 3D-Gebäude. */
+export const NAV_CAMERA_PITCH_NAV = 45;
 
 /** Max. Zoom-Wechsel-Rate (nur alle N ms neu bewerten). */
 export const NAV_CAMERA_ZOOM_UPDATE_MS = 2500;

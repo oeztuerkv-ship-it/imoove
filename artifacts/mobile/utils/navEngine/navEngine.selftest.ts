@@ -60,7 +60,7 @@ for (let i = 0; i < 5; i++) {
   state = r.state;
   assert(!r.output.guidanceStale, "not stale on route");
   assert(r.output.maneuver != null, "maneuver present");
-  assert(r.output.cameraPitch === 62, "pitch 62");
+  assert(r.output.cameraPitch === 45, "pitch 45");
 }
 
 // At junction then back on past track (missed turn)
@@ -107,6 +107,6 @@ assert(r.output.maneuver == null, "no stale maneuver");
 assert(r.output.distToManeuverM === 0, "no stale distance");
 assert(r.output.diag != null, "diag present");
 
-assert(NAV_OFF_ROUTE_THRESHOLD_M === 12, "threshold wired");
+assert(NAV_OFF_ROUTE_THRESHOLD_M === 10, "threshold wired");
 
 console.log("navEngine.selftest: OK");
