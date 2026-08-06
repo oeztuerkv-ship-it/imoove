@@ -21,6 +21,7 @@ import {
   type TextStyle,
 } from "react-native";
 import * as Haptics from "expo-haptics";
+import { useKeepAwake } from "expo-keep-awake";
 import MapView, { Marker } from "react-native-maps";
 import { nativeMapViewProps, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
 import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
@@ -407,6 +408,9 @@ function WebFallback() {
 }
 
 export default function DriverNavigationScreen() {
+  // Wie Google Maps: Bildschirm bleibt wach, solange die Navi-Route gemountet ist.
+  useKeepAwake();
+
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     rideId: string; phase: string;

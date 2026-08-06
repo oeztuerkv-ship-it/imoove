@@ -77,6 +77,8 @@ flowchart TD
 
 **Untere Leiste (Google-ähnlich):** Bottom-Sheet mit Drag-Handle (`driveBottomSheet` / `snapDriveSheet`). Höhe = **Inhalt + Safe-Area** (`bottom: 0`, kein festes `height` → kein Leerraum unter dem Button). Eingeklappt: Metriken + Primäraktion; ausgeklappt: Details. Tippen/Ziehen am Handle; Default nach Phasenwechsel = eingeklappt.
 
+**Bildschirm wach:** `useKeepAwake()` (`expo-keep-awake`) auf dem Navi-Screen — kein Auto-Sperren während aktiver Navigation.
+
 **Stack nach App-Kill (iOS/Android):**
 
 - OS stellt oft **mehrere** `navigation`-Einträge mit verschiedenen Params wieder her.
