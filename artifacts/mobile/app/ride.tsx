@@ -1010,41 +1010,36 @@ export default function RideScreen() {
         <View style={[styles.card, styles.paymentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNGSART</Text>
 
-          {platformPayOption ? (
-            <View style={styles.platformPaySection}>
-              <Text style={[styles.platformPayTagline, { color: colors.mutedForeground }]}>
-                Schnell & sicher bezahlen
-              </Text>
+          <View style={styles.paymentList}>
+            {platformPayOption ? (
               <Pressable
                 style={[
-                  platformPayOption.isApplePay ? styles.applePayBtn : styles.googlePayBtn,
-                  paymentMethod === platformPayOption.id && styles.platformPayBtnSelected,
+                  styles.paymentBtn,
+                  {
+                    backgroundColor:
+                      paymentMethod === platformPayOption.id ? ONRODA_MARK_RED + "08" : colors.card,
+                    borderColor:
+                      paymentMethod === platformPayOption.id ? ONRODA_MARK_RED : colors.border,
+                  },
                 ]}
                 onPress={() => selectPaymentMethod(platformPayOption.id)}
-                accessibilityRole="button"
+                accessibilityRole="radio"
+                accessibilityState={{ selected: paymentMethod === platformPayOption.id }}
                 accessibilityLabel={platformPayOption.label}
               >
-                {platformPayOption.isApplePay ? (
-                  <View style={styles.applePayBtnInner}>
-                    <MaterialCommunityIcons name="apple" size={22} color="#fff" />
-                    <Text style={styles.applePayBtnText}>Pay</Text>
-                  </View>
-                ) : (
-                  <View style={styles.googlePayBtnInner}>
-                    <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
-                    <Text style={styles.googlePayBtnText}>Pay</Text>
-                  </View>
-                )}
-                {paymentMethod === platformPayOption.id ? (
-                  <View style={styles.platformPayCheck}>
-                    <Feather name="check" size={12} color={platformPayOption.isApplePay ? "#000" : "#fff"} />
-                  </View>
-                ) : null}
+                <View style={styles.paymentBtnLeft}>
+                  <MaterialCommunityIcons
+                    name={platformPayOption.isApplePay ? "apple" : "google"}
+                    size={15}
+                    color={platformPayOption.isApplePay ? colors.foreground : "#4285F4"}
+                  />
+                  <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>
+                    {platformPayOption.label}
+                  </Text>
+                </View>
+                <PaymentSelectDot selected={paymentMethod === platformPayOption.id} />
               </Pressable>
-            </View>
-          ) : null}
-
-          <View style={[styles.paymentList, platformPayOption ? styles.paymentListAfterPlatform : null]}>
+            ) : null}
             {standardPaymentOptions.map((opt) => {
               const isSelected = paymentMethod === opt.id;
               return (
@@ -1467,65 +1462,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: "#111111",
   },
-  platformPaySection: { marginTop: rs(8), gap: rs(8) },
-  platformPayTagline: {
-    fontSize: rf(13),
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-  },
-  applePayBtn: {
-    backgroundColor: "#000000",
-    borderRadius: rs(12),
-    minHeight: rs(52),
-    paddingVertical: rs(14),
-    paddingHorizontal: rs(20),
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#000000",
-  },
-  applePayBtnInner: { flexDirection: "row", alignItems: "center", gap: rs(4) },
-  applePayBtnText: {
-    color: "#FFFFFF",
-    fontSize: rf(22),
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.3,
-  },
-  googlePayBtn: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: rs(12),
-    minHeight: rs(52),
-    paddingVertical: rs(14),
-    paddingHorizontal: rs(20),
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#DADCE0",
-  },
-  googlePayBtnInner: { flexDirection: "row", alignItems: "center", gap: rs(6) },
-  googlePayBtnText: {
-    color: "#3C4043",
-    fontSize: rf(20),
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.2,
-  },
-  platformPayBtnSelected: {
-    borderColor: ONRODA_MARK_RED,
-    borderWidth: 2.5,
-  },
-  platformPayCheck: {
-    position: "absolute",
-    top: rs(10),
-    right: rs(10),
-    width: rs(22),
-    height: rs(22),
-    borderRadius: rs(11),
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   paymentList: { gap: rs(6), marginTop: rs(2) },
-  paymentListAfterPlatform: { marginTop: rs(10), paddingTop: rs(10), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E5E7EB" },
   stripeSetupHint: {
     marginTop: rs(12),
     fontSize: rf(12),
