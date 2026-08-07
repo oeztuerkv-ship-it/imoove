@@ -31,6 +31,7 @@ import {
   CUSTOMER_ROUTE_MUTED_BG,
   CustomerRouteStopsPanel,
   formatCustomerReservationPickupInRahmen,
+  splitCustomerRouteAddress,
 } from "@/components/booking/CustomerRouteStopsPanel";
 import { TaxiAddressInput } from "@/components/booking/TaxiAddressInput";
 import {
@@ -199,14 +200,19 @@ function geoFromRideRequest(
   lat?: number,
   lon?: number,
 ): GeoLocation | null {
-  const name = (shortLabel || fullLabel || "").trim();
-  if (!name) return null;
+  const short = (shortLabel || "").trim();
+  const full = (fullLabel || "").trim();
+  const displayName = full || short;
+  if (!displayName) return null;
   if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   if (Math.abs(lat) < 1e-5 && Math.abs(lon) < 1e-5) return null;
+  const { street, city } = splitCustomerRouteAddress(displayName);
   return {
-    displayName: shortLabel.trim() || name,
+    displayName,
     lat,
     lon,
+    street: street || undefined,
+    city: city || undefined,
   };
 }
 
@@ -426,12 +432,20 @@ function SearchCancelButton({ onPress }: { onPress: () => void }) {
 function SearchTripSummary({
   originName,
   destName,
+  originCity,
+  destCity,
+  originPostcode,
+  destPostcode,
   distanceKm,
   billingRequest,
   pickupInRahmen,
 }: {
   originName: string;
   destName: string;
+  originCity?: string | null;
+  destCity?: string | null;
+  originPostcode?: string | null;
+  destPostcode?: string | null;
   distanceKm?: number | null;
   billingRequest: RideRequest | null;
   pickupInRahmen?: string | null;
@@ -441,6 +455,10 @@ function SearchTripSummary({
       <CustomerRouteStopsPanel
         originName={originName}
         destName={destName}
+        originCity={originCity}
+        destCity={destCity}
+        originPostcode={originPostcode}
+        destPostcode={destPostcode}
         destinationBackgroundColor={CUSTOMER_ROUTE_MUTED_BG}
       />
       <SearchTripMetaRow
@@ -520,6 +538,10 @@ function ReservationPendingCard({
           <SearchTripSummary
             originName={displayOrigin?.displayName ?? "Esslingen am Neckar"}
             destName={displayDestination?.displayName ?? "–"}
+            originCity={displayOrigin?.city}
+            destCity={displayDestination?.city}
+            originPostcode={displayOrigin?.postcode}
+            destPostcode={displayDestination?.postcode}
             distanceKm={routeDistanceKm}
             billingRequest={billingRequest}
             pickupInRahmen={pickupInRahmen}
@@ -885,17 +907,45 @@ export default function StatusScreen() {
   const serverRideForUi = rideMatchingCurrentId ?? effectiveAcceptedRequest;
 
   const displayOrigin = useMemo(() => {
-    if (origin?.displayName?.trim()) return origin;
     const r = serverRideForUi;
-    if (!r) return origin;
-    return geoFromRideRequest(r.from, r.fromFull, r.fromLat, r.fromLon) ?? origin;
+    const fromServer = r ? geoFromRideRequest(r.from, r.fromFull, r.fromLat, r.fromLon) : null;
+    const ctx = origin;
+    if (fromServer) {
+      const ctxCity = splitCustomerRouteAddress(ctx?.displayName, { city: ctx?.city }).city;
+      if (ctx?.displayName?.trim() && ctxCity) return ctx;
+      if (ctx?.displayName?.trim()) {
+        return {
+          ...ctx,
+          displayName: fromServer.displayName,
+          city: fromServer.city ?? ctx.city,
+          street: fromServer.street ?? ctx.street,
+          postcode: fromServer.postcode ?? ctx.postcode,
+        };
+      }
+      return fromServer;
+    }
+    return ctx;
   }, [origin, serverRideForUi]);
 
   const displayDestination = useMemo(() => {
-    if (destination?.displayName?.trim()) return destination;
     const r = serverRideForUi;
-    if (!r) return destination;
-    return geoFromRideRequest(r.to, r.toFull, r.toLat, r.toLon) ?? destination;
+    const fromServer = r ? geoFromRideRequest(r.to, r.toFull, r.toLat, r.toLon) : null;
+    const ctx = destination;
+    if (fromServer) {
+      const ctxCity = splitCustomerRouteAddress(ctx?.displayName, { city: ctx?.city }).city;
+      if (ctx?.displayName?.trim() && ctxCity) return ctx;
+      if (ctx?.displayName?.trim()) {
+        return {
+          ...ctx,
+          displayName: fromServer.displayName,
+          city: fromServer.city ?? ctx.city,
+          street: fromServer.street ?? ctx.street,
+          postcode: fromServer.postcode ?? ctx.postcode,
+        };
+      }
+      return fromServer;
+    }
+    return ctx;
   }, [destination, serverRideForUi]);
 
   /** Kein „Suche Fahrer…“-Flash: warten bis Kunden-Fahrten vom Server da sind. */
@@ -2183,6 +2233,10 @@ export default function StatusScreen() {
             <SearchTripSummary
               originName={displayOrigin?.displayName ?? "Esslingen am Neckar"}
               destName={displayDestination?.displayName ?? "–"}
+              originCity={displayOrigin?.city}
+              destCity={displayDestination?.city}
+              originPostcode={displayOrigin?.postcode}
+              destPostcode={displayDestination?.postcode}
               distanceKm={route?.distanceKm}
               billingRequest={pendingBillingRequest}
             />
