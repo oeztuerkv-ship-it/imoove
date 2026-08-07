@@ -23,25 +23,36 @@ export function formatCustomerReservationPickupInRahmen(
   return `${datePart} · ${timePart} Uhr`;
 }
 
-export function splitCustomerRouteAddress(displayName: string | undefined): { street: string; city: string } {
+export function splitCustomerRouteAddress(
+  displayName: string | undefined,
+  opts?: { city?: string | null; postcode?: string | null },
+): { street: string; city: string } {
   const raw = (displayName ?? "").trim();
   if (!raw || raw === "–") return { street: raw || "–", city: "" };
   const comma = raw.indexOf(",");
   if (comma > 0) {
-    return { street: raw.slice(0, comma).trim(), city: raw.slice(comma + 1).trim() };
+    const street = raw.slice(0, comma).trim();
+    const rest = raw.slice(comma + 1).trim();
+    const cityFromRest = rest.replace(/^\d{4,5}\s+/, "").trim() || rest;
+    return { street, city: cityFromRest };
   }
-  return { street: raw, city: "" };
+  const cityFallback = [opts?.postcode?.trim(), opts?.city?.trim()].filter(Boolean).join(" ");
+  return { street: raw, city: cityFallback };
 }
 
 function CustomerRouteStopTexts({
   kind,
   displayName,
+  city,
+  postcode,
 }: {
   kind: "origin" | "destination";
   displayName: string;
+  city?: string | null;
+  postcode?: string | null;
 }) {
   const isOrigin = kind === "origin";
-  const { street, city } = splitCustomerRouteAddress(displayName);
+  const { street, city: cityLine } = splitCustomerRouteAddress(displayName, { city, postcode });
   const labelColor = isOrigin ? "#16A34A" : "#DC2626";
 
   return (
@@ -50,9 +61,9 @@ function CustomerRouteStopTexts({
       <Text style={styles.routeStreet} numberOfLines={1}>
         {street}
       </Text>
-      {city ? (
+      {cityLine ? (
         <Text style={styles.routeCity} numberOfLines={1}>
-          {city}
+          {cityLine}
         </Text>
       ) : null}
     </View>
@@ -62,10 +73,18 @@ function CustomerRouteStopTexts({
 function CustomerRouteStopsPanelInner({
   originName,
   destName,
+  originCity,
+  destCity,
+  originPostcode,
+  destPostcode,
   mutedBackgroundColor,
 }: {
   originName: string;
   destName: string;
+  originCity?: string | null;
+  destCity?: string | null;
+  originPostcode?: string | null;
+  destPostcode?: string | null;
   mutedBackgroundColor?: string;
 }) {
   const panelRef = useRef<View>(null);
@@ -106,7 +125,7 @@ function CustomerRouteStopsPanelInner({
 
   useEffect(() => {
     updateConnector();
-  }, [originName, destName, updateConnector]);
+  }, [originName, destName, originCity, destCity, originPostcode, destPostcode, updateConnector]);
 
   return (
     <View
@@ -141,7 +160,12 @@ function CustomerRouteStopsPanelInner({
           />
         </View>
         <View style={styles.stopContent} onLayout={updateConnector}>
-          <CustomerRouteStopTexts kind="origin" displayName={originName} />
+          <CustomerRouteStopTexts
+            kind="origin"
+            displayName={originName}
+            city={originCity}
+            postcode={originPostcode}
+          />
         </View>
       </View>
 
@@ -154,7 +178,12 @@ function CustomerRouteStopsPanelInner({
           />
         </View>
         <View style={styles.stopContent} onLayout={updateConnector}>
-          <CustomerRouteStopTexts kind="destination" displayName={destName} />
+          <CustomerRouteStopTexts
+            kind="destination"
+            displayName={destName}
+            city={destCity}
+            postcode={destPostcode}
+          />
         </View>
       </View>
     </View>
@@ -164,10 +193,18 @@ function CustomerRouteStopsPanelInner({
 export function CustomerRouteStopsPanel({
   originName,
   destName,
+  originCity,
+  destCity,
+  originPostcode,
+  destPostcode,
   destinationBackgroundColor,
 }: {
   originName: string;
   destName: string;
+  originCity?: string | null;
+  destCity?: string | null;
+  originPostcode?: string | null;
+  destPostcode?: string | null;
   /** Von + Ziel auf grauer Fläche (Live-Suche, wie Barzahlungs-Chip). */
   destinationBackgroundColor?: string;
 }) {
@@ -175,6 +212,10 @@ export function CustomerRouteStopsPanel({
     <CustomerRouteStopsPanelInner
       originName={originName}
       destName={destName}
+      originCity={originCity}
+      destCity={destCity}
+      originPostcode={originPostcode}
+      destPostcode={destPostcode}
       mutedBackgroundColor={destinationBackgroundColor}
     />
   );

@@ -47,7 +47,8 @@ export function LiveSearchResultGroup({
                   {loc.displayName.split(",")[0]}
                 </Text>
                 <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {loc.displayName.split(",").slice(1, 3).join(",").trim()}
+                  {loc.displayName.split(",").slice(1, 3).join(",").trim() ||
+                    [loc.postcode, loc.city].filter(Boolean).join(" ")}
                 </Text>
               </View>
             </Pressable>

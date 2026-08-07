@@ -70,11 +70,15 @@ export const liveSearchRouteStyles = StyleSheet.create({
     gap: 8,
     borderBottomWidth: 0,
   },
+  fieldTextCol: { flex: 1, minWidth: 0, gap: 2 },
   fieldInput: {
-    flex: 1,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
     paddingVertical: 0,
+  },
+  fieldSubline: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
   },
   fieldSeparator: { height: 2, marginLeft: 8, marginRight: 8, opacity: 0.45 },
   gpsIconBtn: { padding: 4 },

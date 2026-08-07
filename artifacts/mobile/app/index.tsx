@@ -85,7 +85,7 @@ import {
 } from "@/components/CustomerLegalConsent";
 import { CustomerFareEstimateLegalHint } from "@/components/CustomerFareEstimateLegalHint";
 import { CustomerFarePriceBlock } from "@/components/CustomerFarePriceBlock";
-import { type GeoLocation, searchLocation } from "@/utils/routing";
+import { type GeoLocation, searchLocation, withCityInDisplayName } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
   confirmCustomerPasswordReset,
@@ -1499,7 +1499,7 @@ export default function HomeScreen() {
   const handleDestinationSelect = (loc: GeoLocation) => {
     const resolved = viaSearchLegs.map((l) => l.location).filter((x): x is GeoLocation => x !== null);
     setViaStops(resolved);
-    setDestination(loc);
+    setDestination(withCityInDisplayName(loc));
     setDestQuery("");
     setDestResults([]);
     setViaSearchLegs([]);
@@ -2448,7 +2448,8 @@ export default function HomeScreen() {
                               {loc.displayName.split(",")[0]}
                             </Text>
                             <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                              {loc.displayName.split(",").slice(1, 3).join(",").trim()}
+                              {loc.displayName.split(",").slice(1, 3).join(",").trim() ||
+                                [loc.postcode, loc.city].filter(Boolean).join(" ")}
                             </Text>
                           </View>
                         </Pressable>
@@ -2473,7 +2474,8 @@ export default function HomeScreen() {
                             {loc.displayName.split(",")[0]}
                           </Text>
                           <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {loc.displayName.split(",").slice(1, 3).join(",").trim()}
+                            {loc.displayName.split(",").slice(1, 3).join(",").trim() ||
+                              [loc.postcode, loc.city].filter(Boolean).join(" ")}
                           </Text>
                         </View>
                       </Pressable>

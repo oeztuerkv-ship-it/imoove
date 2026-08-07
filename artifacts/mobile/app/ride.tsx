@@ -956,6 +956,10 @@ export default function RideScreen() {
         <CustomerRouteStopsPanel
           originName={origin?.displayName ?? "Esslingen am Neckar"}
           destName={destination?.displayName ?? "–"}
+          originCity={origin?.city}
+          destCity={destination?.city}
+          originPostcode={origin?.postcode}
+          destPostcode={destination?.postcode}
           destinationBackgroundColor={scheduledTime ? CUSTOMER_ROUTE_MUTED_BG : undefined}
         />
         {schedDateStr ? (

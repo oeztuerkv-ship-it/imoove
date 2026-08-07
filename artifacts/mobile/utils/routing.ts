@@ -83,7 +83,10 @@ function photonLabel(f: PhotonFeature): string {
   }
 
   const city = p.city ?? p.town ?? p.village ?? p.district ?? p.county;
-  if (city && !parts.includes(city)) parts.push(city);
+  const locality = [p.postcode, city].filter(Boolean).join(" ");
+  if (locality && !parts.some((part) => part === locality || part === city)) {
+    parts.push(locality);
+  }
 
   /* Land nur wenn nicht Deutschland (für internationale Adressen) */
   if (p.countrycode && p.countrycode.toLowerCase() !== "de" && p.country) {
@@ -91,6 +94,24 @@ function photonLabel(f: PhotonFeature): string {
   }
 
   return parts.filter(Boolean).join(", ") || (p.name ?? "");
+}
+
+/** Stellt sicher, dass displayName Straße + Stadt enthält (wie GPS-Reverse). */
+export function withCityInDisplayName(loc: GeoLocation): GeoLocation {
+  const cityLine = [loc.postcode?.trim(), loc.city?.trim()].filter(Boolean).join(" ");
+  if (!cityLine) return loc;
+  const raw = (loc.displayName ?? "").trim();
+  if (!raw) {
+    return { ...loc, displayName: cityLine };
+  }
+  if (raw.toLowerCase().includes(cityLine.toLowerCase()) || (loc.city && raw.toLowerCase().includes(loc.city.trim().toLowerCase()))) {
+    return loc;
+  }
+  const street =
+    loc.street && loc.housenumber
+      ? `${loc.street} ${loc.housenumber}`
+      : loc.street?.trim() || raw.split(",")[0]?.trim() || raw;
+  return { ...loc, displayName: `${street}, ${cityLine}` };
 }
 
 export async function searchLocation(
@@ -129,16 +150,18 @@ export async function searchLocation(
     return [...streets, ...places]
       .filter((f) => !f.properties.countrycode || f.properties.countrycode.toLowerCase() === "de")
       .slice(0, 7)
-      .map((f) => ({
-        lat: f.geometry.coordinates[1],
-        lon: f.geometry.coordinates[0],
-        displayName: photonLabel(f),
-        street: f.properties.street,
-        housenumber: f.properties.housenumber,
-        city: f.properties.city ?? f.properties.town ?? f.properties.village ?? f.properties.district,
-        postcode: f.properties.postcode,
-        country: f.properties.country,
-      }))
+      .map((f) =>
+        withCityInDisplayName({
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0],
+          displayName: photonLabel(f),
+          street: f.properties.street,
+          housenumber: f.properties.housenumber,
+          city: f.properties.city ?? f.properties.town ?? f.properties.village ?? f.properties.district,
+          postcode: f.properties.postcode,
+          country: f.properties.country,
+        }),
+      )
       .filter((loc) => loc.displayName.length > 0);
   } catch {
     return [];

@@ -578,6 +578,8 @@ export default function BookingFixedPriceScreen() {
           isEditingOrigin={isEditingOrigin}
           originQuery={originQuery}
           destQuery={destQuery}
+          originSubline={from.subline}
+          destSubline={to.subline}
           onOriginQueryChange={handleOriginQueryChange}
           onDestQueryChange={handleDestQueryChange}
           onFocusOrigin={() => setIsEditingOrigin(true)}

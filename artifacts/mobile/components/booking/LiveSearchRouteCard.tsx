@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
 import { liveSearchRouteStyles as styles } from "@/components/booking/liveSearchRouteStyles";
 import { useColors } from "@/hooks/useColors";
@@ -11,6 +11,8 @@ export function LiveSearchRouteCard({
   isEditingOrigin,
   originQuery,
   destQuery,
+  originSubline,
+  destSubline,
   onOriginQueryChange,
   onDestQueryChange,
   onFocusOrigin,
@@ -25,6 +27,8 @@ export function LiveSearchRouteCard({
   isEditingOrigin: boolean;
   originQuery: string;
   destQuery: string;
+  originSubline?: string;
+  destSubline?: string;
   onOriginQueryChange: (text: string) => void;
   onDestQueryChange: (text: string) => void;
   onFocusOrigin: () => void;
@@ -37,6 +41,8 @@ export function LiveSearchRouteCard({
   onClearDest: () => void;
 }) {
   const colors = useColors();
+  const showOriginCity = Boolean(originSubline?.trim()) && originQuery.trim().length > 0;
+  const showDestCity = Boolean(destSubline?.trim()) && destQuery.trim().length > 0;
 
   return (
     <View style={[styles.twoFieldCard, { backgroundColor: SEARCH_OVERLAY_BG, borderColor: "#E5E7EB" }]}>
@@ -56,17 +62,24 @@ export function LiveSearchRouteCard({
           style={[styles.fieldWrap, isEditingOrigin && { borderBottomColor: colors.primary }]}
           onPress={onFocusOrigin}
         >
-          <TextInput
-            ref={originInputRef}
-            style={[styles.fieldInput, { color: colors.foreground }]}
-            value={originQuery}
-            onChangeText={onOriginQueryChange}
-            placeholder="Startadresse eingeben..."
-            placeholderTextColor={colors.mutedForeground}
-            onFocus={onFocusOrigin}
-            returnKeyType="next"
-            autoCorrect={false}
-          />
+          <View style={styles.fieldTextCol}>
+            <TextInput
+              ref={originInputRef}
+              style={[styles.fieldInput, { color: colors.foreground }]}
+              value={originQuery}
+              onChangeText={onOriginQueryChange}
+              placeholder="Startadresse eingeben..."
+              placeholderTextColor={colors.mutedForeground}
+              onFocus={onFocusOrigin}
+              returnKeyType="next"
+              autoCorrect={false}
+            />
+            {showOriginCity ? (
+              <Text style={[styles.fieldSubline, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {originSubline}
+              </Text>
+            ) : null}
+          </View>
           {gpsLoading ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
@@ -79,17 +92,24 @@ export function LiveSearchRouteCard({
         <View style={[styles.fieldSeparator, { backgroundColor: colors.border }]} />
 
         <View style={[styles.fieldWrap, !isEditingOrigin && { borderBottomColor: colors.primary }]}>
-          <TextInput
-            ref={destInputRef}
-            style={[styles.fieldInput, { color: colors.foreground }]}
-            value={destQuery}
-            onChangeText={onDestQueryChange}
-            placeholder="Ziel eingeben..."
-            placeholderTextColor={colors.mutedForeground}
-            onFocus={onFocusDest}
-            returnKeyType="search"
-            autoCorrect={false}
-          />
+          <View style={styles.fieldTextCol}>
+            <TextInput
+              ref={destInputRef}
+              style={[styles.fieldInput, { color: colors.foreground }]}
+              value={destQuery}
+              onChangeText={onDestQueryChange}
+              placeholder="Ziel eingeben..."
+              placeholderTextColor={colors.mutedForeground}
+              onFocus={onFocusDest}
+              returnKeyType="search"
+              autoCorrect={false}
+            />
+            {showDestCity ? (
+              <Text style={[styles.fieldSubline, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {destSubline}
+              </Text>
+            ) : null}
+          </View>
           {isSearchingDest ? <ActivityIndicator size="small" color={colors.primary} /> : null}
           {destQuery.length > 0 && !isSearchingDest ? (
             <Pressable onPress={onClearDest} hitSlop={8}>
