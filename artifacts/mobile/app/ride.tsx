@@ -1012,38 +1012,44 @@ export default function RideScreen() {
 
           <View style={styles.paymentList}>
             {platformPayOption ? (
-              <>
-                <Text style={[styles.platformPayTagline, { color: colors.mutedForeground }]}>
-                  Schnell & sicher bezahlen
-                </Text>
-                <Pressable
-                  style={[
-                    styles.paymentBtn,
-                    {
-                      backgroundColor:
-                        paymentMethod === platformPayOption.id ? ONRODA_MARK_RED + "08" : colors.card,
-                      borderColor:
-                        paymentMethod === platformPayOption.id ? ONRODA_MARK_RED : colors.border,
-                    },
-                  ]}
-                  onPress={() => selectPaymentMethod(platformPayOption.id)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: paymentMethod === platformPayOption.id }}
-                  accessibilityLabel={platformPayOption.label}
-                >
-                  <View style={styles.paymentBtnLeft}>
-                    <MaterialCommunityIcons
-                      name={platformPayOption.isApplePay ? "apple" : "google"}
-                      size={15}
-                      color={platformPayOption.isApplePay ? colors.foreground : "#4285F4"}
-                    />
+              <Pressable
+                style={[
+                  styles.paymentBtn,
+                  {
+                    backgroundColor:
+                      paymentMethod === platformPayOption.id ? ONRODA_MARK_RED + "08" : colors.card,
+                    borderColor:
+                      paymentMethod === platformPayOption.id ? ONRODA_MARK_RED : colors.border,
+                  },
+                ]}
+                onPress={() => selectPaymentMethod(platformPayOption.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: paymentMethod === platformPayOption.id }}
+                accessibilityLabel={
+                  platformPayOption.isApplePay
+                    ? "Apple Pay, Schnell und sicher bezahlen"
+                    : platformPayOption.label
+                }
+              >
+                <View style={styles.paymentBtnLeft}>
+                  <MaterialCommunityIcons
+                    name={platformPayOption.isApplePay ? "apple" : "google"}
+                    size={15}
+                    color={platformPayOption.isApplePay ? colors.foreground : "#4285F4"}
+                  />
+                  <View style={styles.paymentBtnTextCol}>
                     <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>
                       {platformPayOption.label}
                     </Text>
+                    {platformPayOption.isApplePay ? (
+                      <Text style={[styles.platformPayInFrameHint, { color: colors.mutedForeground }]}>
+                        Schnell & sicher bezahlen
+                      </Text>
+                    ) : null}
                   </View>
-                  <PaymentSelectDot selected={paymentMethod === platformPayOption.id} />
-                </Pressable>
-              </>
+                </View>
+                <PaymentSelectDot selected={paymentMethod === platformPayOption.id} />
+              </Pressable>
             ) : null}
             {standardPaymentOptions.map((opt) => {
               const isSelected = paymentMethod === opt.id;
@@ -1468,10 +1474,10 @@ const styles = StyleSheet.create({
     color: "#111111",
   },
   paymentList: { gap: rs(6), marginTop: rs(2) },
-  platformPayTagline: {
-    fontSize: rf(13),
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: rs(2),
+  paymentBtnTextCol: { flexShrink: 1, gap: rs(1) },
+  platformPayInFrameHint: {
+    fontSize: rf(12),
+    fontFamily: "Inter_500Medium",
   },
   stripeSetupHint: {
     marginTop: rs(12),
