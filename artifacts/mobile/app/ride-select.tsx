@@ -238,6 +238,7 @@ export default function RideSelectScreen() {
                 <CustomerFarePriceBlock
                   vehicle={v.id}
                   surchargeEur={surcharge}
+                  style={styles.vehiclePriceCol}
                   primaryStyle={styles.vehiclePrice}
                   secondaryStyle={styles.vehicleSurcharge}
                 />
@@ -307,8 +308,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  vehicleLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  vehicleLeft: { flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 },
   vehicleName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  /** Gleiche Spaltenbreite wie XL/Rollstuhl (Aufschlagzeile), damit „Taxameter“ nicht am rechten Rand klebt. */
+  vehiclePriceCol: { minWidth: 132, alignItems: "flex-start" },
   vehiclePrice: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#111827" },
   vehicleSurcharge: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB" },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
