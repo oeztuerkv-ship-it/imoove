@@ -1512,11 +1512,24 @@ export default function StatusScreen() {
       if (cancelId) {
         await cancelRequest(cancelId, undefined, finalReason);
         await refreshRequests();
+        handledRideCancelledRef.current = cancelId;
       } else {
         console.log("[CancelFlow] No cancel ID resolved; finishing locally");
       }
       // Mid-Trip-Abbruch durch Kunden gibt es nicht mehr — Storno nur vor Fahrtstart.
-      finishCancelLocally();
+      Alert.alert(
+        "Sie haben die Fahrt storniert",
+        "",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              finishCancelLocally();
+            },
+          },
+        ],
+        { cancelable: false },
+      );
     } catch (e) {
       const code = e instanceof Error ? e.message.trim() : "";
       const custom =
@@ -1741,10 +1754,8 @@ export default function StatusScreen() {
         ? `Die Fahrt wurde beendet.\n\nGrund: ${reason}`
         : "Die Fahrt wurde beendet.";
     } else if (ride.status === "cancelled_by_customer") {
-      title = "Fahrt storniert";
-      message = reason
-        ? `Die Fahrt wurde storniert.\n\nGrund: ${reason}`
-        : "Die Fahrt wurde storniert.";
+      title = "Sie haben die Fahrt storniert";
+      message = "";
     } else if (ride.status === "cancelled_by_system") {
       title = "Fahrt beendet";
       message = reason
