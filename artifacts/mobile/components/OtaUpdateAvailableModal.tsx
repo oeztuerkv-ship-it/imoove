@@ -71,7 +71,9 @@ export function OtaUpdateAvailableModal({ visible, onContinue }: Props) {
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>Neue Version verfügbar</Text>
-          <Text style={styles.body}>Ein Update steht bereit und wird als Nächstes installiert.</Text>
+          <Text style={styles.body}>
+            Es gibt ein App-Update. Tippe auf Weiter, um es jetzt herunterzuladen und zu installieren.
+          </Text>
 
           {phase === "prompt" ? (
             <Pressable
