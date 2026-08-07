@@ -101,23 +101,47 @@ async function openStoreUrl(url: string): Promise<void> {
 }
 
 /**
- * OTA: prüft Expo Updates, lädt herunter.
- * UI (Hinweis + Fortschritt + Reload) steuert der Aufrufer.
+ * OTA: prüft Expo Updates (ohne Download).
  * Dev / Expo Go / disabled → no-op.
- * @returns true wenn ein Update bereit ist und die App neu geladen werden soll.
+ * @returns true wenn ein Update verfügbar ist.
  */
-export async function runOtaUpdateCheck(): Promise<boolean> {
+export async function checkOtaUpdateAvailable(): Promise<boolean> {
   if (__DEV__) return false;
   try {
     const Updates = await import("expo-updates");
     if (!Updates.isEnabled) return false;
     const check = await Updates.checkForUpdateAsync();
-    if (!check.isAvailable) return false;
+    return check.isAvailable === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * OTA: lädt verfügbares Update herunter.
+ * @returns true wenn Download ohne Fehler (Bundle bereit für Reload).
+ */
+export async function fetchOtaUpdate(): Promise<boolean> {
+  if (__DEV__) return false;
+  try {
+    const Updates = await import("expo-updates");
+    if (!Updates.isEnabled) return false;
     await Updates.fetchUpdateAsync();
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * OTA: prüft + lädt in einem Schritt (Legacy / Tests).
+ * UI (Hinweis + Fortschritt + Reload) steuert der Aufrufer.
+ * @returns true wenn ein Update bereit ist und die App neu geladen werden soll.
+ */
+export async function runOtaUpdateCheck(): Promise<boolean> {
+  const available = await checkOtaUpdateAvailable();
+  if (!available) return false;
+  return fetchOtaUpdate();
 }
 
 export async function reloadAfterOtaUpdate(): Promise<void> {
