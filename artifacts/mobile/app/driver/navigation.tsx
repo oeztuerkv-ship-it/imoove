@@ -118,6 +118,7 @@ import {
   remainingAlongPolyline,
   scaleRemainingToAuthoritative,
   snapLatLonToPolyline,
+  snapLatLonToPolylineNearProgress,
   splitPolylineAtProgress,
 } from "@/utils/routeRemainingAlongPolyline";
 import {
@@ -596,10 +597,15 @@ export default function DriverNavigationScreen() {
   const preferredAltitudeRef = useRef<number | null>(null);
   /** Während Pinch/Pan: kurz keine Follow-animateCamera (sonst stirbt die Geste). */
   const userGestureCameraPauseUntilRef = useRef(0);
+  /** Ende der letzten Follow-animateCamera — Überlappung → setCamera Catch-up. */
+  const cameraAnimUntilRef = useRef(0);
   /** Heading: Speed-Gate + EMA/Deadband/Rate-Limit (nicht Roh-GPS). */
   const navHeadingSmootherRef = useRef<NavHeadingSmootherState>(createNavHeadingSmootherState());
   const navPositionSmootherRef = useRef<NavPositionSmootherState>(createNavPositionSmootherState());
-  /** Einzige Pose für Kamera + Puck — Heading nur über applyDriverNavFix / Smoother. */
+  /**
+   * Enhanced location (Mapbox-Stil): Marker + Kamera = dieselbe Display-Pose (Snap).
+   * Filtered/raw nur für Off-Route + Share (nicht hier).
+   */
   const navPoseRef = useRef<{ lat: number; lon: number; heading: number | null }>({
     lat: fromLat || 48.7394,
     lon: fromLon || 9.3117,
@@ -945,8 +951,9 @@ export default function DriverNavigationScreen() {
       if (!isValidMapCoord(lat, lon)) return;
 
       /**
-       * Heading nur aus der Pose-Pipeline (applyDriverNavFix / Smoother).
-       * Kein Roh-Fallback hier — der konkurriert sonst mit geglätteten GPS-Ticks → Zittern.
+       * Heading nur aus der Pose-Pipeline (Engine / Smoother).
+       * Bootstrap: nur Heading nachziehen — Lat/Lon nicht durch Legacy-EMA ersetzen
+       * (sonst Marker/Kamera-Split: Snap vs. filtered).
        */
       let heading: number | null = null;
       if (opts?.still && lastCameraPoseRef.current && isUsableCourse(lastCameraPoseRef.current.heading)) {
@@ -962,8 +969,6 @@ export default function DriverNavigationScreen() {
           speedMps: 0,
           courseDeg: null,
         });
-        lat = boot.lat;
-        lon = boot.lon;
         heading = boot.heading;
       }
       if (!isUsableCourse(heading)) return;
@@ -1039,11 +1044,16 @@ export default function DriverNavigationScreen() {
         pitch: NAV_CAMERA_PITCH,
       });
       markProgrammaticCamera(Math.max(duration, opts?.force ? 400 : 0));
-      const useSet =
+      // Überlappende animateCamera stapeln auf MapKit → Ruckeln/Crash; Catch-up per setCamera.
+      let useSet =
         opts?.force || !navCameraInitializedRef.current || duration === 0;
+      if (!useSet && Date.now() < cameraAnimUntilRef.current) {
+        useSet = true;
+      }
       try {
         if (useSet) {
           mapRef.current.setCamera(cam);
+          cameraAnimUntilRef.current = 0;
           navDiagCamera({
             caller: "navigation.tsx:focusNavigationCamera",
             method: "setCamera",
@@ -1059,6 +1069,7 @@ export default function DriverNavigationScreen() {
           });
         } else {
           mapRef.current.animateCamera(cam, { duration });
+          cameraAnimUntilRef.current = Date.now() + duration;
           navDiagCamera({
             caller: "navigation.tsx:focusNavigationCamera",
             method: "animateCamera",
@@ -1108,11 +1119,20 @@ export default function DriverNavigationScreen() {
         courseDeg = fresh.coords.heading;
       }
       const pose = applyDriverNavFix({ lat, lon, speedMps, courseDeg });
-      setDriverLat(pose.lat);
-      setDriverLon(pose.lon);
+      const snap = snapLatLonToPolylineNearProgress(
+        polylineLatLonRef.current,
+        { lat: pose.lat, lon: pose.lon },
+        navEngineRef.current.routeProgressM,
+        NAV_MARKER_SNAP_MAX_LATERAL_M,
+      );
+      const displayLat = snap?.point.lat ?? pose.lat;
+      const displayLon = snap?.point.lon ?? pose.lon;
+      setDriverLat(displayLat);
+      setDriverLon(displayLon);
+      navPoseRef.current = { lat: displayLat, lon: displayLon, heading: pose.heading };
       focusNavigationCamera({
-        lat: pose.lat,
-        lon: pose.lon,
+        lat: displayLat,
+        lon: displayLon,
         heading: pose.heading ?? undefined,
         animated: true,
         force: true,
@@ -2483,6 +2503,11 @@ export default function DriverNavigationScreen() {
     await completeRideWithFare(fare, false);
   };
 
+  const focusNavigationCameraRef = useRef(focusNavigationCamera);
+  focusNavigationCameraRef.current = focusNavigationCamera;
+  const requestNavRouteFromRef = useRef(requestNavRouteFrom);
+  requestNavRouteFromRef.current = requestNavRouteFrom;
+
   // GPS tracking — NavigationEngine-Tick; Side-Effects (API/Socket/Kamera) hier.
   // iOS: timeInterval wird von expo-location ignoriert (nur Android) — distanceInterval steuert die Rate.
   useEffect(() => {
@@ -2533,9 +2558,10 @@ export default function DriverNavigationScreen() {
     ) => {
       setDriverLat(output.display.lat);
       setDriverLon(output.display.lon);
+      // Enhanced location: Marker + Kamera dieselbe Pose (nicht filtered).
       navPoseRef.current = {
-        lat: output.filtered.lat,
-        lon: output.filtered.lon,
+        lat: output.display.lat,
+        lon: output.display.lon,
         heading: output.heading,
       };
       setGuidanceStale(output.guidanceStale || rerouteInFlightRef.current);
@@ -2547,7 +2573,11 @@ export default function DriverNavigationScreen() {
       } else {
         setDistToManeuverM(0);
       }
-      if (Date.now() >= userGestureCameraPauseUntilRef.current) {
+      // Zoom nur bei spürbarer Änderung — sonst Altitude-Jagd während animateCamera.
+      if (
+        Date.now() >= userGestureCameraPauseUntilRef.current &&
+        Math.abs(preferredZoomRef.current - output.cameraZoom) >= 0.12
+      ) {
         preferredZoomRef.current = output.cameraZoom;
       }
 
@@ -2573,7 +2603,7 @@ export default function DriverNavigationScreen() {
         return;
       }
       lastCameraFollowAt = nowMs;
-      focusNavigationCamera({
+      focusNavigationCameraRef.current({
         lat: output.display.lat,
         lon: output.display.lon,
         heading: output.heading ?? undefined,
@@ -2757,7 +2787,7 @@ export default function DriverNavigationScreen() {
               setNavRouteLoadState((s) => (s === "ready" ? s : "retrying"));
               const t0 = Date.now();
               navDiagRerouteRequestStarted({ reason: "recover", from: out.filtered });
-              void requestNavRouteFrom(
+              void requestNavRouteFromRef.current(
                 { lat: out.filtered.lat, lon: out.filtered.lon },
                 "recover",
               )
@@ -2800,7 +2830,7 @@ export default function DriverNavigationScreen() {
               setDistToManeuverM(0);
               const t0 = Date.now();
               navDiagRerouteRequestStarted({ reason: "reroute", from: out.filtered });
-              void requestNavRouteFrom(
+              void requestNavRouteFromRef.current(
                 { lat: out.filtered.lat, lon: out.filtered.lon },
                 "reroute",
               )
@@ -2826,7 +2856,7 @@ export default function DriverNavigationScreen() {
       sub?.remove();
       navDiagGpsEffect("unmount", { rideId: params.rideId ?? null });
     };
-    }, [params.rideId, focusNavigationCamera, requestNavRouteFrom, applyDriverNavFix]);
+    }, [params.rideId]);
   const handleMapReady = useCallback(() => {
     mapReady.current = true;
     logMapsRuntimeDiagnosticsOnce("DriverNavigation.onMapReady");

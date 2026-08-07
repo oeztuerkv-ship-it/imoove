@@ -92,6 +92,27 @@ assert(
 
 assert(
   pickNavHeadingRaw({
+    speedMps: 8,
+    courseDeg: 90,
+    polylineBearingDeg: 200,
+    heldHeadingDeg: 195,
+    preferRouteBearing: true,
+  }) === 200,
+  "moving + map-matched: poly wins when course disagrees",
+);
+
+assert(
+  pickNavHeadingRaw({
+    speedMps: 8,
+    courseDeg: 90,
+    polylineBearingDeg: 95,
+    preferRouteBearing: true,
+  }) === 90,
+  "moving + map-matched: course wins when agrees with poly",
+);
+
+assert(
+  pickNavHeadingRaw({
     speedMps: NAV_HEADING_TRUST_COURSE_SPEED_MPS - 0.1,
     courseDeg: 90,
     polylineBearingDeg: 45,

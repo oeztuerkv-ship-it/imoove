@@ -7,6 +7,7 @@ export { tickNavPosition as PositionFilter_update, createNavPositionSmootherStat
 
 export {
   snapLatLonToPolyline as MapMatcher_snap,
+  snapLatLonToPolylineNearProgress as MapMatcher_snapNearProgress,
   advanceRouteProgressM as MapMatcher_advanceProgress,
   distanceToForwardPolylineM as MapMatcher_forwardDist,
   bearingAlongPolylineLookaheadDeg as MapMatcher_routeBearing,

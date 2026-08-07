@@ -325,11 +325,13 @@ export function navDiagPipelineOwners(): void {
   pushLine("pipeline_owners", {
     gpsTick: "navigation.tsx watchPositionSafe → tickNavEngine (navEngine/NavigationEngine.ts)",
     headingPitchZoom:
-      "Heading: tickNavHeading via Engine; Pitch: NAV_CAMERA_PITCH_NAV (62) in focusNavigationCamera; Zoom: tickNavCameraZoom via Engine → preferredZoomRef",
+      "Heading: tickNavHeading via Engine (preferRouteBearing when snapped); Pitch: NAV_CAMERA_PITCH_NAV (45) in focusNavigationCamera; Zoom: tickNavCameraZoom via Engine → preferredZoomRef",
     cameraApply:
-      "ONLY navigation.tsx focusNavigationCamera → mapRef.setCamera|animateCamera (guards + NavDiag)",
+      "ONLY navigation.tsx focusNavigationCamera → mapRef.setCamera|animateCamera (overlap → setCamera catch-up)",
     alsoApplyDriverNavFix:
-      "LEGACY still used by focusNavigationCamera bootstrap (heading null) + handleRecenterNav — parallel pose path",
+      "LEGACY: heading bootstrap only (no lat/lon overwrite) + recenter (then progress-snap)",
+    enhancedLocation:
+      "Marker + camera = engine.display (progress-locked snap); filtered = off-route/share only",
     rerouteDecide:
       "Engine output.confirmedOffRoute → navigation.tsx canStartReroute → requestNavRouteFrom",
     dashboardGps:

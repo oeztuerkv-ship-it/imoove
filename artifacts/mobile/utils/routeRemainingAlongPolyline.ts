@@ -154,6 +154,14 @@ export function advanceRouteProgressM(
   opts?: { maxLateralForAdvanceM?: number },
 ): number {
   const maxLat = opts?.maxLateralForAdvanceM ?? 40;
+  // Zuerst im Fortschritts-Fenster — verhindert Progress-Sprung auf Parallelspur.
+  const nNear = nearestOnPolylineNearProgress(polyline, current, committedProgressM, {
+    backtrackM: 35,
+    aheadM: 220,
+  });
+  if (nNear && nNear.bestDistM <= maxLat) {
+    return Math.max(committedProgressM, nNear.progressM);
+  }
   const n = nearestOnPolyline(polyline, current);
   if (!n) return committedProgressM;
   if (n.bestDistM > maxLat) return committedProgressM;
@@ -161,9 +169,103 @@ export function advanceRouteProgressM(
   return Math.max(committedProgressM, p);
 }
 
+function progressAlongPolylineM(n: NearestOnPolyline): number {
+  let p = 0;
+  for (let i = 0; i < n.bestSeg; i++) p += n.segLens[i]!;
+  p += n.bestT * (n.segLens[n.bestSeg] ?? 0);
+  return p;
+}
+
+/**
+ * Nächster Punkt nur in einem Fortschritts-Fenster (kein Snap auf abgefahrene
+ * Parallel-Segmente / Kreuzungs-Gegenrichtung). Mapbox/TomTom-ähnlich: Match
+ * entlang der bekannten Route, nicht global nearest.
+ */
+export function nearestOnPolylineNearProgress(
+  polyline: LatLon[],
+  current: LatLon,
+  committedProgressM: number,
+  opts?: { backtrackM?: number; aheadM?: number },
+): (NearestOnPolyline & { progressM: number }) | null {
+  if (polyline.length < 2) return null;
+  if (!Number.isFinite(current.lat) || !Number.isFinite(current.lon)) return null;
+  const backtrackM = opts?.backtrackM ?? 40;
+  const aheadM = opts?.aheadM ?? 280;
+  const minProg = Math.max(0, (Number.isFinite(committedProgressM) ? committedProgressM : 0) - backtrackM);
+  const maxProg =
+    (Number.isFinite(committedProgressM) ? committedProgressM : 0) + Math.max(40, aheadM);
+
+  const segLens: number[] = [];
+  let totalM = 0;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const len = haversineM(polyline[i]!, polyline[i + 1]!);
+    segLens.push(len);
+    totalM += len;
+  }
+  if (totalM <= 0) return null;
+
+  let bestDistM = Infinity;
+  let bestSeg = 0;
+  let bestT = 0;
+  let any = false;
+  let cum = 0;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const a = polyline[i]!;
+    const b = polyline[i + 1]!;
+    const len = segLens[i]!;
+    const segStart = cum;
+    const segEnd = cum + len;
+    cum = segEnd;
+    if (segEnd < minProg - 0.5) continue;
+    if (segStart > maxProg + 0.5) break;
+    any = true;
+    if (len < 0.5) continue;
+
+    if (segStart >= minProg - 0.5 && segEnd <= maxProg + 0.5) {
+      const proj = projectOnSegment(current, a, b);
+      if (proj.distM < bestDistM) {
+        bestDistM = proj.distM;
+        bestSeg = i;
+        bestT = proj.t;
+      }
+      continue;
+    }
+
+    // Fenster schneidet Segment → nur Teilsegment werten
+    const t0 = segStart < minProg ? Math.max(0, Math.min(1, (minProg - segStart) / len)) : 0;
+    const t1 = segEnd > maxProg ? Math.max(0, Math.min(1, (maxProg - segStart) / len)) : 1;
+    if (t1 <= t0 + 1e-6) continue;
+    const a2: LatLon = {
+      lat: a.lat + (b.lat - a.lat) * t0,
+      lon: a.lon + (b.lon - a.lon) * t0,
+    };
+    const b2: LatLon = {
+      lat: a.lat + (b.lat - a.lat) * t1,
+      lon: a.lon + (b.lon - a.lon) * t1,
+    };
+    const proj = projectOnSegment(current, a2, b2);
+    if (proj.distM < bestDistM) {
+      bestDistM = proj.distM;
+      bestSeg = i;
+      // t relativ zum Vollsegment
+      bestT = t0 + proj.t * (t1 - t0);
+    }
+  }
+  if (!any || !Number.isFinite(bestDistM)) return null;
+  const progressM = (() => {
+    let p = 0;
+    for (let i = 0; i < bestSeg; i++) p += segLens[i]!;
+    return p + bestT * (segLens[bestSeg] ?? 0);
+  })();
+  return { bestDistM, bestSeg, bestT, segLens, totalM, progressM };
+}
+
 /**
  * Lateral auf die Route snappen (nur Anzeige). Null wenn zu weit abseits / keine Route.
  * Off-Route-Messung weiterhin mit Roh-/EMA-GPS, nicht mit dem Snapped-Punkt.
+ *
+ * Ohne Progress: global nearest (Bootstrap / Legacy). Bevorzugt:
+ * `snapLatLonToPolylineNearProgress` während aktiver Navigation.
  */
 export function snapLatLonToPolyline(
   polyline: LatLon[],
@@ -179,6 +281,55 @@ export function snapLatLonToPolyline(
     lat: a.lat + n.bestT * (b.lat - a.lat),
     lon: a.lon + n.bestT * (b.lon - a.lon),
   };
+}
+
+/**
+ * Display-Snap entlang des bekannten Route-Fortschritts (kein Kreuzungs-Rücksprung).
+ */
+export function snapLatLonToPolylineNearProgress(
+  polyline: LatLon[],
+  current: LatLon,
+  committedProgressM: number,
+  maxLateralM: number = 28,
+  opts?: { backtrackM?: number; aheadM?: number },
+): { point: LatLon; progressM: number; lateralM: number } | null {
+  const n = nearestOnPolylineNearProgress(polyline, current, committedProgressM, opts);
+  if (!n || !Number.isFinite(n.bestDistM) || n.bestDistM > maxLateralM) return null;
+  if (n.bestSeg < 0 || n.bestSeg >= polyline.length - 1) return null;
+  const a = polyline[n.bestSeg]!;
+  const b = polyline[n.bestSeg + 1]!;
+  return {
+    point: {
+      lat: a.lat + n.bestT * (b.lat - a.lat),
+      lon: a.lon + n.bestT * (b.lon - a.lon),
+    },
+    progressM: n.progressM,
+    lateralM: n.bestDistM,
+  };
+}
+
+/** Punkt auf der Polyline bei Fortschritt `progressM` (für Dead-Reckoning). */
+export function pointAlongPolylineAtProgressM(
+  polyline: LatLon[],
+  progressM: number,
+): LatLon | null {
+  if (polyline.length < 2) return null;
+  let remaining = Math.max(0, Number.isFinite(progressM) ? progressM : 0);
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const a = polyline[i]!;
+    const b = polyline[i + 1]!;
+    const len = haversineM(a, b);
+    if (len < 0.5) continue;
+    if (remaining <= len) {
+      const t = remaining / len;
+      return {
+        lat: a.lat + (b.lat - a.lat) * t,
+        lon: a.lon + (b.lon - a.lon) * t,
+      };
+    }
+    remaining -= len;
+  }
+  return polyline[polyline.length - 1] ?? null;
 }
 
 /**
@@ -330,14 +481,6 @@ export function splitPolylineAtProgress(
     traveled: traveled.length >= 2 ? traveled : [],
     remaining: remaining.length >= 2 ? remaining : [],
   };
-}
-
-/** Meter entlang der Polyline vom Start bis zur Projektion. */
-function progressAlongPolylineM(n: NearestOnPolyline): number {
-  let done = 0;
-  for (let i = 0; i < n.bestSeg; i++) done += n.segLens[i]!;
-  done += n.bestT * (n.segLens[n.bestSeg] ?? 0);
-  return done;
 }
 
 /**

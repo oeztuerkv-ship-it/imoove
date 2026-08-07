@@ -168,6 +168,7 @@ export function headingsAgreeDeg(a: number, b: number, maxDeltaDeg: number): boo
 /**
  * Roh-Zielheading:
  * - fahrend: **Kurs zuerst** (wenn Speed-Gate), sonst Poly-Lookahead → Bewegung → halten
+ * - fahrend + Map-Match confident (`preferRouteBearing`): bei Kurs↔Poly-Mismatch → Poly
  * - stehend: gehaltenes Heading; Bootstrap poly/kurs/fallback
  */
 export function pickNavHeadingRaw(input: {
@@ -177,6 +178,8 @@ export function pickNavHeadingRaw(input: {
   movementBearingDeg?: number | null;
   fallbackBearingDeg?: number | null;
   heldHeadingDeg?: number | null;
+  /** true wenn Display map-matched mit kleinem Querabstand. */
+  preferRouteBearing?: boolean;
 }): number | null {
   const course = isUsableCourse(input.courseDeg) ? normalizeHeadingDegrees(input.courseDeg) : null;
   let poly =
@@ -203,8 +206,9 @@ export function pickNavHeadingRaw(input: {
     Number.isFinite(speed) &&
     speed >= NAV_HEADING_TRUST_COURSE_SPEED_MPS;
 
-  // Falsches Polyline-Segment nur für Fallback verwerfen.
+  // Falsches Polyline-Segment nur für Fallback verwerfen (nicht bei confident Match).
   if (
+    !input.preferRouteBearing &&
     poly != null &&
     held != null &&
     !headingsAgreeDeg(poly, held, NAV_HEADING_POLY_FLIP_REJECT_DEG)
@@ -213,6 +217,12 @@ export function pickNavHeadingRaw(input: {
   }
 
   if (isMovingForNavHeading(speed)) {
+    if (input.preferRouteBearing && poly != null) {
+      if (trustCourse && course != null && headingsAgreeDeg(course, poly, 40)) {
+        return course;
+      }
+      return poly;
+    }
     // Wichtig: bei brauchbarem Kurs NICHT auf Poly warten/zwingen —
     // Poly-Tangente springt an Kurven/Kreuzungen und dreht die Karte.
     if (trustCourse && course != null) return course;
@@ -276,6 +286,7 @@ export function tickNavHeading(
     polylineBearingDeg?: number | null;
     movementBearingDeg?: number | null;
     fallbackBearingDeg?: number | null;
+    preferRouteBearing?: boolean;
     nowMs?: number;
   },
 ): { state: NavHeadingSmootherState; heading: number | null } {
@@ -286,6 +297,7 @@ export function tickNavHeading(
     movementBearingDeg: input.movementBearingDeg,
     fallbackBearingDeg: input.fallbackBearingDeg,
     heldHeadingDeg: state.heading,
+    preferRouteBearing: input.preferRouteBearing,
   });
   const speed = input.speedMps;
   const slow =

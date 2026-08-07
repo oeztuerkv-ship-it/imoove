@@ -26,25 +26,43 @@ alwaysApply: false
 - UI: orange Karte „Route wird neu geladen“ nur während echter Neuberechnung (`guidanceStale` / inFlight).
 - Speech: nach Reroute/Recover keine sofortige Doppel-Ansage (`suppressManeuverSpeech`).
 
-| Log | Bedeutung |
-|-----|-----------|
-| `pipeline_owners` | Wer berechnet Heading/Pitch/Zoom/Reroute |
-| `gps_watch_mount` / `unmount` | GPS-Listener |
-| `gps_tick` | Engine, Snap, Off-Route-Messwerte |
-| `camera` | setCamera / animateCamera / error |
-| `reroute_decision` / `reroute_request_*` | Server-Reroute |
+**Crash-Guards:** try/catch Engine + Kamera; finite Camera-Args; animateCamera-Überlappung → `setCamera` Catch-up; GPS-Watch nur an `rideId` (kein Remount bei Callback-Churn).
 
-**Crash-Guards:** try/catch Engine + Kamera; finite Camera-Args.
+## Zielarchitektur (Mapbox/TomTom-Linie)
 
-## Zielarchitektur (inkrementell)
+GPS → PositionFilter → **MapMatcher (progress-locked)** → HeadingEngine → RouteProgress → RerouteEngine → ManeuverEngine → EtaEngine → CameraController → UI.
 
-GPS → PositionFilter → MapMatcher → HeadingEngine → RouteProgress → RerouteEngine → ManeuverEngine → EtaEngine → CameraController → UI.
+| Pose | Nutzung |
+|------|---------|
+| **`display`** (Snap nahe Fortschritt + Dead-Reckoning) | **Marker + Kamera** (`navPoseRef`) — eine Enhanced Location |
+| **`filtered`** (EMA) | Off-Route, Share, `driver-location` — **nicht** Puck |
 
-- **Tick:** `artifacts/mobile/utils/navEngine/` — `tickNavEngine`
-- **Screen:** `navigation.tsx` — UI + Side-Effects
-- **Legacy parallel:** `applyDriverNavFix` noch in `focusNavigationCamera` (heading null) + Recenter — in `pipeline_owners` geloggt
+- Snap: `snapLatLonToPolylineNearProgress` (Fenster um `routeProgressM`), **nicht** global nearest (Kreuzungs-/Parallelspur-Sprung).
+- Heading: bei confident Snap (`lateral ≤ 18 m`) → `preferRouteBearing` (Kurs nur wenn er zur Route passt).
+- Legacy `applyDriverNavFix`: nur Heading-Bootstrap (ohne Lat/Lon-Overwrite) + Recenter mit Progress-Snap.
 
-## Quelle / Off-Route / Kamera
+Smoke: `navEngine.selftest.ts`, `navOffRouteReroute.selftest.ts`, `navHeadingSmoother.selftest.ts`, `routeRemainingAlongPolyline.selftest.ts`.
 
-Siehe vorherige Abschnitte (Matrix+OSRM, Forward-Distanz, Pitch 62°, Speed-Zoom). Smoke: `navEngine.selftest.ts`, `navOffRouteReroute.selftest.ts`.
+## Quelle (verbindlich)
+
+- **km / ETA:** Server `POST /api/fleet-driver/v1/nav-route` → Google Distance Matrix → OSRM Fallback.
+- **Polyline / Steps:** OSRM. **Keine Google Directions API**.
+- Mobile: `driverNavRouteApi.ts` → `fetchDriverNavRoute`.
+
+## Dateien
+
+| Layer | Pfad |
+|-------|------|
+| Engine | `artifacts/mobile/utils/navEngine/` |
+| Screen | `artifacts/mobile/app/driver/navigation.tsx` |
+| Heading | `navHeadingSmoother.ts` |
+| Off-Route | `navOffRouteReroute.ts` |
+| Snap/Progress | `routeRemainingAlongPolyline.ts` |
+| Diag | `navRuntimeDiag.ts`, `NavDiagOverlay.tsx` |
+
+## Was nicht tun
+
+- Kein Client-OSRM für Navi-Metriken; keine Luftlinien-Polyline.
+- Marker und Kamera **nicht** wieder auf `filtered` vs `display` splitten.
+- Kein Big-Bang-Rewrite der Sheet/Completion-UI in `navigation.tsx`.
 ---

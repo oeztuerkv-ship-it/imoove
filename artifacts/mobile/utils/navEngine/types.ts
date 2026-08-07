@@ -41,6 +41,9 @@ export type NavEngineState = {
   routeProgressM: number;
   stepIdx: number;
   lastRawFix: { lat: number; lon: number; atMs: number } | null;
+  /** Letzte Display-Pose (Snap) — Dead-Reckoning zwischen Fixes. */
+  lastDisplay: LatLon | null;
+  lastDisplayAtMs: number | null;
   /** Reroute läuft — Guidance stale. */
   rerouteInFlight: boolean;
 };
@@ -87,6 +90,8 @@ export type NavEngineOutput = {
     /** Fix-zu-Fix Ableitung (null wenn Δt/Distanz verworfen). */
     derivedSpeedMps: number | null;
     fixDtMs: number | null;
+    /** Querabstand Snap (null wenn unsapped). */
+    snapLateralM: number | null;
   };
 };
 
