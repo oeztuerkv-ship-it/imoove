@@ -22,11 +22,11 @@ Geplante Engine-Trennung (Refactor-Plan):
 
 - **Tick (kein React):** `artifacts/mobile/utils/navEngine/` — `tickNavEngine`, Typen, Modul-Fassaden.
 - **GPS-Einstieg:** `LocationEngine.ts` → `startDriverNavLocationSession` / `locationCoordsToNavFix` → `NavFix` → `tickNavEngine` (Live **und** Recenter). Session: `navigationSessionId` + `acceptNavAsync`. `gpsState` ACTIVE/STALE/LOST; Resume `beginNavGpsResync`.
-- **Display-Pose (Schritt 2):** Filter → `matchMapDisplayPose` → `output.display` / `runtime.displayPosition`. Marker + Compat-`navPoseRef` aus Runtime. `filtered` nur intern (Off-Route-Share). Während `rerouteInFlight` oder stale `route.generation`: **kein Snap**.
-- **P1 NavigationState:** eine Instanz `NavEngineState.runtime`. Tick committet atomar. Screen liest primär Runtime; Refs sind Spiegel.
+- **Display-Pose (Schritt 2):** Filter → `matchMapDisplayPose` → `runtime.displayPosition`. Marker aus Runtime. `filtered` nur intern (Off-Route-Share). Während `rerouteInFlight` oder stale `route.generation`: **kein Snap**.
+- **P1 NavigationState:** eine Instanz `NavEngineState.runtime`. Tick committet atomar. Screen liest Runtime (kein Compat-Spiegel).
 - **Progress (Schritt 3):** kanonisch `committedProgressM` via `tickRouteProgress` / `RouteProgressEngine`. Remaining/ETA/Forward/Glow/Manöver-Meter aus demselben Stand — **kein** `remainingAlongPolyline(nearest-full)` mehr für Navi-Anzeige. Advance nur vorwärts; bei Reroute Progress neu von Pose + neue Generation.
-- **Route-Generation:** `routeGenerationRef` ++ in `applyNavRouteResult`; Snapshot + `NavEngineState.routeGeneration` via `resetNavEngineForRoute`. Alte Generation darf Runtime nicht überschreiben (`tickNavEngine` opts).
-- **Screen:** `navigation.tsx` — UI, Lifecycle, Side-Effects. GPS-`useEffect`-Deps **nur `rideId`**; Callbacks über **Refs**. Watch: max. einer, Stop idempotent.
+- **Route-Generation:** `commitNavigationRoute` setzt `boundRoute` + Generation genau einmal. Tick ohne Screen-Snapshot-Rebuild (`boundRoute`). Alte Generation darf Runtime nicht überschreiben (`tickNavEngine` opts).
+- **Screen:** `navigation.tsx` — UI, Lifecycle, Side-Effects. GPS-`useEffect`-Deps **nur `rideId`**; Callbacks über **Refs**. Watch: max. einer, Stop idempotent. Keine Heading-/Camera-/Progress-/OffRoute-Berechnung im Screen.
 - Während **`guidanceStale` / Reroute:** keine veralteten „In 300 m …“-Hinweise — UI zeigt „Route wird neu berechnet“ (Schritt 8: auch Footer).
 - **Kamera-Zoom:** nur CameraEngine; `tickNavEngine` tickt keinen Zoom mehr.
 
@@ -111,4 +111,4 @@ npx tsx artifacts/mobile/utils/navEngine/navCameraZoom.selftest.ts
 - Kein Client-OSRM für Navi-Metriken; keine Luftlinien-Polyline; kein Directions-SDK nebenbei.
 - Kein Big-Bang-Rewrite der Sheet/Completion-UI in `navigation.tsx`.
 - Keine Schwellenwert-Optimierung auf Verdacht — Architektur-Trennung zuerst.
-- Legacy `applyDriverNavFix` nicht löschen, bevor Pose/Camera denselben Job übernehmen.
+- Legacy-Compat-Refs und tote Pose-APIs nicht wieder einführen (`commitNavigationFromLegacyPose`, `invalidateNavRouteGeneration`, Screen-Smoother-Spiegel).

@@ -44,7 +44,7 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 - Follow nur bei **Nutzer-Pan** (`onPanDrag`) aus — **nicht** bei `onRegionChange`.
 - GPS Navi: `Accuracy.BestForNavigation`, `distanceInterval: 2` (iOS), `timeInterval: 1000` (Android).
 - Marker: jedes GPS-Tick `setDriverLat/Lon`; Kamera Follow gedrosselt; Heading nur über Smoother.
-- **P1 SoT:** `navEngineRef.current.runtime` (`NavigationState`). Compat-Refs sind Spiegel. Location nur LocationEngine → `tickNavEngine` (auch Recenter). `navigationSessionId` + `gpsState` ACTIVE/STALE/LOST (`navLifecycle.ts`).
+- **P1 SoT:** `navEngineRef.current.runtime` (`NavigationState`). Location nur LocationEngine → `tickNavEngine` (auch Recenter). `navigationSessionId` + `gpsState` ACTIVE/STALE/LOST (`navLifecycle.ts`).
 - `followsUserLocation={false}` — eigenes Puck + CameraEngine-Follow.
 - Overview-Button (`fitRoute`) darf Follow absichtlich aus machen; Recenter erzwingt Follow wieder (`force: true`).
 

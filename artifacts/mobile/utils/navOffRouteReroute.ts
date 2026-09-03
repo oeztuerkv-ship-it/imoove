@@ -36,7 +36,6 @@ export {
   evaluateRouteResponse,
   completeReroute,
   failReroute,
-  discardStaleRerouteResponse,
   isRerouteInFlight,
   invalidateInFlightRouteRequests,
   invalidateAllRouteRequests,

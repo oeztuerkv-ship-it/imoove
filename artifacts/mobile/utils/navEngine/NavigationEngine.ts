@@ -27,7 +27,6 @@ import {
   tickRouteProgress,
 } from "./RouteProgressEngine";
 import { scaleRemainingToAuthoritative } from "../routeRemainingAlongPolyline";
-import { createNavCameraZoomState, NAV_CAMERA_PITCH_NAV } from "./navCameraZoom";
 import { nextNavigationSessionId, shouldEvaluateOffRoute } from "./navLifecycle";
 import {
   commitNavigationFromTick,
@@ -37,10 +36,10 @@ import {
 } from "./NavigationState";
 import type {
   LatLon,
-  NavEngineOutput,
   NavEngineState,
   NavFix,
   NavRouteSnapshot,
+  NavTickDiag,
   NavTickResult,
 } from "./types";
 
@@ -63,12 +62,12 @@ export function createNavEngineState(
     position: createNavPositionSmootherState(),
     heading: createNavHeadingSmootherState(),
     offRoute: createOffRouteTrackerState(),
-    cameraZoom: createNavCameraZoomState(),
     routeProgressM: 0,
     stepIdx: 0,
     lastRawFix: null,
     rerouteInFlight: false,
     routeGeneration: 0,
+    boundRoute: null,
     navigationSessionId: sessionId,
     gpsResyncing: false,
     runtime: createNavigationState(),
@@ -165,6 +164,7 @@ export function commitNavigationRoute(
     heading: state.heading,
     rerouteInFlight: false,
     routeGeneration: snapshot.generation,
+    boundRoute: snapshot,
     runtime: commitNavigationRouteBound(state.runtime, {
       generation: snapshot.generation,
       progressM: progress,
@@ -183,6 +183,10 @@ export function commitNavigationRoute(
     display: match.display,
     isSnapped: match.snapped,
   };
+}
+
+export function clearNavBoundRoute(state: NavEngineState): NavEngineState {
+  return { ...state, boundRoute: null };
 }
 
 /** Nach neuer Route: Progress von Pose neu. Kein Route-/Ziel-Bearing als Fahrzeug-Heading. */
@@ -210,66 +214,32 @@ export function setNavEngineRerouteInFlight(
   return { ...state, rerouteInFlight: inFlight, runtime: commitNavigationRerouteFlag(state.runtime, inFlight) };
 }
 
-/**
- * Bei confirmed Off-Route / Reroute-Start: gebundene Generation vorziehen,
- * damit der alte Snapshot sofort stale ist (kein Match/Progress/Guidance auf alter Geometrie).
- */
-export function invalidateNavRouteGeneration(
-  state: NavEngineState,
-  toGeneration: number,
-): NavEngineState {
-  const gen = Math.max(state.routeGeneration, Math.max(0, toGeneration));
+function emptyTickDiag(state: NavEngineState): NavTickDiag {
   return {
-    ...state,
-    rerouteInFlight: true,
-    routeGeneration: gen,
-    offRoute: createOffRouteTrackerState(),
-    stepIdx: 0,
-    runtime: commitNavigationRerouteFlag(state.runtime, true),
+    forwardDistM: null,
+    routeBearingDeg: null,
+    courseForOffDeg: null,
+    headingDeltaDeg: null,
+    gpsSpeedMps: null,
+    derivedSpeedMps: null,
+    fixDtMs: null,
+    routeGeneration: 0,
+    boundRouteGeneration: state.routeGeneration,
   };
 }
 
 function frozenTickResult(state: NavEngineState): NavTickResult {
-  const display = state.runtime.displayPosition ?? { lat: 0, lon: 0 };
-  const filtered = state.runtime.filteredPosition ?? display;
   return {
     state,
     navigation: state.runtime,
-    output: {
-      filtered,
-      display,
-      snapped: state.runtime.isSnapped,
-      heading: state.runtime.heading,
-      speedMps: state.runtime.speed,
-      routeProgressM: state.runtime.routeProgress,
-      remainingDistM: state.runtime.remainingDistM,
-      remainingMin: state.runtime.remainingMin,
-      distToManeuverM: state.runtime.distToManeuverM,
-      stepIdx: state.stepIdx,
-      maneuver: state.runtime.maneuverState,
-      guidanceStale: state.runtime.guidanceStale,
-      confirmedOffRoute: false,
-      cameraZoom: state.cameraZoom.zoom,
-      cameraPitch: NAV_CAMERA_PITCH_NAV,
-      diag: {
-        forwardDistM: null,
-        routeBearingDeg: null,
-        courseForOffDeg: null,
-        headingDeltaDeg: null,
-        gpsSpeedMps: null,
-        derivedSpeedMps: null,
-        fixDtMs: null,
-        routeGeneration: 0,
-        boundRouteGeneration: state.routeGeneration,
-      },
-    },
+    diag: emptyTickDiag(state),
   };
 }
 
 export function tickNavEngine(
   state: NavEngineState,
   fix: NavFix,
-  route: NavRouteSnapshot | null,
+  routeArg?: NavRouteSnapshot | null,
   opts?: { sessionId?: number; routeGeneration?: number },
 ): NavTickResult {
   if (opts?.sessionId != null && opts.sessionId !== state.navigationSessionId) {
@@ -285,6 +255,7 @@ export function tickNavEngine(
 
   const now = fix.nowMs;
   const finishingResync = state.gpsResyncing;
+  const route = routeArg === undefined ? state.boundRoute : routeArg;
 
   // 1–2 Position filter
   const posTick = tickNavPosition(state.position, fix.lat, fix.lon);
@@ -430,55 +401,50 @@ export function tickNavEngine(
     position: posTick.state,
     heading: headingTick.state,
     offRoute,
-    cameraZoom: state.cameraZoom,
     routeProgressM,
     stepIdx: guidanceStale ? state.stepIdx : maneuverBuilt.stepIdx,
     lastRawFix: { lat: fix.lat, lon: fix.lon, atMs: now },
     rerouteInFlight: state.rerouteInFlight,
     routeGeneration: state.routeGeneration,
+    boundRoute: state.boundRoute,
     navigationSessionId: state.navigationSessionId,
     gpsResyncing: false,
     runtime: state.runtime,
   };
 
-  const output: NavEngineOutput = {
-    filtered,
-    display,
-    snapped,
-    heading: headingTick.heading,
-    speedMps: effectiveSpeed,
-    routeProgressM,
-    remainingDistM,
-    remainingMin,
-    distToManeuverM: guidanceStale ? 0 : maneuverBuilt.distToManeuverM,
-    stepIdx: nextState.stepIdx,
-    maneuver: maneuverBuilt.maneuver,
-    guidanceStale,
-    confirmedOffRoute,
-    cameraZoom: state.cameraZoom.zoom,
-    cameraPitch: NAV_CAMERA_PITCH_NAV,
-    diag: {
-      forwardDistM: restLateralM,
-      routeBearingDeg: polyBearing,
-      courseForOffDeg: courseForOff,
-      headingDeltaDeg,
-      gpsSpeedMps: fix.speedMps ?? null,
-      derivedSpeedMps,
-      fixDtMs,
-      routeGeneration: routeGen,
-      boundRouteGeneration: state.routeGeneration,
-    },
+  const distToManeuverM = guidanceStale ? 0 : maneuverBuilt.distToManeuverM;
+  const diag: NavTickDiag = {
+    forwardDistM: restLateralM,
+    routeBearingDeg: polyBearing,
+    courseForOffDeg: courseForOff,
+    headingDeltaDeg,
+    gpsSpeedMps: fix.speedMps ?? null,
+    derivedSpeedMps,
+    fixDtMs,
+    routeGeneration: routeGen,
+    boundRouteGeneration: state.routeGeneration,
   };
 
   nextState.runtime = commitNavigationFromTick(
     state.runtime,
     fix,
     nextState,
-    output,
+    {
+      filtered,
+      display,
+      snapped,
+      speedMps: effectiveSpeed,
+      routeProgressM,
+      remainingDistM,
+      remainingMin,
+      distToManeuverM,
+      maneuver: maneuverBuilt.maneuver,
+      guidanceStale,
+      confirmedOffRoute,
+    },
     polyline.length >= 2,
     { movementBearingDeg: movementBearing },
   );
-  output.heading = nextState.runtime.heading;
 
-  return { state: nextState, output, navigation: nextState.runtime };
+  return { state: nextState, navigation: nextState.runtime, diag };
 }

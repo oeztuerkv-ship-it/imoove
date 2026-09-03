@@ -99,15 +99,12 @@ import {
   splitNavStepParts,
 } from "@/utils/navTurnDistanceCue";
 import {
-  createOffRouteTrackerState,
-  type OffRouteTrackerState,
-} from "@/utils/navOffRouteReroute";
-import {
   applyNavigationCameraCommand,
   applyOverviewFit,
   beginRouteRequest,
   bindCameraRouteGeneration,
   bumpCameraSession,
+  clearNavBoundRoute,
   completeReroute,
   consumePendingCamera,
   createCameraEngineState,
@@ -135,7 +132,6 @@ import {
   commitNavigationRoute,
   locationCoordsToNavFix,
   headingTransitionChanged,
-  mirrorsFromNavigationState,
   NAV_CAMERA_PITCH_NAV,
   NAV_CAMERA_ZOOM_DEFAULT,
   type CameraEngineState,
@@ -143,7 +139,6 @@ import {
   type NavFix,
   type NavigationState,
   type NavRouteRequestReason,
-  type NavRouteSnapshot,
   type RerouteEngineState,
 } from "@/utils/navEngine";
 import {
@@ -180,13 +175,7 @@ import {
   subscribeDriverRideAbortedAwaitingFare,
   subscribeDriverRideCancelledByCustomer,
 } from "@/utils/driverLiveNavigation";
-import {
-  createNavHeadingSmootherState,
-  createNavPositionSmootherState,
-  isMovingForNavHeading,
-  type NavHeadingSmootherState,
-  type NavPositionSmootherState,
-} from "@/utils/navHeadingSmoother";
+import { isMovingForNavHeading } from "@/utils/navHeadingSmoother";
 import { formatEuro } from "@/utils/fareCalculator";
 import {
   driverRidePaymentLooksLikeCash,
@@ -579,25 +568,6 @@ export default function DriverNavigationScreen() {
   const programmaticCameraUntilRef = useRef(0);
   /** Während Pinch/Pan: kurz keine Follow-animateCamera (sonst stirbt die Geste). */
   const userGestureCameraPauseUntilRef = useRef(0);
-  /** Heading: Speed-Gate + EMA/Deadband/Rate-Limit (nicht Roh-GPS). */
-  const navHeadingSmootherRef = useRef<NavHeadingSmootherState>(createNavHeadingSmootherState());
-  const navPositionSmootherRef = useRef<NavPositionSmootherState>(createNavPositionSmootherState());
-  /**
-   * Pose: lat/lon = Display-Pose (Schritt 2); heading separat geglättet.
-   * Live + Recenter: tickNavEngine (eine Location-Pipeline).
-   */
-  const navPoseRef = useRef<{ lat: number; lon: number; heading: number | null }>({
-    lat: fromLat || 48.7394,
-    lon: fromLon || 9.3117,
-    heading: null,
-  });
-  /** Monotone Generation — Match/Progress ignorieren Snapshots mit kleinerer Generation. */
-  const routeGenerationRef = useRef(0);
-  /** Kanonischer Progress (m) — Glow/Split; Quelle tickNavEngine. */
-  const routeProgressMRef = useRef(0);
-  const lastRawFixRef = useRef<{ lat: number; lon: number; atMs: number } | null>(null);
-  /** Off-Route-Tracker (Spiegel aus tickNavEngine; Debug/Legacy). */
-  const offRouteTrackerRef = useRef<OffRouteTrackerState>(createOffRouteTrackerState());
   /** RerouteEngine — max. ein Request, Generation-Guard, späte Responses verwerfen. */
   const rerouteEngineRef = useRef<RerouteEngineState>(createRerouteEngineState());
   /** NavigationEngine — GPS-Pipeline (Filter/Match/Heading/Progress/Off-Route/Maneuver). */
@@ -620,21 +590,6 @@ export default function DriverNavigationScreen() {
   >(() => {});
   const driverArrivingSentRef = useRef(false);
 
-  /** P1: Compat-Refs aus `navEngineRef.current.runtime` (eine Instanz). */
-  const syncNavCompatMirrors = (nav: NavigationState) => {
-    const m = mirrorsFromNavigationState(nav);
-    if (nav.displayPosition) {
-      navPoseRef.current = {
-        lat: nav.displayPosition.lat,
-        lon: nav.displayPosition.lon,
-        heading: nav.heading,
-      };
-    }
-    if (m.lastRawFix) lastRawFixRef.current = m.lastRawFix;
-    routeProgressMRef.current = m.routeProgressM;
-    routeGenerationRef.current = m.routeGeneration;
-  };
-
   const isNavWorkLive = (incoming: { sessionId: number; routeGeneration?: number }) =>
     acceptNavAsync(
       {
@@ -649,7 +604,6 @@ export default function DriverNavigationScreen() {
   const [steps, setSteps]       = useState<RouteStep[]>([]);
   const [stepIdx, setStepIdx]   = useState(0);
   const prevStepIdx = useRef(-1);
-  const polylineLatLonRef = useRef<{ lat: number; lon: number }[]>([]);
   /** loading | retrying | ready | failed — nie dauerhaft Luftlinie als „Route“. */
   const [navRouteLoadState, setNavRouteLoadState] = useState<
     "loading" | "retrying" | "ready" | "failed"
@@ -670,21 +624,11 @@ export default function DriverNavigationScreen() {
   /** Stable refs for GPS/camera callbacks — avoid effect re-runs on every position tick. */
   const driverLatRef = useRef(driverLat);
   const driverLonRef = useRef(driverLon);
-  const stepsRef = useRef(steps);
-  const stepIdxRef = useRef(stepIdx);
   const navTargetRef = useRef(navigationTarget);
-  const initialRouteMetricsRef = useRef({ distM: initialDistM, etaMin: initialEtaMin });
-  const remainingMinRef = useRef(remainingMin);
-  const remainingDistMRef = useRef(remainingDistM);
   const isPickupPhaseRef = useRef(isPickupPhase);
   driverLatRef.current = driverLat;
   driverLonRef.current = driverLon;
-  stepsRef.current = steps;
-  stepIdxRef.current = stepIdx;
   navTargetRef.current = navigationTarget;
-  initialRouteMetricsRef.current = { distM: initialDistM, etaMin: initialEtaMin };
-  remainingMinRef.current = remainingMin;
-  remainingDistMRef.current = remainingDistM;
   isPickupPhaseRef.current = isPickupPhase;
 
   // pickup-phase sequential state
@@ -1071,11 +1015,6 @@ export default function DriverNavigationScreen() {
     })();
   }, []);
   useEffect(() => {
-    navHeadingSmootherRef.current = createNavHeadingSmootherState();
-    navPositionSmootherRef.current = createNavPositionSmootherState();
-    lastRawFixRef.current = null;
-    routeGenerationRef.current = 0;
-    routeProgressMRef.current = 0;
     cameraEngineRef.current = bumpCameraSession(createCameraEngineState());
   }, [params.rideId]);
 
@@ -1083,7 +1022,6 @@ export default function DriverNavigationScreen() {
     void navDiagHydrateFromStorage();
     navDiagResetSession(`ride=${params.rideId ?? "?"};phase=${phase}`);
     navDiagPipelineOwners();
-    offRouteTrackerRef.current = createOffRouteTrackerState();
     rerouteEngineRef.current = invalidateAllRouteRequests(rerouteEngineRef.current);
     const rideChanged = navSessionRideIdRef.current !== params.rideId;
     navSessionRideIdRef.current = params.rideId;
@@ -1182,7 +1120,6 @@ export default function DriverNavigationScreen() {
       if (!committed) return false;
 
       navEngineRef.current = committed.state;
-      polylineLatLonRef.current = committed.snapshot.polyline;
       const coords = committed.snapshot.polyline.map((p) => ({
         latitude: p.lat,
         longitude: p.lon,
@@ -1195,7 +1132,6 @@ export default function DriverNavigationScreen() {
       setNavRouteLoadState("ready");
       setInitialDistM(distM);
       setInitialEtaMin(etaMin);
-      offRouteTrackerRef.current = committed.state.offRoute;
       cameraEngineRef.current = bindCameraRouteGeneration(
         cameraEngineRef.current,
         committed.state.routeGeneration,
@@ -1205,7 +1141,6 @@ export default function DriverNavigationScreen() {
       setGuidanceStale(false);
       setDriverLat(committed.display.lat);
       setDriverLon(committed.display.lon);
-      syncNavCompatMirrors(committed.state.runtime);
       if (opts.refocusCamera !== false && !navEngineRef.current.gpsResyncing) {
         applyFollowCamera({
           animated: false,
@@ -1214,7 +1149,7 @@ export default function DriverNavigationScreen() {
           reason: "route_apply",
         });
       }
-      shareRouteWithCustomer(polylineLatLonRef.current, {
+      shareRouteWithCustomer(committed.snapshot.polyline, {
         etaMinutes: committed.remainingMin,
         remainingDistM: Math.round(committed.remainingDistM),
       });
@@ -1237,10 +1172,7 @@ export default function DriverNavigationScreen() {
       const routeReason: NavRouteRequestReason =
         reason === "reroute" ? "off_route" : reason;
       const sessionId = navEngineRef.current.navigationSessionId;
-      const generationAtStart = Math.max(
-        routeGenerationRef.current,
-        navEngineRef.current.routeGeneration,
-      );
+      const generationAtStart = navEngineRef.current.routeGeneration;
       const nowMs = Date.now();
       const begun = beginRouteRequest(rerouteEngineRef.current, {
         nowMs,
@@ -1409,7 +1341,7 @@ export default function DriverNavigationScreen() {
     navRouteReadyRef.current = false;
     setNavRouteLoadState("loading");
     setPolyline([]);
-    polylineLatLonRef.current = [];
+    navEngineRef.current = clearNavBoundRoute(navEngineRef.current);
     setSteps([]);
     const sessionId = navEngineRef.current.navigationSessionId;
 
@@ -1471,7 +1403,7 @@ export default function DriverNavigationScreen() {
     const liveM =
       step && isValidMapCoord(step.lat, step.lon)
         ? distanceAlongPolylineToPointM(
-            polylineLatLonRef.current,
+            navEngineRef.current.boundRoute?.polyline ?? [],
             { lat: driverLatRef.current, lon: driverLonRef.current },
             { lat: step.lat, lon: step.lon },
           )
@@ -2463,26 +2395,6 @@ export default function DriverNavigationScreen() {
     let sessionStop: (() => void) | null = null;
     const rideId = params.rideId;
 
-    const buildRouteSnap = (): NavRouteSnapshot | null => {
-      const poly = polylineLatLonRef.current;
-      if (poly.length < 2) return null;
-      const { distM, etaMin } = initialRouteMetricsRef.current;
-      return {
-        polyline: poly,
-        steps: stepsRef.current.map((s) => ({
-          instruction: s.instruction,
-          ...(s.maneuver ? { maneuver: s.maneuver } : {}),
-          roadName: s.roadName ?? null,
-          distanceM: s.distanceM,
-          lat: s.lat,
-          lon: s.lon,
-        })),
-        authoritativeDistM: distM,
-        authoritativeEtaMin: etaMin,
-        generation: routeGenerationRef.current,
-      };
-    };
-
     const applyEngineOutput = (
       nav: NavigationState,
       opts?: {
@@ -2496,11 +2408,9 @@ export default function DriverNavigationScreen() {
       if (!navMountedRef.current) return;
       const display = nav.displayPosition;
       if (!display) return;
-      // Marker + Pose-lat/lon: Display-Pose aus NavigationState.
       setDriverLat(display.lat);
       setDriverLon(display.lon);
       const prevNav = opts?.prevNav ?? navEngineRef.current.runtime;
-      syncNavCompatMirrors(nav);
       if (headingTransitionChanged(prevNav, nav)) {
         navDiagHeadingTransition({
           rawHeading: nav.rawHeading,
@@ -2551,24 +2461,23 @@ export default function DriverNavigationScreen() {
       const source = opts?.source ?? "watch";
       let engineCalled = false;
       let engineError: string | undefined;
-      let out: ReturnType<typeof tickNavEngine>["output"] | null = null;
+      let tickResult: ReturnType<typeof tickNavEngine> | null = null;
       try {
-        const tick = tickNavEngine(navEngineRef.current, fix, buildRouteSnap(), {
+        const tick = tickNavEngine(navEngineRef.current, fix, undefined, {
           sessionId,
         });
         engineCalled = true;
         const prevNav = navEngineRef.current.runtime;
         navEngineRef.current = tick.state;
-        navHeadingSmootherRef.current = tick.state.heading;
-        navPositionSmootherRef.current = tick.state.position;
-        offRouteTrackerRef.current = tick.state.offRoute;
-        out = tick.output;
-        applyEngineOutput(tick.state.runtime, { ...opts, prevNav });
+        tickResult = tick;
+        applyEngineOutput(tick.navigation, { ...opts, prevNav });
       } catch (e) {
         engineError = e instanceof Error ? e.message : String(e);
         console.error("[NavDiag] tickNavEngine_threw", engineError);
       }
 
+      const nav = tickResult?.navigation;
+      const diag = tickResult?.diag;
       navDiagEngineTick({
         source,
         engineCalled,
@@ -2579,50 +2488,54 @@ export default function DriverNavigationScreen() {
           speed: fix.speedMps,
           course: fix.courseDeg,
         },
-        filtered: out?.filtered,
-        display: out?.display,
-        snapped: out?.snapped,
-        heading: out?.heading,
-        speedMps: out?.speedMps,
-        routeProgressM: out?.routeProgressM,
-        forwardDistM: out?.diag.forwardDistM,
-        routeBearingDeg: out?.diag.routeBearingDeg,
-        courseForOffDeg: out?.diag.courseForOffDeg,
-        headingDeltaDeg: out?.diag.headingDeltaDeg,
-        confirmedOffRoute: out?.confirmedOffRoute,
-        guidanceStale: out?.guidanceStale,
-        remainingDistM: out?.remainingDistM,
-        distToManeuverM: out?.distToManeuverM,
-        cameraZoom: out?.cameraZoom,
-        cameraPitch: out?.cameraPitch,
-        polylinePoints: polylineLatLonRef.current.length,
-        stepIdx: out?.stepIdx,
+        filtered: nav?.filteredPosition ?? undefined,
+        display: nav?.displayPosition ?? undefined,
+        snapped: nav?.isSnapped,
+        heading: nav?.heading,
+        speedMps: nav?.speed,
+        routeProgressM: nav?.routeProgress,
+        forwardDistM: diag?.forwardDistM,
+        routeBearingDeg: diag?.routeBearingDeg,
+        courseForOffDeg: diag?.courseForOffDeg,
+        headingDeltaDeg: diag?.headingDeltaDeg,
+        confirmedOffRoute: nav?.confirmedOffRoute,
+        guidanceStale: nav?.guidanceStale,
+        remainingDistM: nav?.remainingDistM,
+        distToManeuverM: nav?.distToManeuverM,
+        polylinePoints: navEngineRef.current.boundRoute?.polyline.length ?? 0,
+        stepIdx: tickResult?.state.stepIdx,
         rerouteInFlight: navEngineRef.current.rerouteInFlight,
-        gpsSpeedMps: out?.diag.gpsSpeedMps,
-        derivedSpeedMps: out?.diag.derivedSpeedMps,
-        fixDtMs: out?.diag.fixDtMs,
+        gpsSpeedMps: diag?.gpsSpeedMps,
+        derivedSpeedMps: diag?.derivedSpeedMps,
+        fixDtMs: diag?.fixDtMs,
       });
 
-      if (!out) return;
-      if (navEngineRef.current.gpsResyncing || navEngineRef.current.runtime.gpsState !== "ACTIVE") {
+      if (!nav || !tickResult) return;
+      if (navEngineRef.current.gpsResyncing || nav.gpsState !== "ACTIVE") {
         return;
       }
 
-      const navRouteReady = initialRouteMetricsRef.current.distM > 0;
+      const filtered = nav.filteredPosition ?? nav.displayPosition;
+      if (!filtered) return;
+      const navRouteReady = (navEngineRef.current.boundRoute?.authoritativeDistM ?? 0) > 0;
       if (!isPrivateMemoRef.current) {
-        socketSendDriver(out.filtered.lat, out.filtered.lon, {
-          ...(navRouteReady ? { etaMinutes: Math.max(0, remainingMinRef.current) } : {}),
+        socketSendDriver(filtered.lat, filtered.lon, {
+          ...(navRouteReady ? { etaMinutes: Math.max(0, nav.remainingMin) } : {}),
           ...(navRouteReady
-            ? { remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)) }
+            ? { remainingDistM: Math.max(0, Math.round(nav.remainingDistM)) }
             : {}),
           navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
         });
       }
       if (rideId && !isPrivateMemoRef.current) {
         const locSessionId = sessionId;
+        const shareLat = filtered.lat;
+        const shareLon = filtered.lon;
+        const shareEta = nav.remainingMin;
+        const shareDist = nav.remainingDistM;
         void (async () => {
           try {
-            const accepted = acceptDriverGpsFix(out.filtered.lat, out.filtered.lon);
+            const accepted = acceptDriverGpsFix(shareLat, shareLon);
             if (!accepted) return;
             const headers = await fleetAuthHeadersJson();
             if (!isNavWorkLive({ sessionId: locSessionId })) return;
@@ -2632,9 +2545,9 @@ export default function DriverNavigationScreen() {
               body: JSON.stringify({
                 lat: accepted.lat,
                 lon: accepted.lon,
-                ...(navRouteReady ? { etaMinutes: Math.max(0, remainingMinRef.current) } : {}),
+                ...(navRouteReady ? { etaMinutes: Math.max(0, shareEta) } : {}),
                 ...(navRouteReady
-                  ? { remainingDistM: Math.max(0, Math.round(remainingDistMRef.current)) }
+                  ? { remainingDistM: Math.max(0, Math.round(shareDist)) }
                   : {}),
                 navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
               }),
@@ -2645,23 +2558,23 @@ export default function DriverNavigationScreen() {
         })();
       }
 
-      // RerouteEngine: begin/invalidate/accept/complete leben in requestNavRouteFrom
+      const boundLen = navEngineRef.current.boundRoute?.polyline.length ?? 0;
       if (
-        polylineLatLonRef.current.length < 2 &&
+        boundLen < 2 &&
         !navRouteReadyRef.current &&
         !isRerouteInFlight(rerouteEngineRef.current)
       ) {
         navDiagRerouteDecision({
           willRequest: true,
           reason: "recover",
-          from: out.filtered,
+          from: filtered,
           inFlight: false,
         });
         setNavRouteLoadState((s) => (s === "ready" ? s : "retrying"));
         const t0 = Date.now();
-        navDiagRerouteRequestStarted({ reason: "recover", from: out.filtered });
+        navDiagRerouteRequestStarted({ reason: "recover", from: filtered });
         void requestNavRouteFromRef
-          .current({ lat: out.filtered.lat, lon: out.filtered.lon }, "recover")
+          .current({ lat: filtered.lat, lon: filtered.lon }, "recover")
           .then((ok) => {
             navDiagRerouteRequestDone({
               reason: "recover",
@@ -2670,23 +2583,23 @@ export default function DriverNavigationScreen() {
             });
           });
       } else if (
-        out.confirmedOffRoute &&
+        nav.confirmedOffRoute &&
         !isRerouteInFlight(rerouteEngineRef.current)
       ) {
         navDiagRerouteDecision({
           willRequest: true,
           reason: "off_route",
-          forwardDistM: out.diag.forwardDistM,
-          headingDeltaDeg: out.diag.headingDeltaDeg,
-          progressM: out.routeProgressM,
+          forwardDistM: diag?.forwardDistM,
+          headingDeltaDeg: diag?.headingDeltaDeg,
+          progressM: nav.routeProgress,
           confirmedOffRoute: true,
-          from: out.filtered,
+          from: filtered,
           inFlight: false,
         });
         const t0 = Date.now();
-        navDiagRerouteRequestStarted({ reason: "reroute", from: out.filtered });
+        navDiagRerouteRequestStarted({ reason: "reroute", from: filtered });
         void requestNavRouteFromRef
-          .current({ lat: out.filtered.lat, lon: out.filtered.lon }, "off_route")
+          .current({ lat: filtered.lat, lon: filtered.lon }, "off_route")
           .then((ok) => {
             navDiagRerouteRequestDone({
               reason: "reroute",
@@ -2694,18 +2607,19 @@ export default function DriverNavigationScreen() {
               elapsedMs: Date.now() - t0,
             });
           });
-      } else if (out.confirmedOffRoute && isRerouteInFlight(rerouteEngineRef.current)) {
+      } else if (nav.confirmedOffRoute && isRerouteInFlight(rerouteEngineRef.current)) {
         navDiagRerouteDecision({
           willRequest: false,
           reason: "blocked_inflight",
           confirmedOffRoute: true,
-          from: out.filtered,
+          from: filtered,
           inFlight: true,
         });
       }
     };
 
     let cancelled = false;
+
     navMountedRef.current = true;
     ingestNavFixRef.current = onNavFix;
     cameraEngineRef.current = setCameraEngineMounted(cameraEngineRef.current, true);
@@ -2804,7 +2718,10 @@ export default function DriverNavigationScreen() {
     }
     const latLon = polyline.map((p) => ({ lat: p.latitude, lon: p.longitude }));
     // Glow aus kanonischem Progress (Schritt 3), nicht nearest-LatLon
-    const split = splitPolylineAtCommittedProgressM(latLon, routeProgressMRef.current);
+    const split = splitPolylineAtCommittedProgressM(
+      latLon,
+      navEngineRef.current.routeProgressM,
+    );
     if (!split) {
       return { traveledRouteCoords: [], remainingRouteCoords: polyline };
     }

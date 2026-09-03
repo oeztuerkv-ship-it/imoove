@@ -133,7 +133,7 @@ export type BuildManeuverOpts = {
   committedProgressM: number;
   /** Generation des aktuellen Route-Snapshots. */
   routeGeneration: number;
-  /** In der Engine gebundene Generation (nach resetNavEngineForRoute). */
+  /** In der Engine gebundene Generation (nach commitNavigationRoute). */
   boundRouteGeneration: number;
 };
 

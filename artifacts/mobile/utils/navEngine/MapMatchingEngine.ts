@@ -4,7 +4,7 @@
  * Pipeline: GPS/NavFix → Filter (außerhalb) → matchMapDisplayPose → Display-Pose
  *
  * - `filtered`: intern (Progress / Off-Route) — nicht für Marker/Pose-lat/lon
- * - `display`: einzige Anzeigepose (Marker, navPoseRef.lat/lon)
+ * - `display`: einzige Anzeigepose (Marker)
  * - Während Reroute (`allowSnap: false`): kein Snap auf alte Polyline
  * - Stale Route-Generation: kein Snap (alte Geometrie nach neuer Route)
  */
@@ -16,7 +16,7 @@ import type { LatLon } from "./types";
 export type MapMatchInput = {
   filtered: LatLon;
   polyline: LatLon[];
-  /** Engine-State: zuletzt per resetNavEngineForRoute übernommene Generation. */
+  /** Engine-State: zuletzt per commitNavigationRoute übernommene Generation. */
   boundRouteGeneration: number;
   /** Snapshot der aktuellen Tick-Route (aus Screen-Refs). */
   routeGeneration: number;

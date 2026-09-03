@@ -4,7 +4,6 @@
 
 import type { OffRouteTrackerState } from "./OffRouteEngine";
 import type { NavHeadingSmootherState, NavPositionSmootherState } from "../navHeadingSmoother";
-import type { NavCameraZoomState } from "./navCameraZoom";
 
 export type LatLon = { lat: number; lon: number };
 
@@ -48,7 +47,7 @@ export type NavRouteSnapshot = {
   authoritativeDistM: number;
   authoritativeEtaMin: number;
   /**
-   * Monotone Route-Generation (Screen bumped bei applyNavRouteResult).
+   * Monotone Route-Generation — setzt nur `commitNavigationRoute`.
    * Match/Progress ignorieren Snapshots mit kleinerer Generation als Engine-State.
    */
   generation: number;
@@ -79,7 +78,6 @@ export type NavManeuverOut = {
 
 /**
  * Zentrale Laufzeit-Wahrheit nach einem atomaren Tick-Commit.
- * Screen-Refs sind P1 nur Spiegel dieses Objekts.
  */
 export type NavigationState = {
   rawPosition: LatLon | null;
@@ -115,14 +113,15 @@ export type NavEngineState = {
   position: NavPositionSmootherState;
   heading: NavHeadingSmootherState;
   offRoute: OffRouteTrackerState;
-  cameraZoom: NavCameraZoomState;
   routeProgressM: number;
   stepIdx: number;
   lastRawFix: { lat: number; lon: number; atMs: number } | null;
-  /** Reroute läuft — Guidance stale. */
+  /** Reroute läuft — Guidance stale. Spiegel in `runtime.routeState`. */
   rerouteInFlight: boolean;
-  /** Zuletzt per resetNavEngineForRoute gebundene Route-Generation. */
+  /** Zuletzt per commitNavigationRoute gebundene Route-Generation. */
   routeGeneration: number;
+  /** Gebundene Geometrie — Tick nutzt sie, wenn kein Route-Argument übergeben wird. */
+  boundRoute: NavRouteSnapshot | null;
   /** Eine aktive Navigation; Async-Work prüft Gleichheit vor Commit. */
   navigationSessionId: number;
   /** Background→Foreground: alter Fix nicht als aktuell, Off-Route/Kamera warten. */
@@ -131,48 +130,22 @@ export type NavEngineState = {
   runtime: NavigationState;
 };
 
-export type NavEngineOutput = {
-  /**
-   * Intern: gefilterte GPS-Position (Progress / Off-Route / Location-Share).
-   * Nicht für Fahrzeugpfeil / navPoseRef.lat/lon verwenden.
-   */
-  filtered: LatLon;
-  /**
-   * Einheitliche Display-Pose (Schritt 2): Filter → Map-Match → Anzeige.
-   * Quelle für Marker + navPoseRef.lat/lon. Heading separat in `heading`.
-   */
-  display: LatLon;
-  snapped: boolean;
-  heading: number | null;
-  speedMps: number | null;
-  routeProgressM: number;
-  remainingDistM: number;
-  remainingMin: number;
-  distToManeuverM: number;
-  stepIdx: number;
-  maneuver: NavManeuverOut | null;
-  /** true während Reroute — UI darf keine alten „In 300 m“ zeigen. */
-  guidanceStale: boolean;
-  confirmedOffRoute: boolean;
-  cameraZoom: number;
-  cameraPitch: number;
-  /** Laufzeit-Diagnose für [NavDiag] Overlay/Logs. */
-  diag: {
-    forwardDistM: number | null;
-    routeBearingDeg: number | null;
-    courseForOffDeg: number | null;
-    headingDeltaDeg: number | null;
-    gpsSpeedMps: number | null;
-    derivedSpeedMps: number | null;
-    fixDtMs: number | null;
-    routeGeneration: number;
-    boundRouteGeneration: number;
-  };
+/** Tick-Diagnose — keine zweite Pose-/Progress-Wahrheit. */
+export type NavTickDiag = {
+  forwardDistM: number | null;
+  routeBearingDeg: number | null;
+  courseForOffDeg: number | null;
+  headingDeltaDeg: number | null;
+  gpsSpeedMps: number | null;
+  derivedSpeedMps: number | null;
+  fixDtMs: number | null;
+  routeGeneration: number;
+  boundRouteGeneration: number;
 };
 
 export type NavTickResult = {
   state: NavEngineState;
-  output: NavEngineOutput;
   /** Alias auf `state.runtime` — ein Objekt, kein zweiter Store. */
   navigation: NavigationState;
+  diag: NavTickDiag;
 };

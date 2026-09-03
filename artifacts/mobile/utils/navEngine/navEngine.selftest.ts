@@ -48,6 +48,7 @@ const lRoute: NavRouteSnapshot = {
 let state = createNavEngineState();
 state = resetNavEngineForRoute(state, lRoute, { lat: 48.74, lon: 9.31 });
 assert(state.heading.heading == null, "start heading not from route");
+assert(state.boundRoute?.generation === 1, "P6 boundRoute on engine");
 
 // Drive to junction
 let t = 1_000;
@@ -60,9 +61,8 @@ for (let i = 0; i < 5; i++) {
     lRoute,
   );
   state = r.state;
-  assert(!r.output.guidanceStale, "not stale on route");
-  assert(r.output.maneuver != null, "maneuver present");
-  assert(r.output.cameraPitch === 62, "pitch 62");
+  assert(!r.navigation.guidanceStale, "not stale on route");
+  assert(r.navigation.maneuverState != null, "maneuver present");
 }
 
 // At junction then back on past track (missed turn)
@@ -89,10 +89,10 @@ r = tickNavEngine(
   { lat: 48.74035, lon: 9.31, speedMps: 8, courseDeg: 180, nowMs: t },
   lRoute,
 );
-assert(r.output.confirmedOffRoute, "missed turn → offRoute");
-assert(r.output.guidanceStale, "5 confirmedOffRoute → guidance immediately stale");
-assert(r.output.maneuver == null, "5 no maneuver when off-route confirmed");
-assert(r.output.distToManeuverM === 0, "5 no stale turn meters");
+assert(r.navigation.confirmedOffRoute, "missed turn → offRoute");
+assert(r.navigation.guidanceStale, "5 confirmedOffRoute → guidance immediately stale");
+assert(r.navigation.maneuverState == null, "5 no maneuver when off-route confirmed");
+assert(r.navigation.distToManeuverM === 0, "5 no stale turn meters");
 
 // Stale guidance while reroute in flight
 state = setNavEngineRerouteInFlight(r.state, true);
@@ -102,16 +102,15 @@ r = tickNavEngine(
   { lat: 48.7403, lon: 9.31, speedMps: 5, courseDeg: 180, nowMs: t },
   lRoute,
 );
-assert(r.output.guidanceStale, "stale during reroute");
-assert(r.output.maneuver == null, "no stale maneuver");
-assert(r.output.distToManeuverM === 0, "no stale distance");
-// Schritt 2: während Reroute kein Snap auf alte Polyline → display === filtered
+assert(r.navigation.guidanceStale, "stale during reroute");
+assert(r.navigation.maneuverState == null, "no stale maneuver");
+assert(r.navigation.distToManeuverM === 0, "no stale distance");
 assert(
-  r.output.display.lat === r.output.filtered.lat &&
-    r.output.display.lon === r.output.filtered.lon,
+  r.navigation.displayPosition!.lat === r.navigation.filteredPosition!.lat &&
+    r.navigation.displayPosition!.lon === r.navigation.filteredPosition!.lon,
   "no snap to old route while rerouteInFlight",
 );
-assert(!r.output.snapped, "not snapped during reroute");
+assert(!r.navigation.isSnapped, "not snapped during reroute");
 
 // Stale route generation: older snapshot must not drive match after reset to gen 2
 const routeGen2: NavRouteSnapshot = { ...lRoute, generation: 2 };
@@ -125,8 +124,8 @@ r = tickNavEngine(
   staleSnap,
 );
 assert(
-  r.output.display.lat === r.output.filtered.lat &&
-    r.output.display.lon === r.output.filtered.lon,
+  r.navigation.displayPosition!.lat === r.navigation.filteredPosition!.lat &&
+    r.navigation.displayPosition!.lon === r.navigation.filteredPosition!.lon,
   "stale generation → no snap",
 );
 assert(r.navigation === r.state.runtime, "P1 navigation is engine.runtime");
@@ -184,7 +183,7 @@ assert(NAV_OFF_ROUTE_THRESHOLD_M === 12, "threshold wired");
     { lat: 48.75, lon: 9.32, speedMps: 12, courseDeg: 90, nowMs: 10_400 },
     lRoute,
   );
-  assert(!far.output.confirmedOffRoute, "P4 first post-resume fix does not confirm off-route");
+  assert(!far.navigation.confirmedOffRoute, "P4 first post-resume fix does not confirm off-route");
   assert(!far.state.gpsResyncing, "P4 fresh fix ends resync");
   assert(far.navigation.gpsState === "ACTIVE", "P4 LOST/STALE → fresh → ACTIVE");
 }

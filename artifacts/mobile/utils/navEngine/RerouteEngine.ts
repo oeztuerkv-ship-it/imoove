@@ -282,17 +282,6 @@ export function failReroute(
   };
 }
 
-/** Späte/fremde Response — State unverändert. */
-export function discardStaleRerouteResponse(
-  state: RerouteEngineState,
-  requestId: number,
-): { accepted: false; state: RerouteEngineState } | { accepted: true; state: RerouteEngineState } {
-  if (!shouldAcceptRerouteResponse(state, requestId)) {
-    return { accepted: false, state };
-  }
-  return { accepted: true, state };
-}
-
 /** Resume: inFlight aus pre-resync State darf nicht mehr committen. */
 export function invalidateInFlightRouteRequests(state: RerouteEngineState): RerouteEngineState {
   if (state.activeRequest == null) {

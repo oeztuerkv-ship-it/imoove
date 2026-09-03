@@ -6,9 +6,7 @@ import { NAV_HEADING_TRUST_COURSE_SPEED_MPS } from "../navHeadingSmoother";
 import { createNavEngineState, resetNavEngineForRoute, tickNavEngine } from "./NavigationEngine";
 import {
   commitHeadingQuality,
-  commitNavigationFromLegacyPose,
   createNavigationState,
-  mirrorsFromNavigationState,
 } from "./NavigationState";
 import type { NavRouteSnapshot } from "./types";
 
@@ -74,11 +72,6 @@ assert(tick.navigation.headingState === "VALID", "trusted course → VALID");
 assert(tick.navigation.heading === 90, "VALID heading is GPS course");
 assert(tick.navigation.lastValidHeading === 90, "lastValid set");
 assert(tick.navigation.lastValidHeadingAt === 2_000, "lastValidHeadingAt on VALID");
-assert(tick.output.heading === 90, "output heading follows commit");
-
-const mirrors = mirrorsFromNavigationState(tick.navigation);
-assert(mirrors.routeGeneration === 1, "mirror generation");
-assert(mirrors.pose.lat === tick.navigation.displayPosition!.lat, "mirror pose");
 
 {
   const valid = commitHeadingQuality(createNavigationState(), {
@@ -129,21 +122,6 @@ assert(mirrors.pose.lat === tick.navigation.displayPosition!.lat, "mirror pose")
   );
   assert(rec.headingState === "VALID", "LOST → VALID recovery");
   assert(rec.heading === 12, "recovery uses trusted course");
-}
-
-{
-  const pose = commitNavigationFromLegacyPose(createNavigationState(), {
-    lat: 48.74,
-    lon: 9.31,
-    heading: 77,
-    speedMps: 0,
-    rawLat: 48.74,
-    rawLon: 9.31,
-    courseDeg: null,
-    nowMs: 3,
-  });
-  assert(pose.headingState === "LOST", "recenter without trusted course → LOST");
-  assert(pose.heading == null, "recenter without dest bearing");
 }
 
 {

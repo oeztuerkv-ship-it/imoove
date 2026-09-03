@@ -139,10 +139,10 @@ export {
   beginNavGpsResync,
   resetNavEngineForRoute,
   commitNavigationRoute,
+  clearNavBoundRoute,
   isCommitableNavPolyline,
   nextRouteCommitGeneration,
   setNavEngineRerouteInFlight,
-  invalidateNavRouteGeneration,
   tickNavEngine,
 } from "./NavigationEngine";
 export type { CommitNavigationRouteResult } from "./NavigationEngine";
@@ -151,12 +151,9 @@ export {
   createNavigationState,
   commitNavigationFromTick,
   commitNavigationRouteBound,
-  commitNavigationFromLegacyPose,
   commitNavigationRerouteFlag,
   commitHeadingQuality,
-  resolveCommittedNavHeading,
   headingTransitionChanged,
-  mirrorsFromNavigationState,
 } from "./NavigationState";
 
 export type {
@@ -165,7 +162,7 @@ export type {
   NavRouteStep,
   NavRouteSnapshot,
   NavEngineState,
-  NavEngineOutput,
+  NavTickDiag,
   NavManeuverOut,
   ManeuverKind,
   NavTickResult,
