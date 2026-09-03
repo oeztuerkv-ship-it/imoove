@@ -90,7 +90,6 @@ import {
 import type { RouteStep } from "@/utils/routing";
 import { fetchDriverNavRoute, type DriverNavRouteResult } from "@/utils/driverNavRouteApi";
 import {
-  scaleRemainingToAuthoritative,
   distanceAlongPolylineToPointM,
 } from "@/utils/routeRemainingAlongPolyline";
 import {
@@ -106,7 +105,7 @@ import {
 import {
   applyNavigationCameraCommand,
   applyOverviewFit,
-  beginReroute,
+  beginRouteRequest,
   bindCameraRouteGeneration,
   bumpCameraSession,
   completeReroute,
@@ -115,16 +114,16 @@ import {
   createNavEngineState,
   createRerouteEngineState,
   enterCameraMode,
+  evaluateRouteResponse,
   failReroute,
-  invalidateNavRouteGeneration,
+  invalidateAllRouteRequests,
+  invalidateInFlightRouteRequests,
   isRerouteInFlight,
-  matchMapDisplayPose,
-  remainingFromCommittedProgress,
-  resetNavEngineForRoute,
   setCameraEngineMounted,
   setCameraGesturePauseUntil,
   setCameraUserPreferredZoom,
-  shouldAcceptRerouteResponse,
+  setNavEngineRerouteInFlight,
+  shouldCommitUserPreferredZoom,
   splitPolylineAtCommittedProgressM,
   startDriverNavLocationSession,
   stopDriverNavLocationSession,
@@ -133,9 +132,8 @@ import {
   acceptNavAsync,
   beginNavGpsResync,
   classifyGpsLifecycle,
+  commitNavigationRoute,
   locationCoordsToNavFix,
-  shouldCommitUserPreferredZoom,
-  commitNavigationRouteBound,
   headingTransitionChanged,
   mirrorsFromNavigationState,
   NAV_CAMERA_PITCH_NAV,
@@ -144,6 +142,7 @@ import {
   type NavEngineState,
   type NavFix,
   type NavigationState,
+  type NavRouteRequestReason,
   type NavRouteSnapshot,
   type RerouteEngineState,
 } from "@/utils/navEngine";
@@ -159,6 +158,7 @@ import {
   navDiagRerouteRequestDone,
   navDiagRerouteRequestStarted,
   navDiagResetSession,
+  navDiagRouteCommit,
 } from "@/utils/navRuntimeDiag";
 import {
   defaultDriverFareInputForCompletion,
@@ -1084,12 +1084,15 @@ export default function DriverNavigationScreen() {
     navDiagResetSession(`ride=${params.rideId ?? "?"};phase=${phase}`);
     navDiagPipelineOwners();
     offRouteTrackerRef.current = createOffRouteTrackerState();
-    rerouteEngineRef.current = createRerouteEngineState();
+    rerouteEngineRef.current = invalidateAllRouteRequests(rerouteEngineRef.current);
     const rideChanged = navSessionRideIdRef.current !== params.rideId;
     navSessionRideIdRef.current = params.rideId;
     navEngineRef.current = rideChanged
       ? createNavEngineState()
       : createNavEngineState(navEngineRef.current.navigationSessionId);
+    rerouteEngineRef.current = createRerouteEngineState(
+      navEngineRef.current.navigationSessionId,
+    );
     cameraEngineRef.current = bumpCameraSession(createCameraEngineState());
     setGuidanceStale(false);
     setStepIdx(0);
@@ -1150,55 +1153,19 @@ export default function DriverNavigationScreen() {
     (
       result: DriverNavRouteResult,
       fallbackFrom: { lat: number; lon: number },
-      fallbackTo: { lat: number; lon: number },
-      opts?: { refocusCamera?: boolean },
+      opts: { generation: number; refocusCamera?: boolean },
     ): boolean => {
-      const coords = (result.polyline ?? []).map(([lat, lon]) => ({
-        latitude: lat,
-        longitude: lon,
-      }));
-      const latLon = coords.map((c) => ({ lat: c.latitude, lon: c.longitude }));
-      // Keine 2-Punkt-Luftlinie: echte OSRM-Geometrie hat i. d. R. viele Punkte.
-      if (coords.length < 2 || latLon.length < 2) {
-        return false;
-      }
-      if (coords.length === 2) {
-        const a = latLon[0]!;
-        const b = latLon[1]!;
-        if (haversine(a.lat, a.lon, b.lat, b.lon) > 80) {
-          return false;
-        }
-      }
-      polylineLatLonRef.current = latLon;
-      // Generation ≥ invalidierte Bound-Generation (Reroute-Start), sonst +1
-      routeGenerationRef.current = Math.max(
-        routeGenerationRef.current + 1,
-        navEngineRef.current.routeGeneration,
-      );
-      setPolyline(coords);
-      setSteps(result.steps);
-      setStepIdx(0);
-      prevStepIdx.current = -1;
-      navRouteReadyRef.current = true;
-      setNavRouteLoadState("ready");
+      const latLon = (result.polyline ?? []).map(([lat, lon]) => ({ lat, lon }));
       const distM = (result.distanceKm ?? 0) * 1000;
       const etaMin = result.durationMinutes ?? 0;
-      setInitialDistM(distM);
-      setInitialEtaMin(etaMin);
       const lat = isValidMapCoord(driverLatRef.current, driverLonRef.current)
         ? driverLatRef.current
         : fallbackFrom.lat;
       const lon = isValidMapCoord(driverLatRef.current, driverLonRef.current)
         ? driverLonRef.current
         : fallbackFrom.lon;
-      offRouteTrackerRef.current = createOffRouteTrackerState();
-      cameraEngineRef.current = bindCameraRouteGeneration(
-        cameraEngineRef.current,
-        routeGenerationRef.current,
-      );
-      // Neue Route → Generation binden; Progress von Pose neu (kein nearest-full)
-      const routeSnap: NavRouteSnapshot = {
-        polyline: polylineLatLonRef.current,
+      const committed = commitNavigationRoute(navEngineRef.current, {
+        polyline: latLon,
         steps: result.steps.map((s) => ({
           instruction: s.instruction,
           ...(s.maneuver ? { maneuver: s.maneuver } : {}),
@@ -1209,50 +1176,37 @@ export default function DriverNavigationScreen() {
         })),
         authoritativeDistM: distM,
         authoritativeEtaMin: etaMin,
-        generation: routeGenerationRef.current,
-      };
-      navEngineRef.current = resetNavEngineForRoute(navEngineRef.current, routeSnap, { lat, lon });
-      routeProgressMRef.current = navEngineRef.current.routeProgressM;
-      let remDist = distM;
-      let remMin = Math.max(1, etaMin);
-      const along = remainingFromCommittedProgress(
-        routeSnap.polyline,
-        navEngineRef.current.routeProgressM,
-      );
-      if (along && distM > 0) {
-        const scaled = scaleRemainingToAuthoritative(along, distM, etaMin);
-        remDist = scaled.remainingDistM;
-        remMin = scaled.remainingMin;
-        setRemainingDistM(remDist);
-        setRemainingMin(remMin);
-      } else {
-        setRemainingDistM(distM);
-        setRemainingMin(Math.max(1, etaMin));
-      }
-      setGuidanceStale(false);
-      const poseMatch = matchMapDisplayPose({
-        filtered: { lat, lon },
-        polyline: routeSnap.polyline,
-        boundRouteGeneration: routeSnap.generation,
-        routeGeneration: routeSnap.generation,
-        allowSnap: true,
+        at: { lat, lon },
+        generation: opts.generation,
       });
-      setDriverLat(poseMatch.display.lat);
-      setDriverLon(poseMatch.display.lon);
-      navEngineRef.current = {
-        ...navEngineRef.current,
-        runtime: commitNavigationRouteBound(navEngineRef.current.runtime, {
-          generation: routeSnap.generation,
-          progressM: navEngineRef.current.routeProgressM,
-          display: poseMatch.display,
-          heading: navEngineRef.current.runtime.heading,
-          isSnapped: poseMatch.snapped,
-          remainingDistM: remDist,
-          remainingMin: remMin,
-        }),
-      };
-      syncNavCompatMirrors(navEngineRef.current.runtime);
-      if (opts?.refocusCamera !== false && !navEngineRef.current.gpsResyncing) {
+      if (!committed) return false;
+
+      navEngineRef.current = committed.state;
+      polylineLatLonRef.current = committed.snapshot.polyline;
+      const coords = committed.snapshot.polyline.map((p) => ({
+        latitude: p.lat,
+        longitude: p.lon,
+      }));
+      setPolyline(coords);
+      setSteps(result.steps);
+      setStepIdx(0);
+      prevStepIdx.current = -1;
+      navRouteReadyRef.current = true;
+      setNavRouteLoadState("ready");
+      setInitialDistM(distM);
+      setInitialEtaMin(etaMin);
+      offRouteTrackerRef.current = committed.state.offRoute;
+      cameraEngineRef.current = bindCameraRouteGeneration(
+        cameraEngineRef.current,
+        committed.state.routeGeneration,
+      );
+      setRemainingDistM(committed.remainingDistM);
+      setRemainingMin(committed.remainingMin);
+      setGuidanceStale(false);
+      setDriverLat(committed.display.lat);
+      setDriverLon(committed.display.lon);
+      syncNavCompatMirrors(committed.state.runtime);
+      if (opts.refocusCamera !== false && !navEngineRef.current.gpsResyncing) {
         applyFollowCamera({
           animated: false,
           force: true,
@@ -1261,8 +1215,8 @@ export default function DriverNavigationScreen() {
         });
       }
       shareRouteWithCustomer(polylineLatLonRef.current, {
-        etaMinutes: remMin,
-        remainingDistM: Math.round(remDist),
+        etaMinutes: committed.remainingMin,
+        remainingDistM: Math.round(committed.remainingDistM),
       });
       return true;
     },
@@ -1272,7 +1226,7 @@ export default function DriverNavigationScreen() {
   const requestNavRouteFrom = useCallback(
     async (
       from: { lat: number; lon: number },
-      reason: "initial" | "reroute" | "recover",
+      reason: "initial" | "reroute" | "recover" | "off_route" | "recenter",
       isCancelled?: () => boolean,
     ): Promise<boolean> => {
       const target = navTargetRef.current;
@@ -1280,56 +1234,102 @@ export default function DriverNavigationScreen() {
         return false;
       }
 
+      const routeReason: NavRouteRequestReason =
+        reason === "reroute" ? "off_route" : reason;
+      const sessionId = navEngineRef.current.navigationSessionId;
+      const generationAtStart = Math.max(
+        routeGenerationRef.current,
+        navEngineRef.current.routeGeneration,
+      );
       const nowMs = Date.now();
-      const begun = beginReroute(rerouteEngineRef.current, {
+      const begun = beginRouteRequest(rerouteEngineRef.current, {
         nowMs,
-        currentBoundGeneration: Math.max(
-          routeGenerationRef.current,
-          navEngineRef.current.routeGeneration,
-        ),
+        currentBoundGeneration: generationAtStart,
+        navigationSessionId: sessionId,
+        reason: routeReason,
         cooldownMs:
-          reason === "initial"
+          routeReason === "initial"
             ? 0
-            : reason === "recover" && !navRouteReadyRef.current
+            : routeReason === "recover" && !navRouteReadyRef.current
               ? 8_000
               : undefined,
       });
       if (!begun) return false;
 
+      if (begun.supersededRequestId != null) {
+        navDiagRouteCommit({
+          sessionId,
+          requestId: begun.supersededRequestId,
+          reason: routeReason,
+          routeGenerationStart: generationAtStart,
+          routeGenerationCurrent: navEngineRef.current.routeGeneration,
+          result: "dropped_stale",
+          dropReason: "superseded",
+        });
+      }
+
       rerouteEngineRef.current = begun.state;
-      // Alte Generation + Guidance sofort invalidieren (vor Fetch)
-      navEngineRef.current = invalidateNavRouteGeneration(
-        navEngineRef.current,
-        begun.invalidateToGeneration,
-      );
+      navEngineRef.current = setNavEngineRerouteInFlight(navEngineRef.current, true);
       setGuidanceStale(true);
       setDistToManeuverM(0);
 
       const requestId = begun.requestId;
-      const sessionId = navEngineRef.current.navigationSessionId;
       const destLabel = isPickupPhaseRef.current ? pickupName : destName;
+
+      const decideIncoming = (): ReturnType<typeof evaluateRouteResponse> =>
+        evaluateRouteResponse(rerouteEngineRef.current, {
+          requestId,
+          navigationSessionId: sessionId,
+          mounted: navMountedRef.current,
+          currentRouteGeneration: navEngineRef.current.routeGeneration,
+        });
+
+      const dropStale = (dropReason: string) => {
+        navDiagRouteCommit({
+          sessionId,
+          requestId,
+          reason: routeReason,
+          routeGenerationStart: begun.request.routeGenerationAtStart,
+          routeGenerationCurrent: navEngineRef.current.routeGeneration,
+          result: "dropped_stale",
+          dropReason,
+        });
+      };
+
+      const failOwned = () => {
+        rerouteEngineRef.current = failReroute(
+          rerouteEngineRef.current,
+          requestId,
+          Date.now(),
+        );
+        navEngineRef.current = setNavEngineRerouteInFlight(
+          navEngineRef.current,
+          isRerouteInFlight(rerouteEngineRef.current),
+        );
+        setGuidanceStale(navEngineRef.current.runtime.guidanceStale);
+        navDiagRouteCommit({
+          sessionId,
+          requestId,
+          reason: routeReason,
+          routeGenerationStart: begun.request.routeGenerationAtStart,
+          routeGenerationCurrent: navEngineRef.current.routeGeneration,
+          result: "failed",
+        });
+      };
+
       try {
         const result = await fetchDriverNavRoute(
           { lat: from.lat, lon: from.lon, displayName: params.fromName ?? "Start" },
           { lat: target.lat, lon: target.lon, displayName: destLabel },
         );
-        if (!isNavWorkLive({ sessionId })) {
-          return false;
-        }
+        const decision = decideIncoming();
         if (isCancelled?.()) {
-          rerouteEngineRef.current = failReroute(
-            rerouteEngineRef.current,
-            requestId,
-            Date.now(),
-          );
-          navEngineRef.current = {
-            ...navEngineRef.current,
-            rerouteInFlight: isRerouteInFlight(rerouteEngineRef.current),
-          };
+          if (decision.ok) failOwned();
+          else dropStale(decision.dropReason);
           return false;
         }
-        if (!shouldAcceptRerouteResponse(rerouteEngineRef.current, requestId)) {
-          // Verspätete/fremde Response — aktuelle Route nicht überschreiben
+        if (!decision.ok) {
+          dropStale(decision.dropReason);
           return false;
         }
         logDriverNavigationRouteResult({
@@ -1340,7 +1340,8 @@ export default function DriverNavigationScreen() {
           stepCount: result.steps.length,
           polylinePoints: (result.polyline ?? []).length,
         });
-        const applied = applyNavRouteResult(result, from, target, {
+        const applied = applyNavRouteResult(result, from, {
+          generation: begun.request.expectedCommitGeneration,
           refocusCamera: true,
         });
         if (!applied) {
@@ -1350,15 +1351,7 @@ export default function DriverNavigationScreen() {
             error: "nav_route_polyline_rejected",
             polylinePoints: (result.polyline ?? []).length,
           });
-          rerouteEngineRef.current = failReroute(
-            rerouteEngineRef.current,
-            requestId,
-            Date.now(),
-          );
-          navEngineRef.current = {
-            ...navEngineRef.current,
-            rerouteInFlight: false,
-          };
+          failOwned();
           return false;
         }
         rerouteEngineRef.current = completeReroute(
@@ -1366,24 +1359,24 @@ export default function DriverNavigationScreen() {
           requestId,
           Date.now(),
         );
+        navDiagRouteCommit({
+          sessionId,
+          requestId,
+          reason: routeReason,
+          routeGenerationStart: begun.request.routeGenerationAtStart,
+          routeGenerationCurrent: navEngineRef.current.routeGeneration,
+          result: "committed",
+        });
         return true;
       } catch (e) {
-        if (!isNavWorkLive({ sessionId })) {
-          return false;
-        }
+        const decision = decideIncoming();
         if (isCancelled?.()) {
-          rerouteEngineRef.current = failReroute(
-            rerouteEngineRef.current,
-            requestId,
-            Date.now(),
-          );
-          navEngineRef.current = {
-            ...navEngineRef.current,
-            rerouteInFlight: isRerouteInFlight(rerouteEngineRef.current),
-          };
+          if (decision.ok) failOwned();
+          else dropStale(decision.dropReason);
           return false;
         }
-        if (!shouldAcceptRerouteResponse(rerouteEngineRef.current, requestId)) {
+        if (!decision.ok) {
+          dropStale(decision.dropReason);
           return false;
         }
         logDriverNavigationRouteResult({
@@ -1391,15 +1384,7 @@ export default function DriverNavigationScreen() {
           source: "error",
           error: e instanceof Error ? e.message : String(e),
         });
-        rerouteEngineRef.current = failReroute(
-          rerouteEngineRef.current,
-          requestId,
-          Date.now(),
-        );
-        navEngineRef.current = {
-          ...navEngineRef.current,
-          rerouteInFlight: false,
-        };
+        failOwned();
         return false;
       }
     },
@@ -2270,11 +2255,10 @@ export default function DriverNavigationScreen() {
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId) return;
     const sub = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active") {
-        navEngineRef.current = beginNavGpsResync(navEngineRef.current);
-        return;
-      }
+      rerouteEngineRef.current = invalidateInFlightRouteRequests(rerouteEngineRef.current);
       navEngineRef.current = beginNavGpsResync(navEngineRef.current);
+      navEngineRef.current = setNavEngineRerouteInFlight(navEngineRef.current, false);
+      if (nextState !== "active") return;
       void syncNavPresence(rideId);
     });
     return () => sub.remove();
@@ -2702,7 +2686,7 @@ export default function DriverNavigationScreen() {
         const t0 = Date.now();
         navDiagRerouteRequestStarted({ reason: "reroute", from: out.filtered });
         void requestNavRouteFromRef
-          .current({ lat: out.filtered.lat, lon: out.filtered.lon }, "reroute")
+          .current({ lat: out.filtered.lat, lon: out.filtered.lon }, "off_route")
           .then((ok) => {
             navDiagRerouteRequestDone({
               reason: "reroute",
@@ -2764,6 +2748,8 @@ export default function DriverNavigationScreen() {
     return () => {
       cancelled = true;
       navMountedRef.current = false;
+      rerouteEngineRef.current = invalidateAllRouteRequests(rerouteEngineRef.current);
+      navEngineRef.current = setNavEngineRerouteInFlight(navEngineRef.current, false);
       ingestNavFixRef.current = () => {};
       clearInterval(heartbeatId);
       clearInterval(gpsAgeId);

@@ -322,6 +322,32 @@ export function navDiagRerouteRequestDone(input: {
   pushLine("reroute_request_done", input);
 }
 
+let lastRouteCommitLogKey = "";
+
+/** Ein Log pro Request-Ergebnis — keine Flut. */
+export function navDiagRouteCommit(input: {
+  sessionId: number;
+  requestId: number;
+  reason: string;
+  routeGenerationStart: number;
+  routeGenerationCurrent: number;
+  result: "committed" | "dropped_stale" | "failed";
+  dropReason?: string;
+}): void {
+  const key = `${input.requestId}|${input.result}|${input.dropReason ?? ""}`;
+  if (key === lastRouteCommitLogKey) return;
+  lastRouteCommitLogKey = key;
+  pushLine("route_commit", {
+    sessionId: input.sessionId,
+    requestId: input.requestId,
+    reason: input.reason,
+    routeGenerationStart: input.routeGenerationStart,
+    routeGenerationCurrent: input.routeGenerationCurrent,
+    result: input.result,
+    dropReason: input.dropReason ?? null,
+  });
+}
+
 let lastHeadingTransitionKey = "";
 
 /** Nur bei State/Reason-Wechsel. */

@@ -55,14 +55,25 @@ export {
   canStartReroute as RerouteEngine_canStart,
   canBeginReroute,
   beginReroute,
+  beginRouteRequest,
   completeReroute,
   failReroute,
   shouldAcceptRerouteResponse,
+  evaluateRouteResponse,
+  invalidateInFlightRouteRequests,
+  invalidateAllRouteRequests,
   createRerouteEngineState,
   isRerouteInFlight,
   NAV_REROUTE_COOLDOWN_MS,
 } from "./RerouteEngine";
-export type { RerouteEngineState, BeginRerouteResult } from "./RerouteEngine";
+export type {
+  RerouteEngineState,
+  BeginRerouteResult,
+  NavRouteRequest,
+  NavRouteRequestReason,
+  RouteDropReason,
+  RouteResponseDecision,
+} from "./RerouteEngine";
 
 export {
   buildManeuverOut as ManeuverEngine_next,
@@ -127,10 +138,14 @@ export {
   createNavEngineState,
   beginNavGpsResync,
   resetNavEngineForRoute,
+  commitNavigationRoute,
+  isCommitableNavPolyline,
+  nextRouteCommitGeneration,
   setNavEngineRerouteInFlight,
   invalidateNavRouteGeneration,
   tickNavEngine,
 } from "./NavigationEngine";
+export type { CommitNavigationRouteResult } from "./NavigationEngine";
 
 export {
   createNavigationState,

@@ -229,7 +229,7 @@ export function commitNavigationRerouteFlag(
   return {
     ...prev,
     routeState: inFlight ? "rerouting" : prev.routeState === "rerouting" ? "navigating" : prev.routeState,
-    guidanceStale: inFlight || prev.guidanceStale,
+    guidanceStale: inFlight,
   };
 }
 

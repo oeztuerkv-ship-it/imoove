@@ -26,6 +26,7 @@ assert(idle.routeState === "idle", "boot route idle");
 const route: NavRouteSnapshot = {
   polyline: [
     { lat: 48.74, lon: 9.31 },
+    { lat: 48.7405, lon: 9.31 },
     { lat: 48.741, lon: 9.31 },
   ],
   steps: [

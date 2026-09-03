@@ -23,8 +23,10 @@ import {
 } from "./OffRouteEngine";
 import {
   initCommittedProgressForRoute,
+  remainingFromCommittedProgress,
   tickRouteProgress,
 } from "./RouteProgressEngine";
+import { scaleRemainingToAuthoritative } from "../routeRemainingAlongPolyline";
 import { createNavCameraZoomState, NAV_CAMERA_PITCH_NAV } from "./navCameraZoom";
 import { nextNavigationSessionId, shouldEvaluateOffRoute } from "./navLifecycle";
 import {
@@ -89,14 +91,72 @@ export function beginNavGpsResync(state: NavEngineState): NavEngineState {
   };
 }
 
-/** Nach neuer Route: Progress von Pose neu. Kein Route-/Ziel-Bearing als Fahrzeug-Heading. */
-export function resetNavEngineForRoute(
+export function isCommitableNavPolyline(latLon: LatLon[]): boolean {
+  if (latLon.length < 2) return false;
+  if (latLon.length === 2) {
+    const a = latLon[0]!;
+    const b = latLon[1]!;
+    if (haversineM(a, b) > 80) return false;
+  }
+  return true;
+}
+
+export function nextRouteCommitGeneration(state: NavEngineState): number {
+  return Math.max(state.routeGeneration, state.runtime.routeGeneration) + 1;
+}
+
+export type CommitNavigationRouteResult = {
+  state: NavEngineState;
+  snapshot: NavRouteSnapshot;
+  remainingDistM: number;
+  remainingMin: number;
+  display: LatLon;
+  isSnapped: boolean;
+};
+
+/**
+ * Atomarer Route-Commit: Polyline, Generation, Progress, OffRoute, Maneuver, routeState.
+ */
+export function commitNavigationRoute(
   state: NavEngineState,
-  route: NavRouteSnapshot,
-  at: LatLon,
-  _opts?: { headingDeg?: number | null },
-): NavEngineState {
-  const progress = initCommittedProgressForRoute(route.polyline, at);
+  input: {
+    polyline: LatLon[];
+    steps: NavRouteSnapshot["steps"];
+    authoritativeDistM: number;
+    authoritativeEtaMin: number;
+    at: LatLon;
+    generation: number;
+  },
+): CommitNavigationRouteResult | null {
+  if (!isCommitableNavPolyline(input.polyline)) return null;
+
+  const snapshot: NavRouteSnapshot = {
+    polyline: input.polyline,
+    steps: input.steps,
+    authoritativeDistM: input.authoritativeDistM,
+    authoritativeEtaMin: input.authoritativeEtaMin,
+    generation: input.generation,
+  };
+  const progress = initCommittedProgressForRoute(snapshot.polyline, input.at);
+  let remainingDistM = input.authoritativeDistM;
+  let remainingMin = Math.max(1, input.authoritativeEtaMin);
+  const along = remainingFromCommittedProgress(snapshot.polyline, progress);
+  if (along && input.authoritativeDistM > 0) {
+    const scaled = scaleRemainingToAuthoritative(
+      along,
+      input.authoritativeDistM,
+      input.authoritativeEtaMin,
+    );
+    remainingDistM = scaled.remainingDistM;
+    remainingMin = scaled.remainingMin;
+  }
+  const match = matchMapDisplayPose({
+    filtered: input.at,
+    polyline: snapshot.polyline,
+    boundRouteGeneration: snapshot.generation,
+    routeGeneration: snapshot.generation,
+    allowSnap: true,
+  });
   const next: NavEngineState = {
     ...state,
     routeProgressM: progress,
@@ -104,18 +164,43 @@ export function resetNavEngineForRoute(
     offRoute: createOffRouteTrackerState(),
     heading: state.heading,
     rerouteInFlight: false,
-    routeGeneration: route.generation,
+    routeGeneration: snapshot.generation,
+    runtime: commitNavigationRouteBound(state.runtime, {
+      generation: snapshot.generation,
+      progressM: progress,
+      display: match.display,
+      heading: state.runtime.heading,
+      isSnapped: match.snapped,
+      remainingDistM,
+      remainingMin,
+    }),
   };
-  next.runtime = commitNavigationRouteBound(state.runtime, {
+  return {
+    state: next,
+    snapshot,
+    remainingDistM,
+    remainingMin,
+    display: match.display,
+    isSnapped: match.snapped,
+  };
+}
+
+/** Nach neuer Route: Progress von Pose neu. Kein Route-/Ziel-Bearing als Fahrzeug-Heading. */
+export function resetNavEngineForRoute(
+  state: NavEngineState,
+  route: NavRouteSnapshot,
+  at: LatLon,
+  _opts?: { headingDeg?: number | null },
+): NavEngineState {
+  const committed = commitNavigationRoute(state, {
+    polyline: route.polyline,
+    steps: route.steps,
+    authoritativeDistM: route.authoritativeDistM,
+    authoritativeEtaMin: route.authoritativeEtaMin,
+    at,
     generation: route.generation,
-    progressM: progress,
-    display: at,
-    heading: state.runtime.heading,
-    isSnapped: false,
-    remainingDistM: 0,
-    remainingMin: 1,
   });
-  return next;
+  return committed?.state ?? state;
 }
 
 export function setNavEngineRerouteInFlight(

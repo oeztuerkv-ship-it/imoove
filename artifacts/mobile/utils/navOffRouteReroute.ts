@@ -31,10 +31,20 @@ export {
   canBeginReroute,
   createRerouteEngineState,
   beginReroute,
+  beginRouteRequest,
   shouldAcceptRerouteResponse,
+  evaluateRouteResponse,
   completeReroute,
   failReroute,
   discardStaleRerouteResponse,
   isRerouteInFlight,
+  invalidateInFlightRouteRequests,
+  invalidateAllRouteRequests,
 } from "./navEngine/RerouteEngine";
-export type { RerouteEngineState, BeginRerouteResult } from "./navEngine/RerouteEngine";
+export type {
+  RerouteEngineState,
+  BeginRerouteResult,
+  NavRouteRequest,
+  NavRouteRequestReason,
+  RouteDropReason,
+} from "./navEngine/RerouteEngine";

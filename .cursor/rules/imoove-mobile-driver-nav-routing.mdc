@@ -15,7 +15,7 @@ Geplante Engine-Trennung (Refactor-Plan):
 2. **MapMatchingEngine** — einheitliche Display-Pose + Route-Generation (Schritt 2 erledigt)
 3. **RouteProgressEngine** — kanonisch `committedProgressM` (Schritt 3 erledigt)
 4. **ManeuverEngine** — Step-Advance + Distanz aus Progress; Generation/Stale (Schritt 4 erledigt)
-5. **OffRouteEngine + RerouteEngine** — Rest-Route-Lateral von filtered Pose; Request-Token; Generation-Invalidate (Schritt 5 erledigt)
+5. **OffRouteEngine + RerouteEngine** — Rest-Route-Lateral von filtered Pose; Request-Token; **P5:** Generation erst beim atomaren Commit (`commitNavigationRoute`).
 6. **CameraEngine** — einziger Owner für setCamera/animateCamera/fit (Schritt 6 erledigt)
 7. _(Nummer historisch; Camera = Schritt 6)_
 8. Guidance UI (nur NavigationState; `guidanceStale` blockiert alle Hinweise)
@@ -73,8 +73,9 @@ npx tsx artifacts/mobile/utils/navEngine/navCameraZoom.selftest.ts
 - Fortschritt nur bei Lateral ≤ **20 m**; Backtrack **35 m** (unverändert).
 - Schwelle **12 m**, **2 Fixes** / **0,8 s**, Cooldown **3 s** (keine Verdachts-Tuning).
 - **Heading allein** löst **keinen** Reroute aus; Stall (Fahren ohne Progress) und/oder Lateral.
-- Bei `confirmedOffRoute`: `guidanceStale` sofort; `invalidateNavRouteGeneration`; max. **ein** Reroute-Request (`RerouteEngine`).
-- Späte Response: `shouldAcceptRerouteResponse(requestId)` — sonst verwerfen.
+- Bei `confirmedOffRoute`: `guidanceStale` sofort via `setNavEngineRerouteInFlight`; **kein** Generation-Bump beim Request-Start. `routeGeneration` setzt **nur** `commitNavigationRoute` (genau +1).
+- **P5 Ownership:** genau ein aktiver `NavRouteRequest` (`requestId`, `navigationSessionId`, `routeGenerationAtStart`, `reason`). `initial`/`recenter` dürfen inFlight ersetzen; `off_route`/`recover` nicht, solange inFlight. Späte Response: `evaluateRouteResponse` — sonst verwerfen + `navDiagRouteCommit`.
+- Resume (`beginNavGpsResync`): `invalidateInFlightRouteRequests`. Navigation-Ende / neue Session: `invalidateAllRouteRequests`.
 - Selftests: `navOffRouteReroute.selftest.ts` (1–11), `RerouteEngine.selftest.ts`.
 - Marker: Snap max. **45 m**; während Reroute kein Snap.
 
