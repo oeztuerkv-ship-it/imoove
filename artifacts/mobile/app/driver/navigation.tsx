@@ -347,8 +347,6 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number): num
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-/** Fallback-Bearing (Step/Ziel) — nicht mehr als Fahrzeug-Heading verwenden. */
-
 /** Apple Maps nutzt altitude (m), Google Maps zoom — zoom allein auf iOS wirkt nicht. */
 function zoomLevelToAltitudeMeters(zoom: number, latitude: number): number {
   return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
@@ -2562,14 +2560,14 @@ export default function DriverNavigationScreen() {
 
     const applyEngineOutput = (
       nav: NavigationState,
-      opts?: { forceCamera?: boolean },
+      opts?: { forceCamera?: boolean; prevNav?: NavigationState },
     ) => {
       const display = nav.displayPosition;
       if (!display) return;
       // Marker + Pose-lat/lon: Display-Pose aus NavigationState.
       setDriverLat(display.lat);
       setDriverLon(display.lon);
-      const prevNav = navEngineRef.current.runtime;
+      const prevNav = opts?.prevNav ?? navEngineRef.current.runtime;
       syncNavCompatMirrors(nav);
       if (headingTransitionChanged(prevNav, nav)) {
         navDiagHeadingTransition({
@@ -2618,12 +2616,13 @@ export default function DriverNavigationScreen() {
           { userPreferredZoom: preferredZoomRef.current },
         );
         engineCalled = true;
+        const prevNav = navEngineRef.current.runtime;
         navEngineRef.current = tick.state;
         navHeadingSmootherRef.current = tick.state.heading;
         navPositionSmootherRef.current = tick.state.position;
         offRouteTrackerRef.current = tick.state.offRoute;
         out = tick.output;
-        applyEngineOutput(tick.state.runtime, opts);
+        applyEngineOutput(tick.state.runtime, { ...opts, prevNav });
       } catch (e) {
         engineError = e instanceof Error ? e.message : String(e);
         console.error("[NavDiag] tickNavEngine_threw", engineError);

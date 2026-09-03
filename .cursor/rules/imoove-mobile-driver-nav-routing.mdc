@@ -82,7 +82,7 @@ npx tsx artifacts/mobile/utils/navEngine/navCameraZoom.selftest.ts
 - **Ein Owner:** `CameraEngine` (`tickCameraEngine` → `applyCameraCommand`). Screen-Call-Sites nur Intent, kein direktes `setCamera`/`animateCamera`.
 - Center = Display-Pose + Lookahead (~42 m); Bearing = geglättetes Heading; Pitch **62°**; Zoom Speed-Bänder ~**16.6 / 16.3 / 15.0** + Hysterese + Apply-Delta.
 - Overview: `applyCameraOverviewFit` (fitToCoordinates), Follow aus.
-- Heading: kein Magnetometer; GPS-Course + Smoother; Route-Bearing Bootstrap/Fallback.
+- Heading (P2): `headingState` ist verbindlich (VALID übernehmen, UNRELIABLE letzten VALID-Kurs halten, LOST nicht neu drehen). Kein Magnetometer, kein Route-/Ziel-/Step-Bearing und kein `heading: 0` als Fahrzeug-Heading. GPS-Course + Movement über bestehende Trust-Gates; Commit in `NavigationState`.
 - Postmortem iOS `speed=-1`: immer `resolveNavSpeedMps`.
 - Postmortem Falschabbiegen: Forward-Distanz + Heading/Stall.
 
