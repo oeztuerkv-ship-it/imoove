@@ -7,6 +7,7 @@ export { locationCoordsToNavFix } from "./locationCoordsToNavFix";
 export type { LocationCoordsLike } from "./locationCoordsToNavFix";
 export {
   startDriverNavLocationSession,
+  stopDriverNavLocationSession,
   DRIVER_NAV_LOCATION_DISTANCE_INTERVAL_M,
   DRIVER_NAV_LOCATION_TIME_INTERVAL_MS,
 } from "./LocationEngine";
@@ -87,6 +88,7 @@ export {
   bindCameraRouteGeneration,
   enterCameraMode,
   setCameraUserPreferredZoom,
+  shouldCommitUserPreferredZoom,
   setCameraGesturePauseUntil,
   tickCameraEngine,
   tickFollowFromNav,
@@ -112,7 +114,18 @@ export type {
 } from "./CameraEngine";
 
 export {
+  nextNavigationSessionId,
+  acceptNavAsync,
+  classifyGpsLifecycle,
+  shouldEvaluateOffRoute,
+  createLocationWatchGuard,
+  NAV_GPS_STALE_AFTER_MS,
+  NAV_GPS_LOST_AFTER_MS,
+} from "./navLifecycle";
+
+export {
   createNavEngineState,
+  beginNavGpsResync,
   resetNavEngineForRoute,
   setNavEngineRerouteInFlight,
   invalidateNavRouteGeneration,

@@ -17,6 +17,9 @@ import {
   isFiniteCameraCommand,
   offsetLatLonByBearingM,
   resetFollowNativeApplyCount,
+  setCameraEngineMounted,
+  setCameraUserPreferredZoom,
+  shouldCommitUserPreferredZoom,
   tickCameraEngine,
   tickFollowFromNav,
 } from "./CameraEngine";
@@ -556,6 +559,51 @@ console.log("CameraEngine.selftest P2: OK");
   );
   assert(!genBlocked.applied && genBlocked.reason === "stale_generation", "P3 stale generation blocked");
   assert(getFollowNativeApplyCount() === 0, "P3 stale does not native-apply");
+}
+
+{
+  let st = createCameraEngineState();
+  st = setCameraUserPreferredZoom(st, 16);
+  const snap = { sessionToken: st.sessionToken, mode: st.mode };
+  assert(shouldCommitUserPreferredZoom(st, snap), "P4 getCamera live");
+  const bumped = bumpCameraSession(st);
+  assert(!shouldCommitUserPreferredZoom(bumped, snap), "P4 stale getCamera ignored");
+  const unmounted = setCameraEngineMounted(st, false);
+  assert(!shouldCommitUserPreferredZoom(unmounted, snap), "P4 getCamera after unmount");
+  const modeChanged = enterCameraMode(st, "OVERVIEW");
+  assert(!shouldCommitUserPreferredZoom(modeChanged, snap), "P4 getCamera mode mismatch");
+}
+
+{
+  let st = createCameraEngineState();
+  let r = tickCameraEngine(st, {
+    display: { lat: 48.74, lon: 9.31 },
+    heading: 10,
+    headingState: "VALID",
+    speedMps: 5,
+    nowMs: 1,
+    followEnabled: true,
+    mapReady: false,
+  });
+  const staleSession = bumpCameraSession(r.state);
+  const consumed = consumePendingCamera(staleSession, { nowMs: 2 });
+  assert(consumed.command == null, "P4 stale MapReady pending ignored");
+}
+
+{
+  resetFollowNativeApplyCount();
+  const nullMap = applyNavigationCameraCommand(createCameraEngineState(), {
+    center: { latitude: 48.74, longitude: 9.31 },
+    heading: 0,
+    pitch: 62,
+    zoom: 16,
+    altitude: 100,
+    mode: "set",
+    durationMs: 0,
+    sessionToken: 1,
+    routeGeneration: 0,
+  }, { map: null });
+  assert(!nullMap.applied, "P4 null map ref does not throw");
 }
 
 console.log("CameraEngine.selftest P3: OK");

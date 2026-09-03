@@ -1,5 +1,6 @@
 /**
- * NavigationEngine — ein GPS-Tick: Filter → Match → Heading → Progress → Off-Route → Maneuver → ETA → Zoom.
+ * NavigationEngine — ein GPS-Tick: Filter → Match → Heading → Progress → Off-Route → Maneuver → ETA.
+ * Zoom gehört der CameraEngine (P3/P4).
  * Kein React, keine Netzwerk-Side-Effects (Reroute startet der Screen via RerouteEngine).
  */
 
@@ -7,7 +8,6 @@ import {
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
   NAV_POLY_LOOKAHEAD_M,
-  isUsableCourse,
   resolveNavSpeedMps,
   tickNavHeading,
   tickNavPosition,
@@ -25,11 +25,8 @@ import {
   initCommittedProgressForRoute,
   tickRouteProgress,
 } from "./RouteProgressEngine";
-import {
-  createNavCameraZoomState,
-  NAV_CAMERA_PITCH_NAV,
-  tickNavCameraZoom,
-} from "./navCameraZoom";
+import { createNavCameraZoomState, NAV_CAMERA_PITCH_NAV } from "./navCameraZoom";
+import { nextNavigationSessionId, shouldEvaluateOffRoute } from "./navLifecycle";
 import {
   commitNavigationFromTick,
   commitNavigationRerouteFlag,
@@ -57,7 +54,9 @@ function haversineM(a: LatLon, b: LatLon): number {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-export function createNavEngineState(): NavEngineState {
+export function createNavEngineState(
+  sessionId: number = nextNavigationSessionId(),
+): NavEngineState {
   return {
     position: createNavPositionSmootherState(),
     heading: createNavHeadingSmootherState(),
@@ -68,7 +67,25 @@ export function createNavEngineState(): NavEngineState {
     lastRawFix: null,
     rerouteInFlight: false,
     routeGeneration: 0,
+    navigationSessionId: sessionId,
+    gpsResyncing: false,
     runtime: createNavigationState(),
+  };
+}
+
+/** Resume: alten Fix verwerfen, Off-Route halten, gpsState STALE bis frischer Tick. */
+export function beginNavGpsResync(state: NavEngineState): NavEngineState {
+  return {
+    ...state,
+    lastRawFix: null,
+    gpsResyncing: true,
+    offRoute: createOffRouteTrackerState(),
+    runtime: {
+      ...state.runtime,
+      gpsState: "STALE",
+      lastFixAt: null,
+      confirmedOffRoute: false,
+    },
   };
 }
 
@@ -127,13 +144,62 @@ export function invalidateNavRouteGeneration(
   };
 }
 
+function frozenTickResult(state: NavEngineState): NavTickResult {
+  const display = state.runtime.displayPosition ?? { lat: 0, lon: 0 };
+  const filtered = state.runtime.filteredPosition ?? display;
+  return {
+    state,
+    navigation: state.runtime,
+    output: {
+      filtered,
+      display,
+      snapped: state.runtime.isSnapped,
+      heading: state.runtime.heading,
+      speedMps: state.runtime.speed,
+      routeProgressM: state.runtime.routeProgress,
+      remainingDistM: state.runtime.remainingDistM,
+      remainingMin: state.runtime.remainingMin,
+      distToManeuverM: state.runtime.distToManeuverM,
+      stepIdx: state.stepIdx,
+      maneuver: state.runtime.maneuverState,
+      guidanceStale: state.runtime.guidanceStale,
+      confirmedOffRoute: false,
+      cameraZoom: state.cameraZoom.zoom,
+      cameraPitch: NAV_CAMERA_PITCH_NAV,
+      diag: {
+        forwardDistM: null,
+        routeBearingDeg: null,
+        courseForOffDeg: null,
+        headingDeltaDeg: null,
+        gpsSpeedMps: null,
+        derivedSpeedMps: null,
+        fixDtMs: null,
+        routeGeneration: 0,
+        boundRouteGeneration: state.routeGeneration,
+      },
+    },
+  };
+}
+
 export function tickNavEngine(
   state: NavEngineState,
   fix: NavFix,
   route: NavRouteSnapshot | null,
-  opts?: { userPreferredZoom?: number | null },
+  opts?: { sessionId?: number; routeGeneration?: number },
 ): NavTickResult {
+  if (opts?.sessionId != null && opts.sessionId !== state.navigationSessionId) {
+    return frozenTickResult(state);
+  }
+  if (
+    opts?.routeGeneration != null &&
+    state.routeGeneration > 0 &&
+    opts.routeGeneration !== state.routeGeneration
+  ) {
+    return frozenTickResult(state);
+  }
+
   const now = fix.nowMs;
+  const finishingResync = state.gpsResyncing;
 
   // 1–2 Position filter
   const posTick = tickNavPosition(state.position, fix.lat, fix.lon);
@@ -141,7 +207,7 @@ export function tickNavEngine(
 
   let movementBearing: number | null = null;
   let derivedSpeedMps: number | null = null;
-  const prevRaw = state.lastRawFix;
+  const prevRaw = finishingResync ? null : state.lastRawFix;
   if (prevRaw) {
     const moved = haversineM(
       { lat: prevRaw.lat, lon: prevRaw.lon },
@@ -232,7 +298,10 @@ export function tickNavEngine(
      * (nicht gesnappt → Distanz ≈ 0; nicht EMA-filtered → Sprünge/Falschabbiegen
      * werden nicht weggeglättet).
      */
-    if (!state.rerouteInFlight) {
+    if (
+      !state.rerouteInFlight &&
+      shouldEvaluateOffRoute("ACTIVE", finishingResync)
+    ) {
       const offEval = evaluateNavOffRouteSample({
         state: offRoute,
         nowMs: now,
@@ -272,22 +341,18 @@ export function tickNavEngine(
     },
   );
 
-  const zoomTick = tickNavCameraZoom(state.cameraZoom, {
-    speedMps: effectiveSpeed,
-    nowMs: now,
-    userPreferredZoom: opts?.userPreferredZoom,
-  });
-
   const nextState: NavEngineState = {
     position: posTick.state,
     heading: headingTick.state,
     offRoute,
-    cameraZoom: zoomTick.state,
+    cameraZoom: state.cameraZoom,
     routeProgressM,
     stepIdx: guidanceStale ? state.stepIdx : maneuverBuilt.stepIdx,
     lastRawFix: { lat: fix.lat, lon: fix.lon, atMs: now },
     rerouteInFlight: state.rerouteInFlight,
     routeGeneration: state.routeGeneration,
+    navigationSessionId: state.navigationSessionId,
+    gpsResyncing: false,
     runtime: state.runtime,
   };
 
@@ -305,7 +370,7 @@ export function tickNavEngine(
     maneuver: maneuverBuilt.maneuver,
     guidanceStale,
     confirmedOffRoute,
-    cameraZoom: zoomTick.zoom,
+    cameraZoom: state.cameraZoom.zoom,
     cameraPitch: NAV_CAMERA_PITCH_NAV,
     diag: {
       forwardDistM: restLateralM,

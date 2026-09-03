@@ -155,7 +155,8 @@ export function bindCameraRouteGeneration(
 ): CameraEngineState {
   const gen = Math.max(0, routeGeneration);
   const stalePending =
-    state.pending != null && state.pending.routeGeneration < gen;
+    state.pending != null &&
+    (state.pending.routeGeneration !== gen || state.pending.sessionToken !== state.sessionToken);
   return {
     ...state,
     routeGeneration: gen,
@@ -175,6 +176,17 @@ export function setCameraUserPreferredZoom(
   zoom: number | null,
 ): CameraEngineState {
   return { ...state, userPreferredZoom: zoom };
+}
+
+/** Nach `getCamera`: nur committen wenn Session + Modus noch passen. */
+export function shouldCommitUserPreferredZoom(
+  state: CameraEngineState,
+  snapshot: { sessionToken: number; mode: CameraNavMode },
+): boolean {
+  if (!state.mounted) return false;
+  if (state.sessionToken !== snapshot.sessionToken) return false;
+  if (state.mode !== snapshot.mode) return false;
+  return true;
 }
 
 export function setCameraGesturePauseUntil(
@@ -450,7 +462,7 @@ export function consumePendingCamera(
   if (pending.sessionToken !== state.sessionToken) {
     return { state: { ...state, pending: null }, command: null, skipReason: "stale_session" };
   }
-  if (pending.routeGeneration < state.routeGeneration) {
+  if (pending.routeGeneration !== state.routeGeneration) {
     return { state: { ...state, pending: null }, command: null, skipReason: "stale_generation" };
   }
   return tickCameraEngine(state, {

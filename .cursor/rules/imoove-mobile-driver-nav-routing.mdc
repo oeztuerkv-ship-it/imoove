@@ -21,13 +21,14 @@ Geplante Engine-Trennung (Refactor-Plan):
 8. Guidance UI (nur NavigationState; `guidanceStale` blockiert alle Hinweise)
 
 - **Tick (kein React):** `artifacts/mobile/utils/navEngine/` — `tickNavEngine`, Typen, Modul-Fassaden.
-- **GPS-Einstieg:** `LocationEngine.ts` → `startDriverNavLocationSession` / `locationCoordsToNavFix` → `NavFix` → `tickNavEngine`.
+- **GPS-Einstieg:** `LocationEngine.ts` → `startDriverNavLocationSession` / `locationCoordsToNavFix` → `NavFix` → `tickNavEngine` (Live **und** Recenter). Session: `navigationSessionId` + `acceptNavAsync`. `gpsState` ACTIVE/STALE/LOST; Resume `beginNavGpsResync`.
 - **Display-Pose (Schritt 2):** Filter → `matchMapDisplayPose` → `output.display` / `runtime.displayPosition`. Marker + Compat-`navPoseRef` aus Runtime. `filtered` nur intern (Off-Route-Share). Während `rerouteInFlight` oder stale `route.generation`: **kein Snap**.
 - **P1 NavigationState:** eine Instanz `NavEngineState.runtime`. Tick committet atomar. Screen liest primär Runtime; Refs sind Spiegel.
 - **Progress (Schritt 3):** kanonisch `committedProgressM` via `tickRouteProgress` / `RouteProgressEngine`. Remaining/ETA/Forward/Glow/Manöver-Meter aus demselben Stand — **kein** `remainingAlongPolyline(nearest-full)` mehr für Navi-Anzeige. Advance nur vorwärts; bei Reroute Progress neu von Pose + neue Generation.
-- **Route-Generation:** `routeGenerationRef` ++ in `applyNavRouteResult`; Snapshot + `NavEngineState.routeGeneration` via `resetNavEngineForRoute`.
-- **Screen:** `navigation.tsx` — UI, Lifecycle, Side-Effects. GPS-`useEffect`-Deps **nur `rideId`**; Callbacks über **Refs**.
+- **Route-Generation:** `routeGenerationRef` ++ in `applyNavRouteResult`; Snapshot + `NavEngineState.routeGeneration` via `resetNavEngineForRoute`. Alte Generation darf Runtime nicht überschreiben (`tickNavEngine` opts).
+- **Screen:** `navigation.tsx` — UI, Lifecycle, Side-Effects. GPS-`useEffect`-Deps **nur `rideId`**; Callbacks über **Refs**. Watch: max. einer, Stop idempotent.
 - Während **`guidanceStale` / Reroute:** keine veralteten „In 300 m …“-Hinweise — UI zeigt „Route wird neu berechnet“ (Schritt 8: auch Footer).
+- **Kamera-Zoom:** nur CameraEngine; `tickNavEngine` tickt keinen Zoom mehr.
 
 Smoke:
 
@@ -38,7 +39,7 @@ npx tsx artifacts/mobile/utils/navEngine/LocationEngine.selftest.ts
 npx tsx artifacts/mobile/utils/navEngine/MapMatchingEngine.selftest.ts
 npx tsx artifacts/mobile/utils/navEngine/RouteProgressEngine.selftest.ts
 npx tsx artifacts/mobile/utils/navEngine/ManeuverEngine.selftest.ts
-npx tsx artifacts/mobile/utils/navEngine/RerouteEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/navLifecycle.selftest.ts
 npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts
 npx tsx artifacts/mobile/utils/navEngine/CameraEngine.selftest.ts
 npx tsx artifacts/mobile/utils/navEngine/navCameraZoom.selftest.ts
@@ -46,7 +47,7 @@ npx tsx artifacts/mobile/utils/navEngine/navCameraZoom.selftest.ts
 
 ## Root Cause / Architektur (einfrieren — kein Schwellenwert-Tuning)
 
-1. **Unvollständige Migration zu `tickNavEngine`** — Live-GPS nutzt LocationEngine+Tick; Legacy **`applyDriverNavFix`** noch Recenter/Bootstrap (Pose-lat/lon jetzt über `matchMapDisplayPose`).
+1. **Unvollständige Migration zu `tickNavEngine`** — **P4:** Recenter/Boot über dieselbe Pipeline; `applyDriverNavFix` entfernt.
 2. **Route-Generation** — Schritt 2+5: Token an Snapshot/Engine; Reroute invalidiert Bound-Generation sofort; späte Responses per Request-Id verworfen. Guidance-Footer → Schritt 8.
 3. **Zwei Progress-Modelle** — **Schritt 3 behoben**: nur committed; nearest-full nicht mehr für ETA/Glow/Manöver-m.
 4. **Split Pose** — **Schritt 2 behoben** für Anzeige: eine Display-Pose; `filtered` intern.

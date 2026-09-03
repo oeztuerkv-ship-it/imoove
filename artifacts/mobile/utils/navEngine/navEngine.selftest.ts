@@ -7,6 +7,7 @@ import {
   resetNavEngineForRoute,
   setNavEngineRerouteInFlight,
   tickNavEngine,
+  beginNavGpsResync,
 } from "./NavigationEngine";
 import type { NavRouteSnapshot } from "./types";
 import { NAV_OFF_ROUTE_THRESHOLD_M } from "../navOffRouteReroute";
@@ -132,5 +133,60 @@ assert(r.navigation === r.state.runtime, "P1 navigation is engine.runtime");
 assert(r.navigation.gpsState === "ACTIVE", "P1 gpsState ACTIVE after tick");
 
 assert(NAV_OFF_ROUTE_THRESHOLD_M === 12, "threshold wired");
+
+{
+  const sid = state.navigationSessionId;
+  const before = state.runtime.lastFixAt;
+  const ignored = tickNavEngine(
+    state,
+    { lat: 49, lon: 9, speedMps: 8, courseDeg: 90, nowMs: t + 50_000 },
+    lRoute,
+    { sessionId: sid + 1 },
+  );
+  assert(ignored.state === state, "P4 stale session GPS does not replace engine");
+  assert(ignored.state.runtime.lastFixAt === before, "P4 stale session no lastFixAt");
+}
+
+{
+  let s = createNavEngineState();
+  s = resetNavEngineForRoute(s, lRoute, { lat: 48.74, lon: 9.31 });
+  const gen = s.routeGeneration;
+  s = tickNavEngine(
+    s,
+    { lat: 48.74, lon: 9.31, speedMps: 8, courseDeg: 0, nowMs: 2_000 },
+    lRoute,
+  ).state;
+  const progress = s.routeProgressM;
+  const blocked = tickNavEngine(
+    s,
+    { lat: 48.741, lon: 9.309, speedMps: 8, courseDeg: 270, nowMs: 3_000 },
+    lRoute,
+    { routeGeneration: gen + 99 },
+  );
+  assert(blocked.state.routeProgressM === progress, "P4 stale routeGeneration cannot overwrite");
+  assert(blocked.state === s, "P4 frozen identity");
+}
+
+{
+  let s = createNavEngineState();
+  s = resetNavEngineForRoute(s, lRoute, { lat: 48.74, lon: 9.31 });
+  s = tickNavEngine(
+    s,
+    { lat: 48.74, lon: 9.31, speedMps: 8, courseDeg: 0, nowMs: 10_000 },
+    lRoute,
+  ).state;
+  s = beginNavGpsResync(s);
+  assert(s.gpsResyncing, "P4 resume resyncing");
+  assert(s.runtime.gpsState === "STALE", "P4 resume STALE");
+  assert(s.lastRawFix == null, "P4 resume clears lastRawFix");
+  const far = tickNavEngine(
+    s,
+    { lat: 48.75, lon: 9.32, speedMps: 12, courseDeg: 90, nowMs: 10_400 },
+    lRoute,
+  );
+  assert(!far.output.confirmedOffRoute, "P4 first post-resume fix does not confirm off-route");
+  assert(!far.state.gpsResyncing, "P4 fresh fix ends resync");
+  assert(far.navigation.gpsState === "ACTIVE", "P4 LOST/STALE → fresh → ACTIVE");
+}
 
 console.log("navEngine.selftest: OK");

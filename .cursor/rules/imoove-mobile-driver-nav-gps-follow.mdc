@@ -44,8 +44,8 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 - Follow nur bei **Nutzer-Pan** (`onPanDrag`) aus — **nicht** bei `onRegionChange`.
 - GPS Navi: `Accuracy.BestForNavigation`, `distanceInterval: 2` (iOS), `timeInterval: 1000` (Android).
 - Marker: jedes GPS-Tick `setDriverLat/Lon`; Kamera Follow gedrosselt; Heading nur über Smoother.
-- **P1 SoT:** `navEngineRef.current.runtime` (`NavigationState`). Compat-Refs (`navPoseRef`, `lastRawFixRef`, `routeProgressMRef`, `routeGenerationRef`) werden nach jedem Tick aus Runtime gespiegelt. `applyDriverNavFix` bleibt (P2), schreibt aber in dieselbe Runtime.
-- `followsUserLocation={false}` — eigenes Puck + `focusNavigationCamera`.
+- **P1 SoT:** `navEngineRef.current.runtime` (`NavigationState`). Compat-Refs sind Spiegel. Location nur LocationEngine → `tickNavEngine` (auch Recenter). `navigationSessionId` + `gpsState` ACTIVE/STALE/LOST (`navLifecycle.ts`).
+- `followsUserLocation={false}` — eigenes Puck + CameraEngine-Follow.
 - Overview-Button (`fitRoute`) darf Follow absichtlich aus machen; Recenter erzwingt Follow wieder (`force: true`).
 
 ## Dateien
@@ -58,4 +58,10 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 - VALID: trusted GPS-Kurs (`isUsableCourse` + `NAV_HEADING_TRUST_COURSE_SPEED_MPS`) übernehmen; `lastValidHeadingAt` aktualisieren.
 - UNRELIABLE: letzten VALID-Heading halten; `lastValidHeadingAt` nicht anfassen.
 - LOST: kein neues Heading, kein künstliches Nord (0), kein Ziel-/Step-Bearing; Kamera dreht nicht aktiv neu.
-- Recenter/Bootstrap nur über NavigationState; `applyDriverNavFix` ohne Destination-Bearing.
+- Recenter/Bootstrap nur über denselben Tick wie Live-GPS (`locationCoordsToNavFix` → `tickNavEngine`). Kein paralleler Pose-Pfad.
+
+## P4 Location-Lifecycle
+- `navigationSessionId` pro aktiver Navigation (neue Fahrt = neue Id; Phase-Wechsel behält Id).
+- Async (getCurrentPosition, getCamera, Route, GPS-POST, MapReady): mounted + gleiche Session (+ Generation wo relevant).
+- `gpsState`: ACTIVE / STALE / LOST — Zeiten `NAV_GPS_STALE_AFTER_MS` / `NAV_GPS_LOST_AFTER_MS`. Resume: `beginNavGpsResync`, kein Off-Route/Kamera vom alten Fix.
+- Zoom-Tick nur CameraEngine (nicht `tickNavEngine`).

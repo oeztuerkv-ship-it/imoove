@@ -356,7 +356,7 @@ export function navDiagPipelineOwners(): void {
     cameraApply:
       "ONLY applyNavigationCameraCommand (Follow) / applyOverviewFit (OVERVIEW). Screen: applyFollowCamera",
     alsoApplyDriverNavFix:
-      "LEGACY Recenter/bootstrap through commitNavigationFromLegacyPose — no dest bearing, no heading 0",
+      "removed — Recenter/boot use LocationEngine → tickNavEngine only",
     rerouteDecide:
       "Engine output.confirmedOffRoute → navigation.tsx canStartReroute → requestNavRouteFrom",
     dashboardGps:

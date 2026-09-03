@@ -123,6 +123,10 @@ export type NavEngineState = {
   rerouteInFlight: boolean;
   /** Zuletzt per resetNavEngineForRoute gebundene Route-Generation. */
   routeGeneration: number;
+  /** Eine aktive Navigation; Async-Work prüft Gleichheit vor Commit. */
+  navigationSessionId: number;
+  /** Background→Foreground: alter Fix nicht als aktuell, Off-Route/Kamera warten. */
+  gpsResyncing: boolean;
   /** Eine Runtime-Instanz — Screen hält denselben Snapshot nach dem Tick. */
   runtime: NavigationState;
 };
