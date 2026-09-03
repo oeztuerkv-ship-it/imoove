@@ -9,11 +9,50 @@ alwaysApply: false
 
 GPS → PositionFilter → MapMatcher → HeadingEngine → RouteProgress → RerouteEngine → ManeuverEngine → EtaEngine → CameraController → UI.
 
-- **Tick (kein React):** `artifacts/mobile/utils/navEngine/` — `tickNavEngine`, Typen, Modul-Fassaden.
-- **Screen:** `navigation.tsx` — UI, Lifecycle, Side-Effects (API-Reroute, Socket, `animateCamera`/`setCamera`).
-- Während **`guidanceStale` / Reroute:** keine veralteten „In 300 m …“-Hinweise — UI zeigt „Route wird neu berechnet“.
+Geplante Engine-Trennung (Refactor-Plan):
 
-Smoke: `npx tsx artifacts/mobile/utils/navEngine/navEngine.selftest.ts`
+1. **LocationEngine** — GPS / Speed / Course (Schritt 1 erledigt)
+2. **MapMatchingEngine** — einheitliche Display-Pose + Route-Generation (Schritt 2 erledigt)
+3. **RouteProgressEngine** — kanonisch `committedProgressM` (Schritt 3 erledigt)
+4. **ManeuverEngine** — Step-Advance + Distanz aus Progress; Generation/Stale (Schritt 4 erledigt)
+5. **OffRouteEngine + RerouteEngine** — Rest-Route-Lateral von filtered Pose; Request-Token; Generation-Invalidate (Schritt 5 erledigt)
+6. **CameraEngine** — einziger Owner für setCamera/animateCamera/fit (Schritt 6 erledigt)
+7. _(Nummer historisch; Camera = Schritt 6)_
+8. Guidance UI (nur NavigationState; `guidanceStale` blockiert alle Hinweise)
+
+- **Tick (kein React):** `artifacts/mobile/utils/navEngine/` — `tickNavEngine`, Typen, Modul-Fassaden.
+- **GPS-Einstieg:** `LocationEngine.ts` → `startDriverNavLocationSession` / `locationCoordsToNavFix` → `NavFix` → `tickNavEngine`.
+- **Display-Pose (Schritt 2):** Filter → `matchMapDisplayPose` → `output.display` / `runtime.displayPosition`. Marker + Compat-`navPoseRef` aus Runtime. `filtered` nur intern (Off-Route-Share). Während `rerouteInFlight` oder stale `route.generation`: **kein Snap**.
+- **P1 NavigationState:** eine Instanz `NavEngineState.runtime`. Tick committet atomar. Screen liest primär Runtime; Refs sind Spiegel.
+- **Progress (Schritt 3):** kanonisch `committedProgressM` via `tickRouteProgress` / `RouteProgressEngine`. Remaining/ETA/Forward/Glow/Manöver-Meter aus demselben Stand — **kein** `remainingAlongPolyline(nearest-full)` mehr für Navi-Anzeige. Advance nur vorwärts; bei Reroute Progress neu von Pose + neue Generation.
+- **Route-Generation:** `routeGenerationRef` ++ in `applyNavRouteResult`; Snapshot + `NavEngineState.routeGeneration` via `resetNavEngineForRoute`.
+- **Screen:** `navigation.tsx` — UI, Lifecycle, Side-Effects. GPS-`useEffect`-Deps **nur `rideId`**; Callbacks über **Refs**.
+- Während **`guidanceStale` / Reroute:** keine veralteten „In 300 m …“-Hinweise — UI zeigt „Route wird neu berechnet“ (Schritt 8: auch Footer).
+
+Smoke:
+
+```bash
+npx tsx artifacts/mobile/utils/navEngine/navEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/NavigationState.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/LocationEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/MapMatchingEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/RouteProgressEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/ManeuverEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/RerouteEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navOffRouteReroute.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/CameraEngine.selftest.ts
+npx tsx artifacts/mobile/utils/navEngine/navCameraZoom.selftest.ts
+```
+
+## Root Cause / Architektur (einfrieren — kein Schwellenwert-Tuning)
+
+1. **Unvollständige Migration zu `tickNavEngine`** — Live-GPS nutzt LocationEngine+Tick; Legacy **`applyDriverNavFix`** noch Recenter/Bootstrap (Pose-lat/lon jetzt über `matchMapDisplayPose`).
+2. **Route-Generation** — Schritt 2+5: Token an Snapshot/Engine; Reroute invalidiert Bound-Generation sofort; späte Responses per Request-Id verworfen. Guidance-Footer → Schritt 8.
+3. **Zwei Progress-Modelle** — **Schritt 3 behoben**: nur committed; nearest-full nicht mehr für ETA/Glow/Manöver-m.
+4. **Split Pose** — **Schritt 2 behoben** für Anzeige: eine Display-Pose; `filtered` intern.
+5. **`guidanceStale` maskiert nur Banner** — Steps/Footer bleiben (Schritt 8).
+6. **Viele Kamera-Trigger** — **Schritt 6 behoben**: nur `CameraEngine` → `applyCameraCommand` / `applyCameraOverviewFit`.
+7. **GPS-Watch-Restart** — **Schritt 1:** Deps nur `rideId` + Refs.
 
 ## Quelle (verbindlich)
 
@@ -21,27 +60,29 @@ Smoke: `npx tsx artifacts/mobile/utils/navEngine/navEngine.selftest.ts`
 - **Polyline / Steps:** OSRM (`geometrySource: "osrm"`). **Keine Google Directions API**.
 - **Mobile Aufruf:** `driverNavRouteApi.ts` → `fetchDriverNavRoute`.
 - **Anzeige Rest:** Fortschritt entlang Polyline, skaliert auf Matrix-/OSRM-Gesamtwerte.
-- **Live bis Abbiegen:** `ManeuverEngine` / `distanceAlongPolylineToPointM`; Distanz **10‑m-Aufrundung** (`roundNavDisplayMeters`).
+- **Live bis Abbiegen (Schritt 4):** `ManeuverEngine` — Advance per `committedProgressM`; Distanz `distanceAlongRouteFromProgressM`; **kein** Haversine-Closest. Anzeige-Meter **10‑m-Aufrundung** (`fmtDist`/`roundNavDisplayMeters`). Stale Generation / `guidanceStale` → keine Guidance.
 - **Route-Zeichnung:** `splitPolylineAtProgress` — abgefahren blau, Rest Glow.
 - **Kopfzeile:** Distanz + Manöver + Straße; „Dann“-Preview; bei Reroute stale.
 - **Kunde:** ETA/km nur vom Fahrer-Navi (WS); Kunden-Polyline via `route:driver:update`.
 
-## Off-Route-Reroute
+## Off-Route-Reroute (Schritt 5)
 
-- Distanz: **`distanceToForwardPolylineM`** (Rest ab Fortschritt), nicht volle Polyline.
-- Fortschritt nur bei Lateral ≤ **20 m**; Backtrack **35 m**.
-- Schwelle **12 m**, **2 Fixes** / **0,8 s**, Cooldown **3 s**.
-- Heading-Mismatch ≥60° (U-Turn ≥120° in **0,6 s**), Progress-Stall (**2,5 s**).
-- Selftest inkl. 6 Szenarien: `navOffRouteReroute.selftest.ts`.
-- Marker: Snap max. **45 m**; Off-Route mit Roh/EMA; Display-Pose = Snap.
+- **Lateral:** `measureRestRouteLateralM` / Forward-Polyline ab `committedProgress` — vom **Roh-GPS-Fix**, **nicht** gesnappt (sonst Distanz ≈ 0) und nicht EMA-maskiert.
+- **Nicht** volle Polyline für Off-Route.
+- Fortschritt nur bei Lateral ≤ **20 m**; Backtrack **35 m** (unverändert).
+- Schwelle **12 m**, **2 Fixes** / **0,8 s**, Cooldown **3 s** (keine Verdachts-Tuning).
+- **Heading allein** löst **keinen** Reroute aus; Stall (Fahren ohne Progress) und/oder Lateral.
+- Bei `confirmedOffRoute`: `guidanceStale` sofort; `invalidateNavRouteGeneration`; max. **ein** Reroute-Request (`RerouteEngine`).
+- Späte Response: `shouldAcceptRerouteResponse(requestId)` — sonst verwerfen.
+- Selftests: `navOffRouteReroute.selftest.ts` (1–11), `RerouteEngine.selftest.ts`.
+- Marker: Snap max. **45 m**; während Reroute kein Snap.
 
-## Kamera / Pfeil / Heading
+## Kamera / Pfeil / Heading (Schritt 6)
 
-- GPS-Watch → **`tickNavEngine`** → Follow-Kamera; andere Watches kein Navi-`animateCamera`.
-- **Pitch 62°** (`NAV_CAMERA_PITCH_NAV`); Speed-Zoom mit Hysterese (`navCameraZoom.ts`, Update ~2,5 s).
-- Padding: Puck im **unteren Drittel**.
-- Follow: `setCamera` bei force/Stillstand, sonst `animateCamera`; `pitchEnabled={false}`.
-- Heading: Kurs zuerst ab ~2,5 m/s; langsam weichere Rate; Start/neue Route = Poly-Lookahead.
+- **Ein Owner:** `CameraEngine` (`tickCameraEngine` → `applyCameraCommand`). Screen-Call-Sites nur Intent, kein direktes `setCamera`/`animateCamera`.
+- Center = Display-Pose + Lookahead (~42 m); Bearing = geglättetes Heading; Pitch **62°**; Zoom Speed-Bänder ~**16.6 / 16.3 / 15.0** + Hysterese + Apply-Delta.
+- Overview: `applyCameraOverviewFit` (fitToCoordinates), Follow aus.
+- Heading: kein Magnetometer; GPS-Course + Smoother; Route-Bearing Bootstrap/Fallback.
 - Postmortem iOS `speed=-1`: immer `resolveNavSpeedMps`.
 - Postmortem Falschabbiegen: Forward-Distanz + Heading/Stall.
 
@@ -49,10 +90,17 @@ Smoke: `npx tsx artifacts/mobile/utils/navEngine/navEngine.selftest.ts`
 
 | Layer | Pfad |
 |-------|------|
+| Location | `artifacts/mobile/utils/navEngine/LocationEngine.ts` |
+| Map match | `artifacts/mobile/utils/navEngine/MapMatchingEngine.ts` |
+| Progress | `artifacts/mobile/utils/navEngine/RouteProgressEngine.ts` |
+| Off-Route | `artifacts/mobile/utils/navEngine/OffRouteEngine.ts` |
+| Reroute | `artifacts/mobile/utils/navEngine/RerouteEngine.ts` |
+| Camera | `artifacts/mobile/utils/navEngine/CameraEngine.ts` |
+| Zoom | `artifacts/mobile/utils/navEngine/navCameraZoom.ts` |
 | Engine | `artifacts/mobile/utils/navEngine/` |
 | Screen | `artifacts/mobile/app/driver/navigation.tsx` |
 | Heading | `navHeadingSmoother.ts` |
-| Off-Route | `navOffRouteReroute.ts` |
+| Fassade | `navOffRouteReroute.ts` (Re-Exports) |
 | Polyline | `routeRemainingAlongPolyline.ts` |
 | API | `POST /fleet-driver/v1/nav-route` |
 
@@ -60,4 +108,5 @@ Smoke: `npx tsx artifacts/mobile/utils/navEngine/navEngine.selftest.ts`
 
 - Kein Client-OSRM für Navi-Metriken; keine Luftlinien-Polyline; kein Directions-SDK nebenbei.
 - Kein Big-Bang-Rewrite der Sheet/Completion-UI in `navigation.tsx`.
----
+- Keine Schwellenwert-Optimierung auf Verdacht — Architektur-Trennung zuerst.
+- Legacy `applyDriverNavFix` nicht löschen, bevor Pose/Camera denselben Job übernehmen.
