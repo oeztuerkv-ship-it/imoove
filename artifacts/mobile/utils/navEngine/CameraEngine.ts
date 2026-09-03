@@ -16,6 +16,7 @@ import {
   NAV_CAMERA_MIN_HEADING_DELTA_DEG,
   NAV_CAMERA_MIN_MOVE_M,
   NAV_CAMERA_STILL_MIN_MOVE_M,
+  isMovingForNavHeading,
   isUsableCourse,
 } from "../navHeadingSmoother";
 import { shortestRotationDelta } from "../liveDriverMarkerMotion";
@@ -26,13 +27,25 @@ import {
   tickNavCameraZoom,
   type NavCameraZoomState,
 } from "./navCameraZoom";
-import type { LatLon, NavHeadingStateKind } from "./types";
+import type { LatLon, NavHeadingStateKind, NavigationState } from "./types";
 
 /** Lookahead vor dem Fahrzeug (m) — Puck bleibt im unteren Drittel. */
 export const NAV_CAMERA_LOOKAHEAD_M = 42;
 
 /** Zoom erst anwenden, wenn Ziel sich um mind. so viel unterscheidet. */
 export const NAV_CAMERA_ZOOM_APPLY_MIN_DELTA = 0.22;
+
+export type CameraNavMode = "FOLLOW" | "OVERVIEW" | "FREE";
+
+export type CameraPending = {
+  lat: number;
+  lon: number;
+  heading: number | null;
+  headingState: NavHeadingStateKind;
+  speedMps: number | null;
+  routeGeneration: number;
+  sessionToken: number;
+};
 
 export type CameraEngineState = {
   zoom: NavCameraZoomState;
@@ -48,7 +61,12 @@ export type CameraEngineState = {
   initialized: boolean;
   /** false nach Unmount — keine nativen Camera-Calls. */
   mounted: boolean;
-  pending: { lat: number; lon: number; heading: number | null } | null;
+  mode: CameraNavMode;
+  routeGeneration: number;
+  sessionToken: number;
+  userPreferredZoom: number | null;
+  gesturePauseUntilMs: number;
+  pending: CameraPending | null;
 };
 
 export type CameraIntent = {
@@ -64,6 +82,8 @@ export type CameraIntent = {
   resetZoom?: boolean;
   animated?: boolean;
   userPreferredZoom?: number | null;
+  /** Recenter / Route: Modus FOLLOW, dann Tick. */
+  enterFollow?: boolean;
 };
 
 export type CameraCommand = {
@@ -74,6 +94,8 @@ export type CameraCommand = {
   altitude: number;
   mode: "set" | "animate";
   durationMs: number;
+  sessionToken: number;
+  routeGeneration: number;
 };
 
 /** Minimales Map-Handle — nur CameraEngine darf diese Methoden rufen. */
@@ -101,6 +123,11 @@ export function createCameraEngineState(
     lastFollowAtMs: null,
     initialized: false,
     mounted: true,
+    mode: "FOLLOW",
+    routeGeneration: 0,
+    sessionToken: 1,
+    userPreferredZoom: null,
+    gesturePauseUntilMs: 0,
     pending: null,
   };
 }
@@ -110,6 +137,51 @@ export function setCameraEngineMounted(
   mounted: boolean,
 ): CameraEngineState {
   return { ...state, mounted };
+}
+
+export function bumpCameraSession(state: CameraEngineState): CameraEngineState {
+  return {
+    ...state,
+    sessionToken: state.sessionToken + 1,
+    pending: null,
+    initialized: false,
+    lastFollowAtMs: null,
+  };
+}
+
+export function bindCameraRouteGeneration(
+  state: CameraEngineState,
+  routeGeneration: number,
+): CameraEngineState {
+  const gen = Math.max(0, routeGeneration);
+  const stalePending =
+    state.pending != null && state.pending.routeGeneration < gen;
+  return {
+    ...state,
+    routeGeneration: gen,
+    pending: stalePending ? null : state.pending,
+  };
+}
+
+export function enterCameraMode(
+  state: CameraEngineState,
+  mode: CameraNavMode,
+): CameraEngineState {
+  return { ...state, mode };
+}
+
+export function setCameraUserPreferredZoom(
+  state: CameraEngineState,
+  zoom: number | null,
+): CameraEngineState {
+  return { ...state, userPreferredZoom: zoom };
+}
+
+export function setCameraGesturePauseUntil(
+  state: CameraEngineState,
+  untilMs: number,
+): CameraEngineState {
+  return { ...state, gesturePauseUntilMs: untilMs };
 }
 
 function isValidDisplayPose(lat: number, lon: number): boolean {
@@ -193,57 +265,91 @@ function resolveHeading(
 export function tickCameraEngine(
   state: CameraEngineState,
   intent: CameraIntent,
-): { state: CameraEngineState; command: CameraCommand | null } {
+): { state: CameraEngineState; command: CameraCommand | null; skipReason: string | null } {
   if (!state.mounted) {
-    return { state, command: null };
+    return { state, command: null, skipReason: "unmounted" };
+  }
+
+  let next = state;
+  if (intent.enterFollow && next.mode !== "FOLLOW") {
+    next = { ...next, mode: "FOLLOW" };
+  }
+  if (next.mode !== "FOLLOW") {
+    return { state: next, command: null, skipReason: `mode_${next.mode}` };
   }
 
   if (!intent.force && !intent.followEnabled) {
-    return { state, command: null };
+    return { state: next, command: null, skipReason: "follow_disabled" };
+  }
+
+  if (!intent.force && intent.nowMs < next.gesturePauseUntilMs) {
+    return { state: next, command: null, skipReason: "gesture_pause" };
   }
 
   const { lat, lon } = intent.display;
   if (!isValidDisplayPose(lat, lon)) {
-    return { state, command: null };
+    return { state: next, command: null, skipReason: "invalid_pose" };
   }
 
-  let zoomState = state.zoom;
+  let zoomState = next.zoom;
   if (intent.resetZoom) {
     zoomState = createNavCameraZoomState(NAV_CAMERA_ZOOM_DEFAULT);
+    next = { ...next, userPreferredZoom: null };
   }
+
+  const userPreferredZoom = intent.resetZoom
+    ? null
+    : intent.userPreferredZoom ?? next.userPreferredZoom;
 
   const zoomTick = tickNavCameraZoom(zoomState, {
     speedMps: intent.speedMps,
     nowMs: intent.nowMs,
-    userPreferredZoom: intent.resetZoom ? null : intent.userPreferredZoom,
+    userPreferredZoom,
     force: !!intent.force || !!intent.resetZoom,
   });
   zoomState = zoomTick.state;
 
-  const heading = resolveHeading(state, intent);
+  const heading = resolveHeading(next, intent);
+  const pendingBase: CameraPending = {
+    lat,
+    lon,
+    heading: isUsableCourse(heading)
+      ? heading
+      : isUsableCourse(intent.heading)
+        ? intent.heading
+        : null,
+    headingState:
+      intent.headingState ??
+      (isUsableCourse(heading) || isUsableCourse(intent.heading) ? "VALID" : "LOST"),
+    speedMps: intent.speedMps,
+    routeGeneration: next.routeGeneration,
+    sessionToken: next.sessionToken,
+  };
+
   if (!isUsableCourse(heading)) {
-    // Ohne Heading: nur merken wenn Map noch nicht ready
     if (!intent.mapReady) {
       return {
-        state: {
-          ...state,
-          zoom: zoomState,
-          pending: { lat, lon, heading: null },
-        },
+        state: { ...next, zoom: zoomState, pending: pendingBase },
         command: null,
+        skipReason: "pending_no_heading",
       };
     }
-    return { state: { ...state, zoom: zoomState }, command: null };
+    return {
+      state: { ...next, zoom: zoomState },
+      command: null,
+      skipReason: "no_heading",
+    };
   }
 
   if (!intent.mapReady) {
     return {
       state: {
-        ...state,
+        ...next,
         zoom: zoomState,
-        pending: { lat, lon, heading },
+        pending: { ...pendingBase, heading },
       },
       command: null,
+      skipReason: "map_not_ready",
     };
   }
 
@@ -254,16 +360,15 @@ export function tickCameraEngine(
 
   if (
     !intent.force &&
-    state.initialized &&
-    state.lastFollowAtMs != null &&
-    intent.nowMs - state.lastFollowAtMs < followInterval
+    next.initialized &&
+    next.lastFollowAtMs != null &&
+    intent.nowMs - next.lastFollowAtMs < followInterval
   ) {
-    return { state: { ...state, zoom: zoomState }, command: null };
+    return { state: { ...next, zoom: zoomState }, command: null, skipReason: "interval" };
   }
 
-  // Apply-Hysterese: Position / Heading / Zoom
-  if (!intent.force && state.lastApplied && state.initialized) {
-    const prev = state.lastApplied;
+  if (!intent.force && next.lastApplied && next.initialized) {
+    const prev = next.lastApplied;
     const movedM = haversineM({ lat: prev.lat, lon: prev.lon }, { lat, lon });
     const dHead = Math.abs(shortestRotationDelta(prev.heading, heading));
     const dZoom = Math.abs(zoomTick.zoom - prev.zoom);
@@ -271,7 +376,7 @@ export function tickCameraEngine(
     const headingQuiet = still || dHead < NAV_CAMERA_MIN_HEADING_DELTA_DEG;
     const zoomQuiet = dZoom < NAV_CAMERA_ZOOM_APPLY_MIN_DELTA;
     if (movedM < minMove && headingQuiet && zoomQuiet) {
-      return { state: { ...state, zoom: zoomState }, command: null };
+      return { state: { ...next, zoom: zoomState }, command: null, skipReason: "hysteresis" };
     }
   }
 
@@ -288,17 +393,17 @@ export function tickCameraEngine(
     !Number.isFinite(zoom) ||
     !Number.isFinite(pitch)
   ) {
-    return { state: { ...state, zoom: zoomState }, command: null };
+    return { state: { ...next, zoom: zoomState }, command: null, skipReason: "non_finite" };
   }
 
   const animated =
     intent.animated !== false &&
     !intent.force &&
     !still &&
-    state.initialized;
+    next.initialized;
   const durationMs = animated ? NAV_CAMERA_FOLLOW_DURATION_MS : 0;
-  const mode: CameraCommand["mode"] =
-    intent.force || !state.initialized || durationMs === 0 ? "set" : "animate";
+  const cmdMode: CameraCommand["mode"] =
+    intent.force || !next.initialized || durationMs === 0 ? "set" : "animate";
 
   const command: CameraCommand = {
     center: { latitude: lookAhead.lat, longitude: lookAhead.lon },
@@ -306,13 +411,15 @@ export function tickCameraEngine(
     pitch,
     zoom,
     altitude: zoomLevelToAltitudeMeters(zoom, lookAhead.lat),
-    mode,
+    mode: cmdMode,
     durationMs,
+    sessionToken: next.sessionToken,
+    routeGeneration: next.routeGeneration,
   };
 
   return {
     state: {
-      ...state,
+      ...next,
       zoom: zoomState,
       lastApplied: {
         lat,
@@ -327,29 +434,70 @@ export function tickCameraEngine(
       pending: null,
     },
     command,
+    skipReason: null,
   };
 }
 
-/** Pending nach MapReady anwenden. */
+/** Pending nach MapReady: nur gespeicherter State, kein Heading-Fallback. */
 export function consumePendingCamera(
   state: CameraEngineState,
   opts?: { nowMs?: number },
-): { state: CameraEngineState; command: CameraCommand | null } {
+): { state: CameraEngineState; command: CameraCommand | null; skipReason: string | null } {
   const pending = state.pending;
   if (!pending || !state.mounted) {
-    return { state, command: null };
+    return { state, command: null, skipReason: pending ? "unmounted" : "no_pending" };
   }
-  const pendingHeading = isUsableCourse(pending.heading) ? pending.heading : null;
+  if (pending.sessionToken !== state.sessionToken) {
+    return { state: { ...state, pending: null }, command: null, skipReason: "stale_session" };
+  }
+  if (pending.routeGeneration < state.routeGeneration) {
+    return { state: { ...state, pending: null }, command: null, skipReason: "stale_generation" };
+  }
   return tickCameraEngine(state, {
     display: { lat: pending.lat, lon: pending.lon },
-    heading: pendingHeading,
-    headingState: pendingHeading == null ? "LOST" : undefined,
-    speedMps: 0,
+    heading: pending.heading,
+    headingState: pending.headingState,
+    speedMps: pending.speedMps,
     nowMs: opts?.nowMs ?? Date.now(),
     followEnabled: true,
     mapReady: true,
     force: true,
     animated: false,
+  });
+}
+
+export function tickFollowFromNav(
+  state: CameraEngineState,
+  nav: NavigationState,
+  ctx: {
+    nowMs: number;
+    mapReady: boolean;
+    force?: boolean;
+    still?: boolean;
+    resetZoom?: boolean;
+    animated?: boolean;
+    enterFollow?: boolean;
+  },
+): { state: CameraEngineState; command: CameraCommand | null; skipReason: string | null } {
+  const display = nav.displayPosition;
+  if (!display) {
+    return { state, command: null, skipReason: "no_display" };
+  }
+  const bound = bindCameraRouteGeneration(state, nav.routeGeneration);
+  return tickCameraEngine(bound, {
+    display,
+    heading: nav.heading,
+    headingState: nav.headingState,
+    speedMps: nav.speed,
+    nowMs: ctx.nowMs,
+    followEnabled: true,
+    mapReady: ctx.mapReady,
+    force: ctx.force,
+    still: ctx.still ?? !isMovingForNavHeading(nav.speed),
+    resetZoom: ctx.resetZoom,
+    animated: ctx.animated,
+    enterFollow: ctx.enterFollow,
+    userPreferredZoom: ctx.resetZoom ? null : bound.userPreferredZoom,
   });
 }
 
@@ -365,8 +513,18 @@ export function isFiniteCameraCommand(cmd: CameraCommand): boolean {
   );
 }
 
+let followNativeApplyCount = 0;
+
+export function getFollowNativeApplyCount(): number {
+  return followNativeApplyCount;
+}
+
+export function resetFollowNativeApplyCount(): void {
+  followNativeApplyCount = 0;
+}
+
 /**
- * Einziger Ort für native setCamera / animateCamera (Navi).
+ * Low-level native apply. Follow-Pfad muss `applyNavigationCameraCommand` nutzen.
  */
 export function applyCameraCommand(
   map: NavMapCameraHandle | null | undefined,
@@ -401,21 +559,63 @@ export function applyCameraCommand(
   }
 }
 
-/** Overview (fit) — Follow bewusst aus; trotzdem nur über CameraEngine. */
-export function applyCameraOverviewFit(
+/**
+ * Einziger Follow-Owner: native setCamera / animateCamera für Navi-Follow.
+ */
+export function applyNavigationCameraCommand(
+  state: CameraEngineState,
+  cmd: CameraCommand | null,
+  ctx: {
+    map: NavMapCameraHandle | null | undefined;
+    useAltitude?: boolean;
+    onProgrammatic?: (durationMs: number) => void;
+  },
+): { applied: boolean; reason: string } {
+  if (!cmd) return { applied: false, reason: "no_command" };
+  if (!state.mounted) return { applied: false, reason: "unmounted" };
+  if (cmd.sessionToken !== state.sessionToken) {
+    return { applied: false, reason: "stale_session" };
+  }
+  if (cmd.routeGeneration !== state.routeGeneration) {
+    return { applied: false, reason: "stale_generation" };
+  }
+  followNativeApplyCount += 1;
+  const ok = applyCameraCommand(ctx.map, cmd, {
+    useAltitude: ctx.useAltitude,
+    onProgrammatic: ctx.onProgrammatic,
+  });
+  return { applied: ok, reason: ok ? "applied" : "native_failed" };
+}
+
+/** Overview (fit) — expliziter Modus, blockiert GPS-Follow. */
+export function applyOverviewFit(
+  state: CameraEngineState,
   map: NavMapCameraHandle | null | undefined,
   coords: { latitude: number; longitude: number }[],
   opts?: { onProgrammatic?: (durationMs: number) => void },
-): boolean {
-  if (!map || coords.length < 2) return false;
+): { state: CameraEngineState; applied: boolean } {
+  if (!state.mounted || !map || coords.length < 2) {
+    return { state, applied: false };
+  }
+  const next = enterCameraMode(state, "OVERVIEW");
   try {
     opts?.onProgrammatic?.(900);
     map.fitToCoordinates?.(coords, {
       edgePadding: { top: 180, right: 40, bottom: 220, left: 40 },
       animated: true,
     });
-    return true;
+    return { state: next, applied: true };
   } catch {
-    return false;
+    return { state: next, applied: false };
   }
 }
+
+/** @deprecated P3: nutze applyOverviewFit */
+export function applyCameraOverviewFit(
+  map: NavMapCameraHandle | null | undefined,
+  coords: { latitude: number; longitude: number }[],
+  opts?: { onProgrammatic?: (durationMs: number) => void },
+): boolean {
+  return applyOverviewFit(createCameraEngineState(), map, coords, opts).applied;
+}
+

@@ -5,13 +5,22 @@
 import {
   NAV_CAMERA_LOOKAHEAD_M,
   NAV_CAMERA_ZOOM_APPLY_MIN_DELTA,
+  applyNavigationCameraCommand,
+  applyOverviewFit,
   applyCameraCommand,
+  bindCameraRouteGeneration,
+  bumpCameraSession,
   consumePendingCamera,
   createCameraEngineState,
+  enterCameraMode,
+  getFollowNativeApplyCount,
   isFiniteCameraCommand,
   offsetLatLonByBearingM,
+  resetFollowNativeApplyCount,
   tickCameraEngine,
+  tickFollowFromNav,
 } from "./CameraEngine";
+import { createNavigationState } from "./NavigationState";
 import {
   NAV_CAMERA_PITCH_NAV,
   NAV_CAMERA_ZOOM_CITY,
@@ -181,6 +190,8 @@ function runSim(
       altitude: 500,
       mode: "set",
       durationMs: 0,
+      sessionToken: 1,
+      routeGeneration: 0,
     },
     { useAltitude: true },
   );
@@ -394,3 +405,158 @@ console.log("CameraEngine.selftest: ok");
 }
 
 console.log("CameraEngine.selftest P2: OK");
+
+// --- P3: owner, modes, stale, pending ---
+{
+  resetFollowNativeApplyCount();
+  const map = {
+    setCamera: () => {},
+    animateCamera: () => {},
+    fitToCoordinates: () => {},
+  };
+  let nav = createNavigationState();
+  nav = {
+    ...nav,
+    displayPosition: { lat: 48.74, lon: 9.31 },
+    heading: 40,
+    headingState: "VALID",
+    headingReason: "gps_heading_valid",
+    lastValidHeading: 40,
+    speed: 8,
+    routeGeneration: 2,
+  };
+  let st = createCameraEngineState();
+  let t = tickFollowFromNav(st, nav, {
+    nowMs: 1000,
+    mapReady: true,
+    force: true,
+  });
+  assert(t.command != null, "P3 follow tick");
+  const a1 = applyNavigationCameraCommand(t.state, t.command, { map });
+  assert(a1.applied, "P3 single owner apply");
+  assert(getFollowNativeApplyCount() === 1, "P3 follow apply count 1");
+}
+
+{
+  let nav = createNavigationState();
+  nav = {
+    ...nav,
+    displayPosition: { lat: 48.74, lon: 9.31 },
+    heading: 90,
+    headingState: "VALID",
+    headingReason: "gps_heading_valid",
+    lastValidHeading: 90,
+    speed: 8,
+    routeGeneration: 1,
+  };
+  let st = createCameraEngineState();
+  let t = tickFollowFromNav(st, nav, { nowMs: 2000, mapReady: true, force: true });
+  assert(t.command != null && Math.abs(t.command.heading - 90) < 0.01, "P3 VALID heading");
+  st = t.state;
+  nav = {
+    ...nav,
+    heading: 90,
+    headingState: "UNRELIABLE",
+    headingReason: "hold_last_valid",
+    speed: 0.2,
+  };
+  t = tickFollowFromNav(st, nav, { nowMs: 5000, mapReady: true, force: true });
+  assert(t.command != null && Math.abs(t.command.heading - 90) < 0.01, "P3 UNRELIABLE holds");
+}
+
+{
+  let nav = createNavigationState();
+  nav = {
+    ...nav,
+    displayPosition: { lat: 48.74, lon: 9.31 },
+    heading: 15,
+    headingState: "VALID",
+    headingReason: "gps_heading_valid",
+    lastValidHeading: 15,
+    speed: 10,
+    routeGeneration: 1,
+  };
+  let st = enterCameraMode(createCameraEngineState(), "OVERVIEW");
+  let t = tickFollowFromNav(st, nav, { nowMs: 3000, mapReady: true, force: false });
+  assert(t.command == null, "P3 overview blocks GPS follow");
+  assert(t.skipReason === "mode_OVERVIEW", "P3 skip reason overview");
+  t = tickFollowFromNav(st, nav, {
+    nowMs: 3100,
+    mapReady: true,
+    force: true,
+    enterFollow: true,
+  });
+  assert(t.state.mode === "FOLLOW", "P3 recenter from overview → FOLLOW");
+  assert(t.command != null, "P3 recenter produces follow cmd");
+}
+
+{
+  const map = { fitToCoordinates: () => {} };
+  const r = applyOverviewFit(createCameraEngineState(), map, [
+    { latitude: 48.74, longitude: 9.31 },
+    { latitude: 48.75, longitude: 9.32 },
+  ]);
+  assert(r.state.mode === "OVERVIEW", "P3 fit sets OVERVIEW");
+  assert(r.applied, "P3 overview applied");
+}
+
+{
+  let st = createCameraEngineState();
+  let r = tickCameraEngine(st, {
+    display: { lat: 48.74, lon: 9.31 },
+    heading: 10,
+    headingState: "VALID",
+    speedMps: 5,
+    nowMs: 1,
+    followEnabled: true,
+    mapReady: false,
+  });
+  r = tickCameraEngine(r.state, {
+    display: { lat: 48.741, lon: 9.311 },
+    heading: 20,
+    headingState: "VALID",
+    speedMps: 5,
+    nowMs: 2,
+    followEnabled: true,
+    mapReady: false,
+  });
+  assert(r.state.pending != null, "P3 pending exists");
+  assert(Math.abs((r.state.pending?.lon ?? 0) - 9.311) < 1e-6, "P3 pending is latest");
+  const consumed = consumePendingCamera(r.state, { nowMs: 3 });
+  assert(consumed.command != null, "P3 mapready consumes latest pending");
+  assert(Math.abs(consumed.command!.center.longitude - 9.311) < 0.01 || consumed.command != null, "P3 pending used");
+}
+
+{
+  resetFollowNativeApplyCount();
+  const map = { setCamera: () => {} };
+  let nav = createNavigationState();
+  nav = {
+    ...nav,
+    displayPosition: { lat: 48.74, lon: 9.31 },
+    heading: 1,
+    headingState: "VALID",
+    headingReason: "gps_heading_valid",
+    lastValidHeading: 1,
+    speed: 8,
+    routeGeneration: 4,
+  };
+  const t = tickFollowFromNav(createCameraEngineState(), nav, {
+    nowMs: 9,
+    mapReady: true,
+    force: true,
+  });
+  const stale = bumpCameraSession(t.state);
+  const blocked = applyNavigationCameraCommand(stale, t.command, { map });
+  assert(!blocked.applied && blocked.reason === "stale_session", "P3 stale session blocked");
+  const genBlocked = applyNavigationCameraCommand(
+    bindCameraRouteGeneration(t.state, 9),
+    t.command,
+    { map },
+  );
+  assert(!genBlocked.applied && genBlocked.reason === "stale_generation", "P3 stale generation blocked");
+  assert(getFollowNativeApplyCount() === 0, "P3 stale does not native-apply");
+}
+
+console.log("CameraEngine.selftest P3: OK");
+

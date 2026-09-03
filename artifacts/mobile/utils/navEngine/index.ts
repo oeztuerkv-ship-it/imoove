@@ -83,12 +83,22 @@ export {
 export {
   createCameraEngineState,
   setCameraEngineMounted,
+  bumpCameraSession,
+  bindCameraRouteGeneration,
+  enterCameraMode,
+  setCameraUserPreferredZoom,
+  setCameraGesturePauseUntil,
   tickCameraEngine,
+  tickFollowFromNav,
   consumePendingCamera,
+  applyNavigationCameraCommand,
+  applyOverviewFit,
   applyCameraCommand,
   applyCameraOverviewFit,
   offsetLatLonByBearingM,
   isFiniteCameraCommand,
+  getFollowNativeApplyCount,
+  resetFollowNativeApplyCount,
   NAV_CAMERA_LOOKAHEAD_M,
   NAV_CAMERA_ZOOM_APPLY_MIN_DELTA,
 } from "./CameraEngine";
@@ -96,6 +106,8 @@ export type {
   CameraEngineState,
   CameraIntent,
   CameraCommand,
+  CameraNavMode,
+  CameraPending,
   NavMapCameraHandle,
 } from "./CameraEngine";
 

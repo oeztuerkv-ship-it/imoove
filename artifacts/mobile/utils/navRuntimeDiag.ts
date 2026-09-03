@@ -228,7 +228,7 @@ export function navDiagEngineTick(input: NavDiagTickInput): void {
 
 export type NavDiagCameraInput = {
   caller: string;
-  method: "setCamera" | "animateCamera" | "skipped" | "error";
+  method: "setCamera" | "animateCamera" | "skipped" | "error" | "fit";
   reason?: string;
   lat: number;
   lon: number;
@@ -240,17 +240,21 @@ export type NavDiagCameraInput = {
   force?: boolean;
   still?: boolean;
   error?: string;
+  cameraMode?: string;
+  headingState?: string;
+  routeGeneration?: number;
 };
 
 export function navDiagCamera(input: NavDiagCameraInput): void {
   cameraCallCount += 1;
   const now = Date.now();
-  const force =
+  const forceLog =
     input.method === "error" ||
     input.method === "skipped" ||
+    input.method === "fit" ||
     !!input.force ||
     now - lastCameraLogMs >= 800;
-  if (!force) return;
+  if (!forceLog) return;
   lastCameraLogMs = now;
   pushLine("camera", {
     n: cameraCallCount,
@@ -258,10 +262,13 @@ export function navDiagCamera(input: NavDiagCameraInput): void {
     caller: input.caller,
     method: input.method,
     reason: input.reason ?? null,
-    center: { lat: round6(input.lat), lon: round6(input.lon) },
+    mode: input.cameraMode ?? null,
+    headingState: input.headingState ?? null,
     heading: input.heading,
-    pitch: input.pitch,
     zoom: input.zoom ?? null,
+    pitch: input.pitch,
+    routeGeneration: input.routeGeneration ?? null,
+    center: { lat: round6(input.lat), lon: round6(input.lon) },
     altitude: input.altitude ?? null,
     durationMs: input.durationMs ?? null,
     force: input.force ?? false,
@@ -347,7 +354,7 @@ export function navDiagPipelineOwners(): void {
     headingPitchZoom:
       "Heading: NavigationState.headingState (VALID/UNRELIABLE/LOST); Pitch/Zoom/Lookahead: CameraEngine",
     cameraApply:
-      "ONLY CameraEngine.applyCameraCommand / applyCameraOverviewFit (via focusNavigationCamera wrapper)",
+      "ONLY applyNavigationCameraCommand (Follow) / applyOverviewFit (OVERVIEW). Screen: applyFollowCamera",
     alsoApplyDriverNavFix:
       "LEGACY Recenter/bootstrap through commitNavigationFromLegacyPose — no dest bearing, no heading 0",
     rerouteDecide:

@@ -26,17 +26,18 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 - Quellen: GPS-Kurs bei `NAV_HEADING_TRUST_COURSE_SPEED_MPS` + `isUsableCourse`, sonst Bewegung (`isMovingForNavHeading`). Kein Poly/Ziel als Fahrzeug-Heading.
 - Smoke: `npx tsx artifacts/mobile/utils/navEngine/NavigationState.selftest.ts`
 
-## Aufrufstellen → nur `CameraEngine` (Schritt 6)
+## Aufrufstellen → nur CameraEngine (P3)
 
-| Stelle | Zweck | `force` | Intent-Quelle |
-|--------|--------|---------|----------------|
-| GPS boot / watch | Live-Follow | nein (boot: ja) | `tickNavEngine` Display + Heading |
-| Recenter-Button | Follow wieder an | ja | Fix → Pose → CameraEngine |
-| Phasen-/Zielwechsel | Neu ausrichten | ja | `navPoseRef` |
-| Route apply | Erste/neue Kamera | ja | Pose nach Route |
-| MapReady (+ Pending) | Erste Map | ja | `consumePendingCamera` / Pose |
+| Stelle | Zweck | Modus |
+|--------|--------|--------|
+| GPS | `applyFollowCamera` → `tickFollowFromNav` → `applyNavigationCameraCommand` | nur FOLLOW |
+| Recenter | Pose updaten, `enterFollow` + derselbe Apply | FOLLOW |
+| Phase / Route | `enterFollow` + Apply | FOLLOW |
+| MapReady | aktueller NavigationState oder neuester Pending | FOLLOW |
+| Overview-Button | `applyOverviewFit` | OVERVIEW |
+| Nutzer-Pan | `enterCameraMode(FREE)` | FREE |
 
-**Einziger nativer Owner:** `applyCameraCommand` / `applyCameraOverviewFit`. Kein paralleles `setCamera`/`animateCamera` im Screen.
+**Einziger Follow-Owner:** `applyNavigationCameraCommand`. Overview: `applyOverviewFit` (`fitToCoordinates`). Kein `setCamera`/`animateCamera` im Screen.
 
 ## Invarianten
 

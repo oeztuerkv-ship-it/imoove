@@ -105,14 +105,17 @@ import {
   type OffRouteTrackerState,
 } from "@/utils/navOffRouteReroute";
 import {
-  applyCameraCommand,
-  applyCameraOverviewFit,
+  applyNavigationCameraCommand,
+  applyOverviewFit,
   beginReroute,
+  bindCameraRouteGeneration,
+  bumpCameraSession,
   completeReroute,
   consumePendingCamera,
   createCameraEngineState,
   createNavEngineState,
   createRerouteEngineState,
+  enterCameraMode,
   failReroute,
   invalidateNavRouteGeneration,
   isRerouteInFlight,
@@ -120,10 +123,12 @@ import {
   remainingFromCommittedProgress,
   resetNavEngineForRoute,
   setCameraEngineMounted,
+  setCameraGesturePauseUntil,
+  setCameraUserPreferredZoom,
   shouldAcceptRerouteResponse,
   splitPolylineAtCommittedProgressM,
   startDriverNavLocationSession,
-  tickCameraEngine,
+  tickFollowFromNav,
   tickNavEngine,
   commitNavigationFromLegacyPose,
   commitNavigationRouteBound,
@@ -570,15 +575,8 @@ export default function DriverNavigationScreen() {
 
   const mapRef  = useRef<MapView>(null);
   const mapReady = useRef(false);
-  const navCameraInitializedRef = useRef(false);
-  const pendingNavCameraRef = useRef<{ lat: number; lon: number; heading?: number } | null>(null);
-  /** Auto-follow (GPS camera). Off after user pans; pinch-zoom bleibt erlaubt und wird gemerkt. */
-  const navFollowEnabledRef = useRef(true);
   /** Ignore region-change events briefly after animateCamera / fitToCoordinates. */
   const programmaticCameraUntilRef = useRef(0);
-  /** Nutzer-Zoom / Altitude merken — Follow darf Pinch nicht auf Default zurücksetzen. */
-  const preferredZoomRef = useRef(NAV_CAMERA_ZOOM);
-  const preferredAltitudeRef = useRef<number | null>(null);
   /** Während Pinch/Pan: kurz keine Follow-animateCamera (sonst stirbt die Geste). */
   const userGestureCameraPauseUntilRef = useRef(0);
   /** Heading: Speed-Gate + EMA/Deadband/Rate-Limit (nicht Roh-GPS). */
@@ -598,7 +596,6 @@ export default function DriverNavigationScreen() {
   /** Kanonischer Progress (m) — Glow/Split; Quelle tickNavEngine. */
   const routeProgressMRef = useRef(0);
   const lastRawFixRef = useRef<{ lat: number; lon: number; atMs: number } | null>(null);
-  const lastCameraPoseRef = useRef<{ lat: number; lon: number; heading: number } | null>(null);
   /** Off-Route-Tracker (Spiegel aus tickNavEngine; Debug/Legacy). */
   const offRouteTrackerRef = useRef<OffRouteTrackerState>(createOffRouteTrackerState());
   /** RerouteEngine — max. ein Request, Generation-Guard, späte Responses verwerfen. */
@@ -863,9 +860,22 @@ export default function DriverNavigationScreen() {
 
   const fitRoute = useCallback((coords: { latitude: number; longitude: number }[]) => {
     if (coords.length < 2 || !mapReady.current) return;
-    navFollowEnabledRef.current = false;
-    applyCameraOverviewFit(mapRef.current, coords, {
+    const result = applyOverviewFit(cameraEngineRef.current, mapRef.current, coords, {
       onProgrammatic: markProgrammaticCamera,
+    });
+    cameraEngineRef.current = result.state;
+    const nav = navEngineRef.current.runtime;
+    navDiagCamera({
+      caller: "navigation.tsx:applyOverviewFit",
+      method: result.applied ? "fit" : "error",
+      reason: "overview",
+      lat: coords[0]?.latitude ?? 0,
+      lon: coords[0]?.longitude ?? 0,
+      heading: nav.heading ?? -1,
+      pitch: NAV_CAMERA_PITCH_NAV,
+      cameraMode: result.state.mode,
+      headingState: nav.headingState,
+      routeGeneration: nav.routeGeneration,
     });
   }, [markProgrammaticCamera]);
 
@@ -955,104 +965,68 @@ export default function DriverNavigationScreen() {
   );
 
   /**
-   * Einziger Screen-Einstieg zur Kamera — nur CameraEngine setzt/animiert die Map.
-   * (Legacy-Name `focusNavigationCamera` für bestehende Call-Sites.)
+   * Einziger Follow-Apply: NavigationState → CameraEngine → applyNavigationCameraCommand.
    */
-  const focusNavigationCamera = useCallback(
+  const applyFollowCamera = useCallback(
     (opts?: {
-      lat?: number;
-      lon?: number;
-      heading?: number;
-      speedMps?: number | null;
-      animated?: boolean;
       force?: boolean;
-      /** Follow-Tick während Stillstand: Heading nicht mitdrehen. */
       still?: boolean;
       resetZoom?: boolean;
+      animated?: boolean;
+      enterFollow?: boolean;
+      reason?: string;
     }) => {
-      if (opts?.force) {
-        navFollowEnabledRef.current = true;
-      } else if (!navFollowEnabledRef.current) {
-        return;
-      }
-
-      const pose = navPoseRef.current;
-      let lat = opts?.lat ?? pose.lat;
-      let lon = opts?.lon ?? pose.lon;
-      if (!isValidMapCoord(lat, lon)) return;
-
-      const runtime = navEngineRef.current.runtime;
-      let heading: number | null = null;
-      if (isUsableCourse(opts?.heading)) {
-        heading = opts.heading;
-      } else if (isUsableCourse(pose.heading)) {
-        heading = pose.heading;
-      } else if (isUsableCourse(runtime.heading)) {
-        heading = runtime.heading;
-      }
-
-      if (opts?.resetZoom) {
-        preferredZoomRef.current = NAV_CAMERA_ZOOM;
-        preferredAltitudeRef.current = null;
-      }
-
-      const tick = tickCameraEngine(cameraEngineRef.current, {
-        display: { lat, lon },
-        heading,
-        headingState: runtime.headingState,
-        speedMps: opts?.speedMps ?? runtime.speed,
+      const nav = navEngineRef.current.runtime;
+      const prevMode = cameraEngineRef.current.mode;
+      const tick = tickFollowFromNav(cameraEngineRef.current, nav, {
         nowMs: Date.now(),
-        followEnabled: navFollowEnabledRef.current || !!opts?.force,
         mapReady: mapReady.current,
         force: opts?.force,
         still: opts?.still,
         resetZoom: opts?.resetZoom,
         animated: opts?.animated,
-        userPreferredZoom:
-          Date.now() < userGestureCameraPauseUntilRef.current
-            ? preferredZoomRef.current
-            : preferredZoomRef.current,
+        enterFollow: opts?.enterFollow,
       });
       cameraEngineRef.current = tick.state;
-      pendingNavCameraRef.current = tick.state.pending;
-      navCameraInitializedRef.current = tick.state.initialized;
-
-      if (tick.state.lastApplied) {
-        lastCameraPoseRef.current = {
-          lat: tick.state.lastApplied.lat,
-          lon: tick.state.lastApplied.lon,
-          heading: tick.state.lastApplied.heading,
-        };
-        if (Date.now() >= userGestureCameraPauseUntilRef.current) {
-          preferredZoomRef.current = tick.state.lastApplied.zoom;
-        }
-      }
+      const modeChanged = prevMode !== tick.state.mode;
+      const display = nav.displayPosition;
 
       if (!tick.command) {
-        navDiagCamera({
-          caller: "navigation.tsx:focusNavigationCamera→CameraEngine",
-          method: "skipped",
-          reason: !mapReady.current ? "map_not_ready_or_pending" : "hysteresis_or_no_heading",
-          lat,
-          lon,
-          heading: heading ?? -1,
-          pitch: NAV_CAMERA_PITCH_NAV,
-          force: opts?.force,
-          still: opts?.still,
-        });
+        if (modeChanged || opts?.force) {
+          navDiagCamera({
+            caller: "navigation.tsx:applyFollowCamera",
+            method: "skipped",
+            reason: `${opts?.reason ?? "follow"}:${tick.skipReason ?? "none"}`,
+            lat: display?.lat ?? 0,
+            lon: display?.lon ?? 0,
+            heading: nav.heading ?? tick.state.lastApplied?.heading ?? -1,
+            pitch: NAV_CAMERA_PITCH_NAV,
+            zoom: tick.state.lastApplied?.zoom,
+            force: opts?.force,
+            still: opts?.still,
+            cameraMode: tick.state.mode,
+            headingState: nav.headingState,
+            routeGeneration: nav.routeGeneration,
+          });
+        }
         return;
       }
-      const applied = applyCameraCommand(mapRef.current, tick.command, {
+
+      const applied = applyNavigationCameraCommand(tick.state, tick.command, {
+        map: mapRef.current,
         useAltitude: !usesGoogleMapTiles(),
         onProgrammatic: markProgrammaticCamera,
       });
       navDiagCamera({
-        caller: "navigation.tsx:focusNavigationCamera→CameraEngine",
-        method: applied
+        caller: "navigation.tsx:applyFollowCamera",
+        method: applied.applied
           ? tick.command.mode === "set"
             ? "setCamera"
             : "animateCamera"
-          : "error",
+          : applied.reason === "native_failed"
+            ? "error"
+            : "skipped",
+        reason: `${opts?.reason ?? "follow"}:${applied.reason}`,
         lat: tick.command.center.latitude,
         lon: tick.command.center.longitude,
         heading: tick.command.heading,
@@ -1062,7 +1036,10 @@ export default function DriverNavigationScreen() {
         durationMs: tick.command.durationMs,
         force: opts?.force,
         still: opts?.still,
-        ...(applied ? {} : { error: "applyCameraCommand_failed" }),
+        cameraMode: tick.state.mode,
+        headingState: nav.headingState,
+        routeGeneration: nav.routeGeneration,
+        ...(applied.applied ? {} : { error: applied.reason }),
       });
     },
     [markProgrammaticCamera],
@@ -1070,11 +1047,13 @@ export default function DriverNavigationScreen() {
 
   const handleRecenterNav = useCallback(() => {
     void (async () => {
+      const sessionToken = cameraEngineRef.current.sessionToken;
       let lat = driverLatRef.current;
       let lon = driverLonRef.current;
       let speedMps: number | null = null;
       let courseDeg: number | null = null;
       const fresh = await getCurrentPositionSafe({ accuracy: Location.Accuracy.BestForNavigation });
+      if (cameraEngineRef.current.sessionToken !== sessionToken) return;
       if (fresh && isValidMapCoord(fresh.coords.latitude, fresh.coords.longitude)) {
         lat = fresh.coords.latitude;
         lon = fresh.coords.longitude;
@@ -1086,29 +1065,35 @@ export default function DriverNavigationScreen() {
       const display = nav.displayPosition ?? { lat: pose.lat, lon: pose.lon };
       setDriverLat(display.lat);
       setDriverLon(display.lon);
-      focusNavigationCamera({
-        lat: display.lat,
-        lon: display.lon,
-        heading: nav.heading ?? undefined,
-        speedMps: nav.speed,
+      applyFollowCamera({
         animated: true,
         force: true,
         resetZoom: true,
+        enterFollow: true,
+        reason: "recenter",
       });
     })();
-  }, [applyDriverNavFix, focusNavigationCamera]);
+  }, [applyDriverNavFix, applyFollowCamera]);
 
   /** Pan verschiebt den Fokus → Follow aus. Pinch-Zoom wird über Region gemerkt und bleibt im Follow. */
   const handleMapUserInteraction = useCallback(() => {
     if (Date.now() < programmaticCameraUntilRef.current) return;
-    navFollowEnabledRef.current = false;
+    cameraEngineRef.current = enterCameraMode(cameraEngineRef.current, "FREE");
     userGestureCameraPauseUntilRef.current = Date.now() + 1200;
+    cameraEngineRef.current = setCameraGesturePauseUntil(
+      cameraEngineRef.current,
+      userGestureCameraPauseUntilRef.current,
+    );
   }, []);
 
   const handleRegionChange = useCallback(() => {
     if (Date.now() < programmaticCameraUntilRef.current) return;
     // Pinch startet oft ohne onPanDrag — Follow-Kamera kurz pausieren, Zoom behalten.
     userGestureCameraPauseUntilRef.current = Date.now() + 900;
+    cameraEngineRef.current = setCameraGesturePauseUntil(
+      cameraEngineRef.current,
+      userGestureCameraPauseUntilRef.current,
+    );
   }, []);
 
   const handleRegionChangeComplete = useCallback(() => {
@@ -1116,16 +1101,16 @@ export default function DriverNavigationScreen() {
     // Während Follow nur Zoom übernehmen, wenn der Nutzer gerade pinch/pannt —
     // sonst speichert getCamera Zwischenhöhen der animateCamera → Zoom-Jagd.
     const userGestureActive = Date.now() < userGestureCameraPauseUntilRef.current;
-    if (navFollowEnabledRef.current && !userGestureActive) return;
+    if (cameraEngineRef.current.mode === "FOLLOW" && !userGestureActive) return;
     void (async () => {
       try {
         const cam = await mapRef.current?.getCamera();
         if (!cam) return;
         if (typeof cam.zoom === "number" && Number.isFinite(cam.zoom)) {
-          preferredZoomRef.current = cam.zoom;
-        }
-        if (typeof cam.altitude === "number" && Number.isFinite(cam.altitude)) {
-          preferredAltitudeRef.current = cam.altitude;
+          cameraEngineRef.current = setCameraUserPreferredZoom(
+            cameraEngineRef.current,
+            cam.zoom,
+          );
         }
       } catch {
         /* ignore */
@@ -1136,29 +1121,19 @@ export default function DriverNavigationScreen() {
     navHeadingSmootherRef.current = createNavHeadingSmootherState();
     navPositionSmootherRef.current = createNavPositionSmootherState();
     lastRawFixRef.current = null;
-    lastCameraPoseRef.current = null;
     routeGenerationRef.current = 0;
     routeProgressMRef.current = 0;
-    cameraEngineRef.current = createCameraEngineState();
-    navPoseRef.current = {
-      lat: driverLatRef.current,
-      lon: driverLonRef.current,
-      heading: null,
-    };
-    preferredZoomRef.current = NAV_CAMERA_ZOOM;
-    preferredAltitudeRef.current = null;
+    cameraEngineRef.current = bumpCameraSession(createCameraEngineState());
   }, [params.rideId]);
 
   useEffect(() => {
     void navDiagHydrateFromStorage();
     navDiagResetSession(`ride=${params.rideId ?? "?"};phase=${phase}`);
     navDiagPipelineOwners();
-    navCameraInitializedRef.current = false;
-    navFollowEnabledRef.current = true;
     offRouteTrackerRef.current = createOffRouteTrackerState();
     rerouteEngineRef.current = createRerouteEngineState();
     navEngineRef.current = createNavEngineState();
-    cameraEngineRef.current = createCameraEngineState();
+    cameraEngineRef.current = bumpCameraSession(createCameraEngineState());
     setGuidanceStale(false);
     setStepIdx(0);
     prevStepIdx.current = -1;
@@ -1166,16 +1141,13 @@ export default function DriverNavigationScreen() {
 
   useEffect(() => {
     if (!mapReady.current) return;
-    const pose = navPoseRef.current;
-    // force = Follow wieder an + Pitch; Zoom bewusst nicht resetten (Stabilität).
-    focusNavigationCamera({
-      lat: pose.lat,
-      lon: pose.lon,
-      heading: pose.heading ?? undefined,
+    applyFollowCamera({
       animated: true,
       force: true,
+      enterFollow: true,
+      reason: "phase_or_target",
     });
-  }, [phase, navigationTarget.lat, navigationTarget.lon, focusNavigationCamera]);
+  }, [phase, navigationTarget.lat, navigationTarget.lon, applyFollowCamera]);
 
   const shareRouteWithCustomer = useCallback(
     (
@@ -1262,7 +1234,10 @@ export default function DriverNavigationScreen() {
         ? driverLonRef.current
         : fallbackFrom.lon;
       offRouteTrackerRef.current = createOffRouteTrackerState();
-      navFollowEnabledRef.current = true;
+      cameraEngineRef.current = bindCameraRouteGeneration(
+        cameraEngineRef.current,
+        routeGenerationRef.current,
+      );
       // Neue Route → Generation binden; Progress von Pose neu (kein nearest-full)
       const routeSnap: NavRouteSnapshot = {
         polyline: polylineLatLonRef.current,
@@ -1320,15 +1295,11 @@ export default function DriverNavigationScreen() {
       };
       syncNavCompatMirrors(navEngineRef.current.runtime);
       if (opts?.refocusCamera !== false) {
-        const pose = navPoseRef.current;
-        const runtime = navEngineRef.current.runtime;
-        focusNavigationCamera({
-          lat: isValidMapCoord(pose.lat, pose.lon) ? pose.lat : poseMatch.display.lat,
-          lon: isValidMapCoord(pose.lat, pose.lon) ? pose.lon : poseMatch.display.lon,
-          heading: runtime.heading ?? undefined,
-          speedMps: runtime.speed,
+        applyFollowCamera({
           animated: false,
           force: true,
+          enterFollow: true,
+          reason: "route_apply",
         });
       }
       shareRouteWithCustomer(polylineLatLonRef.current, {
@@ -1337,7 +1308,7 @@ export default function DriverNavigationScreen() {
       });
       return true;
     },
-    [focusNavigationCamera, shareRouteWithCustomer],
+    [applyFollowCamera, shareRouteWithCustomer],
   );
 
   const requestNavRouteFrom = useCallback(
@@ -1471,8 +1442,8 @@ export default function DriverNavigationScreen() {
   );
 
   /** Stable for GPS LocationEngine — Watch darf nicht bei Callback-Identitätswechsel neu starten. */
-  const focusNavigationCameraRef = useRef(focusNavigationCamera);
-  focusNavigationCameraRef.current = focusNavigationCamera;
+  const applyFollowCameraRef = useRef(applyFollowCamera);
+  applyFollowCameraRef.current = applyFollowCamera;
   const requestNavRouteFromRef = useRef(requestNavRouteFrom);
   requestNavRouteFromRef.current = requestNavRouteFrom;
 
@@ -2588,18 +2559,14 @@ export default function DriverNavigationScreen() {
       } else {
         setDistToManeuverM(0);
       }
-      if (!navFollowEnabledRef.current && !opts?.forceCamera) return;
+      if (cameraEngineRef.current.mode !== "FOLLOW" && !opts?.forceCamera) return;
       if (!opts?.forceCamera && Date.now() < userGestureCameraPauseUntilRef.current) return;
 
-      const still = !isMovingForNavHeading(nav.speed);
-      focusNavigationCameraRef.current({
-        lat: display.lat,
-        lon: display.lon,
-        heading: nav.heading ?? undefined,
-        speedMps: nav.speed,
-        animated: navCameraInitializedRef.current && !still && !opts?.forceCamera,
-        still,
+      applyFollowCameraRef.current({
+        animated: cameraEngineRef.current.initialized && !opts?.forceCamera,
+        still: !isMovingForNavHeading(nav.speed),
         force: opts?.forceCamera,
+        reason: opts?.forceCamera ? "gps_boot" : "gps_tick",
       });
     };
 
@@ -2613,7 +2580,7 @@ export default function DriverNavigationScreen() {
           navEngineRef.current,
           fix,
           buildRouteSnap(),
-          { userPreferredZoom: preferredZoomRef.current },
+          { userPreferredZoom: cameraEngineRef.current.userPreferredZoom },
         );
         engineCalled = true;
         const prevNav = navEngineRef.current.runtime;
@@ -2796,43 +2763,26 @@ export default function DriverNavigationScreen() {
       polylinePoints: polyline.length,
       steps: steps.length,
     });
+    const nav = navEngineRef.current.runtime;
+    if (nav.displayPosition) {
+      applyFollowCamera({
+        animated: false,
+        force: true,
+        enterFollow: cameraEngineRef.current.mode !== "OVERVIEW",
+        reason: "map_ready",
+      });
+      return;
+    }
     const pendingTick = consumePendingCamera(cameraEngineRef.current);
     cameraEngineRef.current = pendingTick.state;
     if (pendingTick.command) {
-      applyCameraCommand(mapRef.current, pendingTick.command, {
+      applyNavigationCameraCommand(pendingTick.state, pendingTick.command, {
+        map: mapRef.current,
         useAltitude: !usesGoogleMapTiles(),
         onProgrammatic: markProgrammaticCamera,
       });
-      navCameraInitializedRef.current = true;
-      pendingNavCameraRef.current = null;
-      if (pendingTick.state.lastApplied) {
-        lastCameraPoseRef.current = {
-          lat: pendingTick.state.lastApplied.lat,
-          lon: pendingTick.state.lastApplied.lon,
-          heading: pendingTick.state.lastApplied.heading,
-        };
-      }
-      return;
     }
-    const pose = navPoseRef.current;
-    const lat = isValidMapCoord(pose.lat, pose.lon)
-      ? pose.lat
-      : isValidMapCoord(driverLatRef.current, driverLonRef.current)
-        ? driverLatRef.current
-        : fromLat || driverLatRef.current;
-    const lon = isValidMapCoord(pose.lat, pose.lon)
-      ? pose.lon
-      : isValidMapCoord(driverLatRef.current, driverLonRef.current)
-        ? driverLonRef.current
-        : fromLon || driverLonRef.current;
-    focusNavigationCamera({
-      lat,
-      lon,
-      heading: pose.heading ?? undefined,
-      animated: false,
-      force: true,
-    });
-  }, [fromLat, fromLon, focusNavigationCamera, markProgrammaticCamera, polyline.length, steps.length]);
+  }, [applyFollowCamera, markProgrammaticCamera, polyline.length, steps.length]);
 
   const { traveledRouteCoords, remainingRouteCoords } = useMemo(() => {
     if (polyline.length < 2) {
