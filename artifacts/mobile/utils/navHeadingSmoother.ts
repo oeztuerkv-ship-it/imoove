@@ -92,6 +92,19 @@ export function isUsableCourse(heading?: number | null): heading is number {
   return heading != null && Number.isFinite(heading) && heading >= 0 && heading <= 360;
 }
 
+/** GPS-Kurs nur bei ausreichender Speed (bestehendes Trust-Gate, keine neuen Schwellen). */
+export function isTrustedNavCourse(
+  courseDeg?: number | null,
+  speedMps?: number | null,
+): courseDeg is number {
+  return (
+    isUsableCourse(courseDeg) &&
+    speedMps != null &&
+    Number.isFinite(speedMps) &&
+    speedMps >= NAV_HEADING_TRUST_COURSE_SPEED_MPS
+  );
+}
+
 /** GPS-Speed: ≥0 gültig; -1 / null = unbekannt (nicht als „stehend 0“ werten). */
 export function isUsableGpsSpeedMps(speedMps?: number | null): speedMps is number {
   return speedMps != null && Number.isFinite(speedMps) && speedMps >= 0;

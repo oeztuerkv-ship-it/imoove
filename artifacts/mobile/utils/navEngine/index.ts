@@ -1,7 +1,29 @@
 /**
- * Phase-2 Modul-Fassaden — benannte Einstiege für die NavigationEngine-Pipeline.
- * Implementierung bleibt in den bestehenden Utils (kein Parallel-Code).
+ * Modul-Fassaden — benannte Einstiege für die NavigationEngine-Pipeline.
+ * Schritt 1: LocationEngine ist der einzige GPS-Einstieg für den Fahrer-Navi-Screen.
  */
+
+export { locationCoordsToNavFix } from "./locationCoordsToNavFix";
+export type { LocationCoordsLike } from "./locationCoordsToNavFix";
+export {
+  startDriverNavLocationSession,
+  DRIVER_NAV_LOCATION_DISTANCE_INTERVAL_M,
+  DRIVER_NAV_LOCATION_TIME_INTERVAL_MS,
+} from "./LocationEngine";
+export type { DriverNavLocationSession } from "./LocationEngine";
+
+export { matchMapDisplayPose } from "./MapMatchingEngine";
+export type { MapMatchInput, MapMatchResult } from "./MapMatchingEngine";
+
+export {
+  tickRouteProgress,
+  initCommittedProgressForRoute,
+  remainingFromCommittedProgress,
+  distanceAlongRouteFromProgressM,
+  splitPolylineAtCommittedProgressM,
+  polylineLengthM,
+} from "./RouteProgressEngine";
+export type { RouteProgressTickInput, RouteProgressTickResult } from "./RouteProgressEngine";
 
 export { tickNavPosition as PositionFilter_update, createNavPositionSmootherState } from "../navHeadingSmoother";
 
@@ -18,18 +40,38 @@ export {
   resolveNavSpeedMps,
 } from "../navHeadingSmoother";
 
-export {
-  remainingAlongPolyline as RouteProgress_remaining,
-  scaleRemainingToAuthoritative as EtaEngine_scale,
-} from "../routeRemainingAlongPolyline";
+export { remainingFromCommittedProgress as RouteProgress_remaining } from "./RouteProgressEngine";
+export { scaleRemainingToAuthoritative as EtaEngine_scale } from "../routeRemainingAlongPolyline";
 
 export {
-  evaluateNavOffRouteSample as RerouteEngine_check,
-  canStartReroute as RerouteEngine_canStart,
+  evaluateNavOffRouteSample as OffRouteEngine_evaluate,
+  measureRestRouteLateralM,
   createOffRouteTrackerState,
-} from "../navOffRouteReroute";
+  NAV_OFF_ROUTE_THRESHOLD_M,
+} from "./OffRouteEngine";
 
-export { buildManeuverOut as ManeuverEngine_next, advanceManeuverStepIdx } from "./ManeuverEngine";
+export {
+  canStartReroute as RerouteEngine_canStart,
+  canBeginReroute,
+  beginReroute,
+  completeReroute,
+  failReroute,
+  shouldAcceptRerouteResponse,
+  createRerouteEngineState,
+  isRerouteInFlight,
+  NAV_REROUTE_COOLDOWN_MS,
+} from "./RerouteEngine";
+export type { RerouteEngineState, BeginRerouteResult } from "./RerouteEngine";
+
+export {
+  buildManeuverOut as ManeuverEngine_next,
+  advanceManeuverStepIdx,
+  classifyManeuverKind,
+  isArriveStep,
+  isDepartStep,
+  NAV_MANEUVER_PASS_WITHIN_M,
+} from "./ManeuverEngine";
+export type { BuildManeuverOpts } from "./ManeuverEngine";
 
 export {
   tickNavCameraZoom as CameraController_tickZoom,
@@ -39,11 +81,43 @@ export {
 } from "./navCameraZoom";
 
 export {
+  createCameraEngineState,
+  setCameraEngineMounted,
+  tickCameraEngine,
+  consumePendingCamera,
+  applyCameraCommand,
+  applyCameraOverviewFit,
+  offsetLatLonByBearingM,
+  isFiniteCameraCommand,
+  NAV_CAMERA_LOOKAHEAD_M,
+  NAV_CAMERA_ZOOM_APPLY_MIN_DELTA,
+} from "./CameraEngine";
+export type {
+  CameraEngineState,
+  CameraIntent,
+  CameraCommand,
+  NavMapCameraHandle,
+} from "./CameraEngine";
+
+export {
   createNavEngineState,
   resetNavEngineForRoute,
   setNavEngineRerouteInFlight,
+  invalidateNavRouteGeneration,
   tickNavEngine,
 } from "./NavigationEngine";
+
+export {
+  createNavigationState,
+  commitNavigationFromTick,
+  commitNavigationRouteBound,
+  commitNavigationFromLegacyPose,
+  commitNavigationRerouteFlag,
+  commitHeadingQuality,
+  resolveCommittedNavHeading,
+  headingTransitionChanged,
+  mirrorsFromNavigationState,
+} from "./NavigationState";
 
 export type {
   LatLon,
@@ -53,5 +127,12 @@ export type {
   NavEngineState,
   NavEngineOutput,
   NavManeuverOut,
+  ManeuverKind,
   NavTickResult,
+  NavigationState,
+  NavHeadingStateKind,
+  NavGpsStateKind,
+  NavRouteRuntimeKind,
+  NavHeadingQualityKind,
+  NavHeadingDiagReason,
 } from "./types";

@@ -18,33 +18,32 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 2. **`timeInterval` ist Android-only** (expo-location). Auf iOS zählt **`distanceInterval`**. Vorher 5 m + totes Follow → wahrgenommenes Springen.
 3. Background-Task (`isIosBackgroundLocationEnabled`) ist getrennt; Foreground-Navi nutzt `watchPositionAsync` in `navigation.tsx`.
 4. **Roh-`coords.heading` → Kamera** ohne Glättung/Speed-Gate → Zittern an Ampel/Stau.
-5. **`focusNavigationCamera` mit Roh-Fallback-Bearing** (Step/Ziel) wenn Pose-Heading fehlt — konkurriert mit geglätteten GPS-Ticks (Phasenwechsel / Routen-Laden / MapReady). **Fix:** Kamera-Heading nur aus `applyDriverNavFix` / `navPoseRef`; fehlendes Heading → einmal Bootstrap über denselben Smoother, nie Roh-Fallback in der Kamera.
+5. **`focusNavigationCamera`** liest Heading aus `NavigationState` (`headingState` VALID/UNRELIABLE/LOST). Kein Step-/Ziel-Bearing, kein `heading: 0`/Norden als Bootstrap.
 
-## Heading (A+B+C)
+## Heading (P2)
 
-- Utility: `artifacts/mobile/utils/navHeadingSmoother.ts` (EMA + Deadband + Rate-Limit; Speed-Gate ~1.4 m/s).
-- **Fahrend:** GPS-Kurs glätten; sonst Polyline → Bewegung → Fallback Bearing (Step/Ziel).
-- **Stehend / Speed unbekannt:** letztes Heading **halten** (kein Kurs-Jitter).
-- Kamera-Follow: min. **~550 ms**, `animateCamera` **~480 ms**.
-- Smoke: `npx tsx artifacts/mobile/utils/navHeadingSmoother.selftest.ts`
+- `headingState` ist verbindlich: VALID = neues Heading, UNRELIABLE = letztes VALID halten (`lastValidHeadingAt` unverändert), LOST = keine neue Kameradrehung.
+- Quellen: GPS-Kurs bei `NAV_HEADING_TRUST_COURSE_SPEED_MPS` + `isUsableCourse`, sonst Bewegung (`isMovingForNavHeading`). Kein Poly/Ziel als Fahrzeug-Heading.
+- Smoke: `npx tsx artifacts/mobile/utils/navEngine/NavigationState.selftest.ts`
 
-## Aufrufstellen `focusNavigationCamera` (Invariante)
+## Aufrufstellen → nur `CameraEngine` (Schritt 6)
 
-| Stelle | Zweck | `force` | Heading-Quelle |
+| Stelle | Zweck | `force` | Intent-Quelle |
 |--------|--------|---------|----------------|
-| GPS boot / watch | Live-Follow | nein (boot: ja) | `applyDriverNavFix` → Pose |
-| Recenter-Button | Follow wieder an | ja | frisches Fix → `applyDriverNavFix` |
-| Phasen-/Zielwechsel | Neu ausrichten | ja | `navPoseRef` (ggf. Bootstrap im Focus) |
-| Route initial laden | Erste Kamera | ja | `navPoseRef` / Bootstrap |
-| MapReady (+ Pending) | Erste Map | ja | Pending oder `navPoseRef` |
+| GPS boot / watch | Live-Follow | nein (boot: ja) | `tickNavEngine` Display + Heading |
+| Recenter-Button | Follow wieder an | ja | Fix → Pose → CameraEngine |
+| Phasen-/Zielwechsel | Neu ausrichten | ja | `navPoseRef` |
+| Route apply | Erste/neue Kamera | ja | Pose nach Route |
+| MapReady (+ Pending) | Erste Map | ja | `consumePendingCamera` / Pose |
 
-**Nicht** absichtlich: Roh-Kurs oder Step-Bearing direkt in `animateCamera` — auch nicht bei Recenter/Route.
+**Einziger nativer Owner:** `applyCameraCommand` / `applyCameraOverviewFit`. Kein paralleles `setCamera`/`animateCamera` im Screen.
 
 ## Invarianten
 
 - Follow nur bei **Nutzer-Pan** (`onPanDrag`) aus — **nicht** bei `onRegionChange`.
 - GPS Navi: `Accuracy.BestForNavigation`, `distanceInterval: 2` (iOS), `timeInterval: 1000` (Android).
 - Marker: jedes GPS-Tick `setDriverLat/Lon`; Kamera Follow gedrosselt; Heading nur über Smoother.
+- **P1 SoT:** `navEngineRef.current.runtime` (`NavigationState`). Compat-Refs (`navPoseRef`, `lastRawFixRef`, `routeProgressMRef`, `routeGenerationRef`) werden nach jedem Tick aus Runtime gespiegelt. `applyDriverNavFix` bleibt (P2), schreibt aber in dieselbe Runtime.
 - `followsUserLocation={false}` — eigenes Puck + `focusNavigationCamera`.
 - Overview-Button (`fitRoute`) darf Follow absichtlich aus machen; Recenter erzwingt Follow wieder (`force: true`).
 
@@ -52,3 +51,10 @@ Während aktiver Fahrt: Marker/Kamera „eingefroren“, springt unregelmäßig 
 
 - `artifacts/mobile/app/driver/navigation.tsx`
 - `artifacts/mobile/utils/navHeadingSmoother.ts`
+
+
+## P2 HeadingState (autoritativ)
+- VALID: trusted GPS-Kurs (`isUsableCourse` + `NAV_HEADING_TRUST_COURSE_SPEED_MPS`) übernehmen; `lastValidHeadingAt` aktualisieren.
+- UNRELIABLE: letzten VALID-Heading halten; `lastValidHeadingAt` nicht anfassen.
+- LOST: kein neues Heading, kein künstliches Nord (0), kein Ziel-/Step-Bearing; Kamera dreht nicht aktiv neu.
+- Recenter/Bootstrap nur über NavigationState; `applyDriverNavFix` ohne Destination-Bearing.

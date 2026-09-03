@@ -41,11 +41,12 @@ const lRoute: NavRouteSnapshot = {
   ],
   authoritativeDistM: 185,
   authoritativeEtaMin: 3,
+  generation: 1,
 };
 
 let state = createNavEngineState();
 state = resetNavEngineForRoute(state, lRoute, { lat: 48.74, lon: 9.31 });
-assert(state.heading.heading != null, "start heading from route");
+assert(state.heading.heading == null, "start heading not from route");
 
 // Drive to junction
 let t = 1_000;
@@ -88,11 +89,9 @@ r = tickNavEngine(
   lRoute,
 );
 assert(r.output.confirmedOffRoute, "missed turn → offRoute");
-assert(
-  (r.output.distToManeuverM === 0 && r.output.guidanceStale === false) ||
-    r.output.confirmedOffRoute,
-  "off confirmed",
-);
+assert(r.output.guidanceStale, "5 confirmedOffRoute → guidance immediately stale");
+assert(r.output.maneuver == null, "5 no maneuver when off-route confirmed");
+assert(r.output.distToManeuverM === 0, "5 no stale turn meters");
 
 // Stale guidance while reroute in flight
 state = setNavEngineRerouteInFlight(r.state, true);
@@ -105,6 +104,32 @@ r = tickNavEngine(
 assert(r.output.guidanceStale, "stale during reroute");
 assert(r.output.maneuver == null, "no stale maneuver");
 assert(r.output.distToManeuverM === 0, "no stale distance");
+// Schritt 2: während Reroute kein Snap auf alte Polyline → display === filtered
+assert(
+  r.output.display.lat === r.output.filtered.lat &&
+    r.output.display.lon === r.output.filtered.lon,
+  "no snap to old route while rerouteInFlight",
+);
+assert(!r.output.snapped, "not snapped during reroute");
+
+// Stale route generation: older snapshot must not drive match after reset to gen 2
+const routeGen2: NavRouteSnapshot = { ...lRoute, generation: 2 };
+state = resetNavEngineForRoute(r.state, routeGen2, { lat: 48.7403, lon: 9.31 });
+assert(state.routeGeneration === 2, "bound generation 2");
+t += 500;
+const staleSnap: NavRouteSnapshot = { ...lRoute, generation: 1 };
+r = tickNavEngine(
+  state,
+  { lat: 48.7405, lon: 9.3102, speedMps: 5, courseDeg: 0, nowMs: t },
+  staleSnap,
+);
+assert(
+  r.output.display.lat === r.output.filtered.lat &&
+    r.output.display.lon === r.output.filtered.lon,
+  "stale generation → no snap",
+);
+assert(r.navigation === r.state.runtime, "P1 navigation is engine.runtime");
+assert(r.navigation.gpsState === "ACTIVE", "P1 gpsState ACTIVE after tick");
 
 assert(NAV_OFF_ROUTE_THRESHOLD_M === 12, "threshold wired");
 

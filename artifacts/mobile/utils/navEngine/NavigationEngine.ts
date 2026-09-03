@@ -1,38 +1,41 @@
 /**
  * NavigationEngine — ein GPS-Tick: Filter → Match → Heading → Progress → Off-Route → Maneuver → ETA → Zoom.
- * Kein React, keine Netzwerk-Side-Effects (Reroute startet der Screen).
+ * Kein React, keine Netzwerk-Side-Effects (Reroute startet der Screen via RerouteEngine).
  */
 
 import {
-  createOffRouteTrackerState,
-  evaluateNavOffRouteSample,
-  NAV_ROUTE_PROGRESS_BACKTRACK_M,
-  NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
-} from "../navOffRouteReroute";
-import {
   createNavHeadingSmootherState,
   createNavPositionSmootherState,
-  NAV_MARKER_SNAP_MAX_LATERAL_M,
   NAV_POLY_LOOKAHEAD_M,
+  isUsableCourse,
   resolveNavSpeedMps,
   tickNavHeading,
   tickNavPosition,
 } from "../navHeadingSmoother";
-import {
-  advanceRouteProgressM,
-  bearingAlongPolylineLookaheadDeg,
-  distanceToForwardPolylineM,
-  remainingAlongPolyline,
-  scaleRemainingToAuthoritative,
-  snapLatLonToPolyline,
-} from "../routeRemainingAlongPolyline";
-import { bearingDegrees } from "../liveDriverMarkerMotion";
+import { bearingAlongPolylineLookaheadDeg } from "../routeRemainingAlongPolyline";
+import { bearingDegrees, shortestRotationDelta } from "../liveDriverMarkerMotion";
+import { matchMapDisplayPose } from "./MapMatchingEngine";
 import { buildManeuverOut } from "./ManeuverEngine";
+import {
+  createOffRouteTrackerState,
+  evaluateNavOffRouteSample,
+  measureRestRouteLateralM,
+} from "./OffRouteEngine";
+import {
+  initCommittedProgressForRoute,
+  tickRouteProgress,
+} from "./RouteProgressEngine";
 import {
   createNavCameraZoomState,
   NAV_CAMERA_PITCH_NAV,
   tickNavCameraZoom,
 } from "./navCameraZoom";
+import {
+  commitNavigationFromTick,
+  commitNavigationRerouteFlag,
+  commitNavigationRouteBound,
+  createNavigationState,
+} from "./NavigationState";
 import type {
   LatLon,
   NavEngineOutput,
@@ -64,41 +67,64 @@ export function createNavEngineState(): NavEngineState {
     stepIdx: 0,
     lastRawFix: null,
     rerouteInFlight: false,
+    routeGeneration: 0,
+    runtime: createNavigationState(),
   };
 }
 
-/** Nach neuer Route: Progress + Heading an Polyline ausrichten. */
+/** Nach neuer Route: Progress von Pose neu. Kein Route-/Ziel-Bearing als Fahrzeug-Heading. */
 export function resetNavEngineForRoute(
   state: NavEngineState,
   route: NavRouteSnapshot,
   at: LatLon,
-  opts?: { headingDeg?: number | null },
+  _opts?: { headingDeg?: number | null },
 ): NavEngineState {
-  const progress = advanceRouteProgressM(0, route.polyline, at, {
-    maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
-  });
-  const routeBearing =
-    opts?.headingDeg ??
-    bearingAlongPolylineLookaheadDeg(route.polyline, at, NAV_POLY_LOOKAHEAD_M);
-  const heading =
-    routeBearing != null && Number.isFinite(routeBearing)
-      ? { heading: routeBearing, lastUpdateMs: Date.now() }
-      : state.heading;
-  return {
+  const progress = initCommittedProgressForRoute(route.polyline, at);
+  const next: NavEngineState = {
     ...state,
     routeProgressM: progress,
     stepIdx: 0,
     offRoute: createOffRouteTrackerState(),
-    heading,
+    heading: state.heading,
     rerouteInFlight: false,
+    routeGeneration: route.generation,
   };
+  next.runtime = commitNavigationRouteBound(state.runtime, {
+    generation: route.generation,
+    progressM: progress,
+    display: at,
+    heading: state.runtime.heading,
+    isSnapped: false,
+    remainingDistM: 0,
+    remainingMin: 1,
+  });
+  return next;
 }
 
 export function setNavEngineRerouteInFlight(
   state: NavEngineState,
   inFlight: boolean,
 ): NavEngineState {
-  return { ...state, rerouteInFlight: inFlight };
+  return { ...state, rerouteInFlight: inFlight, runtime: commitNavigationRerouteFlag(state.runtime, inFlight) };
+}
+
+/**
+ * Bei confirmed Off-Route / Reroute-Start: gebundene Generation vorziehen,
+ * damit der alte Snapshot sofort stale ist (kein Match/Progress/Guidance auf alter Geometrie).
+ */
+export function invalidateNavRouteGeneration(
+  state: NavEngineState,
+  toGeneration: number,
+): NavEngineState {
+  const gen = Math.max(state.routeGeneration, Math.max(0, toGeneration));
+  return {
+    ...state,
+    rerouteInFlight: true,
+    routeGeneration: gen,
+    offRoute: createOffRouteTrackerState(),
+    stepIdx: 0,
+    runtime: commitNavigationRerouteFlag(state.runtime, true),
+  };
 }
 
 export function tickNavEngine(
@@ -129,23 +155,37 @@ export function tickNavEngine(
   }
 
   const effectiveSpeed = resolveNavSpeedMps(fix.speedMps, derivedSpeedMps);
-  const polyline = route?.polyline ?? [];
+  const routeGen = route?.generation ?? 0;
+  const staleRoute =
+    !!route &&
+    routeGen > 0 &&
+    state.routeGeneration > 0 &&
+    routeGen < state.routeGeneration;
+  /** Aktive Geometrie für Match/Progress: keine stale Generation. */
+  const activeRoute = route && !staleRoute ? route : null;
+  const polyline = activeRoute?.polyline ?? [];
 
-  // 3 Map match (display)
-  const snap = snapLatLonToPolyline(polyline, filtered, NAV_MARKER_SNAP_MAX_LATERAL_M);
-  const display: LatLon = snap ?? filtered;
-  const snapped = snap != null;
+  // 3 Map match → einheitliche Display-Pose (kein Snap während Reroute / auf stale Poly)
+  const match = matchMapDisplayPose({
+    filtered,
+    polyline,
+    boundRouteGeneration: state.routeGeneration,
+    routeGeneration: routeGen,
+    allowSnap: !state.rerouteInFlight && !staleRoute,
+  });
+  const display = match.display;
+  const snapped = match.snapped;
 
-  // 4 Heading (Poly vom Snap wenn möglich)
+  // 4 Heading — Course/Movement; Poly-Bearing nicht als Fahrzeug-Heading (P2).
   const polyBearing = bearingAlongPolylineLookaheadDeg(
     polyline,
-    snap ?? filtered,
+    display,
     NAV_POLY_LOOKAHEAD_M,
   );
   const headingTick = tickNavHeading(state.heading, {
     speedMps: effectiveSpeed,
     courseDeg: fix.courseDeg,
-    polylineBearingDeg: polyBearing,
+    polylineBearingDeg: null,
     movementBearingDeg: movementBearing,
     fallbackBearingDeg: null,
     nowMs: now,
@@ -156,56 +196,80 @@ export function tickNavEngine(
   let confirmedOffRoute = false;
   let remainingDistM = 0;
   let remainingMin = 1;
+  let restLateralM: number | null = null;
+  let courseForOff: number | null = null;
 
-  if (route && polyline.length >= 2) {
-    // 5 Progress
-    routeProgressM = advanceRouteProgressM(routeProgressM, polyline, filtered, {
-      maxLateralForAdvanceM: NAV_ROUTE_PROGRESS_MAX_LATERAL_M,
+  if (activeRoute && polyline.length >= 2) {
+    // 5 Progress — kanonisch committed; Pose = display wenn gematcht, sonst filtered
+    const progressAt = snapped ? display : filtered;
+    const prog = tickRouteProgress({
+      polyline,
+      at: progressAt,
+      committedProgressM: routeProgressM,
+      routeGeneration: state.routeGeneration,
+      snapshotGeneration: routeGen,
+      authoritativeDistM: activeRoute.authoritativeDistM,
+      authoritativeEtaMin: activeRoute.authoritativeEtaMin,
+      allowAdvance: !state.rerouteInFlight,
     });
-    const fromProg = Math.max(0, routeProgressM - NAV_ROUTE_PROGRESS_BACKTRACK_M);
-    const forwardDistM = distanceToForwardPolylineM(polyline, filtered, fromProg);
-    const courseForOff =
+    routeProgressM = prog.committedProgressM;
+    remainingDistM = prog.remainingDistM;
+    remainingMin = prog.remainingMin;
+
+    courseForOff =
       fix.courseDeg != null && Number.isFinite(fix.courseDeg)
         ? fix.courseDeg
         : headingTick.heading;
 
-    // 6 Off-route (nur wenn kein Reroute schon läuft)
+    restLateralM = measureRestRouteLateralM(
+      polyline,
+      { lat: fix.lat, lon: fix.lon },
+      routeProgressM,
+    );
+
+    /**
+     * 6 Off-Route (Schritt 5): Lateral zur Rest-Route vom **Roh-GPS-Fix**
+     * (nicht gesnappt → Distanz ≈ 0; nicht EMA-filtered → Sprünge/Falschabbiegen
+     * werden nicht weggeglättet).
+     */
     if (!state.rerouteInFlight) {
       const offEval = evaluateNavOffRouteSample({
         state: offRoute,
         nowMs: now,
-        forwardDistM,
+        forwardDistM: restLateralM,
         committedProgressM: routeProgressM,
         courseDeg: courseForOff,
         routeBearingDeg: polyBearing,
         speedMps: effectiveSpeed,
+        routeGeneration: state.routeGeneration,
+        snapshotGeneration: routeGen,
       });
       offRoute = offEval.state;
       confirmedOffRoute = offEval.confirmedOffRoute;
     }
-
-    const along = remainingAlongPolyline(polyline, filtered);
-    if (along && route.authoritativeDistM > 0) {
-      const scaled = scaleRemainingToAuthoritative(
-        along,
-        route.authoritativeDistM,
-        route.authoritativeEtaMin,
-      );
-      remainingDistM = scaled.remainingDistM;
-      remainingMin = scaled.remainingMin;
-    } else if (route.authoritativeDistM > 0) {
-      remainingDistM = route.authoritativeDistM;
-      remainingMin = Math.max(1, route.authoritativeEtaMin);
-    }
   }
 
-  const guidanceStale = state.rerouteInFlight;
+  const headingDeltaDeg =
+    courseForOff != null &&
+    polyBearing != null &&
+    Number.isFinite(courseForOff) &&
+    Number.isFinite(polyBearing)
+      ? Math.abs(shortestRotationDelta(courseForOff, polyBearing))
+      : null;
+  const fixDtMs = prevRaw ? now - prevRaw.atMs : null;
+
+  /** Guidance sofort stale bei Reroute ODER bestätigtem Off-Route (vor Screen-Start). */
+  const guidanceStale = state.rerouteInFlight || confirmedOffRoute;
   const maneuverBuilt = buildManeuverOut(
-    route?.steps ?? [],
+    activeRoute?.steps ?? [],
     state.stepIdx,
     polyline,
-    filtered,
     guidanceStale,
+    {
+      committedProgressM: routeProgressM,
+      routeGeneration: routeGen,
+      boundRouteGeneration: state.routeGeneration,
+    },
   );
 
   const zoomTick = tickNavCameraZoom(state.cameraZoom, {
@@ -223,6 +287,8 @@ export function tickNavEngine(
     stepIdx: guidanceStale ? state.stepIdx : maneuverBuilt.stepIdx,
     lastRawFix: { lat: fix.lat, lon: fix.lon, atMs: now },
     rerouteInFlight: state.rerouteInFlight,
+    routeGeneration: state.routeGeneration,
+    runtime: state.runtime,
   };
 
   const output: NavEngineOutput = {
@@ -241,7 +307,28 @@ export function tickNavEngine(
     confirmedOffRoute,
     cameraZoom: zoomTick.zoom,
     cameraPitch: NAV_CAMERA_PITCH_NAV,
+    diag: {
+      forwardDistM: restLateralM,
+      routeBearingDeg: polyBearing,
+      courseForOffDeg: courseForOff,
+      headingDeltaDeg,
+      gpsSpeedMps: fix.speedMps ?? null,
+      derivedSpeedMps,
+      fixDtMs,
+      routeGeneration: routeGen,
+      boundRouteGeneration: state.routeGeneration,
+    },
   };
 
-  return { state: nextState, output };
+  nextState.runtime = commitNavigationFromTick(
+    state.runtime,
+    fix,
+    nextState,
+    output,
+    polyline.length >= 2,
+    { movementBearingDeg: movementBearing },
+  );
+  output.heading = nextState.runtime.heading;
+
+  return { state: nextState, output, navigation: nextState.runtime };
 }
