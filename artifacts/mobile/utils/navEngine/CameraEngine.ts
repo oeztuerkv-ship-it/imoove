@@ -612,6 +612,11 @@ export function applyOverviewFit(
   const next = enterCameraMode(state, "OVERVIEW");
   try {
     opts?.onProgrammatic?.(900);
+    // Follow läuft mit Pitch ~62°/Heading-Up. Apple Maps (setVisibleMapRect) rechnet mit
+    // geneigter Kamera einen viel zu großen Ausschnitt (→ Europa-/Erdansicht). Deshalb vor
+    // dem Fit die Kamera flach + nordoben stellen (setCamera merged; Center/Altitude bleiben).
+    // Reihenfolge ist garantiert (UI-Manager-Queue): erst setCamera, dann fitToCoordinates.
+    map.setCamera?.({ pitch: 0, heading: 0 });
     map.fitToCoordinates?.(coords, {
       edgePadding: { top: 180, right: 40, bottom: 220, left: 40 },
       animated: true,

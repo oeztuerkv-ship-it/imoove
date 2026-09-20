@@ -504,6 +504,36 @@ console.log("CameraEngine.selftest P2: OK");
 }
 
 {
+  // Overview: Kamera muss VOR dem Fit flach (pitch 0) + nordoben sein (Apple-Maps-Europa-Bug).
+  const calls: string[] = [];
+  let flatCam: Record<string, unknown> | null = null;
+  const map = {
+    setCamera: (cam: Record<string, unknown>) => {
+      calls.push("setCamera");
+      flatCam = cam;
+    },
+    fitToCoordinates: () => {
+      calls.push("fitToCoordinates");
+    },
+  };
+  const r = applyOverviewFit(createCameraEngineState(), map, [
+    { latitude: 48.74, longitude: 9.31 },
+    { latitude: 48.75, longitude: 9.32 },
+  ]);
+  assert(r.applied, "overview flat: applied");
+  assert(
+    calls.join(",") === "setCamera,fitToCoordinates",
+    "overview flat: setCamera vor fitToCoordinates",
+  );
+  assert(
+    flatCam != null &&
+      (flatCam as Record<string, unknown>).pitch === 0 &&
+      (flatCam as Record<string, unknown>).heading === 0,
+    "overview flat: pitch 0 + heading 0",
+  );
+}
+
+{
   let st = createCameraEngineState();
   let r = tickCameraEngine(st, {
     display: { lat: 48.74, lon: 9.31 },
