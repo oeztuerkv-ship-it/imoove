@@ -414,13 +414,41 @@ export function validateAddressCompletenessForBooking(
   return { ok: true };
 }
 
+/** Mindestvorlauf ab dem eine Fahrt als Reservierung gilt (wie Server `RESERVATION_LEAD_MS`). */
+const CLIENT_RESERVATION_LEAD_MS = 60 * 60 * 1000;
+
+/**
+ * Live-/Sofort-Anfrage = keine Reservierung mit ≥60 min Vorlauf (gleiche Logik wie Server `isLiveRideRequest`).
+ * Live-Anfragen brauchen kein Servicegebiet.
+ */
+export function isLiveBookingRequest(
+  scheduledAt: Date | string | null | undefined,
+  nowMs: number = Date.now(),
+): boolean {
+  if (scheduledAt == null) return true;
+  const t = scheduledAt instanceof Date ? scheduledAt.getTime() : new Date(String(scheduledAt).trim()).getTime();
+  if (!Number.isFinite(t)) return true;
+  return t < nowMs + CLIENT_RESERVATION_LEAD_MS;
+}
+
 export function clientCheckServiceArea(
   fromFull: string,
   _toFull: string,
   cfg: OnrodaAppConfig,
   loc?: { fromLat?: number | null; fromLon?: number | null; toLat?: number | null; toLon?: number | null } | null,
+  opts?: { live?: boolean } | null,
 ): { ok: true } | { ok: false; message: string } {
   const from = String(fromFull ?? "").trim();
+  // Live-Anfrage: Abholort bundesweit erlaubt (Reservierungen prüfen weiter das Servicegebiet).
+  // Bewusst deaktivierte Service-Regionen bleiben gesperrt (wie Server `service_region_inactive`).
+  if (opts?.live === true) {
+    const fl0 = loc?.fromLat != null && Number.isFinite(Number(loc.fromLat)) ? Number(loc.fromLat) : null;
+    const fn0 = loc?.fromLon != null && Number.isFinite(Number(loc.fromLon)) ? Number(loc.fromLon) : null;
+    const hitsDisabledRegion = (cfg.serviceRegions || []).some(
+      (r) => !r.isActive && pointMatchesRegion({ ...r, isActive: true }, from, fl0, fn0),
+    );
+    return hitsDisabledRegion ? { ok: false, message: getOutOfServiceDe(cfg) } : { ok: true };
+  }
   const active = (cfg.serviceRegions || []).filter((r) => r.isActive);
   if (active.length === 0) {
     return { ok: true };
@@ -442,9 +470,10 @@ export async function validateServiceAreaForBooking(
   fromFull: string,
   toFull: string,
   loc?: { fromLat?: number | null; fromLon?: number | null; toLat?: number | null; toLon?: number | null } | null,
+  opts?: { live?: boolean } | null,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const cfg = await fetchAppConfig();
-  return clientCheckServiceArea(fromFull, toFull, cfg, loc);
+  return clientCheckServiceArea(fromFull, toFull, cfg, loc, opts);
 }
 
 /**

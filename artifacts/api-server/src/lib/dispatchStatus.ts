@@ -21,6 +21,18 @@ export function isFarFutureReservation(
   return t >= nowMs + RESERVATION_LEAD_MS;
 }
 
+/**
+ * Live-/Sofort-Anfrage = keine Reservierung mit ≥60 min Vorlauf.
+ * Live-Anfragen brauchen kein Servicegebiet (Abholort bundesweit möglich).
+ * Reservierungen (Taxameter) und Festpreis-Logik bleiben unverändert.
+ */
+export function isLiveRideRequest(
+  scheduledAtIso: string | null | undefined,
+  nowMs: number = Date.now(),
+): boolean {
+  return !isFarFutureReservation(scheduledAtIso, nowMs);
+}
+
 export function isReservationWithinAdvanceWindow(
   scheduledAtIso: string | null | undefined,
   nowMs: number = Date.now(),

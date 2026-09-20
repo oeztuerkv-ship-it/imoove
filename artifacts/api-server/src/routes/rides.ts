@@ -101,6 +101,7 @@ import {
 } from "../db/fleetDriversData";
 import {
   isFarFutureReservation,
+  isLiveRideRequest,
   isReservationWithinAdvanceWindow,
   RESERVATION_MAX_ADVANCE_MS,
 } from "../lib/dispatchStatus";
@@ -1689,12 +1690,16 @@ router.post("/rides", requireCustomerSession, rejectSuspendedCustomerBooking, as
       return;
     }
     if (!fixedPriceReservation) {
-      const area = await checkCustomerRideServiceArea(fromFull, toFull, {
-        fromLat: fromLatB,
-        fromLon: fromLonB,
-        toLat: toLatB,
-        toLon: toLonB,
-      });
+      // Live-Anfrage (kein Reservierungs-Vorlauf ≥60 min): Abholort bundesweit, kein Servicegebiet nötig.
+      // Reservierungen (Taxameter) prüfen weiterhin das Servicegebiet.
+      const area = isLiveRideRequest(scheduledAtForArea)
+        ? { ok: true as const }
+        : await checkCustomerRideServiceArea(fromFull, toFull, {
+            fromLat: fromLatB,
+            fromLon: fromLonB,
+            toLat: toLatB,
+            toLon: toLonB,
+          });
       if (!area.ok) {
         res.status(400).json({
           error: "service_area_not_covered",

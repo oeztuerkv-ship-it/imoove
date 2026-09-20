@@ -46,6 +46,7 @@ import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import {
   isCompleteStreetAddressForBooking,
+  isLiveBookingRequest,
   MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
   MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
   userFacingBookingErrorMessage,
@@ -1084,12 +1085,17 @@ export default function NewBookingScreen() {
         );
         return;
       }
-      const area = await validateServiceAreaForBooking(fromFull, toFull, {
-        fromLat: originLat,
-        fromLon: originLon,
-        toLat: destinationLat,
-        toLon: destinationLon,
-      });
+      const area = await validateServiceAreaForBooking(
+        fromFull,
+        toFull,
+        {
+          fromLat: originLat,
+          fromLon: originLon,
+          toLat: destinationLat,
+          toLon: destinationLon,
+        },
+        { live: isLiveBookingRequest(isInstant ? null : scheduledAt) },
+      );
       if (!useFixedPriceReservation && !area.ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Buchung nicht möglich", area.message);

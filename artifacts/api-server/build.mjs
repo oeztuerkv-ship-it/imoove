@@ -60,6 +60,7 @@ async function buildAll() {
       path.resolve(artifactDir, "src/scripts/platformVehicleSurchargeSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/fixedPriceEligibilitySelftest.ts"),
       path.resolve(artifactDir, "src/scripts/reservationFixedPricePolicySelftest.ts"),
+      path.resolve(artifactDir, "src/scripts/liveRideServiceAreaSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/driverFinalFareTariffCorridorSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/midTripAbortFareSelftest.ts"),
       path.resolve(artifactDir, "src/scripts/marketLocationUpdateSelftest.ts"),
