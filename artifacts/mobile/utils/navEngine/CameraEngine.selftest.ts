@@ -3,6 +3,8 @@
  *   npx tsx artifacts/mobile/utils/navEngine/CameraEngine.selftest.ts
  */
 import {
+  MAPKIT_CAMERA_VERTICAL_FOV_DEG,
+  NAV_CAMERA_DEFAULT_VIEWPORT_HEIGHT_PT,
   NAV_CAMERA_LOOKAHEAD_M,
   NAV_CAMERA_ZOOM_APPLY_MIN_DELTA,
   applyNavigationCameraCommand,
@@ -15,6 +17,7 @@ import {
   enterCameraMode,
   getFollowNativeApplyCount,
   isFiniteCameraCommand,
+  metersPerPointAtZoom,
   offsetLatLonByBearingM,
   resetFollowNativeApplyCount,
   setCameraEngineMounted,
@@ -22,6 +25,7 @@ import {
   shouldCommitUserPreferredZoom,
   tickCameraEngine,
   tickFollowFromNav,
+  zoomLevelToAltitudeMeters,
 } from "./CameraEngine";
 import { createNavigationState } from "./NavigationState";
 import {
@@ -634,6 +638,219 @@ console.log("CameraEngine.selftest P2: OK");
     routeGeneration: 0,
   }, { map: null });
   assert(!nullMap.applied, "P4 null map ref does not throw");
+}
+
+{
+  // ── iOS/MapKit Altitude: Meter Kamerahöhe (nicht Meter/Pixel) ──────────────
+  const LAT = 48.74;
+  const VIEW_H = 874; // iPhone 16 Pro, Fensterhöhe in pt
+  const PITCH = NAV_CAMERA_PITCH_NAV;
+  // Unabhängige Referenz (bewusst anders geschrieben als die Implementierung).
+  const ref = (z: number, lat: number, h: number, pitchDeg: number): number => {
+    const mpp = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, z);
+    const slant = (mpp * h) / (2 * Math.tan((15 * Math.PI) / 180));
+    return slant * Math.cos((pitchDeg * Math.PI) / 180);
+  };
+  const oldFormula = (z: number, lat: number): number =>
+    (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** z;
+
+  assert(MAPKIT_CAMERA_VERTICAL_FOV_DEG === 30, "altitude: FOV-Konstante 30°");
+  assert(NAV_CAMERA_DEFAULT_VIEWPORT_HEIGHT_PT >= 200, "altitude: Default-Viewport plausibel");
+
+  // Goldwerte (Python nachgerechnet): Zoom 15 / 16,3 / 16,5 bei 874 pt, Pitch 62°.
+  const golden: [number, number][] = [
+    [15, 2412.2],
+    [16.3, 979.7],
+    [16.5, 852.9],
+  ];
+  for (const [z, expected] of golden) {
+    const a = zoomLevelToAltitudeMeters(z, LAT, { viewportHeightPt: VIEW_H, pitchDeg: PITCH });
+    assert(Math.abs(a - expected) < 0.5, `altitude z=${z} golden ${expected} (got ${a.toFixed(1)})`);
+    assert(Math.abs(a - ref(z, LAT, VIEW_H, PITCH)) < 1e-9, `altitude z=${z} == Referenz`);
+    // Alte Formel lieferte 1–3 m (Meter/Pixel) — darf nie wieder als Altitude rausgehen.
+    assert(oldFormula(z, LAT) < 4, `altitude z=${z}: alte Formel wäre unrealistisch klein`);
+    assert(a > 300 && a < 3000, `altitude z=${z}: realistisch (300…3000 m)`);
+    assert(a / oldFormula(z, LAT) > 500, `altitude z=${z}: Größenordnung korrigiert`);
+  }
+
+  // Monotonie + Verdopplung pro Zoomstufe
+  const a15 = zoomLevelToAltitudeMeters(15, LAT, { viewportHeightPt: VIEW_H, pitchDeg: PITCH });
+  const a16 = zoomLevelToAltitudeMeters(16, LAT, { viewportHeightPt: VIEW_H, pitchDeg: PITCH });
+  const a163 = zoomLevelToAltitudeMeters(16.3, LAT, { viewportHeightPt: VIEW_H, pitchDeg: PITCH });
+  const a165 = zoomLevelToAltitudeMeters(16.5, LAT, { viewportHeightPt: VIEW_H, pitchDeg: PITCH });
+  assert(a15 > a16 && a16 > a163 && a163 > a165, "altitude: höherer Zoom → niedrigere Kamera");
+  assert(Math.abs(a15 / a16 - 2) < 1e-9, "altitude: +1 Zoom halbiert die Höhe");
+
+  // Viewport / Pitch / Latitude gehen sauber ein
+  const small = zoomLevelToAltitudeMeters(16.3, LAT, { viewportHeightPt: 667, pitchDeg: PITCH });
+  const big = zoomLevelToAltitudeMeters(16.3, LAT, { viewportHeightPt: 932, pitchDeg: PITCH });
+  assert(Math.abs(big / small - 932 / 667) < 1e-9, "altitude: linear in Viewport-Höhe");
+  const flat = zoomLevelToAltitudeMeters(16.3, LAT, { viewportHeightPt: VIEW_H, pitchDeg: 0 });
+  assert(
+    Math.abs(flat * Math.cos((PITCH * Math.PI) / 180) - a163) < 1e-9,
+    "altitude: Pitch skaliert mit cos(pitch)",
+  );
+  const eq = zoomLevelToAltitudeMeters(16.3, 0, { viewportHeightPt: VIEW_H, pitchDeg: PITCH });
+  assert(eq > a163, "altitude: am Äquator höher als bei 48,7° (cos lat)");
+  assert(
+    Math.abs(metersPerPointAtZoom(16.3, LAT) - oldFormula(16.3, LAT)) < 1e-12,
+    "metersPerPointAtZoom == frühere Meter/Pixel-Größe (jetzt korrekt benannt)",
+  );
+
+  // Ungültige Eingaben → endlich, positiv, realistisch
+  for (const bad of [NaN, Infinity, -Infinity]) {
+    const a = zoomLevelToAltitudeMeters(bad, bad, { viewportHeightPt: bad, pitchDeg: bad });
+    assert(Number.isFinite(a) && a > 0, "altitude: non-finite Eingaben bleiben endlich");
+  }
+  const noOpts = zoomLevelToAltitudeMeters(16.3, LAT);
+  assert(noOpts > 300, "altitude: ohne Optionen (Default-Viewport) weiterhin realistisch");
+}
+
+{
+  // ── Follow: JEDER Tick setzt eine realistische, zum Zoom passende Altitude ──
+  const LAT0 = 48.74;
+  const VIEW_H = 874;
+  const PITCH = NAV_CAMERA_PITCH_NAV;
+  let st = createCameraEngineState();
+  const speedsMps = [0, 1, 3, 8, 14, 22, 30, 30, 30, 12, 5, 1, 0];
+  let commands = 0;
+  let minAlt = Infinity;
+  let maxAlt = 0;
+  const seenZooms: number[] = [];
+  // Erst lange Stadt, dann Highway, dann wieder Stadt → Zoom läuft ~16,6 → 15 → 16,6.
+  const plan: number[] = [];
+  for (let i = 0; i < 45; i += 1) plan.push(10);
+  for (let i = 0; i < 60; i += 1) plan.push(30);
+  for (let i = 0; i < 60; i += 1) plan.push(10);
+  for (const sp of speedsMps) plan.push(sp);
+  for (let i = 0; i < plan.length; i += 1) {
+    const r = tickCameraEngine(st, {
+      display: { lat: LAT0 + i * 0.0003, lon: 9.31 },
+      heading: 20,
+      headingState: "VALID",
+      speedMps: plan[i]!,
+      nowMs: 10_000 + i * 3000,
+      followEnabled: true,
+      mapReady: true,
+      force: i % 2 === 0,
+      viewportHeightPt: VIEW_H,
+    });
+    st = r.state;
+    const cmd = r.command;
+    if (!cmd) continue;
+    commands += 1;
+    assert(isFiniteCameraCommand(cmd), "follow altitude: Command endlich");
+    const expected = zoomLevelToAltitudeMeters(cmd.zoom, cmd.center.latitude, {
+      viewportHeightPt: VIEW_H,
+      pitchDeg: PITCH,
+    });
+    assert(Math.abs(cmd.altitude - expected) < 1e-9, "follow altitude == f(zoom, lat, viewport, pitch)");
+    assert(cmd.pitch === PITCH, "follow altitude: Pitch unverändert");
+    assert(cmd.altitude > 100, `follow altitude: nie 1–3 m (tick ${i}: ${cmd.altitude.toFixed(2)})`);
+    minAlt = Math.min(minAlt, cmd.altitude);
+    maxAlt = Math.max(maxAlt, cmd.altitude);
+    seenZooms.push(cmd.zoom);
+  }
+  assert(commands > 60, `follow altitude: genug Commands geprüft (${commands})`);
+  assert(minAlt > 300 && maxAlt < 3000, `follow altitude: Bereich ${minAlt.toFixed(0)}…${maxAlt.toFixed(0)} m realistisch`);
+  assert(Math.min(...seenZooms) < 15.2, "follow altitude: Highway-Zoom (~15) wurde erreicht");
+  assert(Math.max(...seenZooms) > 16.4, "follow altitude: Stadt-Zoom (~16,6) wurde erreicht");
+  // Zoomstufen selbst unverändert (Produktvorgabe)
+  assert(NAV_CAMERA_ZOOM_CITY === 16.6 && NAV_CAMERA_ZOOM_DEFAULT === 16.3, "Zoomstufen unverändert");
+}
+
+{
+  // tickFollowFromNav + consumePendingCamera reichen die View-Höhe durch
+  const nav = createNavigationState();
+  nav.displayPosition = { lat: 48.74, lon: 9.31 };
+  nav.heading = 40;
+  nav.headingState = "VALID";
+  nav.speed = 6;
+  const tick = tickFollowFromNav(createCameraEngineState(), nav, {
+    nowMs: 1000,
+    mapReady: true,
+    force: true,
+    viewportHeightPt: 874,
+  });
+  assert(tick.command != null, "follow viewport: Command vorhanden");
+  const c = tick.command!;
+  assert(
+    Math.abs(
+      c.altitude -
+        zoomLevelToAltitudeMeters(c.zoom, c.center.latitude, {
+          viewportHeightPt: 874,
+          pitchDeg: NAV_CAMERA_PITCH_NAV,
+        }),
+    ) < 1e-9,
+    "follow viewport: tickFollowFromNav nutzt gelieferte View-Höhe",
+  );
+  const tickTall = tickFollowFromNav(createCameraEngineState(), nav, {
+    nowMs: 1000,
+    mapReady: true,
+    force: true,
+    viewportHeightPt: 932,
+  });
+  assert(tickTall.command!.altitude > c.altitude, "follow viewport: größere View → höhere Kamera");
+
+  // Pending (MapReady) nutzt ebenfalls die echte View-Höhe
+  let st = createCameraEngineState();
+  const pend = tickCameraEngine(st, {
+    display: { lat: 48.74, lon: 9.31 },
+    heading: 40,
+    headingState: "VALID",
+    speedMps: 6,
+    nowMs: 500,
+    followEnabled: true,
+    mapReady: false,
+    viewportHeightPt: 874,
+  });
+  st = pend.state;
+  assert(st.pending != null, "pending: gespeichert");
+  const consumed = consumePendingCamera(st, { nowMs: 1000, viewportHeightPt: 874 });
+  assert(consumed.command != null, "pending: Command");
+  const pc = consumed.command!;
+  assert(
+    Math.abs(
+      pc.altitude -
+        zoomLevelToAltitudeMeters(pc.zoom, pc.center.latitude, {
+          viewportHeightPt: 874,
+          pitchDeg: NAV_CAMERA_PITCH_NAV,
+        }),
+    ) < 1e-9 && pc.altitude > 300,
+    "pending: Altitude aus echter View-Höhe, realistisch",
+  );
+}
+
+{
+  // Native Apply: iOS bekommt altitude (m), Android weiterhin nur zoom — unverändert.
+  const cmd = {
+    center: { latitude: 48.74, longitude: 9.31 },
+    heading: 10,
+    pitch: NAV_CAMERA_PITCH_NAV,
+    zoom: 16.3,
+    altitude: zoomLevelToAltitudeMeters(16.3, 48.74, {
+      viewportHeightPt: 874,
+      pitchDeg: NAV_CAMERA_PITCH_NAV,
+    }),
+    mode: "set" as const,
+    durationMs: 0,
+    sessionToken: 1,
+    routeGeneration: 0,
+  };
+  let iosCam: Record<string, unknown> | null = null;
+  let androidCam: Record<string, unknown> | null = null;
+  assert(
+    applyCameraCommand({ setCamera: (c) => { iosCam = c; } }, cmd, { useAltitude: true }),
+    "native iOS apply",
+  );
+  assert(
+    applyCameraCommand({ setCamera: (c) => { androidCam = c; } }, cmd, { useAltitude: false }),
+    "native Android apply",
+  );
+  const ic = iosCam as unknown as Record<string, unknown>;
+  const ac = androidCam as unknown as Record<string, unknown>;
+  assert(ic.altitude === cmd.altitude && (ic.altitude as number) > 300 && ic.zoom === undefined, "iOS: altitude gesetzt, kein zoom");
+  assert(ac.zoom === 16.3 && ac.altitude === undefined, "Android: zoom 16,3 unverändert, keine altitude");
 }
 
 console.log("CameraEngine.selftest P3: OK");

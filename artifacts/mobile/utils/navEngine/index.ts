@@ -115,6 +115,11 @@ export {
   resetFollowNativeApplyCount,
   NAV_CAMERA_LOOKAHEAD_M,
   NAV_CAMERA_ZOOM_APPLY_MIN_DELTA,
+  NAV_CAMERA_DEFAULT_VIEWPORT_HEIGHT_PT,
+  MAPKIT_CAMERA_VERTICAL_FOV_DEG,
+  WEB_MERCATOR_METERS_PER_POINT_Z0,
+  metersPerPointAtZoom,
+  zoomLevelToAltitudeMeters,
 } from "./CameraEngine";
 export type {
   CameraEngineState,

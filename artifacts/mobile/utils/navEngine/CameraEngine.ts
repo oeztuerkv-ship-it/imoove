@@ -84,6 +84,11 @@ export type CameraIntent = {
   userPreferredZoom?: number | null;
   /** Recenter / Route: Modus FOLLOW, dann Tick. */
   enterFollow?: boolean;
+  /**
+   * Höhe der Karten-View in Punkten (Fenster). Nur für die iOS-Altitude (Apple Maps);
+   * Android nutzt `zoom` und ignoriert das. Fehlt der Wert → Default (siehe unten).
+   */
+  viewportHeightPt?: number;
 };
 
 export type CameraCommand = {
@@ -233,10 +238,53 @@ export function offsetLatLonByBearingM(
   return { lat: outLat, lon: outLon };
 }
 
-export function zoomLevelToAltitudeMeters(zoom: number, latitude: number): number {
+/** Web-Mercator: Meter pro Punkt bei Zoom 0 am Äquator (256-pt-Kachel, wie Google-Zoom). */
+export const WEB_MERCATOR_METERS_PER_POINT_Z0 = 156543.03392;
+
+/**
+ * Vertikaler Öffnungswinkel von MKMapCamera (Apple Maps). Nicht in Apples Doku, aber in der
+ * Community durchgehend mit ~30° belegt; auf dem Gerät gegenprüfen (siehe Selftest/Diag).
+ */
+export const MAPKIT_CAMERA_VERTICAL_FOV_DEG = 30;
+
+/** Nur Fallback, wenn der Aufrufer keine echte View-Höhe (pt) liefert (z. B. Selftests). */
+export const NAV_CAMERA_DEFAULT_VIEWPORT_HEIGHT_PT = 800;
+
+/** Meter pro Punkt (dp) bei Zoom `zoom` und Breite `latitude` (Web-Mercator). */
+export function metersPerPointAtZoom(zoom: number, latitude: number): number {
   const z = Number.isFinite(zoom) ? zoom : NAV_CAMERA_ZOOM_DEFAULT;
-  const lat = Number.isFinite(latitude) ? latitude : 0;
-  return (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** z;
+  const lat = Number.isFinite(latitude) ? Math.max(-85, Math.min(85, latitude)) : 0;
+  return (WEB_MERCATOR_METERS_PER_POINT_Z0 * Math.cos((lat * Math.PI) / 180)) / 2 ** z;
+}
+
+/**
+ * Apple Maps: `Camera.altitude` (react-native-maps iOS → `MKMapCamera.altitude`) ist die Höhe
+ * der Kamera über Grund in METERN — nicht Meter/Pixel.
+ *
+ * Geometrie: Zoom z definiert (wie bei Google) den Maßstab im Kartenzentrum: `mpp` m/pt.
+ *   sichtbare Höhe am Zentrum  = mpp · viewportHeightPt
+ *   Kamera-Abstand zum Zentrum = sichtbareHöhe / (2 · tan(FOV/2))          (FOV = 30°)
+ *   altitude (Höhe über Grund) = Abstand · cos(pitch)                       (pitch 0 = von oben)
+ * Android (Google) nutzt weiterhin `zoom` direkt und braucht das nicht.
+ */
+export function zoomLevelToAltitudeMeters(
+  zoom: number,
+  latitude: number,
+  opts?: { viewportHeightPt?: number; pitchDeg?: number },
+): number {
+  const h =
+    opts?.viewportHeightPt != null &&
+    Number.isFinite(opts.viewportHeightPt) &&
+    opts.viewportHeightPt >= 200
+      ? opts.viewportHeightPt
+      : NAV_CAMERA_DEFAULT_VIEWPORT_HEIGHT_PT;
+  const pitch =
+    opts?.pitchDeg != null && Number.isFinite(opts.pitchDeg)
+      ? Math.max(0, Math.min(80, opts.pitchDeg))
+      : 0;
+  const visibleHeightM = metersPerPointAtZoom(zoom, latitude) * h;
+  const distanceM = visibleHeightM / (2 * Math.tan((MAPKIT_CAMERA_VERTICAL_FOV_DEG * Math.PI) / 360));
+  return distanceM * Math.cos((pitch * Math.PI) / 180);
 }
 
 function haversineM(a: LatLon, b: LatLon): number {
@@ -422,7 +470,10 @@ export function tickCameraEngine(
     heading,
     pitch,
     zoom,
-    altitude: zoomLevelToAltitudeMeters(zoom, lookAhead.lat),
+    altitude: zoomLevelToAltitudeMeters(zoom, lookAhead.lat, {
+      viewportHeightPt: intent.viewportHeightPt,
+      pitchDeg: pitch,
+    }),
     mode: cmdMode,
     durationMs,
     sessionToken: next.sessionToken,
@@ -453,7 +504,7 @@ export function tickCameraEngine(
 /** Pending nach MapReady: nur gespeicherter State, kein Heading-Fallback. */
 export function consumePendingCamera(
   state: CameraEngineState,
-  opts?: { nowMs?: number },
+  opts?: { nowMs?: number; viewportHeightPt?: number },
 ): { state: CameraEngineState; command: CameraCommand | null; skipReason: string | null } {
   const pending = state.pending;
   if (!pending || !state.mounted) {
@@ -475,6 +526,7 @@ export function consumePendingCamera(
     mapReady: true,
     force: true,
     animated: false,
+    viewportHeightPt: opts?.viewportHeightPt,
   });
 }
 
@@ -489,6 +541,7 @@ export function tickFollowFromNav(
     resetZoom?: boolean;
     animated?: boolean;
     enterFollow?: boolean;
+    viewportHeightPt?: number;
   },
 ): { state: CameraEngineState; command: CameraCommand | null; skipReason: string | null } {
   const display = nav.displayPosition;
@@ -510,6 +563,7 @@ export function tickFollowFromNav(
     animated: ctx.animated,
     enterFollow: ctx.enterFollow,
     userPreferredZoom: ctx.resetZoom ? null : bound.userPreferredZoom,
+    viewportHeightPt: ctx.viewportHeightPt,
   });
 }
 

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -141,6 +142,7 @@ import {
   type NavigationState,
   type NavRouteRequestReason,
   type RerouteEngineState,
+  zoomLevelToAltitudeMeters,
 } from "@/utils/navEngine";
 import {
   navDiagCamera,
@@ -342,10 +344,7 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number): num
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-/** Apple Maps nutzt altitude (m), Google Maps zoom — zoom allein auf iOS wirkt nicht. */
-function zoomLevelToAltitudeMeters(zoom: number, latitude: number): number {
-  return (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
-}
+/** Apple Maps nutzt altitude (m), Google Maps zoom — Umrechnung: navEngine/CameraEngine (einzige Quelle). */
 
 function buildNavCamera(
   lat: number,
@@ -366,7 +365,10 @@ function buildNavCamera(
   const altitude =
     opts?.altitude != null && Number.isFinite(opts.altitude)
       ? opts.altitude
-      : zoomLevelToAltitudeMeters(zoom, lat);
+      : zoomLevelToAltitudeMeters(zoom, lat, {
+          viewportHeightPt: Dimensions.get("window").height,
+          pitchDeg: pitch,
+        });
   return { ...base, altitude };
 }
 
@@ -873,6 +875,7 @@ export default function DriverNavigationScreen() {
         resetZoom: opts?.resetZoom,
         animated: opts?.animated,
         enterFollow: opts?.enterFollow,
+        viewportHeightPt: Dimensions.get("window").height,
       });
       cameraEngineRef.current = tick.state;
       const modeChanged = prevMode !== tick.state.mode;
@@ -2712,7 +2715,9 @@ export default function DriverNavigationScreen() {
       });
       return;
     }
-    const pendingTick = consumePendingCamera(cameraEngineRef.current);
+    const pendingTick = consumePendingCamera(cameraEngineRef.current, {
+      viewportHeightPt: Dimensions.get("window").height,
+    });
     cameraEngineRef.current = pendingTick.state;
     if (!pendingTick.command) return;
     if (pendingTick.command.sessionToken !== cameraEngineRef.current.sessionToken) return;
