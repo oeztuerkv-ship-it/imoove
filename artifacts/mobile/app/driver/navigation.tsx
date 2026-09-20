@@ -113,6 +113,7 @@ import {
   enterCameraMode,
   evaluateRouteResponse,
   failReroute,
+  releaseRouteRequestIfActive,
   invalidateAllRouteRequests,
   invalidateInFlightRouteRequests,
   isRerouteInFlight,
@@ -1217,6 +1218,20 @@ export default function DriverNavigationScreen() {
         });
 
       const dropStale = (dropReason: string) => {
+        // Slot freigeben, falls dieser Request ihn noch hält (sonst inFlight für immer).
+        const released = releaseRouteRequestIfActive(
+          rerouteEngineRef.current,
+          requestId,
+          Date.now(),
+        );
+        if (released !== rerouteEngineRef.current) {
+          rerouteEngineRef.current = released;
+          navEngineRef.current = setNavEngineRerouteInFlight(
+            navEngineRef.current,
+            isRerouteInFlight(released),
+          );
+          setGuidanceStale(navEngineRef.current.runtime.guidanceStale);
+        }
         navDiagRouteCommit({
           sessionId,
           requestId,

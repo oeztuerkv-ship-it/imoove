@@ -14,6 +14,7 @@ import {
   invalidateAllRouteRequests,
   invalidateInFlightRouteRequests,
   isRerouteInFlight,
+  releaseRouteRequestIfActive,
   shouldAcceptRerouteResponse,
 } from "./RerouteEngine";
 import {
@@ -279,6 +280,54 @@ st = completeReroute(st, b3!.requestId, Date.now());
   engine = setNavEngineRerouteInFlight(engine, false);
   assert(engine.runtime.routeState === "navigating", "P5 fail restores navigating");
   assert(engine.runtime.guidanceStale === false, "P5 fail clears stale");
+}
+
+// Verworfene Response (stale_generation) darf den Slot nicht dauerhaft blockieren.
+{
+  let r = createRerouteEngineState(7);
+  const b = beginReroute(r, { nowMs: 1000, currentBoundGeneration: 3, navigationSessionId: 7 });
+  assert(b != null, "release: begin");
+  r = b!.state;
+  assert(isRerouteInFlight(r), "release: in flight");
+  assert(!canBeginReroute(r, 10_000), "release: blocked while in flight");
+  const other = releaseRouteRequestIfActive(r, b!.requestId + 99, 2000);
+  assert(other === r && isRerouteInFlight(r), "release: foreign requestId untouched");
+  r = releaseRouteRequestIfActive(r, b!.requestId, 2000);
+  assert(!isRerouteInFlight(r), "release: slot freed");
+  assert(r.lastRerouteAtMs === 2000, "release: cooldown anchor set");
+  assert(!canBeginReroute(r, 2500), "release: cooldown respected");
+  assert(canBeginReroute(r, 2000 + NAV_REROUTE_COOLDOWN_MS), "release: reroute possible after cooldown");
+}
+
+// stale_generation: Response wird verworfen → Slot freigeben → nächster off_route darf starten.
+{
+  let r = createRerouteEngineState(8);
+  const b = beginReroute(r, { nowMs: 1000, currentBoundGeneration: 3, navigationSessionId: 8 });
+  assert(b != null, "stale_gen: begin");
+  r = b!.state;
+  const decision = evaluateRouteResponse(r, {
+    requestId: b!.requestId,
+    navigationSessionId: 8,
+    mounted: true,
+    currentRouteGeneration: 4, // Engine-Generation hat sich während des Requests geändert
+  });
+  assert(
+    !decision.ok && decision.dropReason === "stale_generation",
+    "stale_gen: response dropped as stale_generation",
+  );
+  assert(isRerouteInFlight(r), "stale_gen: without release the slot stays blocked (Bug)");
+  assert(!canBeginReroute(r, 60_000), "stale_gen: without release off_route blocked forever (Bug)");
+  r = releaseRouteRequestIfActive(r, b!.requestId, 2000);
+  assert(!isRerouteInFlight(r), "stale_gen: slot released");
+  const next = beginReroute(r, {
+    nowMs: 2000 + NAV_REROUTE_COOLDOWN_MS,
+    currentBoundGeneration: 4,
+    navigationSessionId: 8,
+  });
+  assert(next != null, "stale_gen: next off_route can start after release + cooldown");
+  // Späte Response des alten Requests darf den neuen Slot nicht anfassen.
+  const lateRelease = releaseRouteRequestIfActive(next!.state, b!.requestId, 9999);
+  assert(lateRelease === next!.state, "stale_gen: late release of old request is a no-op");
 }
 
 console.log("RerouteEngine.selftest: ok");

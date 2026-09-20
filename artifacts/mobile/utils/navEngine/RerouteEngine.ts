@@ -282,6 +282,27 @@ export function failReroute(
   };
 }
 
+/**
+ * Verworfene Response (stale_generation / stale_epoch / stale_session): hält der Request
+ * noch den aktiven Slot, wird er freigegeben — ohne Commit. Sonst blieb `inFlight`
+ * ewig true und off_route/recover konnten nie wieder starten (Guidance dauerhaft stale).
+ * Ein bereits ersetzter/gelöschter Request (anderer requestId) bleibt unberührt.
+ */
+export function releaseRouteRequestIfActive(
+  state: RerouteEngineState,
+  requestId: number,
+  nowMs: number,
+): RerouteEngineState {
+  if (state.activeRequest == null || state.activeRequest.requestId !== requestId) return state;
+  return {
+    ...state,
+    activeRequest: null,
+    requestBoundGeneration: null,
+    invalidateToGeneration: null,
+    lastRerouteAtMs: nowMs,
+  };
+}
+
 /** Resume: inFlight aus pre-resync State darf nicht mehr committen. */
 export function invalidateInFlightRouteRequests(state: RerouteEngineState): RerouteEngineState {
   if (state.activeRequest == null) {

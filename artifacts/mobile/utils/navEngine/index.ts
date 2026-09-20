@@ -58,6 +58,7 @@ export {
   beginRouteRequest,
   completeReroute,
   failReroute,
+  releaseRouteRequestIfActive,
   shouldAcceptRerouteResponse,
   evaluateRouteResponse,
   invalidateInFlightRouteRequests,

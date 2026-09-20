@@ -1,11 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { withNavRouteTimeout } from "@/utils/navEngine/navRouteTimeout";
 import type { GeoLocation, RouteResultWithSteps, RouteStep } from "@/utils/routing";
 
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const API_BASE = getApiBaseUrl();
 
 export type NavRoutingSource = "google" | "osrm" | "error" | "fallback";
+
+/**
+ * Client-Timeout für nav-route (fetch + JSON). Ohne Timeout blieb ein hängender
+ * Request ewig „inFlight“ → kein Off-Route-Reroute, Guidance dauerhaft stale.
+ * Server: Google Matrix (≤12 s) + OSRM (≤12 s) seriell → Client bricht früher ab
+ * und die Reroute-Engine versucht nach Cooldown neu.
+ */
+export const DRIVER_NAV_ROUTE_CLIENT_TIMEOUT_MS = 12_000;
 
 export type DriverNavRouteResult = RouteResultWithSteps & {
   routingSource: NavRoutingSource;
@@ -34,23 +43,31 @@ async function fleetAuthHeaders(): Promise<Record<string, string>> {
 export async function fetchDriverNavRoute(
   from: GeoLocation,
   to: GeoLocation,
+  opts?: { timeoutMs?: number },
 ): Promise<DriverNavRouteResult> {
   if (!API_BASE) {
     throw new Error("api_base_missing");
   }
-  const res = await fetch(`${API_BASE}/fleet-driver/v1/nav-route`, {
-    method: "POST",
-    headers: await fleetAuthHeaders(),
-    body: JSON.stringify({
-      fromLat: from.lat,
-      fromLon: from.lon,
-      toLat: to.lat,
-      toLon: to.lon,
-      fromName: from.displayName,
-      toName: to.displayName,
-    }),
+  const timeoutMs = opts?.timeoutMs ?? DRIVER_NAV_ROUTE_CLIENT_TIMEOUT_MS;
+  const headers = await fleetAuthHeaders();
+  const { res, parsed } = await withNavRouteTimeout(timeoutMs, async (signal) => {
+    const r = await fetch(`${API_BASE}/fleet-driver/v1/nav-route`, {
+      method: "POST",
+      headers,
+      signal,
+      body: JSON.stringify({
+        fromLat: from.lat,
+        fromLon: from.lon,
+        toLat: to.lat,
+        toLon: to.lon,
+        fromName: from.displayName,
+        toName: to.displayName,
+      }),
+    });
+    const j: unknown = await r.json().catch(() => null);
+    return { res: r, parsed: j };
   });
-  const body = (await res.json().catch(() => null)) as
+  const body = parsed as
     | {
         ok?: boolean;
         distanceKm?: number;
