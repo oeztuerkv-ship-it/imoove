@@ -2991,7 +2991,9 @@ export default function DriverNavigationScreen() {
         zoomEnabled
         zoomTapEnabled
         rotateEnabled
-        pitchEnabled={false}
+        // iOS/Apple Maps: pitchEnabled=false hält die Karte flach (Follow-Pitch 62° kommt nie an → Vogelperspektive).
+        // Follow setzt den Pitch pro Tick selbst; Android (Google) bleibt unverändert.
+        pitchEnabled={Platform.OS === "ios"}
         followsUserLocation={false}
         mapPadding={NAV_MAP_PADDING}
         onMapReady={handleMapReady}

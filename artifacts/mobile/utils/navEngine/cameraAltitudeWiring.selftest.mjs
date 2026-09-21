@@ -30,4 +30,8 @@ const pend = nav.match(/consumePendingCamera\(cameraEngineRef\.current[\s\S]*?\}
 assert(pend.length === 1 && /viewportHeightPt/.test(pend[0]), "consumePendingCamera bekommt echte View-Höhe");
 assert(/zoomLevelToAltitudeMeters\(zoom, lat, \{\s*viewportHeightPt: Dimensions\.get\("window"\)\.height,\s*pitchDeg: pitch,/.test(nav), "initialCamera nutzt Engine-Formel mit View-Höhe + Pitch");
 
+// Pitch: iOS-Karte darf nicht flach gesperrt sein (sonst kommt der Follow-Pitch nie an).
+assert(!/pitchEnabled=\{false\}/.test(nav), "navigation.tsx: pitchEnabled darf nicht fest false sein");
+assert(/pitchEnabled=\{Platform\.OS === "ios"\}/.test(nav), "navigation.tsx: pitchEnabled nur auf iOS aktiv (Android unverändert)");
+
 console.log("cameraAltitudeWiring.selftest: OK");
