@@ -6,10 +6,14 @@
 const { withAppDelegate } = require("expo/config-plugins");
 
 function resolveIosGoogleMapsApiKey(config) {
-  const fromIos = String(config.ios?.config?.googleMapsApiKey ?? "").trim();
-  if (fromIos) return fromIos;
-  const fromEnv = String(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").trim();
-  return fromEnv;
+  // Einzige Quelle der Wahrheit: app.config.js hat den tatsächlich zu verwendenden
+  // Key (normaler Maps-Key, oder GOOGLE_NAV_IOS_API_KEY wenn
+  // EXPO_PUBLIC_ENABLE_GOOGLE_NAV=1) bereits aufgelöst und in
+  // config.ios.config.googleMapsApiKey abgelegt, bevor dieses Plugin läuft.
+  // Hier bewusst NICHT unabhängig aus process.env neu ableiten — sonst könnte bei
+  // aktiviertem Google-Nav-Flag versehentlich wieder der falsche (nicht für
+  // Navigation freigegebene) Key für GMSServices.provideAPIKey verwendet werden.
+  return String(config.ios?.config?.googleMapsApiKey ?? "").trim();
 }
 
 function withGoogleMapsEarlyInit(config) {
