@@ -25,20 +25,39 @@ module.exports = ({ config }) => {
   // Navigation ggf. mit einem dafür nicht freigegebenen Key laufen (oder umgekehrt).
   // Diese Keys kommen bewusst NICHT über EXPO_PUBLIC_* (würde sie ins JS-Bundle
   // inlinen) — app.config.js läuft nur zur Build-Zeit in Node, nie im Client.
+  //
+  // WICHTIG: app.config.js wird ZWEIMAL ausgewertet — einmal LOKAL (eas-cli auf dem
+  // Entwickler-Rechner, u. a. für Fingerprint/Upload vor `eas build`), und erneut AUF
+  // DEM ECHTEN EAS-BUILDER (Cloud oder `eas build --local`), wo Prebuild/native Config
+  // tatsächlich generiert wird. EAS-Secrets (GOOGLE_NAV_IOS_API_KEY/GOOGLE_NAV_ANDROID_API_KEY)
+  // sind ABSICHTLICH nur auf dem Builder als echte Env-Vars verfügbar, nie lokal. `EAS_BUILD`
+  // ist die von EAS selbst gesetzte, dokumentierte Kennung für genau diesen Unterschied:
+  // "true" nur während einer echten EAS-Build-Auswertung, nie bei einer lokalen Config-Auswertung.
+  const isEasBuildWorker = (process.env.EAS_BUILD || "").trim() === "true";
+
   function resolveGoogleMapsApiKey(platform) {
     if (enableGoogleNav) {
       const envVarName = platform === "ios" ? "GOOGLE_NAV_IOS_API_KEY" : "GOOGLE_NAV_ANDROID_API_KEY";
       const key = (process.env[envVarName] || "").trim();
-      if (!key) {
-        // Abbruch mit klarer Meldung — der Key-WERT wird hier nie ausgegeben, nur der
-        // Name der fehlenden Variable.
+      if (key) return key;
+
+      if (isEasBuildWorker) {
+        // Auf dem echten Builder MUSS das Secret vorhanden sein — hartes, aber
+        // Key-wert-freies Abbrechen, damit nie unbemerkt ohne Nav-Key gebaut wird.
         throw new Error(
-          `[app.config.js] EXPO_PUBLIC_ENABLE_GOOGLE_NAV=1, aber ${envVarName} ist nicht gesetzt. ` +
-            "Bitte vor einem Build mit aktiviertem Google-Nav-Flag als EAS-Secret-Umgebungsvariable " +
-            "hinterlegen (z. B. `eas env:create`).",
+          `[app.config.js] EXPO_PUBLIC_ENABLE_GOOGLE_NAV=1, aber ${envVarName} ist auf dem EAS-Builder ` +
+            "nicht gesetzt. Bitte als EAS-Secret-Umgebungsvariable anlegen und dem Build-Profil " +
+            "zuordnen (z. B. `eas env:create` + `eas env:list`), bevor dieser Build erneut läuft.",
         );
       }
-      return key;
+
+      // Lokale Config-Auswertung (z. B. `eas build` auf dem Entwickler-Rechner, bevor der
+      // Job an den Builder geht): EAS-Secrets sind hier erwartungsgemäß nicht verfügbar.
+      // NICHT abbrechen und NICHT auf EXPO_PUBLIC_GOOGLE_MAPS_API_KEY zurückfallen (das wäre
+      // der falsche, nicht für Navigation freigegebene Key) — einfach ohne Key weiterlaufen.
+      // Der eigentliche Build wertet app.config.js auf dem Builder erneut aus, dann MIT
+      // Secret, und validiert dort hart (siehe oben).
+      return "";
     }
     // Bestehendes Verhalten, unveraendert, wenn Google Nav nicht aktiviert ist.
     if (platform === "ios") {
