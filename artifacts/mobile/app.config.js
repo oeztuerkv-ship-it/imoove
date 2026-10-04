@@ -6,6 +6,7 @@
 const withGoogleMapsEarlyInit = require("./plugins/withGoogleMapsEarlyInit");
 const withAndroidRideAlertPushSound = require("./plugins/withAndroidRideAlertPushSound");
 const withGoogleNavigationSdk = require("./plugins/withGoogleNavigationSdk");
+const withoutIosGoogleMapsPodForNav = require("./plugins/withoutIosGoogleMapsPodForNav");
 
 /** Maps-SDK (nicht Places): landet per EAS-Prebuild in AppDelegate + Info.plist GMSApiKey. */
 module.exports = ({ config }) => {
@@ -82,7 +83,10 @@ module.exports = ({ config }) => {
       withAndroidRideAlertPushSound,
       ...(config.plugins || []),
       withGoogleMapsEarlyInit,
-      ...(enableGoogleNav ? [withGoogleNavigationSdk] : []),
+      // Nur im Google-Nav-Testbuild: entfernt den von Expo automatisch generierten
+      // react-native-google-maps-Pod (GoogleMaps 8.4.0), der mit GoogleNavigation
+      // 10.13.0 kollidiert — iOS nutzt ohnehin ausschliesslich Apple Maps.
+      ...(enableGoogleNav ? [withGoogleNavigationSdk, withoutIosGoogleMapsPodForNav] : []),
       // Nur iOS-Deployment-Target anheben (z. B. fuer das Google Navigation SDK
       // benoetigt) — Android bleibt unangetastet.
       ["expo-build-properties", { ios: { deploymentTarget: "16.0" } }],
