@@ -83,6 +83,9 @@ module.exports = ({ config }) => {
       ...(config.plugins || []),
       withGoogleMapsEarlyInit,
       ...(enableGoogleNav ? [withGoogleNavigationSdk] : []),
+      // Nur iOS-Deployment-Target anheben (z. B. fuer das Google Navigation SDK
+      // benoetigt) — Android bleibt unangetastet.
+      ["expo-build-properties", { ios: { deploymentTarget: "16.0" } }],
     ],
     ios: {
       ...config.ios,
