@@ -6,7 +6,6 @@
 const withGoogleMapsEarlyInit = require("./plugins/withGoogleMapsEarlyInit");
 const withAndroidRideAlertPushSound = require("./plugins/withAndroidRideAlertPushSound");
 const withGoogleNavigationSdk = require("./plugins/withGoogleNavigationSdk");
-const withoutIosGoogleMapsPodForNav = require("./plugins/withoutIosGoogleMapsPodForNav");
 
 /** Maps-SDK (nicht Places): landet per EAS-Prebuild in AppDelegate + Info.plist GMSApiKey. */
 module.exports = ({ config }) => {
@@ -76,6 +75,16 @@ module.exports = ({ config }) => {
   const iosGoogleMapsApiKey = resolveGoogleMapsApiKey("ios");
   const androidGoogleMapsApiKey = resolveGoogleMapsApiKey("android");
 
+  // Google Navigation auf iOS darf NICHT ueber ios.config.googleMapsApiKey
+  // konfiguriert werden: Expo wuerde dadurch react-native-google-maps aktivieren.
+  // Der Nav-Key wird im Testbuild separat von withGoogleMapsEarlyInit verwendet.
+  const iosConfig = { ...(config.ios?.config || {}) };
+  if (enableGoogleNav) {
+    delete iosConfig.googleMapsApiKey;
+  } else if (iosGoogleMapsApiKey) {
+    iosConfig.googleMapsApiKey = iosGoogleMapsApiKey;
+  }
+
   return {
     ...config,
     plugins: [
@@ -83,20 +92,15 @@ module.exports = ({ config }) => {
       withAndroidRideAlertPushSound,
       ...(config.plugins || []),
       withGoogleMapsEarlyInit,
-      // Nur im Google-Nav-Testbuild: entfernt den von Expo automatisch generierten
-      // react-native-google-maps-Pod (GoogleMaps 8.4.0), der mit GoogleNavigation
-      // 10.13.0 kollidiert — iOS nutzt ohnehin ausschliesslich Apple Maps.
-      ...(enableGoogleNav ? [withGoogleNavigationSdk, withoutIosGoogleMapsPodForNav] : []),
+      // Google-Navigation-Native-Konfiguration nur im isolierten Nav-Testbuild.
+      ...(enableGoogleNav ? [withGoogleNavigationSdk] : []),
       // Nur iOS-Deployment-Target anheben (z. B. fuer das Google Navigation SDK
       // benoetigt) — Android bleibt unangetastet.
       ["expo-build-properties", { ios: { deploymentTarget: "16.0" } }],
     ],
     ios: {
       ...config.ios,
-      config: {
-        ...(config.ios?.config || {}),
-        ...(iosGoogleMapsApiKey ? { googleMapsApiKey: iosGoogleMapsApiKey } : {}),
-      },
+      config: iosConfig,
     },
     android: {
       ...config.android,
