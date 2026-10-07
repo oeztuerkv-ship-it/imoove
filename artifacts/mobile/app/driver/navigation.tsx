@@ -188,8 +188,26 @@ import {
   fetchFleetDriverRideEarnings,
   type DriverRideEarnings,
 } from "@/utils/fleetDriverRideEarnings";
+// Nur Typ-Import (von TS/Babel vollstaendig entfernt, erzeugt NIE ein Laufzeit-`require`).
+// Das eigentliche Modul wird weiter unten ausschliesslich hinter dem GOOGLE_NAV_ENABLED-Flag
+// per `require()` geladen — siehe components/driver/GoogleNavDriveView.tsx (Kopfkommentar).
+import type {
+  GoogleNavDriveViewProps,
+  GoogleNavFix,
+  GoogleNavRemaining,
+} from "@/components/driver/GoogleNavDriveView";
 
 const API_BASE = getApiBaseUrl();
+/**
+ * EXPERIMENTELL: Google Navigation SDK uebernimmt bei aktivem Flag Kamera/Heading/Route/
+ * Rerouting/Turn-by-Turn fuer eine echte Fahrt (siehe components/driver/GoogleNavDriveView).
+ * Ohne dieses Flag ist der Codepfad vollstaendig inaktiv: der SDK-Wrapper wird NUR per
+ * `require()` hinter diesem Flag geladen (nie per statischem `import`), damit ein normaler
+ * Build (Flag aus) das native Google-Nav-Modul nie anfasst.
+ */
+const GOOGLE_NAV_ENABLED =
+  Platform.OS !== "web" &&
+  (process.env.EXPO_PUBLIC_ENABLE_GOOGLE_NAV || "").trim() === "1";
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const START_SLIDER_HANDLE = 52;
 const PICKUP_AUX_ICON_RED = "#FF3B30";
@@ -633,6 +651,99 @@ export default function DriverNavigationScreen() {
   driverLonRef.current = driverLon;
   navTargetRef.current = navigationTarget;
   isPickupPhaseRef.current = isPickupPhase;
+
+  // ---------------------------------------------------------------------------------
+  // Google Navigation SDK (experimentell, hinter GOOGLE_NAV_ENABLED) — ersetzt NUR
+  // Kamera/Heading/Route/Rerouting/Turn-by-Turn. Ride-Geschaeftslogik (Status, Fahrpreis,
+  // Chat, PIN) bleibt unberuehrt. Faellt auf die alte react-native-maps-/navEngine-Pipeline
+  // zurueck, wenn das SDK nicht laden oder keine Session starten kann (googleNavFailed).
+  // ---------------------------------------------------------------------------------
+  const [googleNavFailed, setGoogleNavFailed] = useState(false);
+  const googleNavMountedRef = useRef(true);
+
+  const GoogleNavDriveViewComp = useMemo(() => {
+    if (!GOOGLE_NAV_ENABLED) return null;
+    try {
+      // Bewusst `require()` statt `import`: wird NUR ausgefuehrt, wenn das Flag aktiv ist.
+      // Normale Builds (Flag aus) erreichen diese Zeile nie und laden damit nie das SDK.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require("@/components/driver/GoogleNavDriveView") as {
+        GoogleNavDriveView: React.ComponentType<GoogleNavDriveViewProps>;
+      };
+      return mod.GoogleNavDriveView;
+    } catch (e) {
+      console.error("[GoogleNav] Laden des SDK-Wrappers fehlgeschlagen", e);
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const googleNavActive = Boolean(GoogleNavDriveViewComp) && !googleNavFailed;
+
+  /** Letzte Restdistanz/-zeit vom SDK — wird zusammen mit dem naechsten Fix an Socket/Backend gemeldet. */
+  const googleNavRemainingRef = useRef<{ distM: number; etaMin: number } | null>(null);
+
+  const handleGoogleNavFix = useCallback(
+    (fix: GoogleNavFix) => {
+      if (!navMountedRef.current || !googleNavMountedRef.current) return;
+      setDriverLat(fix.lat);
+      setDriverLon(fix.lon);
+      const rideId = params.rideId?.trim();
+      const remaining = googleNavRemainingRef.current;
+      if (!isPrivateMemoRef.current) {
+        socketSendDriver(fix.lat, fix.lon, {
+          ...(remaining ? { etaMinutes: Math.max(0, Math.round(remaining.etaMin)) } : {}),
+          ...(remaining ? { remainingDistM: Math.max(0, Math.round(remaining.distM)) } : {}),
+          navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
+        });
+      }
+      if (rideId && !isPrivateMemoRef.current) {
+        void (async () => {
+          try {
+            const accepted = acceptDriverGpsFix(fix.lat, fix.lon);
+            if (!accepted) return;
+            const headers = await fleetAuthHeadersJson();
+            if (!googleNavMountedRef.current) return;
+            await fetch(`${API_BASE}/rides/${rideId}/driver-location`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                lat: accepted.lat,
+                lon: accepted.lon,
+                ...(remaining ? { etaMinutes: Math.max(0, Math.round(remaining.etaMin)) } : {}),
+                ...(remaining ? { remainingDistM: Math.max(0, Math.round(remaining.distM)) } : {}),
+                navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
+              }),
+            });
+          } catch {
+            /* ignore */
+          }
+        })();
+      }
+    },
+    [params.rideId],
+  );
+
+  const handleGoogleNavRemaining = useCallback((remaining: GoogleNavRemaining) => {
+    googleNavRemainingRef.current = remaining;
+    if (!navMountedRef.current) return;
+    setRemainingDistM(Math.max(0, Math.round(remaining.distM)));
+    setRemainingMin(Math.max(0, remaining.etaMin));
+    setGuidanceStale(false);
+    setNavRouteLoadState("ready");
+  }, []);
+
+  const handleGoogleNavSessionError = useCallback((reason: string) => {
+    console.error("[GoogleNav] Session-Fehler, Fallback auf Alt-Navigation:", reason);
+    setGoogleNavFailed(true);
+  }, []);
+
+  useEffect(() => {
+    googleNavMountedRef.current = true;
+    return () => {
+      googleNavMountedRef.current = false;
+    };
+  }, []);
 
   // pickup-phase sequential state
   const [hasArrived, setHasArrived] = useState(params.arrived === "1");
@@ -1348,8 +1459,11 @@ export default function DriverNavigationScreen() {
   requestNavRouteFromRef.current = requestNavRouteFrom;
 
   // Load route once per ride/phase; bei Fehler Auto-Retry (kein Luftlinien-Fallback).
+  // Bei aktivem Google Nav berechnet das SDK seine Route selbst (setDestination) —
+  // dieser OSRM-Pfad bleibt dann inaktiv, damit nicht zwei Routing-Systeme konkurrieren.
   useEffect(() => {
     if (Platform.OS === "web") return;
+    if (googleNavActive) return;
 
     const tLat = navigationTarget.lat;
     const tLon = navigationTarget.lon;
@@ -1409,6 +1523,7 @@ export default function DriverNavigationScreen() {
     navigationTarget.lat,
     navigationTarget.lon,
     requestNavRouteFrom,
+    googleNavActive,
   ]);
 
   // Speak on step change — skip "Fahrt beginnen" (depart) instructions
@@ -2408,8 +2523,12 @@ export default function DriverNavigationScreen() {
   };
 
   // GPS — LocationEngine (Boot+Watch); Tick/Side-Effects hier. Deps nur rideId (Callbacks via Refs).
+  // Bei aktivem Google Nav liefert das SDK selbst Position/Route (siehe GoogleNavDriveView-
+  // Callbacks weiter oben) — diese alte GPS-/navEngine-Pipeline bleibt dann komplett inaktiv,
+  // damit nie zwei Systeme gleichzeitig um Kamera/Heading/Route/Rerouting konkurrieren.
   useEffect(() => {
     if (Platform.OS === "web") return;
+    if (googleNavActive) return;
     let sessionStop: (() => void) | null = null;
     const rideId = params.rideId;
 
@@ -2690,7 +2809,7 @@ export default function DriverNavigationScreen() {
       stopDriverNavLocationSession();
       navDiagGpsEffect("unmount", { rideId: params.rideId ?? null });
     };
-  }, [params.rideId]);
+  }, [params.rideId, googleNavActive]);
   const handleMapReady = useCallback(() => {
     mapReady.current = true;
     logMapsRuntimeDiagnosticsOnce("DriverNavigation.onMapReady");
@@ -2979,69 +3098,88 @@ export default function DriverNavigationScreen() {
   return (
     <View style={styles.container}>
       {/* Map */}
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFillObject}
-        {...nativeMapViewProps({ androidCustomMapStyle: NIGHT_MAP_STYLE })}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-        scrollEnabled
-        zoomEnabled
-        zoomTapEnabled
-        rotateEnabled
-        // iOS/Apple Maps: pitchEnabled=false hält die Karte flach (Follow-Pitch 62° kommt nie an → Vogelperspektive).
-        // Follow setzt den Pitch pro Tick selbst; Android (Google) bleibt unverändert.
-        pitchEnabled={Platform.OS === "ios"}
-        followsUserLocation={false}
-        mapPadding={NAV_MAP_PADDING}
-        onMapReady={handleMapReady}
-        onPanDrag={handleMapUserInteraction}
-        onRegionChange={handleRegionChange}
-        onRegionChangeComplete={handleRegionChangeComplete}
-        initialCamera={initialNavCamera}
-      >
-        {isValidMapCoord(driverLat, driverLon) ? (
-          <Marker
-            coordinate={{ latitude: driverLat, longitude: driverLon }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-            // Nicht flat: Icon bleibt bildschirm-aufrecht → bei Heading-Up-Kamera = Fahrtrichtung
-            // (flat ohne rotation würde nach Karten-Norden zeigen und mitdrehen).
-            flat={false}
-          >
-            <View style={styles.navPuckWrap}>
-              <View style={styles.navPuck}>
-                <MaterialCommunityIcons name="navigation" size={20} color="#FFFFFF" />
+      {googleNavActive && GoogleNavDriveViewComp ? (
+        <GoogleNavDriveViewComp
+          destination={{
+            lat: navigationTarget.lat,
+            lon: navigationTarget.lon,
+            label: isPickupPhase ? pickupName : destName,
+          }}
+          onFix={handleGoogleNavFix}
+          onRemainingChanged={handleGoogleNavRemaining}
+          onSessionError={handleGoogleNavSessionError}
+          onMapReady={handleMapReady}
+        />
+      ) : (
+        <MapView
+          ref={mapRef}
+          style={StyleSheet.absoluteFillObject}
+          {...nativeMapViewProps({ androidCustomMapStyle: NIGHT_MAP_STYLE })}
+          showsUserLocation={false}
+          showsMyLocationButton={false}
+          showsCompass={false}
+          toolbarEnabled={false}
+          scrollEnabled
+          zoomEnabled
+          zoomTapEnabled
+          rotateEnabled
+          // iOS/Apple Maps: pitchEnabled=false hält die Karte flach (Follow-Pitch 62° kommt nie an → Vogelperspektive).
+          // Follow setzt den Pitch pro Tick selbst; Android (Google) bleibt unverändert.
+          pitchEnabled={Platform.OS === "ios"}
+          followsUserLocation={false}
+          mapPadding={NAV_MAP_PADDING}
+          onMapReady={handleMapReady}
+          onPanDrag={handleMapUserInteraction}
+          onRegionChange={handleRegionChange}
+          onRegionChangeComplete={handleRegionChangeComplete}
+          initialCamera={initialNavCamera}
+        >
+          {isValidMapCoord(driverLat, driverLon) ? (
+            <Marker
+              coordinate={{ latitude: driverLat, longitude: driverLon }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+              // Nicht flat: Icon bleibt bildschirm-aufrecht → bei Heading-Up-Kamera = Fahrtrichtung
+              // (flat ohne rotation würde nach Karten-Norden zeigen und mitdrehen).
+              flat={false}
+            >
+              <View style={styles.navPuckWrap}>
+                <View style={styles.navPuck}>
+                  <MaterialCommunityIcons name="navigation" size={20} color="#FFFFFF" />
+                </View>
               </View>
-            </View>
-          </Marker>
-        ) : null}
-        {isValidMapCoord(navigationTarget.lat, navigationTarget.lon) ? (
-          <Marker
-            coordinate={{ latitude: navigationTarget.lat, longitude: navigationTarget.lon }}
-            pinColor={isPickupPhase ? "#22C55E" : "#DC2626"}
-            title={isPickupPhase ? pickupName : destName}
-          />
-        ) : null}
-        {traveledRouteCoords.length > 1 ? (
-          <Polyline
-            coordinates={traveledRouteCoords}
-            strokeColor="#4285F4"
-            strokeWidth={6}
-            lineCap="round"
-            lineJoin="round"
-          />
-        ) : null}
-        {remainingRouteCoords.length > 1 ? (
-          <NavRouteGlowPolyline coordinates={remainingRouteCoords} />
-        ) : polyline.length > 1 ? (
-          <NavRouteGlowPolyline coordinates={polyline} />
-        ) : null}
-      </MapView>
+            </Marker>
+          ) : null}
+          {isValidMapCoord(navigationTarget.lat, navigationTarget.lon) ? (
+            <Marker
+              coordinate={{ latitude: navigationTarget.lat, longitude: navigationTarget.lon }}
+              pinColor={isPickupPhase ? "#22C55E" : "#DC2626"}
+              title={isPickupPhase ? pickupName : destName}
+            />
+          ) : null}
+          {traveledRouteCoords.length > 1 ? (
+            <Polyline
+              coordinates={traveledRouteCoords}
+              strokeColor="#4285F4"
+              strokeWidth={6}
+              lineCap="round"
+              lineJoin="round"
+            />
+          ) : null}
+          {remainingRouteCoords.length > 1 ? (
+            <NavRouteGlowPolyline coordinates={remainingRouteCoords} />
+          ) : polyline.length > 1 ? (
+            <NavRouteGlowPolyline coordinates={polyline} />
+          ) : null}
+        </MapView>
+      )}
 
-      {/* Top instruction card — Google Maps green (auch Privatauftrag: volle Abbiege-Hinweise) */}
+      {/* Top instruction card — Google Maps green (auch Privatauftrag: volle Abbiege-Hinweise).
+          Bei aktivem Google Nav liefert die NavigationView ihren eigenen Header/Footer mit
+          Abbiege-/ETA-Infos (das SDK liefert in dieser Version keine typisierten Manöver-/
+          Strassennamen-Felder an JS — ManeuverEngine kann dafuer nicht genutzt werden, ohne
+          Felder zu erfinden), daher bleibt ONRODAs eigene Karte hier ausgeblendet. */}
+      {!googleNavActive ? (
       <View
         pointerEvents="box-none"
         style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}
@@ -3138,22 +3276,30 @@ export default function DriverNavigationScreen() {
           </Pressable>
         ) : null}
       </View>
+      ) : null}
 
       {/* Floating button column — Karte/Navi über dem unteren Panel */}
       <View style={{ position: "absolute", right: 12, bottom: floatingControlsBottom, gap: 10 }}>
-        <Pressable
-          style={styles.compassBtn}
-          accessibilityLabel="Navigation folgen"
-          onPress={() => handleRecenterNav()}
-        >
-          <Feather name="navigation" size={18} color="#1B6B3A" />
-        </Pressable>
-        <Pressable
-          style={styles.compassBtn}
-          onPress={() => fitRoute(polyline)}
-        >
-          <Feather name="maximize-2" size={18} color="#1B6B3A" />
-        </Pressable>
+        {/* Bei aktivem Google Nav übernimmt die NavigationView ihren eigenen Recenter-Button
+            (recenterButtonEnabled) — die alten, auf mapRef/navEngine-Polyline angewiesenen
+            Buttons wären dort funktionslos und bleiben deshalb ausgeblendet. */}
+        {!googleNavActive ? (
+          <>
+            <Pressable
+              style={styles.compassBtn}
+              accessibilityLabel="Navigation folgen"
+              onPress={() => handleRecenterNav()}
+            >
+              <Feather name="navigation" size={18} color="#1B6B3A" />
+            </Pressable>
+            <Pressable
+              style={styles.compassBtn}
+              onPress={() => fitRoute(polyline)}
+            >
+              <Feather name="maximize-2" size={18} color="#1B6B3A" />
+            </Pressable>
+          </>
+        ) : null}
         <Pressable
           style={[styles.compassBtn, !soundEnabled && { backgroundColor: "#3A1010", borderColor: "#DC2626", borderWidth: 1 }]}
           onPress={() => {
