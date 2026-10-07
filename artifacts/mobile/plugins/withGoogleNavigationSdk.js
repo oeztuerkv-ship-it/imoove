@@ -51,13 +51,30 @@ function withAndroidGoogleNavGradleProperties(config) {
 function withAndroidGoogleNavDesugaring(config) {
   return withAppBuildGradle(config, (modConfig) => {
     let contents = modConfig.modResults.contents;
-    if (contents.includes("coreLibraryDesugaringEnabled")) {
-      return modConfig;
+    if (!contents.includes("coreLibraryDesugaringEnabled")) {
+      if (/compileOptions\s*\{/.test(contents)) {
+        // Vorhandener compileOptions-Block (aeltere Expo-Prebuild-Vorlagen) — Flag dort einfuegen.
+        contents = contents.replace(
+          /compileOptions\s*\{/,
+          `compileOptions {\n        coreLibraryDesugaringEnabled true`,
+        );
+      } else if (/^android\s*\{/m.test(contents)) {
+        // Aktuelle Expo-Prebuild-Vorlage (SDK 54) hat keinen compileOptions-Block in
+        // app/build.gradle mehr — ohne diesen Zweig wuerde nur die Dependency unten
+        // hinzugefuegt, OHNE dass Desugaring tatsaechlich aktiviert ist (stiller Bug,
+        // beim echten Android-Build mit dem Nav-SDK gefunden). Block direkt nach der
+        // `android {`-Oeffnung neu anlegen.
+        contents = contents.replace(
+          /^android\s*\{/m,
+          `android {\n    compileOptions {\n        coreLibraryDesugaringEnabled true\n    }`,
+        );
+      } else {
+        throw new Error(
+          "[withGoogleNavigationSdk] android/app/build.gradle: weder 'compileOptions {' noch " +
+            "'android {' gefunden — Core-Library-Desugaring konnte nicht aktiviert werden.",
+        );
+      }
     }
-    contents = contents.replace(
-      /compileOptions\s*\{/,
-      `compileOptions {\n        coreLibraryDesugaringEnabled true`,
-    );
     if (!contents.includes(DESUGAR_DEP)) {
       contents = contents.replace(
         /dependencies\s*\{/,
