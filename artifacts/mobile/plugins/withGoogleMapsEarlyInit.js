@@ -33,6 +33,33 @@ function withGoogleMapsEarlyInit(config) {
       "\n",
     );
 
+    // `GMSServices` ist nur sichtbar, wenn irgendwo im File `import GoogleMaps` steht.
+    // Im normalen ONRODA-Build steht das bereits im separaten, von Expos eigenem
+    // react-native-maps-Plugin erzeugten `react-native-maps-import`-Block (ueber
+    // ios.config.googleMapsApiKey). Im Google-Nav-Build laeuft jenes Plugin absichtlich
+    // NICHT (sonst waere wieder der alte Pod-Konflikt aus e4ebef8e da) — ohne diesen
+    // eigenen Import-Block bleibt `GMSServices.provideAPIKey(...)` unten dann ein
+    // Swift-Fehler "cannot find 'GMSServices' in scope" (gefunden im echten EAS-Dev-Build
+    // von Commit 680073a2). Eigener, idempotenter Import-Block als Fix:
+    if (!contents.includes("import GoogleMaps") && !contents.includes("onroda-google-maps-import")) {
+      const importBlock = [
+        "// @generated begin onroda-google-maps-import",
+        "#if canImport(GoogleMaps)",
+        "import GoogleMaps",
+        "#endif",
+        "// @generated end onroda-google-maps-import",
+        "",
+      ].join("\n");
+      const classNeedle = "@UIApplicationMain";
+      if (!contents.includes(classNeedle)) {
+        throw new Error(
+          "[withGoogleMapsEarlyInit] AppDelegate: '@UIApplicationMain' nicht gefunden — " +
+            "Import-Block fuer GoogleMaps konnte nicht eingefuegt werden.",
+        );
+      }
+      contents = contents.replace(classNeedle, `${importBlock}\n${classNeedle}`);
+    }
+
     const earlyBlock = [
       "// @generated begin onroda-google-maps-early-init",
       "#if canImport(GoogleMaps)",
