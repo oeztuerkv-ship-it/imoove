@@ -1,0 +1,43 @@
+---
+description: Vedats priorisierte Prüfliste für den vollständigen Fahrtablauf — einzeln prüfen, Ursachen belegen, keine Sammelfixes
+globs: artifacts/mobile/app/status.tsx,artifacts/mobile/app/driver/**/*.tsx,artifacts/mobile/components/driver/DriverPassengerPinModal.tsx,artifacts/mobile/utils/navEngine/**/*.ts,artifacts/api-server/src/routes/rides.ts,artifacts/api-server/src/routes/fleetDriverApi.ts,artifacts/api-server/src/lib/noShowPolicy.ts
+alwaysApply: false
+---
+
+# Fahrtablauf: verbindliche To-dos aus Vedats Gerätetest (30.10.2026)
+
+Arbeitsauftrag: Hinweise prüfen und merken; EIN Thema nach dem anderen. Aktuell keine Logikänderung, kein OTA/Deploy. Pro Ticket: Ist/Soll, reproduzierbarer Fall, Code + echte Logs/Daten, kleinster Fix, Abnahme Kunde/Fahrer. Nicht alle Symptome derselben Ursache zuschreiben.
+Versionsbasis: Original-App Runtime 1.0.3, `release/original-runtime-1.0.3`; native Navigationserweiterungen auf `main` sind ein anderer Stand. Bei jedem Test App-Build, OTA-ID, API-Revision, Fahrt-ID und Phase festhalten; keine Zugangsdaten/PINs veröffentlichen.
+
+## 1. Annahme → Anfahrt → echte Ankunft / Wartezeit (zuerst)
+- [ ] **Bestätigter Ist-Code:** `rides.ts` setzt `noShowCountdownStartedAt` bei Annahme; `/driver-no-show/start` akzeptiert accepted/driver_arriving/driver_waiting. `noShowPolicy.ts` rechnet ab Annahme.
+- [ ] `navigation.tsx` zeigt den Timer schon vor Ankunft als „Wartezeit Kunde“. Soll laut Vedat: Anfahrt ist keine Kundenwartezeit; Ankunft muss serverseitig bestätigt sein.
+- [ ] Aktuelle öffentliche Konfiguration: insgesamt 10 Min. ab Annahme. Isoliertes Beispiel: 15 Min. Anfahrt → Frist vor Ankunft abgelaufen; UI ruft bei `hasArrived` automatisch finalize auf. Risiko eines sofortigen No-Show bei Ankunft, tatsächliche Fehlgebühr noch nicht nachgewiesen.
+- [ ] **Unterscheiden:** abrechenbare Wartezeit verwendet separat `driverWaitingStartedAt` ab driver_waiting. No-Show, Anfahrts-ETA und Gebühren nicht vermischen.
+- [ ] Abnahme: 2/10/20 km Anfahrt; mehr als 10 Min.; außerhalb/innerhalb 300 m; GPS-/Netzfehler; verspätetes PATCH; Doppel-Ankunft; App-Neustart. Keine No-Show-Folge allein durch Anfahrtsdauer.
+
+## 2. Beide Standorte / Kunde verfolgt Fahrer
+- [ ] **Bestätigte Lücke:** Dashboard `ActiveRideScreen` empfängt `location:customer:update` + HTTP-Fallback; eigentliche Fahrer-Navigation hat keinen Live-Kundenmarker, sondern festen `navigationTarget`/Abholpunkt. Vedat meldet fehlenden Kundenstandort.
+- [ ] Festen gebuchten Abholpunkt und freigegebenen Live-Kundenstandort klar unterscheiden. Ohne Kunden-GPS weiterhin Abholpunkt zeigen; Route nicht stillschweigend auf einen beweglichen Kunden verschieben.
+- [ ] Kunde: „Fahrer angenommen/unterwegs“, aktueller Marker, Straßenentfernung und ETA müssen dieselbe Fahrt/Phase abbilden. WS + HTTP-Fallback, Berechtigungen, Hintergrund, Netzwechsel und Fahrgast-/Fahrerwechsel prüfen.
+- [ ] **Codebefund:** `status.tsx` übernimmt Marker/ETA/Restmeter ohne Standort-Zeitstempel; GET driver-location liefert letzten Stand inkl. updatedAt ohne Altersgrenze. Risiko einer veralteten „Live“-Anzeige; tatsächliche Auswirkung am Gerät reproduzieren.
+
+## 3. Ankunft → Fahrgast-Code → Fahrtbeginn / Storno
+- [ ] **Isoliert reproduziert:** `handleAngekommen` setzt hasArrived vor PATCH; bei Fehler kein Rollback. Richtiger Code kann dann trotzdem am fehlenden serverseitigen driver_waiting scheitern.
+- [ ] **Isoliert reproduziert:** Netzwerkfehler im PIN-submit führt zu abgelehntem Promise ohne sichtbare Dialog-Fehlermeldung. Wiederholter Fahrtstart wird von Ops-Gate abgewiesen, obwohl Statusmaschine gleiche Zustände erlaubt.
+- [ ] Richtige Fahrt + zugewiesener Fahrer + richtiger Fahrgast; falscher/kurzer/already-verified Code; parallele Fahrten desselben Fahrgasts; Doppeltippen/Slide; Server lehnt Start ab; kein falsches Erfolgsbild.
+- [ ] Storno vor/nach Code und Fahrtstart beidseitig prüfen. Aktuelle Produktregel: bei PIN-Fahrt sperrt bereits bestätigter Code den Kunden-Storno; das ist nicht automatisch ein Implementierungsfehler. Re-Dispatch muss wieder stornierbar sein.
+
+## 4. Navigation gesondert: Fahrerperspektive und Stabilität
+- [ ] **Gerätemeldung, Root-Cause offen:** Stadt-/„Mondsicht“ statt brauchbarer Nah-Navigation. Echte GPS-Replays, Kamera FOLLOW/OVERVIEW/FREE, Höhe/Zoom/Pitch, Pfeil/Heading, Standort, Recenter, Phase und Kartenbereitschaft prüfen.
+- [ ] Start kalt/warm, Anfahrt → Ziel ohne Zwischenstopps/unnötige Screens, schlechte Genauigkeit, Tunnel, Stand/Fahrt, falsches Abbiegen, Reroute, Resume, Rotation, längere Fahrt, Speicher/Absturz und native Fehlermeldungen auf echten Geräten testen.
+- [ ] Bestehende Camera-/Location-/Route-Owner respektieren, keine Schwellenwerte auf Verdacht ändern und keine native SDK-Umstellung als Nebenfix. Zuständigkeit siehe Fahrer-Navi-Regeln.
+
+## 5. Ziel → Abschluss → Preis / Schutzmechanismen
+- [ ] Kunde/Fahrer zeigen denselben Abschluss. Schätzung, Taxameter-Endpreis, Festpreis, Wartegeld und No-Show-Gebühr eindeutig trennen; Cash/Karte/Rechnung/Code-/KK-Fahrt getrennt testen.
+- [ ] Schutz ist im Code vorhanden, noch keine vollständige Abnahme: Rollen-/Fahrtzuordnung, Code-Gate, Geofence, Mindestbeförderung/GPS, Tarif-Korridor, Abschluss ohne Start, doppelte Abschlüsse/Zahlungen, fehlende GPS-Daten, Beleg und Audit.
+- [ ] Ausweichen/Bypass und Backend-Ablehnungen testen, keine Zusage „sicher“ nur anhand sichtbarer Buttons. Keine echten Gebühren/Zahlungen als unkontrollierter Test erzeugen.
+
+## 6. Durchgängige Abnahme
+- [ ] Zwei echte Rollen/Geräte: Anfrage → Annahme → Anfahrt → Ankunft → Code → Ziel → Ende/Beleg; parallel Status, Standort, ETA und erlaubte Aktionen vergleichen. App-Kill/Offline/Storno in jeder Phase ergänzen.
+- [ ] Vorbefund: 17 isolierte Codefälle geprüft; kein Ersatz für Geräte-End-to-End. In zuletzt 40 passenden Ereignissen des Fahreraccounts keine zugehörigen Ankunfts-/Geofence-Fehler belegt; keine Ursache der konkreten Fahrt behaupten.
