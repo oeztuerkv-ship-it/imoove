@@ -5378,10 +5378,7 @@ export default function DriverDashboard() {
               ? { lat: liveOfferReq.fromLat, lon: liveOfferReq.fromLon }
               : null}
           />
-          <View style={[styles.liveOfferFocusBrand, { top: Math.max(insets.top, 12) + 8 }]} pointerEvents="none">
-            <Text style={styles.liveOfferFocusBrandText}>ON<Text style={{ color: "#DC2626" }}>RODA</Text></Text>
-            <View style={styles.liveOfferFocusOnline}><View style={styles.liveOfferFocusOnlineDot} /><Text style={styles.liveOfferFocusOnlineText}>Online</Text></View>
-          </View>
+
           {liveOfferReq ? (
             <InstantCard
               key={`${liveOfferReq.id}-c${getInstantOfferCycle(liveOfferReq.id)}`}
@@ -5901,11 +5898,6 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   liveOfferFocusRoot: { flex: 1, backgroundColor: "#E5E7EB" },
-  liveOfferFocusBrand: { position: "absolute", alignSelf: "center", backgroundColor: "#FFFFFF", borderRadius: 18, paddingHorizontal: 24, paddingVertical: 10, alignItems: "center", gap: 4 },
-  liveOfferFocusBrandText: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#111827", letterSpacing: 0.5 },
-  liveOfferFocusOnline: { flexDirection: "row", alignItems: "center", gap: 6 },
-  liveOfferFocusOnlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#16A34A" },
-  liveOfferFocusOnlineText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#4B5563" },
   mapReqOverlay: {
     position: "absolute", bottom: 12, left: 12, right: 12,
   },
