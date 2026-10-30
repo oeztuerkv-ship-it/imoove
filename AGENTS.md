@@ -44,6 +44,7 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 - `.cursor/rules/imoove-mobile-service-area-pickup-only.mdc` — **Servicegebiet nur Abholung;** bundesweite Ziele; `maxRouteKm` ≠ Servicegebiet
 - `.cursor/rules/imoove-mobile-customer-oauth-session.mdc` — **Mobile Kunden-OAuth:** Session-Persistenz, Legal-Gate, Apple „200 aber Login-Screen“
 - `.cursor/rules/imoove-mobile-live-ride-flows.mdc` — **Mobile:** Live-Fahrt Kunde (`/status`) + Fahrer-Navi (Stack `dismissTo`, Session-Restore, Debug-Tabelle)
+- **Fahrtablauf-Prüfliste (Vedat, 30.10.2026):** `.cursor/rules/imoove-ride-flow-audit-backlog.mdc` — zuerst Wartezeit/No-Show, dann beide Live-Standorte, Code/Start/Storno, Navigation separat, Abschluss/Preis; Symptome und bestätigte Befunde unterscheiden, ein Ticket nach dem anderen.
 - `.cursor/rules/imoove-mobile-driver-avatar.mdc` — **Mobile:** Fahrer-Avatar Upload, Kunden-Consent, `photoUrl` / Initialen-Fallback
 - `.cursor/rules/imoove-mobile-customer-live-driver-map.mdc` — **Mobile Kunde:** Live-Fahrer-Marker Interpolation + Bearing-Rotation + soft Camera-Follow (`RealMapView`)
 - `.cursor/rules/imoove-mobile-intro-splash-lottie.mdc` — **Mobile Intro:** Splash Pin→Taxi→Kreis→Wordmark (`IntroSplash`, RN Animated)
