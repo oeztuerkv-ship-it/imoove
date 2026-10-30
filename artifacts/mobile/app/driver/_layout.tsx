@@ -52,7 +52,7 @@ export default function DriverLayout() {
         options={{
           gestureEnabled: false,
           fullScreenGestureEnabled: false,
-          animation: "fade",
+          animation: "none",
         }}
       />
     </Stack>
