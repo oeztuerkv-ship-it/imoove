@@ -3936,6 +3936,27 @@ export default function DriverDashboard() {
     ) ??
     (acceptedRequest && acceptedRequest.driverId === driverId ? acceptedRequest : null);
 
+  // Only server-hydrated, assigned pickup rides enter navigation. Do not wait
+  // for ActiveRideScreen's second GPS subscription: navigation owns its GPS boot.
+  const directPickupNavigation = Boolean(
+    activeDriverRequest && driverId.trim().length > 0 && activeDriverRequest.driverId === driverId &&
+    ["accepted", "ready_for_dispatch", "driver_arriving", "driver_waiting"].includes(activeDriverRequest.status) &&
+    activeDriverRequest.fromLat != null && Number.isFinite(activeDriverRequest.fromLat) &&
+    Math.abs(activeDriverRequest.fromLat) <= 90 &&
+    activeDriverRequest.fromLon != null && Number.isFinite(activeDriverRequest.fromLon) &&
+    Math.abs(activeDriverRequest.fromLon) <= 180,
+  );
+  const pickupHandoffRideRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (!directPickupNavigation || !activeDriverRequest) {
+      pickupHandoffRideRef.current = null;
+      return;
+    }
+    if (pickupHandoffRideRef.current === activeDriverRequest.id) return;
+    pickupHandoffRideRef.current = activeDriverRequest.id;
+    replaceDriverStackExclusive(buildDriverNavigationHref(activeDriverRequest, driverId, driverPos));
+  }, [directPickupNavigation, activeDriverRequest, driverId, driverPos]);
+
   const liveInstantOffers = useMemo(
     () => sortInstantMarketOffers(pendingRequests, driverPos),
     [pendingRequests, driverPos],
@@ -4843,7 +4864,11 @@ export default function DriverDashboard() {
         {adminMessage && !activeDriverRequest ? (
           <DriverAdminMessageBanner message={adminMessage} onDismiss={() => void dismissAdminMessage()} />
         ) : null}
-        {activeDriverRequest ? (
+        {directPickupNavigation ? (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Abholnavigation wird geöffnet">
+            <ActivityIndicator size="large" color="#0B5038" />
+          </View>
+        ) : activeDriverRequest ? (
           <ActiveRideScreen
             req={activeDriverRequest}
             onComplete={(fare) => handleComplete(activeDriverRequest.id, fare)}
