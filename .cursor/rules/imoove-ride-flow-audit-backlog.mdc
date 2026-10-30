@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Fahrtablauf: verbindliche To-dos aus Vedats Gerätetest (30.10.2026)
 
-Arbeitsauftrag: Hinweise prüfen und merken; EIN Thema nach dem anderen. Aktuell keine Logikänderung, kein OTA/Deploy. Pro Ticket: Ist/Soll, reproduzierbarer Fall, Code + echte Logs/Daten, kleinster Fix, Abnahme Kunde/Fahrer. Nicht alle Symptome derselben Ursache zuschreiben.
+Arbeitsauftrag: Hinweise prüfen und merken; EIN Thema nach dem anderen. Folgeauftrag: Übergang Annahme → Abholnavigation direkt öffnen; Navigation/GPS separat analysieren. Weitere Logik-Fixes einzeln nach Befund und Freigabe. Pro Ticket: Ist/Soll, reproduzierbarer Fall, Code + echte Logs/Daten, kleinster Fix, Abnahme Kunde/Fahrer. Nicht alle Symptome derselben Ursache zuschreiben.
 Versionsbasis: Original-App Runtime 1.0.3, `release/original-runtime-1.0.3`; native Navigationserweiterungen auf `main` sind ein anderer Stand. Bei jedem Test App-Build, OTA-ID, API-Revision, Fahrt-ID und Phase festhalten; keine Zugangsdaten/PINs veröffentlichen.
 
 ## 1. Annahme → Anfahrt → echte Ankunft / Wartezeit (zuerst)
@@ -43,3 +43,9 @@ Versionsbasis: Original-App Runtime 1.0.3, `release/original-runtime-1.0.3`; nat
 ## 6. Durchgängige Abnahme
 - [ ] Zwei echte Rollen/Geräte: Anfrage → Annahme → Anfahrt → Ankunft → Code → Ziel → Ende/Beleg; parallel Status, Standort, ETA und erlaubte Aktionen vergleichen. App-Kill/Offline/Storno in jeder Phase ergänzen.
 - [ ] Vorbefund: 17 isolierte Codefälle geprüft; kein Ersatz für Geräte-End-to-End. In zuletzt 40 passenden Ereignissen des Fahreraccounts keine zugehörigen Ankunfts-/Geofence-Fehler belegt; keine Ursache der konkreten Fahrt behaupten.
+
+## Folgeauftrag: Navi/GPS und direkter Einstieg (30.10.2026)
+- Dashboard: bestätigte, eigene Abholfahrt mit gültigem Abholpunkt direkt per bestehendem dismissTo öffnen; kein Warten auf zweiten GPS-Watch/keine kurz eingeblendete „Navigation starten“-Seite. Navi übernimmt eigenen GPS-Start; bei fehlenden Koordinaten bisheriger Fallback. Offline eingereihte Annahme allein darf keinen Einstieg auslösen.
+- GPS-Analyse: LocationEngine nutzt BestForNavigation, 2 m/1 s; Heading-State hält letzte verlässliche Richtung. Rohadapter verwirft jedoch accuracy/timestamp und stempelt Eingang mit Date.now: schlechte/alte Fixes lassen sich darüber nicht erkennen. Reale Auswirkung noch am Gerät belegen, keine Schwellenwerte auf Verdacht ändern.
+- Hintergrund-Ride-Task sendet nur lat/lon (Balanced, 5 s/10 m), prüft HTTP-Status nicht und besitzt keinen sichtbaren Upload-Erfolg. Kunden-ETA/Polyline stammen dagegen aus der internen Navi. Externe Navigation braucht unabhängiges Tracking, Frischeanzeige und ETA-Konzept.
+- Absturzursache offen: native Crash-Berichte und Gerät/Build/OTA/Phase nötig. Pure Selftests ersetzen keine Gerätefahrt. Externe Maps optional untersuchen, nicht stillschweigend aktivieren; PIN/Ankunft/Start/Ende bleiben in ONRODA.
