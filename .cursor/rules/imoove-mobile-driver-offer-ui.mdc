@@ -1,0 +1,21 @@
+---
+description: Fahrer-Sofortanfrage — Angebotskarte und Karte nur darstellen, Geschäftslogik unverändert lassen
+globs: artifacts/mobile/components/driver/DriverInstantOfferView.tsx,artifacts/mobile/app/driver/dashboard.tsx
+alwaysApply: false
+---
+
+# Fahrer-Sofortanfrage: Darstellung
+
+- `InstantCard` im Dashboard behält Countdown, Deadline, Einmal-Ausführung, Haptik und Handler.
+- `DriverInstantOfferView` stellt nur übergebene Werte und Aktionen dar. Header und Aktionsleiste bleiben außerhalb des scrollbaren Detailbereichs.
+- Sichtbarkeit von Route, Zahlungsart und Fahrtstrecke bleibt an `hasDriverPremiumRouteDetails` gebunden. Keine erfundenen Adressen oder Positionsdaten.
+- `DriverInstantOfferMap` zeichnet vorhandene Fahrer-/Abholkoordinaten mit dem bestehenden nativen Kartenprovider. Keine neuen Standort-Abos, Berechtigungsanfragen oder Routen-Requests.
+- Annahme, Ablehnung, Timeout/Soft-Miss, Freigeben, Folgeangebote, Ton, Polling und Dispatch nicht im Zuge optischer Änderungen anpassen.
+- Abnahme: kleine Displays, lange Adressen, vergrößerte Schrift, eingeschränkte Ansicht, fehlender Standort, Freigeben und Anschlussfahrt prüfen.
+
+## OTA: Original-App und native Navigation getrennt halten
+
+- Vor Veröffentlichung tatsächliche Channel-Zuordnung und Runtime über EAS lesen; Branchname ist nicht automatisch gleich Channelname.
+- Am 30.10.2026: Channel `production` zeigt auf `nav-diag-runtime`; Original-iOS-Build 1.0.3 (46) nutzt Runtime 1.0.3.
+- Neuere native Google-Navigation-Änderungen auf main dürfen nicht versehentlich in ein Optik-OTA für die Original-App gelangen. OTA liefert das ganze JS-Bundle.
+- Nicht allein auf die Runtime-Zeichenfolge vertrauen: native Abhängigkeiten und Quellstand des letzten kompatiblen Releases abgleichen.

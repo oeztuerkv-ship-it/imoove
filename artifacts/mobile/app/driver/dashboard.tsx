@@ -29,6 +29,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DriverInstantOfferMap, DriverInstantOfferView } from "@/components/driver/DriverInstantOfferView";
 import { DriverFareEntryLegalHints } from "@/components/DriverFareEntryLegalHints";
 import { DriverRideChatModal } from "@/components/driver/DriverRideChatModal";
 import { DriverPrebookGuidelinesModal } from "@/components/driver/DriverPrebookGuidelinesModal";
@@ -533,6 +534,10 @@ function InstantCard({
   showReleaseButton,
   onRelease,
   releaseBusy,
+  focused,
+  bottomInset,
+  followUpLabel,
+  moreOffersLabel,
 }: {
   req: RideRequest;
   onAccept: () => void;
@@ -543,6 +548,10 @@ function InstantCard({
   showReleaseButton?: boolean;
   onRelease?: () => void;
   releaseBusy?: boolean;
+  focused?: boolean;
+  bottomInset?: number;
+  followUpLabel?: string;
+  moreOffersLabel?: string;
 }) {
   const { t } = useTranslation();
   const reach = resolveInstantOfferReach(req, driverPos);
@@ -558,7 +567,6 @@ function InstantCard({
     [toAddress.place || req.to, toAddress.address].filter(Boolean).join(", ") || "Ziel";
 
   const [secondsLeft, setSecondsLeft] = useState(INSTANT_OFFER_COUNTDOWN_SEC);
-  const pulseAnim = useRef(new Animated.Value(0)).current;
   const offerHandledRef = useRef(false);
   /** Stabil: Parent übergibt oft neue Inline-Callbacks (GPS-Re-Renders) — nicht in Effect-Deps. */
   const onRejectRef = useRef(onReject);
@@ -585,30 +593,6 @@ function InstantCard({
     return () => clearInterval(timer);
   }, [req.id]);
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 950, useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 950, useNativeDriver: false }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulseAnim]);
-
-  const pulseBorderColor = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#86EFAC", "#22C55E"],
-  });
-  const pulseBorderWidth = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [2, 3],
-  });
-  const pulseShadowOpacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.06, 0.18],
-  });
-
   const handleReject = () => {
     if (offerHandledRef.current) return;
     offerHandledRef.current = true;
@@ -626,281 +610,31 @@ function InstantCard({
   };
 
   return (
-    <View style={{ marginHorizontal: 14, marginBottom: 14 }}>
-      <Animated.View
-        style={{
-          borderRadius: 20,
-          borderWidth: pulseBorderWidth,
-          borderColor: pulseBorderColor,
-          shadowColor: "#22C55E",
-          shadowOpacity: pulseShadowOpacity,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 8,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: "#FFFFFF",
-            borderRadius: 18,
-            overflow: "hidden",
-          }}
-        >
-          <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 }}>
-            {/* Anfahrt — kompakte Fußzeile wie Navi-Trip-Footer */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: "#F0FDF4",
-                borderRadius: 14,
-                paddingVertical: 12,
-                paddingHorizontal: 10,
-                marginBottom: 14,
-              }}
-            >
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <Text
-                  style={{
-                    fontSize: 22,
-                    fontFamily: "Inter_700Bold",
-                    color: "#111827",
-                    letterSpacing: Platform.OS === "ios" ? -0.4 : 0,
-                  }}
-                >
-                  {reach ? reach.minLabel : reachPendingLabel}
-                </Text>
-                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 2 }}>
-                  Anfahrt
-                </Text>
-              </View>
-              <View style={{ width: StyleSheet.hairlineWidth, height: 28, backgroundColor: "#BBF7D0" }} />
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#111827" }}>
-                  {reach ? reach.kmLabel : "—"}
-                </Text>
-                <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 2 }}>
-                  Entfernung
-                </Text>
-              </View>
-              {req.estimatedFare > 0 ? (
-                <>
-                  <View style={{ width: StyleSheet.hairlineWidth, height: 28, backgroundColor: "#BBF7D0" }} />
-                  <View style={{ flex: 1, alignItems: "center" }}>
-                    <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827" }}>
-                      {req.estimatedFare.toFixed(2).replace(".", ",")} €
-                    </Text>
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 2 }}>
-                      ca. Preis
-                    </Text>
-                  </View>
-                </>
-              ) : null}
-            </View>
-
-            {passengerLabel ? (
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontFamily: "Inter_600SemiBold",
-                  color: "#111827",
-                  marginBottom: premiumRoute ? 10 : 4,
-                }}
-                numberOfLines={1}
-              >
-                {passengerLabel}
-              </Text>
-            ) : null}
-
-            {premiumRoute ? (
-              <View style={{ flexDirection: "row", alignItems: "stretch", gap: 12 }}>
-                <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "stretch", gap: 10 }}>
-                  <View style={{ width: 14, alignItems: "center", paddingVertical: 4 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#22C55E" }} />
-                    <View
-                      style={{
-                        flex: 1,
-                        width: 2,
-                        minHeight: 16,
-                        backgroundColor: "#D1D5DB",
-                        marginVertical: 4,
-                      }}
-                    />
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#DC2626" }} />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0, justifyContent: "space-between", gap: 14, paddingVertical: 1 }}>
-                    <Text
-                      style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#111827", lineHeight: 20 }}
-                      numberOfLines={2}
-                    >
-                      {fromLine}
-                    </Text>
-                    <Text
-                      style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#111827", lineHeight: 20 }}
-                      numberOfLines={2}
-                    >
-                      {toLine}
-                    </Text>
-                  </View>
-                </View>
-                <View style={{ alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 5,
-                      backgroundColor: "#F3F4F6",
-                      borderRadius: 9,
-                      paddingHorizontal: 9,
-                      paddingVertical: 6,
-                      borderWidth: StyleSheet.hairlineWidth,
-                      borderColor: "#E5E7EB",
-                    }}
-                  >
-                    <MaterialCommunityIcons name={paymentUi.icon} size={15} color={paymentUi.iconColor} />
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontFamily: "Inter_600SemiBold",
-                        color: paymentUi.iconColor,
-                        letterSpacing: Platform.OS === "ios" ? -0.1 : 0,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {paymentUi.label}
-                    </Text>
-                  </View>
-                  {req.distanceKm > 0 ? (
-                    <View
-                      style={{
-                        minWidth: 64,
-                        backgroundColor: "#F3F4F6",
-                        borderRadius: 12,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#111827" }}>
-                        {req.distanceKm.toFixed(1)} km
-                      </Text>
-                      <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 2 }}>
-                        Fahrt
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            ) : (
-              <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 18 }}>
-                Route und Adressen werden nach Annahme sichtbar.
-              </Text>
-            )}
-          </View>
-
-          {showReleaseButton && onRelease ? (
-            <Pressable
-              onPress={onRelease}
-              disabled={releaseBusy}
-              style={({ pressed }) => [
-                {
-                  marginHorizontal: 16,
-                  marginBottom: 8,
-                  borderRadius: 14,
-                  borderWidth: 1.5,
-                  borderColor: "#BFDBFE",
-                  backgroundColor: "#EFF6FF",
-                  paddingVertical: 12,
-                  alignItems: "center",
-                  opacity: pressed || releaseBusy ? 0.75 : 1,
-                },
-              ]}
-            >
-              <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
-                {releaseBusy ? "Freigabe …" : "Freigeben"}
-              </Text>
-            </Pressable>
-          ) : null}
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "stretch",
-              paddingHorizontal: 16,
-              paddingTop: 4,
-              paddingBottom: 16,
-              gap: 10,
-            }}
-          >
-            <Pressable
-              onPress={handleReject}
-              style={({ pressed }) => [
-                {
-                  width: 52,
-                  borderRadius: 16,
-                  backgroundColor: "#DC2626",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.88 : 1,
-                },
-              ]}
-              accessibilityLabel={t("driver.offer.reject")}
-            >
-              <Feather name="x" size={22} color="#FFFFFF" />
-            </Pressable>
-
-            <Pressable
-              onPress={handleAccept}
-              style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.92 : 1 }]}
-            >
-              <View
-                style={{
-                  backgroundColor: "#22C55E",
-                  borderRadius: 16,
-                  paddingVertical: 16,
-                  paddingHorizontal: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  gap: 8,
-                  minHeight: 52,
-                }}
-              >
-                <Feather name="check" size={20} color="#FFFFFF" />
-                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" }}>
-                  {t("driver.offer.accept")}
-                </Text>
-              </View>
-            </Pressable>
-
-            <View
-              style={{
-                width: 52,
-                borderRadius: 16,
-                borderWidth: 1.5,
-                borderColor: "#111827",
-                backgroundColor: "#F9FAFB",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827" }}>{secondsLeft}</Text>
-              <Text
-                style={{
-                  marginTop: 2,
-                  fontSize: 9,
-                  fontFamily: "Inter_700Bold",
-                  color: "#9CA3AF",
-                  letterSpacing: 0.2,
-                }}
-              >
-                {t("driver.offer.seconds")}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-    </View>
+    <DriverInstantOfferView
+      secondsLeft={secondsLeft}
+      countdownSeconds={INSTANT_OFFER_COUNTDOWN_SEC}
+      reach={reach}
+      reachPendingLabel={reachPendingLabel}
+      passengerLabel={passengerLabel}
+      premiumRoute={premiumRoute}
+      fromLine={fromLine}
+      toLine={toLine}
+      distanceKm={req.distanceKm}
+      estimatedFare={req.estimatedFare}
+      paymentUi={paymentUi}
+      acceptLabel={t("driver.offer.accept")}
+      rejectLabel={t("driver.offer.reject")}
+      secondsLabel={t("driver.offer.seconds")}
+      onAccept={handleAccept}
+      onReject={handleReject}
+      showReleaseButton={showReleaseButton}
+      onRelease={onRelease}
+      releaseBusy={releaseBusy}
+      focused={focused}
+      bottomInset={bottomInset}
+      followUpLabel={followUpLabel}
+      moreOffersLabel={moreOffersLabel}
+    />
   );
 }
 
@@ -5627,7 +5361,7 @@ export default function DriverDashboard() {
         }}
       />
 
-      {/* Live-Anfrage: Vollbild, Menü/Karte abgedunkelt — nur Angebot im Fokus */}
+      {/* Live-Anfrage: Karte + Angebotssheet; bestehende Offer-Logik unverändert. */}
       <Modal
         visible={showLiveOfferFocus && !!liveOfferReq}
         transparent
@@ -5638,49 +5372,41 @@ export default function DriverDashboard() {
         }}
       >
         <View style={styles.liveOfferFocusRoot}>
-          <View style={styles.liveOfferFocusDim} />
-          <View
-            style={[
-              styles.liveOfferFocusContent,
-              { paddingTop: Math.max(insets.top, 16) + 8, paddingBottom: Math.max(insets.bottom, 16) + 8 },
-            ]}
-          >
-            <Text style={styles.liveOfferFocusTitle}>Neue Anfrage</Text>
-            {showLiveOfferFollowUp ? (
-              <View style={[styles.followUpChip, { alignSelf: "center", marginBottom: 10 }]}>
-                <Feather name="navigation" size={14} color="#166534" />
-                <Text style={styles.followUpChipText}>
-                  Nächste Fahrt in der Nähe
-                  {followUpHighlight?.distanceKm != null
-                    ? ` · ${
-                        followUpHighlight.distanceKm < 1
-                          ? `${Math.round(followUpHighlight.distanceKm * 1000)} m`
-                          : `${followUpHighlight.distanceKm.toFixed(1)} km`
-                      }`
-                    : ""}
-                </Text>
-              </View>
-            ) : null}
-            {liveOfferReq ? (
-              <InstantCard
-                key={`${liveOfferReq.id}-c${getInstantOfferCycle(liveOfferReq.id)}`}
-                req={liveOfferReq}
-                driverPos={driverPos}
-                onAccept={() => handleAccept(liveOfferReq.id)}
-                onReject={() => handleReject(liveOfferReq.id)}
-                onMissTimeout={() => handleMissTimeout(liveOfferReq.id)}
-                showReleaseButton={canReleaseDispatchOffer(liveOfferReq, driver.dispatchPriority)}
-                onRelease={() => void handleReleaseDispatch(liveOfferReq.id)}
-                releaseBusy={releaseBusyId === liveOfferReq.id}
-              />
-            ) : null}
-            {liveInstantOffers.length > 1 ? (
-              <Text style={styles.liveOfferFocusMore}>
-                +{liveInstantOffers.length - 1} weitere Anfrage
-                {liveInstantOffers.length > 2 ? "n" : ""}
-              </Text>
-            ) : null}
+          <DriverInstantOfferMap
+            driverPos={driverPos}
+            pickup={liveOfferReq && hasDriverPremiumRouteDetails(liveOfferReq) && liveOfferReq.fromLat != null && liveOfferReq.fromLon != null
+              ? { lat: liveOfferReq.fromLat, lon: liveOfferReq.fromLon }
+              : null}
+          />
+          <View style={[styles.liveOfferFocusBrand, { top: Math.max(insets.top, 12) + 8 }]} pointerEvents="none">
+            <Text style={styles.liveOfferFocusBrandText}>ON<Text style={{ color: "#DC2626" }}>RODA</Text></Text>
+            <View style={styles.liveOfferFocusOnline}><View style={styles.liveOfferFocusOnlineDot} /><Text style={styles.liveOfferFocusOnlineText}>Online</Text></View>
           </View>
+          {liveOfferReq ? (
+            <InstantCard
+              key={`${liveOfferReq.id}-c${getInstantOfferCycle(liveOfferReq.id)}`}
+              req={liveOfferReq}
+              driverPos={driverPos}
+              onAccept={() => handleAccept(liveOfferReq.id)}
+              onReject={() => handleReject(liveOfferReq.id)}
+              onMissTimeout={() => handleMissTimeout(liveOfferReq.id)}
+              showReleaseButton={canReleaseDispatchOffer(liveOfferReq, driver.dispatchPriority)}
+              onRelease={() => void handleReleaseDispatch(liveOfferReq.id)}
+              releaseBusy={releaseBusyId === liveOfferReq.id}
+              focused
+              bottomInset={insets.bottom}
+              followUpLabel={showLiveOfferFollowUp
+                ? `Nächste Fahrt in der Nähe${followUpHighlight?.distanceKm != null
+                    ? ` · ${followUpHighlight.distanceKm < 1
+                        ? `${Math.round(followUpHighlight.distanceKm * 1000)} m`
+                        : `${followUpHighlight.distanceKm.toFixed(1)} km`}`
+                    : ""}`
+                : undefined}
+              moreOffersLabel={liveInstantOffers.length > 1
+                ? `+${liveInstantOffers.length - 1} weitere Anfrage${liveInstantOffers.length > 2 ? "n" : ""}`
+                : undefined}
+            />
+          ) : null}
         </View>
       </Modal>
 
@@ -6174,34 +5900,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#fff",
   },
-  liveOfferFocusRoot: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  liveOfferFocusDim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15, 23, 42, 0.82)",
-  },
-  liveOfferFocusContent: {
-    zIndex: 1,
-    justifyContent: "center",
-  },
-  liveOfferFocusTitle: {
-    textAlign: "center",
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    marginBottom: 12,
-  },
-  liveOfferFocusMore: {
-    textAlign: "center",
-    marginTop: 4,
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.85)",
-  },
+  liveOfferFocusRoot: { flex: 1, backgroundColor: "#E5E7EB" },
+  liveOfferFocusBrand: { position: "absolute", alignSelf: "center", backgroundColor: "#FFFFFF", borderRadius: 18, paddingHorizontal: 24, paddingVertical: 10, alignItems: "center", gap: 4 },
+  liveOfferFocusBrandText: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#111827", letterSpacing: 0.5 },
+  liveOfferFocusOnline: { flexDirection: "row", alignItems: "center", gap: 6 },
+  liveOfferFocusOnlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#16A34A" },
+  liveOfferFocusOnlineText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#4B5563" },
   mapReqOverlay: {
     position: "absolute", bottom: 12, left: 12, right: 12,
   },
