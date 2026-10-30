@@ -216,13 +216,13 @@ function geoFromRideRequest(
   };
 }
 
-const TRACKING_ACCENT = "#EF233C";
-const TRACKING_LABEL = "#1C1C1E";
-const TRACKING_SECONDARY = "#8E8E93";
-const TRACKING_BORDER = "#AEAEB2";
-const TRACKING_APPLE_BLUE = "#007AFF";
-/** WhatsApp-Grün — Chat-Pill während laufender Fahrt (`in_progress`). */
-const TRACKING_CHAT_WHATSAPP = "#25D366";
+const TRACKING_ACCENT = "#DC2626";
+const TRACKING_LABEL = "#111827";
+const TRACKING_SECONDARY = "#4B5563";
+const TRACKING_BORDER = "#D1D5DB";
+const TRACKING_APPLE_BLUE = "#0B5038";
+/** Dunkelgrün wie die Fahrer-Anfrage — Chat während laufender Fahrt. */
+const TRACKING_CHAT_WHATSAPP = "#0B5038";
 
 function statusAppleFont(weight: "regular" | "medium" | "semibold" | "bold"): Pick<TextStyle, "fontFamily" | "fontWeight"> {
   if (Platform.OS === "ios") {
@@ -2356,50 +2356,19 @@ export default function StatusScreen() {
               <Feather name="menu" size={rf(20)} color="#6B7280" />
             </Pressable>
           ) : null}
-          {liveRidePin ? (
-            <View
-              style={styles.livePinChip}
-              accessibilityRole="text"
-              accessibilityLabel={`Abhol-Code ${liveRidePin}`}
-            >
-              <Text style={styles.livePinChipLabel}>Code</Text>
-              <Text style={styles.livePinChipValue}>{liveRidePin}</Text>
-            </View>
-          ) : null}
+
         </View>
       </View>
 
-      {isArrived ? (
-        <Animated.View
-          style={[styles.arrivedBanner, { top: topPad + rs(58) }, { transform: [{ scale: pulseAnim }] }]}
-        >
-          <MaterialCommunityIcons name="car-emergency" size={rf(18)} color="#fff" />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.arrivedBannerTitle}>Ihr Fahrer ist da!</Text>
-            <Text style={styles.arrivedBannerSub}>
-              {liveRidePin ? `Code dem Fahrer nennen: ${liveRidePin}` : "Bitte zum Fahrzeug kommen"}
-            </Text>
-          </View>
-        </Animated.View>
-      ) : isDriving ? (
-        <View style={[styles.drivingBanner, { top: topPad + rs(58) }]}>
-          <View style={styles.drivingBannerIconCircle}>
-            <MaterialCommunityIcons
-              name="navigation"
-              size={rf(14)}
-              color={TRACKING_ACCENT}
-              style={styles.drivingBannerNavIcon}
-            />
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.drivingBannerTitle}>Fahrt gestartet</Text>
-            <Text style={styles.drivingBannerSub}>Unterwegs zu Ihrem Ziel</Text>
-          </View>
-        </View>
-      ) : null}
 
       <View style={[styles.trackingBottomSheet, { paddingBottom: bottomPad + rs(6) }]}>
         <View style={styles.sheetHandle} />
+        <View style={styles.trackingPhaseHeader} accessibilityLiveRegion="polite">
+          <View style={styles.trackingPhaseDot} />
+          <Text style={styles.trackingPhaseTitle}>
+            {isDriving ? "Fahrt läuft" : isArrived ? "Ihr Fahrer ist da" : rideStatus === "driver_arriving" ? "Fahrer unterwegs" : "Fahrt angenommen"}
+          </Text>
+        </View>
 
         {liveRidePin && !isDriving ? (
           <View
@@ -2779,18 +2748,17 @@ const styles = StyleSheet.create({
   },
   destinationCard: {
     minHeight: rs(48),
-    borderRadius: rs(18),
+    borderRadius: rs(20),
     backgroundColor: "#FFFFFF",
     paddingHorizontal: rs(14),
     flexDirection: "row",
     alignItems: "center",
     gap: rs(10),
     shadowColor: "#000",
-    shadowOpacity: 0.08,
+    shadowOpacity: 0,
     shadowRadius: rs(12),
     shadowOffset: { width: 0, height: rs(4) },
-    elevation: 5,
-  },
+    elevation: 0, borderWidth: StyleSheet.hairlineWidth, borderColor: "#D1D5DB" },
   destinationTitle: {
     fontSize: rf(16),
     fontFamily: "Inter_700Bold",
@@ -2808,21 +2776,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: rs(10),
     paddingVertical: rs(6),
     borderRadius: rs(12),
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#F0FDF4",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#C7D2FE",
+    borderColor: "#BBF7D0",
   },
   livePinChipLabel: {
-    fontSize: rf(10),
+    fontSize: rf(11),
     fontFamily: "Inter_600SemiBold",
-    color: "#6366F1",
+    color: "#0B5038",
     letterSpacing: 0.3,
   },
   livePinChipValue: {
     marginTop: rs(1),
     fontSize: rf(16),
     fontFamily: "Inter_700Bold",
-    color: "#312E81",
+    color: "#111827",
     letterSpacing: 1.5,
   },
   livePinSheetRow: {
@@ -2832,10 +2800,10 @@ const styles = StyleSheet.create({
     marginBottom: rs(10),
     paddingHorizontal: rs(12),
     paddingVertical: rs(10),
-    borderRadius: rs(14),
-    backgroundColor: "#F8FAFC",
+    borderRadius: rs(16),
+    backgroundColor: "#F9FAFB",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E2E8F0",
+    borderColor: "#E5E7EB",
   },
   livePinSheetLabel: {
     fontSize: rf(13),
@@ -2843,8 +2811,8 @@ const styles = StyleSheet.create({
   },
   livePinSheetHint: {
     marginTop: rs(1),
-    fontSize: rf(11),
-    color: "#6B7280",
+    fontSize: rf(12),
+    color: "#4B5563",
   },
   livePinSheetValue: {
     fontSize: rf(22),
@@ -2950,30 +2918,31 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingTop: rs(6),
-    paddingHorizontal: rs(14),
-    borderTopLeftRadius: rs(20),
-    borderTopRightRadius: rs(20),
+    paddingTop: rs(10),
+    paddingHorizontal: rs(20),
+    borderTopLeftRadius: rs(26),
+    borderTopRightRadius: rs(26),
     backgroundColor: "#FFFFFF",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
+    shadowOpacity: 0,
     shadowRadius: rs(16),
     shadowOffset: { width: 0, height: -rs(4) },
-    elevation: 10,
-    zIndex: 30,
-  },
+    elevation: 0,
+    zIndex: 30, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#D1D5DB" },
   sheetHandle: {
     alignSelf: "center",
     width: rs(40),
     height: rs(4),
     borderRadius: 99,
     backgroundColor: "#D1D5DB",
-    marginBottom: rs(8),
+    marginBottom: rs(12),
   },
+  trackingPhaseHeader: { flexDirection: "row", alignItems: "center", gap: rs(8), marginBottom: rs(12) },
+  trackingPhaseDot: { width: rs(8), height: rs(8), borderRadius: rs(4), backgroundColor: "#0B5038" },
+  trackingPhaseTitle: { flex: 1, fontSize: rf(18), fontFamily: "Inter_700Bold", color: "#111827" },
   trackingDriverRow: {
     flexDirection: "row",
-    alignItems: "center",
-  },
+    alignItems: "center", paddingVertical: rs(4) },
   trackingExpandChevron: {
     marginLeft: rs(2),
     flexShrink: 0,
@@ -2991,8 +2960,8 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   trackingEtaNumber: {
-    fontSize: rf(32),
-    lineHeight: rf(34),
+    fontSize: rf(34),
+    lineHeight: rf(38),
     color: TRACKING_LABEL,
     letterSpacing: Platform.OS === "ios" ? -0.4 : -0.25,
   },
@@ -3011,17 +2980,17 @@ const styles = StyleSheet.create({
   },
   trackingEtaDistance: {
     marginTop: rs(2),
-    fontSize: rf(10),
+    fontSize: rf(12),
     color: TRACKING_SECONDARY,
-    lineHeight: rf(13),
+    lineHeight: rf(16),
     textAlign: "right",
   },
   trackingDivider: {
-    width: rs(2),
+    width: StyleSheet.hairlineWidth,
     height: rs(48),
     borderRadius: rs(1),
     backgroundColor: "#D1D5DB",
-    marginHorizontal: rs(4),
+    marginHorizontal: rs(8),
     flexShrink: 0,
     alignSelf: "center",
   },
@@ -3029,7 +2998,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(8),
+    gap: rs(10),
     minWidth: 0,
   },
   trackingAvatar: {
@@ -3085,7 +3054,7 @@ const styles = StyleSheet.create({
     color: TRACKING_SECONDARY,
   },
   trackingDriverName: {
-    fontSize: rf(16),
+    fontSize: rf(17),
     color: TRACKING_LABEL,
     letterSpacing: Platform.OS === "ios" ? -0.4 : -0.25,
   },
@@ -3096,13 +3065,13 @@ const styles = StyleSheet.create({
   },
   trackingPlateLine: {
     marginTop: rs(2),
-    fontSize: rf(12),
+    fontSize: rf(13),
     fontFamily: "Inter_600SemiBold",
     color: TRACKING_LABEL,
   },
   trackingPlateDetail: {
     marginTop: rs(2),
-    fontSize: rf(11),
+    fontSize: rf(12),
     fontFamily: "Inter_500Medium",
     color: TRACKING_SECONDARY,
   },
@@ -3119,8 +3088,8 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   trackingProgressCard: {
-    marginTop: rs(6),
-    paddingVertical: rs(4),
+    marginTop: rs(10),
+    paddingVertical: rs(8),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -3137,13 +3106,13 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   trackingProgressActiveText: {
-    fontSize: rf(11),
+    fontSize: rf(12),
     fontFamily: "Inter_700Bold",
     color: TRACKING_APPLE_BLUE,
     textAlign: "center",
   },
   trackingProgressText: {
-    fontSize: rf(11),
+    fontSize: rf(12),
     fontFamily: "Inter_600SemiBold",
     color: TRACKING_SECONDARY,
     textAlign: "center",
@@ -3159,17 +3128,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: rs(5),
-    paddingVertical: rs(8),
+    paddingVertical: rs(10),
     paddingHorizontal: rs(10),
-    borderRadius: rs(12),
+    borderRadius: rs(14),
     borderWidth: 1,
     borderColor: TRACKING_BORDER,
     backgroundColor: "#FFFFFF",
     position: "relative",
     flexShrink: 1,
     minWidth: 0,
-    maxWidth: "100%",
-  },
+    maxWidth: "100%", minHeight: rs(48), justifyContent: "center" },
   trackingPaymentPill: {
     flexGrow: 1,
     flexShrink: 1,
@@ -3177,11 +3145,10 @@ const styles = StyleSheet.create({
     maxWidth: "42%",
   },
   trackingChatPill: {
-    flexShrink: 0,
-  },
+    flexShrink: 0, borderColor: "#0B5038" },
   trackingChatPillLive: {
     borderColor: TRACKING_CHAT_WHATSAPP,
-    backgroundColor: "#F0FFF4",
+    backgroundColor: "#F0FDF4",
   },
   trackingChatPillLiveText: {
     color: TRACKING_CHAT_WHATSAPP,
@@ -3193,11 +3160,11 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   trackingActionRow: {
-    marginTop: rs(10),
+    marginTop: rs(14),
     flexDirection: "row",
     flexWrap: "nowrap",
-    gap: rs(6),
-    alignItems: "center",
+    gap: rs(8),
+    alignItems: "stretch",
     width: "100%",
   },
   trackingChatActionBadge: {
@@ -3215,7 +3182,7 @@ const styles = StyleSheet.create({
     backgroundColor: TRACKING_CHAT_WHATSAPP,
   },
   trackingCancelPill: {
-    borderColor: TRACKING_ACCENT,
+    borderColor: "#FECACA",
     borderWidth: 1,
     flexShrink: 1,
     maxWidth: "36%",
@@ -3228,15 +3195,15 @@ const styles = StyleSheet.create({
   arrivedBanner: {
     position: "absolute",
     left: rs(16), right: rs(16),
-    backgroundColor: "#16A34A",
-    borderRadius: rs(16),
+    backgroundColor: "#0B5038",
+    borderRadius: rs(20),
     flexDirection: "row",
     alignItems: "center",
     gap: rs(12),
     paddingHorizontal: rs(16),
     paddingVertical: rs(14),
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, shadowRadius: 10, elevation: 10,
+    shadowOpacity: 0, shadowRadius: 10, elevation: 0,
   },
   arrivedBannerTitle: {
     fontSize: rf(16), fontFamily: "Inter_700Bold", color: "#fff",
@@ -3249,7 +3216,7 @@ const styles = StyleSheet.create({
     left: rs(48),
     right: rs(48),
     backgroundColor: "#FFFFFF",
-    borderRadius: rs(16),
+    borderRadius: rs(20),
     flexDirection: "row",
     alignItems: "center",
     gap: rs(10),
@@ -3259,9 +3226,9 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0,
     shadowRadius: 10,
-    elevation: 8,
+    elevation: 0,
   },
   drivingBannerIconCircle: {
     width: rs(28),

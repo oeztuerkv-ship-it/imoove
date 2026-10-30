@@ -33,9 +33,9 @@ flowchart LR
 | Phase (`customerPhase`) | UI (Stand) | API-Status (typ.) |
 |-------------------------|------------|-------------------|
 | `searching` | Suche-Fahrer (rot, Spinner) | `searching_driver`, … |
-| `accepted` / `preparing` | Karte + **helles Bottom-Sheet** (Ziel oben mit ⋮ → **Ziel ändern**, ETA, Fahrer, Fortschritt); Aktionen: **Chat** + Storno; bei PIN-pflichtiger Direktfahrt: **Abhol-Code** oben rechts im Ziel-Chip + Sheet-Zeile; **ETA/km + Kartenroute = Fahrer-Navi** (`etaMinutes`/`remainingDistM` + WS `route:driver:update`), Buchungs-OSRM nur Fallback bis Navi-Route da | `accepted`, `driver_arriving`, … |
-| `arrived` | wie oben + grünes „Fahrer ist da“ (mit Code-Hinweis) | `driver_waiting` |
-| `driving` | wie oben (Ziel ändern weiter möglich bei Taxi) | `in_progress` |
+| `accepted` / `preparing` | Karte + **helles Bottom-Sheet** mit Statuszeile „Fahrt angenommen“ / bei `driver_arriving` „Fahrer unterwegs“ (Ziel oben mit ⋮ → **Ziel ändern**, ETA, Fahrer; Details aufklappbar); Aktionen: **Chat** + Storno; bei PIN-pflichtiger Direktfahrt: **Abhol-Code** in der Sheet-Zeile; **ETA/km + Kartenroute = Fahrer-Navi** (`etaMinutes`/`remainingDistM` + WS `route:driver:update`), Buchungs-OSRM nur Fallback bis Navi-Route da | `accepted`, `driver_arriving`, … |
+| `arrived` | wie oben + Statuszeile „Ihr Fahrer ist da“ im selben Sheet (Code dort sichtbar) | `driver_waiting` |
+| `driving` | wie oben + Statuszeile „Fahrt läuft“, Abhol-Code ausgeblendet (Ziel ändern weiter möglich bei Taxi) | `in_progress` |
 
 **Fortschritt (genau ein Schritt aktiv):** `trackingProgressActiveStep` in `status.tsx` — (0) `accepted`/`driver_arriving` → „Fahrer unterwegs“; (1) `driver_waiting`/`in_progress` → „Ankunft“; (2) nur `completed` → „Ziel erreicht“.
 | `completed` | Danke + Beleg | terminal |
@@ -76,6 +76,10 @@ flowchart TD
 | Navi-Route fertig | `sendDriverNavRoute` + `POST …/driver-nav-route` (downsample ≤100) | Kunden-Karte `route:driver:update` |
 
 **Untere Leiste (Google-ähnlich):** Bottom-Sheet mit Drag-Handle (`driveBottomSheet` / `snapDriveSheet`). Höhe = **Inhalt + Safe-Area** (`bottom: 0`, kein festes `height` → kein Leerraum unter dem Button). Eingeklappt: Metriken + Primäraktion; ausgeklappt: Details. Tippen/Ziehen am Handle; Default nach Phasenwechsel = eingeklappt.
+
+**Optik (30.10.2026):** Weiße Sheets mit dezenten Trennlinien, dunkle Schrift, dunkelgrüne Hauptaktionen wie bei der Fahrer-Anfrage. Kundenstatus steht einmal im Sheet; keine zusätzlichen schwebenden Ankunft-/Fahrtstart-Banner und kein doppelter PIN-Chip oben. Fahrer-Sheet zeigt „Zum Abholort“ → „Am Abholort“ → „Fahrt läuft“ anhand der vorhandenen Zustände. Details bleiben standardmäßig eingeklappt. Der Fahrer-Navigationsscreen wechselt ohne Fade; Stack, Routen, Handler, PIN-Gates und Slider-Geometrie bleiben unverändert.
+
+**Szenario-Abnahme nach Optik:** Annahme → Anfahrt → Ankunft → gültiger/falscher/bereits bestätigter Code → Start; Doppeltippen/zweiter Slide, Netzfehler während Ankunft/Start, Storno vor/nach PIN und Fahrtstart, Kunde/Fahrer synchron, App-Kill/Restore, derselbe Kunde mit anderer Fahrt. Logik-Fixes erst nach belegtem Root-Cause; keine echten Markt-Testfahrten ohne gezielten Auftrag.
 
 **Bildschirm wach:** `useKeepAwake()` (`expo-keep-awake`) auf dem Navi-Screen — kein Auto-Sperren während aktiver Navigation.
 

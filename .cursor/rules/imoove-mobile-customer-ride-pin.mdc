@@ -12,7 +12,7 @@ alwaysApply: false
 3. **Nur Fahrtstart gesperrt** (`in_progress`); Chat/Kontakt bleiben offen.
 4. **Kunden-Storno:** Bei PIN-pflichtigen App-Direktfahrten **nur nach Verify** (`passenger_pin_verified_at`) gesperrt — Anfahrt/`driver_waiting`/irrtümliches `in_progress` ohne Verify bleiben stornierbar (`isCustomerCancelBlockedAfterTripStart`). Ohne PIN-Pflicht (Funk/Panel): Sperre ab `in_progress`/`passenger_onboard`. **Nach Soft-Cancel** (`searching_driver`): Verify wird gelöscht; Suche/Abbrechen ist wieder frei.
 5. **Hart ab Deploy** — kein Feature-Flag.
-6. **Live-Status zeigt den Code** — während Tracking (`/status`) ist Profil/Menü nicht erreichbar; PIN daher in `status.tsx` (Ziel-Chip oben rechts + Sheet-Zeile, bei Ankunft im Banner), nicht nur unter Profil → Abhol-Code.
+6. **Live-Status zeigt den Code** — während Tracking (`/status`) ist Profil/Menü nicht erreichbar; PIN daher in `status.tsx` deutlich in der Sheet-Zeile (bis Fahrtbeginn), nicht nur unter Profil → Abhol-Code. Seit der UI-Angleichung vom 30.10.2026 keine doppelte Anzeige im Ziel-Chip oder separaten Ankunftsbanner.
 7. **Fahrer-Navi Gate:** Nach „Angekommen“ sofort Client-Heuristik `rideRequiresPassengerPinClient` → `pinRequired`; Slide „Fahrt beginnen“ **nicht** `in_progress` patchen, solange PIN nötig und unverifiziert (`pinGateReady` + Modal). `passenger_pin_required` vom Server → Modal öffnen, kein irreführendes „fehlgeschlagen“. Live-Status-Fetch-Fehler **nicht** als „PIN optional“ werten.
 8. **Kunden-UI Phase:** Banner „Fahrt gestartet“/`driving` erst wenn PIN verifiziert (PIN-Fahrten) — sonst weiter `arrived`, damit Storno-UI und Copy nicht widersprechen.
 

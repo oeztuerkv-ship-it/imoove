@@ -3342,6 +3342,12 @@ export default function DriverNavigationScreen() {
           </View>
         </View>
 
+        <View style={styles.tripPhaseHeader} accessibilityLiveRegion="polite">
+          <View style={styles.tripPhaseDot} />
+          <Text style={styles.tripPhaseTitle}>
+            {isPrivateMemo ? "Navigation" : isPickupPhase ? hasArrived ? "Am Abholort" : "Zum Abholort" : "Fahrt läuft"}
+          </Text>
+        </View>
         {navTripFooterBar}
 
         <Animated.View
@@ -3813,16 +3819,16 @@ const styles = StyleSheet.create({
   },
   topCard: {
     alignSelf: "stretch",
-    backgroundColor: "#1B6B3A",
+    backgroundColor: "#0B5038",
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 10,
-    borderRadius: 14,
+    borderRadius: 20,
     shadowColor: "#000",
-    shadowOpacity: 0.16,
+    shadowOpacity: 0,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
-    elevation: 8,
+    elevation: 0,
   },
   topMain: { flexDirection: "row", alignItems: "center", gap: 12 },
   topText: { flex: 1, minWidth: 0 },
@@ -3866,8 +3872,7 @@ const styles = StyleSheet.create({
   compassBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
-    position: "relative",
-  },
+    position: "relative", borderWidth: StyleSheet.hairlineWidth, borderColor: "#D1D5DB" },
   navChatBtn: {
     minWidth: 56,
     paddingHorizontal: 10,
@@ -3949,6 +3954,9 @@ const styles = StyleSheet.create({
   dannText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#374151", flex: 1, lineHeight: 20 },
 
   /* Persistent trip footer — Google-ähnlich: Restzeit / Distanz / ETA */
+  tripPhaseHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  tripPhaseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#0B5038" },
+  tripPhaseTitle: { flex: 1, fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827" },
   navTripFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -3956,8 +3964,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingVertical: 10,
     paddingHorizontal: 6,
-    borderRadius: 14,
-    backgroundColor: "#111827",
+    borderRadius: 16,
+    backgroundColor: "#F3F4F6",
   },
   navTripFooterCell: {
     flex: 1,
@@ -3967,18 +3975,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   navTripFooterValue: {
-    fontSize: 17,
-    color: "#fff",
+    fontSize: 22,
+    color: "#111827",
     letterSpacing: -0.2,
   },
   navTripFooterLabel: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.62)",
+    fontSize: 12,
+    color: "#4B5563",
   },
   navTripFooterSep: {
     width: StyleSheet.hairlineWidth,
     alignSelf: "stretch",
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "#D1D5DB",
     marginVertical: 4,
   },
   /* Bottom bar — helles Panel (Angekommen / Fahrt beenden / Storno) */
@@ -4050,15 +4058,15 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: "#FFFFFF",
     paddingTop: 4,
-    paddingHorizontal: 16,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    paddingHorizontal: 20,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: "#D1D5DB",
     shadowColor: "#000",
-    shadowOpacity: 0.16,
+    shadowOpacity: 0,
     shadowRadius: 16,
-    elevation: 20,
+    elevation: 0,
     overflow: "hidden",
   },
   sheetGrabRow: {
@@ -4075,9 +4083,9 @@ const styles = StyleSheet.create({
   },
   sheetGrabPill: {
     width: 40,
-    height: 5,
+    height: 4,
     borderRadius: 3,
-    backgroundColor: "#C7C7CC",
+    backgroundColor: "#D1D5DB",
   },
   driveStartedBanner: {
     marginBottom: 6,
@@ -4302,7 +4310,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 16,
+    borderRadius: 14,
     backgroundColor: "#DC2626",
   },
   actionCancelSide: {
@@ -4320,11 +4328,10 @@ const styles = StyleSheet.create({
   /* Action buttons */
   actionBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, gap: 8,
+    borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, gap: 8,
     width: "100%",
-    alignSelf: "stretch",
-  },
-  actionBtnGreen: { backgroundColor: "#22C55E" },
+    alignSelf: "stretch", minHeight: 56 },
+  actionBtnGreen: { backgroundColor: "#0B5038" },
   actionBtnDark: { backgroundColor: "#111827" },
   privateMemoPanel: {
     paddingHorizontal: 2,
@@ -4395,7 +4402,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     maxWidth: 96,
     backgroundColor: "#F3F4F6",
-    borderRadius: 9,
+    borderRadius: 12,
     paddingHorizontal: 9,
     paddingVertical: 6,
     borderWidth: StyleSheet.hairlineWidth,
@@ -4407,22 +4414,22 @@ const styles = StyleSheet.create({
     letterSpacing: Platform.OS === "ios" ? -0.1 : 0,
   },
   privateMemoStatKm: { fontSize: 15, color: "#111827" },
-  privateMemoStatMin: { fontSize: 13, color: "#6B7280" },
-  actionBtnGray:  { backgroundColor: "#374151" },
+  privateMemoStatMin: { fontSize: 13, color: "#4B5563" },
+  actionBtnGray:  { backgroundColor: "#F3F4F6" },
   actionBtnBlue:  { backgroundColor: "#2563EB" },
   actionBtnRed:   { backgroundColor: "#EA4335" },
-  actionBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
-  actionBtnTextGray: { color: "#9CA3AF" },
+  actionBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  actionBtnTextGray: { color: "#6B7280" },
   actionBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: 1 },
   slideStartTrack: {
     position: "relative",
-    backgroundColor: "#16A34A",
-    borderRadius: 16,
+    backgroundColor: "#0B5038",
+    borderRadius: 14,
     height: 62,
     justifyContent: "center",
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: "#86EFAC",
+    borderColor: "#0B5038",
   },
   slideStartHint: {
     fontSize: 14,
@@ -4438,11 +4445,11 @@ const styles = StyleSheet.create({
     width: START_SLIDER_HANDLE,
     height: START_SLIDER_HANDLE,
     borderRadius: START_SLIDER_HANDLE / 2,
-    backgroundColor: "#15803D",
+    backgroundColor: "#146C4D",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#DCFCE7",
+    borderColor: "#D1FAE5",
   },
   noShowCountdownText: {
     fontSize: 13,
