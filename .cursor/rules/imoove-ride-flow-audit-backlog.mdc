@@ -29,6 +29,8 @@ Versionsbasis: Original-App Runtime 1.0.3, `release/original-runtime-1.0.3`; nat
 - [ ] Storno vor/nach Code und Fahrtstart beidseitig prüfen. Aktuelle Produktregel: bei PIN-Fahrt sperrt bereits bestätigter Code den Kunden-Storno; das ist nicht automatisch ein Implementierungsfehler. Re-Dispatch muss wieder stornierbar sein.
 
 ## 4. Navigation gesondert: Fahrerperspektive und Stabilität
+- [ ] **Bestätigter Übergang:** Nach Annahme rendert Dashboard `ActiveRideScreen` mit „Zum Kunden unterwegs“, „Navigation starten“, „Angekommen“ und „Fahrt beginnen“. Sein GPS-Effect öffnet die Live-Navigation automatisch, sobald Fahrer-/Abholkoordinaten vorliegen — kein weiterer Klick nötig. Daher flackert die manuelle Rückfallansicht kurz auf.
+- [ ] Normalfall ohne diesen Bedien-Zwischenbildschirm gestalten; GPS-Fehler-Fallback erhalten. Auch direkten Einstieg aus `SessionRestoreCoordinator` prüfen (Navi ohne Fahrerkoordinaten als Argument); Fahrtannahme, Anfahrts-Navi und tatsächlichen Fahrtstart zum Ziel klar trennen. Noch keine Ablaufänderung beauftragt/ausgeführt.
 - [ ] **Gerätemeldung, Root-Cause offen:** Stadt-/„Mondsicht“ statt brauchbarer Nah-Navigation. Echte GPS-Replays, Kamera FOLLOW/OVERVIEW/FREE, Höhe/Zoom/Pitch, Pfeil/Heading, Standort, Recenter, Phase und Kartenbereitschaft prüfen.
 - [ ] Start kalt/warm, Anfahrt → Ziel ohne Zwischenstopps/unnötige Screens, schlechte Genauigkeit, Tunnel, Stand/Fahrt, falsches Abbiegen, Reroute, Resume, Rotation, längere Fahrt, Speicher/Absturz und native Fehlermeldungen auf echten Geräten testen.
 - [ ] Bestehende Camera-/Location-/Route-Owner respektieren, keine Schwellenwerte auf Verdacht ändern und keine native SDK-Umstellung als Nebenfix. Zuständigkeit siehe Fahrer-Navi-Regeln.
