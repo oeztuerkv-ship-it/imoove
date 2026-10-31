@@ -21,6 +21,16 @@ const SDK={NavigationProvider:'Provider',NavigationView:'NativeView',useNavigati
 function load(file){let m={exports:{}};const src=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
  const req=r=>r==='react'?React:r==='react-native'?{StyleSheet:{absoluteFillObject:{}},View:'View'}:r==='@googlemaps/react-native-navigation-sdk'?SDK:r==='@/utils/safeExpoLocation'?{requestForegroundPermissionsSafe:async()=>({status:permission}),getBackgroundPermissionsSafe:async()=>({status:'granted'})}:r==='@/utils/googleNavSession'?load(root+'/artifacts/mobile/utils/googleNavSession.ts'):require(r);
  vm.runInThisContext('(function(require,module,exports){'+src+'\n})',{filename:file})(req,m,m.exports);return m.exports;}
+// Failed arrival PATCH leaves local hasArrived=true; native guidance must continue.
+const navSource=fs.readFileSync(root+'/artifacts/mobile/app/driver/navigation.tsx','utf8');
+const activeExpression=navSource.match(/active=\{(!isPickupPhase \|\| !\(isPrivateMemo[\s\S]+?)\}\n\s+soundEnabled/)[1];
+const guidanceActive=(overrides={})=>vm.runInNewContext(activeExpression,{isPickupPhase:true,isPrivateMemo:false,hasArrived:true,activeRide:{status:'accepted'},rideFleetStatus:'accepted',...overrides});
+assert(guidanceActive(),'failed server arrival must not pause Google');
+assert.equal(guidanceActive({rideFleetStatus:'driver_waiting'}),false);
+assert.equal(guidanceActive({activeRide:{status:'driver_waiting'}}),false);
+assert(guidanceActive({isPickupPhase:false,rideFleetStatus:'driver_waiting'}),'destination guidance resumes');
+assert.equal(guidanceActive({isPrivateMemo:true}),false,'private memo has no server arrival');
+assert(guidanceActive({isPrivateMemo:true,hasArrived:false}));
 const component=load(root+'/artifacts/mobile/components/driver/GoogleNavDriveView.tsx').GoogleNavDriveView;
 let inner,lastElement;const render=props=>{const provider=component(props);assert.equal(provider.type,'Provider');inner=provider.props.children.props.children.type;cursor=0;effects=[];lastElement=inner(props);for(const f of effects)f();return provider;};
 const settle=async()=>{for(let i=0;i<12;i++)await new Promise(setImmediate)};

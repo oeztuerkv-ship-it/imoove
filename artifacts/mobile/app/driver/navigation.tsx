@@ -3123,7 +3123,9 @@ export default function DriverNavigationScreen() {
           }}
           initialPosition={{ lat: driverLat, lon: driverLon }}
           routeIdentity={googleNavRouteIdentity}
-          active={!isPickupPhase || !hasArrived}
+          active={!isPickupPhase || !(isPrivateMemo
+            ? hasArrived
+            : activeRide?.status === "driver_waiting" || rideFleetStatus === "driver_waiting")}
           soundEnabled={soundEnabled}
           bottomInset={sheetLayoutH + 12}
           onFix={handleGoogleNavFix}

@@ -17,7 +17,7 @@ Bisheriger Fahrer-Bearer/zugewiesene Fahrt gelten unverändert. Google-Ankunft m
 Bestehende Fahrt und Phase werden wiederhergestellt. Pro Navigator-Lebensdauer eine native Sitzung; konstante Provider-Optionen verhindern Reinitialisierung bei GPS-Rendern. Zielwechsel werden serialisiert; überholte Antworten starten keine Guidance. Cleanup wartet laufende native Arbeit ab. Keine neue Persistenz oder Migration.
 
 ## 6. Betriebslogik
-Abholnavigation pausiert bei bestehendem hasArrived; bestätigter in_progress-Wechsel setzt das Ziel im gleichen Screen. Standort-Erstberechtigung und Google-Bedingungen werden ausdrücklich geprüft. Fehler meldet sichtbaren Fallback auf bestehende Navigation. Deren bekannte Ankunft-/No-Show-/PIN-Probleme werden hier nicht umgeschrieben.
+Abholnavigation pausiert bei serverseitig bestätigtem driver_waiting (private Merkliste: lokaler Ankunftszustand); bestätigter in_progress-Wechsel setzt das Ziel im gleichen Screen. Standort-Erstberechtigung und Google-Bedingungen werden ausdrücklich geprüft. Fehler meldet sichtbaren Fallback auf bestehende Navigation. Deren bekannte Ankunft-/No-Show-/PIN-Probleme werden hier nicht umgeschrieben.
 
 ## 7. Finance/Audit/Support
 Keine neue Preis- oder Gebührenlogik. Diagnosen enthalten feste Fehlercodes, keine Schlüssel. Vor allgemeinem Rollout Cloud-SDK-Freischaltung und zum Abrechnungskonto passende Google-Nutzungsbedingungen prüfen: EEA und globale Regeln unterscheiden sich bei Nicht-Google-Karten. SDK-Koordinaten unterliegen 30 Tagen Caching; bestehende serverseitige Aufbewahrung vor Rollout abnehmen. Test-Build ist keine allgemeine Produktionsfreigabe.
@@ -45,3 +45,5 @@ Nächster Schritt: installierbarer interner Build und Geräteabnahme, danach ges
 - iOS-Build `6e036fc3-f758-4024-a5fb-07772549cf57` erfolgreich; IPA geprüft: com.vedat.mobile, 1.0.4/47, Runtime/Channel isoliert, Audio/Location-Background, natives Google-Modul und Key vorhanden (kein Key ausgegeben).
 - Erster Android-Build `5aed94b2-6a96-430d-95dd-51e468188446`: bestätigter Fehler `:app:checkReleaseDuplicateClasses`, Navigation 7.6.1 und play-services-maps 18.2.0 liefern dieselben Maps-Klassen. Plugin schließt deshalb nur im Nav-Build die transitive Maps-Dependency aus dem App-Graph aus. Google dokumentiert genau diesen Ausschluss: https://developers.google.com/maps/documentation/navigation/android-sdk/android-studio-setup . Regressionstest für idempotente Prebuilds ergänzt.
 - Lokaler Android-Gerätetest kann nicht starten: separater leerer Emulator meldet „Not enough disk space available“. Mac hatte ca. 756 MiB frei. Keine native Geräte-Abnahme behaupten.
+
+- Google-Pause bei echter Fahrt nur nach Serverstatus driver_waiting: lokales optimistisches hasArrived allein reicht nicht. Das alte Ankunfts-UI/No-Show/PIN-Verhalten wird dadurch nicht als behoben behauptet. JS-Korrektur erreicht die schon gebauten Google-Binaries über deren getrennten OTA-Channel.
