@@ -740,7 +740,7 @@ export default function DriverNavigationScreen() {
     googleNavRemainingRef.current = remaining;
     if (!googleNavMountedRef.current) return;
     setRemainingDistM(Math.max(0, Math.round(remaining.distM)));
-    setRemainingMin(Math.max(0, remaining.etaMin));
+    setRemainingMin(Math.max(0, Math.ceil(remaining.etaMin)));
     setGuidanceStale(false);
     setNavRouteLoadState("ready");
   }, []);
