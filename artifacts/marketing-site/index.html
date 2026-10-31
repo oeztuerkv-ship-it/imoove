@@ -7,10 +7,10 @@
   <!-- Öffentliche API (Partneranfrage). Für lokale Tests z. B. http://127.0.0.1:3000/api setzen. -->
   <meta name="onroda-public-api-base" content="https://api.onroda.de/api" />
   <link rel="icon" type="image/png" href="/onroda-logo-transparent.png" />
-  <title>ONRODA – Plattform für Taxi, Krankenfahrten und Mobilität</title>
+  <title>ONRODA – Taxi, Flughafentransfer &amp; Geschäftsreisen in Baden-Württemberg</title>
   <meta
     name="description"
-    content="Ihr Taxi- und Krankenfahrten-Service in Stuttgart, Leinfelden-Echterdingen, Filderstadt, Echterdingen und Umgebung. Jetzt Fahrt buchen oder als Taxiunternehmen Partner werden – schnell, zuverlässig, 24/7."
+    content="ONRODA vermittelt Taxi, Flughafentransfers zum Pauschalpreis, Geschäftsreisen und Krankenfahrten in Stuttgart, Esslingen, Leinfelden-Echterdingen und ganz Baden-Württemberg."
   />
   <link rel="stylesheet" href="/onroda-brand.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,9 +21,12 @@
   />
 
   <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/home-2026.css?v=20261031" />
+  <link rel="preload" as="image" href="/images/e-klasse-kombi-flughafen.jpg" />
 </head>
 
-<body>
+<body class="hp-home-v2">
+  <a class="ride-skip-link" href="#main-content">Zum Inhalt</a>
   <header class="hp-header" id="site-header">
     <div class="hp-wrap hp-header-inner">
       <a class="hp-logo" href="/" aria-label="ONRODA – Startseite">
@@ -31,44 +34,15 @@
       </a>
 
       <nav class="hp-nav" id="hp-primary-nav" aria-label="Hauptnavigation">
-        <a class="hp-nav-link hp-nav-link--promo hp-nav-link--highlight" id="hp-nav-promo-fixpreise" href="/fixpreise/">
-          <span id="hp-nav-promo-fixpreise-label">Fixpreise</span>
-          <span class="hp-nav-promo-badge" id="hp-nav-promo-fixpreise-badge" hidden></span>
-        </a>
-        <a class="hp-nav-link" href="#fuer-wen">Fahrgäste</a>
-        <a class="hp-nav-link" href="#unternehmen">Unternehmen</a>
-        <a class="hp-nav-link" href="#unternehmen">Hotels &amp; Firmen</a>
+        <a class="hp-nav-link" href="#jetzt-buchen">Fahrten</a>
+        <a class="hp-nav-link" href="/fixpreise/">Flughafentransfer</a>
+        <a class="hp-nav-link" href="#unternehmen">Geschäftsreisen</a>
         <a class="hp-nav-link" href="#care">Krankenfahrten</a>
-        <a class="hp-nav-link" href="#partner">Partner &amp; Betriebe</a>
-        <a class="hp-nav-link" href="/ueber-onroda">Über ONRODA</a>
+        <a class="hp-nav-link hp-nav-partner-mobile" href="#partner">Partner werden</a>
       </nav>
-
       <div class="hp-header-actions">
-        <a class="hp-header-legal" href="/datenschutz">Datenschutz</a>
-        <a class="hp-header-legal" href="/impressum">Impressum</a>
-        <a class="hp-header-legal" href="/agb">AGB</a>
-        <a
-          class="hp-header-instagram"
-          href="https://www.instagram.com/onroda_taxi/"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="ONRODA auf Instagram"
-        >
-          <img class="hp-instagram-icon hp-instagram-icon--header" src="/instagram-logo.jpg" width="26" height="26" alt="" decoding="async" />
-          <span class="hp-header-instagram__label">Instagram</span>
-        </a>
-        <a
-          class="hp-topbar-btn hp-topbar-btn--header"
-          href="https://panel.onroda.de/"
-          data-partner-login-gate
-          rel="noopener noreferrer"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          <span class="hp-topbar-btn__label">Partner-Login</span>
-        </a>
+        <a class="ride-partner-login" href="https://panel.onroda.de/" data-partner-login-gate>Partner-Login</a>
+        <a class="ride-header-download" href="#jetzt-buchen">App herunterladen</a>
       </div>
 
       <div class="hp-header-tools">
@@ -82,159 +56,322 @@
     </div>
   </header>
 
-  <section class="hp-hero" id="top">
-    <div class="hp-hero-taxi-lane" aria-hidden="true">
-      <img
-        class="hp-hero-taxi hp-hero-taxi--classic"
-        src="/onroda-splash-taxi-classic.png"
-        width="192"
-        height="70"
-        alt=""
-        decoding="async"
-      />
-      <img
-        class="hp-hero-taxi hp-hero-taxi--van"
-        src="/onroda-splash-taxi-van.png"
-        width="192"
-        height="77"
-        alt=""
-        decoding="async"
-      />
+  <main id="main-content">
+  <section class="ride-hero" id="top" aria-labelledby="ride-hero-title">
+    <div class="ride-hero-inner">
+      <div class="ride-hero-copy">
+        <div id="homepage-placeholders-root" aria-live="polite"></div>
+        <p class="ride-eyebrow">Stuttgart · Esslingen · Baden-Württemberg</p>
+        <h1 id="ride-hero-title">Deine Fahrt.<br><em>Einfach geregelt.</em></h1>
+        <p class="ride-hero-lead">Taxi vermitteln. Flughafentransfers zum Pauschalpreis. Geschäftsreisen entspannt organisieren.</p>
+        <div class="ride-booking-card" aria-label="Fahrt planen">
+          <div class="ride-booking-top"><span class="ride-car-icon" aria-hidden="true">↗</span><strong>Wohin darf es gehen?</strong></div>
+          <p>Jetzt los oder im Voraus planen: Buche deine Fahrt direkt in der ONRODA App.</p>
+          <a class="ride-primary" href="#jetzt-buchen">Fahrt in der App buchen <span aria-hidden="true">↗</span></a>
+          <a class="ride-quote-link" href="/fixpreise/">Flughafen-Pauschalpreis prüfen <span aria-hidden="true">→</span></a>
+        </div>
+        <p class="ride-availability">Vermittlung in ganz Baden-Württemberg. Verfügbarkeit abhängig von Ort und Zeitpunkt.</p>
+        <a class="ride-apple-badge" href="https://apps.apple.com/de/app/onroda/id6773487513" target="_blank" rel="noopener noreferrer" aria-label="ONRODA im App Store herunterladen"><img src="/app-store-badge-de.svg" width="120" height="40" alt="Laden im App Store" /></a>
+      </div>
+      <div class="ride-hero-visual">
+        <img class="ride-hero-photo" src="/images/e-klasse-kombi-flughafen.jpg" width="1536" height="1024" alt="Schwarze Mercedes-Benz E-Klasse als Kombi in einer Flughafen-Szene" fetchpriority="high" decoding="async" />
+        <div class="ride-photo-note">Illustration · Fahrzeug nach Verfügbarkeit</div>
+        <div class="ride-trip-preview" aria-label="Illustrative Vorschau der Kundenansicht">
+          <div class="ride-trip-map" aria-hidden="true">
+            <span class="ride-map-road ride-map-road-a"></span><span class="ride-map-road ride-map-road-b"></span><span class="ride-map-road ride-map-road-c"></span>
+            <svg class="ride-map-route" viewBox="0 0 260 145" fill="none"><path d="M37 114H102V49H203" stroke="#d5001c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="203" cy="49" r="8" fill="#d5001c" stroke="white" stroke-width="4"/><rect x="29" y="102" width="17" height="27" rx="5" fill="#202326" stroke="white" stroke-width="3"/></svg>
+            <span class="ride-preview-label">App-Vorschau</span>
+          </div>
+          <div class="ride-trip-info"><span class="ride-trip-dot" aria-hidden="true"></span><div><strong>Fahrer unterwegs</strong><span>Standort &amp; Ankunft im Blick</span></div><span class="ride-trip-arrow" aria-hidden="true">↗</span></div>
+        </div>
+      </div>
     </div>
-    <div class="hp-hero-content">
-      <div class="hp-hero-layout">
-        <div class="hp-hero-copy">
-          <div id="homepage-placeholders-root" aria-live="polite"></div>
-          <h1 id="hero-headline">
-            Die Plattform für Taxi, Krankenfahrten und <em>Mobilität</em>
-          </h1>
-          <p class="hp-hero-lead" id="hero-subline">
-            Ihr Taxi- und Krankenfahrten-Service in Stuttgart, Leinfelden-Echterdingen, Filderstadt, Echterdingen und Umgebung. Jetzt Fahrt buchen oder als Taxiunternehmen Partner werden – schnell, zuverlässig, 24/7.
-          </p>
-          <div class="hp-hero-cta">
-            <a class="hp-btn-primary" id="hero-cta1" href="#jetzt-buchen">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-                <circle cx="7" cy="17" r="2" />
-                <circle cx="17" cy="17" r="2" />
-              </svg>
-              Fahrt buchen
-            </a>
-            <a class="hp-btn-ghost" id="hero-cta2" href="#partner">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              Unternehmer werden
-            </a>
-            <button type="button" class="hp-btn-ghost" id="hero-motion-open" data-motion-open aria-haspopup="dialog" aria-controls="hp-motion-modal">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
-              So funktioniert ONRODA
-            </button>
-          </div>
-          <div class="hp-hero-store" aria-label="App herunterladen">
-            <a
-              class="hp-store-badge hp-store-badge--apple"
-              id="hero-app-store"
-              href="https://apps.apple.com/de/app/onroda/id6773487513"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Laden im App Store"
-            >
-              <img src="/app-store-badge-de.svg" width="120" height="40" alt="" decoding="async" />
-            </a>
-            <span
-              class="hp-store-badge hp-store-badge--google hp-store-badge--soon"
-              aria-label="Google Play folgt in Kürze"
-              title="Demnächst bei Google Play"
-            >
-              <img src="/google-play-badge-de.svg" width="135" height="40" alt="" decoding="async" />
-            </span>
-          </div>
+  </section>
+
+  <section class="ride-region" aria-label="Unser Vermittlungsangebot">
+    <div class="ride-region-inner">
+      <div><span class="ride-region-symbol" aria-hidden="true">⌖</span><p><strong>Stuttgart &amp; Esslingen</strong><span>In deiner Region unterwegs.</span></p></div>
+      <div><span class="ride-region-symbol" aria-hidden="true">↗</span><p><strong>Ganz Baden-Württemberg</strong><span>Fahrten regional vermitteln.</span></p></div>
+      <div><span class="ride-region-symbol" aria-hidden="true">✈</span><p><strong>Flughafen zum Pauschalpreis</strong><span>Preis vor der Buchung prüfen.</span></p></div>
+    </div>
+  </section>
+
+  <section class="ride-occasions" id="services" aria-labelledby="ride-occasions-title">
+    <div class="ride-section-heading"><div><p class="ride-eyebrow">Unterwegs mit ONRODA</p><h2 id="ride-occasions-title">Für jeden Anlass die passende Fahrt.</h2></div><a href="#jetzt-buchen">Die App entdecken <span aria-hidden="true">↗</span></a></div>
+    <div class="ride-service-grid">
+      <a class="ride-service-card" href="/fixpreise/"><div class="ride-service-image ride-service-image-airport" role="img" aria-label="Flughafentransfer mit Gepäck"></div><div class="ride-service-copy"><div><h3>Flughafentransfer</h3><p>Pauschalpreis vor der Buchung prüfen.</p></div><span aria-hidden="true">↗</span></div></a>
+      <a class="ride-service-card" href="#unternehmen"><div class="ride-service-image ride-service-image-business" role="img" aria-label="Geschäftsreisender im Fahrzeug"></div><div class="ride-service-copy"><div><h3>Geschäftsreisen</h3><p>Für Termine, Teams und Gäste.</p></div><span aria-hidden="true">↗</span></div></a>
+      <a class="ride-service-card" href="#care"><div class="ride-service-image ride-service-image-care" role="img" aria-label="Unterstützung auf dem Weg zum Arzttermin"></div><div class="ride-service-copy"><div><h3>Krankenfahrten</h3><p>Unterstützung bei der Organisation.</p></div><span aria-hidden="true">↗</span></div></a>
+    </div>
+    <p class="ride-region-detail">Stuttgart, Esslingen, Leinfelden-Echterdingen, Filderstadt und darüber hinaus: Wir vermitteln Fahrten in ganz Baden-Württemberg.</p>
+  </section>
+
+  <section
+    class="hp-app-download app-download-section"
+    id="jetzt-buchen"
+    aria-labelledby="app-download-heading"
+    data-app-active-tab="taxi"
+  >
+    <div class="hp-wrap hp-app-download__grid">
+      <div class="hp-app-download__copy">
+        <div class="hp-app-download__badge hp-reveal" data-reveal-order="0">
+          <span class="hp-app-download__badge-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" /><path d="M12 18h.01" />
+            </svg>
+          </span>
+          <span class="hp-app-download__badge-text">Mobile App</span>
+        </div>
+        <h2 id="app-download-heading" class="hp-app-download__title hp-reveal" data-reveal-order="1">
+          ONRODA App <span class="hp-app-download__title-accent">herunterladen</span>
+        </h2>
+        <p class="hp-app-download__lead hp-reveal" data-reveal-order="2">
+          Fahrten buchen, Krankenfahrten organisieren und alles digital im Blick behalten.
+        </p>
+
+        <div class="hp-app-download__tabs hp-reveal" data-reveal-order="3" role="tablist" aria-label="App-Bereiche">
+          <button type="button" class="hp-app-download__tab is-active" role="tab" aria-selected="true" data-app-tab="taxi" id="app-tab-taxi">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-2-3-2-3 2-3 2-2.7.6-4.5 1.1C5.2 10.3 4.5 11.1 4 12v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+            Taxi
+          </button>
+          <button type="button" class="hp-app-download__tab" role="tab" aria-selected="false" data-app-tab="medical" id="app-tab-medical">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            Krankenfahrten
+          </button>
+          <button type="button" class="hp-app-download__tab" role="tab" aria-selected="false" data-app-tab="partner" id="app-tab-partner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+            Partner
+          </button>
         </div>
 
-        <div class="hp-hero-devices" aria-hidden="true">
-          <div class="hp-hero-devices__glow"></div>
-          <div class="hp-device-laptop">
-            <div class="hp-device-laptop__lid">
-              <span class="hp-device-laptop__notch" aria-hidden="true"></span>
-              <div class="hp-device-laptop__screen">
-                <div class="hp-screen-dash">
-                  <aside class="hp-screen-dash__side">
-                    <img
-                      class="hp-screen-dash__logo"
-                      src="/onroda-logo-transparent.png"
-                      width="148"
-                      height="56"
-                      alt=""
-                      decoding="async"
-                    />
-                    <p class="hp-screen-dash__vision">Eine Plattform für alle Rollen</p>
-                    <span class="hp-screen-dash__nav hp-screen-dash__nav--active">Übersicht</span>
-                    <span class="hp-screen-dash__nav">Fahrten</span>
-                    <span class="hp-screen-dash__nav">Team</span>
-                  </aside>
-                  <main class="hp-screen-dash__main">
-                    <div class="hp-screen-dash__head">
-                      <strong>Live-Übersicht</strong>
-                      <span class="hp-screen-pill hp-screen-pill--live">Live</span>
-                    </div>
-                    <div class="hp-screen-dash__kpis">
-                      <div><small>Fahrten</small><strong>1.284</strong></div>
-                      <div><small>Umsatz</small><strong>€ 42,8k</strong></div>
-                      <div><small>Fahrer</small><strong>86</strong></div>
-                      <div><small>Quote</small><strong>98%</strong></div>
-                    </div>
-                    <div class="hp-screen-dash__chart" aria-hidden="true">
-                      <span style="--h: 42%"></span><span style="--h: 58%"></span><span style="--h: 48%"></span><span style="--h: 72%"></span><span style="--h: 65%"></span><span style="--h: 80%"></span>
-                    </div>
-                  </main>
-                </div>
-              </div>
+        <ul class="hp-app-download__features">
+          <li class="hp-app-download__feature hp-reveal" data-reveal-order="4">
+            <span class="hp-app-download__feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
+            <div class="hp-app-download__feature-copy">
+              <strong>Live-Tracking</strong>
+              <span>Verfolgen Sie Ihre Fahrt in Echtzeit.</span>
             </div>
-            <div class="hp-device-laptop__hinge" aria-hidden="true"></div>
-            <div class="hp-device-laptop__base" aria-hidden="true"></div>
-          </div>
-          <div class="hp-device-phone">
-            <span class="hp-device-phone__island" aria-hidden="true"></span>
-            <div class="hp-device-phone__screen">
-              <div class="hp-screen-app">
-                <header class="hp-screen-app__head">
-                  <img
-                    class="hp-screen-app__logo"
-                    src="/onroda-logo-transparent.png"
-                    width="92"
-                    height="34"
-                    alt=""
-                    decoding="async"
-                  />
-                  <span class="hp-screen-pill">Unterwegs</span>
+          </li>
+          <li class="hp-app-download__feature hp-reveal" data-reveal-order="5">
+            <span class="hp-app-download__feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </span>
+            <div class="hp-app-download__feature-copy">
+              <strong>Fahrerstatus &amp; ETA</strong>
+              <span>Sehen Sie, wann Ihr Fahrer eintrifft.</span>
+            </div>
+          </li>
+          <li class="hp-app-download__feature hp-reveal" data-reveal-order="6" data-app-feature="medical">
+            <span class="hp-app-download__feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </span>
+            <div class="hp-app-download__feature-copy">
+              <strong>Krankenfahrten digital verwalten</strong>
+              <span>Transportschein-Scan, Status &amp; Unterlagen.</span>
+            </div>
+          </li>
+          <li class="hp-app-download__feature hp-reveal" data-reveal-order="7" data-app-feature="medical">
+            <span class="hp-app-download__feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </span>
+            <div class="hp-app-download__feature-copy">
+              <strong>Genehmigungsstatus nachvollziehen</strong>
+              <span>Prüfen Sie den Status Ihrer Krankenkasse.</span>
+            </div>
+          </li>
+          <li class="hp-app-download__feature hp-reveal" data-reveal-order="8" data-app-feature="medical">
+            <span class="hp-app-download__feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M7 20h10"/><path d="M9 20v-6a3 3 0 0 1 6 0v6"/></svg>
+            </span>
+            <div class="hp-app-download__feature-copy">
+              <strong>Rollstuhl &amp; Sonderbedarf</strong>
+              <span>Bedarf angeben – wir kümmern uns.</span>
+            </div>
+          </li>
+          <li class="hp-app-download__feature hp-reveal" data-reveal-order="9">
+            <span class="hp-app-download__feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg>
+            </span>
+            <div class="hp-app-download__feature-copy">
+              <strong>Taxameter &amp; Fahrtdetails</strong>
+              <span>Transparente Preise und digitale Belege.</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="hp-app-download__device">
+        <div class="hp-app-download__stage" aria-hidden="true">
+          <div class="hp-app-download__phones">
+            <div class="hp-app-download__phone hp-app-download__phone--taxi hp-reveal hp-reveal--phone is-front" data-app-phone="taxi" data-reveal-order="12">
+              <span class="hp-app-download__island"></span>
+              <div class="hp-app-download__screen hp-app-download__screen--taxi">
+                <header class="hp-app-download__screen-top">
+                  <div>
+                    <small>Ihre Fahrt</small>
+                    <strong>Unterwegs</strong>
+                  </div>
+                  <span class="hp-screen-pill hp-screen-pill--live">Live</span>
                 </header>
-                <div class="hp-screen-app__map" aria-hidden="true">
-                  <span class="hp-screen-app__route"></span>
-                  <span class="hp-screen-app__pin"></span>
+                <div class="hp-app-download__driver">
+                  <div>
+                    <small>Ankunft in 3 Min.</small>
+                    <strong>Max M.</strong>
+                    <span class="hp-app-download__stars" aria-label="Bewertung 4,9">★★★★★ <em>4,9</em></span>
+                  </div>
+                  <span class="hp-app-download__car-ico" aria-hidden="true">🚕</span>
                 </div>
-                <div class="hp-screen-app__card">
-                  <small>Aktuelle Fahrt</small>
-                  <strong>28,40 €</strong>
-                  <span>ETA 4 Min. · Live-Dispatch</span>
-                  <span class="hp-screen-app__cta">Live verfolgen</span>
+                <div class="hp-app-download__map">
+                  <span class="hp-app-download__car-dot" aria-hidden="true"></span>
+                  <span class="hp-app-download__route"></span>
+                  <span class="hp-app-download__pin"></span>
+                </div>
+                <div class="hp-app-download__ride">
+                  <div>
+                    <small>Taxi · TP-1234</small>
+                    <strong>12,50 €</strong>
+                  </div>
+                  <span class="hp-app-download__ride-cta">Fahrt teilen</span>
                 </div>
               </div>
             </div>
+
+            <div class="hp-app-download__phone hp-app-download__phone--medical hp-reveal hp-reveal--phone-2" data-app-phone="medical" data-reveal-order="13">
+              <span class="hp-app-download__island"></span>
+              <div class="hp-app-download__screen hp-app-download__screen--medical">
+                <header class="hp-app-download__screen-top">
+                  <div>
+                    <small>ONRODA Care</small>
+                    <strong>Krankenfahrt</strong>
+                  </div>
+                </header>
+                <div class="hp-app-download__approval">
+                  <span class="hp-app-download__approval-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Geprüft</strong>
+                    <span>Alle Unterlagen vollständig.</span>
+                  </div>
+                </div>
+                <ol class="hp-app-download__timeline">
+                  <li class="is-done">Transportschein hochgeladen</li>
+                  <li class="is-done">Unterlagen geprüft</li>
+                  <li class="is-done">Bei Krankenkasse eingereicht</li>
+                  <li class="is-done">Genehmigt</li>
+                  <li>Fahrt geplant</li>
+                </ol>
+              </div>
+            </div>
           </div>
-          <div class="hp-floating-card hp-card-live">
-            <span class="hp-dot" aria-hidden="true"></span>
-            Live-Dispatch
-          </div>
-          <div class="hp-floating-card hp-card-ride">
-            24/7 Dispatch
-          </div>
+
+          <aside class="hp-app-download__trust-card hp-reveal" data-reveal-order="14">
+            <span class="hp-app-download__trust-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </span>
+            <strong>Sicher. Persönlich. Verlässlich.</strong>
+            <p>ONRODA begleitet Sie auf allen Wegen – mit Respekt und dem nötigen Verständnis.</p>
+          </aside>
+        </div>
+      </div>
+
+      <div class="hp-app-download__cta">
+        <div class="hp-store-links hp-reveal" data-reveal-order="10">
+          <a
+            class="hp-store-badge hp-store-badge--apple"
+            id="app-download-app-store"
+            href="https://apps.apple.com/de/app/onroda/id6773487513"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Laden im App Store"
+          >
+            <img src="/app-store-badge-de.svg" width="120" height="40" alt="" decoding="async" />
+          </a>
+          <span
+            class="hp-store-badge hp-store-badge--google hp-store-badge--soon"
+            aria-label="Google Play folgt in Kürze"
+            title="Demnächst bei Google Play"
+          >
+            <img src="/google-play-badge-de.svg" width="135" height="40" alt="" decoding="async" />
+          </span>
+        </div>
+        <p class="hp-app-download__social">
+          <a class="hp-instagram-link" href="https://www.instagram.com/onroda_taxi/" target="_blank" rel="noopener noreferrer" aria-label="Folge ONRODA auf Instagram">
+            <img class="hp-instagram-icon" src="/instagram-logo.jpg" width="28" height="28" alt="" decoding="async" />
+            @onroda_taxi auf Instagram
+          </a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted hp-enterprise" id="unternehmen" aria-labelledby="unternehmen-title">
+    <div class="hp-wrap">
+      <div class="hp-enterprise__shell">
+        <header class="hp-enterprise__head">
+          <p class="hp-kicker">Für Unternehmen, Hotels &amp; Reisepartner</p>
+          <h2 id="unternehmen-title">Digitale Mobilität für Unternehmen, Hotels, Reisebüros und Partnerbetriebe.</h2>
+          <p class="hp-enterprise__intro">
+            Unternehmen in Stuttgart und der Region nutzen ONRODA für strukturierte Prozesse, weniger Aufwand und
+            nachvollziehbare Mobilität — für <strong>Hotels</strong>, <strong>Firmenkunden</strong> und
+            <strong>Reisebüros</strong> mit eigenem Partner-Zugang nach Freigabe.
+          </p>
+        </header>
+
+        <ul class="hp-care-benefits hp-enterprise__benefits">
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            <div>
+              <strong>Kein Papierchaos mehr</strong>
+              Von der Buchung bis zur Abrechnung – digital und nachvollziehbar.
+            </div>
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            <div>
+              <strong>Gutschein- &amp; Code-System</strong>
+              Digitale Gutscheine, QR-Codes und Partnercodes statt Papiergutscheine.
+            </div>
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            <div>
+              <strong>Kostenstellen &amp; Zuordnung</strong>
+              Fahrten direkt Projekten, Abteilungen, Hotels oder Kostenstellen zuweisen.
+            </div>
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            <div>
+              <strong>Reisebüros &amp; Hotels integrieren</strong>
+              Gäste, Transfers und Fahrten zentral verwalten.
+            </div>
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            <div>
+              <strong>Direkte Abwicklung</strong>
+              Keine Callcenter-Schleifen, weniger Rückfragen und schnellere Prozesse.
+            </div>
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            <div>
+              <strong>Zeit sparen</strong>
+              Weniger administrativer Aufwand für Teams, Empfang und Disposition.
+            </div>
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            <div>
+              <strong>Transparente Abrechnung</strong>
+              Digitale Belege, Sammelrechnungen und nachvollziehbare Historie.
+            </div>
+          </li>
+        </ul>
+
+        <div class="hp-enterprise__actions">
+          <a class="hp-btn-primary" href="#partner">Jetzt Partner werden und Fahrten digital organisieren</a>
         </div>
       </div>
     </div>
@@ -310,14 +447,14 @@
               <span class="hp-medical-flow__icon" aria-hidden="true">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </span>
-              <span class="hp-medical-flow__text"><strong>Krankenkasse</strong> geprüft</span>
+              <span class="hp-medical-flow__text"><strong>Angaben</strong> erfasst</span>
             </li>
             <li class="hp-medical-flow__step">
               <span class="hp-medical-flow__num">4</span>
               <span class="hp-medical-flow__icon hp-medical-flow__icon--ampel" aria-hidden="true">
                 <span></span><span></span><span></span>
               </span>
-              <span class="hp-medical-flow__text"><strong>Ampel</strong> grün — freigegeben</span>
+              <span class="hp-medical-flow__text"><strong>Unterlagen</strong> Status prüfen</span>
             </li>
             <li class="hp-medical-flow__step">
               <span class="hp-medical-flow__num">5</span>
@@ -332,28 +469,95 @@
     </div>
   </section>
 
-  <section class="hp-stats" aria-label="Kennzahlen">
+  <section class="hp-section hp-section--muted hp-care" id="care" aria-labelledby="care-title">
     <div class="hp-wrap">
-      <ul class="hp-stats-list">
-        <li>
-          <span class="hp-stats-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </span>
-          <strong>24/7 Plattform</strong>
-        </li>
-        <li>
-          <span class="hp-stats-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </span>
-          <strong>Krankenfahrten verlässlich &amp; sicher</strong>
-        </li>
-        <li>
-          <span class="hp-stats-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-          </span>
-          <strong>Live Disposition</strong>
-        </li>
-      </ul>
+      <div class="hp-care__grid">
+        <div class="hp-care__col hp-care__col--intro">
+          <p class="hp-kicker">♥ ONRODA Care</p>
+          <span class="hp-medical-usp__badge hp-medical-usp__badge--inline">Digitalisierte Krankenfahrten</span>
+          <h2 id="care-title">ONRODA Care – Krankenfahrten digital und einfacher gedacht</h2>
+          <div class="hp-care-tags" role="list" aria-label="Krankenfahrt Leistungen">
+            <span class="hp-care-tags__item" role="listitem">
+              <span class="hp-care-tags__ico" aria-hidden="true">📄</span> Transportschein
+            </span>
+            <span class="hp-care-tags__item" role="listitem">
+              <span class="hp-care-tags__ico" aria-hidden="true">🏥</span> Krankenkasse
+            </span>
+            <span class="hp-care-tags__item" role="listitem">
+              <span class="hp-care-tags__ico" aria-hidden="true">♿</span> Rollstuhl
+            </span>
+          </div>
+          <p class="hp-care__tagline">
+            Sicher, persönlich und verlässlich – für Krankenfahrten, Kurfahrten und regelmäßige medizinische Fahrten.
+          </p>
+          <p class="hp-care__intro">
+            Wir begleiten Sie zu Arztterminen, Dialyse, Physiotherapie, Reha, Kurfahrten, Entlassungen aus Kliniken und
+            vielen weiteren Fahrten – diskret, pünktlich und mit Respekt für Ihre Situation.
+          </p>
+          <p class="hp-care__intro hp-muted-note" style="margin-top:12px;font-size:0.92rem;color:var(--onroda-text-grey);">
+            Abrechnung und Zuzahlung richten sich nach Tarif, Krankenkasse und Verordnung — konkrete Beträge nennen wir Ihnen
+            transparent in der App vor bzw. nach der Fahrt.
+          </p>
+        </div>
+
+        <div class="hp-care__col hp-care__col--detail">
+        <h3 class="hp-care__subhead">Mehr als nur Beförderung:</h3>
+        <ul class="hp-care-benefits">
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Transportschein digital erfassen
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Prüfung, ob Unterlagen vollständig vorliegen
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Unterstützung bei Genehmigungen und Freigaben
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Krankenkassen-Prozesse digital begleiten
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Rollstuhl- und Sonderbedarfe angeben
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Wiederkehrende Fahrten einfach organisieren
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Nachvollziehbare Dokumentation und Statusübersicht
+          </li>
+          <li class="hp-care-benefits__item">
+            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
+            Fahrten für Angehörige oder Betreuung organisierbar
+          </li>
+        </ul>
+
+        <h3 class="hp-care__subhead">So funktioniert es:</h3>
+        <ol class="hp-care-process" aria-label="Ablauf Krankenfahrt">
+          <li>Transportschein / Verordnung hochladen</li>
+          <li>Unterlagen prüfen</li>
+          <li>Genehmigungsstatus nachvollziehen</li>
+          <li>Fahrt buchen</li>
+          <li>Fahrt durchführen</li>
+          <li>Abrechnung transparent begleiten</li>
+        </ol>
+
+        <p class="hp-care__closing">
+          ONRODA Care verbindet digitale Prozesse mit persönlicher Mobilität.
+        </p>
+        <div class="hp-care__actions">
+          <a class="hp-btn-primary" href="#jetzt-buchen">Jetzt Krankenfahrt anfragen</a>
+          <button type="button" class="hp-btn-ghost" data-motion-open="medical">
+            Motion: Scan bis Abrechnung
+          </button>
+        </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -520,355 +724,6 @@
           <span id="how-card-5-body">Automatische Abrechnung und Reporting</span>
         </li>
       </ol>
-    </div>
-  </section>
-
-  <section class="hp-section hp-section--trust" id="trust" aria-labelledby="trust-title">
-    <div class="hp-wrap">
-      <div class="hp-section-head">
-        <h2 id="trust-title">Vertrauen &amp; Qualität</h2>
-        <p class="hp-sub">Strukturierte Prozesse für sichere Mobilität in der Region</p>
-      </div>
-      <div class="hp-trust-grid" id="trust-cards-root">
-        <article class="hp-trust-badge" id="trust-card-1">
-          <span class="hp-trust-badge__icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-          </span>
-          <h3 id="trust-card-1-value">Geprüfte Fahrer</h3>
-          <p id="trust-card-1-label" class="visually-hidden">Geprüfte Fahrer</p>
-          <p id="trust-card-1-desc">Qualifizierte Partnerfahrer im Netzwerk.</p>
-        </article>
-        <article class="hp-trust-badge" id="trust-card-2">
-          <span class="hp-trust-badge__icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </span>
-          <h3 id="trust-card-2-value">Taxameter</h3>
-          <p id="trust-card-2-label" class="visually-hidden">Taxameter</p>
-          <p id="trust-card-2-desc">Tarifkonforme Abrechnung nach Vorgaben.</p>
-        </article>
-        <article class="hp-trust-badge" id="trust-card-3">
-          <span class="hp-trust-badge__icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </span>
-          <h3 id="trust-card-3-value">Datenschutz</h3>
-          <p id="trust-card-3-label" class="visually-hidden">Datenschutz</p>
-          <p id="trust-card-3-desc">DSGVO-konforme Verarbeitung und Transparenz.</p>
-        </article>
-        <article class="hp-trust-badge" id="trust-card-4">
-          <span class="hp-trust-badge__icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-          </span>
-          <h3 id="trust-card-4-value">Regionale Taxiunternehmen</h3>
-          <p id="trust-card-4-label" class="visually-hidden">Regionale Taxiunternehmen</p>
-          <p id="trust-card-4-desc">Lokale Partner statt anonyme Vermittlung.</p>
-        </article>
-        <article class="hp-trust-badge hp-trust-badge--extra">
-          <span class="hp-trust-badge__icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
-          </span>
-          <h3>Sichere Abrechnung</h3>
-          <p>Nachvollziehbare Belege und Reporting.</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="hp-section hp-section--muted" id="services">
-    <div class="hp-wrap">
-      <div class="hp-section-head">
-        <p class="hp-kicker" id="services-kicker">Leistungen</p>
-        <h2 id="services-title">Unsere Services</h2>
-        <p class="hp-sub" id="services-sub">Modernste Technologie für Ihre Mobilität in Stuttgart</p>
-      </div>
-
-      <div class="hp-grid-4" id="services-cards-root">
-        <article class="hp-card" id="services-card-1">
-          <div class="hp-card-icon" id="services-card-1-icon" aria-hidden="true">⏱</div>
-          <h3 id="services-card-1-title">Echtzeit-Buchung</h3>
-          <p id="services-card-1-body">Buchen Sie Ihr Taxi in Sekunden. Verfolgen Sie Ihren Fahrer live auf der Karte.</p>
-        </article>
-
-        <article class="hp-card" id="services-card-2">
-          <div class="hp-card-icon" id="services-card-2-icon" aria-hidden="true">📅</div>
-          <h3 id="services-card-2-title">Vorbestellung</h3>
-          <p id="services-card-2-body">Planen Sie Ihre Fahrt im Voraus. Zum Flughafen, Termin oder Meeting.</p>
-        </article>
-
-        <article class="hp-card" id="services-card-3">
-          <div class="hp-card-icon" id="services-card-3-icon" aria-hidden="true">🧾</div>
-          <h3 id="services-card-3-title">Digitale Quittungen</h3>
-          <p id="services-card-3-body">Alle Belege automatisch per E-Mail. Perfekt für Ihre Buchhaltung.</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="hp-section" id="manifest">
-    <div class="hp-wrap">
-      <div class="hp-section-head">
-        <p class="hp-kicker" id="manifest-kicker">Das ONRODA Manifest</p>
-        <h2 id="manifest-title">Vernetzung auf allen Ebenen</h2>
-        <p class="hp-sub" id="manifest-sub" style="color:var(--onroda-red);font-weight:600;">Ein intelligentes System für Fahrgäste, Fahrer und Unternehmen</p>
-      </div>
-
-      <div class="hp-grid-2" id="manifest-cards-root">
-        <article class="hp-manifest-card" id="manifest-card-1">
-          <span class="hp-num" id="manifest-card-1-num">1</span>
-          <div>
-            <div class="hp-icon-manifest" id="manifest-card-1-icon" aria-hidden="true">📍</div>
-            <h3 id="manifest-card-1-title">Innovation aus der Region</h3>
-            <p id="manifest-card-1-body">Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise, gepaart mit modernster Technik.</p>
-            <a class="hp-link" id="manifest-card-1-cta" href="#manifest">Mehr erfahren →</a>
-          </div>
-        </article>
-
-        <article class="hp-manifest-card" id="manifest-card-2">
-          <span class="hp-num" id="manifest-card-2-num">2</span>
-          <div>
-            <div class="hp-icon-manifest" id="manifest-card-2-icon" aria-hidden="true">⚡</div>
-            <h3 id="manifest-card-2-title">Effizienz durch Digitalisierung</h3>
-            <p id="manifest-card-2-body">Bei ONRODA gibt es kein Hin-und-Her. Wir haben Prozesse radikal entschlackt. Alles läuft digital, direkt und reibungslos.</p>
-            <a class="hp-link" id="manifest-card-2-cta" href="#services">Mehr erfahren →</a>
-          </div>
-        </article>
-
-        <article class="hp-manifest-card" id="manifest-card-3">
-          <span class="hp-num" id="manifest-card-3-num">3</span>
-          <div>
-            <div class="hp-icon-manifest" id="manifest-card-3-icon" aria-hidden="true">🤝</div>
-            <h3 id="manifest-card-3-title">Mobilität als Service-Baustein für Unternehmen, Hotels und Partnerbetriebe</h3>
-            <p id="manifest-card-3-body">Wir verstehen uns als Partner für Hotels, Firmen und Veranstalter. ONRODA integriert Mobilität als qualitativen Mehrwert.</p>
-            <a class="hp-link" id="manifest-card-3-cta" href="#unternehmen">Mehr erfahren →</a>
-          </div>
-        </article>
-
-        <article class="hp-manifest-card" id="manifest-card-4">
-          <span class="hp-num" id="manifest-card-4-num">4</span>
-          <div>
-            <div class="hp-icon-manifest" id="manifest-card-4-icon" aria-hidden="true">🛡</div>
-            <h3 id="manifest-card-4-title">Verlässlichkeit ist unser Standard</h3>
-            <p id="manifest-card-4-body">Wir versprechen nicht nur Mobilität, wir liefern sie. Ein Maximum an Planungssicherheit für Sie und Ihre Partner.</p>
-            <a class="hp-link" id="manifest-card-4-cta" href="#care">Mehr erfahren →</a>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="hp-section hp-section--muted" id="faq" aria-labelledby="faq-title">
-    <div class="hp-wrap">
-      <div class="hp-section-head">
-        <p class="hp-kicker">Unsere Vision</p>
-        <h2 id="faq-title">Häufige Fragen</h2>
-        <p class="hp-sub">ONRODA vernetzt Mobilität digital — von der Buchung bis zur Abrechnung. Transparent für Fahrgäste, steuerbar für Unternehmen, effizient für Partnerbetriebe.</p>
-      </div>
-      <div class="hp-faq-layout">
-        <aside class="hp-vision-panel" aria-labelledby="vision-heading">
-          <h3 id="vision-heading">Was wir wollen</h3>
-          <p>Keine klassische Taxi-Website, sondern eine Plattform: Fahrten buchen, Disposition steuern, Krankenfahrten organisieren und Partnerprozesse digital abbilden — in einer Region, mit klaren Abläufen.</p>
-          <ul class="hp-vision-list">
-            <li>Ein System statt Medienbrüche</li>
-            <li>Live-Status für alle Beteiligten</li>
-            <li>Regionale Partner statt anonyme Vermittlung</li>
-            <li>Offen für Taxi, Care, Firmen &amp; Hotels</li>
-          </ul>
-          <a class="hp-link" href="#partner">Partner werden →</a>
-        </aside>
-        <div id="faq-list-root" class="hp-faq-list">
-          <details class="hp-faq-item" id="faq-item-1" open>
-            <summary id="faq-item-1-question">Wie buche ich eine Fahrt?</summary>
-            <p id="faq-item-1-answer">Über die ONRODA App oder über angebundene Partner. Buchung, Fahrerstatus und Fahrtdetails sind digital nachvollziehbar.</p>
-          </details>
-          <details class="hp-faq-item" id="faq-item-2">
-            <summary id="faq-item-2-question">Kann ich Fahrten vorplanen?</summary>
-            <p id="faq-item-2-answer">Ja. Fahrten können sofort oder als Vorbestellung für einen späteren Zeitpunkt geplant werden.</p>
-          </details>
-          <details class="hp-faq-item" id="faq-item-3">
-            <summary id="faq-item-3-question">Wie erhalte ich Belege?</summary>
-            <p id="faq-item-3-answer">Fahrtbelege und Abrechnungen werden digital bereitgestellt und können jederzeit eingesehen oder heruntergeladen werden.</p>
-          </details>
-          <details class="hp-faq-item" id="faq-item-4">
-            <summary id="faq-item-4-question">Für wen ist ONRODA gedacht?</summary>
-            <p id="faq-item-4-answer">ONRODA richtet sich an Fahrgäste, Taxiunternehmen, Partnerbetriebe, Hotels, Unternehmen und Organisationen im Mobilitätsbereich.</p>
-          </details>
-          <details class="hp-faq-item" id="faq-item-5">
-            <summary id="faq-item-5-question">Wie funktioniert die Partner-Anbindung?</summary>
-            <p id="faq-item-5-answer">Partner senden eine Anfrage, werden geprüft und erhalten nach Freigabe Zugang zum Partner-Portal mit eigenen Funktionen und Auswertungen.</p>
-          </details>
-          <details class="hp-faq-item" id="faq-item-6">
-            <summary id="faq-item-6-question">Sind Krankenfahrten über ONRODA möglich?</summary>
-            <p id="faq-item-6-answer">Ja. ONRODA unterstützt Krankenfahrten und digitale Prozesse rund um Dokumentation und Abrechnung.</p>
-          </details>
-          <details class="hp-faq-item" id="faq-item-7">
-            <summary id="faq-item-7-question">Wo ist ONRODA verfügbar?</summary>
-            <p id="faq-item-7-answer">ONRODA startet in Stuttgart und der Region – weitere Gebiete folgen schrittweise.</p>
-          </details>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="hp-section hp-section--muted hp-care" id="care" aria-labelledby="care-title">
-    <div class="hp-wrap">
-      <div class="hp-care__grid">
-        <div class="hp-care__col hp-care__col--intro">
-          <p class="hp-kicker">♥ ONRODA Care</p>
-          <span class="hp-medical-usp__badge hp-medical-usp__badge--inline">Digitalisierte Krankenfahrten</span>
-          <h2 id="care-title">ONRODA Care – Krankenfahrten digital und einfacher gedacht</h2>
-          <div class="hp-care-tags" role="list" aria-label="Krankenfahrt Leistungen">
-            <span class="hp-care-tags__item" role="listitem">
-              <span class="hp-care-tags__ico" aria-hidden="true">📄</span> Transportschein
-            </span>
-            <span class="hp-care-tags__item" role="listitem">
-              <span class="hp-care-tags__ico" aria-hidden="true">🏥</span> Krankenkasse
-            </span>
-            <span class="hp-care-tags__item" role="listitem">
-              <span class="hp-care-tags__ico" aria-hidden="true">♿</span> Rollstuhl
-            </span>
-          </div>
-          <p class="hp-care__tagline">
-            Sicher, persönlich und verlässlich – für Krankenfahrten, Kurfahrten und regelmäßige medizinische Fahrten.
-          </p>
-          <p class="hp-care__intro">
-            Wir begleiten Sie zu Arztterminen, Dialyse, Physiotherapie, Reha, Kurfahrten, Entlassungen aus Kliniken und
-            vielen weiteren Fahrten – diskret, pünktlich und mit Respekt für Ihre Situation.
-          </p>
-          <p class="hp-care__intro hp-muted-note" style="margin-top:12px;font-size:0.92rem;color:var(--onroda-text-grey);">
-            Abrechnung und Zuzahlung richten sich nach Tarif, Krankenkasse und Verordnung — konkrete Beträge nennen wir Ihnen
-            transparent in der App vor bzw. nach der Fahrt.
-          </p>
-        </div>
-
-        <div class="hp-care__col hp-care__col--detail">
-        <h3 class="hp-care__subhead">Mehr als nur Beförderung:</h3>
-        <ul class="hp-care-benefits">
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Transportschein digital erfassen
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Prüfung, ob Unterlagen vollständig vorliegen
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Unterstützung bei Genehmigungen und Freigaben
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Krankenkassen-Prozesse digital begleiten
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Rollstuhl- und Sonderbedarfe angeben
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Wiederkehrende Fahrten einfach organisieren
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Nachvollziehbare Dokumentation und Statusübersicht
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            Fahrten für Angehörige oder Betreuung organisierbar
-          </li>
-        </ul>
-
-        <h3 class="hp-care__subhead">So funktioniert es:</h3>
-        <ol class="hp-care-process" aria-label="Ablauf Krankenfahrt">
-          <li>Transportschein / Verordnung hochladen</li>
-          <li>Unterlagen prüfen</li>
-          <li>Genehmigungsstatus nachvollziehen</li>
-          <li>Fahrt buchen</li>
-          <li>Fahrt durchführen</li>
-          <li>Abrechnung transparent begleiten</li>
-        </ol>
-
-        <p class="hp-care__closing">
-          ONRODA Care verbindet digitale Prozesse mit persönlicher Mobilität.
-        </p>
-        <div class="hp-care__actions">
-          <a class="hp-btn-primary" href="#jetzt-buchen">Jetzt Krankenfahrt anfragen</a>
-          <button type="button" class="hp-btn-ghost" data-motion-open="medical">
-            Motion: Scan bis Abrechnung
-          </button>
-        </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="hp-section hp-section--muted hp-enterprise" id="unternehmen" aria-labelledby="unternehmen-title">
-    <div class="hp-wrap">
-      <div class="hp-enterprise__shell">
-        <header class="hp-enterprise__head">
-          <p class="hp-kicker">Für Unternehmen, Hotels &amp; Reisepartner</p>
-          <h2 id="unternehmen-title">Digitale Mobilität für Unternehmen, Hotels, Reisebüros und Partnerbetriebe.</h2>
-          <p class="hp-enterprise__intro">
-            Unternehmen in Stuttgart und der Region nutzen ONRODA für strukturierte Prozesse, weniger Aufwand und
-            nachvollziehbare Mobilität — für <strong>Hotels</strong>, <strong>Firmenkunden</strong> und
-            <strong>Reisebüros</strong> mit eigenem Partner-Zugang nach Freigabe.
-          </p>
-        </header>
-
-        <ul class="hp-care-benefits hp-enterprise__benefits">
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            <div>
-              <strong>Kein Papierchaos mehr</strong>
-              Von der Buchung bis zur Abrechnung – digital und nachvollziehbar.
-            </div>
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            <div>
-              <strong>Gutschein- &amp; Code-System</strong>
-              Digitale Gutscheine, QR-Codes und Partnercodes statt Papiergutscheine.
-            </div>
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            <div>
-              <strong>Kostenstellen &amp; Zuordnung</strong>
-              Fahrten direkt Projekten, Abteilungen, Hotels oder Kostenstellen zuweisen.
-            </div>
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            <div>
-              <strong>Reisebüros &amp; Hotels integrieren</strong>
-              Gäste, Transfers und Fahrten zentral verwalten.
-            </div>
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            <div>
-              <strong>Direkte Abwicklung</strong>
-              Keine Callcenter-Schleifen, weniger Rückfragen und schnellere Prozesse.
-            </div>
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            <div>
-              <strong>Zeit sparen</strong>
-              Weniger administrativer Aufwand für Teams, Empfang und Disposition.
-            </div>
-          </li>
-          <li class="hp-care-benefits__item">
-            <span class="hp-care-benefits__check" aria-hidden="true">✓</span>
-            <div>
-              <strong>Transparente Abrechnung</strong>
-              Digitale Belege, Sammelrechnungen und nachvollziehbare Historie.
-            </div>
-          </li>
-        </ul>
-
-        <div class="hp-enterprise__actions">
-          <a class="hp-btn-primary" href="#partner">Jetzt Partner werden und Fahrten digital organisieren</a>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -1143,218 +998,69 @@
     </div>
   </section>
 
-  <section
-    class="hp-app-download app-download-section"
-    id="jetzt-buchen"
-    aria-labelledby="app-download-heading"
-    data-app-active-tab="taxi"
-  >
-    <div class="hp-wrap hp-app-download__grid">
-      <div class="hp-app-download__copy">
-        <div class="hp-app-download__badge hp-reveal" data-reveal-order="0">
-          <span class="hp-app-download__badge-icon" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="5" y="2" width="14" height="20" rx="2" /><path d="M12 18h.01" />
-            </svg>
-          </span>
-          <span class="hp-app-download__badge-text">Mobile App</span>
-        </div>
-        <h2 id="app-download-heading" class="hp-app-download__title hp-reveal" data-reveal-order="1">
-          ONRODA App <span class="hp-app-download__title-accent">herunterladen</span>
-        </h2>
-        <p class="hp-app-download__lead hp-reveal" data-reveal-order="2">
-          Fahrten buchen, Krankenfahrten organisieren und alles digital im Blick behalten.
-        </p>
-
-        <div class="hp-app-download__tabs hp-reveal" data-reveal-order="3" role="tablist" aria-label="App-Bereiche">
-          <button type="button" class="hp-app-download__tab is-active" role="tab" aria-selected="true" data-app-tab="taxi" id="app-tab-taxi">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-2-3-2-3 2-3 2-2.7.6-4.5 1.1C5.2 10.3 4.5 11.1 4 12v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-            Taxi
-          </button>
-          <button type="button" class="hp-app-download__tab" role="tab" aria-selected="false" data-app-tab="medical" id="app-tab-medical">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-            Krankenfahrten
-          </button>
-          <button type="button" class="hp-app-download__tab" role="tab" aria-selected="false" data-app-tab="partner" id="app-tab-partner">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
-            Partner
-          </button>
-        </div>
-
-        <ul class="hp-app-download__features">
-          <li class="hp-app-download__feature hp-reveal" data-reveal-order="4">
-            <span class="hp-app-download__feature-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            </span>
-            <div class="hp-app-download__feature-copy">
-              <strong>Live-Tracking</strong>
-              <span>Verfolgen Sie Ihre Fahrt in Echtzeit.</span>
-            </div>
-          </li>
-          <li class="hp-app-download__feature hp-reveal" data-reveal-order="5">
-            <span class="hp-app-download__feature-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            </span>
-            <div class="hp-app-download__feature-copy">
-              <strong>Fahrerstatus &amp; ETA</strong>
-              <span>Sehen Sie, wann Ihr Fahrer eintrifft.</span>
-            </div>
-          </li>
-          <li class="hp-app-download__feature hp-reveal" data-reveal-order="6" data-app-feature="medical">
-            <span class="hp-app-download__feature-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            </span>
-            <div class="hp-app-download__feature-copy">
-              <strong>Krankenfahrten digital verwalten</strong>
-              <span>Transportschein-Scan, Status &amp; Unterlagen.</span>
-            </div>
-          </li>
-          <li class="hp-app-download__feature hp-reveal" data-reveal-order="7" data-app-feature="medical">
-            <span class="hp-app-download__feature-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </span>
-            <div class="hp-app-download__feature-copy">
-              <strong>Genehmigungsstatus nachvollziehen</strong>
-              <span>Prüfen Sie den Status Ihrer Krankenkasse.</span>
-            </div>
-          </li>
-          <li class="hp-app-download__feature hp-reveal" data-reveal-order="8" data-app-feature="medical">
-            <span class="hp-app-download__feature-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="M7 20h10"/><path d="M9 20v-6a3 3 0 0 1 6 0v6"/></svg>
-            </span>
-            <div class="hp-app-download__feature-copy">
-              <strong>Rollstuhl &amp; Sonderbedarf</strong>
-              <span>Bedarf angeben – wir kümmern uns.</span>
-            </div>
-          </li>
-          <li class="hp-app-download__feature hp-reveal" data-reveal-order="9">
-            <span class="hp-app-download__feature-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg>
-            </span>
-            <div class="hp-app-download__feature-copy">
-              <strong>Taxameter &amp; Fahrtdetails</strong>
-              <span>Transparente Preise und digitale Belege.</span>
-            </div>
-          </li>
-        </ul>
+  <section class="hp-section hp-section--muted" id="faq" aria-labelledby="faq-title">
+    <div class="hp-wrap">
+      <div class="hp-section-head">
+        <p class="hp-kicker">Unsere Vision</p>
+        <h2 id="faq-title">Häufige Fragen</h2>
+        <p class="hp-sub">ONRODA vernetzt Mobilität digital — von der Buchung bis zur Abrechnung. Transparent für Fahrgäste, steuerbar für Unternehmen, effizient für Partnerbetriebe.</p>
       </div>
-
-      <div class="hp-app-download__device">
-        <div class="hp-app-download__stage" aria-hidden="true">
-          <div class="hp-app-download__phones">
-            <div class="hp-app-download__phone hp-app-download__phone--taxi hp-reveal hp-reveal--phone is-front" data-app-phone="taxi" data-reveal-order="12">
-              <span class="hp-app-download__island"></span>
-              <div class="hp-app-download__screen hp-app-download__screen--taxi">
-                <header class="hp-app-download__screen-top">
-                  <div>
-                    <small>Ihre Fahrt</small>
-                    <strong>Unterwegs</strong>
-                  </div>
-                  <span class="hp-screen-pill hp-screen-pill--live">Live</span>
-                </header>
-                <div class="hp-app-download__driver">
-                  <div>
-                    <small>Ankunft in 3 Min.</small>
-                    <strong>Max M.</strong>
-                    <span class="hp-app-download__stars" aria-label="Bewertung 4,9">★★★★★ <em>4,9</em></span>
-                  </div>
-                  <span class="hp-app-download__car-ico" aria-hidden="true">🚕</span>
-                </div>
-                <div class="hp-app-download__map">
-                  <span class="hp-app-download__car-dot" aria-hidden="true"></span>
-                  <span class="hp-app-download__route"></span>
-                  <span class="hp-app-download__pin"></span>
-                </div>
-                <div class="hp-app-download__ride">
-                  <div>
-                    <small>Taxi · TP-1234</small>
-                    <strong>12,50 €</strong>
-                  </div>
-                  <span class="hp-app-download__ride-cta">Fahrt teilen</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="hp-app-download__phone hp-app-download__phone--medical hp-reveal hp-reveal--phone-2" data-app-phone="medical" data-reveal-order="13">
-              <span class="hp-app-download__island"></span>
-              <div class="hp-app-download__screen hp-app-download__screen--medical">
-                <header class="hp-app-download__screen-top">
-                  <div>
-                    <small>ONRODA Care</small>
-                    <strong>Krankenfahrt</strong>
-                  </div>
-                </header>
-                <div class="hp-app-download__approval">
-                  <span class="hp-app-download__approval-icon" aria-hidden="true">✓</span>
-                  <div>
-                    <strong>Geprüft</strong>
-                    <span>Alle Unterlagen vollständig.</span>
-                  </div>
-                </div>
-                <ol class="hp-app-download__timeline">
-                  <li class="is-done">Transportschein hochgeladen</li>
-                  <li class="is-done">Unterlagen geprüft</li>
-                  <li class="is-done">Bei Krankenkasse eingereicht</li>
-                  <li class="is-done">Genehmigt</li>
-                  <li>Fahrt geplant</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-
-          <aside class="hp-app-download__trust-card hp-reveal" data-reveal-order="14">
-            <span class="hp-app-download__trust-icon" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </span>
-            <strong>Sicher. Persönlich. Verlässlich.</strong>
-            <p>ONRODA begleitet Sie auf allen Wegen – mit Respekt und dem nötigen Verständnis.</p>
-          </aside>
+      <div class="hp-faq-layout">
+        <aside class="hp-vision-panel" aria-labelledby="vision-heading">
+          <h3 id="vision-heading">Was wir wollen</h3>
+          <p>Keine klassische Taxi-Website, sondern eine Plattform: Fahrten buchen, Disposition steuern, Krankenfahrten organisieren und Partnerprozesse digital abbilden — in einer Region, mit klaren Abläufen.</p>
+          <ul class="hp-vision-list">
+            <li>Ein System statt Medienbrüche</li>
+            <li>Live-Status für alle Beteiligten</li>
+            <li>Regionale Partner statt anonyme Vermittlung</li>
+            <li>Offen für Taxi, Care, Firmen &amp; Hotels</li>
+          </ul>
+          <a class="hp-link" href="#partner">Partner werden →</a>
+        </aside>
+        <div id="faq-list-root" class="hp-faq-list">
+          <details class="hp-faq-item" id="faq-item-1" open>
+            <summary id="faq-item-1-question">Wie buche ich eine Fahrt?</summary>
+            <p id="faq-item-1-answer">Über die ONRODA App oder über angebundene Partner. Buchung, Fahrerstatus und Fahrtdetails sind digital nachvollziehbar.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-2">
+            <summary id="faq-item-2-question">Kann ich Fahrten vorplanen?</summary>
+            <p id="faq-item-2-answer">Ja. Fahrten können sofort oder als Vorbestellung für einen späteren Zeitpunkt geplant werden.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-3">
+            <summary id="faq-item-3-question">Wie erhalte ich Belege?</summary>
+            <p id="faq-item-3-answer">Fahrtbelege und Abrechnungen werden digital bereitgestellt und können jederzeit eingesehen oder heruntergeladen werden.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-4">
+            <summary id="faq-item-4-question">Für wen ist ONRODA gedacht?</summary>
+            <p id="faq-item-4-answer">ONRODA richtet sich an Fahrgäste, Taxiunternehmen, Partnerbetriebe, Hotels, Unternehmen und Organisationen im Mobilitätsbereich.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-5">
+            <summary id="faq-item-5-question">Wie funktioniert die Partner-Anbindung?</summary>
+            <p id="faq-item-5-answer">Partner senden eine Anfrage, werden geprüft und erhalten nach Freigabe Zugang zum Partner-Portal mit eigenen Funktionen und Auswertungen.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-6">
+            <summary id="faq-item-6-question">Sind Krankenfahrten über ONRODA möglich?</summary>
+            <p id="faq-item-6-answer">Ja. ONRODA unterstützt Krankenfahrten und digitale Prozesse rund um Dokumentation und Abrechnung.</p>
+          </details>
+          <details class="hp-faq-item" id="faq-item-7">
+            <summary id="faq-item-7-question">Wo ist ONRODA verfügbar?</summary>
+            <p id="faq-item-7-answer">ONRODA startet in Stuttgart und der Region – weitere Gebiete folgen schrittweise.</p>
+          </details>
         </div>
-      </div>
-
-      <div class="hp-app-download__cta">
-        <div class="hp-store-links hp-reveal" data-reveal-order="10">
-          <a
-            class="hp-store-badge hp-store-badge--apple"
-            id="app-download-app-store"
-            href="https://apps.apple.com/de/app/onroda/id6773487513"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Laden im App Store"
-          >
-            <img src="/app-store-badge-de.svg" width="120" height="40" alt="" decoding="async" />
-          </a>
-          <span
-            class="hp-store-badge hp-store-badge--google hp-store-badge--soon"
-            aria-label="Google Play folgt in Kürze"
-            title="Demnächst bei Google Play"
-          >
-            <img src="/google-play-badge-de.svg" width="135" height="40" alt="" decoding="async" />
-          </span>
-        </div>
-        <p class="hp-app-download__social">
-          <a class="hp-instagram-link" href="https://www.instagram.com/onroda_taxi/" target="_blank" rel="noopener noreferrer" aria-label="Folge ONRODA auf Instagram">
-            <img class="hp-instagram-icon" src="/instagram-logo.jpg" width="28" height="28" alt="" decoding="async" />
-            @onroda_taxi auf Instagram
-          </a>
-        </p>
       </div>
     </div>
   </section>
 
+  </main>
   <footer class="hp-footer">
     <div class="hp-wrap">
       <div class="hp-footer-main">
         <div class="hp-footer-brand">
           <a class="hp-footer-logo" href="/" aria-label="ONRODA – Startseite">
-            <span class="hp-footer-mark" aria-hidden="true">
-              <span class="hp-footer-mark__dot"></span>
-              <span class="hp-footer-mark__name">ONRODA</span>
-            </span>
+            <img class="hp-brand-logo hp-brand-logo--footer" src="/onroda-logo-transparent.png" width="196" height="74" alt="ONRODA" loading="lazy" />
           </a>
           <p class="hp-footer-text">
-            Taxi, Krankenfahrten und digitale Mobilität — für Fahrgäste, Fahrer und Unternehmen in der Region Stuttgart
-            und Umgebung.
+            Taxi, Flughafentransfers, Geschäftsreisen und Krankenfahrten — wir vermitteln in Stuttgart, Esslingen und ganz Baden-Württemberg.
           </p>
           <a class="hp-footer-contact-mail" href="mailto:info@onroda.de">info@onroda.de</a>
           <a class="hp-footer-instagram" href="https://www.instagram.com/onroda_taxi/" target="_blank" rel="noopener noreferrer" aria-label="ONRODA auf Instagram">

@@ -1,0 +1,11 @@
+---
+description: ONRODA Homepage-Entwurf Oktober 2026 — reine Präsentation, statischer Hero, vorhandene Buchungswege und Deployment-Grenze
+globs: artifacts/marketing-site/**
+alwaysApply: false
+---
+# Homepage-Präsentation 31.10.2026
+- Vedat: ausschließlich Optik/Texte/Bilder, keine API-/Buchungslogik ändern. Schwarz aktuelle E-Klasse als Kombi; Vermittlung Stuttgart, Esslingen und ganz Baden-Württemberg. Leinfelden-Echterdingen nicht zusätzlich als Echterdingen doppeln.
+- Hauptseite .hp-home-v2 + home-2026.css; bestehende style.css/script.js/analytics.js unverändert. Originalproduktlogo verwenden.
+- Neuer Hero/Regions-/Anlassbereich ist statisches HTML, unabhängig von alten heroHeadline/heroSubline/cta-CMS-Feldern. Alte CMS-Daten bleiben gespeichert; erhaltene CMS-Abschnitte/Festpreis-/FAQ-Flows bleiben angebunden. Diese Grenze vor weiteren CMS-Aufträgen beachten.
+- Keine Attrappen-Buchungsformulare: Buttons auf vorhandenen App-Download/Festpreisrechner/Unternehmen/Care. Keine erfundenen Preise/Bewertungen oder Fahrzeugverfügbarkeitszusage. Bilder sind generierte Illustrationen.
+- Nachweis/Offenes: docs/onroda-homepage-design-2026-10-31.md. Der Zugang onroda-codex kann lesen, aber nicht Repo/Webroot schreiben; Root-Anmeldung mit readonly-Key verweigert. Niemals „live“ behaupten, solange nicht veröffentlicht und öffentliche Antwort überprüft.
