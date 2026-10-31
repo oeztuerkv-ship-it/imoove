@@ -62,12 +62,6 @@
 .ride-skip-link{position:fixed;top:8px;left:12px;z-index:2000;transform:translateY(-200%);background:#fff;color:#111;padding:10px 15px;border:2px solid var(--onroda-red);border-radius:6px}.ride-skip-link:focus{transform:translateY(0)}
 
 .hp-home-v2 main>section[id]{scroll-margin-top:95px}
-@media(max-width:640px){
- .hp-home-v2 .hp-whatsapp-fab{position:static;display:flex;width:fit-content;margin:20px auto;transform:none;gap:10px}
- .hp-home-v2 .hp-whatsapp-fab__label{position:static;opacity:1;visibility:visible;transform:none;pointer-events:auto;background:transparent;color:#1d2024;padding:0;box-shadow:none;font-size:16px}
- .hp-home-v2 .hp-whatsapp-fab__label:after{display:none}
- .hp-home-v2 .hp-whatsapp-fab__icon{width:42px;height:42px}
-}
 
 /* Content destination /#care: same quiet editorial styling as the new homepage. */
 .hp-home-v2 #care{background:#fafafa;border-top:1px solid #eceef0;border-bottom:1px solid #eceef0;padding-block:64px}

@@ -69,3 +69,10 @@ body.hp-site-v2{--ride-red:var(--onroda-red);font-family:"Inter",system-ui,-appl
 .hp-status-page .ps-field label{font-size:14px}
 
 .hp-site-v2{--hp-footer-heading:#cbd5e1;--hp-footer-soft:#cbd5e1;--hp-footer-muted:#e5e7eb}
+
+/* Persistent contact on every public page; existing link without embedded chat SDK. */
+.hp-site-v2 .hp-whatsapp-fab{position:fixed;left:auto;top:auto;right:max(20px,env(safe-area-inset-right,0px));bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:1200;display:inline-flex;margin:0;padding:0;transform:none;gap:10px}
+.hp-site-v2 .hp-whatsapp-fab__icon{width:52px;height:52px;background:#25d366}
+.hp-site-v2 .hp-whatsapp-fab__label{font-size:16px;background:#fff;color:#1f2933;backdrop-filter:none}
+.hp-site-v2 .hp-footer{padding-bottom:84px}
+@media(max-width:640px){.hp-site-v2 .hp-whatsapp-fab{right:max(14px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px))}.hp-site-v2 .hp-whatsapp-fab__icon{width:48px;height:48px}.hp-site-v2 .hp-whatsapp-fab__label{display:none}}

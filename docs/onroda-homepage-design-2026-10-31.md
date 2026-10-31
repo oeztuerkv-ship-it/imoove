@@ -99,3 +99,13 @@ Auswirkungen: 1 API/DB nein; 2 Admin-Code nein (CMS-Karten erhalten); 3 Partner-
 - Unverändert nach Bytevergleich: sämtliche Formularblöcke, script.js, site-navigation.js, analytics.js, Preise, API und Mobile. Beide Festpreis-Dateien gleich; alle neun Header/Footer konsistent, gültige CSS-Syntax und Marketing-Invarianten geprüft. Kein Server-Deploy durch diesen Agenten.
 
 Auswirkungen: 1 API/DB nein; 2 Admin nein; 3 Partner-Fachflow nein; 4 Mobile/OTA nein; 5 Marketing ja (Schrift/Kontrast/deckende Flächen); 6 Audit dokumentiert; 7 E-Mail/Push nein; 8 Rechte nein.
+
+
+## Fester WhatsApp-Kontakt und Gespräch über KI-Chat
+- Auftrag: Auf der Flughafentransfer-Seite fehlt WhatsApp; auf allen Seiten fest sichtbar halten. Bestätigte Ursache: Das eigentliche Link-/SVG-Element war nur in index.html vorhanden. Zusätzlich hatte die Startseite mobil einen position:static-Sonderfall.
+- Umsetzung: Vorhandenen WhatsApp-Link und dasselbe Icon unverändert auf alle neun öffentlichen Dokumente übertragen. Feste Position ausschließlich über site-2026.css, Desktop/Handy mit Safe-Area-Abstand und mindestens 48px Icongröße; mobil keine breite Begleitblase über den Inhalten. Homepage-Sonderfall entfernt, Footer unten mit Platz für den Kontakt. Keine Nachricht gesendet, kein Drittanbieter-Chat-SDK eingebunden.
+- Prüfung: genau ein identischer Kontaktlink pro Dokument, gemeinsamer fester Stil, keine Homepage-Gegenregel, identische Festpreis-Aliase und unveränderte Formulare/Skripte. Marketing-Invarianten und git diff --check bestanden. Live-Stand nach Deployment separat prüfen; Git-Push ist keine Veröffentlichung.
+- Auswirkungen: API/DB nein; Admin nein; Partner-Fachflow nein; Mobile nein; Marketing ja (Kontakt auf allen Seiten); Audit dokumentiert; E-Mail/Push nein; Rechte nein.
+
+KI-Chat ist bislang eine Produktidee, nicht implementiert. Sinnvoller erster Umfang: Freitext verstehen, Abholort/Ziel/Bedarf klären, bestehende Preislogik über kontrollierten serverseitigen Funktionsaufruf nutzen und berechnetes priceEur als Backend-Ergebnis darstellen. Vorhanden: GET /api/public/fixed-price-quote in publicHomepageApi.ts ruft buildFixedPriceQuote auf; keine neue Tariftabelle erfinden. Bei fehlender Festpreis-Eignung keinen Fantasiepreis nennen; Verfügbarkeit und Buchung nur auf bestätigte Serverdaten stützen. Als erster Schritt Chat → Preisprüfung → vorhandene App-/WhatsApp-Buchungswege. Echte Web-Buchungen, Kundenauthentifizierung und Disposition wären ein eigener expliziter Auftrag; aktuell keine API-/Geschäftslogik-Änderung.
+Technikprinzip für kontrollierte externe Funktionen: https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview . Anbieter noch nicht festgelegt, keine KI-Datenübertragung in diesem Auftrag.

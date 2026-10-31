@@ -31,3 +31,7 @@ alwaysApply: false
 - Überarbeitete Textstile: regulär meist 16px, Hinweise mindestens 14px, Navigation 15/16px. Haupt-Prozess: deckende helle Flächen, #1f2933-Titel, #4b5563-Text, opacity 1; alte Beschreibungsmargen/max-width und ::before deaktiviert.
 - Keine Transparenz-/Hover-Dimmung auf Zusatzkarten. Mobile Header-Beschriftung „App laden“ mit vollständigem aria-label statt Verkleinern auf 10px. Reine CSS-/Labelkorrektur, Formulare und Fachskripte unverändert.
 - Statische CSS-Kontrast-/Kaskadenprüfung nicht als tatsächlich erfolgten Browser-Sichtcheck ausgeben. Screenshots oder Geräte-Abnahme separat bestätigen.
+
+## WhatsApp dauerhaft sichtbar
+- Bestehenden wa.me-Kontakt mit Original-SVG auf allen 9 öffentlichen Dokumenten genau einmal einbinden, nicht nur auf der Startseite. Feste Position und Safe-Area-Abstand zentral in site-2026.css; keine mobile position:static-Gegenregel in Homepage-CSS. Mobil nur Icon, damit die Kontaktblase keine breite Textfläche verdeckt.
+- KI-Chat wurde nur besprochen. Keine API-/Booking-/KI-Integration als bereits erledigt ausgeben. Preisquelle wäre vorhandenes buildFixedPriceQuote; keine erfundenen Preis-/Fahrer-/Buchungszusagen.
