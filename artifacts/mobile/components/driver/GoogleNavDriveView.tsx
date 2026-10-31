@@ -1,259 +1,193 @@
-/**
- * GoogleNavDriveView — echte Fahrt ueber das Google Navigation SDK
- * (@googlemaps/react-native-navigation-sdk@0.16.3).
- *
- * WICHTIG — Ladereihenfolge:
- *   Diese Datei importiert das SDK statisch (oben, normaler ES-`import`). Das ist nur
- *   sicher, weil NICHTS diese Datei selbst statisch importiert. `app/driver/navigation.tsx`
- *   laedt sie ausschliesslich ueber ein zur Laufzeit gated `require(...)`, abhaengig von
- *   `EXPO_PUBLIC_ENABLE_GOOGLE_NAV`. Ein normaler Build (Flag aus) evaluiert dieses Modul
- *   nie und fasst damit auch nie `TurboModuleRegistry.getEnforcing('NavModule')` an
- *   (siehe node_modules/@googlemaps/react-native-navigation-sdk/src/native/NativeNavModule.ts),
- *   das sonst ohne verlinktes natives Modul sofort wirft.
- *
- *   => Diese Datei NIEMALS mit einem statischen `import` aus einer Datei einbinden, die in
- *      jedem Build geladen wird (insb. nicht aus navigation.tsx). Nur per `require()`
- *      hinter dem Flag-Check laden.
- *
- * Geltungsbereich: Diese Komponente ersetzt NUR Kamera/Heading/Route/Rerouting/Turn-by-Turn
- * (die Google-NavigationView zeichnet Karte, Fahrzeug-Puck, Route und eigenes
- * Abbiege-/ETA-Header/Footer). Sie kennt nichts von ONRODA-Geschaeftslogik (Status, Fahrpreis,
- * Chat, PIN) — das bleibt vollstaendig in navigation.tsx. Diese Komponente meldet nach aussen
- * nur rohe Navigationsdaten (Position, Restdistanz/-zeit, Ankunft, Routen-Events) ueber Props.
- *
- * Alle hier verwendeten SDK-Methoden/Typen sind 1:1 aus der installierten Paketversion
- * 0.16.3 uebernommen (useNavigation, NavigationProvider, NavigationView, NavigationController,
- * Waypoint, RouteStatus, NavigationSessionStatus, TimeAndDistance, ArrivalEvent) — keine
- * erfundenen Methoden.
- */
+/** Native Google navigation owner. Load only behind the native capability gate. */
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import {
-  NavigationProvider,
-  NavigationView,
-  useNavigation,
-  NavigationSessionStatus,
-  RouteStatus,
-  type Waypoint,
-  type Location as NavSdkLocation,
-  type TimeAndDistance,
-  type ArrivalEvent,
+  AudioGuidance, CameraPerspective, NavigationProvider, NavigationView,
+  NavigationSessionStatus, RouteStatus, useNavigation,
+  type NavigationViewController, type Location, type TimeAndDistance,
 } from "@googlemaps/react-native-navigation-sdk";
+import { getBackgroundPermissionsSafe, requestForegroundPermissionsSafe } from "@/utils/safeExpoLocation";
+import { createGoogleNavWorkQueue, googleRoutePoints, validGoogleNavPoint, type GoogleNavPoint } from "@/utils/googleNavSession";
 
-export type GoogleNavFix = {
-  lat: number;
-  lon: number;
-  headingDeg: number | null;
-  speedMps: number | null;
-  accuracyM: number | null;
-  atMs: number;
-};
-
-export type GoogleNavRemaining = {
-  distM: number;
-  etaMin: number;
-};
-
-export type GoogleNavDestination = {
-  lat: number;
-  lon: number;
-  label?: string;
-};
-
+export type GoogleNavFix = { lat: number; lon: number; headingDeg: number | null; speedMps: number | null; accuracyM: number | null; atMs: number };
+export type GoogleNavRemaining = { distM: number; etaMin: number };
+export type GoogleNavDestination = { lat: number; lon: number; label?: string };
 export type GoogleNavDriveViewProps = {
   destination: GoogleNavDestination;
-  /** Deaktiviert bei Private-Memo-Fahrten o.ae. ohne Google Nav zu beenden (hier ungenutzt, nur Vollstaendigkeit). */
+  routeIdentity: string;
   active?: boolean;
+  soundEnabled?: boolean;
+  bottomInset?: number;
+  initialPosition?: GoogleNavPoint;
   onFix?: (fix: GoogleNavFix) => void;
   onRemainingChanged?: (remaining: GoogleNavRemaining) => void;
-  onArrival?: (event: ArrivalEvent) => void;
-  onRouteChanged?: () => void;
+  onRouteChanged?: (points: GoogleNavPoint[], remaining: GoogleNavRemaining) => void;
   onRerouting?: () => void;
-  /** Session konnte nicht initialisiert oder Route nicht berechnet werden — Aufrufer sollte auf Alt-Navigation zurueckfallen. */
   onSessionError?: (reason: string) => void;
-  onMapReady?: () => void;
 };
 
-function GoogleNavDriveViewInner(props: GoogleNavDriveViewProps): React.JSX.Element {
-  const {
-    destination,
-    onFix,
-    onRemainingChanged,
-    onArrival,
-    onRouteChanged,
-    onRerouting,
-    onSessionError,
-    onMapReady,
-  } = props;
+function GoogleNavDriveViewInner(props: GoogleNavDriveViewProps) {
+  const api = useNavigation();
+  const { navigationController: controller } = api;
+  const current = React.useRef(props); current.current = props;
+  const mounted = React.useRef(false);
+  const initialized = React.useRef(false);
+  const guidanceReady = React.useRef(false);
+  const routeRevision = React.useRef(0);
+  const destinationPending = React.useRef(true);
+  const lifecycleTail = React.useRef<Promise<void>>(Promise.resolve());
+  const snapshotRevision = React.useRef(0);
+  const queue = React.useRef(createGoogleNavWorkQueue());
+  const view = React.useRef<NavigationViewController | null>(null);
+  const mapReady = React.useRef(false);
+  const pendingFollow = React.useRef(true);
 
-  const {
-    navigationController,
-    setOnLocationChanged,
-    setOnRemainingTimeOrDistanceChanged,
-    setOnArrival,
-    setOnRouteChanged,
-    setOnReroutingRequestedByOffRoute,
-  } = useNavigation();
+  const follow = React.useCallback(async () => {
+    if (!mounted.current || !initialized.current || !guidanceReady.current || !mapReady.current || !view.current || !pendingFollow.current) return;
+    await view.current.setFollowingPerspective(CameraPerspective.TILTED);
+    pendingFollow.current = false;
+  }, []);
 
-  const mountedRef = React.useRef(true);
-  const initializedRef = React.useRef(false);
-  const lastDestKeyRef = React.useRef<string>("");
+  const reportError = React.useCallback((reason: string) => {
+    if (!mounted.current) return;
+    guidanceReady.current = false;
+    current.current.onSessionError?.(reason);
+  }, []);
 
-  // Callback-Refs: Listener einmal registrieren, aber immer die aktuelle Prop-Funktion aufrufen
-  // (vermeidet staendiges Re-Registrieren der nativen Listener bei jedem Render).
-  const onFixRef = React.useRef(onFix);
-  onFixRef.current = onFix;
-  const onRemainingChangedRef = React.useRef(onRemainingChanged);
-  onRemainingChangedRef.current = onRemainingChanged;
-  const onArrivalRef = React.useRef(onArrival);
-  onArrivalRef.current = onArrival;
-  const onRouteChangedRef = React.useRef(onRouteChanged);
-  onRouteChangedRef.current = onRouteChanged;
-  const onReroutingRef = React.useRef(onRerouting);
-  onReroutingRef.current = onRerouting;
-  const onSessionErrorRef = React.useRef(onSessionError);
-  onSessionErrorRef.current = onSessionError;
+  const publishSnapshot = React.useCallback(async () => {
+    const route = routeRevision.current;
+    const own = ++snapshotRevision.current;
+    if (!mounted.current || !guidanceReady.current) return;
+    try {
+      const [segments, time] = await Promise.all([controller.getRouteSegments(), controller.getCurrentTimeAndDistance()]);
+      if (!mounted.current || !guidanceReady.current || route !== routeRevision.current || own !== snapshotRevision.current) return;
+      if (!Number.isFinite(time.meters) || !Number.isFinite(time.seconds)) return;
+      const remaining = { distM: Math.max(0, time.meters), etaMin: Math.max(0, time.seconds / 60) };
+      current.current.onRemainingChanged?.(remaining);
+      const points = googleRoutePoints(segments);
+      if (points.length >= 2) current.current.onRouteChanged?.(points, remaining);
+    } catch {
+      // A missing route snapshot must not terminate working native guidance.
+    }
+  }, [controller]);
 
   React.useEffect(() => {
-    setOnLocationChanged((location: NavSdkLocation) => {
-      onFixRef.current?.({
-        lat: location.lat,
-        lon: location.lng,
-        headingDeg: typeof location.bearing === "number" ? location.bearing : null,
-        speedMps: typeof location.speed === "number" ? location.speed : null,
-        accuracyM: typeof location.accuracy === "number" ? location.accuracy : null,
-        atMs: location.time,
-      });
+    api.setOnLocationChanged((loc: Location) => {
+      if (!mounted.current || !validGoogleNavPoint(loc.lat, loc.lng)) return;
+      const age = Date.now() - loc.time;
+      if (!Number.isFinite(loc.time) || age > 30_000 || age < -5_000) return;
+      current.current.onFix?.({ lat: loc.lat, lon: loc.lng,
+        headingDeg: Number.isFinite(loc.bearing) ? loc.bearing! : null,
+        speedMps: Number.isFinite(loc.speed) ? loc.speed : null,
+        accuracyM: Number.isFinite(loc.accuracy) ? loc.accuracy! : null, atMs: loc.time });
     });
-    setOnRemainingTimeOrDistanceChanged((timeAndDistance: TimeAndDistance) => {
-      onRemainingChangedRef.current?.({
-        distM: timeAndDistance.meters,
-        etaMin: timeAndDistance.seconds / 60,
-      });
+    api.setOnRemainingTimeOrDistanceChanged((time: TimeAndDistance) => {
+      if (!mounted.current || !guidanceReady.current || !Number.isFinite(time.meters) || !Number.isFinite(time.seconds)) return;
+      current.current.onRemainingChanged?.({ distM: Math.max(0, time.meters), etaMin: Math.max(0, time.seconds / 60) });
     });
-    setOnArrival((event: ArrivalEvent) => {
-      onArrivalRef.current?.(event);
+    api.setOnReroutingRequestedByOffRoute(() => {
+      if (!mounted.current) return;
+      guidanceReady.current = false;
+      routeRevision.current++;
+      current.current.onRerouting?.();
     });
-    setOnRouteChanged(() => {
-      onRouteChangedRef.current?.();
-    });
-    setOnReroutingRequestedByOffRoute(() => {
-      onReroutingRef.current?.();
+    api.setOnRouteChanged(() => {
+      if (!mounted.current || !initialized.current || !(current.current.active ?? true)) return;
+      if (destinationPending.current) return;
+      guidanceReady.current = true;
+      void publishSnapshot();
     });
     return () => {
-      setOnLocationChanged(null);
-      setOnRemainingTimeOrDistanceChanged(null);
-      setOnArrival(null);
-      setOnRouteChanged(null);
-      setOnReroutingRequestedByOffRoute(null);
+      api.setOnLocationChanged(null); api.setOnRemainingTimeOrDistanceChanged(null);
+      api.setOnRouteChanged(null); api.setOnReroutingRequestedByOffRoute(null);
     };
-  }, [
-    setOnLocationChanged,
-    setOnRemainingTimeOrDistanceChanged,
-    setOnArrival,
-    setOnRouteChanged,
-    setOnReroutingRequestedByOffRoute,
-  ]);
+  }, [api.setOnLocationChanged, api.setOnRemainingTimeOrDistanceChanged, api.setOnRouteChanged, api.setOnReroutingRequestedByOffRoute, controller, publishSnapshot]);
 
-  const applyDestination = React.useCallback(async () => {
-    if (!mountedRef.current || !initializedRef.current) return;
-    const key = `${destination.lat.toFixed(6)},${destination.lon.toFixed(6)}`;
-    if (lastDestKeyRef.current === key) return;
-    lastDestKeyRef.current = key;
-    const waypoint: Waypoint = {
-      position: { lat: destination.lat, lng: destination.lon },
-      ...(destination.label ? { title: destination.label } : {}),
-    };
-    try {
-      const status = await navigationController.setDestination(waypoint);
-      if (!mountedRef.current) return;
-      if (status !== RouteStatus.OK) {
-        onSessionErrorRef.current?.(`route_status_${status}`);
-        return;
-      }
-      await navigationController.startGuidance();
-    } catch (e) {
-      if (!mountedRef.current) return;
-      onSessionErrorRef.current?.(e instanceof Error ? e.message : "set_destination_failed");
-    }
-  }, [destination.lat, destination.lon, destination.label, navigationController]);
+  const applyLatestDestination = React.useCallback(() => {
+    if (!initialized.current) return;
+    const intent = current.current;
+    destinationPending.current = true;
+    guidanceReady.current = false;
+    routeRevision.current++;
+    let workCurrent = () => false;
+    void queue.current.run(async (isCurrent) => {
+      workCurrent = isCurrent;
+      await controller.stopGuidance();
+      if (!mounted.current || !isCurrent() || !(intent.active ?? true)) return;
+      if (!validGoogleNavPoint(intent.destination.lat, intent.destination.lon)) { reportError("invalid_destination"); return; }
+      const status = await controller.setDestination({ position: { lat: intent.destination.lat, lng: intent.destination.lon }, title: intent.destination.label });
+      if (!mounted.current || !isCurrent()) return;
+      if (status !== RouteStatus.OK) { reportError(`route_${status}`); return; }
+      await controller.startGuidance();
+      if (!mounted.current || !isCurrent()) return;
+      destinationPending.current = false;
+      guidanceReady.current = true;
+      pendingFollow.current = true;
+      await follow();
+      await publishSnapshot();
+    }).catch(() => { if (workCurrent()) reportError("guidance_failed"); });
+  }, [controller, follow, publishSnapshot, reportError]);
+  const applyLatest = React.useRef(applyLatestDestination); applyLatest.current = applyLatestDestination;
 
-  // Init einmal pro Mount (ein Navigator-Objekt pro Bildschirm-Lebensdauer).
   React.useEffect(() => {
-    mountedRef.current = true;
+    mounted.current = true;
+    const ownQueue = createGoogleNavWorkQueue();
+    queue.current = ownQueue;
+    const previousCleanup = lifecycleTail.current;
     let cancelled = false;
-    void (async () => {
+    const init = (async () => {
       try {
-        const accepted = await navigationController.areTermsAccepted();
-        if (!accepted) {
-          const ok = await navigationController.showTermsAndConditionsDialog();
+        await previousCleanup;
+        if (cancelled) return;
+        const permission = await requestForegroundPermissionsSafe();
+        if (cancelled) return;
+        if (permission?.status !== "granted") { reportError("location_permission"); return; }
+        if (!(await controller.areTermsAccepted())) {
+          const accepted = await controller.showTermsAndConditionsDialog();
           if (cancelled) return;
-          if (!ok) {
-            onSessionErrorRef.current?.("terms_not_accepted");
-            return;
-          }
+          if (!accepted) { reportError("terms_not_accepted"); return; }
         }
-        const status = await navigationController.init();
         if (cancelled) return;
-        if (status !== NavigationSessionStatus.OK) {
-          onSessionErrorRef.current?.(`init_${status}`);
-          return;
-        }
-        initializedRef.current = true;
-        await applyDestination();
-      } catch (e) {
+        const status = await controller.init();
         if (cancelled) return;
-        onSessionErrorRef.current?.(e instanceof Error ? e.message : "init_failed");
-      }
+        if (status !== NavigationSessionStatus.OK) { reportError(`init_${status}`); return; }
+        controller.startUpdatingLocation();
+        const background = await getBackgroundPermissionsSafe();
+        if (cancelled) return;
+        controller.setBackgroundLocationUpdatesEnabled(background?.status === "granted");
+        controller.setAudioGuidanceType(current.current.soundEnabled === false ? AudioGuidance.SILENT : AudioGuidance.VOICE_ALERTS_AND_GUIDANCE | AudioGuidance.BLUETOOTH_AUDIO);
+        initialized.current = true;
+        applyLatest.current();
+      } catch { if (!cancelled) reportError("initialization_failed"); }
     })();
     return () => {
-      cancelled = true;
-      mountedRef.current = false;
-      initializedRef.current = false;
-      void navigationController.cleanup();
+      cancelled = true; mounted.current = false; initialized.current = false;
+      guidanceReady.current = false; ownQueue.dispose(); routeRevision.current++;
+      lifecycleTail.current = init.then(() => ownQueue.idle()).then(() => controller.cleanup()).catch(() => {});
     };
-    // Nur bei Mount/Unmount initialisieren — ein laufender Guidance-Session bleibt bei
-    // Ziel-Aenderungen (Abholung -> Ziel) erhalten, siehe applyDestination()-Effekt unten.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigationController]);
+  }, [controller, reportError]);
 
+  React.useEffect(() => { applyLatestDestination(); }, [props.routeIdentity, props.destination.lat, props.destination.lon, props.active, applyLatestDestination]);
   React.useEffect(() => {
-    void applyDestination();
-  }, [applyDestination]);
+    if (initialized.current) controller.setAudioGuidanceType(props.soundEnabled === false ? AudioGuidance.SILENT : AudioGuidance.VOICE_ALERTS_AND_GUIDANCE | AudioGuidance.BLUETOOTH_AUDIO);
+  }, [props.soundEnabled, controller]);
 
-  return (
-    <NavigationView
-      style={StyleSheet.absoluteFillObject}
-      headerEnabled
-      footerEnabled
-      speedometerEnabled={false}
-      tripProgressBarEnabled={false}
-      trafficPromptsEnabled={false}
-      trafficIncidentCardsEnabled={false}
-      recenterButtonEnabled
-      reportIncidentButtonEnabled={false}
-      onMapReady={onMapReady}
-    />
-  );
+  const initial = React.useRef(props.initialPosition);
+  return <NavigationView style={StyleSheet.absoluteFillObject}
+    initialCameraPosition={initial.current && validGoogleNavPoint(initial.current.lat, initial.current.lon) ? { target: { lat: initial.current.lat, lng: initial.current.lon }, tilt: 60, zoom: 16 } : undefined}
+    headerEnabled footerEnabled={false} recenterButtonEnabled speedometerEnabled={false}
+    tripProgressBarEnabled={false} reportIncidentButtonEnabled={false}
+    trafficPromptsEnabled={false} trafficIncidentCardsEnabled={false}
+    mapPadding={{ top: 0, left: 0, right: 0, bottom: props.bottomInset ?? 240 }}
+    onNavigationViewControllerCreated={(controller) => { view.current = controller; void follow().catch(() => reportError("camera_failed")); }}
+    onMapReady={() => { mapReady.current = true; void follow().catch(() => reportError("camera_failed")); }} />;
 }
 
-/**
- * Oeffentliche Komponente: NavigationProvider-Kontext + innerer View. Wird von
- * navigation.tsx ausschliesslich per gated `require()` geladen (siehe Datei-Kopfkommentar).
- */
-export function GoogleNavDriveView(props: GoogleNavDriveViewProps): React.JSX.Element {
-  return (
-    <NavigationProvider
-      termsAndConditionsDialogOptions={{
-        title: "ONRODA Navigation",
-        companyName: "ONRODA",
-      }}
-    >
-      <View style={StyleSheet.absoluteFillObject}>
-        <GoogleNavDriveViewInner {...props} />
-      </View>
-    </NavigationProvider>
-  );
-}
+const GOOGLE_NAV_TERMS = { title: "ONRODA Navigation", companyName: "ONRODA" };
 
+export function GoogleNavDriveView(props: GoogleNavDriveViewProps) {
+  return <NavigationProvider termsAndConditionsDialogOptions={GOOGLE_NAV_TERMS}>
+    <View style={StyleSheet.absoluteFillObject}><GoogleNavDriveViewInner {...props} /></View>
+  </NavigationProvider>;
+}
 export default GoogleNavDriveView;

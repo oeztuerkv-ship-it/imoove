@@ -43,6 +43,18 @@
         "simulator": false
       },
       "channel": "production"
+    },
+    "google-navigation": {
+      "extends": "preview",
+      "environment": "development",
+      "channel": "google-navigation",
+      "developmentClient": false,
+      "env": {
+        "EXPO_PUBLIC_ENABLE_GOOGLE_NAV": "1"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

@@ -87,6 +87,8 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
+    // Separate native runtime: never deliver Google SDK code to the original app.
+    ...(enableGoogleNav ? { version: "1.0.4", runtimeVersion: "onroda-google-nav-1" } : {}),
     plugins: [
       // Läuft als letztes (Expo-Plugins rückwärts): CAF nach expo-notifications entfernen.
       withAndroidRideAlertPushSound,
@@ -100,10 +102,12 @@ module.exports = ({ config }) => {
     ],
     ios: {
       ...config.ios,
+      ...(enableGoogleNav ? { buildNumber: "47" } : {}),
       config: iosConfig,
     },
     android: {
       ...config.android,
+      ...(enableGoogleNav ? { versionCode: 7 } : {}),
       config: {
         ...(config.android?.config || {}),
         googleMaps: {
@@ -114,6 +118,7 @@ module.exports = ({ config }) => {
     },
     extra: {
       ...(config.extra || {}),
+      googleNavigationEnabled: enableGoogleNav,
       eas: {
         ...(config.extra?.eas || {}),
         ...(easProjectId ? { projectId: easProjectId } : {}),

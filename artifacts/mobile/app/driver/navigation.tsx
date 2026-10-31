@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -5,6 +6,7 @@ import * as Speech from "expo-speech";
 import { router, useLocalSearchParams, type Href } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  TurboModuleRegistry,
   ActivityIndicator,
   Alert,
   AppState,
@@ -207,7 +209,8 @@ const API_BASE = getApiBaseUrl();
  */
 const GOOGLE_NAV_ENABLED =
   Platform.OS !== "web" &&
-  (process.env.EXPO_PUBLIC_ENABLE_GOOGLE_NAV || "").trim() === "1";
+  Constants.expoConfig?.extra?.googleNavigationEnabled === true &&
+  TurboModuleRegistry.get("NavModule") != null;
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const START_SLIDER_HANDLE = 52;
 const PICKUP_AUX_ICON_RED = "#FF3B30";
@@ -660,6 +663,7 @@ export default function DriverNavigationScreen() {
   // ---------------------------------------------------------------------------------
   const [googleNavFailed, setGoogleNavFailed] = useState(false);
   const googleNavMountedRef = useRef(true);
+  const googleNavFailureReportedRef = useRef(false);
 
   const GoogleNavDriveViewComp = useMemo(() => {
     if (!GOOGLE_NAV_ENABLED) return null;
@@ -682,19 +686,27 @@ export default function DriverNavigationScreen() {
 
   /** Letzte Restdistanz/-zeit vom SDK — wird zusammen mit dem naechsten Fix an Socket/Backend gemeldet. */
   const googleNavRemainingRef = useRef<{ distM: number; etaMin: number } | null>(null);
+  const googleNavRouteIdentity = `${params.rideId}:${phase}:${navigationTarget.lat}:${navigationTarget.lon}`;
+  const googleNavIdentityRef = useRef(googleNavRouteIdentity);
+  if (googleNavIdentityRef.current !== googleNavRouteIdentity) {
+    googleNavIdentityRef.current = googleNavRouteIdentity;
+    googleNavRemainingRef.current = null;
+  }
 
   const handleGoogleNavFix = useCallback(
     (fix: GoogleNavFix) => {
-      if (!navMountedRef.current || !googleNavMountedRef.current) return;
+      if (!googleNavMountedRef.current) return;
       setDriverLat(fix.lat);
       setDriverLon(fix.lon);
       const rideId = params.rideId?.trim();
       const remaining = googleNavRemainingRef.current;
+      const identity = googleNavIdentityRef.current;
+      const navPhase = isPickupPhaseRef.current ? "pickup" : "destination";
       if (!isPrivateMemoRef.current) {
         socketSendDriver(fix.lat, fix.lon, {
           ...(remaining ? { etaMinutes: Math.max(0, Math.round(remaining.etaMin)) } : {}),
           ...(remaining ? { remainingDistM: Math.max(0, Math.round(remaining.distM)) } : {}),
-          navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
+          navPhase,
         });
       }
       if (rideId && !isPrivateMemoRef.current) {
@@ -703,7 +715,7 @@ export default function DriverNavigationScreen() {
             const accepted = acceptDriverGpsFix(fix.lat, fix.lon);
             if (!accepted) return;
             const headers = await fleetAuthHeadersJson();
-            if (!googleNavMountedRef.current) return;
+            if (!googleNavMountedRef.current || googleNavIdentityRef.current !== identity) return;
             await fetch(`${API_BASE}/rides/${rideId}/driver-location`, {
               method: "POST",
               headers,
@@ -712,7 +724,7 @@ export default function DriverNavigationScreen() {
                 lon: accepted.lon,
                 ...(remaining ? { etaMinutes: Math.max(0, Math.round(remaining.etaMin)) } : {}),
                 ...(remaining ? { remainingDistM: Math.max(0, Math.round(remaining.distM)) } : {}),
-                navPhase: isPickupPhaseRef.current ? "pickup" : "destination",
+                navPhase,
               }),
             });
           } catch {
@@ -726,7 +738,7 @@ export default function DriverNavigationScreen() {
 
   const handleGoogleNavRemaining = useCallback((remaining: GoogleNavRemaining) => {
     googleNavRemainingRef.current = remaining;
-    if (!navMountedRef.current) return;
+    if (!googleNavMountedRef.current) return;
     setRemainingDistM(Math.max(0, Math.round(remaining.distM)));
     setRemainingMin(Math.max(0, remaining.etaMin));
     setGuidanceStale(false);
@@ -735,7 +747,11 @@ export default function DriverNavigationScreen() {
 
   const handleGoogleNavSessionError = useCallback((reason: string) => {
     console.error("[GoogleNav] Session-Fehler, Fallback auf Alt-Navigation:", reason);
+    if (googleNavFailureReportedRef.current) return;
+    googleNavFailureReportedRef.current = true;
+    googleNavRemainingRef.current = null;
     setGoogleNavFailed(true);
+    Alert.alert("Google-Navigation nicht verfügbar", "Die Standardnavigation übernimmt. Ihre Fahrt bleibt geöffnet.");
   }, []);
 
   useEffect(() => {
@@ -1528,7 +1544,7 @@ export default function DriverNavigationScreen() {
 
   // Speak on step change — skip "Fahrt beginnen" (depart) instructions
   useEffect(() => {
-    if (!steps.length || stepIdx === prevStepIdx.current) return;
+    if (googleNavActive || !steps.length || stepIdx === prevStepIdx.current) return;
     prevStepIdx.current = stepIdx;
     const step = steps[stepIdx];
     const instr = step?.instruction ?? "";
@@ -1545,7 +1561,7 @@ export default function DriverNavigationScreen() {
       liveM ??
       (typeof step?.distanceM === "number" && step.distanceM > 0 ? step.distanceM : 0);
     trySpeak(formatNavTurnCue(m > 0 ? m : 25, instr), soundRef.current);
-  }, [stepIdx, steps]);
+  }, [stepIdx, steps, googleNavActive]);
 
   const distToPickup = haversine(driverLat, driverLon, pickupLat, pickupLon);
   const isNearPickup = distToPickup < 300;
@@ -3105,10 +3121,24 @@ export default function DriverNavigationScreen() {
             lon: navigationTarget.lon,
             label: isPickupPhase ? pickupName : destName,
           }}
+          initialPosition={{ lat: driverLat, lon: driverLon }}
+          routeIdentity={googleNavRouteIdentity}
+          active={!isPickupPhase || !hasArrived}
+          soundEnabled={soundEnabled}
+          bottomInset={sheetLayoutH + 12}
           onFix={handleGoogleNavFix}
           onRemainingChanged={handleGoogleNavRemaining}
+          onRouteChanged={(points, remaining) => {
+            shareRouteWithCustomer(points, { etaMinutes: remaining.etaMin, remainingDistM: remaining.distM });
+          }}
+          onRerouting={() => {
+            googleNavRemainingRef.current = null;
+            setRemainingMin(0);
+            setRemainingDistM(0);
+            setGuidanceStale(true);
+            setNavRouteLoadState("retrying");
+          }}
           onSessionError={handleGoogleNavSessionError}
-          onMapReady={handleMapReady}
         />
       ) : (
         <MapView
@@ -3245,7 +3275,7 @@ export default function DriverNavigationScreen() {
             </View>
           ) : null}
         </View>
-        {navRouteLoadState !== "ready" ? (
+        {!googleNavActive && navRouteLoadState !== "ready" ? (
           <Pressable
             style={styles.navRouteStatusPill}
             onPress={() => {

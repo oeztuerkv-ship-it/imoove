@@ -49,3 +49,9 @@ Versionsbasis: Original-App Runtime 1.0.3, `release/original-runtime-1.0.3`; nat
 - GPS-Analyse: LocationEngine nutzt BestForNavigation, 2 m/1 s; Heading-State hält letzte verlässliche Richtung. Rohadapter verwirft jedoch accuracy/timestamp und stempelt Eingang mit Date.now: schlechte/alte Fixes lassen sich darüber nicht erkennen. Reale Auswirkung noch am Gerät belegen, keine Schwellenwerte auf Verdacht ändern.
 - Hintergrund-Ride-Task sendet nur lat/lon (Balanced, 5 s/10 m), prüft HTTP-Status nicht und besitzt keinen sichtbaren Upload-Erfolg. Kunden-ETA/Polyline stammen dagegen aus der internen Navi. Externe Navigation braucht unabhängiges Tracking, Frischeanzeige und ETA-Konzept.
 - Absturzursache offen: native Crash-Berichte und Gerät/Build/OTA/Phase nötig. Pure Selftests ersetzen keine Gerätefahrt. Externe Maps optional untersuchen, nicht stillschweigend aktivieren; PIN/Ankunft/Start/Ende bleiben in ONRODA.
+
+## Google-Navigation: Folgeauftrag 31.10.2026
+- Vedat bestätigt direkten Übergang und beauftragt eingebettete Google-Navigation. Integration/Abnahme: `docs/onroda-google-navigation-integration-2026-10-31.md`.
+- Eigenes internes Build-Profil/Runtime; Original-OTA 1.0.3 unverändert. Keine allgemeine Produktionsfreigabe ohne native Geräteabnahme.
+- SDK-Provider-Optionen müssen referenzstabil bleiben (SDK memoisiert Controller daran); sonst startet init/cleanup bei jedem GPS-Render neu. Legacy-navMountedRef bleibt bei Google aus und darf dessen Standort-/ETA-Callbacks nicht sperren.
+- Diagnose-Route niemals statisch SDK importieren. Zielwechsel serialisieren, SDK-Ton-Schalter und explizites TILTED, echte Route an Kunde, separate Kamera-/GPS-/Speech-Owner.
