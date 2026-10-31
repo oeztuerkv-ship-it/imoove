@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const root=require('node:path').resolve(__dirname,'../../..'),ts=require(root+'/node_modules/typescript');
-const events={},calls=[];let permission='granted',routeDeferred=null;
+const events={},calls=[];let permission='granted',routeDeferred=null,platform='ios';
 const controller={
  areTermsAccepted:async()=>true,init:async()=>{calls.push('init');return 'OK'},
  startUpdatingLocation:()=>calls.push('locations'),setBackgroundLocationUpdatesEnabled:v=>calls.push('background:'+v),setAudioGuidanceType:v=>calls.push('audio:'+v),
@@ -19,7 +19,7 @@ const React={createElement:(type,props,...children)=>({type,props:{...props,chil
 };
 const SDK={NavigationProvider:'Provider',NavigationView:'NativeView',useNavigation:()=>api,NavigationSessionStatus:{OK:'OK'},RouteStatus:{OK:'OK'},CameraPerspective:{TILTED:0},AudioGuidance:{SILENT:0,VOICE_ALERTS_AND_GUIDANCE:4,BLUETOOTH_AUDIO:8}};
 function load(file){let m={exports:{}};const src=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
- const req=r=>r==='react'?React:r==='react-native'?{StyleSheet:{absoluteFillObject:{}},View:'View'}:r==='@googlemaps/react-native-navigation-sdk'?SDK:r==='@/utils/safeExpoLocation'?{requestForegroundPermissionsSafe:async()=>({status:permission}),getBackgroundPermissionsSafe:async()=>({status:'granted'})}:r==='@/utils/googleNavSession'?load(root+'/artifacts/mobile/utils/googleNavSession.ts'):require(r);
+ const req=r=>r==='react'?React:r==='react-native'?{StyleSheet:{absoluteFillObject:{}},View:'View',Platform:{get OS(){return platform}},PixelRatio:{getPixelSizeForLayoutSize:v=>Math.round(v*3)}}:r==='@googlemaps/react-native-navigation-sdk'?SDK:r==='@/utils/safeExpoLocation'?{requestForegroundPermissionsSafe:async()=>({status:permission}),getBackgroundPermissionsSafe:async()=>({status:'granted'})}:r==='@/utils/googleNavSession'?load(root+'/artifacts/mobile/utils/googleNavSession.ts'):require(r);
  vm.runInThisContext('(function(require,module,exports){'+src+'\n})',{filename:file})(req,m,m.exports);return m.exports;}
 // Failed arrival PATCH leaves local hasArrived=true; native guidance must continue.
 const navSource=fs.readFileSync(root+'/artifacts/mobile/app/driver/navigation.tsx','utf8');
@@ -39,7 +39,7 @@ const settle=async()=>{for(let i=0;i<12;i++)await new Promise(setImmediate)};
  let props={routeIdentity:'ride:pickup',destination:{lat:48,lon:9},onFix:f=>fixes.push(f),onRouteChanged:p=>routes.push(p),onSessionError:e=>errors.push(e)};
  const first=render(props);lastElement.props.onNavigationViewControllerCreated({setFollowingPerspective:async p=>calls.push('perspective:'+p)});lastElement.props.onMapReady();await settle();
  assert.equal(calls.filter(x=>x==='init').length,1);assert.equal(calls.filter(x=>x==='start').length,1);assert(calls.includes('perspective:0'));assert.equal(routes.length,1);
- const second=render({...props,bottomInset:300});await settle();assert.equal(first.props.termsAndConditionsDialogOptions,second.props.termsAndConditionsDialogOptions,'provider options must keep native controller stable');assert.equal(calls.filter(x=>x==='init').length,1,'GPS rerender must not reinitialize');
+ const second=render({...props,bottomInset:300});await settle();assert.equal(lastElement.props.mapPadding.bottom,300);platform='android';render({...props,bottomInset:300});assert.equal(lastElement.props.mapPadding.bottom,900,'Android requires physical pixels above the ride sheet');platform='ios';assert.equal(first.props.termsAndConditionsDialogOptions,second.props.termsAndConditionsDialogOptions,'provider options must keep native controller stable');assert.equal(calls.filter(x=>x==='init').length,1,'GPS rerender must not reinitialize');
  events.LocationChanged({lat:48, lng:9,speed:10,time:Date.now(),accuracy:5});assert.equal(fixes.length,1);events.LocationChanged({lat:48,lng:9,speed:10,time:Date.now()-60000});assert.equal(fixes.length,1);
  render({...props,soundEnabled:false});await settle();assert(calls.includes('audio:0'));
  let release;routeDeferred=new Promise(r=>release=r);render({...props,routeIdentity:'ride:dest-old',destination:{lat:49,lon:10}});await settle();const before=calls.filter(x=>x==='start').length;

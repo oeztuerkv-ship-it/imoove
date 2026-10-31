@@ -1,6 +1,6 @@
 /** Native Google navigation owner. Load only behind the native capability gate. */
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { PixelRatio, Platform, StyleSheet, View } from "react-native";
 import {
   AudioGuidance, CameraPerspective, NavigationProvider, NavigationView,
   NavigationSessionStatus, RouteStatus, useNavigation,
@@ -173,12 +173,18 @@ function GoogleNavDriveViewInner(props: GoogleNavDriveViewProps) {
   }, [props.soundEnabled, controller]);
 
   const initial = React.useRef(props.initialPosition);
+  // Android passes these integers straight to GoogleMap.setPadding (physical px).
+  // iOS uses UIEdgeInsets (points); the ride sheet is measured in RN layout units.
+  const inset = props.bottomInset ?? 240;
+  const bottomPadding = Platform.OS === "android"
+    ? PixelRatio.getPixelSizeForLayoutSize(inset)
+    : Math.round(inset);
   return <NavigationView style={StyleSheet.absoluteFillObject}
     initialCameraPosition={initial.current && validGoogleNavPoint(initial.current.lat, initial.current.lon) ? { target: { lat: initial.current.lat, lng: initial.current.lon }, tilt: 60, zoom: 16 } : undefined}
     headerEnabled footerEnabled={false} recenterButtonEnabled speedometerEnabled={false}
     tripProgressBarEnabled={false} reportIncidentButtonEnabled={false}
     trafficPromptsEnabled={false} trafficIncidentCardsEnabled={false}
-    mapPadding={{ top: 0, left: 0, right: 0, bottom: props.bottomInset ?? 240 }}
+    mapPadding={{ top: 0, left: 0, right: 0, bottom: bottomPadding }}
     onNavigationViewControllerCreated={(controller) => { view.current = controller; void follow().catch(() => reportError("camera_failed")); }}
     onMapReady={() => { mapReady.current = true; void follow().catch(() => reportError("camera_failed")); }} />;
 }

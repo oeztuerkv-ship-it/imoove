@@ -27,7 +27,7 @@ Nur native Capability und googleNavigationEnabled aktivieren das SDK. Diagnose-R
 Neuer interner Build: Profil google-navigation, Channel google-navigation, App 1.0.4, iOS 47 / Android 7, Runtime onroda-google-nav-1. Keine OTA-Verteilung an Original-Runtime 1.0.3 und keine Änderung ihres Production-Channels.
 
 ## 9. Tests/Abnahme
-Lokal: Queue-Tests, gemockter View-Lebenszyklus und Build-Konfiguration; 18 bestehende Übergangsfälle und 14 Navi-Selbsttests. Native JS-Bundles iOS/Android. Typecheck hat drei vorhandene Fehler in Legacy-Kamera/source/selftest; keine neuen SDK-Typfehler. Native Cloud-Build und echte Gerätefahrt stehen bei Erstellung dieser Notiz aus.
+Lokal: Queue-Tests, gemockter View-Lebenszyklus und Build-Konfiguration; 18 bestehende Übergangsfälle und 14 Navi-Selbsttests. Native JS-Bundles iOS/Android. Typecheck hat drei vorhandene Fehler in Legacy-Kamera/source/selftest; keine neuen SDK-Typfehler. Native Cloud-Builds iOS/Android erfolgreich; beide Pakete zusätzlich auf Version, Runtime, Channel und eingebundenes Google-Modul geprüft. Echte Gerätefahrt steht weiterhin aus.
 Gerätefälle: Kaltstart/erste Berechtigung, geneigter Follow im Stand/bei Fahrt, Pan/Recenter, Ton aus/an/Bluetooth, absichtlich falsch abbiegen, GPS/Netz weg/zurück, Zielwechsel während Neuberechnung, Hintergrund/Display aus, Annahme/Ankunft/PIN/Start/Ziel/Ende, Storno/Restore, Kunde auf Original-App. Kein echter Marktauftrag ohne Vedats gezielten Testauftrag.
 
 ## 10. Auswirkungen
@@ -47,3 +47,14 @@ Nächster Schritt: installierbarer interner Build und Geräteabnahme, danach ges
 - Lokaler Android-Gerätetest kann nicht starten: separater leerer Emulator meldet „Not enough disk space available“. Mac hatte ca. 756 MiB frei. Keine native Geräte-Abnahme behaupten.
 
 - Google-Pause bei echter Fahrt nur nach Serverstatus driver_waiting: lokales optimistisches hasArrived allein reicht nicht. Das alte Ankunfts-UI/No-Show/PIN-Verhalten wird dadurch nicht als behoben behauptet. JS-Korrektur erreicht die schon gebauten Google-Binaries über deren getrennten OTA-Channel.
+
+- Kartenabstand über ONRODA-Sheet: Android-SDK reicht Padding direkt an GoogleMap.setPadding in physischen Pixeln durch; iOS verwendet UIEdgeInsets in Punkten. Umrechnung per PixelRatio nur auf Android, mit Plattform-Regressionstest.
+
+## Ergebnis zur Übergabe
+- iPhone 1.0.4 (47): https://expo.dev/accounts/oeztuerkv-ship-it/projects/mobile/builds/6e036fc3-f758-4024-a5fb-07772549cf57
+- Android 1.0.4 (7), erfolgreicher Neubuild: https://expo.dev/accounts/oeztuerkv-ship-it/projects/mobile/builds/73882978-735e-4e66-afce-19b7a7b91682
+- IPA/APK geprüft: tatsächliche Bundle-/Paketkennung, Version, Runtime onroda-google-nav-1, Channel google-navigation, native Google-Navigation enthalten. Keine Schlüsselwerte ausgegeben.
+- Finale JS-Korrekturen werden separat über den Google-Test-Channel ausgeliefert. Nach Installation App vollständig neu öffnen und den OTA-Hinweis mit „Weiter“ bestätigen. Vor Test die neueste Test-OTA-Auslieferung/Hash prüfen; der native Build allein enthält nicht automatisch alle späteren JS-Korrekturen.
+- Original-Production-OTA 1.0.3 bleibt nach Endpoint-/Bundle-Hash-Prüfung unverändert bei Gruppe 9f93970c-866f-4959-9917-aa5400e0d4dd (direkter, von Vedat bestätigter Übergang).
+- Künftiges Google-Test-OTA: EAS-Environment development laden und dieselben preview/google-navigation-Profil-Umgebungswerte wie beim Build anwenden; Runtime/Flag prüfen, beide Plattformen exportieren, dann eas update --channel google-navigation --environment development. Native SDK-/Berechtigungsänderungen brauchen einen neuen Build und bei ABI-Änderung eine neue Runtime.
+- Offen: tatsächlicher Handytest (Kamera, Ton/Bluetooth, falsches Abbiegen, GPS/Netz, Hintergrund, Kundenansicht, bestätigte Ankunft und Zielwechsel). Lokaler Emulator durch Speicherplatz blockiert. Keine allgemeine Store-/Production-Veröffentlichung oder Serveränderung vorgenommen.
