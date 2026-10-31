@@ -31,3 +31,31 @@
 /* Preserve room for the answer and input when a mobile keyboard reduces the viewport. */
 @media(max-height:560px){.onroda-help__topics,.onroda-help__note,.onroda-help__header p{display:none}}
 @media(max-height:420px){.onroda-help__panel{top:8px;bottom:8px;height:calc(100vh - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}}
+
+/* Marketing assistant: clear speech bubbles, compact topics and visible next steps. */
+.onroda-help__panel{width:min(420px,calc(100vw - 28px));border-radius:22px;border-color:#e4e8eb;box-shadow:0 20px 70px #15253530}
+.onroda-help__header{background:#18252e;padding:22px 18px;color:white}
+.onroda-help__header h2{color:white;font-size:21px}
+.onroda-help__header p{color:#e0e7ec}
+.onroda-help .onroda-help__close{background:#ffffff18;color:white;border-radius:50%}
+.onroda-help__messages{background:#f3f6f8;gap:16px;padding:18px}
+.onroda-help__message{align-self:flex-start;max-width:94%;box-sizing:border-box;border:0;border-radius:4px 17px 17px 17px;box-shadow:0 2px 7px #18252e08;padding:15px}
+.onroda-help__sender{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;line-height:1.5;color:#566572;margin-bottom:7px}
+.onroda-help__message p{line-height:1.65}
+.onroda-help__message--user{align-self:flex-end;margin-left:24px;background:#e1f2e7;border-radius:17px 4px 17px 17px}
+.onroda-help__message a{display:block;border:1px solid #dce3e8;border-radius:10px;padding:10px 12px;background:#fff;font-size:14px;line-height:1.5;text-decoration:none;color:#a90018;min-height:44px;box-sizing:border-box}
+.onroda-help__message a:hover{background:#fff3f5;border-color:#d5001c}
+.onroda-help__message .onroda-help__contact{border:0;padding:7px 0 0;background:none;color:#334b5b;min-height:0}
+.onroda-help__vehicle{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;border-radius:10px;margin:0 0 12px}
+.onroda-help__topics{gap:8px;padding:12px 14px;max-height:116px;background:#fff}
+.onroda-help__topics button{border-radius:22px;background:#f5f7f9;color:#273f50;border-color:#e2e8ed;padding:8px 13px;font-weight:600}
+.onroda-help__form{padding:12px 14px 8px}
+.onroda-help__form>label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.onroda-help__form input{border-radius:12px;background:#f7f9fa}
+.onroda-help__form button{border-radius:12px}
+.onroda-help__note{font-size:14px;padding-bottom:13px}
+@media(max-width:640px){.onroda-help__header{padding:17px 14px}.onroda-help__header h2{font-size:20px}.onroda-help__messages{padding:13px}.onroda-help__message{max-width:96%;padding:13px}}
+
+.onroda-help__message p{white-space:pre-line}
+.onroda-help__topics button[hidden]{display:none}
+.onroda-help__topics .onroda-help__plan{background:#18252e;color:white;border-color:#18252e}

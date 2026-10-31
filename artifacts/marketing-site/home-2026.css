@@ -105,3 +105,9 @@
 .hp-home-v2 #krankenfahrten-usp .hp-medical-usp__topic-cta{font-size:16px;color:#525d66}
 @media(max-width:900px){.hp-home-v2 #care .hp-care__grid,.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__grid{grid-template-columns:1fr;gap:28px}.ride-care-photo{height:320px;background-position:100% 30%}}
 @media(max-width:640px){.hp-home-v2 #care,.hp-home-v2 #krankenfahrten-usp{padding-block:38px}.hp-home-v2 #care>.hp-wrap,.hp-home-v2 #krankenfahrten-usp>.hp-wrap{padding-inline:22px}.hp-home-v2 #care h2{font-size:34px;margin-bottom:20px}.ride-care-photo{height:220px;background-size:300% auto;background-position:100% 25%}.hp-home-v2 #care .hp-care__col--detail,.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__aside{padding:23px 20px}.hp-home-v2 #care .hp-care-tags__item{font-size:14px;padding:8px}.hp-home-v2 #care .hp-care__intro{font-size:16px}}
+
+/* Each third of the 2172×724 source is square: never stretch both axes. */
+.hp-home-v2 .ride-service-image,.hp-home-v2 .ride-care-photo{height:auto;aspect-ratio:1;background-size:300% auto}
+.hp-home-v2 .ride-care-photo{background-position:100% center}
+.hp-home-v2 .ride-hero-photo{object-fit:cover}
+.hp-home-v2 .hp-brand-logo{object-fit:contain}
