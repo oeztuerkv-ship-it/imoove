@@ -1,0 +1,89 @@
+/* Final homepage rhythm. Shared menu and all business behavior stay unchanged. */
+.hp-home-v2{--home-section-space:64px}
+.hp-home-v2 main>section:not(.ride-hero):not(.ride-region){padding-block:var(--home-section-space)}
+.hp-home-v2 main>section>.hp-wrap{width:100%;max-width:1320px;padding-inline:28px}
+.hp-home-v2 .ride-section-anchor{display:block;position:relative;top:-95px;visibility:hidden}
+.hp-home-v2 .hp-kicker{font-size:10px;letter-spacing:.13em;color:var(--onroda-red);font-weight:650;text-transform:uppercase}
+.hp-home-v2 .hp-btn-primary,.hp-home-v2 .hp-btn-ghost{border-radius:7px;font-size:12px;min-height:44px;box-shadow:none}
+.hp-home-v2 .hp-care-benefits__check{background:#fff0f2;color:var(--onroda-red);box-shadow:none}
+.hp-home-v2 .ride-info-details{border-block:1px solid #e7ebee;margin:4px 0 22px;padding:12px 0}
+.hp-home-v2 .ride-info-details>summary{font-size:12px;font-weight:600;color:#586570;cursor:pointer;padding:4px 0}
+.hp-home-v2 .ride-info-details .hp-care__subhead{display:none}
+.hp-home-v2 .ride-info-details .hp-care-process{margin:18px 0 0}
+.hp-home-v2 #care .hp-care-benefits__item strong{display:block;font-size:13px;font-weight:600;color:#343f48;margin-bottom:3px}
+/* Business is one concrete offer, not another manifesto. */
+.hp-home-v2 #unternehmen{background:#fff;border:0}
+.hp-home-v2 .hp-enterprise__shell{max-width:none;padding:0;border:0;box-shadow:none;border-radius:0;background:none}
+.hp-home-v2 .hp-enterprise__head{max-width:650px;margin:0 0 28px;text-align:left}
+.hp-home-v2 #unternehmen h2{font-size:clamp(30px,3.2vw,43px);letter-spacing:-.045em;line-height:1.15;margin:12px 0 18px;font-weight:750}
+.hp-home-v2 .hp-enterprise__intro{font-size:14px;line-height:1.8;color:#69747d;margin:0}
+.hp-home-v2 .hp-enterprise__benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:0 0 25px}
+.hp-home-v2 .hp-enterprise__benefits>li{padding:23px;border:1px solid #e4e8eb;background:#fafbfc;border-radius:11px;gap:12px;font-size:12px;line-height:1.8;color:#707c86;box-shadow:none}
+.hp-home-v2 .hp-enterprise__benefits strong{display:block;font-size:15px;color:#303d47;letter-spacing:-.02em;margin-bottom:7px}
+.hp-home-v2 .hp-enterprise__benefits .hp-care-benefits__check{height:20px;width:20px;margin-top:3px;font-size:10px}
+.hp-home-v2 .hp-enterprise__actions{justify-content:flex-start;margin:0}
+/* Compact app call-to-action, with a functional overview rather than fictional screenshots. */
+.hp-home-v2 #jetzt-buchen{background:#f8f9fa;border-block:1px solid #e9edef;overflow:hidden}
+.hp-home-v2 .hp-app-download__grid{grid-template-columns:minmax(0,1fr) minmax(0,.9fr);gap:24px 70px;align-items:center}
+.hp-home-v2 .hp-app-download__title{font-size:clamp(30px,3.2vw,43px);letter-spacing:-.045em;line-height:1.15;margin:15px 0}
+.hp-home-v2 .hp-app-download__lead{font-size:14px;line-height:1.8;max-width:430px;color:#69747d;margin:0 0 20px}
+.hp-home-v2 .hp-app-download__badge{padding:0;background:none;border:0;box-shadow:none;gap:8px}
+.hp-home-v2 .hp-app-download__badge-icon{width:24px;height:24px;border-radius:5px;box-shadow:none;background:#fff0f2}
+.hp-home-v2 .hp-app-download__badge-text{font-size:10px;letter-spacing:.1em}
+.hp-home-v2 .hp-app-download__tabs{gap:7px;margin-bottom:18px}
+.hp-home-v2 .hp-app-download__tab{border-radius:6px;font-size:10px;padding:8px 10px;min-height:36px;box-shadow:none}
+.hp-home-v2 .hp-app-download__tab svg{width:14px;height:14px}
+.hp-home-v2 .hp-app-download__features{gap:12px;margin-bottom:0}
+.hp-home-v2 .hp-app-download__feature{gap:10px}
+.hp-home-v2 .hp-app-download__feature-icon{width:29px;height:29px;border-radius:6px;box-shadow:none;border:0;background:#fff;color:#707e88}
+.hp-home-v2 .hp-app-download__feature-copy strong{font-size:12px;font-weight:600}
+.hp-home-v2 .hp-app-download__feature-copy span{font-size:11px;line-height:1.7;color:#78838c}
+.hp-home-v2 .hp-app-download[data-app-active-tab="taxi"] [data-app-feature="medical"],.hp-home-v2 .hp-app-download[data-app-active-tab="partner"] [data-app-feature="medical"]{display:none}
+.hp-home-v2 .hp-app-download[data-app-active-tab="medical"] [data-app-feature="medical"]{display:flex;opacity:1}
+.hp-home-v2 .hp-app-download .hp-reveal{opacity:1;transform:none;filter:none;transition:none}
+.hp-home-v2 .ride-app-overview{display:block;width:100%;border:1px solid #e0e5e9;border-radius:13px;background:#fff;padding:28px;box-shadow:none;min-height:0}
+.ride-app-overview-head{display:flex;justify-content:space-between;align-items:center;gap:15px;padding-bottom:24px;border-bottom:1px solid #edf0f2}
+.ride-app-overview-head img{object-fit:contain;width:75px;height:43px}.ride-app-overview-head>span{font-size:10px;color:#849099}
+.ride-app-overview-steps{list-style:none;margin:23px 0;padding:0;display:grid;gap:25px}
+.ride-app-overview-steps li{display:flex;align-items:flex-start;gap:14px}.ride-app-overview-steps li>span{width:30px;height:30px;display:grid;place-items:center;background:#fff0f2;border-radius:7px;color:var(--onroda-red);font-size:10px;font-weight:650;flex-shrink:0}
+.ride-app-overview-steps strong{font-size:13px;letter-spacing:-.015em;font-weight:650;display:block;color:#303d47}.ride-app-overview-steps p{font-size:11px;line-height:1.8;color:#829099;margin:4px 0 0}
+.ride-app-overview-note{border-top:1px solid #edf0f2;padding-top:19px;font-size:10px;color:#829099;margin:0;line-height:1.8}
+.hp-home-v2 .hp-app-download__cta{align-self:start;margin:0}.hp-home-v2 .hp-store-links{gap:14px}.hp-home-v2 .hp-store-badge{transform:none;filter:none}.hp-home-v2 .hp-app-download__social{margin:14px 0 0;font-size:10px}.hp-home-v2 .hp-app-download__social a{font-size:10px;gap:7px}.hp-home-v2 .hp-app-download__social img{height:17px;width:17px}
+/* Keep the five established steps but remove heavy infographic decoration. */
+.hp-home-v2 #prozess{background:white;border:0}
+.hp-home-v2 .hp-process-head{text-align:left;margin-bottom:28px}
+.hp-home-v2 #prozess h2{font-size:clamp(25px,2.8vw,34px);letter-spacing:-.04em;line-height:1.2;margin:0 0 12px}
+.hp-home-v2 .hp-process-head p{font-size:13px;line-height:1.8;color:#7a858e}
+.hp-home-v2 .hp-process-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;padding:0;margin:0;list-style:none;background:#fafbfc;border:1px solid #e4e9ec;border-radius:11px;overflow:hidden}
+.hp-home-v2 .hp-process-step{display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:22px 19px;gap:9px;min-height:0;background:none;box-shadow:none;border:0;border-right:1px solid #e4e9ec;border-radius:0}
+.hp-home-v2 .hp-process-step:last-child{border-right:0}.hp-home-v2 .hp-process-step:after,.hp-home-v2 .hp-process-step:before,.hp-home-v2 .hp-process-steps:before{display:none}
+.hp-home-v2 .hp-process-step__icon{display:none}.hp-home-v2 .hp-process-step__num{position:static;transform:none;display:block;background:none;width:auto;height:auto;border:0;box-shadow:none;color:var(--onroda-red);font-size:11px;margin:0}
+.hp-home-v2 .hp-process-step strong{font-size:12px;letter-spacing:-.01em}.hp-home-v2 .hp-process-step>span:last-child{font-size:10px;line-height:1.7;color:#7c8992}
+/* Secondary CMS cards stay editable, available on demand. */
+.hp-home-v2 #fuer-wen{padding-block:0;background:white}
+.ride-audience-details{border-block:1px solid #e5e9ec}.ride-audience-details>summary{display:flex;justify-content:space-between;align-items:center;gap:18px;list-style:none;padding:24px 0;cursor:pointer;font-size:15px;font-weight:650;color:#34424c;position:relative;padding-right:30px}
+.ride-audience-details>summary::-webkit-details-marker,.ride-partner-details>summary::-webkit-details-marker{display:none}
+.ride-audience-details>summary:after{content:"+";position:absolute;right:0;color:var(--onroda-red);font-size:22px;font-weight:400}.ride-audience-details[open]>summary:after{content:"−"}
+.ride-summary-note{font-size:11px;font-weight:400;color:#8b959d}.ride-audience-details .hp-section-head{margin:15px 0 25px}.ride-audience-details .hp-audience-grid{padding-bottom:28px}.ride-audience-details .hp-section-head h2{font-size:27px;letter-spacing:-.03em}
+/* Partner form remains exact and reachable, without dominating the first read. */
+.hp-home-v2 #partner{background:#fff;padding-block:60px;overflow:visible}
+.hp-home-v2 #partner .hp-split-bleed{display:block;width:100%;max-width:1320px;margin:auto;padding:0 28px;background:none;border:0;border-radius:0}
+.hp-home-v2 #partner .hp-split-bleed__text{padding:0;max-width:none;min-width:0}.hp-home-v2 #partner .hp-split-bleed__aside{display:none}
+.hp-home-v2 .hp-partner-shell{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:65px;align-items:start}
+.hp-home-v2 .hp-partner-side h2{font-size:clamp(29px,3vw,40px);line-height:1.15;letter-spacing:-.04em;margin:12px 0 20px}.ride-partner-intro{font-size:13px;line-height:1.9;color:#6d7b85;margin:0 0 20px}.ride-partner-status{display:inline-flex;gap:14px;color:var(--onroda-red);font-size:11px;font-weight:600;text-decoration:none}.ride-partner-contact{font-size:11px;color:#8b959d;margin:17px 0 0}.ride-partner-contact a{color:#626e77}
+.ride-partner-details{border:1px solid #e2e7eb;border-radius:11px;background:#fafbfc;overflow:hidden}.ride-partner-details>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:23px 25px;font-size:14px;font-weight:650;color:#3b4954;cursor:pointer}.ride-partner-details>summary span{color:var(--onroda-red);font-size:24px;font-weight:400}.ride-partner-details[open]>summary{border-bottom:1px solid #e2e7eb}
+.hp-home-v2 .ride-partner-details .hp-form-card{background:white;box-shadow:none;border:0;border-radius:0;padding:25px;min-width:0}.hp-home-v2 .ride-partner-details .hp-form-card h3{font-size:18px;margin-top:0}.hp-home-v2 .ride-partner-details .hint{background:#f7f9fa;border-color:#e5eaed;font-size:11px;line-height:1.8;box-shadow:none;border-radius:7px}.hp-home-v2 .ride-partner-details .hp-field input,.hp-home-v2 .ride-partner-details .hp-field select,.hp-home-v2 .ride-partner-details .hp-field textarea{border-radius:7px}.hp-home-v2 .ride-partner-details .hp-field input[type="text"],.hp-home-v2 .ride-partner-details .hp-field input[type="email"],.hp-home-v2 .ride-partner-details .hp-field input[type="tel"]{min-width:0}
+/* Questions are questions; no second vision/manifesto beside them. */
+.hp-home-v2 #faq{background:#f8f9fa;border-top:1px solid #ebeff1}
+.hp-home-v2 #faq>.hp-wrap{max-width:950px}.hp-home-v2 #faq .hp-section-head{text-align:left;margin-bottom:26px}.hp-home-v2 #faq h2{font-size:32px;letter-spacing:-.035em;margin:10px 0 13px}.hp-home-v2 #faq .hp-sub{font-size:13px;line-height:1.8;color:#7b8790;margin:0}
+.hp-home-v2 .hp-faq-layout{grid-template-columns:minmax(0,1fr);gap:0}.hp-home-v2 .hp-faq-list{gap:10px}.hp-home-v2 .hp-faq-item{border:1px solid #e2e8ec;border-radius:9px;background:white;box-shadow:none;padding:0}.hp-home-v2 .hp-faq-item summary{padding:18px 21px;font-size:13px;font-weight:600;color:#3c4b56}.hp-home-v2 .hp-faq-item p{font-size:12px;line-height:1.9;color:#7a8790;padding:0 21px 20px;margin:0}
+@media(max-width:900px){.hp-home-v2 .hp-app-download__grid{column-gap:30px}.hp-home-v2 .hp-enterprise__benefits{gap:12px}.hp-home-v2 .hp-enterprise__benefits>li{padding:18px}.hp-home-v2 .hp-partner-shell{grid-template-columns:1fr;gap:25px}.hp-home-v2 .hp-process-steps{grid-template-columns:repeat(3,minmax(0,1fr))}.hp-home-v2 .hp-process-step{border-bottom:1px solid #e4e9ec}.hp-home-v2 .hp-process-step:nth-child(3){border-right:0}.hp-home-v2 .hp-process-step:nth-child(n+4){border-bottom:0}}
+@media(max-width:640px){.hp-home-v2{--home-section-space:40px}.hp-home-v2 main>section>.hp-wrap,.hp-home-v2 #partner .hp-split-bleed{padding-inline:22px}.hp-home-v2 .hp-enterprise__benefits{grid-template-columns:1fr;gap:11px}.hp-home-v2 .hp-enterprise__benefits>li{padding:18px}.hp-home-v2 .hp-enterprise__head{margin-bottom:23px}.hp-home-v2 #unternehmen h2{font-size:34px}.hp-home-v2 .hp-enterprise__intro{font-size:12px}.hp-home-v2 .hp-app-download__grid{grid-template-columns:1fr;grid-template-areas:"copy" "cta" "device";gap:23px}.hp-home-v2 .hp-app-download__title{font-size:34px}.hp-home-v2 .ride-app-overview{padding:22px}.hp-home-v2 .hp-app-download__feature-copy span{font-size:11px}.hp-home-v2 .hp-app-download__lead{font-size:12px}.hp-home-v2 .hp-process-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.hp-home-v2 .hp-process-step{padding:18px 16px}.hp-home-v2 .hp-process-step:nth-child(3){border-right:1px solid #e4e9ec}.hp-home-v2 .hp-process-step:nth-child(even){border-right:0}.hp-home-v2 .hp-process-step:nth-child(4){border-bottom:1px solid #e4e9ec}.hp-home-v2 .hp-process-step:last-child{grid-column:1/-1}.ride-audience-details>summary{align-items:flex-start;flex-direction:column;gap:6px;font-size:14px}.ride-summary-note{font-size:10px}.hp-home-v2 #partner{padding-block:40px}.hp-home-v2 .hp-partner-side h2{font-size:33px}.ride-partner-details>summary{padding:20px;font-size:13px}.hp-home-v2 .ride-partner-details .hp-form-card{padding:21px 17px}.hp-home-v2 .ride-partner-details .hp-field input,.hp-home-v2 .ride-partner-details .hp-field select,.hp-home-v2 .ride-partner-details .hp-field textarea{font-size:16px}.hp-home-v2 .hp-partner-form-grid{grid-template-columns:minmax(0,1fr)}.hp-home-v2 #faq h2{font-size:29px}.hp-home-v2 .hp-faq-item summary{font-size:12px;padding:17px}.hp-home-v2 .hp-faq-item p{font-size:11px;padding:0 17px 18px}}
+@media(prefers-reduced-motion:reduce){.hp-home-v2 *, .hp-home-v2 *:before,.hp-home-v2 *:after{animation:none!important;transition:none!important}}
+
+/* Legacy medical anchor has no visual box; it still targets the unified section. */
+.hp-home-v2 #care{position:relative}
+.hp-home-v2 #care>.ride-section-anchor{position:absolute;display:block;top:0;left:0;width:0;height:0;padding:0;margin:0;border:0;scroll-margin-top:95px;overflow:hidden}
+.hp-home-v2 #care .ride-info-details .hp-care-process li{padding:11px 0 11px 36px}
+.hp-home-v2 #care .ride-info-details .hp-care-process li:before{left:0}
+.hp-home-v2 #care .ride-info-details .hp-care-process li:after{display:none}

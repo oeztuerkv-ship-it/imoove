@@ -26,5 +26,5 @@
     if (!header.contains(event.target)) setOpen(false);
   });
   window.addEventListener("hashchange", function () { setOpen(false); });
-  window.matchMedia("(min-width: 901px)").addEventListener("change", function () { setOpen(false); });
+  window.matchMedia("(min-width: 1051px)").addEventListener("change", function () { setOpen(false); });
 })();

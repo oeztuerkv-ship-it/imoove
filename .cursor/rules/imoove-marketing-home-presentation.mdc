@@ -19,3 +19,9 @@ alwaysApply: false
 - Beim Befund „Krankenfahrten noch alt“ den INHALTSBEREICH #care prüfen, nicht nur Header/Assetversion. Menü kann bereits neu sein, während die Zielsektion altes Layout behält. Kein Cache-Problem behaupten ohne Nachweis. Care-/Vorprüfungs-Design in home-2026.css gezielt überschrieben; Fachinhalte/Links/Hooks beibehalten.
 
 - Flughafentransfer = /fixpreise/ (beide Dateien fixpreise.html + fixpreise/index.html). Nicht mit dem Ziel /#care verwechseln. Neue airport-2026.css und vollständiger Hero/Rechner-Aufbau; Quote-Formular/JS/CMS-IDs erhalten. Öffentliche Menüantwort separat vom tatsächlich auf dem Gerät sichtbaren Stand bewerten; kein pauschales Cache-Urteil.
+
+## Homepage-Rhythmus und Navigation (Vedats Folgeauftrag)
+- Keine weiteren Foto-Erstellungen vor echten Fahrzeugfotos. Homepage ohne doppelte Care-/Plattform-Erklärungen; erhaltenes Partnerformular und CMS-Zielgruppenkarten via native details erreichbar. Keine erfundenen Preise/Bewertungen in dekorativen Handys. Fünf etablierte Prozessschritte erhalten.
+- Menümaße ausschließlich in site-2026.css; keine hp-nav/hp-header-Sondermaße in home-2026.css, home-refinement.css oder airport-2026.css. Aktiver Tab nur Farbe/Hintergrund, niemals abweichendes Padding/Schriftmaß.
+- Gemeinsame Navigation: 13px Desktop, 14px aufgeklappt, Mindestklickhöhe 44px; mobiles Menü bis 1050px, Resize-Handler ab 1051px. Einheitliche Assetversion in allen neun öffentlichen Dokumenten; beide Festpreis-Aliase gleichhalten.
+- #krankenfahrten-usp ist jetzt ein platzloser Alias in #care; alte CSS-Abstände dürfen auf diesem Span keinen Leerraum erzeugen. home-refinement.css setzt die finale Homepage-Gestaltung; Menü bleibt im gemeinsamen Stylesheet.
