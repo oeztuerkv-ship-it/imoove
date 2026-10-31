@@ -77,3 +77,46 @@
  .hp-home-v2 .hp-whatsapp-fab__label:after{display:none}
  .hp-home-v2 .hp-whatsapp-fab__icon{width:42px;height:42px}
 }
+
+/* Content destination /#care: same quiet editorial styling as the new homepage. */
+.hp-home-v2 #care{background:#fafafa;border-top:1px solid #eceef0;border-bottom:1px solid #eceef0;padding-block:64px}
+.hp-home-v2 #care>.hp-wrap,.hp-home-v2 #krankenfahrten-usp>.hp-wrap{width:100%;max-width:1320px;padding-inline:28px}
+.hp-home-v2 #care .hp-care__grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:55px;align-items:start}
+.hp-home-v2 #care .hp-kicker{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--onroda-red);margin:0 0 12px}
+.hp-home-v2 #care .hp-medical-usp__badge--inline{display:none}
+.hp-home-v2 #care h2{font-size:clamp(31px,3.4vw,46px);letter-spacing:-.045em;line-height:1.12;text-align:left;margin:0 0 24px;font-weight:750;color:#1c2024}
+.ride-care-figure{margin:0 0 21px;position:relative;border-radius:12px;overflow:hidden;background:#e7e9e7}
+.ride-care-photo{height:260px;background-image:url('/images/fahrt-anlaesse.jpg');background-size:300% auto;background-position:100% 35%;background-repeat:no-repeat}
+.ride-care-figure figcaption{position:absolute;right:10px;bottom:10px;font-size:8px;color:white;background:#142018a3;padding:4px 7px;border-radius:4px}
+.hp-home-v2 #care .hp-care-tags{gap:7px;margin:0 0 20px}
+.hp-home-v2 #care .hp-care-tags__item{border-radius:6px;border:1px solid #e0e4e7;box-shadow:none;background:white;font-size:10px;padding:8px 10px;color:#565e65}
+.hp-home-v2 #care .hp-care-tags__ico{display:none}
+.hp-home-v2 #care .hp-care__tagline{font-size:15px;line-height:1.65;font-weight:600;color:#30383e}
+.hp-home-v2 #care .hp-care__intro{font-size:13px;line-height:1.85;color:#666e76}
+.hp-home-v2 #care .hp-care__col--detail{border:1px solid #e2e6e9;box-shadow:none;border-radius:12px;padding:30px;background:#fff}
+.hp-home-v2 #care .hp-care__subhead{font-size:17px;letter-spacing:-.02em;margin:0 0 19px;color:#262d33}
+.hp-home-v2 #care .hp-care-benefits{gap:13px;margin-bottom:30px}
+.hp-home-v2 #care .hp-care-benefits__item{font-size:12px;line-height:1.6;gap:11px;color:#525b64}
+.hp-home-v2 #care .hp-care-benefits__check{width:19px;height:19px;border-radius:50%;font-size:10px;background:#fff0f2;color:var(--onroda-red);margin-top:1px}
+.hp-home-v2 #care .hp-care-process{border:0;box-shadow:none;border-radius:0;background:transparent;margin-bottom:24px}
+.hp-home-v2 #care .hp-care-process li{background:transparent;font-size:12px;line-height:1.5;padding:10px 0;border-color:#edf0f2}
+.hp-home-v2 #care .hp-care-process li:before{border:0;background:#f3f4f5;color:#616a73;border-radius:6px;box-shadow:none}
+.hp-home-v2 #care .hp-care__closing{font-size:11px;line-height:1.7;color:#7a8289;margin-bottom:20px}
+.hp-home-v2 #care .hp-care__actions{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.hp-home-v2 #care .hp-btn-primary,.hp-home-v2 #care .hp-btn-ghost{border-radius:7px;font-size:12px;min-height:44px;justify-content:center;padding:12px 17px;box-shadow:none}
+.hp-home-v2 #care .hp-btn-ghost{background:white;border:1px solid #e1e5e8;color:#56616a}
+.hp-home-v2 #krankenfahrten-usp{background:white;border:0;padding-block:60px}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__grid{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:55px;align-items:start}
+.hp-home-v2 #krankenfahrten-usp h2{font-size:clamp(26px,2.8vw,36px);line-height:1.2;letter-spacing:-.04em;color:#1c2024}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__badge{font-size:9px;font-weight:600;letter-spacing:.1em;border:0;box-shadow:none;border-radius:5px;background:#fff1f3;color:var(--onroda-red)}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__lead{font-size:13px;line-height:1.8;color:#687079}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__aside{border:1px solid #e2e6e9;border-radius:12px;box-shadow:none;padding:26px;background:#fff}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-flow:before{background:#e7eaed;opacity:1;width:1px}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-flow__icon{border-color:#e6e9ec;background:#f7f8f9;border-radius:7px;color:#65717a}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-flow__text{font-size:12px}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-flow__icon--ampel span:last-child{background:#87968d;box-shadow:none}
+.hp-home-v2 #krankenfahrten-usp .hp-care-benefits__item{font-size:12px;line-height:1.6}
+.hp-home-v2 #krankenfahrten-usp .hp-care-benefits__check{background:#fff0f2;color:var(--onroda-red);width:19px;height:19px;font-size:10px}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__topic-cta{font-size:11px;color:#525d66}
+@media(max-width:900px){.hp-home-v2 #care .hp-care__grid,.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__grid{grid-template-columns:1fr;gap:28px}.ride-care-photo{height:320px;background-position:100% 30%}}
+@media(max-width:640px){.hp-home-v2 #care,.hp-home-v2 #krankenfahrten-usp{padding-block:38px}.hp-home-v2 #care>.hp-wrap,.hp-home-v2 #krankenfahrten-usp>.hp-wrap{padding-inline:22px}.hp-home-v2 #care h2{font-size:34px;margin-bottom:20px}.ride-care-photo{height:220px;background-size:300% auto;background-position:100% 25%}.hp-home-v2 #care .hp-care__col--detail,.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__aside{padding:23px 20px}.hp-home-v2 #care .hp-care-tags__item{font-size:9px;padding:8px}.hp-home-v2 #care .hp-care__intro{font-size:12px}}

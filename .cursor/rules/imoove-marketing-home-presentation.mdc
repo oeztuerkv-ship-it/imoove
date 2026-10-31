@@ -15,3 +15,5 @@ alwaysApply: false
 - Neue Menü-IDs site-primary-nav/site-nav-toggle verhindern doppelte Bindung durch alte hp-nav-toggle-Listener. Gemeinsames JS nur für Menübedienung, ohne API-Aufrufe oder Storage.
 - /#care ist Krankenfahrten auf der Startseite. Beim load mit location.hash NICHT scrollTo(0,0) ausführen, sonst werden seitenübergreifende Abschnittslinks überschrieben. Einzige fachfremde Änderung im bisherigen script.js ist diese Darstellungs-Korrektur; alle Fachhandler erhalten.
 - Rechtstext-/Kontoinhalte, Partnerstatus-Inlinecode und Formulare erhalten. Neue Assets/Skripte über alle Dokumente konsistent versionieren. Startseite c7816b38 wurde später extern deployed; diesen Befund vom Deployment der Folgeänderungen unterscheiden.
+
+- Beim Befund „Krankenfahrten noch alt“ den INHALTSBEREICH #care prüfen, nicht nur Header/Assetversion. Menü kann bereits neu sein, während die Zielsektion altes Layout behält. Kein Cache-Problem behaupten ohne Nachweis. Care-/Vorprüfungs-Design in home-2026.css gezielt überschrieben; Fachinhalte/Links/Hooks beibehalten.
