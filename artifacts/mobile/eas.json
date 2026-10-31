@@ -40,9 +40,20 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "simulator": false
+        "simulator": false,
+        "buildConfiguration": "Release",
+        "env": {
+          "EXPO_PUBLIC_ENABLE_GOOGLE_NAV": "1",
+          "ONRODA_GOOGLE_NAV_RELEASE": "production"
+        },
+        "image": "sdk-54",
+        "node": "20.20.2"
       },
-      "channel": "production"
+      "channel": "production",
+      "distribution": "store",
+      "environment": "production",
+      "developmentClient": false,
+      "autoIncrement": false
     },
     "google-navigation": {
       "extends": "preview",

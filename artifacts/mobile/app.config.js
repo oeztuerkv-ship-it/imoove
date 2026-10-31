@@ -14,9 +14,12 @@ module.exports = ({ config }) => {
     (config.extra?.eas?.projectId || "").trim() ||
     "";
 
-  // EXPERIMENTELL, Standard aus (kein Effekt auf dev/preview/production ohne diesen Flag):
+  // Explicit native capability; enabled by the iOS production profile or internal Google profile.
   // Google Navigation SDK — separates Google-Produkt, eigene Freischaltung/Abrechnung noetig.
   const enableGoogleNav = (process.env.EXPO_PUBLIC_ENABLE_GOOGLE_NAV || "").trim() === "1";
+
+  const googleNavProduction = enableGoogleNav && process.env.ONRODA_GOOGLE_NAV_RELEASE === "production";
+  const buildPlatform = process.env.EAS_BUILD_PLATFORM;
 
   // iOS (GMSServices.provideAPIKey) und Android (com.google.android.geo.API_KEY) haben
   // je Plattform NUR EINEN nativen Key-Slot, den sich Maps-SDK und Navigation-SDK teilen.
@@ -41,7 +44,7 @@ module.exports = ({ config }) => {
       const key = (process.env[envVarName] || "").trim();
       if (key) return key;
 
-      if (isEasBuildWorker) {
+      if (isEasBuildWorker && (!buildPlatform || buildPlatform === platform)) {
         // Auf dem echten Builder MUSS das Secret vorhanden sein — hartes, aber
         // Key-wert-freies Abbrechen, damit nie unbemerkt ohne Nav-Key gebaut wird.
         throw new Error(
@@ -88,13 +91,13 @@ module.exports = ({ config }) => {
   return {
     ...config,
     // Separate native runtime: never deliver Google SDK code to the original app.
-    ...(enableGoogleNav ? { version: "1.0.4", runtimeVersion: "onroda-google-nav-1" } : {}),
+    ...(enableGoogleNav ? { version: "1.0.4", runtimeVersion: googleNavProduction ? "onroda-google-nav-prod-1" : "onroda-google-nav-1" } : {}),
     plugins: [
       // Läuft als letztes (Expo-Plugins rückwärts): CAF nach expo-notifications entfernen.
       withAndroidRideAlertPushSound,
       ...(config.plugins || []),
       withGoogleMapsEarlyInit,
-      // Google-Navigation-Native-Konfiguration nur im isolierten Nav-Testbuild.
+      // Native Google configuration for internal and regular App Store builds.
       ...(enableGoogleNav ? [withGoogleNavigationSdk] : []),
       // Nur iOS-Deployment-Target anheben (z. B. fuer das Google Navigation SDK
       // benoetigt) — Android bleibt unangetastet.
@@ -102,7 +105,7 @@ module.exports = ({ config }) => {
     ],
     ios: {
       ...config.ios,
-      ...(enableGoogleNav ? { buildNumber: "47" } : {}),
+      ...(enableGoogleNav ? { buildNumber: googleNavProduction ? "48" : "47" } : {}),
       config: iosConfig,
     },
     android: {
@@ -119,6 +122,7 @@ module.exports = ({ config }) => {
     extra: {
       ...(config.extra || {}),
       googleNavigationEnabled: enableGoogleNav,
+      googleNavigationRelease: googleNavProduction ? "production" : "internal",
       eas: {
         ...(config.extra?.eas || {}),
         ...(easProjectId ? { projectId: easProjectId } : {}),

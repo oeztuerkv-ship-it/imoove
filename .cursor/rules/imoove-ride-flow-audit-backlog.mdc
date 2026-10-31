@@ -55,3 +55,8 @@ Versionsbasis: Original-App Runtime 1.0.3, `release/original-runtime-1.0.3`; nat
 - Eigenes internes Build-Profil/Runtime; Original-OTA 1.0.3 unverändert. Keine allgemeine Produktionsfreigabe ohne native Geräteabnahme.
 - SDK-Provider-Optionen müssen referenzstabil bleiben (SDK memoisiert Controller daran); sonst startet init/cleanup bei jedem GPS-Render neu. Legacy-navMountedRef bleibt bei Google aus und darf dessen Standort-/ETA-Callbacks nicht sperren.
 - Diagnose-Route niemals statisch SDK importieren. Zielwechsel serialisieren, SDK-Ton-Schalter und explizites TILTED, echte Route an Kunde, separate Kamera-/GPS-/Speech-Owner.
+
+## Reguläres iOS-Update (31.10.2026)
+- Vedat beauftragt Production-Vorbereitung für bestehende App com.vedat.mobile / Apple-ID 6773487513. Keine Store-Veröffentlichung, kein Submit/Review/Release vor ausdrücklicher Freigabe.
+- Kandidat 1.0.4 (48), Store-Signierung, production-Channel und Runtime onroda-google-nav-prod-1; Test-/Legacy-Runtimes getrennt halten. Befunde/Abnahme: docs/onroda-ios-production-1.0.4.md.
+- Google 10.13.0 benötigt iOS 16+, bisher Store-Minimum 15.1. Alte Nutzer nicht durch Backend-Mindestversion aussperren.

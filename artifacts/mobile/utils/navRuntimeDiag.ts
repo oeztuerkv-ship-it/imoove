@@ -143,7 +143,7 @@ export function navDiagGpsEffect(event: "mount" | "unmount", detail?: Record<str
 }
 
 export type NavDiagTickInput = {
-  source: "boot" | "watch";
+  source: "boot" | "watch" | "recenter";
   engineCalled: boolean;
   engineError?: string;
   rawGps: { lat: number; lon: number; speed?: number | null; course?: number | null };
@@ -166,6 +166,9 @@ export type NavDiagTickInput = {
   polylinePoints?: number;
   stepIdx?: number;
   rerouteInFlight?: boolean;
+  gpsSpeedMps?: number | null;
+  derivedSpeedMps?: number | null;
+  fixDtMs?: number | null;
 };
 
 /** Jeder GPS-Tick (gedrosselt ~1/s für ausführliche Zeile; Off-Route/Fehler immer). */

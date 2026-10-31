@@ -206,6 +206,8 @@ function runSim(
   const bad = applyCameraCommand(
     { setCamera: () => {} },
     {
+      sessionToken: 1,
+      routeGeneration: 0,
       center: { latitude: NaN, longitude: 9.31 },
       heading: 10,
       pitch: 62,

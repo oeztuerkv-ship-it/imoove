@@ -26,7 +26,7 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useKeepAwake } from "expo-keep-awake";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker, Polyline, type Camera } from "react-native-maps";
 import { nativeMapViewProps, usesGoogleMapTiles } from "@/utils/nativeMapProvider";
 import { logMapsRuntimeDiagnosticsOnce } from "@/utils/mapsDiagnostics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -367,30 +367,16 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number): num
 
 /** Apple Maps nutzt altitude (m), Google Maps zoom — Umrechnung: navEngine/CameraEngine (einzige Quelle). */
 
-function buildNavCamera(
-  lat: number,
-  lon: number,
-  heading?: number | null,
-  opts?: { zoom?: number; altitude?: number | null; pitch?: number },
-) {
-  const center = { latitude: lat, longitude: lon };
-  const zoom = opts?.zoom ?? NAV_CAMERA_ZOOM;
-  const pitch = opts?.pitch ?? NAV_CAMERA_PITCH;
-  const base: Record<string, unknown> = { center, pitch };
-  if (heading != null && Number.isFinite(heading)) {
-    base.heading = heading;
-  }
-  if (usesGoogleMapTiles()) {
-    return { ...base, zoom };
-  }
-  const altitude =
-    opts?.altitude != null && Number.isFinite(opts.altitude)
-      ? opts.altitude
-      : zoomLevelToAltitudeMeters(zoom, lat, {
-          viewportHeightPt: Dimensions.get("window").height,
-          pitchDeg: pitch,
-        });
-  return { ...base, altitude };
+/** Initial map orientation only: matches MKMapCamera's existing north default.
+ * This is NOT a vehicle heading or a GPS fix. CameraEngine owns live Follow.
+ */
+function buildInitialMapCamera(lat: number, lon: number): Camera {
+  const base = { center: { latitude: lat, longitude: lon }, pitch: NAV_CAMERA_PITCH, heading: 0 };
+  if (usesGoogleMapTiles()) return { ...base, zoom: NAV_CAMERA_ZOOM };
+  return { ...base, altitude: zoomLevelToAltitudeMeters(NAV_CAMERA_ZOOM, lat, {
+    viewportHeightPt: Dimensions.get("window").height,
+    pitchDeg: NAV_CAMERA_PITCH,
+  }) };
 }
 
 function fmtArrival(remainingMin: number): string {
@@ -558,7 +544,7 @@ export default function DriverNavigationScreen() {
   const initialNavCamera = useMemo(() => {
     const lat = isValidMapCoord(fromLat, fromLon) ? fromLat : 48.7394;
     const lon = isValidMapCoord(fromLat, fromLon) ? fromLon : 9.3114;
-    return buildNavCamera(lat, lon, null);
+    return buildInitialMapCamera(lat, lon);
   }, [fromLat, fromLon]);
 
   useEffect(() => {

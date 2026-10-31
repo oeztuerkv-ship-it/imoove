@@ -1,0 +1,2 @@
+Neue integrierte Google-Navigation für Fahrer mit Sprachführung und automatischer Routenneuberechnung.
+Die Fahransicht und der Übergang zwischen Abholung und Zielnavigation wurden überarbeitet.
