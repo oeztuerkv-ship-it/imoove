@@ -4,48 +4,48 @@
 .ride-hero{position:relative;background:#f6f7f7;isolation:isolate;overflow:hidden}
 .ride-hero-inner{max-width:1440px;margin:auto;min-height:630px;display:grid;grid-template-columns:48% 52%;position:relative}
 .ride-hero-copy{position:relative;z-index:2;padding:58px 28px 40px 60px;background:linear-gradient(90deg,#fafafa 82%,rgba(250,250,250,.9) 100%)}
-.ride-eyebrow{font-size:10px;font-weight:650;letter-spacing:.16em;text-transform:uppercase;color:#676d75;margin:0 0 18px}
+.ride-eyebrow{font-size:14px;font-weight:650;letter-spacing:.16em;text-transform:uppercase;color:#4b5563;margin:0 0 18px}
 .ride-hero h1{font-size:clamp(42px,4.5vw,65px);line-height:1.06;letter-spacing:-.055em;margin:0 0 19px;font-weight:800;color:#17191c}
 .ride-hero h1 em{font-style:normal;color:var(--ride-red)}
 .ride-hero-lead{font-size:17px;line-height:1.6;max-width:440px;color:#50545b;margin:0 0 24px}
 .ride-booking-card{border:1px solid #e1e3e5;background:white;border-radius:13px;max-width:444px;padding:21px 22px 16px;box-shadow:0 8px 25px #232b3406}
 .ride-booking-top{display:flex;align-items:center;gap:12px;font-size:17px;letter-spacing:-.02em}
 .ride-car-icon{display:flex;align-items:center;justify-content:center;background:#fff0f2;color:var(--ride-red);width:32px;height:32px;border-radius:9px;font-size:22px;font-weight:700}
-.ride-booking-card>p{font-size:13px;line-height:1.6;color:#62676e;margin:11px 0 17px}
-.ride-primary{display:flex;align-items:center;justify-content:space-between;background:var(--ride-red);color:white;border:1px solid var(--ride-red);padding:14px 18px;border-radius:7px;font-size:14px;font-weight:650;text-decoration:none;min-height:48px;transition:background .15s}
+.ride-booking-card>p{font-size:16px;line-height:1.6;color:#62676e;margin:11px 0 17px}
+.ride-primary{display:flex;align-items:center;justify-content:space-between;background:var(--ride-red);color:white;border:1px solid var(--ride-red);padding:14px 18px;border-radius:7px;font-size:16px;font-weight:650;text-decoration:none;min-height:48px;transition:background .15s}
 .ride-primary:hover{background:#ae0018;color:white}
 .ride-primary span{font-size:21px;line-height:1}
-.ride-quote-link{display:flex;justify-content:space-between;align-items:center;padding:14px 2px 0;font-size:12px;font-weight:600;color:#33373e;text-decoration:none}
+.ride-quote-link{display:flex;justify-content:space-between;align-items:center;padding:14px 2px 0;font-size:16px;font-weight:600;color:#33373e;text-decoration:none}
 .ride-quote-link:hover{color:var(--ride-red)}
-.ride-availability{max-width:420px;color:#727780;font-size:10px;line-height:1.65;margin:14px 0}
+.ride-availability{max-width:420px;color:#4b5563;font-size:14px;line-height:1.65;margin:14px 0}
 .ride-apple-badge{display:inline-flex;margin-top:2px}
 .ride-apple-badge img{display:block;width:114px;height:38px}
 .ride-hero-visual{position:relative;min-width:0;min-height:630px}
 .ride-hero-photo{width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:48% center}
 .ride-hero-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#0b182526,transparent 50%);pointer-events:none}
-.ride-photo-note{position:absolute;left:22px;bottom:17px;z-index:2;color:#fff;font-size:9px;background:#1218209c;padding:5px 8px;border-radius:4px}
+.ride-photo-note{position:absolute;left:22px;bottom:17px;z-index:2;color:#fff;font-size:14px;background:#1218209c;padding:5px 8px;border-radius:4px}
 .ride-trip-preview{position:absolute;right:25px;bottom:55px;width:250px;border:5px solid #fff;background:white;border-radius:16px;overflow:hidden;z-index:2;box-shadow:0 14px 42px #08162242;transform:rotate(-3deg)}
 .ride-trip-map{height:140px;background-color:#e8eeea;position:relative;overflow:hidden;background-image:linear-gradient(30deg,transparent 35%,#d4e1d4 35%,#d4e1d4 55%,transparent 55%)}
 .ride-map-road{position:absolute;background:#fff;border:1px solid #d9ded9;width:320px;height:12px;left:-30px;transform:rotate(-28deg)}
 .ride-map-road-a{top:31px}.ride-map-road-b{top:108px}.ride-map-road-c{top:70px;transform:rotate(64deg)}
 .ride-map-route{position:absolute;inset:0;width:100%;height:100%}
-.ride-preview-label{position:absolute;top:8px;left:9px;background:#fffffff0;color:#535b60;font-size:9px;padding:4px 7px;border-radius:4px}
+.ride-preview-label{position:absolute;top:8px;left:9px;background:#fffffff0;color:#535b60;font-size:14px;padding:4px 7px;border-radius:4px}
 .ride-trip-info{display:flex;align-items:center;gap:9px;padding:14px 8px;transform:rotate(0)}
-.ride-trip-info strong{display:block;font-size:13px;letter-spacing:-.015em}.ride-trip-info div>span{display:block;font-size:9px;color:#6d7478;margin-top:3px}
+.ride-trip-info strong{display:block;font-size:14px;letter-spacing:-.015em}.ride-trip-info div>span{display:block;font-size:14px;color:#6d7478;margin-top:3px}
 .ride-trip-dot{width:7px;height:7px;border-radius:50%;background:#159651;flex-shrink:0}.ride-trip-arrow{margin-left:auto;color:var(--ride-red);font-size:19px}
 .ride-region{background:#f7f7f8;border-bottom:1px solid #ececef}
 .ride-region-inner{max-width:var(--ride-max);margin:auto;display:grid;grid-template-columns:repeat(3,1fr);padding:20px 28px}
 .ride-region-inner>div{display:flex;align-items:center;justify-content:center;gap:15px;padding:0 17px;border-right:1px solid #dadddf}
-.ride-region-inner>div:last-child{border:0}.ride-region-inner p{margin:0}.ride-region-inner strong{font-size:13px;display:block;letter-spacing:-.015em}.ride-region-inner p>span{font-size:11px;color:#6b7077;display:block;margin-top:3px}.ride-region-symbol{font-size:29px;line-height:1;color:var(--ride-red)}
+.ride-region-inner>div:last-child{border:0}.ride-region-inner p{margin:0}.ride-region-inner strong{font-size:16px;display:block;letter-spacing:-.015em}.ride-region-inner p>span{font-size:14px;color:#4b5563;display:block;margin-top:3px}.ride-region-symbol{font-size:29px;line-height:1;color:var(--ride-red)}
 .ride-occasions{max-width:var(--ride-max);margin:auto;padding:55px 28px 40px}
-.ride-section-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:25px}.ride-section-heading .ride-eyebrow{margin-bottom:10px}.ride-section-heading h2{font-size:clamp(25px,2.6vw,35px);line-height:1.2;letter-spacing:-.04em;margin:0;font-weight:750}.ride-section-heading>a{font-size:12px;color:#535961;text-decoration:none;white-space:nowrap;padding-bottom:3px}
+.ride-section-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:25px}.ride-section-heading .ride-eyebrow{margin-bottom:10px}.ride-section-heading h2{font-size:clamp(25px,2.6vw,35px);line-height:1.2;letter-spacing:-.04em;margin:0;font-weight:750}.ride-section-heading>a{font-size:16px;color:#535961;text-decoration:none;white-space:nowrap;padding-bottom:3px}
 .ride-service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .ride-service-card{display:block;border:1px solid #e1e4e7;border-radius:12px;overflow:hidden;text-decoration:none;color:inherit;transition:transform .2s,box-shadow .2s}
 .ride-service-card:hover{transform:translateY(-4px);box-shadow:0 10px 28px #17233010}
 .ride-service-image{height:180px;background-image:url('/images/fahrt-anlaesse.jpg');background-size:300% 100%;background-repeat:no-repeat;background-color:#e4e7e7}
 .ride-service-image-airport{background-position:0% center}.ride-service-image-business{background-position:50% center}.ride-service-image-care{background-position:100% center}
-.ride-service-copy{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:17px 18px 18px}.ride-service-copy h3{font-size:17px;letter-spacing:-.025em;margin:0 0 5px;line-height:1.3}.ride-service-copy p{font-size:11px;color:#6b7078;line-height:1.5;margin:0}.ride-service-copy>span{font-size:21px;color:#50575d}
-.ride-region-detail{font-size:11px;color:#747980;line-height:1.7;margin:22px 0 0}
+.ride-service-copy{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:17px 18px 18px}.ride-service-copy h3{font-size:17px;letter-spacing:-.025em;margin:0 0 5px;line-height:1.3}.ride-service-copy p{font-size:16px;color:#4b5563;line-height:1.5;margin:0}.ride-service-copy>span{font-size:21px;color:#50575d}
+.ride-region-detail{font-size:14px;color:#4b5563;line-height:1.7;margin:22px 0 0}
 /* Existing forms, CMS modules and their interactions retain their markup and scripts. */
 .hp-home-v2 .hp-section,.hp-home-v2 .hp-process,.hp-home-v2 .hp-medical-usp,.hp-home-v2 .hp-app-download{padding-block:65px}
 .hp-home-v2 .hp-medical-usp{background:#f7f8f8;border-top:1px solid #eef0f1;border-bottom:1px solid #eef0f1}
@@ -55,8 +55,8 @@
 .hp-home-v2 .hp-footer{margin-top:0}
 @media(min-width:1441px){.ride-hero{background:linear-gradient(90deg,#fafafa 50%,#e5e8e7 50%)}.ride-hero-copy{padding-left:60px}}
 @media(max-width:1150px){.ride-hero-copy{padding:40px 24px 35px 32px}.ride-hero-inner,.ride-hero-visual{min-height:605px}.ride-trip-preview{width:210px;right:17px}.ride-service-image{height:155px}}
-@media(max-width:900px){.hp-home-v2 .ride-partner-login{display:none}.ride-hero-inner{grid-template-columns:52% 48%}.ride-hero h1{font-size:43px}.ride-hero-lead{font-size:15px}.ride-hero-copy{padding-left:26px}.ride-booking-card{padding:17px}.ride-hero-photo{object-position:47% center}.ride-trip-preview{width:185px}.ride-trip-info{padding:10px 5px}.ride-trip-info strong{font-size:11px}.ride-trip-info div>span{font-size:8px}.ride-region-inner{padding-inline:15px}.ride-region-inner>div{padding-inline:10px;gap:10px}.ride-region-inner strong{font-size:11px}.ride-region-inner p>span{font-size:10px}.ride-service-grid{gap:13px}.ride-service-copy{padding:14px 12px}.ride-service-copy h3{font-size:15px}.ride-service-image{height:135px}}
-@media(max-width:640px){.ride-hero-inner{display:flex;flex-direction:column;min-height:0}.ride-hero-copy{padding:30px 22px 25px;background:#fafafa}.ride-eyebrow{font-size:9px;letter-spacing:.11em;margin-bottom:15px}.ride-hero h1{font-size:clamp(32px,8.8vw,44px);margin-bottom:15px}.ride-hero-lead{font-size:15px;line-height:1.6;margin-bottom:20px;max-width:460px}.ride-booking-card{max-width:none;padding:16px 18px 15px}.ride-booking-top{font-size:16px}.ride-booking-card>p{font-size:12px}.ride-primary{font-size:13px;padding:12px 15px}.ride-quote-link{font-size:11px}.ride-availability{font-size:9px;max-width:none;margin:12px 0 0}.ride-apple-badge{display:none}.ride-hero-visual{min-height:310px}.ride-hero-photo{object-position:center 60%}.ride-trip-preview{width:165px;right:15px;bottom:25px;border-width:4px;transform:rotate(-3deg)}.ride-trip-map{height:100px}.ride-trip-info{gap:6px}.ride-trip-info strong{font-size:10px}.ride-trip-info div>span{font-size:7px}.ride-trip-arrow{font-size:15px}.ride-photo-note{font-size:7px;left:13px;bottom:10px}.ride-region-inner{grid-template-columns:1fr;padding:7px 22px}.ride-region-inner>div{justify-content:flex-start;border-right:0;border-bottom:1px solid #e3e5e7;padding:12px 0;gap:17px}.ride-region-symbol{width:24px;text-align:center;font-size:25px}.ride-region-inner strong{font-size:12px}.ride-region-inner p>span{font-size:10px}.ride-occasions{padding:34px 22px 28px}.ride-section-heading{align-items:start;margin-bottom:20px}.ride-section-heading h2{font-size:27px;max-width:300px}.ride-section-heading>a{display:none}.ride-service-grid{grid-template-columns:1fr;gap:17px}.ride-service-image{height:190px}.ride-service-copy{padding:16px 17px}.ride-service-copy h3{font-size:18px}.ride-service-copy p{font-size:12px}.ride-region-detail{font-size:10px;margin-top:18px}.hp-home-v2 .hp-section,.hp-home-v2 .hp-process,.hp-home-v2 .hp-medical-usp,.hp-home-v2 .hp-app-download{padding-block:42px}}
+@media(max-width:900px){.hp-home-v2 .ride-partner-login{display:none}.ride-hero-inner{grid-template-columns:52% 48%}.ride-hero h1{font-size:43px}.ride-hero-lead{font-size:16px}.ride-hero-copy{padding-left:26px}.ride-booking-card{padding:17px}.ride-hero-photo{object-position:47% center}.ride-trip-preview{width:185px}.ride-trip-info{padding:10px 5px}.ride-trip-info strong{font-size:14px}.ride-trip-info div>span{font-size:14px}.ride-region-inner{padding-inline:15px}.ride-region-inner>div{padding-inline:10px;gap:10px}.ride-region-inner strong{font-size:16px}.ride-region-inner p>span{font-size:14px}.ride-service-grid{gap:13px}.ride-service-copy{padding:14px 12px}.ride-service-copy h3{font-size:16px}.ride-service-image{height:135px}}
+@media(max-width:640px){.ride-hero-inner{display:flex;flex-direction:column;min-height:0}.ride-hero-copy{padding:30px 22px 25px;background:#fafafa}.ride-eyebrow{font-size:14px;letter-spacing:.11em;margin-bottom:15px}.ride-hero h1{font-size:clamp(32px,8.8vw,44px);margin-bottom:15px}.ride-hero-lead{font-size:16px;line-height:1.6;margin-bottom:20px;max-width:460px}.ride-booking-card{max-width:none;padding:16px 18px 15px}.ride-booking-top{font-size:16px}.ride-booking-card>p{font-size:16px}.ride-primary{font-size:16px;padding:12px 15px}.ride-quote-link{font-size:16px}.ride-availability{font-size:14px;max-width:none;margin:12px 0 0}.ride-apple-badge{display:none}.ride-hero-visual{min-height:310px}.ride-hero-photo{object-position:center 60%}.ride-trip-preview{width:165px;right:15px;bottom:25px;border-width:4px;transform:rotate(-3deg)}.ride-trip-map{height:100px}.ride-trip-info{gap:6px}.ride-trip-info strong{font-size:14px}.ride-trip-info div>span{font-size:14px}.ride-trip-arrow{font-size:16px}.ride-photo-note{font-size:14px;left:13px;bottom:10px}.ride-region-inner{grid-template-columns:1fr;padding:7px 22px}.ride-region-inner>div{justify-content:flex-start;border-right:0;border-bottom:1px solid #e3e5e7;padding:12px 0;gap:17px}.ride-region-symbol{width:24px;text-align:center;font-size:25px}.ride-region-inner strong{font-size:16px}.ride-region-inner p>span{font-size:14px}.ride-occasions{padding:34px 22px 28px}.ride-section-heading{align-items:start;margin-bottom:20px}.ride-section-heading h2{font-size:27px;max-width:300px}.ride-section-heading>a{display:none}.ride-service-grid{grid-template-columns:1fr;gap:17px}.ride-service-image{height:190px}.ride-service-copy{padding:16px 17px}.ride-service-copy h3{font-size:18px}.ride-service-copy p{font-size:16px}.ride-region-detail{font-size:14px;margin-top:18px}.hp-home-v2 .hp-section,.hp-home-v2 .hp-process,.hp-home-v2 .hp-medical-usp,.hp-home-v2 .hp-app-download{padding-block:42px}}
 @media(prefers-reduced-motion:reduce){.hp-home-v2{scroll-behavior:auto}.hp-home-v2 .ride-service-card{transition:none}.hp-home-v2 .ride-service-card:hover{transform:none}}
 
 .ride-skip-link{position:fixed;top:8px;left:12px;z-index:2000;transform:translateY(-200%);background:#fff;color:#111;padding:10px 15px;border:2px solid var(--onroda-red);border-radius:6px}.ride-skip-link:focus{transform:translateY(0)}
@@ -64,7 +64,7 @@
 .hp-home-v2 main>section[id]{scroll-margin-top:95px}
 @media(max-width:640px){
  .hp-home-v2 .hp-whatsapp-fab{position:static;display:flex;width:fit-content;margin:20px auto;transform:none;gap:10px}
- .hp-home-v2 .hp-whatsapp-fab__label{position:static;opacity:1;visibility:visible;transform:none;pointer-events:auto;background:transparent;color:#1d2024;padding:0;box-shadow:none;font-size:12px}
+ .hp-home-v2 .hp-whatsapp-fab__label{position:static;opacity:1;visibility:visible;transform:none;pointer-events:auto;background:transparent;color:#1d2024;padding:0;box-shadow:none;font-size:16px}
  .hp-home-v2 .hp-whatsapp-fab__label:after{display:none}
  .hp-home-v2 .hp-whatsapp-fab__icon{width:42px;height:42px}
 }
@@ -73,41 +73,41 @@
 .hp-home-v2 #care{background:#fafafa;border-top:1px solid #eceef0;border-bottom:1px solid #eceef0;padding-block:64px}
 .hp-home-v2 #care>.hp-wrap,.hp-home-v2 #krankenfahrten-usp>.hp-wrap{width:100%;max-width:1320px;padding-inline:28px}
 .hp-home-v2 #care .hp-care__grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:55px;align-items:start}
-.hp-home-v2 #care .hp-kicker{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--onroda-red);margin:0 0 12px}
+.hp-home-v2 #care .hp-kicker{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--onroda-red);margin:0 0 12px}
 .hp-home-v2 #care .hp-medical-usp__badge--inline{display:none}
 .hp-home-v2 #care h2{font-size:clamp(31px,3.4vw,46px);letter-spacing:-.045em;line-height:1.12;text-align:left;margin:0 0 24px;font-weight:750;color:#1c2024}
 .ride-care-figure{margin:0 0 21px;position:relative;border-radius:12px;overflow:hidden;background:#e7e9e7}
 .ride-care-photo{height:260px;background-image:url('/images/fahrt-anlaesse.jpg');background-size:300% auto;background-position:100% 35%;background-repeat:no-repeat}
-.ride-care-figure figcaption{position:absolute;right:10px;bottom:10px;font-size:8px;color:white;background:#142018a3;padding:4px 7px;border-radius:4px}
+.ride-care-figure figcaption{position:absolute;right:10px;bottom:10px;font-size:14px;color:white;background:#142018a3;padding:4px 7px;border-radius:4px}
 .hp-home-v2 #care .hp-care-tags{gap:7px;margin:0 0 20px}
-.hp-home-v2 #care .hp-care-tags__item{border-radius:6px;border:1px solid #e0e4e7;box-shadow:none;background:white;font-size:10px;padding:8px 10px;color:#565e65}
+.hp-home-v2 #care .hp-care-tags__item{border-radius:6px;border:1px solid #e0e4e7;box-shadow:none;background:white;font-size:14px;padding:8px 10px;color:#565e65}
 .hp-home-v2 #care .hp-care-tags__ico{display:none}
-.hp-home-v2 #care .hp-care__tagline{font-size:15px;line-height:1.65;font-weight:600;color:#30383e}
-.hp-home-v2 #care .hp-care__intro{font-size:13px;line-height:1.85;color:#666e76}
+.hp-home-v2 #care .hp-care__tagline{font-size:16px;line-height:1.65;font-weight:600;color:#30383e}
+.hp-home-v2 #care .hp-care__intro{font-size:16px;line-height:1.85;color:#4b5563}
 .hp-home-v2 #care .hp-care__col--detail{border:1px solid #e2e6e9;box-shadow:none;border-radius:12px;padding:30px;background:#fff}
 .hp-home-v2 #care .hp-care__subhead{font-size:17px;letter-spacing:-.02em;margin:0 0 19px;color:#262d33}
 .hp-home-v2 #care .hp-care-benefits{gap:13px;margin-bottom:30px}
-.hp-home-v2 #care .hp-care-benefits__item{font-size:12px;line-height:1.6;gap:11px;color:#525b64}
-.hp-home-v2 #care .hp-care-benefits__check{width:19px;height:19px;border-radius:50%;font-size:10px;background:#fff0f2;color:var(--onroda-red);margin-top:1px}
+.hp-home-v2 #care .hp-care-benefits__item{font-size:16px;line-height:1.6;gap:11px;color:#525b64}
+.hp-home-v2 #care .hp-care-benefits__check{width:19px;height:19px;border-radius:50%;font-size:16px;background:#fff0f2;color:var(--onroda-red);margin-top:1px}
 .hp-home-v2 #care .hp-care-process{border:0;box-shadow:none;border-radius:0;background:transparent;margin-bottom:24px}
-.hp-home-v2 #care .hp-care-process li{background:transparent;font-size:12px;line-height:1.5;padding:10px 0;border-color:#edf0f2}
+.hp-home-v2 #care .hp-care-process li{background:transparent;font-size:16px;line-height:1.5;padding:10px 0;border-color:#edf0f2}
 .hp-home-v2 #care .hp-care-process li:before{border:0;background:#f3f4f5;color:#616a73;border-radius:6px;box-shadow:none}
-.hp-home-v2 #care .hp-care__closing{font-size:11px;line-height:1.7;color:#7a8289;margin-bottom:20px}
+.hp-home-v2 #care .hp-care__closing{font-size:16px;line-height:1.7;color:#4b5563;margin-bottom:20px}
 .hp-home-v2 #care .hp-care__actions{display:flex;flex-direction:column;align-items:stretch;gap:10px}
-.hp-home-v2 #care .hp-btn-primary,.hp-home-v2 #care .hp-btn-ghost{border-radius:7px;font-size:12px;min-height:44px;justify-content:center;padding:12px 17px;box-shadow:none}
+.hp-home-v2 #care .hp-btn-primary,.hp-home-v2 #care .hp-btn-ghost{border-radius:7px;font-size:16px;min-height:44px;justify-content:center;padding:12px 17px;box-shadow:none}
 .hp-home-v2 #care .hp-btn-ghost{background:white;border:1px solid #e1e5e8;color:#56616a}
 .hp-home-v2 #krankenfahrten-usp{background:white;border:0;padding-block:60px}
 .hp-home-v2 #krankenfahrten-usp .hp-medical-usp__grid{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:55px;align-items:start}
 .hp-home-v2 #krankenfahrten-usp h2{font-size:clamp(26px,2.8vw,36px);line-height:1.2;letter-spacing:-.04em;color:#1c2024}
-.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__badge{font-size:9px;font-weight:600;letter-spacing:.1em;border:0;box-shadow:none;border-radius:5px;background:#fff1f3;color:var(--onroda-red)}
-.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__lead{font-size:13px;line-height:1.8;color:#687079}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__badge{font-size:16px;font-weight:600;letter-spacing:.1em;border:0;box-shadow:none;border-radius:5px;background:#fff1f3;color:var(--onroda-red)}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__lead{font-size:16px;line-height:1.8;color:#4b5563}
 .hp-home-v2 #krankenfahrten-usp .hp-medical-usp__aside{border:1px solid #e2e6e9;border-radius:12px;box-shadow:none;padding:26px;background:#fff}
 .hp-home-v2 #krankenfahrten-usp .hp-medical-flow:before{background:#e7eaed;opacity:1;width:1px}
 .hp-home-v2 #krankenfahrten-usp .hp-medical-flow__icon{border-color:#e6e9ec;background:#f7f8f9;border-radius:7px;color:#65717a}
-.hp-home-v2 #krankenfahrten-usp .hp-medical-flow__text{font-size:12px}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-flow__text{font-size:16px}
 .hp-home-v2 #krankenfahrten-usp .hp-medical-flow__icon--ampel span:last-child{background:#87968d;box-shadow:none}
-.hp-home-v2 #krankenfahrten-usp .hp-care-benefits__item{font-size:12px;line-height:1.6}
-.hp-home-v2 #krankenfahrten-usp .hp-care-benefits__check{background:#fff0f2;color:var(--onroda-red);width:19px;height:19px;font-size:10px}
-.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__topic-cta{font-size:11px;color:#525d66}
+.hp-home-v2 #krankenfahrten-usp .hp-care-benefits__item{font-size:16px;line-height:1.6}
+.hp-home-v2 #krankenfahrten-usp .hp-care-benefits__check{background:#fff0f2;color:var(--onroda-red);width:19px;height:19px;font-size:16px}
+.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__topic-cta{font-size:16px;color:#525d66}
 @media(max-width:900px){.hp-home-v2 #care .hp-care__grid,.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__grid{grid-template-columns:1fr;gap:28px}.ride-care-photo{height:320px;background-position:100% 30%}}
-@media(max-width:640px){.hp-home-v2 #care,.hp-home-v2 #krankenfahrten-usp{padding-block:38px}.hp-home-v2 #care>.hp-wrap,.hp-home-v2 #krankenfahrten-usp>.hp-wrap{padding-inline:22px}.hp-home-v2 #care h2{font-size:34px;margin-bottom:20px}.ride-care-photo{height:220px;background-size:300% auto;background-position:100% 25%}.hp-home-v2 #care .hp-care__col--detail,.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__aside{padding:23px 20px}.hp-home-v2 #care .hp-care-tags__item{font-size:9px;padding:8px}.hp-home-v2 #care .hp-care__intro{font-size:12px}}
+@media(max-width:640px){.hp-home-v2 #care,.hp-home-v2 #krankenfahrten-usp{padding-block:38px}.hp-home-v2 #care>.hp-wrap,.hp-home-v2 #krankenfahrten-usp>.hp-wrap{padding-inline:22px}.hp-home-v2 #care h2{font-size:34px;margin-bottom:20px}.ride-care-photo{height:220px;background-size:300% auto;background-position:100% 25%}.hp-home-v2 #care .hp-care__col--detail,.hp-home-v2 #krankenfahrten-usp .hp-medical-usp__aside{padding:23px 20px}.hp-home-v2 #care .hp-care-tags__item{font-size:14px;padding:8px}.hp-home-v2 #care .hp-care__intro{font-size:16px}}

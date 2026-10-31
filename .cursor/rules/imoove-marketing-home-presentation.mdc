@@ -23,5 +23,11 @@ alwaysApply: false
 ## Homepage-Rhythmus und Navigation (Vedats Folgeauftrag)
 - Keine weiteren Foto-Erstellungen vor echten Fahrzeugfotos. Homepage ohne doppelte Care-/Plattform-Erklärungen; erhaltenes Partnerformular und CMS-Zielgruppenkarten via native details erreichbar. Keine erfundenen Preise/Bewertungen in dekorativen Handys. Fünf etablierte Prozessschritte erhalten.
 - Menümaße ausschließlich in site-2026.css; keine hp-nav/hp-header-Sondermaße in home-2026.css, home-refinement.css oder airport-2026.css. Aktiver Tab nur Farbe/Hintergrund, niemals abweichendes Padding/Schriftmaß.
-- Gemeinsame Navigation: 13px Desktop, 14px aufgeklappt, Mindestklickhöhe 44px; mobiles Menü bis 1050px, Resize-Handler ab 1051px. Einheitliche Assetversion in allen neun öffentlichen Dokumenten; beide Festpreis-Aliase gleichhalten.
+- Gemeinsame Navigation: 15px Desktop, 16px aufgeklappt, Mindestklickhöhe 44px; mobiles Menü bis 1050px, Resize-Handler ab 1051px. Einheitliche Assetversion in allen neun öffentlichen Dokumenten; beide Festpreis-Aliase gleichhalten.
 - #krankenfahrten-usp ist jetzt ein platzloser Alias in #care; alte CSS-Abstände dürfen auf diesem Span keinen Leerraum erzeugen. home-refinement.css setzt die finale Homepage-Gestaltung; Menü bleibt im gemeinsamen Stylesheet.
+
+## Lesbarkeits-Postmortem
+- Vedats Befund: Schrift zu klein; „Von der Anfrage bis zum Beleg“ wirkt durchsichtig. Bestätigt: vorheriger heller Prozess-Hintergrund erbte weiße .hp-process-Farben und den alten radialen ::before-Verlauf aus style.css. Bei Dunkel→Hell immer Vordergrund, Pseudo-Flächen und Kinderstile komplett prüfen, nicht nur background.
+- Überarbeitete Textstile: regulär meist 16px, Hinweise mindestens 14px, Navigation 15/16px. Haupt-Prozess: deckende helle Flächen, #1f2933-Titel, #4b5563-Text, opacity 1; alte Beschreibungsmargen/max-width und ::before deaktiviert.
+- Keine Transparenz-/Hover-Dimmung auf Zusatzkarten. Mobile Header-Beschriftung „App laden“ mit vollständigem aria-label statt Verkleinern auf 10px. Reine CSS-/Labelkorrektur, Formulare und Fachskripte unverändert.
+- Statische CSS-Kontrast-/Kaskadenprüfung nicht als tatsächlich erfolgten Browser-Sichtcheck ausgeben. Screenshots oder Geräte-Abnahme separat bestätigen.
