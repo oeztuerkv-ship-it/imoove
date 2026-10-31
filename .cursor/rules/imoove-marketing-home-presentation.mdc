@@ -17,3 +17,5 @@ alwaysApply: false
 - Rechtstext-/Kontoinhalte, Partnerstatus-Inlinecode und Formulare erhalten. Neue Assets/Skripte über alle Dokumente konsistent versionieren. Startseite c7816b38 wurde später extern deployed; diesen Befund vom Deployment der Folgeänderungen unterscheiden.
 
 - Beim Befund „Krankenfahrten noch alt“ den INHALTSBEREICH #care prüfen, nicht nur Header/Assetversion. Menü kann bereits neu sein, während die Zielsektion altes Layout behält. Kein Cache-Problem behaupten ohne Nachweis. Care-/Vorprüfungs-Design in home-2026.css gezielt überschrieben; Fachinhalte/Links/Hooks beibehalten.
+
+- Flughafentransfer = /fixpreise/ (beide Dateien fixpreise.html + fixpreise/index.html). Nicht mit dem Ziel /#care verwechseln. Neue airport-2026.css und vollständiger Hero/Rechner-Aufbau; Quote-Formular/JS/CMS-IDs erhalten. Öffentliche Menüantwort separat vom tatsächlich auf dem Gerät sichtbaren Stand bewerten; kein pauschales Cache-Urteil.

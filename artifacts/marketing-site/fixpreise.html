@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="onroda-public-api-base" content="https://api.onroda.de/api" />
   <link rel="icon" type="image/png" href="/onroda-logo-transparent.png" />
-  <title>Fixpreise | ONRODA – Festpreis-Fahrten</title>
+  <title>Flughafentransfer &amp; Pauschalpreise | ONRODA</title>
   <meta
     name="description"
     content="Transparente Festpreise für Taxi-Fahrten außerhalb des Pflichtfahrgebiets — in der ONRODA App buchen oder Festpreis-Gutschein über Partner."
@@ -19,9 +19,11 @@
   />
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/site-2026.css?v=20261031-2" />
+  <link rel="stylesheet" href="/airport-2026.css?v=20261031-1" />
+  <link rel="preload" as="image" href="/images/e-klasse-kombi-flughafen.jpg" />
   <script src="/site-navigation.js?v=20261031-2" defer></script>
 </head>
-<body class="hp-fixpreis-page hp-site-v2">
+<body class="hp-fixpreis-page hp-site-v2 ride-airport-page">
   <a class="ride-skip-link" href="#main-content">Zum Inhalt</a>
   <header class="hp-header" id="site-header">
     <div class="hp-wrap hp-header-inner">
@@ -52,22 +54,46 @@
     </div>
   </header>
 
-  <div class="ride-subpage-cover"><img src="/images/e-klasse-kombi-flughafen.jpg" width="1536" height="1024" alt="Schwarze E-Klasse Kombi am Flughafen – Illustration" decoding="async" /><span>Illustration · Fahrzeug nach Verfügbarkeit</span></div>
   <main id="main-content">
+    <section class="airport-hero" aria-labelledby="airport-title">
+      <div class="airport-hero-inner">
+        <div class="airport-hero-copy">
+          <p class="airport-eyebrow">Stuttgart · Esslingen · Baden-Württemberg</p>
+          <h1 id="airport-title">Entspannt zum Flughafen.<br><em>Preis vorher im Blick.</em></h1>
+          <p class="airport-lead">Flughafentransfers zum Pauschalpreis anfragen. Ab Stuttgart, Esslingen, Leinfelden-Echterdingen und ganz Baden-Württemberg.</p>
+          <a class="airport-primary" href="#fixpreis-calculator">Strecke &amp; Preis prüfen <span aria-hidden="true">↗</span></a>
+          <a class="airport-secondary" href="/#jetzt-buchen">Direkt in der App buchen <span aria-hidden="true">→</span></a>
+          <p class="airport-availability">Pauschalpreise nach Streckenprüfung. Fahrzeug und Vermittlung nach Verfügbarkeit.</p>
+        </div>
+        <figure class="airport-hero-figure">
+          <img src="/images/e-klasse-kombi-flughafen.jpg" width="1536" height="1024" alt="Schwarze E-Klasse Kombi am Flughafen – Illustration" fetchpriority="high" decoding="async" />
+          <figcaption>Illustration · Fahrzeug nach Verfügbarkeit</figcaption>
+        </figure>
+      </div>
+    </section>
+    <section class="airport-steps" aria-label="So planst du deinen Transfer">
+      <ol><li><span>01</span><div><strong>Strecke angeben</strong><p>Abholort und Flughafen eintragen.</p></div></li><li><span>02</span><div><strong>Preis prüfen</strong><p>Pauschalpreis-Verfügbarkeit ansehen.</p></div></li><li><span>03</span><div><strong>In der App buchen</strong><p>Fahrt anfragen und Details verfolgen.</p></div></li></ol>
+    </section>
+
     <section class="hp-section hp-section--fixpreis hp-fixpreis-page__hero" id="fixpreis-landing" aria-labelledby="fixpreis-page-title">
       <div class="hp-wrap">
         <div class="hp-fixpreis-landing" id="fixpreis-landing-inner">
+          <div class="airport-price-context">
           <img class="hp-fixpreis-landing__logo" id="fixpreis-logo" alt="" hidden decoding="async" />
           <img class="hp-fixpreis-landing__hero-image" id="fixpreis-hero-image" alt="" hidden decoding="async" />
           <p class="hp-kicker" id="fixpreis-kicker">Werbung · Festpreis</p>
-          <h1 id="fixpreis-page-title">Festpreis-Fahrten</h1>
+          <h2 id="fixpreis-page-title">Deine Strecke. Dein Pauschalpreis.</h2>
           <div class="hp-fixpreis-intro-card" id="fixpreis-intro-card">
             <p class="hp-sub" id="fixpreis-page-body">
               Transparente Pauschalpreise für Ihre Strecke außerhalb des Pflichtfahrgebiets — Grundgebühr plus Kilometer nach ONRODA-Tarif. In der App buchen oder Festpreis-Gutschein über Hotel und Partner.
             </p>
           </div>
+          <p class="airport-price-help">Ob Flughafentransfer, Geschäftsreise oder private Fahrt: Prüfe hier deine Strecke. Die Buchung erfolgt anschließend in der ONRODA App.</p>
+          <a class="airport-help-link" href="/#unternehmen">Transfers für Teams &amp; Gäste <span aria-hidden="true">→</span></a>
+          </div>
           <div class="hp-fixpreis-calculator hp-fixpreis-panel" id="fixpreis-calculator" aria-labelledby="fixpreis-calc-title">
-            <h2 class="hp-fixpreis-panel__title" id="fixpreis-calc-title">Festpreis berechnen</h2>
+            <p class="airport-eyebrow">Deinen Transfer planen</p>
+            <h2 class="hp-fixpreis-panel__title" id="fixpreis-calc-title">Wohin darf es gehen?</h2>
             <form class="hp-fixpreis-calc-form" id="fixpreis-calc-form" novalidate>
               <label class="hp-fixpreis-calc-field">
                 <span class="hp-fixpreis-calc-label">Start</span>

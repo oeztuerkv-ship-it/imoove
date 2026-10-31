@@ -1,0 +1,56 @@
+/* Public airport/fixed-price presentation only. Calculator contracts stay unchanged. */
+.ride-airport-page{--airport-ink:#1d2024;--airport-muted:#626c75}
+.airport-hero{background:#fafafa;border-bottom:1px solid #eceff1}
+.airport-hero-inner{max-width:1440px;margin:auto;display:grid;grid-template-columns:1fr 1fr;align-items:stretch}
+.airport-hero-copy{padding:53px 45px 42px 60px;align-self:center}
+.airport-eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:650;color:#737c84;margin:0 0 18px}
+.airport-hero h1{font-size:clamp(36px,3.7vw,55px);letter-spacing:-.05em;line-height:1.12;margin:0 0 23px;font-weight:750;color:var(--airport-ink)}
+.airport-hero h1 em{font-style:normal;color:var(--onroda-red)}
+.airport-lead{font-size:15px;line-height:1.8;color:var(--airport-muted);margin:0 0 25px;max-width:430px}
+.airport-primary{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:360px;padding:14px 18px;min-height:48px;background:var(--onroda-red);color:white;text-decoration:none;border-radius:7px;font-size:13px;font-weight:650}
+.airport-primary:hover{color:white;background:#ae0018;text-decoration:none}
+.airport-primary>span{font-size:22px;line-height:1}
+.airport-secondary{display:inline-flex;gap:16px;color:#4a555f;font-size:12px;font-weight:600;text-decoration:none;padding:17px 0 0}
+.airport-secondary:hover,.airport-help-link:hover{color:var(--onroda-red)}
+.airport-availability{font-size:9px;line-height:1.7;color:#7a838b;margin:18px 0 0;max-width:360px}
+.airport-hero-figure{position:relative;overflow:hidden;margin:0;min-width:0;min-height:460px;background:#e6e8e6}
+.airport-hero-figure img{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 58%}
+.airport-hero-figure figcaption{position:absolute;bottom:15px;right:18px;font-size:8px;color:white;background:#142018a3;padding:5px 8px;border-radius:4px}
+.airport-steps{background:white;border-bottom:1px solid #eceef0}
+.airport-steps ol{max-width:1320px;margin:auto;padding:24px 28px;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.airport-steps li{display:flex;align-items:center;justify-content:center;gap:15px;border-right:1px solid #e4e7e9}
+.airport-steps li:last-child{border-right:0}.airport-steps li>span{font-size:22px;letter-spacing:-.04em;font-weight:600;color:var(--onroda-red)}
+.airport-steps strong{font-size:12px;display:block;color:#323b43}.airport-steps p{margin:3px 0 0;font-size:10px;color:#76818a;line-height:1.6}
+.ride-airport-page.hp-site-v2 .hp-fixpreis-page__hero{display:block;min-height:0;padding:58px 0 65px;background:#f8f9fa}
+.ride-airport-page #fixpreis-landing>.hp-wrap{width:100%;max-width:1320px;padding-inline:28px}
+.ride-airport-page.hp-site-v2 #fixpreis-landing-inner{max-width:none;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:55px;align-items:start;border-radius:0}
+.airport-price-context{text-align:left;padding:18px 0 0;min-width:0}
+.ride-airport-page #fixpreis-kicker{font-size:9px;letter-spacing:.13em;color:var(--onroda-red);line-height:1.6;margin:0 0 16px}
+.ride-airport-page #fixpreis-page-title{line-height:1.14;letter-spacing:-.04em;color:var(--airport-ink);text-align:left;margin:0 0 22px}
+.ride-airport-page .hp-fixpreis-intro-card{background:transparent;border:0;padding:0;box-shadow:none;margin:0;max-width:none;border-radius:0}
+.ride-airport-page .hp-fixpreis-intro-card .hp-sub{font-size:14px;line-height:1.9;color:var(--airport-muted);text-align:left;margin:0}
+.airport-price-help{font-size:12px;line-height:1.8;color:#7a838b;margin:22px 0 16px}
+.airport-help-link{font-size:11px;font-weight:600;color:#515d67;text-decoration:none;display:inline-flex;gap:12px}
+.ride-airport-page.hp-site-v2 .hp-fixpreis-calculator{margin:0;padding:30px;border:1px solid #e2e7eb;border-radius:13px;box-shadow:0 8px 28px #172e4206;background:#fff;min-width:0;text-align:left;scroll-margin-top:105px}
+.ride-airport-page .hp-fixpreis-calculator .airport-eyebrow{font-size:9px;margin:0 0 10px;color:#77838c}
+.ride-airport-page .hp-fixpreis-calculator #fixpreis-calc-title{font-size:27px;line-height:1.2;letter-spacing:-.035em;color:#232a30;margin:0 0 23px}
+.ride-airport-page .hp-fixpreis-calc-form{gap:16px;margin-top:0}
+.ride-airport-page .hp-fixpreis-calc-label{font-size:10px;font-weight:600;color:#606e78;margin-bottom:2px}
+.ride-airport-page.hp-site-v2 .hp-fixpreis-calc-input{font-family:inherit;font-size:12px;background:#f9fafb;border:1px solid #dce3e8;min-height:46px;padding:12px 13px;border-radius:7px;min-width:0}
+.ride-airport-page .hp-fixpreis-calc-submit{width:100%;min-height:46px;justify-content:center;font-size:12px;border-radius:7px;padding:12px 15px;box-shadow:none}
+.ride-airport-page .hp-fixpreis-calc-hint{font-size:9px;line-height:1.7;color:#818b93;margin:16px 0 0}
+.ride-airport-page .hp-fixpreis-calc-result{border-radius:9px;margin-top:20px;font-size:13px;line-height:1.8}
+.ride-airport-page .hp-fixpreis-calc-price{font-size:30px;letter-spacing:-.035em}
+.ride-airport-page #fixpreis-content-panels,.ride-airport-page #fixpreis-promo-blocks,.ride-airport-page .hp-fixpreis-actions--row,.ride-airport-page #fixpreis-footer-note{grid-column:1/-1}
+.ride-airport-page #fixpreis-content-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:34px}
+.ride-airport-page #fixpreis-content-panels[hidden],.ride-airport-page #fixpreis-promo-blocks[hidden]{display:none}
+.ride-airport-page .hp-fixpreis-panel:not(.hp-fixpreis-calculator){box-shadow:none;border:1px solid #e2e7eb;border-radius:12px;background:white;padding:24px;text-align:left;min-width:0}
+.ride-airport-page .hp-fixpreis-panel__title{font-size:19px;letter-spacing:-.025em;color:#2a343c}
+.ride-airport-page .hp-fixpreis-panel__body,.ride-airport-page .hp-fixpreis-panel__subtitle{font-size:12px;line-height:1.85;color:#68757e}
+.ride-airport-page .hp-fixpreis-route-row,.ride-airport-page .hp-fixpreis-benefit-row{border-radius:7px;box-shadow:none;background:#fafbfc;font-size:12px;overflow-wrap:anywhere}
+.ride-airport-page .hp-fixpreis-actions--row{justify-content:flex-start;margin-top:27px}.ride-airport-page .hp-fixpreis-actions--row a{font-size:12px;padding:12px 18px;box-shadow:none}
+.ride-airport-page #fixpreis-footer-note{font-size:10px;color:#7a868f;text-align:left}
+.hp-site-v2 .hp-nav-link[aria-current="page"]{background:#fff1f3;border-radius:6px;padding:9px 11px;color:var(--onroda-red)}
+@media(max-width:1050px){.airport-hero-copy{padding:38px 27px}.airport-hero h1{font-size:40px}.airport-hero-figure{min-height:470px}.ride-airport-page.hp-site-v2 #fixpreis-landing-inner{column-gap:30px}.ride-airport-page.hp-site-v2 .hp-fixpreis-calculator{padding:24px}}
+@media(max-width:760px){.airport-hero-inner{grid-template-columns:1fr}.airport-hero-copy{padding:34px 25px}.airport-hero h1{font-size:clamp(32px,7vw,45px);max-width:550px}.airport-lead{font-size:14px;max-width:550px}.airport-primary{max-width:100%}.airport-hero-figure{min-height:0;aspect-ratio:3/2}.airport-hero-figure img{object-position:center}.airport-steps ol{padding:17px 24px;gap:15px;grid-template-columns:1fr}.airport-steps li{justify-content:flex-start;border:0;gap:17px}.airport-steps li>span{font-size:18px}.airport-steps strong{font-size:11px}.airport-steps p{font-size:10px}.ride-airport-page.hp-site-v2 #fixpreis-landing-inner{grid-template-columns:1fr;gap:25px}.ride-airport-page.hp-site-v2 .hp-fixpreis-page__hero{padding:34px 0 42px}.ride-airport-page #fixpreis-landing>.hp-wrap{padding-inline:23px}.airport-price-context{padding:0}.ride-airport-page #fixpreis-content-panels{grid-template-columns:1fr;margin-top:0}.ride-airport-page .hp-fixpreis-actions--row{margin-top:0}.ride-airport-page .hp-fixpreis-calculator #fixpreis-calc-title{font-size:25px}}
+@media(max-width:639px){.ride-airport-page .hp-fixpreis-calc-form{grid-template-columns:1fr}.ride-airport-page.hp-site-v2 .hp-fixpreis-calculator{padding:23px 19px}.ride-airport-page.hp-site-v2 .hp-fixpreis-calc-input{font-size:16px}.airport-availability{font-size:9px}.ride-airport-page .hp-fixpreis-actions--row{align-items:stretch;flex-direction:column}.ride-airport-page .hp-fixpreis-actions--row a{justify-content:center}}
