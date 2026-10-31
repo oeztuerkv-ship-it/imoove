@@ -8,13 +8,23 @@
  *  - Android: Jetifier, Core Library Desugaring, minSdkVersion >= 24
  * API-Key-Init (GMSServices.provideAPIKey) laeuft bereits frueh via withGoogleMapsEarlyInit.
  *
- * UNGETESTET: In dieser Umgebung kann kein echter iOS/Android-Build ausgefuehrt werden
- * (kein Xcode/Android-Studio-Toolchain hier). Muss vor Nutzung mit einem echten
- * EAS-Dev-Build verifiziert werden.
+ * iOS im internen EAS-Build 47 kompiliert. Android: Navigation SDK liefert die
+ * Maps-Klassen selbst; play-services-maps muss aus dem App-Graph ausgeschlossen sein.
  */
 const { withInfoPlist, withGradleProperties, withAppBuildGradle } = require("expo/config-plugins");
 
 const DESUGAR_DEP = "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.0.4'";
+
+// Navigation SDK replaces Maps SDK; react-native-maps still requests the latter
+// transitively. Keep only Navigation's implementation in the app's runtime graph.
+const MAPS_EXCLUSION = `// ONRODA: Navigation SDK provides the Google Maps classes.
+configurations.configureEach {
+    exclude group: 'com.google.android.gms', module: 'play-services-maps'
+}`;
+
+function ensureNavigationMapsExclusion(contents) {
+  return contents.includes(MAPS_EXCLUSION) ? contents : `${contents}\n\n${MAPS_EXCLUSION}\n`;
+}
 
 function withIosGoogleNavPlist(config) {
   return withInfoPlist(config, (modConfig) => {
@@ -81,7 +91,7 @@ function withAndroidGoogleNavDesugaring(config) {
         `dependencies {\n    ${DESUGAR_DEP}`,
       );
     }
-    modConfig.modResults.contents = contents;
+    modConfig.modResults.contents = ensureNavigationMapsExclusion(contents);
     return modConfig;
   });
 }
@@ -94,3 +104,5 @@ function withGoogleNavigationSdk(config) {
 }
 
 module.exports = withGoogleNavigationSdk;
+
+module.exports.ensureNavigationMapsExclusion = ensureNavigationMapsExclusion;

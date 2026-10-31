@@ -40,3 +40,8 @@ Gerätefälle: Kaltstart/erste Berechtigung, geneigter Follow im Stand/bei Fahrt
 7. E-Mail/Benachrichtigung: nein.
 8. Rechte/Module: unverändert, nativer Build mit eigenen Navi-Schlüsseln.
 Nächster Schritt: installierbarer interner Build und Geräteabnahme, danach gesonderte Produktionsveröffentlichung.
+
+## Native Build-Befunde
+- iOS-Build `6e036fc3-f758-4024-a5fb-07772549cf57` erfolgreich; IPA geprüft: com.vedat.mobile, 1.0.4/47, Runtime/Channel isoliert, Audio/Location-Background, natives Google-Modul und Key vorhanden (kein Key ausgegeben).
+- Erster Android-Build `5aed94b2-6a96-430d-95dd-51e468188446`: bestätigter Fehler `:app:checkReleaseDuplicateClasses`, Navigation 7.6.1 und play-services-maps 18.2.0 liefern dieselben Maps-Klassen. Plugin schließt deshalb nur im Nav-Build die transitive Maps-Dependency aus dem App-Graph aus. Google dokumentiert genau diesen Ausschluss: https://developers.google.com/maps/documentation/navigation/android-sdk/android-studio-setup . Regressionstest für idempotente Prebuilds ergänzt.
+- Lokaler Android-Gerätetest kann nicht starten: separater leerer Emulator meldet „Not enough disk space available“. Mac hatte ca. 756 MiB frei. Keine native Geräte-Abnahme behaupten.
