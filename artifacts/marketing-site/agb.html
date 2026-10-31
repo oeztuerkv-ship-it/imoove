@@ -18,9 +18,45 @@
     a:hover { text-decoration: underline; }
     .links { margin-top: 24px; display: flex; gap: 14px; flex-wrap: wrap; }
   </style>
+  <link rel="icon" type="image/png" href="/onroda-logo-transparent.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750;800&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/site-2026.css?v=20261031-2" />
+  <script src="/site-navigation.js?v=20261031-2" defer></script>
 </head>
-<body>
-  <main class="wrap">
+<body class="hp-site-v2 hp-document-page">
+  <a class="ride-skip-link" href="#main-content">Zum Inhalt</a>
+  <header class="hp-header" id="site-header">
+    <div class="hp-wrap hp-header-inner">
+      <a class="hp-logo" href="/" aria-label="ONRODA – Startseite">
+        <img class="hp-brand-logo" src="/onroda-logo-transparent.png" width="196" height="74" alt="ONRODA" decoding="async" />
+      </a>
+
+      <nav class="hp-nav" id="site-primary-nav" aria-label="Hauptnavigation">
+        <a class="hp-nav-link" href="/#jetzt-buchen">Fahrten</a>
+        <a class="hp-nav-link" href="/fixpreise/">Flughafentransfer</a>
+        <a class="hp-nav-link" href="/#unternehmen">Geschäftsreisen</a>
+        <a class="hp-nav-link" href="/#care">Krankenfahrten</a>
+        <a class="hp-nav-link hp-nav-partner-mobile" href="/#partner">Partner werden</a>
+      </nav>
+      <div class="hp-header-actions">
+        <a class="ride-partner-login" href="https://panel.onroda.de/" data-partner-login-gate>Partner-Login</a>
+        <a class="ride-header-download" href="/#jetzt-buchen">App herunterladen</a>
+      </div>
+
+      <div class="hp-header-tools">
+        <button type="button" class="hp-nav-toggle" id="site-nav-toggle" aria-expanded="false" aria-controls="site-primary-nav">
+          <span class="visually-hidden">Menü</span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+          <span class="hp-nav-toggle-bar" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main id="main-content" class="wrap">
     <article class="card">
       <h1>Allgemeine Geschäftsbedingungen (AGB)</h1>
       <p>Stand: Juni 2026</p>
@@ -115,5 +151,97 @@
       </div>
     </article>
   </main>
+
+  <footer class="hp-footer">
+    <div class="hp-wrap">
+      <div class="hp-footer-main">
+        <div class="hp-footer-brand">
+          <a class="hp-footer-logo" href="/" aria-label="ONRODA – Startseite">
+            <img class="hp-brand-logo hp-brand-logo--footer" src="/onroda-logo-transparent.png" width="196" height="74" alt="ONRODA" loading="lazy" />
+          </a>
+          <p class="hp-footer-text">
+            Taxi, Flughafentransfers, Geschäftsreisen und Krankenfahrten — wir vermitteln in Stuttgart, Esslingen und ganz Baden-Württemberg.
+          </p>
+          <a class="hp-footer-contact-mail" href="mailto:info@onroda.de">info@onroda.de</a>
+          <a class="hp-footer-instagram" href="https://www.instagram.com/onroda_taxi/" target="_blank" rel="noopener noreferrer" aria-label="ONRODA auf Instagram">
+            <img class="hp-instagram-icon hp-instagram-icon--footer" src="/instagram-logo.jpg" width="24" height="24" alt="" decoding="async" />
+            @onroda_taxi
+          </a>
+          <div class="hp-footer-store" aria-label="App herunterladen">
+            <a
+              class="hp-store-badge hp-store-badge--apple"
+              id="footer-app-store"
+              href="https://apps.apple.com/de/app/onroda/id6773487513"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Laden im App Store"
+            >
+              <img src="/app-store-badge-de.svg" width="120" height="40" alt="" decoding="async" />
+            </a>
+            <span
+              class="hp-store-badge hp-store-badge--google hp-store-badge--soon"
+              aria-label="Google Play folgt in Kürze"
+              title="Demnächst bei Google Play"
+            >
+              <img src="/google-play-badge-de.svg" width="135" height="40" alt="" decoding="async" />
+            </span>
+          </div>
+        </div>
+
+        <div class="hp-footer-col">
+          <h4>Fahrgäste</h4>
+          <ul class="hp-footer-nav">
+            <li><a href="/#jetzt-buchen">App herunterladen</a></li>
+            <li><a href="/#services">Leistungen</a></li>
+            <li><a href="/#prozess">Ablauf</a></li>
+            <li><a href="/#fuer-wen">Für wen</a></li>
+          </ul>
+        </div>
+
+        <div class="hp-footer-col">
+          <h4>Unternehmen</h4>
+          <ul class="hp-footer-nav">
+            <li><a href="/#unternehmen">Firmenkunden</a></li>
+            <li><a href="/#care">Krankenfahrten</a></li>
+            <li><a href="/#unternehmen">Hotels</a></li>
+            <li><a href="/#partner">Unternehmer werden</a></li>
+          </ul>
+        </div>
+
+        <div class="hp-footer-col">
+          <h4>Partner</h4>
+          <ul class="hp-footer-nav">
+            <li><a href="/#partner">Partner werden</a></li>
+            <li><a href="/partner/anfrage-status">Anfragestatus</a></li>
+            <li>
+              <a href="https://panel.onroda.de/" data-partner-login-gate rel="noopener noreferrer">Partner-Login</a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="hp-footer-col">
+          <h4>Plattform</h4>
+          <ul class="hp-footer-nav">
+            <li><a href="/#faq">FAQ</a></li>
+            <li><a href="/ueber-onroda">Über ONRODA</a></li>
+            <li><a href="/#partner">Partneranfrage</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hp-footer-bottom">
+        <p class="hp-footer-copy">© <span id="y"></span> ONRODA. Alle Rechte vorbehalten.</p>
+        <nav class="hp-footer-legal" aria-label="Rechtliches und Credits">
+          <a href="/impressum">Impressum</a>
+          <span class="hp-footer-legal-sep" aria-hidden="true">|</span>
+          <a href="/datenschutz">Datenschutz</a>
+          <span class="hp-footer-legal-sep" aria-hidden="true">|</span>
+          <a href="/agb">AGB</a>
+          <span class="hp-footer-legal-sep" aria-hidden="true">|</span>
+          <span class="hp-footer-design">Designed by Vedat Öztürk</span>
+        </nav>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>

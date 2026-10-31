@@ -1,0 +1,57 @@
+/* One visual shell for every public ONRODA page; no panel/mobile styles. */
+body.hp-site-v2{--ride-red:var(--onroda-red);font-family:"Inter",system-ui,-apple-system,sans-serif;color:#1d2024;background:#fff;line-height:1.6}
+.hp-site-v2 a:focus-visible,.hp-site-v2 button:focus-visible{outline:3px solid #123b66;outline-offset:5px}
+.hp-site-v2 .hp-header{position:sticky;top:0;z-index:1000;background:#fffffffa;border-bottom:1px solid #eceef0;box-shadow:none;backdrop-filter:blur(16px)}
+.hp-site-v2 .hp-header-inner{display:grid;max-width:1440px;width:100%;margin:auto;padding:16px 40px;grid-template-columns:140px 1fr auto;gap:24px;align-items:center}
+.hp-site-v2 .hp-brand-logo{height:48px;max-width:135px;width:auto;object-fit:contain;display:block}
+.hp-site-v2 .hp-nav{display:flex;justify-content:center;align-items:center;gap:25px;flex-wrap:nowrap}
+.hp-site-v2 .hp-nav-link{font-size:13px;font-weight:600;white-space:nowrap;padding:10px 0;color:#31363b;text-decoration:none}
+.hp-site-v2 .hp-nav-link:hover,.hp-site-v2 .hp-nav-link[aria-current="page"]{color:var(--ride-red);text-decoration:none}
+.hp-site-v2 .hp-header-actions{display:flex;gap:22px;align-items:center;justify-content:flex-end}
+.hp-site-v2 .ride-partner-login{font-size:12px;font-weight:600;color:var(--ride-red);text-decoration:none;white-space:nowrap}
+.hp-site-v2 .ride-header-download{display:inline-flex;padding:12px 17px;border-radius:7px;background:var(--ride-red);color:white;font-size:12px;font-weight:650;text-decoration:none;white-space:nowrap}
+.hp-site-v2 .ride-header-download:hover{background:#ae0018;color:#fff;text-decoration:none}
+.hp-site-v2 .hp-nav-partner-mobile,.hp-site-v2 .hp-header-tools{display:none}
+.hp-site-v2 main[id],.hp-site-v2 main>section[id]{scroll-margin-top:95px}
+.hp-site-v2 .ride-skip-link{position:fixed;top:8px;left:12px;z-index:2000;transform:translateY(-200%);background:#fff;color:#111;padding:10px 15px;border:2px solid var(--ride-red);border-radius:6px}
+.hp-site-v2 .ride-skip-link:focus{transform:translateY(0)}
+.hp-site-v2 .hp-footer{margin-top:0}
+.hp-site-v2 .hp-footer .hp-brand-logo{filter:brightness(0) invert(1);height:55px;max-width:160px}
+.hp-site-v2 .hp-footer a{text-decoration:none}
+.hp-site-v2 .hp-footer a:hover{text-decoration:underline}
+.hp-site-v2 .hp-footer p{line-height:1.65}
+/* Document content and forms retain their markup and behavior. */
+.hp-document-page .wrap{max-width:1000px;padding:50px 24px 65px;margin:0 auto}
+.hp-document-page .card{border:1px solid #e5e7ea;border-radius:16px;padding:clamp(24px,5vw,55px);box-shadow:none;background:#fff}
+.hp-document-page .card h1{font-size:clamp(29px,3.5vw,43px);line-height:1.15;letter-spacing:-.04em;font-weight:750;color:#1b1e22;margin:0 0 25px;overflow-wrap:anywhere}
+.hp-document-page .card h2{font-size:20px;line-height:1.4;letter-spacing:-.02em;color:#252b31;margin:32px 0 12px}
+.hp-document-page .card h3{font-size:16px;color:#333b43}
+.hp-document-page .card p,.hp-document-page .card li{font-size:14px;line-height:1.85;color:#515861}
+.hp-document-page .card a{color:var(--ride-red)}
+.hp-document-page .card .links{padding-top:22px;border-top:1px solid #eceef0;gap:19px}
+.hp-document-page .card .links a{font-size:13px;font-weight:600}
+.hp-document-page .card .btn{border-radius:7px;background:var(--ride-red);padding:12px 19px;color:#fff}
+.hp-document-page .card table{display:block;overflow-x:auto;max-width:100%}
+.ride-document-kicker{font-size:10px!important;font-weight:650;letter-spacing:.13em;text-transform:uppercase;color:#737b83!important;margin:0 0 17px!important}
+.hp-document-page .tagline{font-size:17px!important;line-height:1.7;color:var(--ride-red)!important}
+.hp-document-page .vision{border-left-color:var(--ride-red);background:#fff5f6}
+.hp-document-page .closing{background:#f8f9fa;border-color:#e6e8eb}
+.hp-status-page .ps-page{max-width:760px;padding:45px 24px 65px}
+.hp-status-page .ps-card{background:#fff;border-radius:15px;border:1px solid #e5e7ea;padding:32px}
+.hp-status-page .ps-card h1{font-size:clamp(26px,3vw,35px);line-height:1.2;letter-spacing:-.035em;margin-bottom:22px}
+.hp-status-page .ps-callout{background:#f6f7f8;border-color:#e4e7ea;color:#414c56;border-radius:9px}
+.hp-status-page .ps-field input{min-height:46px;background:#fff;border-color:#d9dfe3;border-radius:7px}
+.hp-status-page .hp-btn-primary{border-radius:7px;box-shadow:none}
+.hp-site-v2.hp-fixpreis-page .hp-fixpreis-page__hero{padding-top:46px;background:#fafafa}
+.hp-site-v2.hp-fixpreis-page .hp-fixpreis-landing{max-width:1040px;margin-inline:auto;border-radius:15px;box-shadow:none}
+.hp-site-v2.hp-fixpreis-page #fixpreis-page-title{letter-spacing:-.04em;line-height:1.15}
+.hp-site-v2.hp-fixpreis-page .hp-fixpreis-calculator{border-radius:12px;border-color:#e2e6e9;background:#fff;box-shadow:0 6px 25px #18253106}
+.hp-site-v2.hp-fixpreis-page .hp-fixpreis-calc-input{border-radius:7px;min-height:46px}
+.hp-site-v2.hp-fixpreis-page .hp-btn-primary,.hp-site-v2.hp-fixpreis-page .hp-btn-ghost{border-radius:7px}
+.ride-subpage-cover{position:relative;height:240px;overflow:hidden;background:#e5e8e9}
+.ride-subpage-cover img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 58%}
+.ride-subpage-cover span{position:absolute;right:22px;bottom:14px;color:#fff;background:#1118209e;padding:4px 8px;border-radius:4px;font-size:9px}
+@media(max-width:1150px){.hp-site-v2 .hp-header-inner{padding:14px 24px;gap:16px;grid-template-columns:110px 1fr auto}.hp-site-v2 .hp-nav{gap:17px}.hp-site-v2 .hp-nav-link{font-size:11px}.hp-site-v2 .hp-header-actions{gap:15px}.hp-site-v2 .ride-header-download{padding:11px;font-size:11px}.hp-site-v2 .ride-partner-login{font-size:11px}}
+@media(max-width:900px){.hp-site-v2 .hp-header-inner{grid-template-columns:1fr auto auto;gap:20px}.hp-site-v2 .hp-header-tools{display:flex;grid-column:3;grid-row:1}.hp-site-v2 .hp-header-actions{grid-column:2;grid-row:1;border:0;padding:0}.hp-site-v2 .ride-partner-login{display:none}.hp-site-v2 .hp-nav-toggle{display:block}.hp-site-v2 .hp-nav{display:none;grid-column:1/-1;grid-row:2;flex-direction:column;align-items:stretch;gap:0;padding-top:12px}.hp-site-v2 .hp-nav-link{font-size:14px;padding:12px 4px}.hp-site-v2 .hp-nav-partner-mobile{display:block}.hp-site-v2 .hp-nav-open .hp-nav{display:flex}}
+@media(max-width:640px){.hp-site-v2 .hp-header-inner{padding:11px 19px;gap:13px}.hp-site-v2 .hp-brand-logo{height:40px;max-width:110px}.hp-site-v2 .ride-header-download{font-size:10px;padding:10px 12px}.hp-document-page .wrap{padding:25px 16px 35px}.hp-document-page .card{padding:24px 20px;border-radius:12px}.hp-document-page .card p,.hp-document-page .card li{font-size:13px;line-height:1.8}.hp-document-page .card h2{font-size:18px}.hp-status-page .ps-page{padding:25px 16px 40px}.hp-status-page .ps-card{padding:24px 20px}.ride-subpage-cover{height:180px}.hp-site-v2.hp-fixpreis-page .hp-fixpreis-page__hero{padding-top:26px}}
+@media(prefers-reduced-motion:reduce){html:has(.hp-site-v2){scroll-behavior:auto}}

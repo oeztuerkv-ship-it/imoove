@@ -16,7 +16,8 @@
     }
 
     window.addEventListener("load", function () {
-      window.scrollTo(0, 0);
+      // Preserve cross-page section links, e.g. /#care from the price page.
+      if (!window.location.hash) window.scrollTo(0, 0);
     });
 
     document.addEventListener("click", function (e) {
