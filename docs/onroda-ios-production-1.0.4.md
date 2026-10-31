@@ -11,7 +11,7 @@ Apple Lookup und App Store Connect bestätigt: bestehende App 1.0.3, Store-Build
 Kandidat: 1.0.4 (48), distribution=store, Release, developmentClient=false, simulator=false, environment=production, channel=production. Apple-ID/Bundle-ID/Scheme/EAS-Projekt/Backend-Host unverändert. Normales App-Store-Update nach späterer Apple-Freigabe.
 
 ## 4. Native Navigation / Berechtigungen
-GoogleNavigation 10.13.0 und RN-Wrapper 0.16.3 bereits im internen IPA kompiliert/verlinkt und im Paket nachgewiesen. Production benötigt neu signiertes Store-IPA. Native iOS-Schlüsselvariable für development und production verfügbar, Wert unverändert und nicht ausgegeben. Nur der iOS-Worker benötigt den iOS-Key; kein Android-Key für iOS verlangt.
+GoogleNavigation 10.13.0 und RN-Wrapper 0.16.3 bereits im internen IPA kompiliert/verlinkt und im Paket nachgewiesen. Production-Store-IPA ist inzwischen erfolgreich gebaut und geprüft (Nachweis unten). Native iOS-Schlüsselvariable für development und production verfügbar, Wert unverändert und nicht ausgegeben. Nur der iOS-Worker benötigt den iOS-Key; kein Android-Key für iOS verlangt.
 Google-SDK erfordert iOS 16.0+, die bestehende Store-App unterstützt 15.1+. iOS-15-Geräte erhalten diesen Kandidaten nicht und behalten die vorhandene App. Keine erzwungene Mindestversion im Backend setzen.
 
 ## 5. Persistenz / Rollen
@@ -51,11 +51,21 @@ Der alte Production-Channel bleibt auf seiner bisherigen Branch-Zuordnung; die n
 
 ## Bisher tatsächlich ausgeführte Vorprüfungen
 - App Store Connect angemeldet lesend geprüft: ONRODA / 6773487513 / Version 1.0.3 (46); TestFlight neuester vorhandener Build 46. Keine vorhandene 1.0.4 sichtbar.
-- Google Cloud imoove-492321: ONRODA Navigation SDK Key ist auf iOS-App com.vedat.mobile sowie Maps SDK for iOS und Navigation SDK eingeschränkt; keine Schlüsselwerte ausgegeben. API-Aktivierung/Gerätetest getrennt prüfen.
+- Google Cloud imoove-492321: ONRODA Navigation SDK Key ist auf iOS-App com.vedat.mobile sowie Maps SDK for iOS und Navigation SDK eingeschränkt; keine Schlüsselwerte ausgegeben. Maps SDK for iOS und Navigation SDK sind in der Liste aktivierter APIs vorhanden. Tatsächliche SDK-Initialisierung am Gerät bleibt separat zu prüfen.
 - Aufgelöstes EAS-Production-Profil bestätigt store, production, developmentClient=false und 1.0.4 (48) / com.vedat.mobile / onroda-google-nav-prod-1. SDK-54-Buildimage und Node 20.20.2 explizit. Bereits verifiziertes internes IPA wurde mit Xcode 26 / iOS SDK 26.0 gebaut; neuen Store-Kandidaten erneut darauf prüfen. Apple verlangt seit 28.04.2026 Xcode 26+ / iOS SDK 26+.
 - Mobile Typecheck nach den Typvertragskorrekturen grün. Expo-Abhängigkeitscheck: Dependencies are up to date. SDK-/Gradle-/Konfigurations-Selbsttests, 18 Übergangsfälle und 14 Navi-Selbsttests grün.
-- 9 zentrale Fahrtaktions-Handler gegen 9efbb4b3 AST-identisch; status.tsx, RideRequestContext.tsx und socket.ts unverändert. 17 isolierte Fahrt-Szenarien liefern erwartete Ergebnisse, einschließlich bereits dokumentierter Fehlerfälle; keine Geräte-/Livefahrt-Abnahme daraus ableiten.
+- 9 zentrale Fahrtaktions-Handler sowohl gegen 9efbb4b3 als auch gegen den tatsächlich ausgelieferten OTA-Stand 5712b145 AST-identisch; status.tsx, RideRequestContext.tsx und socket.ts unverändert. 17 isolierte Fahrt-Szenarien liefern erwartete Ergebnisse, einschließlich bereits dokumentierter Fehlerfälle; keine Geräte-/Livefahrt-Abnahme daraus ableiten.
 - Produktives Backend: GET /api/healthz und /api/app/config liefern 200; Read-only-SSH bestätigt weiterhin Revision 6edca151ea925e820764be0a5f2fab87ef6f4e6b. Kein Backend-Deploy, kein Restart und keine Migration.
 - Globaler Repo-Invariantencheck scheitert an bereits in 9efbb4b3 vorhandener doppelter Migration 097 (homepage_analytics / homepage_hero_subline_regional). Nicht durch den iOS-Kandidaten verursacht; keine Migration umnummerieren oder ausführen. Vor einem späteren Backend-Deploy separat klären.
 
 Quellen: https://developer.apple.com/news/upcoming-requirements/ ; https://docs.expo.dev/build-reference/infrastructure/ ; https://developers.google.com/maps/documentation/navigation/ios-sdk/release-notes .
+
+## Abschließender Nachweis vom 31.10.2026
+- EAS-Store-Build erfolgreich: https://expo.dev/accounts/oeztuerkv-ship-it/projects/mobile/builds/33dce504-19f2-477b-ac20-1f3188af075e . Binärquellstand 791a249097152d3ed821f6f90e07912aa7ee90f4, Version 1.0.4, Build 48, Bundle-ID com.vedat.mobile.
+- Tatsächlich heruntergeladenes IPA geprüft: Store-Provisionierung ohne registrierte Geräte/Entwicklungs-Debugrecht, Team passt zur bestehenden App, codesign --verify --deep --strict erfolgreich. Google-NavModule/GoogleNavigation im ausführbaren Programm und Google-Privacy-Manifest vorhanden. Xcode 26.0 / iPhoneOS SDK 26.0; Mindest-iOS 16.0.
+- Signierte Entitlements: Push production; bestehende Apple-Pay- und Sign-in-with-Apple-Konfiguration erhalten.
+- IPA-SHA256: 304a32d34b7a4df7804d3bd73366f1286db28f704fbb3f530d8fe7c126224e11.
+- Production-iOS-Export und OTA-Helfer --prepare erfolgreich: Runtime onroda-google-nav-prod-1, Channel production, published=false. Das bisherige Production-OTA für Runtime 1.0.3 wurde abschließend erneut anhand Endpoint und Bundle-Hash unverändert bestätigt.
+- Kein Upload zu App Store Connect, kein Submit, kein Review/Release, kein Production-OTA. Release-Texte liegen in artifacts/mobile/store-release-notes-de.txt. Ein neuer App-Store-Connect-Versionsentwurf wurde nicht gespeichert: parallele Browsernutzung unterbrach die UI-Bearbeitung. Dies beeinträchtigt den fertigen Store-Build nicht.
+- Offene Freigabepunkte: echte iPhone-/Kunden-Fahrer-Abnahme wie oben; Google-Konto-/Lizenzbedingungen und Aufbewahrung Google-abgeleiteter Standortdaten. Der bestehende Standortpfad schreibt auch Fahrtverlauf; eine hinreichende 30-Tage-Bereinigung ist bislang nicht nachgewiesen. Keine Daten gelöscht und keine Backend-Aufbewahrung verändert. Dies ist kein Nachweis einer bereits feststehenden Verletzung, sondern ein offener Prüfpunkt vor allgemeinem Rollout.
+- Die bekannten Geschäftslogik-Themen im Fahrtablauf-Backlog sowie die doppelte Backend-Migration 097 bleiben separat offen. Erfolgreicher Build und Quellvergleich ersetzen keine Livefahrt-Abnahme.
