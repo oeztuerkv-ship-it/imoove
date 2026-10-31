@@ -34,4 +34,4 @@ alwaysApply: false
 
 ## WhatsApp dauerhaft sichtbar
 - Bestehenden wa.me-Kontakt mit Original-SVG auf allen 9 öffentlichen Dokumenten genau einmal einbinden, nicht nur auf der Startseite. Feste Position und Safe-Area-Abstand zentral in site-2026.css; keine mobile position:static-Gegenregel in Homepage-CSS. Mobil nur Icon, damit die Kontaktblase keine breite Textfläche verdeckt.
-- KI-Chat wurde nur besprochen. Keine API-/Booking-/KI-Integration als bereits erledigt ausgeben. Preisquelle wäre vorhandenes buildFixedPriceQuote; keine erfundenen Preis-/Fahrer-/Buchungszusagen.
+- Selbstgehostete FAQ-Hilfe implementiert: onroda-help.js/css?v=20261031-1 auf allen neun Dokumenten, rotes Icon neben WhatsApp. 15 feste Themen, lokale Schlüsselwortsuche, kein KI-Dienst, keine Netzwerk-/Storage-/Booking-Aktion. Unbekanntes → WhatsApp. Keine Flugüberwachung, VIP-/Fahrzeuggarantie oder Preise erfinden; bestehender Preisrechner verlinkt. Dokumentation: docs/onroda-website-faq-chat.md. Echte KI oder Preisberechnung im Chat sind nicht implementiert. DOM-Tests nicht als Geräte-Sichtprüfung ausgeben.
