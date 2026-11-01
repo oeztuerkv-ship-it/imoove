@@ -29,26 +29,84 @@
     complaint:'beschwerde beschweren unfreundlich complaint complain rude sikayet kaba', missing_driver:'taxi kommt nicht taxi not arriving taksi gelmiyor', lost:'vergessen fundsache verloren lost property left something unuttum kayip esya', billing_problem:'zu viel bezahlt overcharged paid too much fazla odeme', refund:'erstattung geld zuruck refund money back para iade',
     human:'mensch personlich beratung whatsapp human real person personal support insan kisi destek danisman', information:'onroda angebot service standort region information bilgi', greeting:'hallo hi hey guten morgen hello merhaba selam gunaydin', smalltalk:'witz joke saka fikra paris', offtopic:'wetter weather hava werkstatt repair borc'
   };
+  // Distinctive vocabulary from reviewed DE/EN/TR texts supplements short-language markers.
+  // Shared words (ONRODA, Taxi, Premium, names) cannot choose a language by themselves.
+  const languageWords=new Map();
+  for(const lang of languages){const samples=K.records.map(r=>r.questions[lang]).concat(Object.values(K.answers).map(a=>a[lang]));for(const sample of samples)for(const word of n(sample).split(' ')){if(word.length<2||/^\d+$/.test(word))continue;if(!languageWords.has(word))languageWords.set(word,new Set());languageWords.get(word).add(lang);}}
   function detectLanguage(raw,previous='de'){
-    const q=n(raw);if(/\b(english|auf englisch|speak english)\b/.test(q))return'en';if(/\b(turkce|turkish|turkisch)\b/.test(q))return'tr';if(/\b(deutsch|german|almanca)\b/.test(q))return'de';
-    const markers={de:/\b(ich|wir|mochte|brauche|koffer|morgen|bitte|preis|kostet|zahlen|konnen|haben|fahrt|guten|danke)\b/g,en:/\b(hello|please|want|need|can|how|much|we|tomorrow|suitcase|luggage|book|cash|credit|thanks|airport)\b/g,tr:/\b(merhaba|selam|istiyorum|lazim|yarin|nakit|valiz|bavul|bagaj|kisi|kisiyiz|ucus|fiyat|ucret|taksi|tesekkur|odemek|odeyebilir|misiniz|yapabilir)\b/g};
-    let best=previous,score=0;for(const lang of languages){const hits=(q.match(markers[lang])||[]).length+(lang==='tr'&&/[ğışİçş]/i.test(raw)?1:0);if(hits>score){best=lang;score=hits;}}return best;
+    const q=n(raw);
+    const markers={
+      de:/\b(ich|wir|du|ist|das|der|die|sind|kann|konnen|bitte|mochte|brauche|koffer|morgen|preis|kostet|zahlen|haben|fahrt|guten|danke|auto|hallo|sprechen|eure|fahrer\w*|vorausbuch\w*|vorbestell\w*|reservier\w*|sauber\w*|gepflegt\w*)\b/g,
+      en:/\b(i|we|you|is|are|the|do|does|your|my|have|want|need|can|how|much|tomorrow|suitcase\w*|luggage|book\w*|reserve|reservation|cash|credit|thanks|airport|car\w*|vehicle\w*|clean\w*|tidy|smoking|driver\w*)\b/g,
+      tr:/\b(merhaba|selam|istiyorum|lazim|yarin|nakit|valiz\w*|bavul\w*|bagaj|kisi|kisiyiz|ucus|fiyat|ucret|taksi|tesekkur|ode\w*|misiniz|mi|yapabilir\w*|temiz\w*|bakim\w*|hijyen\w*|musunuz|ediyor\w*|sigara\w*|dumansiz\w*|araba\w*|arac\w*|sofor\w*|konus\w*|ingilizce|almanca|turkce|onceden|rezervasyon)\b/g
+    };
+    let best=previous,score=0;for(const lang of languages){const vocab=[...new Set(q.split(' '))].filter(word=>languageWords.has(word)&&languageWords.get(word).size===1&&languageWords.get(word).has(lang)).length;const hits=2*(q.match(markers[lang])||[]).length+vocab+(lang==='tr'&&/[ğışİçş]/i.test(raw)?1:0);if(hits>score){best=lang;score=hits;}}return best;
+  }
+  function languageRequest(raw){
+    const q=n(raw);
+    if(/\b(fahrer\w*|drivers?|sofor\w*)\b/.test(q))return null;
+    if(/\b(automatisch|automatic|auto language|otomatik)\b/.test(q)&&/\b(sprache|language|dil)\b/.test(q))return{kind:'auto'};
+    const patterns={de:'deutsch|german|almanca',en:'englisch|english|ingilizce',tr:'turkisch|turkish|turkce'};
+    const targets=Object.entries(patterns).filter(([,words])=>new RegExp('\\b(?:'+words+')\\b').test(q)&&!new RegExp('\\b(?:nicht|kein|not|no) (?:auf |in )?(?:'+words+')\\b').test(q)).map(([lang])=>lang);
+    const canSpeak=/\b(kannst du|sprichst du|verstehst du|konnen sie|sprechen sie|can you|do you speak|biliyor musun|konusabilir misin)\b/.test(q);
+    const command=/\b(antworte|antworten|schreib\w*|wechsel\w*|weiter|bitte|please|continue|switch|reply|answer|write|speak|sprich|sprechen|devam|konusalim|yaz|lutfen)\b/.test(q);
+    const bare=/^(?:(?:auf|in|bitte|please) )?(deutsch|german|almanca|englisch|english|ingilizce|turkisch|turkish|turkce)(?: (bitte|please|lutfen))?$/.test(q);
+    if(!targets.length){if(canSpeak&&/\b(arabisch|arabic|franzosisch|french|russisch|russian|arapca|fransizca)\b/.test(q))return{kind:'unsupported'};return null;}
+    if(!canSpeak&&!command&&!bare)return null;
+    if(targets.length>1)return{kind:'choice'};
+    const content=q.replace(/\b(kannst du|sprichst du|verstehst du|konnen sie|sprechen sie|can you|do you speak|biliyor musun|konusabilir misin)\b/g,' ').replace(/\b(deutsch|german|almanca|englisch|english|ingilizce|turkisch|turkish|turkce|auf|in|bitte|please|auch|du|sie|speak|sprich|sprechen|schreib\w*|antworte|antworten|wechsel\w*|weiter|continue|switch|reply|answer|write|devam|edelim|konusalim|yaz|lutfen|fliessend|fluent)\b/g,' ').replace(/\s+/g,' ').trim();
+    const mixed=content.length>0;
+    return{kind:'switch',language:targets[0],mixed};
   }
   function recognize(raw){
     const q=n(raw).replace(/\b(pries|preiss|presi)\b/g,'preis');if(!q)return[];
     // Safety, personal assistance and existing-ride problems override ordinary planning.
     const urgent=[['emergency',/\b(notfall|notarzt|bewusstlos|atemnot|medical emergency|cant breathe|cannot breathe|unconscious|acil|nefes alamiyor)\b/],['danger',/\b(gefahrlich|bedroht|gefahr|dangerously|danger|threatened|tehlike|tehlikeli)\b/],['human',/\b(menschen|mensch|personlich sprechen|whatsapp|real person|human|insan|yetkili)\b/],['cancelled_flight',/\b(flug.*gestrichen|flight.*cancelled|ucus.*iptal)\b/],['missing_driver',/\b(taxi kommt nicht|fahrer kommt nicht|taxi.*not arriv|tak.*gelmiyor)\b/],['lost',/\b(im taxi vergessen|fundsache|verloren|left.*taxi|lost property|takside.*unuttum|kayip esya)\b/],['refund',/\b(geld zuruck|erstattung|refund|money back|parami geri|para iade)\b/],['complaint',/\b(beschwer|unfreundlich|complain|rude|sikayet|kaba)\w*/]];
     for(const [intent,re]of urgent)if(re.test(q))return[{intent,key:K.records.find(r=>r.intent===intent).answer,score:100}];
-    if(/\b(fahrer raucht|fahrer hat geraucht|auto stinkt|fahrzeug schmutzig|driver is smoking|car is dirty|sofor sigara iciyor)\b/.test(q))return[{intent:'complaint',key:'complaint',score:100}];
-    if(/\b(rauchfrei|nichtraucher\w*|rauchen|rauch|smoke free|smokefree|non smoking|smoking|sigara|dumansiz)\b/.test(q))return[{intent:'non_smoking',key:'non_smoking',score:90}];
-    if(/\b(sauber\w*|gepflegt\w*|clean|well maintained|temiz|bakimli)\b/.test(q))return[{intent:'service_quality',key:'service_quality',score:90}];
-    if(/\b(fahrer|driver|drivers|sofor|soforleriniz|fliessend|fluent|akici)\b/.test(q)&&/\b(deutsch|englisch|german|english|almanca|ingilizce|sprache|language)\b/.test(q))return[{intent:'driver_language',key:'driver_language',score:90}];
-    if(/\b(grossraumtaxi|grossraum|grossraumwagen|7 sitzer|siebensitzer|large taxi|seven seater|buyuk taksi|yedi kisilik)\b/.test(q)&&! /\b(preis|kostet|kosten|price|cost|fare|fiyat|ucret)\b/.test(q))return[{intent:'group',key:'group',score:85}];
+    if(/\b(stornier\w*|storno|cancel|iptal)\b/.test(q))return[{intent:'cancel',key:'cancel',score:95}];
+    if(/\b(buchung|reservierung|booking|reservation|rezervasyon)\b/.test(q)&&/\b(andern|umbuchen|change|degistir\w*)\b/.test(q))return[{intent:'change_booking',key:'change',score:95}];
+    const exact=K.records.find(r=>Object.values(r.questions).some(v=>n(v)===q));if(exact)return[{intent:exact.intent,key:exact.answer,score:100}];
     if(/\b(apple pay|google pay)\b/.test(q))return[{intent:'wallet',key:'wallet',score:99}];
+    const hasPayment=/\b(bezahl\w*|zahl\w*|abgebucht|abbuch\w*|belast\w*|vorauszahl\w*|anzahlung\w*|vorabzahl\w*|prepay\w*|paying|bar|kreditkarte|kartenzahl\w*|cash|pay|payment|charged|charge|debit|credit card|nakit|ode\w*|kredi karti)\b/.test(q)||/\b(mit|per) (der )?karte\b/.test(q);
+    const hasPrice=/\b(preis\w*|pries|preiss|kost\w*|extra|zuschlag\w*|gebuhr\w*|surcharge|fees?|tarif|fixpreis\w*|festpreis\w*|pauschal\w*|angebot|price\w*|fare\w*|cost|quote|fiyat\w*|ucret\w*|teklif)\b/.test(q);
+    const hasBooking=/\b(buch(?:en|e|st|t)|bestell\w*|vorbestell\w*|vorausbuch\w*|vorrausbuch\w*|vorabbuch\w*|prebook\w*|reservier\w*|reservierung|book|booking|reserve|reservation|rezervasyon|ayirt\w*)\b/.test(q);
+    const future=/\b(voraus|vorausbuch\w*|vorrausbuch\w*|vorab|vorher|fruhzeitig|fruher|prebook\w*|vorabbuch\w*|vorbestell\w*|reservier\w*|reservierung|morgen|nachste|spater|advance|ahead|tomorrow|next week|reserve|reservation|onceden|yarin|gelecek|rezervasyon)\b/.test(q);
+    const existing=/\b(andern|umbuchen|stornier\w*|abbrechen|cancel|change|degistir|iptal|bestatigt|confirmed|my booking|meine buchung|meine reservierung|existing booking|bereits gebucht|schon gebucht)\b/.test(q);
+    const strong=[];
+    if(hasBooking&&/\b(telefon\w*|anrufen|phone|call|telefonla)\b/.test(q))strong.push({intent:'information',key:'phone_booking',score:90});
+    else if(hasBooking&&future&&!hasPrice&&!existing){
+      strong.push({intent:'reservation',key:/\b(wie lange|wie fruh|wie weit|vorlauf|how early|how far|ne kadar once)\b/.test(q)?'booking_lead':'reservation',score:85});
+    }else if(hasBooking&&!hasPrice&&!existing)strong.push({intent:'booking',key:/\b(andere person|meine mutter|meinen vater|someone else|another person|annem|baskasi)\b/.test(q)?'other_person':'booking',score:80});
+    if(hasPrice&&/\b(vorbestell\w*|vorausbuch\w*|reservier\w*|reservierung)\b/.test(q))strong.unshift({intent:'price',key:'reservation_fee',score:95});
+    if(/\b(rechnung|invoice|fatura)\b/.test(q))strong.push({intent:'invoice',key:'invoice',score:90});
+    else if(hasPayment){
+      const before=/\b(vorher|vorab|voraus|vorauszahl\w*|anzahlung\w*|vorabzahl\w*|vor der fahrt|advance|before|upfront|prepay\w*|onceden)\b/.test(q);
+      const after=/\b(spater|nachher|nach der fahrt|after|later|sonra)\b/.test(q);
+      const timing=before||/\b(wann|when|ne zaman|abgebucht|abbuch\w*|belast\w*)\b/.test(q);strong.push({intent:timing?'prepayment':'payment',key:timing?'prepayment':after?'after_payment':'payment',score:80});
+    }
+    if(!strong.length&&(hasPrice||/\b(wie teuer|how much|kac para|ne kadar)\b/.test(q)))strong.push({intent:/\b(angebot|quote|teklif)\b/.test(q)?'offer':/\b(fixpreis|festpreis|pauschal|flat fare|fixed fare|sabit)\w*\b/.test(q)?'fixed_price':'price',key:/\b(warte\w*|waiting|bekle\w*)\b/.test(q)?'waiting':/\b(gepack|luggage|bagaj)\b/.test(q)?'luggage_fee':/\b(angebot|quote|teklif)\b/.test(q)?'offer':/\b(fixpreis|festpreis|pauschal|flat fare|fixed fare|sabit)\w*\b/.test(q)?'fixed':'price',score:80});
+    if(hasBooking&&/\b(nicht (?:bezahl\w*|zahl\w*)|not pay|don t pay)\b/.test(q))for(let i=strong.length-1;i>=0;i--)if(['payment','prepayment'].includes(strong[i].intent))strong.splice(i,1);
+    if(strong.length)return strong.slice(0,2);
+    if(/\b(fahrer raucht|fahrer hat geraucht|auto stinkt|fahrzeug schmutzig|driver is smoking|car is dirty|sofor sigara iciyor)\b/.test(q))return[{intent:'complaint',key:'complaint',score:100}];
+    if(/\b(rauchfrei|nichtraucher\w*|rauchen|rauch|smoke free|smokefree|non smoking|smoking|sigara|dumansiz)\b/.test(q)&&!hasPrice)return[{intent:'non_smoking',key:'non_smoking',score:90}];
+    if(/\b(sauber\w*|gepflegt\w*|hygien\w*|hijyen\w*|cleen|clean\w*|well maintained|well kept|well looked after|tidy|temiz\w*|bakim\w*)\b/.test(q)&&!hasPrice)return[{intent:'service_quality',key:'service_quality',score:90}];
+    if(/\b(fahrer|driver|drivers|sofor|soforleriniz|fliessend|fluent|akici)\b/.test(q)&&/\b(deutsch|englisch|german|english|almanca|ingilizce|sprache|language)\b/.test(q))return[{intent:'driver_language',key:'driver_language',score:90}];
+    if(/\b(grossraumtaxi|grossraum|grossraumwagen|7 sitzer|siebensitzer|large taxi|seven seater|buyuk taksi|yedi kisilik)\b/.test(q)&&!hasPrice)return[{intent:'group',key:'group',score:85}];
+    if(/\b(apple pay|google pay)\b/.test(q))return[{intent:'wallet',key:'wallet',score:99}];
+    // Shared words such as "before", "ride" or "tomorrow" are not topic evidence.
+    function fitsTopic(intent){
+      if(intent==='reservation')return hasBooking||/\b(weiss.*wann|not know.*time|dont know.*time|saat.*belli)\b/.test(q);
+      if(intent==='luggage')return /\b(koffer\w*|gepack|gepaeck|tasche\w*|rucksack|luggage|baggage|suitcase\w*|bags?|backpack|valiz\w*|bavul\w*|bagaj)\b/.test(q);
+      if(intent==='prepayment')return hasPayment&&/\b(vorher|vorab|voraus|vorauszahl\w*|anzahlung\w*|vorabzahl\w*|vor der fahrt|advance|before|upfront|prepay\w*|onceden)\b/.test(q);
+      if(['payment','prepayment','wallet','invoice','receipt','tip'].includes(intent))return hasPayment||/\b(apple pay|google pay|rechnung|invoice|fatura|quittung|beleg|receipt|makbuz|fis|trinkgeld|tip|bahsis)\b/.test(q);
+      if(intent==='price'||intent==='fixed_price')return hasPrice||/\b(wie viel|wieviel|how much|ne kadar|kac para|pro person|per person|kisi basi|billiger|cheaper|ucuz|teuer|expensive|pahali|nachtzuschlag|surcharge|gece farki)\b/.test(q);
+      if(intent==='greeting')return /^(hallo|hi|hey|guten|hello|good morning|merhaba|selam|gunaydin)\b/.test(q);
+      return true;
+    }
     const words=q.split(' ').filter(x=>!stop.has(x)&&x.length>1);
     const matches=K.records.map(r=>{let score=0;for(const phrase of Object.values(r.questions)){const v=n(phrase);if(v===q)score=Math.max(score,30);const tokens=v.split(' ').filter(x=>!stop.has(x)&&x.length>2);let hit=0;for(const token of tokens)if(words.some(w=>w===token||(token.length>=6&&w.startsWith(token))||(w.length>=5&&token.length>=5&&distance(w,token)<=1)))hit++;if(tokens.length)score=Math.max(score,hit/Math.sqrt(tokens.length)*2);}
       const alias=(aliases[r.intent]||'').split(' ');for(const word of words)if(alias.some(t=>t===word||(word.length>=5&&t.length>=5&&distance(word,t)<=1)))score+=word.length>=4?1.5:1;
-      return{intent:r.intent,key:r.answer,score};}).filter(x=>x.score>=2.4&&(x.intent!=='large_luggage'||/\b(?:8|9|10|acht|neun|zehn|ten|eight|nine|on|sekiz|dokuz|viel|much)\b/.test(q))).sort((a,b)=>b.score-a.score);
+      return{intent:r.intent,key:r.answer,score};}).filter(x=>x.score>=2.4&&fitsTopic(x.intent)&&(x.intent!=='large_luggage'||/\b(?:8|9|10|acht|neun|zehn|ten|eight|nine|on|sekiz|dokuz|viel|much)\b/.test(q))).sort((a,b)=>b.score-a.score);
     if(!matches.length&&/\b(brauch|brauche|will|mocht|mochte|need|lazim)\b/.test(q)&&/\b(taxi|taxxi|transfer|taksi)\b/.test(q))matches.push({intent:'booking',key:'booking',score:3});
     const unique=[];for(const m of matches){if(!unique.some(x=>x.intent===m.intent))unique.push(m);if(unique.length===2)break;}return unique;
   }
@@ -100,7 +158,7 @@
     if(!changes.from&&/\b(vom flughafen|from the airport|havalimanindan)\b/.test(q))changes.from='Flughafen';
     if(state.expected==='returnDate'&&changes.date){changes.returnDate=changes.date;delete changes.date;}if(state.expected==='returnTime'&&changes.time){changes.returnTime=changes.time;delete changes.time;}
     const expected=state.expected;
-    if(expected&&raw.length<=200&&!/[?]/.test(raw)&&!recognize(raw).some(x=>['price','payment','human','complaint','flight','app','ios','android','wallet'].includes(x.intent))){
+    if(expected&&raw.length<=200&&!/[?]/.test(raw)&&!recognize(raw).some(x=>!['information','airport'].includes(x.intent))){
       if(['from','to'].includes(expected)&&!changes[expected]&&!people&&!bags&&!iso&&!dmy){let place=cleanPlace(raw.replace(/\s+(?:um|at|saat)\s+.*$/i,''));if(place.length>=3&&!/^(ja|nein|yes|no|evet|hayir|danke|thanks|tesekkur|doch lieber|lieber|statt|instead|actually|keine ahnung|weiss ich nicht|ich weiss nicht|i dont know|not sure|bilmiyorum|emin degilim)$/i.test(n(place))&&!/^(doch|lieber|wir sind|we are|nicht|not)\b/.test(n(place)))changes[expected]=place;}
       if(expected==='people'&&/^\d{1,3}$/.test(num))changes.people=Number(num);
       if(expected==='bags'&&/^\d{1,3}$/.test(num))changes.bags=Number(num);
@@ -116,9 +174,13 @@
   }
   const labels={from:['Abholung','Pickup','Alınma'],to:['Ziel','Destination','Varış'],date:['Datum','Date','Tarih'],time:['Uhrzeit','Time','Saat'],people:['Personen','Passengers','Kişi'],bags:['Gepäckstücke','Bags','Bagaj'],bagType:['Gepäckart','Bag type','Bagaj türü'],flight:['Flugnummer','Flight number','Uçuş numarası'],flightTime:['Flugzeit (keine Abholzeit)','Flight time (not pickup)','Uçuş saati (alınma değil)'],vehicle:['Fahrzeugwunsch','Vehicle preference','Araç tercihi'],payment:['Zahlungswunsch','Payment preference','Ödeme tercihi'],child:['Kindersitz abstimmen','Child seat to arrange','Çocuk koltuğu görüşülecek'],mobility:['Unterstützung persönlich abstimmen','Arrange assistance personally','Desteği kişisel görüş'],returnDate:['Rückfahrt-Datum','Return date','Dönüş tarihi'],returnTime:['Rückfahrt-Uhrzeit','Return time','Dönüş saati'],childAge:['Alter des Kindes','Child age','Çocuğun yaşı'],stroller:['Kinderwagen abstimmen','Arrange stroller','Bebek arabası görüşülecek'],bicycle:['Fahrrad abstimmen','Arrange bicycle','Bisiklet görüşülecek'],pet:['Tiermitnahme abstimmen','Arrange pet carriage','Evcil hayvan görüşülecek'],returnRequested:['Rückfahrt persönlich abstimmen','Arrange return separately','Dönüş ayrıca görüşülecek']};
   function label(key,lang){return(labels[key]||[key,key,key])[languages.indexOf(lang)];}
-  function value(key,v,lang){if(v==='now')return text('sofort','now','şimdi',lang);if(v==='none')return text('noch offen / keine','not provided / none','henüz yok',lang);if(v==='requested'||v===true)return text('angefragt','requested','talep edildi',lang);if(key==='payment')return v==='cash'?text('Bar','Cash','Nakit',lang):text('Kreditkarte','Credit card','Kredi kartı',lang);if(key==='bagType')return v==='large'?text('große Koffer','large suitcases','büyük valiz',lang):text('Handgepäck','cabin luggage','el bagajı',lang);return String(v);}
+  function value(key,v,lang){if(key==='vehicle'&&v==='Mercedes E-Klasse Kombi (Wunsch)')return text('Mercedes E-Klasse Kombi (Wunsch)','Mercedes E-Class estate (preference)','Mercedes E Serisi station wagon (tercih)',lang);if(key==='childAge')return String(v).replace(/jahre|years|yasinda/,text('Jahre','years','yaşında',lang)).replace(/monate|months|aylik/,text('Monate','months','aylık',lang));if(v==='now')return text('sofort','now','şimdi',lang);if(v==='none')return text('noch offen / keine','not provided / none','henüz yok',lang);if(v==='requested'||v===true)return text('angefragt','requested','talep edildi',lang);if(key==='payment')return v==='cash'?text('Bar','Cash','Nakit',lang):text('Kreditkarte','Credit card','Kredi kartı',lang);if(key==='bagType')return v==='large'?text('große Koffer','large suitcases','büyük valiz',lang):text('Handgepäck','cabin luggage','el bagajı',lang);return String(v);}
   function summary(state){return Object.keys(labels).filter(k=>state.trip[k]!==undefined&&state.trip[k]!=='').map(k=>({key:k,label:label(k,state.language),value:value(k,state.trip[k],state.language)}));}
-  function handoff(state){const l=state.language;let lines=[text('Hallo ONRODA-Team, ich habe mit Kardi gesprochen.','Hello ONRODA team, I spoke with Kardi.','Merhaba ONRODA ekibi, Kardi ile görüştüm.',l),text('Anliegen: ','Request: ','Konu: ',l)+state.intent];for(const row of summary(state)){
+  function intentTitle(intent,lang){
+    const names={information:['Information','Information','Bilgi'],reservation:['Reservierung','Reservation','Rezervasyon'],booking:['Fahrtanfrage','Ride request','Yolculuk talebi'],instant:['Sofortfahrt','Immediate ride','Hemen yolculuk'],airport:['Flughafentransfer','Airport transfer','Havalimanı transferi'],price:['Preisprüfung','Fare check','Fiyat kontrolü'],fixed_price:['Festpreisanfrage','Fixed-fare request','Sabit fiyat talebi'],offer:['Angebotsanfrage','Quote request','Fiyat teklifi talebi'],group:['Gruppenfahrt','Group ride','Grup yolculuğu'],large_group:['Gruppenfahrt','Group ride','Grup yolculuğu'],large_luggage:['Gepäckplanung','Luggage planning','Bagaj planlaması'],human:['Persönliche Beratung','Personal assistance','Kişisel danışma'],complaint:['Beschwerde','Complaint','Şikayet'],lost:['Fundsache','Lost property','Kayıp eşya'],refund:['Erstattungsprüfung','Refund review','İade incelemesi'],billing_problem:['Abrechnungsfrage','Billing question','Ödeme sorusu'],change_booking:['Buchungsänderung','Booking change','Rezervasyon değişikliği'],cancelled_flight:['Flugausfall','Cancelled flight','İptal edilen uçuş'],missing_driver:['Fahrer kommt nicht','Driver not arriving','Şoför gelmiyor'],missing_booking:['Buchung nicht sichtbar','Booking not visible','Rezervasyon görünmüyor'],tech:['Technische Hilfe','Technical assistance','Teknik destek'],password:['Hilfe bei der Anmeldung','Login assistance','Giriş desteği'],accessibility:['Persönliche Abstimmung','Personal arrangements','Kişisel görüşme'],contract:['Zusammenarbeit','Business arrangements','İş birliği'],driver_job:['Fahreranfrage','Driver enquiry','Şoför başvurusu'],unknown:['Persönliche Frage','Personal question','Kişisel soru']};
+    return(names[intent]||['Frage zu einer Fahrt','Ride question','Yolculuk sorusu'])[languages.indexOf(lang)];
+  }
+  function handoff(state){const l=state.language;let lines=[text('Hallo ONRODA-Team, ich habe mit Kardi gesprochen.','Hello ONRODA team, I spoke with Kardi.','Merhaba ONRODA ekibi, Kardi ile görüştüm.',l),text('Anliegen: ','Request: ','Konu: ',l)+intentTitle(state.intent,l)];for(const row of summary(state)){
       // Health and disability-related information is never automatically included in WhatsApp.
       if(['mobility','child'].includes(row.key))continue;
       const clean=safeSupport(row.value);if(clean)lines.push(row.label+': '+clean);
@@ -129,10 +191,11 @@
   const escalated=new Set(['human','complaint','lost','refund','billing_problem','missing_driver','negotiation','large_group','large_luggage','accessibility','contract','change_booking','cancelled_flight','tech','missing_booking','password','driver_job']);
   const planning=new Set(['price','fixed_price','offer','instant','reservation','booking','airport','return_trip']);
   function nextField(s){const t=s.trip;if(t.from&&/^(flughafen|airport|havalimani)$/.test(n(t.from)))return'from';if(t.to&&/^(flughafen|airport|havalimani)$/.test(n(t.to))&&t.from)return'to';for(const k of (['price','fixed_price'].includes(s.intent)?['from','to']:['from','to','date','time','people']))if(t[k]===undefined||t[k]==='')return k;if(!['price','fixed_price'].includes(s.intent)&&(s.intent==='airport'||/flughafen|airport|havalimani/.test(n((t.from||'')+' '+(t.to||''))))){if(!t.flight)return'flight';if(t.bags===undefined)return'bags';}if(t.returnRequested&&!['price','fixed_price'].includes(s.intent)){if(!t.returnDate)return'returnDate';if(!t.returnTime)return'returnTime';}return null;}
-  function prompt(key,l){const qs={from:['Wo genau möchtest du abgeholt werden? Bitte Ort und möglichst Straße mit Hausnummer.','Where exactly is pickup? Please include the town and, if possible, street and number.','Tam olarak nereden alınacaksın? Şehir ve mümkünse sokak ile kapı numarasını belirt.'],to:['Wohin genau möchtest du fahren? Welcher Flughafen, falls es zum Flughafen geht?','What is your exact destination? Which airport, if applicable?','Tam olarak nereye gitmek istiyorsun? Havalimanıysa hangisi?'],date:['An welchem Datum möchtest du fahren? Zum Beispiel morgen oder 2026-11-10.','On which date? For example tomorrow or 2026-11-10.','Hangi tarihte? Örneğin yarın veya 2026-11-10.'],time:['Um wie viel Uhr möchtest du abgeholt werden? Bitte 24-Stunden-Zeit angeben.','What pickup time? Please use 24-hour time.','Saat kaçta alınmak istiyorsun? Lütfen 24 saat biçimini kullan.'],people:['Wie viele Personen fahren mit?','How many passengers are travelling?','Kaç kişi seyahat edecek?'],flight:['Wie lautet die Flugnummer? Wenn sie fehlt oder nicht nötig ist, schreib „ohne“.','What is the flight number? If unavailable or not needed, write “none”.','Uçuş numarası nedir? Yoksa veya gerekmiyorsa “yok” yaz.'],bags:['Wie viele Gepäckstücke habt ihr? Große Koffer oder Handgepäck bitte dazusagen.','How many bags do you have? Please mention large suitcases or cabin luggage.','Kaç bagaj var? Büyük valiz veya el bagajı olduğunu da belirt.']};if(key==='returnDate')return text('An welchem Datum soll die Rückfahrt stattfinden?','On which date is the return trip?','Dönüş hangi tarihte?',l);if(key==='returnTime')return text('Um wie viel Uhr soll die Rückfahrt stattfinden?','What time is the return trip?','Dönüş saat kaçta?',l);return qs[key][languages.indexOf(l)];}
+  function prompt(key,l){const qs={from:['Wo möchtest du abgeholt werden – Ort und Adresse?','What is your pickup address, including the town?','Nereden alınacaksın? Şehir ve adresi belirt.'],to:['Wohin genau möchtest du fahren? Welcher Flughafen, falls es zum Flughafen geht?','What is your exact destination? Which airport, if applicable?','Tam olarak nereye gitmek istiyorsun? Havalimanıysa hangisi?'],date:['An welchem Datum möchtest du fahren? Zum Beispiel morgen oder 2026-11-10.','On which date? For example tomorrow or 2026-11-10.','Hangi tarihte? Örneğin yarın veya 2026-11-10.'],time:['Um wie viel Uhr möchtest du abgeholt werden? Bitte 24-Stunden-Zeit angeben.','What pickup time? Please use 24-hour time.','Saat kaçta alınmak istiyorsun? Lütfen 24 saat biçimini kullan.'],people:['Wie viele Personen fahren mit?','How many passengers are travelling?','Kaç kişi seyahat edecek?'],flight:['Wie lautet die Flugnummer? Wenn sie fehlt oder nicht nötig ist, schreib „ohne“.','What is the flight number? If unavailable or not needed, write “none”.','Uçuş numarası nedir? Yoksa veya gerekmiyorsa “yok” yaz.'],bags:['Wie viele Gepäckstücke habt ihr? Große Koffer oder Handgepäck bitte dazusagen.','How many bags do you have? Please mention large suitcases or cabin luggage.','Kaç bagaj var? Büyük valiz veya el bagajı olduğunu da belirt.']};if(key==='returnDate')return text('An welchem Datum soll die Rückfahrt stattfinden?','On which date is the return trip?','Dönüş hangi tarihte?',l);if(key==='returnTime')return text('Um wie viel Uhr soll die Rückfahrt stattfinden?','What time is the return trip?','Dönüş saat kaçta?',l);return qs[key][languages.indexOf(l)];}
   function create(now=()=>new Date()){
-    const s={language:'de',trip:{},intent:'information',active:false,expected:null,pending:null,unknown:0,revision:0,supportQuestion:'',formal:false,metrics:{messages:0,unknown:0,prepared:0,escalations:0}};
-    function response(body,actions=[],extra={}){if(s.formal&&s.language==='de')body=body.replace(/\bdu\b/g,'Sie').replace(/\bdir\b/g,'Ihnen').replace(/\bdich\b/g,'Sie').replace(/\bdeine\b/g,'Ihre').replace(/\bdeinen\b/g,'Ihren').replace(/\bdeiner\b/g,'Ihrer').replace(/\bdein\b/g,'Ihr').replace(/\bmöchtest Sie\b/g,'möchten Sie').replace(/\bkannst Sie\b/g,'können Sie').replace(/\bSchreib\b/g,'Schreiben Sie').replace(/\bNenne\b/g,'Nennen Sie').replace(/\bbenötigst Sie\b/g,'benötigen Sie').replace(/\bmöchtest Sie\b/g,'möchten Sie').replace(/\bmusst Sie\b/g,'müssen Sie').replace(/\bfindest Sie\b/g,'finden Sie');return Object.assign({text:body,actions,language:s.language},extra);}
+    const s={language:'de',languageMode:'auto',trip:{},intent:'information',active:false,expected:null,pending:null,unknown:0,revision:0,supportQuestion:'',formal:false,metrics:{messages:0,unknown:0,prepared:0,escalations:0}};
+    let languageNotice='';
+    function response(body,actions=[],extra={}){if(languageNotice){body=languageNotice+'\n\n'+body;languageNotice='';}if(s.formal&&s.language==='de')body=body.replace(/\bdu\b/g,'Sie').replace(/\bdir\b/g,'Ihnen').replace(/\bdich\b/g,'Sie').replace(/\bdeine\b/g,'Ihre').replace(/\bdeinen\b/g,'Ihren').replace(/\bdeiner\b/g,'Ihrer').replace(/\bdein\b/g,'Ihr').replace(/\bmöchtest Sie\b/g,'möchten Sie').replace(/\bkannst Sie\b/g,'können Sie').replace(/\bSchreib\b/g,'Schreiben Sie').replace(/\bNenne\b/g,'Nennen Sie').replace(/\bbenötigst Sie\b/g,'benötigen Sie').replace(/\bmöchtest Sie\b/g,'möchten Sie').replace(/\bmusst Sie\b/g,'müssen Sie').replace(/\bfindest Sie\b/g,'finden Sie');return Object.assign({text:body,actions,language:s.language},extra);}
     function continuePlan(prefix=''){
       if(s.trip.people>=8||s.trip.bags>=8){s.active=false;s.metrics.escalations++;return response(prefix+'\n'+pick(K.answers.large_group,s.language),['whatsapp','edit'],{summary:summary(s),handoff:handoff(s)});}
       const field=nextField(s);s.expected=field;
@@ -141,7 +204,21 @@
     }
     function apply(changes){let changed=false;for(const[k,v]of Object.entries(changes))if(k[0]!=='_'&&s.trip[k]!==v){s.trip[k]=v;changed=true;}if(changed){s.revision++;s.quote=null;}return changed;}
     function turn(raw,action){
-      raw=String(raw||'').trim().slice(0,600);s.metrics.messages++;s.language=detectLanguage(raw,s.language);const l=s.language,q=n(raw);
+      raw=String(raw||'').trim().slice(0,600);s.metrics.messages++;
+      const requested=languageRequest(raw);
+      if(requested&&requested.kind==='switch'){s.language=requested.language;s.languageMode='explicit';}
+      else if(s.languageMode==='auto')s.language=detectLanguage(raw,s.language);
+      const l=s.language,q=n(raw);
+      if(/\bSie\b/.test(raw)&&/\b(konnen|sprechen|bitte|mochten)\b/.test(q))s.formal=true;
+      const safety=recognize(raw)[0];if(safety&&['emergency','danger'].includes(safety.intent)){s.active=false;s.expected=null;s.intent=safety.intent;return response(pick(K.answers[safety.key],l),[safety.intent==='emergency'?'emergency112':'emergency110']);}
+      if(requested&&requested.kind==='auto'){s.languageMode='auto';s.language=detectLanguage(raw,s.language);return response(text('Gerne, ich richte mich wieder nach der Sprache deiner Nachricht.','Sure, I will follow the language of your messages again.','Elbette, mesajının diline göre yanıt vereceğim.',s.language),[]);}
+      if(requested&&['choice','unsupported'].includes(requested.kind))return response(text('Ich kann dir bei ONRODA-Fragen auf Deutsch, Englisch und Türkisch helfen. Welche Sprache möchtest du nutzen?','I can help with ONRODA questions in German, English and Turkish. Which language would you prefer?','ONRODA sorularında Almanca, İngilizce ve Türkçe yardımcı olabilirim. Hangi dili tercih edersin?',l),[]);
+      if(requested&&requested.kind==='switch'){
+        s.unknown=0;
+        const confirmation=text('Ja, ich helfe dir auf Deutsch.','Yes, I can help you in English.','Evet, Türkçe yardımcı olabilirim.',l);
+        if(!requested.mixed){const pending=s.active?nextField(s):null;return response(confirmation+' '+(pending?prompt(pending,l):text('Wie kann ich dir helfen?','How can I help?','Nasıl yardımcı olayım?',l)),[]);}
+        languageNotice=confirmation;
+      }
       if(/\b(sie|ihnen|ihre)\b/i.test(raw)&&/\b(konnen|bitte|mochten)\b/.test(q))s.formal=true;
       let hits=recognize(raw),top=hits[0];
       if(/^(doch|lieber|wir sind jetzt|nicht .+ sondern|instead|actually|we are now)\b/.test(q)){hits=[];top=null;}
@@ -171,6 +248,7 @@
       const conflicts=Object.keys(changes).filter(k=>s.trip[k]!==undefined&&s.trip[k]!==changes[k]&&!(['from','to'].includes(k)&&/^(flughafen|airport|havalimani)$/.test(n(s.trip[k]))));
       if(conflicts.length&&!correction){s.pending=changes;return response(text('Ich habe abweichende Angaben erkannt. Soll ich diese Werte ersetzen?','I found different details. Should I replace these values?','Farklı bilgiler gördüm. Bu değerleri değiştireyim mi?',l)+'\n'+conflicts.map(k=>label(k,l)+': '+value(k,s.trip[k],l)+' → '+value(k,changes[k],l)).join('\n'),['confirm','keep']);}
       apply(changes);if(meaningful)s.unknown=0;
+      if(!s.active&&meaningful&&(changes.from||changes.to||changes.date)&&(!top||['luggage','reservation','airport','booking','instant'].includes(top.intent))){s.active=true;s.intent=/flughafen|airport|havalimani/.test(n((s.trip.from||'')+' '+(s.trip.to||'')))?'airport':top?top.intent:'booking';return continuePlan(top&&['reservation','booking','instant'].includes(top.intent)?hits.map(h=>pick(K.answers[h.key],l)).join('\n\n'):'');}
       // Large capacity never implies a confirmed vehicle or instant booking.
       if(s.trip.people>=8||s.trip.bags>=8){s.active=false;s.intent=s.trip.bags>=8?'large_luggage':'large_group';return response(pick(K.answers[s.intent],l),['whatsapp','edit'],{summary:summary(s),handoff:handoff(s)});}
       if((top&&top.intent==='group')||((!top||top.intent==='luggage')&&s.trip.people>=5&&s.trip.people<=7)){
@@ -181,18 +259,18 @@
         return response(body,['continue','whatsapp'],{summary:summary(s),handoff:handoff(s)});
       }
       if(top&&['price','fixed_price'].includes(top.intent)&&s.active&&s.trip.from&&s.trip.to)return response(pick(K.answers.price,l),['price','continue','whatsapp'],{summary:summary(s)});
-      if(top&&planning.has(top.intent)){s.active=true;s.intent=top.intent;s.unknown=0;return continuePlan(s.expected?'':pick(K.answers[top.key],l));}
+      if(top&&top.key==='reservation_fee')return response(pick(K.answers.reservation_fee,l),['whatsapp','app']);
+      if(top&&planning.has(top.intent)){s.active=true;s.intent=top.intent;s.unknown=0;return continuePlan(hits.map(h=>pick(K.answers[h.key],l)).join('\n\n'));}
       if(top&&['payment','wallet','invoice','receipt','tip','prepayment','vehicle','flight','luggage','child','stroller','bicycle','bulky','pet','senior','medical','meeting','stops','business','hotel','partner','app','ios','android','status','cancel','information','offtopic','smalltalk','service_quality','non_smoking','driver_language'].includes(top.intent)){
         s.unknown=0;let body=hits.map(h=>pick(K.answers[h.key],l)).join('\n\n');
         if(top.intent==='luggage'&&s.trip.bags!==undefined)body=text('Notiert: ','Noted: ','Not edildi: ',l)+s.trip.bags+' '+label('bags',l)+(s.trip.people!==undefined?', '+s.trip.people+' '+label('people',l):'')+'. '+(!s.trip.people?prompt('people',l):text('Unser Team prüft damit die passende Fahrzeuggröße.','Our team can check the suitable vehicle size.','Ekibimiz uygun araç boyutunu kontrol edebilir.',l));
-        const acts=['app','ios','android'].includes(top.intent)?['app','whatsapp']:['status','cancel'].includes(top.intent)?['app','whatsapp']:['business','hotel','partner'].includes(top.intent)?['partner','whatsapp']:['bicycle','pet','bulky','child','medical','stroller','invoice'].includes(top.intent)?['whatsapp','continue']:['plan','human'];
-        if(s.active)return continuePlan(body);
+        const acts=top.key==='phone_booking'?['phone','whatsapp','app']:['app','ios','android'].includes(top.intent)?['app','whatsapp']:['status','cancel'].includes(top.intent)?['app','whatsapp']:['business','hotel','partner'].includes(top.intent)?['partner','whatsapp']:['bicycle','pet','bulky','child','medical','stroller','invoice'].includes(top.intent)?['whatsapp','continue']:['plan','human'];
+        if(s.active){if(nextField(s)||(meaningful&&s.expected))return continuePlan(body);return response(body,[],{vehicle:top.intent==='vehicle'});}
         return response(body,acts,{vehicle:top.intent==='vehicle',summary:meaningful?summary(s):undefined,handoff:acts.includes('whatsapp')?handoff(s):undefined});
       }
       if(s.active&&meaningful)return continuePlan();
       if(meaningful&&(changes.from||changes.to||changes.date)){s.active=true;s.intent=changes.to&&/flughafen|airport|havalimani/.test(n(changes.to))?'airport':'booking';return continuePlan();}
       if(meaningful)return response(text('Die Angaben habe ich notiert. Möchtest du die Fahrt weiter vorbereiten?','I have noted those details. Would you like to continue preparing the ride?','Bilgileri not ettim. Yolculuğu hazırlamaya devam edelim mi?',l),['continue','whatsapp'],{summary:summary(s),handoff:handoff(s)});
-      if(/\b(englisch|english|turkce|turkish|deutsch|german|almanca)\b/.test(q))return response(text('Gerne, wir können auf Deutsch weiterschreiben.','Of course, we can continue in English.','Elbette, Türkçe devam edebiliriz.',l),[]);
       s.unknown++;s.metrics.unknown++;s.supportQuestion=safeSupport(raw);
       if(s.unknown===1)return response(pick(K.answers.unknown,l),['plan','price','human']);
       if(s.unknown===2)return response(text('Wähle bitte: Fahrt vorbereiten, Preis prüfen oder persönliche Hilfe.','Please choose: prepare a ride, check a price or personal help.','Lütfen seç: yolculuk hazırla, fiyat kontrolü veya kişisel yardım.',l),['plan','price','human']);
@@ -200,5 +278,5 @@
     }
     return{state:s,turn,summary:()=>summary(s),handoff:()=>handoff(s),greeting:()=>pick(K.answers.greeting,s.language)};
   }
-  return{create,recognize,extract,normalize:n,detectLanguage,berlinDate,safe,safeSupport,labels,label,value};
+  return{create,recognize,languageRequest,extract,normalize:n,detectLanguage,berlinDate,safe,safeSupport,labels,label,value};
 });

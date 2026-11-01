@@ -67,7 +67,7 @@ test('56 true emergency overrides WhatsApp request',()=>assert.deepEqual(create(
 test('57 large taxi availability topic recognized, no fake luggage',()=>{const e=create(),r=e.turn('Habt ihr ein Großraumtaxi?');assert.match(r.text,/bis zu sieben/);assert.equal(e.state.trip.bagType,undefined);});
 test('58 seven passengers and declined Koffern preserved',()=>{const e=create(),r=e.turn('Wir sind 7 Personen mit 7 Koffern');assert.equal(e.state.trip.people,7);assert.equal(e.state.trip.bags,7);assert.match(r.text,/Platzbedarf/);});
 test('59 eight passengers need personal arrangement',()=>{const e=create(),r=e.turn('Wir sind acht Personen');assert(r.actions.includes('whatsapp'));assert.match(r.text,/bis zu sieben/);});
-test('60 verified vehicle cleanliness',()=>{for(const q of ['Sind die Autos sauber und gepflegt?','Wie ist die Sauberkeit?','Habt ihr gepflegte Fahrzeuge?'])assert.match(create().turn(q).text,/gepflegt, sauber und rauchfrei/);});
+test('60 verified vehicle cleanliness',()=>{for(const q of ['Sind die Autos sauber und gepflegt?','Wie ist die Sauberkeit?','Habt ihr gepflegte Fahrzeuge?']){const text=create().turn(q).text;assert.match(text,/Sauberkeit/);assert.match(text,/Premiumfahrzeuge/);assert.match(text,/sauber und rauchfrei/);};});
 test('61 non-smoking service',()=>assert.match(create().turn('Sind die Autos rauchfrei?').text,/Nichtraucherfahrzeuge/));
 test('62 fluent German and English communication',()=>assert.match(create().turn('Sprechen die Fahrer fließend Deutsch und Englisch?').text,/fließend Deutsch/));
 test('63 actual smoking complaint goes to support',()=>assert(create().turn('Der Fahrer raucht').actions.includes('whatsapp')));

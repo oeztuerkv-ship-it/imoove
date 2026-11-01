@@ -93,3 +93,6 @@ Vedat bestätigt: Großraumtaxi für bis zu sieben Fahrgäste; gepflegte, sauber
 63 Szenario-/Unit-Tests grün, vorhandene Dialog-/Preis-/Desktop-Browserregression grün. `scripts/test-kardelen-mobile.cjs` prüft 390×844-Vollbild, Body/Inert-Sperre, native Chromium-Touch-Wischgesten hoch/runter, unveränderte Hintergrundposition, 390px-Kurzviewport, sichtbare Eingabe und Entsperren/Positionswiederherstellung. Screenshot lokal geprüft, kein Homepage-Hintergrund sichtbar. Dies ist keine echte iPhone-/Safari-Abnahme; Kundentest weiterhin sinnvoll.
 
 Alle fünf Assets auf neun HTML-Dokumenten v=20261101-5. Auswirkungen: Marketing-Beratung und mobile Widget-Bedienung; keine API-/DB-, Admin-, Partner-, Mobile-App-, Finance/Audit-, E-Mail- oder Rechteänderung. Keine neue Preisformel. Production nicht durch diesen Auftrag deployed.
+
+## Dialogqualität und echte Sprachwechsel (Folgeauftrag 01.11.2026)
+Aktuelle Antwortzuordnung, ausdrückliche Sprachwahl, 547 automatische Prüfungen und Browser-Kreuzdialoge: [Dialog-Review](kardi-dialog-review-2026-11-01.md). Sauberkeit/Premium/Rauchfreiheit in DE/EN/TR gleichwertig bestätigt; keine erneute Vollzusammenfassung nach jeder kurzen Sachfrage. Assetversion 20261101-7. Keine Produktionseinspielung.

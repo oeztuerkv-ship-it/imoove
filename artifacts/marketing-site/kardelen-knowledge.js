@@ -1,6 +1,6 @@
 /* Reviewed ONRODA FAQ examples: edit facts here, not in the conversation engine. */
 (function(root){"use strict";var data={
-  "version": "2026-11-01-services",
+  "version": "2026-11-01-cross-dialogue",
   "records": [
     {
       "id": 1,
@@ -1345,9 +1345,9 @@
       "tr": "Ekibimiz araç tercihini değerlendirebilir. S Serisi, elektrikli araç veya belirli donanımın uygunluğunu ben onaylayamam."
     },
     "clean": {
-      "de": "Unsere Fahrzeuge sind gepflegt, sauber und rauchfrei. Du sollst dich auf deiner Fahrt wohlfühlen.",
-      "en": "Our vehicles are well maintained, clean and smoke-free. We want you to feel comfortable during your ride.",
-      "tr": "Araçlarımız bakımlı, temiz ve dumansızdır. Yolculuğunda rahat etmeni isteriz."
+      "de": "Ja, wir legen großen Wert auf Sauberkeit und gepflegte Premiumfahrzeuge. Unsere Fahrzeuge sind sauber und rauchfrei.",
+      "en": "Yes, we place great importance on cleanliness and well-kept premium vehicles. Our vehicles are clean and smoke-free.",
+      "tr": "Evet, temizliğe ve bakımlı premium araçlara büyük önem veriyoruz. Araçlarımız temiz ve dumansızdır."
     },
     "equipment": {
       "de": "Sag uns bitte, welche Ausstattung dir wichtig ist. Unser Team prüft sie für das tatsächlich angebotene Fahrzeug.",
@@ -1450,9 +1450,9 @@
       "tr": "Talebi hazırlayabilirim. Uygulama veya ekip gerçekten onayladığında rezervasyon yapılmış olur."
     },
     "reservation": {
-      "de": "Eine spätere Fahrt kannst du anfragen. Für eine konkrete Reservierung brauchen wir Datum, Uhrzeit und Strecke.",
-      "en": "You can request a future ride. A specific reservation needs a date, time and route.",
-      "tr": "İleri tarihli yolculuk talep edebilirsin. Belirli rezervasyon için tarih, saat ve güzergâh gerekir."
+      "de": "Ja, du kannst deine Fahrt im Voraus in der ONRODA-App planen oder persönlich anfragen. Dein Termin gilt, sobald die Buchung bestätigt wurde.",
+      "en": "Yes, you can request a ride in advance or plan it in the ONRODA app. It is only confirmed when you receive an actual booking confirmation.",
+      "tr": "Evet, yolculuğunu önceden talep edebilir veya ONRODA uygulamasında planlayabilirsin. Ancak gerçek rezervasyon onayı geldiğinde onaylanmış olur."
     },
     "status": {
       "de": "Deinen bestätigten Fahrtstatus findest du in der App. Ich habe hier keinen Zugriff auf deine Buchung, Fahrerposition oder Ankunftszeit.",
@@ -1705,9 +1705,9 @@
       "tr": "Elbette 😊 Ekibimiz kişisel olarak yardımcı olur. WhatsApp açılmadan önce özeti gösteririm; mesajı yalnızca sen gönderirsin."
     },
     "service_quality": {
-      "de": "Unsere Fahrzeuge sind gepflegt, sauber und rauchfrei. Du sollst dich auf deiner Fahrt wohlfühlen.",
-      "en": "Our vehicles are well maintained, clean and smoke-free. We want you to feel comfortable during your ride.",
-      "tr": "Araçlarımız bakımlı, temiz ve dumansızdır. Yolculuğunda rahat etmeni isteriz."
+      "de": "Ja, wir legen großen Wert auf Sauberkeit und gepflegte Premiumfahrzeuge. Unsere Fahrzeuge sind sauber und rauchfrei.",
+      "en": "Yes, we place great importance on cleanliness and well-kept premium vehicles. Our vehicles are clean and smoke-free.",
+      "tr": "Evet, temizliğe ve bakımlı premium araçlara büyük önem veriyoruz. Araçlarımız temiz ve dumansızdır."
     },
     "non_smoking": {
       "de": "Ja, unsere Fahrzeuge sind Nichtraucherfahrzeuge. Rauchen ist während der Fahrt nicht gestattet.",
@@ -1718,6 +1718,21 @@
       "de": "Unsere Fahrer sprechen fließend Deutsch. Auch eine Verständigung auf Englisch ist möglich. Wenn dir eine bestimmte Sprache wichtig ist, gib sie bei deiner Anfrage an.",
       "en": "Our drivers speak fluent German, and communication in English is also possible. If a particular language matters to you, mention it in your request.",
       "tr": "Şoförlerimiz akıcı Almanca konuşur; İngilizce iletişim de mümkündür. Belirli bir dil senin için önemliyse talebinde belirt."
+    },
+    "booking_lead": {
+      "de": "Plane deine Fahrt möglichst frühzeitig. Ob dein gewünschter Termin möglich ist, bestätigt dir die App oder unser Team.",
+      "en": "Plan your ride as early as possible. The app or our team will confirm whether your requested time is possible.",
+      "tr": "Yolculuğunu mümkün olduğunca erken planla. İstediğin saatin uygunluğunu uygulama veya ekibimiz onaylar."
+    },
+    "phone_booking": {
+      "de": "Du kannst deine Fahrtanfrage telefonisch mit unserem Team besprechen. Verbindlich ist die Fahrt erst, wenn sie bestätigt wurde.",
+      "en": "You can discuss your ride request with our team by phone. The ride is only confirmed once you receive confirmation.",
+      "tr": "Yolculuk talebini ekibimizle telefonda görüşebilirsin. Yolculuk ancak onaylandığında kesinleşir."
+    },
+    "reservation_fee": {
+      "de": "Ob für eine Vorbestellung zusätzliche Kosten anfallen, richtet sich nach den Bedingungen deiner Fahrt. Unser Team klärt das vor der Buchung mit dir.",
+      "en": "Any additional advance-booking fee depends on your ride conditions. Our team can clarify this before booking.",
+      "tr": "Ön rezervasyon için ek ücret olup olmadığı yolculuk koşullarına bağlıdır. Ekibimiz bunu rezervasyondan önce açıklayabilir."
     }
   }
 };if(typeof module!=="undefined"&&module.exports)module.exports=data;else root.KardelenKnowledge=data;})(typeof globalThis!=="undefined"?globalThis:this);

@@ -49,7 +49,7 @@
     if(key==='reset'){quotes.cancel();messages.textContent='';}
     render(engine.turn('',key));
   }
-  function actionRow(parent,keys){if(!keys||!keys.length)return;const wrap=element('div','onroda-help__actions');for(const key of keys){if(key==='emergency112'||key==='emergency110')link(wrap,caption(key),'tel:'+(key==='emergency112'?'112':'110'));else if(key==='partner')link(wrap,caption(key),config.partner);else wrap.appendChild(button(caption(key),()=>action(key)));}parent.appendChild(wrap);}
+  function actionRow(parent,keys){if(!keys||!keys.length)return;const wrap=element('div','onroda-help__actions');for(const key of keys){if(key==='emergency112'||key==='emergency110')link(wrap,caption(key),'tel:'+(key==='emergency112'?'112':'110'));else if(key==='phone')link(wrap,tr('ONRODA anrufen','Call ONRODA','ONRODA’yı ara'),config.phone);else if(key==='partner')link(wrap,caption(key),config.partner);else wrap.appendChild(button(caption(key),()=>action(key)));}parent.appendChild(wrap);}
   function render(reply){localize();const row=bubble(reply.text);if(reply.vehicle){const img=element('img','onroda-help__vehicle');img.src='/images/e-klasse-kombi-flughafen.jpg';img.alt=tr('Illustration: Mercedes E-Klasse Kombi','Illustration: Mercedes E-Class estate','Görsel: Mercedes E Serisi station wagon');img.width=1536;img.height=1024;img.loading='lazy';row.appendChild(img);}renderSummary(row,reply.summary);actionRow(row,reply.actions);scroll();}
   const mobile=window.matchMedia('(max-width:640px)');
   let pageLock=null;
