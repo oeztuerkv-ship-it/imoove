@@ -51,10 +51,25 @@
   }
   function actionRow(parent,keys){if(!keys||!keys.length)return;const wrap=element('div','onroda-help__actions');for(const key of keys){if(key==='emergency112'||key==='emergency110')link(wrap,caption(key),'tel:'+(key==='emergency112'?'112':'110'));else if(key==='partner')link(wrap,caption(key),config.partner);else wrap.appendChild(button(caption(key),()=>action(key)));}parent.appendChild(wrap);}
   function render(reply){localize();const row=bubble(reply.text);if(reply.vehicle){const img=element('img','onroda-help__vehicle');img.src='/images/e-klasse-kombi-flughafen.jpg';img.alt=tr('Illustration: Mercedes E-Klasse Kombi','Illustration: Mercedes E-Class estate','Görsel: Mercedes E Serisi station wagon');img.width=1536;img.height=1024;img.loading='lazy';row.appendChild(img);}renderSummary(row,reply.summary);actionRow(row,reply.actions);scroll();}
-  function setOpen(open){root.querySelector('.onroda-help__menu').open=false;panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));if(open)input.focus();else toggle.focus();}
+  const mobile=window.matchMedia('(max-width:640px)');
+  let pageLock=null;
+  function mobileViewport(){if(!panel.hidden&&mobile.matches){const v=window.visualViewport;root.style.setProperty('--kardi-vh',(v?v.height:window.innerHeight)+'px');root.style.setProperty('--kardi-top',(v?v.offsetTop:0)+'px');}else{root.style.removeProperty('--kardi-vh');root.style.removeProperty('--kardi-top');}}
+  function lockPage(){
+    if(pageLock)return;
+    const body=document.body,html=document.documentElement;
+    pageLock={y:window.scrollY,body:{},htmlOverflow:html.style.overflow,inert:[]};
+    for(const key of ['position','top','left','right','width','overflow'])pageLock.body[key]=body.style[key];
+    for(const child of body.children)if(child!==root){pageLock.inert.push([child,child.inert]);child.inert=true;}
+    body.style.position='fixed';body.style.top=-pageLock.y+'px';body.style.left='0';body.style.right='0';body.style.width='100%';body.style.overflow='hidden';html.style.overflow='hidden';
+  }
+  function unlockPage(){if(!pageLock)return;const saved=pageLock;pageLock=null;for(const [key,val]of Object.entries(saved.body))document.body.style[key]=val;document.documentElement.style.overflow=saved.htmlOverflow;for(const [el,inert]of saved.inert)el.inert=inert;window.scrollTo({left:0,top:saved.y,behavior:'instant'});}
+  function syncMobile(){const modal=!panel.hidden&&mobile.matches;panel.setAttribute('aria-modal',String(modal));if(modal)lockPage();else unlockPage();mobileViewport();}
+  function setOpen(open,returnFocus=true){root.querySelector('.onroda-help__menu').open=false;panel.hidden=!open;root.classList.toggle('is-open',open);toggle.setAttribute('aria-expanded',String(open));syncMobile();if(open)input.focus({preventScroll:true});else if(returnFocus)toggle.focus({preventScroll:true});}
+  window.addEventListener('resize',syncMobile);if(window.visualViewport){window.visualViewport.addEventListener('resize',mobileViewport);window.visualViewport.addEventListener('scroll',mobileViewport);}
+  document.addEventListener('keydown',ev=>{if(ev.key!=='Tab'||panel.hidden||!mobile.matches)return;const elements=[...panel.querySelectorAll('button,input,select,textarea,a[href],summary')].filter(e=>!e.disabled&&e.getClientRects().length);if(!elements.length)return;const first=elements[0],last=elements[elements.length-1];if(ev.shiftKey&&document.activeElement===first){ev.preventDefault();last.focus();}else if(!ev.shiftKey&&document.activeElement===last){ev.preventDefault();first.focus();}});
   toggle.addEventListener('click',()=>setOpen(panel.hidden));close.addEventListener('click',()=>setOpen(false));
   form.addEventListener('submit',ev=>{ev.preventDefault();const raw=input.value.trim();if(!raw)return;input.value='';const answer=engine.turn(raw);bubble(E.safe(raw),true);render(answer);input.focus();});
-  document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!panel.hidden){ev.preventDefault();const menu=root.querySelector('.onroda-help__menu');if(menu.open){menu.open=false;menu.querySelector('summary').focus();}else setOpen(false);}});document.addEventListener('click',ev=>{if(!panel.hidden&&!root.contains(ev.target)){panel.hidden=true;toggle.setAttribute('aria-expanded','false');}});
+  document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!panel.hidden){ev.preventDefault();const menu=root.querySelector('.onroda-help__menu');if(menu.open){menu.open=false;menu.querySelector('summary').focus();}else setOpen(false);}});document.addEventListener('click',ev=>{if(!panel.hidden&&!root.contains(ev.target)){setOpen(false,false);}});
   // Aggregate counters exist only in this tab's memory. No transcript/addresses sent to analytics.
   for(const key of ['plan','airport','price','vehicle','human']){const b=button(caption(key),()=>action(key));b.dataset.action=key;topics.appendChild(b);}
   const reset=button('↺',()=>action('reset'));reset.className='onroda-help__reset';root.querySelector('.onroda-help__header').insertBefore(reset,close);

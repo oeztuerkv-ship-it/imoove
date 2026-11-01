@@ -54,7 +54,7 @@ test('44 duplicate quote clicks blocked',async()=>{let done;const c=I.createQuot
 test('45 invalid date/time/passenger counts',()=>{for(const q of ['2026-02-31','um 29:99','0 Personen'])assert.match(create().turn(q).text,/nicht gültig/);});
 test('46 health data not in handoff',()=>{const e=create();e.turn('Ich habe einen Rollstuhl und Diagnose Krebs');assert(!/Krebs|Rollstuhl/i.test(e.handoff()));});
 test('47 only explicit future corrections update values',()=>{const e=planned();e.turn('Doch lieber um sechs');assert.equal(e.state.trip.time,'06:00');assert.equal(e.state.trip.from,'Esslingen Bahnhofstraße 4');});
-test('48 120 versioned patterns, three languages retrievable',()=>{assert.equal(K.records.length,120);for(const r of K.records)for(const l of ['de','en','tr']){assert(K.answers[r.answer][l]);assert(E.recognize(r.questions[l]).some(x=>x.intent===r.intent),r.id+' '+l);}});
+test('48 124 versioned patterns, three languages retrievable',()=>{assert.equal(K.records.length,124);for(const r of K.records)for(const l of ['de','en','tr']){assert(K.answers[r.answer][l]);assert(E.recognize(r.questions[l]).some(x=>x.intent===r.intent),r.id+' '+l);}});
 test('49 already-known pickup answered from memory',()=>{const e=planned();const r=e.turn('Wo werde ich abgeholt?');assert.match(r.text,/Esslingen Bahnhofstraße 4/);});
 test('50 return date and time kept separate',()=>{const e=planned();e.turn('Rückfahrt am 2026-11-10 um 18:00');assert.equal(e.state.trip.returnDate,'2026-11-10');assert.equal(e.state.trip.returnTime,'18:00');assert.equal(e.state.trip.time,'05:00');});
 test('51 health details cannot leak through address fields',()=>{const e=planned();e.state.trip.from='Diagnose Krebs';assert(!e.handoff().includes('Krebs'));});
@@ -63,3 +63,11 @@ test('53 formal customer address',()=>{const e=create(),r=e.turn('Können Sie mi
 test('54 price enquiry does not require passenger booking details',()=>{const e=create();e.turn('Was kostet von Esslingen Bahnhofstraße 4 nach Flughafen Stuttgart?');assert.equal(e.state.expected,null);});
 test('55 invalid price value rejected',async()=>{const c=I.createQuoteClient(async()=>({ok:true,json:async()=>({...eligible,quote:{eligible:true,pricingMode:'fixed_price',priceEur:'45'}})}),'https://api.onroda.de/api');await assert.rejects(c.quote(quoteArgs));});
 test('56 true emergency overrides WhatsApp request',()=>assert.deepEqual(create().turn('Medizinischer Notfall WhatsApp bitte').actions,['emergency112']));
+
+test('57 large taxi availability topic recognized, no fake luggage',()=>{const e=create(),r=e.turn('Habt ihr ein Großraumtaxi?');assert.match(r.text,/bis zu sieben/);assert.equal(e.state.trip.bagType,undefined);});
+test('58 seven passengers and declined Koffern preserved',()=>{const e=create(),r=e.turn('Wir sind 7 Personen mit 7 Koffern');assert.equal(e.state.trip.people,7);assert.equal(e.state.trip.bags,7);assert.match(r.text,/Platzbedarf/);});
+test('59 eight passengers need personal arrangement',()=>{const e=create(),r=e.turn('Wir sind acht Personen');assert(r.actions.includes('whatsapp'));assert.match(r.text,/bis zu sieben/);});
+test('60 verified vehicle cleanliness',()=>{for(const q of ['Sind die Autos sauber und gepflegt?','Wie ist die Sauberkeit?','Habt ihr gepflegte Fahrzeuge?'])assert.match(create().turn(q).text,/gepflegt, sauber und rauchfrei/);});
+test('61 non-smoking service',()=>assert.match(create().turn('Sind die Autos rauchfrei?').text,/Nichtraucherfahrzeuge/));
+test('62 fluent German and English communication',()=>assert.match(create().turn('Sprechen die Fahrer fließend Deutsch und Englisch?').text,/fließend Deutsch/));
+test('63 actual smoking complaint goes to support',()=>assert(create().turn('Der Fahrer raucht').actions.includes('whatsapp')));

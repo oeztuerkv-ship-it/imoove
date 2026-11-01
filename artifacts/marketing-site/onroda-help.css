@@ -117,3 +117,14 @@
 @media(max-width:640px){.onroda-help__panel{top:max(8px,env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));bottom:max(8px,env(safe-area-inset-bottom,0px));left:max(8px,env(safe-area-inset-left,0px));width:auto;height:auto;max-height:none;border-radius:16px}.onroda-help__header{padding:8px 10px}.onroda-help__messages{padding:12px}.onroda-help__message{max-width:96%}}
 @media(max-width:380px){.onroda-help__avatar{display:none}.onroda-help__header{gap:5px}.onroda-help__menu>summary{padding-inline:5px}}
 @media(max-height:560px){.onroda-help__menu .onroda-help__topics{display:flex;max-height:130px}.onroda-help__header p{display:none}}
+
+/* Mobile is a separate opaque conversation surface, not a window over the homepage. */
+@media(max-width:640px){
+ .onroda-help.is-open::before{content:'';position:fixed;inset:0;z-index:1500;background:#f3f6f8}
+ .onroda-help__panel{top:var(--kardi-top,0px);left:0;right:0;bottom:auto;width:100%;height:var(--kardi-vh,100dvh);max-height:none;margin:0;border:0;border-radius:0;background:#f3f6f8;box-shadow:none}
+ .onroda-help__header{padding-top:max(8px,env(safe-area-inset-top,0px));padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+ .onroda-help__messages{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;background:#f3f6f8}
+ .onroda-help__form{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-bottom:max(6px,env(safe-area-inset-bottom,0px))}
+ .onroda-help__note{padding-bottom:max(8px,env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:640px) and (prefers-reduced-motion:no-preference){.onroda-help__panel:not([hidden]){animation:none}}

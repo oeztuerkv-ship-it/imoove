@@ -1,6 +1,6 @@
 /* Reviewed ONRODA FAQ examples: edit facts here, not in the conversation engine. */
 (function(root){"use strict";var data={
-  "version": "2026-11-01",
+  "version": "2026-11-01-services",
   "records": [
     {
       "id": 1,
@@ -304,7 +304,7 @@
     },
     {
       "id": 31,
-      "intent": "vehicle",
+      "intent": "service_quality",
       "answer": "clean",
       "questions": {
         "de": "Ist das Fahrzeug sauber?",
@@ -1201,6 +1201,46 @@
         "en": "I want to speak to a real person",
         "tr": "Gerçek bir insanla konuşmak istiyorum"
       }
+    },
+    {
+      "id": 121,
+      "intent": "group",
+      "answer": "group",
+      "questions": {
+        "de": "Habt ihr ein Großraumtaxi für sieben Personen?",
+        "en": "Do you have a large taxi for seven passengers?",
+        "tr": "Yedi kişilik büyük taksiniz var mı?"
+      }
+    },
+    {
+      "id": 122,
+      "intent": "service_quality",
+      "answer": "service_quality",
+      "questions": {
+        "de": "Sind eure Fahrzeuge sauber und gepflegt?",
+        "en": "Are your vehicles clean and well maintained?",
+        "tr": "Araçlarınız temiz ve bakımlı mı?"
+      }
+    },
+    {
+      "id": 123,
+      "intent": "non_smoking",
+      "answer": "non_smoking",
+      "questions": {
+        "de": "Sind die Autos rauchfrei?",
+        "en": "Are the cars smoke-free?",
+        "tr": "Araçlarda sigara içilmez mi?"
+      }
+    },
+    {
+      "id": 124,
+      "intent": "driver_language",
+      "answer": "driver_language",
+      "questions": {
+        "de": "Sprechen eure Fahrer fließend Deutsch und Englisch?",
+        "en": "Do your drivers speak German and English?",
+        "tr": "Şoförleriniz Almanca ve İngilizce konuşuyor mu?"
+      }
     }
   ],
   "answers": {
@@ -1305,9 +1345,9 @@
       "tr": "Ekibimiz araç tercihini değerlendirebilir. S Serisi, elektrikli araç veya belirli donanımın uygunluğunu ben onaylayamam."
     },
     "clean": {
-      "de": "Gepflegte Fahrzeuge sind Teil unseres Angebots. Bei einer konkreten Beanstandung kannst du dich direkt an unser Team wenden.",
-      "en": "Well-kept vehicles are part of our service. For a specific concern, please contact our team.",
-      "tr": "Bakımlı araçlar hizmetimizin bir parçasıdır. Belirli bir sorun için doğrudan ekibimize ulaşabilirsin."
+      "de": "Unsere Fahrzeuge sind gepflegt, sauber und rauchfrei. Du sollst dich auf deiner Fahrt wohlfühlen.",
+      "en": "Our vehicles are well maintained, clean and smoke-free. We want you to feel comfortable during your ride.",
+      "tr": "Araçlarımız bakımlı, temiz ve dumansızdır. Yolculuğunda rahat etmeni isteriz."
     },
     "equipment": {
       "de": "Sag uns bitte, welche Ausstattung dir wichtig ist. Unser Team prüft sie für das tatsächlich angebotene Fahrzeug.",
@@ -1450,14 +1490,14 @@
       "tr": "Güzergâhı şimdiden hazırlayabiliriz. Belirli rezervasyon talebi için daha sonra tarih ve saat gerekir."
     },
     "group": {
-      "de": "Für mehrere Personen müssen Sitzplätze und Gepäck gemeinsam passen. Ich bestätige keine Kapazität; unser Team stimmt das geeignete Fahrzeug mit dir ab.",
-      "en": "Seats and luggage space must fit the whole group. I cannot confirm capacity; our team arranges the right vehicle.",
-      "tr": "Koltuk ve bagaj alanı grubun tamamına uygun olmalı. Kapasite onaylayamam; uygun aracı ekibimiz planlar."
+      "de": "Ja 😊 Wir bieten Großraumtaxi für bis zu sieben Fahrgäste an. Wie viele Personen fahren mit und wie viel Gepäck habt ihr?",
+      "en": "Yes 😊 We offer large taxis for up to seven passengers. How many people are travelling and how much luggage do you have?",
+      "tr": "Evet 😊 Yedi yolcuya kadar büyük taksi sunuyoruz. Kaç kişi seyahat edecek ve ne kadar bagajınız var?"
     },
     "large_group": {
-      "de": "Für eine größere Gruppe oder mehrere Autos ist persönliche Planung sinnvoll. Ich kann Strecke, Termin, Personen und Gepäck für unser Team zusammenstellen.",
-      "en": "Large groups or multiple cars need personal planning. I can compile route, date, passengers and luggage for our team.",
-      "tr": "Büyük gruplar veya birden fazla araç için kişisel planlama gerekir. Güzergâh, tarih, kişi ve bagaj bilgilerini ekibimize hazırlayabilirim."
+      "de": "Unser Großraumtaxi ist für bis zu sieben Fahrgäste vorgesehen. Für acht oder mehr Personen stimmen wir mehrere Fahrzeuge oder eine andere Lösung persönlich mit dir ab.",
+      "en": "Our large taxi is intended for up to seven passengers. For eight or more, our team will arrange multiple vehicles or another solution with you personally.",
+      "tr": "Büyük taksimiz en fazla yedi yolcu içindir. Sekiz veya daha fazla kişi için ekibimiz birden fazla araç veya başka bir çözümü seninle planlar."
     },
     "child": {
       "de": "Wie viele Kinder fahren mit und welches Alter haben sie? Einen passenden Kindersitz muss unser Team vorab bestätigen.",
@@ -1663,6 +1703,21 @@
       "de": "Natürlich 😊 Unser Team hilft dir persönlich. Ich zeige dir die Zusammenfassung vor dem Öffnen von WhatsApp; versendet wird erst durch dich.",
       "en": "Of course 😊 Our team can help personally. I show the summary before opening WhatsApp; only you send the message.",
       "tr": "Elbette 😊 Ekibimiz kişisel olarak yardımcı olur. WhatsApp açılmadan önce özeti gösteririm; mesajı yalnızca sen gönderirsin."
+    },
+    "service_quality": {
+      "de": "Unsere Fahrzeuge sind gepflegt, sauber und rauchfrei. Du sollst dich auf deiner Fahrt wohlfühlen.",
+      "en": "Our vehicles are well maintained, clean and smoke-free. We want you to feel comfortable during your ride.",
+      "tr": "Araçlarımız bakımlı, temiz ve dumansızdır. Yolculuğunda rahat etmeni isteriz."
+    },
+    "non_smoking": {
+      "de": "Ja, unsere Fahrzeuge sind Nichtraucherfahrzeuge. Rauchen ist während der Fahrt nicht gestattet.",
+      "en": "Yes, our vehicles are non-smoking vehicles. Smoking is not permitted during the ride.",
+      "tr": "Evet, araçlarımızda sigara içilmez. Yolculuk sırasında sigara içilmesine izin verilmez."
+    },
+    "driver_language": {
+      "de": "Unsere Fahrer sprechen fließend Deutsch. Auch eine Verständigung auf Englisch ist möglich. Wenn dir eine bestimmte Sprache wichtig ist, gib sie bei deiner Anfrage an.",
+      "en": "Our drivers speak fluent German, and communication in English is also possible. If a particular language matters to you, mention it in your request.",
+      "tr": "Şoförlerimiz akıcı Almanca konuşur; İngilizce iletişim de mümkündür. Belirli bir dil senin için önemliyse talebinde belirt."
     }
   }
 };if(typeof module!=="undefined"&&module.exports)module.exports=data;else root.KardelenKnowledge=data;})(typeof globalThis!=="undefined"?globalThis:this);
