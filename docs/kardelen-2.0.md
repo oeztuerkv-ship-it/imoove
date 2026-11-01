@@ -79,3 +79,8 @@ Späteres echtes Sprachmodell ist für freie Sprache und breite Mehrsprachigkeit
 - Rechte/Module: öffentliche Beratung bleibt öffentlich; geschützte Kundenaktionen bleiben geschützt.
 
 Assets und HTML gemeinsam aus demselben Git-Stand veröffentlichen. Noch kein Production-Deploy in diesem Auftrag. Standard-Runbook und Freigabe beachten; SSH-Lesezugang erlaubt keinen Webroot-Schreibzugriff. Git-Push allein ist kein Live-Nachweis.
+
+## Chatbox: mehr Verlauf (Folgeauftrag 01.11.2026)
+Kompakter Kopf mit „Kardi / ONRODA · digital“, Themenmenü als natives details/summary-Overlay, Neustart als beschriftetes Icon. Themen stehen nicht dauerhaft unter dem Verlauf. Auswahl schließt das Menü; Escape schließt zunächst das offene Menü, danach die Chatbox. Mobile fast volle sichtbare Bildschirmhöhe mit Safe-Area-Abständen; Desktop breiter/höher. Lesbare Nachrichtenschrift 16px und 44px Bedienelemente erhalten. Wissensbasis, Dialogzustand, Preis-/Buchungswege unverändert.
+
+Browservergleich bei 390×844: Kopf 105→61px, sichtbarer Verlauf 321→658px. Mehr Verlauf auch bei 320/768/1440px; Themenwahl, Tastatur/Escape, Fokus und kein seitlicher Überlauf geprüft. Bestehende Browser-Regression inkl. Dialog, Preisprüfung, WhatsApp und Sprachwechsel grün. Keine echte iPhone-Tastaturprüfung. Assetversion einheitlich 20261101-3 auf neun Dokumenten; Preis-Aliase identisch. Auswirkungen: nur Marketing-Darstellung; API/DB, Admin, Partner, Mobile, Audit, E-Mail und Rechte unverändert. Keine Produktionseinspielung.

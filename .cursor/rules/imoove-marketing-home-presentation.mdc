@@ -48,3 +48,5 @@ alwaysApply: false
 - Tests: scripts/test-kardelen.cjs und scripts/test-kardelen-browser.cjs. 56 Unit-/Szenariotests inkl. 360 Muster-Sprachkombinationen, kontrollierte Browser-API-Mocks und echter Preis-Lesecheck mit eligible:false. Chromium-Test ist kein iPhone-/Safari-Nachweis. Details/Quellen/offene Integrationen: docs/kardelen-2.0.md. Kein Production-Deploy in diesem Auftrag.
 
 - Vedats Namensänderung 01.11.2026: sichtbare Beraterin heißt **Kardi**, einschließlich Begrüßung, Sender, Header, Aria-Labels und WhatsApp-Text. Technische kardelen-* Modulpfade/Globals bleiben stabil; nicht unnötig umbenennen.
+
+- Chatbox-Folgeauftrag: kompakter Kopf (61px), Themen via details/summary-Overlay statt permanentem Themenblock, Mobile mit Safe-Area fast bildschirmfüllend; Desktop bis 480px breit/780px hoch. Escape schließt offenes Themenmenü zuerst. UI-/Wissens-Assets auf allen neun Dokumenten v=20261101-3. Bei 390×844 wächst der Verlauf 321→658px; nicht durch kleinere Nachrichtenschrift gewinnen. Keine Dialog-/API-Änderung.

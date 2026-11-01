@@ -93,3 +93,27 @@
 @media(prefers-reduced-motion:no-preference){.onroda-help__panel:not([hidden]){animation:kardelen-appear .16s ease-out}@keyframes kardelen-appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}
 
 @media(max-width:640px){.onroda-help__topics{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;max-height:none}.onroda-help__topics button{flex-shrink:0}}
+
+/* Conversation-first layout: one compact header, optional overlaid topic menu. */
+.onroda-help__panel{width:min(480px,calc(100vw - 28px));height:min(780px,calc(100vh - 120px));height:min(780px,calc(100dvh - 120px));border-radius:18px}
+.onroda-help__header{position:relative;gap:8px;padding:8px 12px;min-height:60px;box-sizing:border-box}
+.onroda-help__header h2{font-size:18px;line-height:1.2}
+.onroda-help__header p{font-size:14px;line-height:1.25;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.onroda-help__avatar{width:28px;height:28px;flex-basis:28px;font-size:17px}
+.onroda-help .onroda-help__close,.onroda-help__reset{width:44px;height:44px;flex:0 0 44px;min-height:44px;max-width:none;padding:0}
+.onroda-help__reset{font-size:24px;line-height:1}
+.onroda-help__menu{flex-shrink:0}
+.onroda-help__menu>summary{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 8px;box-sizing:border-box;list-style:none;border-radius:9px;color:#fff;font-size:14px;cursor:pointer}
+.onroda-help__menu>summary::-webkit-details-marker{display:none}
+.onroda-help__menu>summary::after{content:'⌄';margin-left:5px}
+.onroda-help__menu[open]>summary{background:#ffffff1a}
+.onroda-help__menu>summary:focus-visible{outline:3px solid #b9dbf7;outline-offset:1px}
+.onroda-help__menu .onroda-help__topics{position:absolute;z-index:2;top:100%;left:0;right:0;display:flex;flex-wrap:wrap;max-height:180px;overflow:auto;box-sizing:border-box;padding:12px;border:1px solid #dce4ea;border-top:0;box-shadow:0 8px 18px #18252e18}
+.onroda-help__messages{padding:14px;gap:12px;scrollbar-gutter:stable}
+.onroda-help__message{padding:12px 14px}
+.onroda-help__sender{margin-bottom:4px}
+.onroda-help__form{padding:8px 12px 6px}
+.onroda-help__note{padding:0 12px 8px;font-size:14px;line-height:1.35}
+@media(max-width:640px){.onroda-help__panel{top:max(8px,env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));bottom:max(8px,env(safe-area-inset-bottom,0px));left:max(8px,env(safe-area-inset-left,0px));width:auto;height:auto;max-height:none;border-radius:16px}.onroda-help__header{padding:8px 10px}.onroda-help__messages{padding:12px}.onroda-help__message{max-width:96%}}
+@media(max-width:380px){.onroda-help__avatar{display:none}.onroda-help__header{gap:5px}.onroda-help__menu>summary{padding-inline:5px}}
+@media(max-height:560px){.onroda-help__menu .onroda-help__topics{display:flex;max-height:130px}.onroda-help__header p{display:none}}
