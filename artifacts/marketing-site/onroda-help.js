@@ -1,149 +1,61 @@
-/* Self-hosted FAQ helper. No AI service, network calls, storage or booking actions. */
-(function () {
-  "use strict";
-  var faq = [
-    { id: "price", question: "Was kostet meine Fahrt?", terms: ["preis", "preise", "wie viel", "wieviel", "euro", "gunstig", "billig", "kosten", "kostet", "teuer", "pauschal", "festpreis", "tarif", "taxameter"], answer: "Gerne helfe ich dir zum Preis 😊 Im Preisrechner kannst du deine Strecke eingeben und einen verfügbaren Pauschalpreis prüfen. Für einen Transfer mit besonderen Wünschen wähle „Transfer planen“ – ich stelle die Angaben für unser Team zusammen.", href: "/fixpreise/#fixpreis-calculator", link: "Strecke und Preis prüfen" },
-    { id: "flight", question: "Flugnummer oder Verspätung?", terms: ["flugnummer", "flug nummer", "verspatung", "verspaetung", "verspatet", "landet", "landung", "flug gestrichen", "flug andert", "ankunftszeit", "abflugzeit"], answer: "Ja, unser Team schaut nach deiner Flugnummer und prüft mögliche Verspätungen. Schick uns dafür bitte Flugnummer, Reisetag und deine geplante Abholzeit per WhatsApp. Dann stimmen wir die Abholung mit dir ab. Hier im Chat kann ich keine Live-Flugdaten abrufen.", href: "https://wa.me/4917684229016", link: "Flugdaten per WhatsApp besprechen" },
-    { id: "vehicle", question: "VIP oder E-Klasse möglich?", terms: ["vip", "e klasse", "eclass", "mercedes", "luxus", "premium", "fahrzeugwunsch", "kombi", "limousine", "business fahrzeug", "business class", "vipfahrzeug", "luxusfahrzeug"], answer: "Ja, einen schwarzen Mercedes-Benz E-Klasse Kombi kannst du bei uns anfragen 😊 Wie viele Personen fahren mit, und wie viel Gepäck habt ihr? Unser Team bestätigt dir das Fahrzeug für deinen Termin.", href: "https://wa.me/4917684229016", link: "Fahrzeugwunsch anfragen" },
-    { id: "airport", question: "Wie buche ich einen Flughafentransfer?", terms: ["flughafen", "airport", "transfer", "terminal", "treffpunkt", "abholen am flughafen"], answer: "Flughafentransfers kannst du über ONRODA anfragen. Prüfe deine Strecke im Preisrechner und buche anschließend in der App. Den genauen Treffpunkt und besondere Abholwünsche klärst du bei der Anfrage. Eine konkrete Fahrer-Verfügbarkeit muss für deine Fahrt bestätigt werden.", href: "/fixpreise/", link: "Zum Flughafentransfer" },
-    { id: "booking", question: "Wie bestelle ich ein Taxi?", terms: ["taxi", "taxifahrt", "taxibestellung", "buchen", "bestellen", "fahrt anfragen", "brauche eine fahrt", "will fahren"], answer: "Du kannst direkt in der ONRODA App eine Fahrt anfragen. Geht es um einen Flughafentransfer oder einen besonderen Fahrzeugwunsch? Wähle „Transfer planen“ – dann gehen wir die nötigen Angaben gemeinsam durch.", href: "/#jetzt-buchen", link: "Zur ONRODA App" },
-    { id: "luggage", question: "Wie viele Personen und Koffer passen?", terms: ["koffer", "gepack", "gepaeck", "handgepack", "reisegepack", "reisetasche", "taschen", "personen", "passagiere", "grossraum", "xl", "kinderwagen", "viel platz", "sitzplatze"], answer: "Drei oder vier Koffer? Nenne uns bitte auch die Anzahl der Personen und ob es große Koffer oder Handgepäck sind. Dann stimmen wir einen passenden Kombi oder ein größeres Fahrzeug mit dir ab. Kinderwagen oder zusätzliches Gepäck bitte dazuschreiben.", href: "https://wa.me/4917684229016", link: "Personen und Gepäck abstimmen" },
-    { id: "child", question: "Kann ich einen Kindersitz anfragen?", terms: ["kindersitz", "babyschale", "sitzerhohung", "sitzerhoehung", "baby", "kleinkind"], answer: "Teile einen benötigten Kindersitz bitte vorab persönlich mit. Ob ein passender Sitz gestellt werden kann, muss das Team für deine Anfrage bestätigen. Dieser Chat kann keine Ausstattung reservieren.", href: "https://wa.me/4917684229016", link: "Kindersitz persönlich anfragen" },
-    { id: "reservation", question: "Kann ich vorbestellen?", terms: ["vorbestellen", "vorbestellung", "reservieren", "reservierung", "morgen", "fruh", "frueh", "nachts", "uhrzeit", "termin"], answer: "Du kannst Fahrten in der ONRODA App für einen späteren Zeitpunkt planen. Gib Abholort, Ziel und gewünschten Zeitpunkt an. Maßgeblich ist die Bestätigung deiner Anfrage; dieser Chat kann keine Fahrt oder Abholzeit verbindlich bestätigen.", href: "/#jetzt-buchen", link: "Fahrt in der App planen" },
-    { id: "region", question: "Wo vermittelt ONRODA?", terms: ["gebiet", "region", "verfugbar", "verfuegbar", "baden wurttemberg", "baden wuerttemberg", "esslingen", "stuttgart", "leinfelden", "echterdingen", "filderstadt", "deutschland"], answer: "ONRODA vermittelt Fahrten in Stuttgart, Esslingen, Leinfelden-Echterdingen und ganz Baden-Württemberg. Ob für deinen Abholort und Zeitpunkt ein Fahrzeug verfügbar ist, ergibt sich aus deiner konkreten Anfrage. Weitere Strecken kannst du persönlich mit uns besprechen.", href: "https://wa.me/4917684229016", link: "Abholort persönlich klären" },
-    { id: "care", question: "Wie funktionieren Krankenfahrten?", terms: ["krankenfahrt", "dialyse", "arzt", "reha", "transportschein", "verordnung", "krankenkasse", "rollstuhl"], answer: "ONRODA unterstützt die Organisation von Krankenfahrten und die Erfassung der benötigten Unterlagen. Gib Rollstuhl- oder Sonderbedarf bei der Anfrage an. Eine Kostenübernahme oder Genehmigung durch die Krankenkasse kann dieser Chat nicht prüfen oder bestätigen.", href: "/#care", link: "Informationen zu Krankenfahrten" },
-    { id: "business", question: "Gibt es Geschäfts- und Firmenfahrten?", terms: ["geschaftsreise", "geschaeftsreise", "firma", "firmen", "unternehmen", "hotel", "kostenstelle", "gutschein", "partner", "rechnung", "firmenrechnung", "sammelrechnung"], answer: "ONRODA bietet Angebote für Unternehmen, Hotels und Reisepartner mit Codes, Kostenstellen und digitaler Abrechnung. Ein Partner-Zugang erfolgt nach Prüfung und Freigabe. Welche Abrechnung für dich möglich ist, klärt das Team mit dir.", href: "/#unternehmen", link: "Angebote für Unternehmen" },
-    { id: "payment", question: "Wie kann ich bezahlen?", terms: ["bezahlen", "zahlung", "bar", "kreditkarte", "kreditkartezahlen", "karte", "kartenzahlung", "cash", "visa", "mastercard", "apple pay", "google pay", "beleg", "quittung"], answer: "Klar, bar oder mit Kreditkarte geht beides 😊 Für eine Firmenfahrt mit Rechnung hilft dir unser Team gerne weiter.", href: "/#jetzt-buchen", link: "Buchung und Zahlung in der App" },
-    { id: "cancel", question: "Wie storniere ich eine Fahrt?", terms: ["stornieren", "storno", "absagen", "abbrechen", "anderung", "aenderung", "umbuchen"], answer: "Eine bestehende Fahrt verwaltest du in der App. Ob eine Stornierung möglich ist und welche Kosten angezeigt werden, hängt von Fahrtstatus und Buchungsbedingungen ab. Dieser Hilfe-Chat kann keine Fahrt stornieren, umbuchen oder Gebühren erlassen.", href: "https://wa.me/4917684229016", link: "Bei Rückfragen persönlich melden" },
-    { id: "tracking", question: "Wo ist mein Fahrer?", terms: ["wo ist mein fahrer", "fahrer standort", "live tracking", "wo bleibt", "fahrer unterwegs", "wann kommt", "ankunft"], answer: "Den Fahrerstatus und verfügbare Ankunftsinformationen siehst du in deiner aktiven Fahrt in der ONRODA App. Dieser Hilfe-Chat hat keinen Zugriff auf deine Buchung oder Live-Standorte. Wenn etwas nicht passt, melde dich bitte persönlich.", href: "/#jetzt-buchen", link: "Zur ONRODA App" },
-    { id: "contact", question: "Wie erreiche ich euch?", terms: ["kontakt", "erreiche", "erreichen", "anschreiben", "telefon", "whatsapp", "fundsache", "verloren", "vergessen", "beschwerde", "hilfe", "support"], answer: "Für persönliche Anliegen, besondere Wünsche oder Rückfragen zu einer Fahrt erreichst du ONRODA über WhatsApp. Dieser Hilfe-Chat beantwortet allgemeine Fragen und kann keine individuellen Buchungsdaten einsehen.", href: "https://wa.me/4917684229016", link: "ONRODA per WhatsApp kontaktieren" }
-  ];
-  function normalize(value) {
-    return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, " ").trim();
-  }
-  function findAnswers(value) {
-    var query = " " + normalize(value).slice(0, 400) + " ";
-    var matches = faq.map(function (item, index) {
-      var score = item.terms.reduce(function (sum, term) {
-        var token = normalize(term);
-        // Match complete words/phrases, not 'bar' inside unrelated words.
-        var hit = query.indexOf(" " + token + " ") >= 0;
-        if (!hit && token.length >= 7 && token.indexOf(" ") < 0) {
-          hit = query.trim().split(/\s+/).some(function (word) { return word.indexOf(token) === 0; });
-        }
-        return sum + (hit ? (token.indexOf(" ") >= 0 ? 3 : 1) : 0);
-      }, 0);
-      return { item: item, score: score, index: index };
-    }).filter(function (match) { return match.score > 0; });
-    if (matches.some(function (match) { return match.item.id !== "booking"; })) {
-      matches = matches.filter(function (match) { return match.item.id !== "booking"; });
-    }
-    return matches.sort(function (a, b) { return b.score - a.score || a.index - b.index; }).slice(0, 2).map(function (match) { return match.item; });
-  }
-  if (typeof module !== "undefined" && module.exports) module.exports = { faq: faq, normalize: normalize, findAnswers: findAnswers };
-  if (typeof document === "undefined" || !document.body || document.getElementById("onroda-help-toggle")) return;
-  var root = document.createElement("div");
-  root.className = "onroda-help";
-  root.innerHTML = '<button type="button" class="onroda-help__toggle" id="onroda-help-toggle" aria-label="Kardelen – ONRODA Fragen und Antworten öffnen" aria-controls="onroda-help-panel" aria-expanded="false" title="Fragen &amp; Antworten"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H5l-4 3V11.5a10 10 0 0 1 20 0Z" transform="translate(1 -2) scale(.92)"/><path d="M9.5 8a2.5 2.5 0 0 1 5 .3c0 1.8-2.5 2-2.5 3.7M12 15.5h.01"/></svg></button><section class="onroda-help__panel" id="onroda-help-panel" role="dialog" aria-modal="false" aria-labelledby="onroda-help-title" hidden><header class="onroda-help__header"><div><h2 id="onroda-help-title">Kardelen</h2><p>Deine digitale ONRODA-Assistentin</p></div><button type="button" class="onroda-help__close" aria-label="Hilfe schließen">×</button></header><div class="onroda-help__messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="Fragen und Antworten"></div><div class="onroda-help__topics" aria-label="Häufige Themen"></div><form class="onroda-help__form"><label for="onroda-help-input">Deine Frage</label><div><input id="onroda-help-input" name="question" type="text" maxlength="400" aria-label="Deine Frage" autocomplete="off" placeholder="Zum Beispiel: Wir haben 4 Koffer" required /><button type="submit">Senden</button></div></form><p class="onroda-help__note">Persönlich weiter? Schreib uns auf WhatsApp.</p></section>';
+/* Kardi 2 view. Facts and conversation state live in separate versioned modules. */
+(function(){
+  'use strict';
+  if(typeof document==='undefined'||!document.body||document.getElementById('onroda-help-toggle'))return;
+  const E=window.KardelenEngine,I=window.KardelenIntegrations;if(!E||!I)return; // Existing static WhatsApp remains available.
+  const engine=E.create(),config=I.config(document,window.location),quotes=I.createQuoteClient(window.fetch.bind(window),config.apiBase);
+  const root=document.createElement('div');root.className='onroda-help';
+  root.innerHTML='<button type="button" class="onroda-help__toggle" id="onroda-help-toggle" aria-label="Kardi öffnen" aria-controls="onroda-help-panel" aria-expanded="false" title="Kardi"><span aria-hidden="true">K</span></button><section class="onroda-help__panel" id="onroda-help-panel" role="dialog" aria-modal="false" aria-labelledby="onroda-help-title" hidden><header class="onroda-help__header"><span class="onroda-help__avatar" aria-hidden="true">K</span><div><h2 id="onroda-help-title">Kardi</h2><p>Deine digitale ONRODA-Assistentin</p></div><button type="button" class="onroda-help__close" aria-label="Hilfe schließen">×</button></header><div class="onroda-help__messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="Gespräch"></div><div class="onroda-help__topics" aria-label="Vorschläge"></div><form class="onroda-help__form"><label for="onroda-help-input">Deine Nachricht</label><div><input id="onroda-help-input" name="question" type="text" maxlength="600" autocomplete="off" required placeholder="Schreib deine Frage …" /><button type="submit">Senden</button></div></form><p class="onroda-help__note">Kein Passwort oder Zahlungsdaten eingeben. <a href="/datenschutz">Datenschutz</a></p></section>';
   document.body.appendChild(root);
-  var toggle = root.querySelector(".onroda-help__toggle");
-  var panel = root.querySelector(".onroda-help__panel");
-  var close = root.querySelector(".onroda-help__close");
-  var messages = root.querySelector(".onroda-help__messages");
-  var topics = root.querySelector(".onroda-help__topics");
-  var lastTopic = "";
-  var luggageDetails = {};
-  var plan = null;
-  var planSteps = [
-    { key:"route", question:"Gerne, planen wir deinen Transfer 😊 Von wo nach wo möchtest du fahren? Zum Beispiel: Esslingen → Flughafen Stuttgart." },
-    { key:"date", question:"An welchem Tag und um wie viel Uhr möchtest du abgeholt werden? Bei einer Flughafen-Abholung nenne bitte die geplante Landezeit." },
-    { key:"flight", question:"Wie lautet deine Flugnummer? Unser Team kann damit nach Verspätungen schauen. Falls sie noch fehlt oder du keine hast, schreib einfach ‚ohne‘." },
-    { key:"luggage", question:"Wie viele Personen fahren mit, und wie viele große Koffer oder Handgepäckstücke habt ihr? Sag auch dazu, wenn ein Kindersitz, Rollstuhl oder besonders viel Platz gebraucht wird." }
-  ];
-  function stopPlan() { plan = null; planCancel.hidden = true; }
-  function planReply(question) {
-    var normalized = normalize(question);
-    if (/^(abbrechen|stop|stopp|beenden|planung beenden)$/.test(normalized)) { stopPlan(); addMessage("Alles klar, die Planung ist beendet. Was möchtest du stattdessen wissen?"); return; }
-    var specific = findAnswers(question);
-    var isQuestion = /\?/.test(question) || /^(kann|konnen|darf|geht|was kostet|wie kann|wie bezahl|akzeptiert|habt ihr)\b/.test(normalized);
-    if (isQuestion) {
-      if (specific.length) specific.forEach(function (item) { addMessage(item.answer, false, item); });
-      else addMessage("Das klärt unser Team gerne mit dir. Für deine Transferanfrage brauche ich noch diese Angabe:");
-      addMessage(planSteps[plan.step].question); return;
-    }
-    if (question.length < 3) { addMessage("Magst du die Angabe etwas genauer schreiben? " + planSteps[plan.step].question); return; }
-    plan.values[planSteps[plan.step].key] = question;
-    plan.step += 1;
-    if (plan.step < planSteps.length) { addMessage(planSteps[plan.step].question); return; }
-    var values = plan.values;
-    var summary = "Transferanfrage ONRODA\nStrecke: " + values.route + "\nTermin / Uhrzeit: " + values.date + "\nFlugnummer: " + values.flight + "\nPersonen / Gepäck / Wünsche: " + values.luggage;
-    addMessage("Das habe ich für dich zusammengestellt:\n\n" + summary + "\n\nSchick die Angaben jetzt unserem Team. Wir klären Fahrzeug, Platz und Preis mit dir. Das ist noch keine bestätigte Buchung.", false, {id:"plan",href:"https://wa.me/4917684229016?text=" + encodeURIComponent(summary),link:"Anfrage auf WhatsApp öffnen"});
-    stopPlan();
+  const toggle=root.querySelector('.onroda-help__toggle'),panel=root.querySelector('.onroda-help__panel'),close=root.querySelector('.onroda-help__close'),messages=root.querySelector('.onroda-help__messages'),topics=root.querySelector('.onroda-help__topics'),form=root.querySelector('.onroda-help__form'),input=root.querySelector('input');
+  const lang=()=>engine.state.language;
+  const tr=(de,en,turk)=>({de,en,tr:turk})[lang()];
+  const captions={plan:['🚕 Taxi vorbereiten','🚕 Prepare a taxi ride','🚕 Taksi hazırla'],airport:['✈️ Flughafentransfer','✈️ Airport transfer','✈️ Havalimanı transferi'],price:['💶 Preis / Festpreis','💶 Fare / fixed fare','💶 Fiyat / sabit fiyat'],vehicle:['🚘 Fahrzeuge & Gepäck','🚘 Vehicles & luggage','🚘 Araç ve bagaj'],human:['💬 Persönliche Beratung','💬 Personal assistance','💬 Kişisel danışma'],whatsapp:['Über WhatsApp anfragen','Ask via WhatsApp','WhatsApp ile sor'],app:['App / Buchungswege ansehen','View app / booking options','Uygulama / rezervasyon yolları'],partner:['Partner-Anfrage ansehen','View partner enquiry','İş ortaklığı başvurusu'],edit:['Angaben ändern','Edit details','Bilgileri değiştir'],reset:['Neues Gespräch','New conversation','Yeni sohbet'],stop:['Planung beenden','Stop planning','Planlamayı bitir'],continue:['Fahrt weiter vorbereiten','Continue preparing ride','Yolculuğu hazırlamaya devam et'],confirm:['Ja, ersetzen','Yes, replace','Evet, değiştir'],keep:['Bisherige Angaben behalten','Keep existing details','Önceki bilgileri koru'],emergency112:['112 anrufen','Call 112','112’yi ara'],emergency110:['110 anrufen','Call 110','110’u ara']};
+  function caption(key){return(captions[key]||[key,key,key])[['de','en','tr'].indexOf(lang())];}
+  function element(tag,cls,content){const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=content;return e;}
+  function button(label,fn){const b=element('button','',label);b.type='button';b.addEventListener('click',fn);return b;}
+  function link(parent,title,href){if(!href)return;const a=element('a','',title);a.href=href;if(/^https:/.test(href)){a.target='_blank';a.rel='noopener noreferrer';}parent.appendChild(a);return a;}
+  function scroll(){messages.scrollTop=messages.scrollHeight;}
+  function bubble(body,user=false){const row=element('div','onroda-help__message'+(user?' onroda-help__message--user':''));row.appendChild(element('span','onroda-help__sender',user?tr('Du','You','Sen'):'Kardi'));row.appendChild(element('p','',body));messages.appendChild(row);while(messages.children.length>48)messages.firstElementChild.remove();scroll();return row;}
+  function localize(){panel.lang=lang();root.querySelector('.onroda-help__header p').textContent=tr('Deine digitale ONRODA-Assistentin','Your digital ONRODA assistant','Dijital ONRODA asistanın');close.setAttribute('aria-label',tr('Hilfe schließen','Close help','Yardımı kapat'));toggle.setAttribute('aria-label',tr('Kardi öffnen','Open Kardi','Kardi’i aç'));form.querySelector('label').textContent=tr('Deine Nachricht','Your message','Mesajın');input.placeholder=tr('Schreib deine Frage …','Type your question …','Sorunu yaz …');form.querySelector('button').textContent=tr('Senden','Send','Gönder');const note=root.querySelector('.onroda-help__note');note.firstChild.textContent=tr('Kein Passwort oder Zahlungsdaten eingeben. ','Do not enter passwords or payment data. ','Şifre veya ödeme bilgisi girme. ');note.querySelector('a').textContent=tr('Datenschutz','Privacy','Gizlilik');messages.setAttribute('aria-label',tr('Gespräch','Conversation','Sohbet'));topics.setAttribute('aria-label',tr('Vorschläge','Suggestions','Öneriler'));for(const b of topics.querySelectorAll('button'))b.textContent=caption(b.dataset.action);const r=root.querySelector('.onroda-help__reset');if(r)r.textContent=tr('Neu','Reset','Yeni');}
+  function renderSummary(parent,rows){if(!rows||!rows.length)return;const box=element('section','onroda-help__summary');box.appendChild(element('h3','',tr('Deine Fahrt · Anfrage','Your ride · Request','Yolculuğun · Talep')));const dl=element('dl');for(const row of rows){dl.appendChild(element('dt','',row.label));dl.appendChild(element('dd','',row.value));}box.appendChild(dl);box.appendChild(element('p','onroda-help__status',tr('Vorbereitet – noch nicht gebucht','Prepared – not booked','Hazırlandı – rezervasyon yapılmadı')));parent.appendChild(box);}
+  function contactFallback(row){link(row,tr('Telefon','Phone','Telefon'),config.phone);link(row,tr('E-Mail','Email','E-posta'),config.mail);}
+  function previewWhatsApp(){
+    const row=bubble(tr('Prüfe bitte die Nachricht. Erst wenn du WhatsApp öffnest und dort selbst sendest, erhält unser Team die Anfrage. Gesundheitsdetails werden nicht automatisch übernommen.','Please review the message. Only after you open WhatsApp and send it yourself does our team receive the request. Health details are not included automatically.','Mesajı kontrol et. Ekibimiz ancak WhatsApp’ı açıp kendin gönderdiğinde talebi alır. Sağlık ayrıntıları otomatik eklenmez.'));
+    const label=element('label','',tr('Nachricht an ONRODA','Message to ONRODA','ONRODA’ya mesaj'));const area=element('textarea','onroda-help__handoff');area.value=engine.handoff();area.maxLength=2400;label.appendChild(area);row.appendChild(label);
+    const actions=element('div','onroda-help__actions');const a=link(actions,tr('WhatsApp öffnen – dort prüfen und senden','Open WhatsApp – review and send there','WhatsApp’ı aç – kontrol edip gönder'),I.whatsapp(config,area.value));
+    if(a){a.addEventListener('click',ev=>{const clean=E.safeSupport(area.value);if(!clean||clean!==area.value){ev.preventDefault();bubble(tr('Bitte entferne Gesundheitsdetails, Passwörter und Zahlungsdaten aus der Nachricht.','Please remove health details, passwords and payment data from the message.','Lütfen sağlık ayrıntıları, şifre ve ödeme bilgilerini mesajdan çıkar.'));return;}a.href=I.whatsapp(config,clean);engine.state.metrics.whatsappClicks=(engine.state.metrics.whatsappClicks||0)+1;});area.addEventListener('input',()=>{a.href=I.whatsapp(config,E.safeSupport(area.value)||'');});}
+    else row.appendChild(element('p','',tr('WhatsApp ist hier nicht eingerichtet. Nutze bitte einen anderen Kontaktweg.','WhatsApp is not configured here. Please use another contact method.','WhatsApp burada ayarlı değil. Lütfen başka iletişim yolunu kullan.')));
+    contactFallback(actions);row.appendChild(actions);scroll();area.focus();
   }
-  var form = root.querySelector(".onroda-help__form");
-  var input = root.querySelector("input");
-  function addMessage(text, user, item) {
-    var row = document.createElement("div");
-    row.className = "onroda-help__message" + (user ? " onroda-help__message--user" : "");
-    var label = document.createElement("span"); label.className = "onroda-help__sender"; label.textContent = user ? "Du" : "Kardelen"; row.appendChild(label);
-    if (item && item.id === "vehicle") { var photo = document.createElement("img"); photo.src = "/images/e-klasse-kombi-flughafen.jpg"; photo.alt = "Illustration: schwarze Mercedes E-Klasse als Kombi"; photo.className = "onroda-help__vehicle"; photo.width = 1536; photo.height = 1024; photo.loading = "lazy"; row.appendChild(photo); }
-    var p = document.createElement("p"); p.textContent = text; row.appendChild(p);
-    if (item) {
-      var link = document.createElement("a"); link.href = item.href; link.textContent = item.link + " ↗";
-      if (item.href.indexOf("https://wa.me/") === 0) { link.target = "_blank"; link.rel = "noopener noreferrer"; }
-      row.appendChild(link);
-      if (item.href.indexOf("https://wa.me/") !== 0) { var contact = document.createElement("a"); contact.href = "https://wa.me/4917684229016"; contact.target = "_blank"; contact.rel = "noopener noreferrer"; contact.className = "onroda-help__contact"; contact.textContent = "Persönlich auf WhatsApp →"; row.appendChild(contact); }
-    }
-    messages.appendChild(row);
-    while (messages.children.length > 32) messages.removeChild(messages.firstElementChild);
-    messages.scrollTop = messages.scrollHeight;
+  function appOptions(){const row=bubble(tr('Die vorhandene digitale Buchung erfolgt in der ONRODA-App. Bereits genannte Angaben werden nicht automatisch in die App übertragen; halte deine Zusammenfassung bereit. Eine persönliche WhatsApp-Anfrage geht auch ohne App.','Existing digital booking uses the ONRODA app. Your details are not automatically transferred to the app; keep your summary handy. You can also ask via WhatsApp without installing it.','Mevcut dijital rezervasyon ONRODA uygulamasında yapılır. Bilgilerin uygulamaya otomatik aktarılmaz; özetini hazır tut. Uygulama kurmadan da WhatsApp ile sorabilirsin.'));if(config.ios)link(row,tr('ONRODA im App Store','ONRODA on the App Store','App Store’da ONRODA'),config.ios);if(config.android)link(row,tr('ONRODA bei Google Play','ONRODA on Google Play','Google Play’de ONRODA'),config.android);else row.appendChild(element('p','',tr('Ein verifizierter Google-Play-Link ist hier noch nicht eingerichtet.','A verified Google Play link is not configured here yet.','Doğrulanmış Google Play bağlantısı henüz ayarlı değil.')));link(row,tr('App-Informationen ansehen','View app information','Uygulama bilgileri'),config.appPage);row.appendChild(button(caption('whatsapp'),previewWhatsApp));scroll();}
+  function priceForm(){
+    const row=bubble(tr('Prüfe Start und Ziel möglichst genau. Mit „Preis jetzt prüfen“ sendest du diese Angaben an die bestehende ONRODA-Preis-API; sie nutzt die vorhandenen Streckenanbieter. Das bucht keine Fahrt.','Please verify precise pickup and destination details. “Check fare now” sends them to the existing ONRODA fare API, using its route providers. This does not book a ride.','Kalkış ve varış bilgilerini net olarak kontrol et. “Fiyatı kontrol et” mevcut ONRODA fiyat API’sine gönderir ve mevcut güzergâh sağlayıcılarını kullanır. Bu, rezervasyon yapmaz.'));
+    const f=element('form','onroda-help__quote-form');const fields={};for(const[key,title]of [['fromFull',tr('Genaue Abholung','Exact pickup','Tam alınma noktası')],['toFull',tr('Genaues Ziel','Exact destination','Tam varış noktası')]]){const l=element('label','',title),i=element('input');i.name=key;i.required=true;i.maxLength=180;i.value=engine.state.trip[key==='fromFull'?'from':'to']||'';l.appendChild(i);f.appendChild(l);fields[key]=i;}
+    const label=element('label','',tr('Preis-Fahrzeugklasse, keine Verfügbarkeitszusage','Fare vehicle class, not availability confirmation','Fiyat araç sınıfı, uygunluk onayı değil')),select=element('select');select.name='vehicle';for(const[k,name]of [['standard','Standard'],['xl','XL'],['wheelchair',tr('Rollstuhl','Wheelchair','Tekerlekli sandalye')]]){const o=element('option','',name);o.value=k;select.appendChild(o);}select.value=engine.state.trip.people>4?'xl':'standard';label.appendChild(select);f.appendChild(label);
+    const submit=element('button','',tr('Preis jetzt prüfen','Check fare now','Fiyatı kontrol et'));submit.type='submit';f.appendChild(submit);const status=element('p','');status.setAttribute('role','status');f.appendChild(status);row.appendChild(f);
+    f.addEventListener('submit',async ev=>{ev.preventDefault();if(quotes.busy())return;const from=fields.fromFull.value.trim(),to=fields.toFull.value.trim();if(E.safeSupport(from)!==from||E.safeSupport(to)!==to){status.textContent=tr('Bitte keine sensiblen Daten in die Adressfelder eingeben.','Please do not enter sensitive data in address fields.','Adres alanlarına hassas veri girme.');return;}const precise=v=>/\d/.test(v)||(/\b(flughafen|airport|havalimani|bahnhof|station)\b/.test(E.normalize(v))&&E.normalize(v).split(' ').length>=2);if(from.length<4||to.length<4||!precise(from)||!precise(to)){status.textContent=tr('Bitte genaue Start- und Zielangaben eintragen.','Please enter precise pickup and destination details.','Tam kalkış ve varış bilgilerini gir.');return;}
+      engine.state.trip.from=from;engine.state.trip.to=to;engine.state.revision++;const revision=engine.state.revision;engine.state.quote=null;submit.disabled=true;status.textContent=tr('Preis wird vom ONRODA-System geprüft …','Checking fare with ONRODA …','ONRODA fiyatı kontrol ediliyor …');
+      try{const data=await quotes.quote({fromFull:from,toFull:to,vehicle:select.value});if(revision!==engine.state.revision){status.textContent=tr('Angaben geändert. Bitte erneut prüfen.','Details changed. Please check again.','Bilgiler değişti. Yeniden kontrol et.');return;}
+        if(!data.eligible){status.textContent=tr('Für diese Strecke wurde kein verfügbarer Festpreis geliefert. Unser Team kann ein Angebot prüfen.','No eligible fixed fare was returned for this route. Our team can review a quote.','Bu güzergâh için uygun sabit fiyat dönmedi. Ekibimiz teklif değerlendirebilir.');row.appendChild(button(caption('whatsapp'),previewWhatsApp));return;}
+        const formatted=new Intl.NumberFormat(lang()==='de'?'de-DE':lang()==='tr'?'tr-TR':'en-GB',{style:'currency',currency:'EUR'}).format(data.priceEur);status.textContent='';const price=element('div','onroda-help__price');price.appendChild(element('strong','',tr('Festpreis laut Preis-API','Fixed fare from fare API','Fiyat API’sinden sabit fiyat')+': '+formatted));price.appendChild(element('p','',tr('Vom System ermittelte Strecke – bitte prüfen:','System-resolved route – please check:','Sistemin belirlediği güzergâh – lütfen kontrol et:')+'\n'+data.from+' → '+data.to));price.appendChild(element('p','',tr('Keine Buchungs- oder Fahrzeugbestätigung. Maßgeblich sind bestätigte Buchungsbedingungen.','Not a booking or vehicle confirmation. Confirmed booking conditions apply.','Rezervasyon veya araç onayı değildir. Onaylı rezervasyon koşulları geçerlidir.')));const review=element('p','',tr('Bitte bestätige zuerst die vom System ermittelten Orte:','Please confirm the locations resolved by the system first:','Önce sistemin belirlediği yerleri onayla:')+'\n'+data.from+' → '+data.to);row.appendChild(review);const confirm=button(tr('Ja, diese Strecke stimmt','Yes, this route is correct','Evet, bu güzergâh doğru'),()=>{if(revision!==engine.state.revision){review.textContent=tr('Angaben geändert. Bitte erneut prüfen.','Details changed. Please check again.','Bilgiler değişti. Yeniden kontrol et.');return;}confirm.disabled=true;engine.state.quote=data;row.appendChild(price);row.appendChild(button(caption('app'),appOptions));row.appendChild(button(caption('whatsapp'),previewWhatsApp));scroll();});row.appendChild(confirm);
+      }catch(_){status.textContent=tr('Der Preis ist gerade nicht zuverlässig abrufbar. Bitte erneut versuchen oder persönlich anfragen.','A reliable fare is currently unavailable. Please try again or ask our team.','Şu anda güvenilir fiyat alınamıyor. Tekrar dene veya ekibimize sor.');row.appendChild(button(caption('whatsapp'),previewWhatsApp));}
+      finally{submit.disabled=false;scroll();}
+    });scroll();fields.fromFull.focus();
   }
-  function setOpen(open) {
-    panel.hidden = !open; toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) input.focus(); else toggle.focus();
+  function action(key){
+    if(key==='whatsapp'){previewWhatsApp();return;}if(key==='app'){appOptions();return;}if(key==='price'&&engine.state.trip.from&&engine.state.trip.to){priceForm();return;}
+    if(key==='reset'){quotes.cancel();messages.textContent='';}
+    render(engine.turn('',key));
   }
-  function reply(question, topicId) {
-    question = String(question || "").trim().slice(0, 400); if (!question) return;
-    addMessage(question, true); input.value = "";
-    if (topicId === "plan" || (!plan && /\b(?:ich|wir) (?:will|wollen|mochte|mochten|brauche|brauchen)\b.*\b(?:taxi|transfer|flughafen)\b/.test(normalize(question)) && !findAnswers(question).some(function (item) { return item.id === "price"; }))) { plan = {step:0,values:{}}; planCancel.hidden = false; addMessage(planSteps[0].question); return; }
-    if (plan) { planReply(question); return; }
-    if (/^(hallo|hi|hey|guten tag|guten morgen|guten abend)[ !.]*$/i.test(question)) { addMessage("Hallo! Frag mich zu Preisen, Flughafentransfers, Flugnummern, Fahrzeugwünschen oder anderen ONRODA-Themen."); return; }
-    if (/^(danke|vielen dank|dankeschon|dankeschoen)[ !.]*$/i.test(normalize(question))) { addMessage("Gern! Wenn du persönlich Hilfe brauchst, erreichst du uns über WhatsApp.", false, faq[faq.length - 1]); return; }
-    var answers = topicId ? faq.filter(function (item) { return item.id === topicId; }) : findAnswers(question);
-    if (!answers.length && lastTopic === "luggage" && /\b(\d{1,2}|zwei|drei|vier|funf|sechs|grosse|gross|kleine|klein|handgepack)\b/.test(normalize(question))) answers = faq.filter(function (item) { return item.id === "luggage"; });
-    lastTopic = answers.length ? answers[0].id : "";
-    if (!answers.length) { addMessage("Da bin ich mir nicht sicher. Schreib unserem Team kurz auf WhatsApp – dort klären wir das gerne persönlich mit dir.", false, faq[faq.length - 1]); return; }
-    answers.forEach(function (item) {
-      var answer = item.answer;
-      if (item.id === "luggage") {
-        var normalized = normalize(question).replace(/\bzwei\b/g,"2").replace(/\bdrei\b/g,"3").replace(/\bvier\b/g,"4").replace(/\bfunf\b/g,"5").replace(/\bsechs\b/g,"6");
-        var bags = normalized.match(/\b(\d{1,2})\s*(?:(?:grosse|grosser|grossen|kleine|kleiner|kleinen)\s+)?(?:koffer|gepack|taschen|handgepack)\b/);
-        var people = normalized.match(/\b(\d{1,2})\s*(?:personen|person|erwachsene|leute|fahrgaste)\b/) || normalized.match(/\b(?:wir sind|zu)\s*(\d{1,2})\b/);
-        if (bags) luggageDetails.bags = bags[1];
-        if (people) luggageDetails.people = people[1];
-        if (/\b(?:gross|grosse|grossen|grosser)\b/.test(normalized)) luggageDetails.size = "große Koffer";
-        else if (/\bhandgepack\b/.test(normalized)) luggageDetails.size = "Handgepäckstücke";
-        if (!luggageDetails.bags) answer = "Wie viele Koffer habt ihr dabei? Sag mir bitte auch, wie viele Personen mitfahren und ob es große Koffer oder Handgepäck sind 😊";
-        else if (!luggageDetails.people) answer = "Okay, " + luggageDetails.bags + " Gepäckstücke 😊 Wie viele Personen fahren mit?" + (luggageDetails.size ? "" : " Und sind das große Koffer oder Handgepäck?");
-        else if (!luggageDetails.size) answer = "Alles klar: " + luggageDetails.people + " Personen und " + luggageDetails.bags + " Gepäckstücke. Sind das große Koffer oder Handgepäck?";
-        else answer = "Danke! " + luggageDetails.people + " Personen und " + luggageDetails.bags + " " + luggageDetails.size + ". Damit kann unser Team prüfen, ob ein Mercedes-Kombi passt oder ihr mehr Platz braucht. Über WhatsApp könnt ihr das passende Fahrzeug direkt abstimmen.";
-      }
-      addMessage(answer, false, item);
-    });
-  }
-  var planButton = document.createElement("button"); planButton.type = "button"; planButton.className = "onroda-help__plan"; planButton.textContent = "Transfer planen →";
-  planButton.addEventListener("click", function () { reply("Ich möchte meinen Transfer planen", "plan"); }); topics.appendChild(planButton);
-  var planCancel = document.createElement("button"); planCancel.type = "button"; planCancel.textContent = "Planung beenden"; planCancel.hidden = true;
-  planCancel.addEventListener("click", function () { stopPlan(); addMessage("Alles klar, die Planung ist beendet. Deine Angaben wurden nicht an uns gesendet."); }); topics.appendChild(planCancel);
-  ["price", "vehicle", "luggage", "flight", "payment", "reservation"].forEach(function (id) {
-    var item = faq.filter(function (entry) { return entry.id === id; })[0];
-    var button = document.createElement("button"); button.type = "button"; button.textContent = ({price:"Preis prüfen",vehicle:"Mercedes-Kombi",luggage:"3–4 Koffer",flight:"Flug & Verspätung",payment:"Bar oder Karte?",reservation:"Vorbestellen"})[id];
-    button.addEventListener("click", function () { reply(item.question, item.id); }); topics.appendChild(button);
-  });
-  addMessage("Hallo, ich bin Kardelen, deine digitale ONRODA-Assistentin 😊 Wie kann ich dir helfen? Zum Beispiel beim Flughafentransfer, beim passenden Fahrzeug oder mit einer Frage zur Zahlung.");
-  toggle.addEventListener("click", function () { setOpen(panel.hidden); });
-  close.addEventListener("click", function () { setOpen(false); });
-  form.addEventListener("submit", function (event) { event.preventDefault(); reply(input.value); });
-  document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); setOpen(false); } });
-  document.addEventListener("click", function (event) { if (!panel.hidden && !root.contains(event.target)) { panel.hidden = true; toggle.setAttribute("aria-expanded", "false"); } });
+  function actionRow(parent,keys){if(!keys||!keys.length)return;const wrap=element('div','onroda-help__actions');for(const key of keys){if(key==='emergency112'||key==='emergency110')link(wrap,caption(key),'tel:'+(key==='emergency112'?'112':'110'));else if(key==='partner')link(wrap,caption(key),config.partner);else wrap.appendChild(button(caption(key),()=>action(key)));}parent.appendChild(wrap);}
+  function render(reply){localize();const row=bubble(reply.text);if(reply.vehicle){const img=element('img','onroda-help__vehicle');img.src='/images/e-klasse-kombi-flughafen.jpg';img.alt=tr('Illustration: Mercedes E-Klasse Kombi','Illustration: Mercedes E-Class estate','Görsel: Mercedes E Serisi station wagon');img.width=1536;img.height=1024;img.loading='lazy';row.appendChild(img);}renderSummary(row,reply.summary);actionRow(row,reply.actions);scroll();}
+  function setOpen(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));if(open)input.focus();else toggle.focus();}
+  toggle.addEventListener('click',()=>setOpen(panel.hidden));close.addEventListener('click',()=>setOpen(false));
+  form.addEventListener('submit',ev=>{ev.preventDefault();const raw=input.value.trim();if(!raw)return;input.value='';const answer=engine.turn(raw);bubble(E.safe(raw),true);render(answer);input.focus();});
+  document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&!panel.hidden){ev.preventDefault();setOpen(false);}});document.addEventListener('click',ev=>{if(!panel.hidden&&!root.contains(ev.target)){panel.hidden=true;toggle.setAttribute('aria-expanded','false');}});
+  // Aggregate counters exist only in this tab's memory. No transcript/addresses sent to analytics.
+  for(const key of ['plan','airport','price','vehicle','human']){const b=button(caption(key),()=>action(key));b.dataset.action=key;topics.appendChild(b);}
+  const reset=button(tr('Neu','Reset','Yeni'),()=>action('reset'));reset.className='onroda-help__reset';root.querySelector('.onroda-help__header').insertBefore(reset,close);
+  render({text:engine.greeting(),actions:[]});
 })();

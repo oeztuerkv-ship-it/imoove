@@ -1,5 +1,7 @@
 # Website: selbstgehostete FAQ-Hilfe (31.10.2026)
 
+Historischer Stand. Aktuelle Erweiterung und Grenzen: [Kardelen 2.0](kardelen-2.0.md), 01.11.2026. Insbesondere die neue ausdrückliche Preis-API-Abfrage ersetzt die frühere Aussage „keine Netzwerkanfragen“.
+
 ## 1) Ziel des Features
 Allgemeine Kundenfragen direkt neben WhatsApp beantworten, ohne externen KI-Dienst oder Gebühren je Antwort. Bestehendes Hosting bleibt erforderlich. Keine Buchung im Chat.
 

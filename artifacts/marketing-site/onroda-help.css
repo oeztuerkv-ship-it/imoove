@@ -59,3 +59,37 @@
 .onroda-help__message p{white-space:pre-line}
 .onroda-help__topics button[hidden]{display:none}
 .onroda-help__topics .onroda-help__plan{background:#18252e;color:white;border-color:#18252e}
+
+/* Kardelen 2: shared accessible actions and structured ride summary. */
+.onroda-help__toggle{font-size:25px;font-weight:750}
+.onroda-help__header{gap:10px}
+.onroda-help__header>div{flex:1;min-width:0}
+.onroda-help__header h2{font-size:21px}
+.onroda-help__header p{font-size:14px;line-height:1.4}
+.onroda-help__avatar{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;background:#fff1f3;color:#a9001b;border-radius:50%;font-size:20px;font-weight:750}
+.onroda-help__reset{border:0;background:transparent;color:white;font-size:14px;line-height:1.3;padding:6px;min-height:44px;cursor:pointer;max-width:65px}
+.onroda-help__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.onroda-help__actions button,.onroda-help__actions a,.onroda-help__quote-form button{display:block;border:1px solid #d4dfe6;border-radius:10px;background:#fff;color:#263f51;min-height:44px;font-size:14px;line-height:1.5;padding:10px 12px;text-align:left;cursor:pointer;text-decoration:none;margin:0;box-sizing:border-box}
+.onroda-help__actions button:hover,.onroda-help__actions a:hover{background:#f1f6f9}
+.onroda-help__actions button:first-child,.onroda-help__quote-form button{background:#18252e;color:white;border-color:#18252e}
+.onroda-help__actions button:disabled,.onroda-help__quote-form button:disabled{opacity:.65;cursor:wait}
+.onroda-help__summary{border:1px solid #dce4ea;border-radius:12px;background:#f8fafb;padding:13px;margin-top:13px}
+.onroda-help__summary h3{font-size:16px;line-height:1.5;margin:0 0 10px;color:#1f2933}
+.onroda-help__summary dl{margin:0;display:grid;grid-template-columns:1fr;gap:3px}
+.onroda-help__summary dt{font-size:14px;color:#536472;margin-top:6px}
+.onroda-help__summary dd{font-size:16px;line-height:1.5;margin:0;color:#18252e;overflow-wrap:anywhere}
+.onroda-help__summary .onroda-help__status{font-size:14px;line-height:1.5;font-weight:600;color:#7a4000;margin:12px 0 0}
+.onroda-help__message label{display:block;font-size:14px;line-height:1.5;margin:12px 0 8px;color:#273e4d}
+.onroda-help__handoff,.onroda-help__quote-form input,.onroda-help__quote-form select{box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0;font:inherit;font-size:16px;line-height:1.6;color:#18252e;background:#fff;border:1px solid #b8c8d2;border-radius:9px;padding:10px;margin-top:6px}
+.onroda-help__handoff{min-height:200px;resize:vertical}
+.onroda-help__quote-form{margin:0}
+.onroda-help__quote-form button{margin-top:12px}
+.onroda-help__price{margin-top:13px;padding:13px;border:1px solid #bdcddd;border-radius:10px;background:#eef5fb}
+.onroda-help__price strong{font-size:18px;color:#173b55}
+.onroda-help__price p{margin-top:9px;font-size:14px}
+.onroda-help__note a{color:inherit;text-decoration:underline}
+.onroda-help textarea:focus-visible,.onroda-help select:focus-visible{outline:3px solid #123b66;outline-offset:3px}
+@media(max-width:380px){.onroda-help__avatar{display:none}.onroda-help__header{padding:13px 12px}.onroda-help__header p{font-size:14px}.onroda-help__reset{max-width:58px}}
+@media(prefers-reduced-motion:no-preference){.onroda-help__panel:not([hidden]){animation:kardelen-appear .16s ease-out}@keyframes kardelen-appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}
+
+@media(max-width:640px){.onroda-help__topics{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;max-height:none}.onroda-help__topics button{flex-shrink:0}}
